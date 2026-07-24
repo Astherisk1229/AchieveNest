@@ -294,7 +294,34 @@ $$
 ### Phase 5: Department Secretary Endorsement & Verification Portal
 
 #### Objective
-Implement the **Department Secretary Review Panel** (`src/pages/SecretaryDashboard.jsx`) for reviewing and endorsing department faculty submissions.
+Build the dedicated **Department Secretary Portal View** (`src/components/secretary/SecretaryDashboardView.jsx`), rendered when personnel switches active working context to `department_secretary`, allowing department secretaries to review, verify, and endorse faculty accomplishment submissions before forwarding them to the HR Office.
+
+#### UI & Technical Specifications
+1. **Hero Summary Banner (NDMU Forest Green `#1b4332`)**:
+   - **Header**: Building Icon, "Department Secretary Portal", Subtitle: *"Department Faculty Accomplishment Review & HR Endorsement"*.
+   - **4 Stat Counters Row**:
+     - `Pending Endorsements`: **2** (with clock icon)
+     - `Endorsed to HR`: **3** (with check circle icon)
+     - `Returned to Faculty`: **0** (with rotate ccw icon)
+     - `Active Department Faculty`: **12 Members** (with users icon)
+2. **Department Scope Notice Banner**:
+   - Mint container (`bg-[#eef7f0] border-[#cbe6d2]`): **Department Scope: College of Information Technology**.
+   - Notice: *"You are reviewing accomplishments submitted by faculty members under your assigned department."*
+3. **Pending Faculty Submissions Endorsement Queue**:
+   - Filter tabs: `All Submissions`, `Pending Endorsement`, `Endorsed to HR`, `Returned`.
+   - Submission Item Cards: Faculty Name & Academic Rank (*Dr. Maria Santos • Associate Professor*), Title (*Machine Learning Frameworks in Higher Education*), Category (*Research & Publications*), Submission Date, Document Proof preview trigger.
+4. **Review & Endorsement Modal Workflow**:
+   - Document Proof preview viewer.
+   - Action button 1: **Endorse to HR Office** (updates status to `Endorsed to HR`).
+   - Action button 2: **Return to Faculty** (with required remarks text field).
+5. **Sidebar Navigation & Shell Synchronization**:
+   - Role Badge: `Department Secretary` (with Building icon).
+   - Navigation links: `Overview` (active), `Faculty Submissions Queue`, `Department Roster`, `Endorsement Logs`.
+
+#### Proposed Components
+- **[NEW] [SecretaryDashboardView.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/secretary/SecretaryDashboardView.jsx)**: Dedicated Department Secretary overview & endorsement view.
+- **[MODIFY] [PersonnelDashboard.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)**: Render `SecretaryDashboardView` when `active_role_context === 'department_secretary'`.
+- **[MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)**: Update navigation links (`Overview`, `Faculty Submissions Queue`, `Department Roster`, `Endorsement Logs`) for Department Secretary context.
 
 ---
 

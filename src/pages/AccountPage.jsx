@@ -14,7 +14,9 @@ import {
   AlertCircle,
   KeyRound,
   FileCheck,
-  Send
+  Send,
+  Edit3,
+  X
 } from 'lucide-react'
 
 export default function AccountPage({ currentUser }) {
@@ -27,6 +29,9 @@ export default function AccountPage({ currentUser }) {
     phone: '+63 912 345 6789',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
   })
+
+  // Edit Mode Toggle State
+  const [isEditing, setIsEditing] = useState(false)
 
   // Editable Form Inputs State
   const [fullName, setFullName] = useState(user.full_name)
@@ -51,8 +56,16 @@ export default function AccountPage({ currentUser }) {
       phone,
       avatar_url: avatarUrl
     }))
+    setIsEditing(false)
     setShowSavedToast(true)
     setTimeout(() => setShowSavedToast(false), 3000)
+  }
+
+  const handleCancelEdit = () => {
+    setFullName(user.full_name)
+    setEmail(user.email)
+    setPhone(user.phone)
+    setIsEditing(false)
   }
 
   const handleUpdateAvatar = (e) => {
@@ -76,54 +89,81 @@ export default function AccountPage({ currentUser }) {
         )}
 
         {/* ================= PROFILE AVATAR HEADER CARD ================= */}
-        <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs flex flex-col sm:flex-row sm:items-center gap-6">
+        <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[#2d8a4e] p-1 bg-white overflow-hidden shadow-md">
-              <img
-                src={avatarUrl}
-                alt={fullName}
-                className="w-full h-full object-cover rounded-xl"
-              />
+          <div className="flex items-center gap-6">
+            <div className="relative shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[#2d8a4e] p-1 bg-white overflow-hidden shadow-md">
+                <img
+                  src={avatarUrl}
+                  alt={fullName}
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}
+                className="absolute -bottom-2 -right-2 p-2 rounded-xl bg-[#2d8a4e] text-white hover:bg-[#236e3e] border-2 border-white transition shadow-md cursor-pointer"
+                title="Change Profile Picture"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}
-              className="absolute -bottom-2 -right-2 p-2 rounded-xl bg-[#2d8a4e] text-white hover:bg-[#236e3e] border-2 border-white transition shadow-md cursor-pointer"
-              title="Change Profile Picture"
-            >
-              <Camera className="w-4 h-4" />
-            </button>
+
+            <div className="space-y-1">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">{fullName}</h1>
+              <p className="text-xs font-semibold text-slate-500">
+                {isStudent ? 'Student Account' : 'Faculty / Personnel Account'}
+              </p>
+              
+              <button
+                type="button"
+                onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}
+                className="text-xs font-bold text-[#2d8a4e] hover:underline pt-1 block cursor-pointer"
+              >
+                Change Profile Picture
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">{fullName}</h1>
-            <p className="text-xs font-semibold text-slate-500">
-              {isStudent ? 'Student Account' : 'Faculty / Personnel Account'}
-            </p>
-            
-            <button
-              type="button"
-              onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}
-              className="text-xs font-bold text-[#2d8a4e] hover:underline pt-1 block cursor-pointer"
-            >
-              Change Profile Picture
-            </button>
-          </div>
+          {/* Edit Profile Button Header Quick Action */}
+          <button
+            type="button"
+            onClick={() => isEditing ? handleCancelEdit() : setIsEditing(true)}
+            className={`px-4 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition shadow-2xs cursor-pointer self-start sm:self-center ${
+              isEditing 
+                ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                : 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-800'
+            }`}
+          >
+            {isEditing ? <X className="w-4 h-4 text-rose-600" /> : <Edit3 className="w-4 h-4 text-[#2d8a4e]" />}
+            <span>{isEditing ? 'Cancel Editing' : 'Edit Information'}</span>
+          </button>
 
         </div>
 
         {/* ================= ACCOUNT INFORMATION FORM ================= */}
         <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-6">
           
-          <div className="border-b border-slate-100 pb-4">
-            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <User className="w-5 h-5 text-[#2d8a4e]" />
-              <span>Account Information</span>
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Manage your profile credentials and official university contact channels
-            </p>
+          <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <User className="w-5 h-5 text-[#2d8a4e]" />
+                <span>Account Information</span>
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {isEditing ? 'Modify editable account details below and click Save Changes' : 'Viewing account credentials (click Edit Information to modify)'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => isEditing ? handleCancelEdit() : setIsEditing(true)}
+              className="text-xs font-extrabold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>{isEditing ? 'Cancel' : 'Edit'}</span>
+            </button>
           </div>
 
           <form onSubmit={handleSaveAccountInfo} className="space-y-5">
@@ -138,14 +178,19 @@ export default function AccountPage({ currentUser }) {
                 <input
                   type="text"
                   required
+                  disabled={!isEditing}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#2d8a4e] focus:bg-white transition"
+                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border text-xs font-semibold transition ${
+                    isEditing 
+                      ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                      : 'bg-emerald-50/50 border-emerald-100 text-slate-800 cursor-default'
+                  }`}
                 />
               </div>
             </div>
 
-            {/* Student Number / Employee ID (READ ONLY / PROTECTED) */}
+            {/* Student Number / Employee ID (READ ONLY / PROTECTED ALWAYS) */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
                 <span>{isStudent ? 'Student Number' : 'Employee ID'}</span>
@@ -171,7 +216,7 @@ export default function AccountPage({ currentUser }) {
               </p>
             </div>
 
-            {/* Program / Department (READ ONLY) */}
+            {/* Program / Department (READ ONLY ALWAYS) */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-800">
                 {isStudent ? 'Program' : 'Department / College'}
@@ -200,9 +245,14 @@ export default function AccountPage({ currentUser }) {
                 <input
                   type="email"
                   required
+                  disabled={!isEditing}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#2d8a4e] focus:bg-white transition"
+                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border text-xs font-semibold transition ${
+                    isEditing 
+                      ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                      : 'bg-emerald-50/50 border-emerald-100 text-slate-800 cursor-default'
+                  }`}
                 />
               </div>
             </div>
@@ -217,22 +267,37 @@ export default function AccountPage({ currentUser }) {
                 <input
                   type="text"
                   required
+                  disabled={!isEditing}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#2d8a4e] focus:bg-white transition"
+                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border text-xs font-semibold transition ${
+                    isEditing 
+                      ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                      : 'bg-emerald-50/50 border-emerald-100 text-slate-800 cursor-default'
+                  }`}
                 />
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Changes</span>
-              </button>
-            </div>
+            {/* Save / Cancel Action Buttons (Visible when in Edit Mode) */}
+            {isEditing && (
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100 animate-in fade-in duration-150">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Changes ✓</span>
+                </button>
+              </div>
+            )}
 
           </form>
 

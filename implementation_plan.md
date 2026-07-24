@@ -6,8 +6,10 @@
 ---
 
 > [!NOTE]
-> **System Architecture & Database Schema Reference**: For complete database tables (22 tables), Row Level Security (RLS) policies, ERD diagrams, and backend API specifications, please refer to the primary design document:  
-> 📄 **[achievenest_system_design.md](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/achievenest_system_design.md)**
+> **Frontend Web Application Scope Notice**:  
+> All implementation phases in this codebase focus on building the **Complete Frontend Client Web Application UI System** (React + Vite + TailwindCSS), featuring complete interactive UI components, state management, modal workflows, CSV exporters, role context switchers, and client-side data flows. Backend server API endpoints and database persistence will be integrated separately outside of Antigravity.  
+>  
+> For database schemas (22 tables), RLS policies, and backend API specifications, refer to: 📄 **[achievenest_system_design.md](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/achievenest_system_design.md)**
 
 ---
 

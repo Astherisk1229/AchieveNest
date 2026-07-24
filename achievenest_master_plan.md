@@ -2,6 +2,12 @@
 
 ---
 
+> [!NOTE]
+> **Project Scope & Architecture Notice**:
+> All implementation phases in this repository encompass the **Complete Frontend Client Web Application System** (built using React + Vite + TailwindCSS), featuring complete interactive UI components, dynamic state management, modal workflows, CSV exporters, role context switchers, and client-side data flows. Backend server API integration, database persistence, and server endpoints will be developed separately outside of Antigravity.
+
+---
+
 ## 📊 1. Master System Status & Clickable Feature Matrix
 
 This matrix provides an authoritative, complete inventory of all interactive buttons, cards, menus, modals, and links across the AchieveNest web application, detailing the exact behavior and display output triggered by each click.

@@ -213,10 +213,10 @@ export default function StudentDashboard({ currentUser }) {
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
-            {/* Card 1: Submit New Achievement (Opens Modal) */}
+            {/* Card 1: Submit New Achievement (Navigates to Achievements Page & Opens Modal) */}
             <button
               type="button"
-              onClick={() => setIsSubmitOpen(true)}
+              onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
               className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">

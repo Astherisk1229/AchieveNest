@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import AchievementSubmissionModal from '../components/student/AchievementSubmissionModal'
 import { 
@@ -27,9 +28,16 @@ import {
 
 export default function StudentAchievementsPage({ currentUser }) {
   const user = currentUser || { full_name: 'Maria Santos', student_id: '2024-01234', program: 'BS Information Technology' }
+  const location = useLocation()
 
   // State controls
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
+
+  useEffect(() => {
+    if (location.state?.openSubmissionModal) {
+      setIsSubmitOpen(true)
+    }
+  }, [location.state])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')

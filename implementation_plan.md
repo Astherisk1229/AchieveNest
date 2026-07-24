@@ -266,8 +266,8 @@ Build the dedicated **Program Coordinator View** (`src/components/coordinator/Co
 $$
 
 
----
-
+$$
+DONE
 ### Phase 4.7: GitHub Version Control Checkpoint & Repository Snapshot
 
 #### Objective
@@ -286,6 +286,7 @@ Establish a clean Git version control checkpoint (commit and push to GitHub repo
 #### Verification Plan
 - Verify clean `git status` (no uncommitted or lost work).
 - Ensure dev server builds cleanly (`npm run build`).
+$$
 
 
 ---
@@ -301,6 +302,48 @@ Implement the **Department Secretary Review Panel** (`src/pages/SecretaryDashboa
 
 #### Objective
 Construct the **HR Staff Dashboard** (`src/pages/HRDashboard.jsx`) for monitoring university-wide employee accomplishments and assigning `department_secretary` roles.
+
+---
+
+### Phase 6.9: GitHub Version Control Checkpoint & Remote Push
+
+#### Objective
+Establish a clean Git version control checkpoint and push all updates to GitHub repository `https://github.com/Astherisk1229/AchieveNest.git` after Phase 6, securing Department Secretary Endorsement and HR Office Accreditation suites to guarantee complete system backup before OSAD features.
+
+#### Action Steps & Commands
+1. **Repository Safety Audit & Status Check**:
+   - Run `git status` to verify modified files and untracked components.
+2. **Stage & Commit Workspace**:
+   - Stage all codebase updates (`git add .`).
+   - Create a structured commit: `git commit -m "feat: complete Phase 5 Department Secretary and Phase 6 HR Office Suite"`.
+3. **Remote Push & Release Tagging**:
+   - Create release tag `v0.6.0-stable` (`git tag -a v0.6.0-stable -m "Stable release after Phase 6 implementation"`).
+   - Push commits and tags to GitHub (`git push origin main --tags`).
+
+#### Verification Plan
+- Verify clean `git status` and remote tracking.
+- Verify production build with `npm run build`.
+
+---
+
+### Phase 6.9.1: Git Workspace Sync & Version Restore (Git Pull / Checkout)
+
+#### Objective
+Provide procedures and commands to synchronize (`git pull origin main`) or restore (`git checkout <tag/branch>`) the latest saved repository version from GitHub, ensuring any workstation or developer can pull the exact codebase snapshot and resume development seamlessly.
+
+#### Action Steps & Commands
+1. **Fetch & Pull Remote Updates (`git pull`)**:
+   - Pull the latest commits from the GitHub remote repository:
+     `git pull origin main`
+2. **Restore / Switch to a Specific Version Snapshot (`git checkout`)**:
+   - List available release tags: `git tag -l`
+   - Switch to a specific saved version snapshot (e.g. `v0.4.6-stable` or `v0.6.0-stable`):
+     `git checkout tags/v0.4.6-stable -b release-v0.4.6`
+3. **Verify Dependencies & Launch Local Server**:
+   - Re-install dependencies if needed (`npm install`) and start local dev server (`npm run dev`).
+
+#### Verification Plan
+- Confirm workspace is fully up-to-date with remote GitHub repository (`git status`).
 
 ---
 

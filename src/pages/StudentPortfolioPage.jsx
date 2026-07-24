@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import ExportPortfolioPreviewModal from '../components/student/ExportPortfolioPreviewModal'
+import EditStudentInfoModal from '../components/student/EditStudentInfoModal'
 import { 
   Trophy, 
   CheckCircle2, 
@@ -21,15 +22,18 @@ import {
   ShieldCheck,
   Check,
   Share2,
-  Download
+  Download,
+  Edit3
 } from 'lucide-react'
 
 export default function StudentPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
 
-  const student = currentUser || {
+  // Student Profile State
+  const [student, setStudent] = useState(currentUser || {
     full_name: 'Maria Santos',
     student_id: '2024-01234',
     program: 'BS Computer Science',
@@ -38,7 +42,68 @@ export default function StudentPortfolioPage({ currentUser }) {
     location: 'Koronadal City, South Cotabato',
     email: 'student@ndmu.edu.ph',
     phone: '+63 912 345 6789',
-    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    about_me: 'I am a dedicated and driven 3rd Year student enrolled in BS Computer Science at Notre Dame of Marbel University. With a strong passion for technology, community service, and academic excellence, I actively seek opportunities to grow both personally and professionally.'
+  })
+
+  // Experience & Involvement List State
+  const [experiences, setExperiences] = useState([
+    {
+      id: 1,
+      role: 'President',
+      organization: 'Computer Society NDMU',
+      period: 'Aug 2025 – Present',
+      icon: Users
+    },
+    {
+      id: 2,
+      role: "Dean's Lister",
+      organization: 'CEAC – Notre Dame of Marbel University',
+      period: 'AY 2024–2025',
+      icon: GraduationCap
+    },
+    {
+      id: 3,
+      role: 'Community Extension',
+      organization: 'Koronadal City Barangay Program',
+      period: 'Jan – Mar 2025',
+      icon: Heart
+    },
+    {
+      id: 4,
+      role: 'Hackathon Finalist',
+      organization: 'DICT RegTech Hackathon 2024',
+      period: 'Oct 2024',
+      icon: Trophy
+    },
+    {
+      id: 5,
+      role: 'Core Developer',
+      organization: 'University Web Dev Team',
+      period: 'Jun 2024 – Present',
+      icon: BookOpen
+    }
+  ])
+
+  // Skills & Competencies List State
+  const [skills, setSkills] = useState([
+    { name: 'Leadership', level: 3, label: 'Expert' },
+    { name: 'Communication', level: 3, label: 'Expert' },
+    { name: 'Technical Skills', level: 2, label: 'Proficient' },
+    { name: 'Teamwork', level: 3, label: 'Expert' },
+    { name: 'Problem Solving', level: 2, label: 'Proficient' },
+    { name: 'Critical Thinking', level: 2, label: 'Proficient' },
+    { name: 'Public Speaking', level: 2, label: 'Proficient' },
+    { name: 'Time Management', level: 3, label: 'Expert' },
+    { name: 'Research', level: 2, label: 'Proficient' },
+    { name: 'Project Management', level: 1, label: 'Familiar' }
+  ])
+
+  // Save Callback from EditStudentInfoModal
+  const handleSaveStudentProfile = (updatedProfile, updatedExperiences, updatedSkills) => {
+    setStudent(updatedProfile)
+    setExperiences(updatedExperiences.map(exp => ({ ...exp, icon: exp.icon || Users })))
+    setSkills(updatedSkills)
   }
 
   // Copy portfolio link
@@ -53,50 +118,6 @@ export default function StudentPortfolioPage({ currentUser }) {
   const handleCategoryClick = (catName) => {
     navigate('/student/achievements', { state: { selectedCategory: catName } })
   }
-
-  // Experience & Involvement List
-  const experiences = [
-    {
-      id: 1,
-      role: 'President',
-      organization: 'Computer Society NDMU',
-      period: 'Aug 2025 – Present',
-      icon: Users,
-      color: 'bg-emerald-600 text-white border-emerald-400'
-    },
-    {
-      id: 2,
-      role: "Dean's Lister",
-      organization: 'CEAC – Notre Dame of Marbel University',
-      period: 'AY 2024–2025',
-      icon: GraduationCap,
-      color: 'bg-emerald-600 text-white border-emerald-400'
-    },
-    {
-      id: 3,
-      role: 'Community Extension',
-      organization: 'Koronadal City Barangay Program',
-      period: 'Jan – Mar 2025',
-      icon: Heart,
-      color: 'bg-emerald-600 text-white border-emerald-400'
-    },
-    {
-      id: 4,
-      role: 'Hackathon Finalist',
-      organization: 'DICT RegTech Hackathon 2024',
-      period: 'Oct 2024',
-      icon: Trophy,
-      color: 'bg-emerald-600 text-white border-emerald-400'
-    },
-    {
-      id: 5,
-      role: 'Core Developer',
-      organization: 'University Web Dev Team',
-      period: 'Jun 2024 – Present',
-      icon: BookOpen,
-      color: 'bg-emerald-600 text-white border-emerald-400'
-    }
-  ]
 
   // Featured Verified Achievements
   const featuredAchievements = [
@@ -135,25 +156,11 @@ export default function StudentPortfolioPage({ currentUser }) {
     { id: 5, title: 'Research Abstract', category: 'Academic', emoji: '🔬' }
   ]
 
-  // Skills & Competencies with proficiency dot levels
-  const skills = [
-    { name: 'Leadership', level: 3, label: 'Expert' },
-    { name: 'Communication', level: 3, label: 'Expert' },
-    { name: 'Technical Skills', level: 2, label: 'Proficient' },
-    { name: 'Teamwork', level: 3, label: 'Expert' },
-    { name: 'Problem Solving', level: 2, label: 'Proficient' },
-    { name: 'Critical Thinking', level: 2, label: 'Proficient' },
-    { name: 'Public Speaking', level: 2, label: 'Proficient' },
-    { name: 'Time Management', level: 3, label: 'Expert' },
-    { name: 'Research', level: 2, label: 'Proficient' },
-    { name: 'Project Management', level: 1, label: 'Familiar' }
-  ]
-
   return (
     <MainLayout>
       <div className="space-y-6 font-sans pb-12">
         
-        {/* ================= TOP ACTION BAR: SHARE & EXPORT PORTFOLIO ================= */}
+        {/* ================= TOP ACTION BAR: EDIT PROFILE, SHARE & EXPORT PORTFOLIO ================= */}
         <div className="flex items-center justify-end gap-3 relative">
           
           {showCopiedToast && (
@@ -165,8 +172,17 @@ export default function StudentPortfolioPage({ currentUser }) {
 
           <button
             type="button"
+            onClick={() => setIsEditModalOpen(true)}
+            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center gap-2 shadow-2xs hover:shadow-xs transition cursor-pointer"
+          >
+            <Edit3 className="w-4 h-4 text-[#2d8a4e]" />
+            <span>Edit Profile</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleSharePortfolio}
-            className="px-4 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 shadow-2xs hover:shadow-xs transition cursor-pointer"
+            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 shadow-2xs hover:shadow-xs transition cursor-pointer"
           >
             <Share2 className="w-4 h-4 text-slate-500" />
             <span>Share</span>
@@ -248,29 +264,52 @@ export default function StudentPortfolioPage({ currentUser }) {
             
             {/* ABOUT ME CARD */}
             <div className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-3">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
-                  👤
-                </span>
-                <span>About Me</span>
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
+                    👤
+                  </span>
+                  <span>About Me</span>
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="text-xs font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+              </div>
+
               <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                I am a dedicated and driven 3rd Year student enrolled in <strong className="text-slate-900 font-bold">BS Computer Science</strong> at Notre Dame of Marbel University. With a strong passion for technology, community service, and academic excellence, I actively seek opportunities to grow both personally and professionally. My involvement in student organizations and various competitions has equipped me with leadership, communication, and technical problem-solving skills that I continue to develop.
+                {student.about_me}
               </p>
             </div>
 
             {/* EXPERIENCE & INVOLVEMENT TIMELINE CARD */}
             <div className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-5">
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
-                  🏛️
-                </span>
-                <span>Experience & Involvement</span>
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
+                    🏛️
+                  </span>
+                  <span>Experience & Involvement</span>
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="text-xs font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+              </div>
 
               <div className="relative pl-6 space-y-6 before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                 {experiences.map((exp) => {
-                  const IconComp = exp.icon
+                  const IconComp = exp.icon || Users
                   return (
                     <div key={exp.id} className="relative flex items-start justify-between gap-4 group">
                       
@@ -370,10 +409,20 @@ export default function StudentPortfolioPage({ currentUser }) {
             
             {/* CONTACT INFORMATION CARD */}
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
-              <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-[#2d8a4e]" />
-                <span>Contact Information</span>
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#2d8a4e]" />
+                  <span>Contact Information</span>
+                </h3>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
 
               <div className="space-y-3">
                 <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100">
@@ -400,6 +449,14 @@ export default function StudentPortfolioPage({ currentUser }) {
                   <Star className="w-4 h-4 text-[#2d8a4e]" />
                   <span>Skills & Competencies</span>
                 </h3>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline"
+                >
+                  Edit
+                </button>
               </div>
 
               <div className="space-y-2">
@@ -495,6 +552,16 @@ export default function StudentPortfolioPage({ currentUser }) {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         student={student}
+      />
+
+      {/* EDIT STUDENT INFO MODAL */}
+      <EditStudentInfoModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        student={student}
+        experiences={experiences}
+        skills={skills}
+        onSave={handleSaveStudentProfile}
       />
     </MainLayout>
   )

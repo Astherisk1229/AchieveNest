@@ -286,6 +286,7 @@ Build `EditStudentInfoModal.jsx` allowing students to edit non-immutable profile
 
 ##### [MODIFY] [StudentPortfolioPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/StudentPortfolioPage.jsx)
 - Add `Edit Profile` button triggering `EditStudentInfoModal.jsx` and updating local student state dynamically.
+$$
 
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:

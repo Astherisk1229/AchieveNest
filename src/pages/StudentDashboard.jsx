@@ -167,7 +167,7 @@ export default function StudentDashboard({ currentUser }) {
               </span>
             </button>
 
-            {/* 3. My Certificates Card */}
+            {/* 3. My Achievements Card */}
             <button
               type="button"
               onClick={() => navigate('/student/achievements')}
@@ -177,7 +177,7 @@ export default function StudentDashboard({ currentUser }) {
                 <Star className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
-                My Certificates
+                My Achievements
               </span>
             </button>
 

@@ -162,8 +162,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         
         <button
           type="button"
-          onClick={() => alert('Notifications Center')}
-          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-emerald-100/80 hover:bg-[#1b4332] hover:text-white flex items-center gap-3 transition"
+          onClick={() => navigate('/notifications')}
+          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-emerald-100/80 hover:bg-[#1b4332] hover:text-white flex items-center gap-3 transition cursor-pointer"
         >
           <Bell className="w-4 h-4 text-emerald-300" />
           <span>Notifications</span>
@@ -171,8 +171,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
         <button
           type="button"
-          onClick={() => alert('Account Settings')}
-          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-emerald-100/80 hover:bg-[#1b4332] hover:text-white flex items-center gap-3 transition"
+          onClick={() => navigate('/student/account')}
+          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-emerald-100/80 hover:bg-[#1b4332] hover:text-white flex items-center gap-3 transition cursor-pointer"
         >
           <Settings className="w-4 h-4 text-emerald-300" />
           <span>Settings</span>

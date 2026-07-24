@@ -330,6 +330,7 @@ Build `NotificationsPage.jsx` (`/notifications` and `/student/notifications`) fo
 
 ##### [MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)
 - Connect sidebar footer `Notifications` button to `/notifications`.
+$$
 
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:

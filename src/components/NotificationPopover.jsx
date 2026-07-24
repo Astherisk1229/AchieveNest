@@ -98,8 +98,15 @@ export default function NotificationPopover() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 mt-3 text-center">
-              <span className="text-xs text-slate-400 font-mono">AchieveNest Realtime Notification Gateway</span>
+            <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
+              <span className="text-[10px] text-slate-400 font-mono">AchieveNest Realtime Gateway</span>
+              <button
+                type="button"
+                onClick={() => { setIsOpen(false); navigate('/notifications'); }}
+                className="font-extrabold text-[#2d8a4e] hover:underline cursor-pointer"
+              >
+                View all →
+              </button>
             </div>
 
           </div>

@@ -178,7 +178,20 @@ graph LR
     - **Tab 3: Experience & Involvement Timeline**: Add/edit/delete position entries (*Role title, Organization, Period*).
   - Integrates directly with `StudentPortfolioPage.jsx` and top-right profile header.
 
-### Phase 4: Faculty & Personnel Professional Portfolio Interface [COMPLETED - ✅ IMPLEMENTED & WORKING]
+### Phase 3.5: Account Section & OSAD Security Management Page [UPCOMING / IN PLANNING]
+- **Objective**: Implement the dedicated Account Settings workspace (`/account` and `/student/account`) following the exact UI mockup, featuring system identity fields, protected registrar notices, and OSAD password reset requests.
+- **UI Architecture & Layout Specifications**:
+  - **Profile Avatar Header Card**: Large avatar preview, Name (*Maria Santos*), Account Type badge (*Student Account*), and `Change Profile Picture` action.
+  - **Account Information Form**:
+    - **Full Name**: Editable input field.
+    - **Student Number / Employee ID**: Read-only disabled mint field with lock indicator & notice: *"This field cannot be edited"*.
+    - **Program / Department**: Read-only disabled mint field with program label.
+    - **Email Address**: Editable email input.
+    - **Contact Number**: Editable phone number input.
+    - **Save Changes Button**: Green primary action button.
+  - **Security Settings Card**:
+    - **Password Reset Container**: Mint callout card with helper text *"To reset your password, submit a request to OSAD. They will verify your identity and provide you with new credentials."*
+    - **Request Password Reset CTA**: Interactive button triggering confirmation toast & OSAD ticket tracking.
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.
 
 ### Phase 4.5: Personnel Multi-Role Context Switcher & Profile Menu [COMPLETED - ✅ IMPLEMENTED & WORKING]

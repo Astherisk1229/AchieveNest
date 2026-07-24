@@ -288,6 +288,27 @@ Build `EditStudentInfoModal.jsx` allowing students to edit non-immutable profile
 - Add `Edit Profile` button triggering `EditStudentInfoModal.jsx` and updating local student state dynamically.
 $$
 
+---
+
+### Phase 3.5: Account Section & OSAD Security Management Page
+
+#### Objective
+Implement the dedicated Account Settings workspace (`src/pages/AccountPage.jsx`) following the exact UI mockup, featuring system identity fields, protected registrar notices, and OSAD password reset requests.
+
+#### Proposed Changes
+
+##### [MODIFY] [AccountPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx)
+- **Top Profile Header Card**: Avatar + Name (*Maria Santos*) + Account Subtitle (*Student Account*) + `Change Profile Picture` action button.
+- **Account Form Fields**:
+  - `Full Name`: Editable text input
+  - `Student Number`: Read-only mint field with subtext *"This field cannot be edited"*
+  - `Program`: Read-only mint field
+  - `Email Address`: Editable email input
+  - `Contact Number`: Editable phone input
+- **Security Settings Card**:
+  - Green callout container explaining OSAD password reset policy (*"To reset your password, submit a request to OSAD. They will verify your identity and provide you with new credentials."*)
+  - `Request Password Reset` CTA button with ticket tracking notification toast.
+
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:
    - **Title**: "Achievements", Subtitle: *"View, manage, and track your achievements. Attach supporting documents for verification by your program coordinator."*

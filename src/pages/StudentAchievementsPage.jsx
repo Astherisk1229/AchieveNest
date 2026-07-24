@@ -37,6 +37,9 @@ export default function StudentAchievementsPage({ currentUser }) {
     if (location.state?.openSubmissionModal) {
       setIsSubmitOpen(true)
     }
+    if (location.state?.selectedCategory) {
+      setSelectedCategory(location.state.selectedCategory)
+    }
   }, [location.state])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')

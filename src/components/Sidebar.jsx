@@ -66,7 +66,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     return [
       { label: 'Homepage', icon: Home, path: portalInfo.path },
       { label: 'Achievements', icon: Award, path: '/student/achievements' },
-      { label: 'Portfolio', icon: FolderKanban, path: '#portfolio' },
+      { label: 'Portfolio', icon: FolderKanban, path: '/student/portfolio' },
       { label: 'Account', icon: User, path: '#account' },
     ]
   }

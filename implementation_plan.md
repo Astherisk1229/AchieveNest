@@ -236,6 +236,7 @@ Build the standalone **Student Portfolio Page** (`src/pages/StudentPortfolioPage
 
 ##### [MODIFY] [StudentAchievementsPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/StudentAchievementsPage.jsx)
 - Handle pre-filtered category initialization from navigation state (`location.state?.selectedCategory`).
+$$
 
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:

@@ -77,6 +77,60 @@ This matrix provides an authoritative, complete inventory of all interactive but
 ### Phase 3.1: Dedicated Student Achievements Catalog & Workspace [COMPLETED]
 - Implemented `StudentAchievementsPage.jsx` (`/student/achievements`) featuring grid/list view mode toggles, category/status filters, CSV export, category breakdown sidebar widget, and homepage submission redirect.
 
+#### 📋 Detailed Field & UI Text Specification: 3-Step Achievement Submission Wizard
+
+```mermaid
+graph LR
+    A["🏆 STEP 1: Basic Details<br/>(Title, Event, Issuer)"] --> B["🌐 STEP 2: Scope & Rank<br/>(Category, Scope Level, Rank, AY)"]
+    B --> C["📄 STEP 3: Proof & Summary<br/>(Description, Drag-and-Drop Proof)"]
+    C --> D["✅ Submitted & Sent for Verification"]
+```
+
+##### 🏆 STEP 1: Basic Achievement Details
+- **Header Title**: Submit New Achievement
+- **Header Subtitle**: Step 1 of 3: Basic Details
+- **Step Badge 1**: `1. Basic Info` (Active Green Pill)
+
+| Field Name | Label Text | Component Type | Placeholder / Helper Text | Validation |
+| :--- | :--- | :--- | :--- | :--- |
+| `title` | Award / Achievement Title * | Text Input | e.g. Dean's Lister - First Semester AY 2025-2026 | Required, Min 5 chars |
+| `event_name` | Event / Competition Name * | Text Input | e.g. 12th SOCCSKSARGEN IT Summit / NDMU Intramurals 2025 | Required, Min 3 chars |
+| `issuer_organization` | Issuing Body / Organization * | Text Input | e.g. NDMU CITE / DOST Region XII | Required |
+
+- **Step 1 Action Buttons**:
+  - `Cancel` (Ghost button → closes modal)
+  - `Next: Scope & Rank →` (Primary Emerald CTA)
+
+##### 🌐 STEP 2: Classification, Scope & Rank Weighting (For TOPSIS Scoring)
+- **Header Subtitle**: Step 2 of 3: Scope & Rank
+- **Step Badge 2**: `2. Scope & Rank` (Active Green Pill)
+
+| Field Name | Label Text | Component Type | Options List / Values | Validation |
+| :--- | :--- | :--- | :--- | :--- |
+| `category_id` | Category * | Dropdown Select | Academic, Leadership, Athletics, Volunteerism & Community, Arts & Culture | Required |
+| `scope_level` | Geographic Scope / Level * | Dropdown Select | Institutional / Campus-Wide, Local / City Level, Regional (Region XII), National Level, International Level | Required |
+| `rank_conferred` | Rank / Position Conferred * | Dropdown Select | Champion / 1st Place, 2nd Place, 3rd Place, Finalist / Runner-Up, Dean's Lister, Leadership Officer / Lead, Participant / Special Award | Required |
+| `academic_year` | Academic Year * | Dropdown Select | AY 2025-2026, AY 2024-2025, AY 2023-2024 | Required |
+| `semester` | Term / Semester * | Dropdown Select | 1st Semester, 2nd Semester, Summer Term | Required |
+| `date_achieved` | Date Conferred * | Date Picker | MM / DD / YYYY | Required |
+
+- **Step 2 Action Buttons**:
+  - `← Back` (Returns to Step 1)
+  - `Next: Proof & Submit →` (Primary Emerald CTA)
+
+##### 📄 STEP 3: Supporting Proof & Summary Submission
+- **Header Subtitle**: Step 3 of 3: Proof & Summary
+- **Step Badge 3**: `3. Proof & Summary` (Active Green Pill)
+
+| Field Name | Label Text | Component Type | Instruction / Helper Text | Validation |
+| :--- | :--- | :--- | :--- | :--- |
+| `description` | Narrative Description | Textarea (3 rows) | Brief details about the accomplishment, criteria met, or project abstract... | Optional |
+| `document_url` | Supporting Evidence Document (PDF/JPG/PNG) * | Drag-and-Drop File Upload | Icon: Upload Cloud<br/>Primary Text: Click or drag certificate attachment here<br/>Subtext: PDF, JPG, PNG up to 5MB | Required |
+
+- **Step 3 Action Buttons**:
+  - `← Back` (Returns to Step 2)
+  - `Submit Entry ✓` (Primary Emerald CTA)
+
 ### Phase 4: Faculty & Personnel Professional Portfolio Interface [COMPLETED]
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.
 

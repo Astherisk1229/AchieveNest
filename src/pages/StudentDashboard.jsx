@@ -1,406 +1,528 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
-import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
-import AchievementSubmissionModal from '../components/student/AchievementSubmissionModal'
-import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
-import { 
-  Trophy, 
-  CheckCircle2, 
-  Clock, 
-  RotateCcw, 
-  Award, 
-  FileText, 
-  Star,
-  QrCode,
-  Filter,
-  ChevronRight,
-  BookOpen,
-  Users,
-  Heart,
-  Edit3
-} from 'lucide-react'
+import React, { useState } from 'react';
+import { Award, PlusCircle, CheckCircle, Clock, FileText, Download, QrCode, Search, Globe, Trophy, ChevronRight, ChevronLeft, Sparkles, UploadCloud } from 'lucide-react';
 
-export default function StudentDashboard({ currentUser }) {
-  const navigate = useNavigate()
-  const user = currentUser || { full_name: 'Maria Santos', student_id: '2024-01234', program: 'BS Information Technology' }
+export default function StudentDashboard({ achievements, onAddAchievement, categories }) {
+  const [showModal, setShowModal] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1); // 1: Info, 2: Scope & Rank, 3: Proof
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCat, setSelectedCat] = useState('All');
+  
+  // Form State
+  const [title, setTitle] = useState('');
+  const [eventName, setEventName] = useState('');
+  const [issuer, setIssuer] = useState('');
+  const [categoryId, setCategoryId] = useState(categories[0]?.id || '');
+  const [academicYear, setAcademicYear] = useState('AY 2025-2026');
+  const [semester, setSemester] = useState('1st Semester');
+  const [scopeLevel, setScopeLevel] = useState('Regional (Region XII)');
+  const [rankConferred, setRankConferred] = useState('Champion / 1st Place');
+  const [dateAchieved, setDateAchieved] = useState('');
+  const [description, setDescription] = useState('');
 
-  // Student Profile state
-  const [profile, setProfile] = useState({
-    full_name: user?.full_name || 'Maria Santos',
-    student_id: user?.student_id || '2024-01234',
-    employee_id: user?.student_id || '2024-01234',
-    user_type: 'student',
-    designation: '3rd Year Undergraduate Student',
-    department: 'College of Information Technology',
-    educational_attainment: 'BS Information Technology',
-    contact_number: '+63 917 123 4567',
-    email: user?.email || 'maria.santos@ndmu.edu.ph',
-    specialization: 'Software Engineering, Web Development',
-    years_of_service: 'AY 2024-2025'
-  })
+  const studentAchievements = achievements.filter(a => a.user_type === 'student');
+  const approvedCount = studentAchievements.filter(a => a.verification_status === 'approved').length;
+  const pendingCount = studentAchievements.filter(a => a.verification_status === 'pending').length;
 
-  // Modals state
-  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false)
-  const [isSubmitOpen, setIsSubmitOpen] = useState(false)
-  const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
-  const [activeFilter, setActiveFilter] = useState('All')
-
-  // Achievements State
-  const [achievements, setAchievements] = useState([
-    {
-      id: 1,
-      title: "Dean's Lister - First Semester AY 2025-2026",
-      date: 'Dec 15, 2025',
-      status: 'Verified',
-      category: 'Academic',
-      icon: Trophy,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
-      attached_file_name: 'deans_list_cert.pdf'
-    },
-    {
-      id: 2,
-      title: 'Student Council President',
-      date: 'Jan 10, 2026',
-      status: 'Verified',
-      category: 'Leadership',
-      icon: Users,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
-      attached_file_name: 'ssc_president_appointment.pdf'
-    },
-    {
-      id: 3,
-      title: 'Basketball Intramurals Champion',
-      date: 'Feb 14, 2026',
-      status: 'Verified',
-      category: 'Sports',
-      icon: Award,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
-      attached_file_name: 'intramurals_champ_cert.pdf'
-    },
-    {
-      id: 4,
-      title: 'Community Outreach Volunteer',
-      date: 'Mar 20, 2026',
-      status: 'Pending',
-      category: 'Community',
-      icon: Heart,
-      iconColor: 'text-amber-700 bg-amber-50 border-amber-200',
-      attached_file_name: 'outreach_certificate.pdf'
-    },
-    {
-      id: 5,
-      title: 'Best Research Paper Award',
-      date: 'Apr 5, 2026',
-      status: 'Returned',
-      category: 'Academic',
-      icon: BookOpen,
-      iconColor: 'text-rose-700 bg-rose-50 border-rose-200',
-      attached_file_name: 'research_paper_award.pdf'
+  const handleNextStep = (e) => {
+    e.preventDefault();
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
     }
-  ])
+  };
 
-  // Save basic info
-  const handleSaveBasicInfo = (updatedData) => {
-    setProfile(prev => ({
-      ...prev,
-      ...updatedData
-    }))
-  }
-
-  // Add achievement submission
-  const handleAddNewAchievement = (newEntry) => {
-    setAchievements([
-      {
-        ...newEntry,
-        icon: Trophy,
-        iconColor: 'text-amber-700 bg-amber-50 border-amber-200'
-      },
-      ...achievements
-    ])
-  }
-
-  // Category vault click
-  const handleCategoryCardClick = (catName) => {
-    setActiveFilter(catName)
-    const timelineEl = document.getElementById('student-timeline')
-    if (timelineEl) {
-      timelineEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
     }
-  }
+  };
 
-  // Counts
-  const totalCount = achievements.length
-  const verifiedCount = achievements.filter(a => a.status === 'Verified').length
-  const pendingCount = achievements.filter(a => a.status === 'Pending').length
-  const returnedCount = achievements.filter(a => a.status === 'Returned').length
-  const certificatesCount = verifiedCount
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const selectedCategoryObj = categories.find(c => c.id === categoryId);
+    const newAch = {
+      id: `ach-${Date.now()}`,
+      user_id: 'u-101',
+      user_name: 'Zahrah Zaheer S. Ahmed',
+      user_type: 'student',
+      category_id: categoryId,
+      category_name: selectedCategoryObj ? selectedCategoryObj.name : 'Academics',
+      title,
+      event_name: eventName,
+      issuer_organization: issuer,
+      academic_year: academicYear,
+      semester,
+      scope_level: scopeLevel,
+      rank_conferred: rankConferred,
+      description,
+      date_achieved: dateAchieved || new Date().toISOString().split('T')[0],
+      verification_status: 'pending',
+      verifier_name: 'Pending Program Coordinator',
+      verified_at: null,
+      verifier_remarks: null,
+      document_url: '#'
+    };
+    onAddAchievement(newAch);
+    setShowModal(false);
+    setCurrentStep(1);
+    // Reset Form
+    setTitle('');
+    setEventName('');
+    setIssuer('');
+    setDescription('');
+  };
 
-  // Filtered timeline
-  const filteredAchievements = achievements.filter(item => {
-    if (activeFilter === 'All') return true
-    if (activeFilter === 'Verified') return item.status === 'Verified'
-    if (activeFilter === 'Pending') return item.status === 'Pending'
-    if (activeFilter === 'Returned') return item.status === 'Returned'
-    if (activeFilter === 'Certificates') return item.status === 'Verified'
-    return item.category === activeFilter
-  })
+  const filtered = studentAchievements.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.issuer_organization.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat = selectedCat === 'All' || item.category_name === selectedCat;
+    return matchesSearch && matchesCat;
+  });
 
   return (
-    <MainLayout>
-      <div className="space-y-8 font-sans">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      
+      {/* Student Profile Banner */}
+      <div className="glass-panel rounded-2xl p-6 relative overflow-hidden border border-emerald-500/20">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         
-        {/* ================= HERO SUMMARY BANNER ================= */}
-        <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
-          
-          {/* Top Banner Row */}
-          <div className="flex items-start justify-between mb-8 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-extrabold text-white tracking-tight">Student Portfolio & Achievements</h1>
-                <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
-                  {profile.full_name} • ID: {profile.student_id} • {profile.department}
-                </p>
-              </div>
-            </div>
-
-            {/* Clickable NDMU Digital Barcode ID Badge */}
-            <button
-              type="button"
-              onClick={() => setIsBarcodeOpen(true)}
-              className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white flex items-center gap-2 transition text-xs font-bold shadow-md group shrink-0"
-              title="Click to expand NDMU Digital ID Barcode"
-            >
-              <QrCode className="w-4 h-4 text-amber-300 group-hover:scale-110 transition" />
-              <span className="hidden sm:inline">Digital ID Barcode</span>
-            </button>
-          </div>
-
-          {/* 5 Stats Cards Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 relative z-10">
-            
-            <button
-              type="button"
-              onClick={() => setActiveFilter('All')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'All'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <Trophy className="w-4 h-4 text-emerald-300" />
-                <span>Total Achievements</span>
-              </div>
-              <p className="text-3xl font-black text-white">{totalCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Verified')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Verified'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>Verified</span>
-              </div>
-              <p className="text-3xl font-black text-white">{verifiedCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Pending')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Pending'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <Clock className="w-4 h-4 text-amber-300" />
-                <span>Pending Review</span>
-              </div>
-              <p className="text-3xl font-black text-white">{pendingCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Returned')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Returned'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <RotateCcw className="w-4 h-4 text-emerald-300" />
-                <span>Returned</span>
-              </div>
-              <p className="text-3xl font-black text-white">{returnedCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Certificates')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Certificates'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <Award className="w-4 h-4 text-amber-300" />
-                <span>Total Certificates</span>
-              </div>
-              <p className="text-3xl font-black text-white">{certificatesCount}</p>
-            </button>
-
-          </div>
-
-        </div>
-
-        {/* ================= QUICK ACTIONS SECTION (3 CARDS) ================= */}
-        <div>
-          <h2 className="text-base font-bold text-slate-800 mb-3">Quick Actions</h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            
-            {/* Card 1: Submit New Achievement (Navigates to Achievements Section & Opens Form Overlay) */}
-            <button
-              type="button"
-              onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                Submit New Achievement
-              </span>
-            </button>
-
-            {/* Card 2: Edit Basic Information */}
-            <button
-              type="button"
-              onClick={() => setIsEditInfoOpen(true)}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Edit3 className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                Edit Basic Information
-              </span>
-            </button>
-
-            {/* Card 3: My Verified Certificates */}
-            <button
-              type="button"
-              onClick={() => navigate('/student/achievements')}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Star className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                My Verified Certificates
-              </span>
-            </button>
-
-          </div>
-        </div>
-
-        {/* ================= ACHIEVEMENTS TIMELINE SECTION ================= */}
-        <div id="student-timeline" className="scroll-mt-6">
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <span>Achievements Timeline</span>
-              {activeFilter !== 'All' && (
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]">
-                  Filtered: {activeFilter}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="flex items-center space-x-4">
+            <img
+              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"
+              alt="Student Avatar"
+              className="w-16 h-16 rounded-2xl object-cover ring-2 ring-emerald-400/50 shadow-xl"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-100">Zahrah Zaheer S. Ahmed</h1>
+                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs px-2.5 py-0.5 rounded-full font-medium">
+                  Active Student
                 </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <Filter className="w-3.5 h-3.5" />
-              <span>Showing {filteredAchievements.length} of {achievements.length} records</span>
+              </div>
+              <p className="text-sm text-slate-400 font-mono mt-0.5">ID: NDMU-2023-0142 | BS Information Technology (3rd Year)</p>
+              <p className="text-xs text-slate-500">College of Engineering, Architecture and Computing (CEAC)</p>
             </div>
           </div>
 
-          {/* Timeline Cards List */}
-          <div className="space-y-3">
-            {filteredAchievements.map((item) => {
-              const IconComp = item.icon || Trophy
-              return (
-                <div
-                  key={item.id}
-                  className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'}`}>
-                      <IconComp className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 leading-tight">{item.title}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-400 font-medium">📅 {item.date}</span>
-                        <span className="text-slate-300">•</span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            item.status === 'Verified'
-                              ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]'
-                              : item.status === 'Pending'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
-                    <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0">
-                      {item.category}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
+          <button
+            onClick={() => { setShowModal(true); setCurrentStep(1); }}
+            className="flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold px-6 py-3 rounded-xl shadow-lg shadow-emerald-900/30 transition transform hover:-translate-y-0.5"
+          >
+            <PlusCircle className="w-5 h-5" />
+            <span>Submit New Achievement</span>
+          </button>
         </div>
-
       </div>
 
-      {/* MODALS */}
-      <DigitalBarcodeIDCard
-        user={profile}
-        isOpen={isBarcodeOpen}
-        onClose={() => setIsBarcodeOpen(false)}
-      />
+      {/* Analytics & Barcode Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="glass-panel p-5 rounded-xl flex items-center space-x-4 border border-slate-800">
+          <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">
+            <CheckCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Verified Achievements</p>
+            <p className="text-2xl font-black text-slate-100 mt-0.5">{approvedCount}</p>
+          </div>
+        </div>
 
-      <EditBasicInfoModal
-        isOpen={isEditInfoOpen}
-        onClose={() => setIsEditInfoOpen(false)}
-        currentInfo={profile}
-        onSave={handleSaveBasicInfo}
-      />
+        <div className="glass-panel p-5 rounded-xl flex items-center space-x-4 border border-slate-800">
+          <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400 border border-amber-500/20">
+            <Clock className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Pending Verification</p>
+            <p className="text-2xl font-black text-slate-100 mt-0.5">{pendingCount}</p>
+          </div>
+        </div>
 
-      <AchievementSubmissionModal
-        isOpen={isSubmitOpen}
-        onClose={() => setIsSubmitOpen(false)}
-        onSubmitAchievement={handleAddNewAchievement}
-      />
-    </MainLayout>
-  )
+        <div className="glass-panel p-5 rounded-xl flex items-center space-x-4 border border-slate-800">
+          <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400 border border-blue-500/20">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Event Certificates</p>
+            <p className="text-2xl font-black text-slate-100 mt-0.5">4 Issued</p>
+          </div>
+        </div>
+
+        <div className="glass-panel p-4 rounded-xl border border-emerald-500/30 bg-slate-900/60 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+              <QrCode className="w-4 h-4" /> Digital NDMU ID Barcode
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">SCAN READY</span>
+          </div>
+          <div className="my-2 p-2 bg-white rounded flex flex-col items-center justify-center">
+            <div className="h-8 w-full flex items-center justify-between gap-1 px-2">
+              <div className="h-full w-1 bg-black"></div>
+              <div className="h-full w-2 bg-black"></div>
+              <div className="h-full w-0.5 bg-black"></div>
+              <div className="h-full w-1.5 bg-black"></div>
+              <div className="h-full w-1 bg-black"></div>
+              <div className="h-full w-3 bg-black"></div>
+              <div className="h-full w-1 bg-black"></div>
+              <div className="h-full w-2 bg-black"></div>
+              <div className="h-full w-0.5 bg-black"></div>
+            </div>
+            <p className="text-[10px] text-slate-800 font-mono font-bold mt-1 tracking-widest">NDMU-2023-0142</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Section */}
+      <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-100">My Achievement Records</h2>
+            <p className="text-xs text-slate-400">View and manage your academic, leadership, and extracurricular submissions.</p>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search achievements..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700/60 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <select
+              value={selectedCat}
+              onChange={(e) => setSelectedCat(e.target.value)}
+              className="bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value="All">All Categories</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-slate-500 text-sm">
+              No achievements found matching your filter criteria.
+            </div>
+          ) : (
+            filtered.map((item) => (
+              <div
+                key={item.id}
+                className="p-5 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                      {item.category_name}
+                    </span>
+                    {item.scope_level && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 flex items-center gap-1">
+                        <Globe className="w-3 h-3" /> {item.scope_level}
+                      </span>
+                    )}
+                    {item.rank_conferred && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                        <Trophy className="w-3 h-3" /> {item.rank_conferred}
+                      </span>
+                    )}
+                    {item.verification_status === 'approved' && (
+                      <span className="badge-approved">
+                        <CheckCircle className="w-3.5 h-3.5" /> Approved
+                      </span>
+                    )}
+                    {item.verification_status === 'pending' && (
+                      <span className="badge-pending">
+                        <Clock className="w-3.5 h-3.5" /> Pending Verification
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="text-base font-bold text-slate-100">{item.title}</h3>
+                  <p className="text-xs text-slate-400">{item.description}</p>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 pt-1">
+                    {item.event_name && <span>Event: <strong className="text-slate-300">{item.event_name}</strong></span>}
+                    <span>Issuer: <strong className="text-slate-400">{item.issuer_organization}</strong></span>
+                    <span>Date: <strong className="text-slate-400">{item.date_achieved}</strong></span>
+                  </div>
+                </div>
+
+                <button className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3.5 py-2 rounded-lg border border-slate-700 transition">
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>View Proof</span>
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Spacious 3-Step Wizard Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
+          <div className="glass-panel w-full max-w-xl rounded-3xl p-8 border border-slate-700/80 shadow-2xl space-y-6 my-8 transition-all">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center space-x-3.5">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 border border-emerald-500/20">
+                  <Award className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-extrabold text-slate-100">Submit New Achievement</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Step {currentStep} of 3: {currentStep === 1 ? 'Basic Details' : currentStep === 2 ? 'Scope & Rank' : 'Proof & Summary'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1 rounded-lg hover:bg-slate-900 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Stepper Progress Indicator Bar */}
+            <div className="flex items-center justify-between px-2 relative">
+              <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-slate-800 -translate-y-1/2 z-0"></div>
+              
+              <div className={`relative z-10 flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-bold transition ${currentStep >= 1 ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-900/30' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}>
+                <span>1</span>
+                <span className="hidden sm:inline">Basic Info</span>
+              </div>
+
+              <div className={`relative z-10 flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-bold transition ${currentStep >= 2 ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-900/30' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}>
+                <span>2</span>
+                <span className="hidden sm:inline">Scope & Rank</span>
+              </div>
+
+              <div className={`relative z-10 flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-bold transition ${currentStep === 3 ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-900/30' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}>
+                <span>3</span>
+                <span className="hidden sm:inline">Proof & Summary</span>
+              </div>
+            </div>
+
+            {/* STEP 1: BASIC DETAILS */}
+            {currentStep === 1 && (
+              <form onSubmit={handleNextStep} className="space-y-5 text-xs py-2">
+                <div className="space-y-1">
+                  <label className="block text-slate-200 font-bold text-sm">Award / Achievement Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Dean's Lister - First Semester AY 2025-2026"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-200 font-bold text-sm">Event / Competition Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. NDMU Intramurals 2025 / 12th SOCCSKSARGEN IT Summit"
+                    value={eventName}
+                    onChange={(e) => setEventName(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-200 font-bold text-sm">Issuing Body / Organization *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. NDMU College of Information Technology Education"
+                    value={issuer}
+                    onChange={(e) => setIssuer(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-900/30 flex items-center space-x-2"
+                  >
+                    <span>Next: Scope & Rank</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 2: SCOPE & RANKING */}
+            {currentStep === 2 && (
+              <form onSubmit={handleNextStep} className="space-y-5 text-xs py-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-slate-200 font-bold text-sm">Category *</label>
+                    <select
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-200 font-bold text-sm">Geographic Scope *</label>
+                    <select
+                      value={scopeLevel}
+                      onChange={(e) => setScopeLevel(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="Institutional / Campus-Wide">Institutional / Campus-Wide</option>
+                      <option value="Local / City Level">Local / City Level</option>
+                      <option value="Regional (Region XII)">Regional (Region XII)</option>
+                      <option value="National Level">National Level</option>
+                      <option value="International Level">International Level</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-slate-200 font-bold text-sm">Rank / Distinction *</label>
+                    <select
+                      value={rankConferred}
+                      onChange={(e) => setRankConferred(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="Champion / 1st Place">Champion / 1st Place</option>
+                      <option value="2nd Place">2nd Place</option>
+                      <option value="3rd Place">3rd Place</option>
+                      <option value="Finalist / Runner-Up">Finalist / Runner-Up</option>
+                      <option value="Dean's Lister">Dean's Lister</option>
+                      <option value="Leadership Officer / Lead">Leadership Officer / Lead</option>
+                      <option value="Participant / Special Award">Participant / Special Award</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-200 font-bold text-sm">Date Conferred *</label>
+                    <input
+                      type="date"
+                      required
+                      value={dateAchieved}
+                      onChange={(e) => setDateAchieved(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="block text-slate-200 font-bold text-sm">Academic Year *</label>
+                    <select
+                      value={academicYear}
+                      onChange={(e) => setAcademicYear(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="AY 2025-2026">AY 2025-2026</option>
+                      <option value="AY 2024-2025">AY 2024-2025</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-slate-200 font-bold text-sm">Semester *</label>
+                    <select
+                      value={semester}
+                      onChange={(e) => setSemester(e.target.value)}
+                      className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl px-4 py-3 text-slate-100 text-sm outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="1st Semester">1st Semester</option>
+                      <option value="2nd Semester">2nd Semester</option>
+                      <option value="Summer Term">Summer Term</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold transition flex items-center space-x-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-900/30 flex items-center space-x-2"
+                  >
+                    <span>Next: Proof & Submit</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* STEP 3: PROOF & SUBMIT */}
+            {currentStep === 3 && (
+              <form onSubmit={handleSubmit} className="space-y-5 text-xs py-2">
+                <div className="space-y-1">
+                  <label className="block text-slate-200 font-bold text-sm">Narrative Description</label>
+                  <textarea
+                    rows="3"
+                    placeholder="Brief details about the accomplishment or criteria met..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full bg-slate-900/80 border border-slate-700/80 rounded-2xl p-4 text-slate-100 text-sm outline-none focus:border-emerald-500"
+                  ></textarea>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-slate-200 font-bold text-sm">Supporting Evidence Document (PDF/JPG/PNG) *</label>
+                  <div className="border-2 border-dashed border-slate-700/80 hover:border-emerald-500/50 rounded-2xl p-6 text-center bg-slate-900/40 transition cursor-pointer flex flex-col items-center justify-center space-y-2">
+                    <UploadCloud className="w-8 h-8 text-emerald-400" />
+                    <p className="text-slate-200 font-bold text-xs">Click or drag certificate attachment here</p>
+                    <p className="text-slate-500 text-[11px]">PDF, JPG, PNG up to 5MB</p>
+                    <input type="file" required className="hidden" id="file-upload" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="px-5 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold transition flex items-center space-x-2"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-xs transition shadow-lg shadow-emerald-900/30 flex items-center space-x-2"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Submit Entry</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
 }

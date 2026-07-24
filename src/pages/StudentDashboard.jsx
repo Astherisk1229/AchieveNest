@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
+import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
 import { 
   Trophy, 
   CheckCircle2, 
@@ -12,114 +13,154 @@ import {
   PlusCircle, 
   Calendar,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Filter,
+  QrCode,
+  Eye,
+  BookOpen,
+  Users,
+  Heart,
+  ExternalLink
 } from 'lucide-react'
 
 export default function StudentDashboard({ currentUser }) {
   const navigate = useNavigate()
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false)
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All')
 
   const student = currentUser || {
     full_name: 'Maria Santos',
     student_id: '2024-01234',
-    program: 'BS Computer Science',
+    program: 'BS Information Technology',
+    college: 'College of Information Technology',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
   }
 
   // 5 Summary Metrics
   const stats = [
-    { label: 'Total Achievements', value: 5, icon: Trophy },
-    { label: 'Verified', value: 3, icon: CheckCircle2 },
-    { label: 'Pending', value: 1, icon: Clock },
-    { label: 'Returned', value: 1, icon: RotateCcw },
-    { label: 'Total Certificates', value: 3, icon: Award }
+    { label: 'Total Records', value: 5, icon: Trophy, active: true },
+    { label: 'Verified', value: 3, icon: CheckCircle2, active: false },
+    { label: 'Pending Review', value: 1, icon: Clock, active: false },
+    { label: 'Returned', value: 1, icon: RotateCcw, active: false },
+    { label: 'Total Proofs', value: 3, icon: Award, active: false }
   ]
 
-  // Timeline Items matching screenshot
-  const timelineItems = [
+  // Timeline Items matching Personnel UI structure
+  const allTimelineItems = [
     {
       id: 1,
       title: "Dean's Lister - First Semester AY 2025-2026",
+      description: 'Awarded for achieving a GPA of 1.25 and academic excellence across all core CS subjects.',
       date: 'Dec 15, 2025',
       status: 'Verified',
       statusType: 'verified',
       category: 'Academic',
-      icon: Award
+      issuer: 'NDMU CITE / DOST Region XII',
+      icon: BookOpen
     },
     {
       id: 2,
       title: 'Student Council President',
+      description: 'Elected as Supreme Student Council President representing 5,000+ NDMU undergraduate students.',
       date: 'Jan 10, 2026',
       status: 'Verified',
       statusType: 'verified',
       category: 'Leadership',
-      icon: Trophy
+      issuer: 'NDMU OSAD / COMELEC',
+      icon: Users
     },
     {
       id: 3,
-      title: 'Community Outreach Volunteer',
+      title: 'Community Outreach Volunteer Lead',
+      description: 'Spearheaded IT literacy workshops for 120+ high school students in Barangay Zone III.',
       date: 'Mar 20, 2025',
-      status: 'Pending',
+      status: 'Pending Review',
       statusType: 'pending',
       category: 'Community',
-      icon: FileText
+      issuer: 'Koronadal City LGU / NDMU CES',
+      icon: Heart
     },
     {
       id: 4,
       title: 'Basketball Intramurals Champion',
+      description: 'Led CITE Wildcats Men Basketball Team to victory in NDMU University Intramurals 2026.',
       date: 'Feb 14, 2026',
       status: 'Verified',
       statusType: 'verified',
       category: 'Sports',
-      icon: Star
+      issuer: 'NDMU Athletics Office',
+      icon: Trophy
     },
     {
       id: 5,
       title: 'Best Research Paper Award',
+      description: 'Peer-reviewed research article on predictive student performance modeling using deep learning algorithms.',
       date: 'Oct 10, 2025',
       status: 'Verified',
       statusType: 'verified',
       category: 'Academic',
+      issuer: 'DICT Region XII IT Summit',
       icon: Award
     }
   ]
+
+  // Filter timeline items based on category pill
+  const filteredTimeline = selectedCategoryFilter === 'All'
+    ? allTimelineItems
+    : allTimelineItems.filter(item => item.category === selectedCategoryFilter)
 
   return (
     <MainLayout>
       <div className="space-y-8 font-sans pb-12">
         
-        {/* ================= HERO HEADER BANNER (FOREST GREEN) ================= */}
-        <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] space-y-6">
+        {/* ================= HERO HEADER BANNER (PERSONNEL MATCHING UI) ================= */}
+        <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden space-y-6">
           
-          {/* Top Banner Title & Student Details */}
-          <div className="flex items-center justify-between">
+          {/* Top Banner Row: Title + Context Badge + Digital Barcode Button */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md shrink-0">
-                <Trophy className="w-6 h-6" />
+                <Award className="w-6 h-6" />
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                  Student Achievement Portfolio
-                </h1>
-                <p className="text-xs text-emerald-200/90 font-medium mt-0.5">
-                  {student.full_name} • {student.student_id}
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                    Student Achievement Portfolio
+                  </h1>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold uppercase tracking-wider">
+                    CONTEXT: STUDENT
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-200/90 font-medium">
+                  {student.full_name} • {student.student_id} • {student.college}
                 </p>
               </div>
             </div>
 
-            {/* University Crest Small Logo */}
-            <div className="w-10 h-10 rounded-2xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
-              <ShieldCheck className="w-6 h-6 text-[#1b4332]" />
-            </div>
+            {/* Digital ID Barcode Button */}
+            <button
+              type="button"
+              onClick={() => setIsBarcodeModalOpen(true)}
+              className="px-4 py-2 rounded-2xl bg-[#133220]/90 hover:bg-[#2d8a4e] border border-emerald-600/40 text-white font-extrabold text-xs flex items-center gap-2 transition shadow-md cursor-pointer shrink-0 self-start md:self-auto"
+            >
+              <QrCode className="w-4 h-4 text-emerald-300" />
+              <span>Digital ID Barcode</span>
+            </button>
           </div>
 
-          {/* 5 Stat Cards Grid inside Banner */}
+          {/* 5 Stat Counter Cards Grid inside Hero Banner */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {stats.map((stat, idx) => {
               const IconComponent = stat.icon
               return (
                 <div 
                   key={idx} 
-                  className="bg-[#133220]/90 border border-emerald-600/30 p-4 rounded-2xl space-y-2 backdrop-blur-xs"
+                  className={`p-4 rounded-2xl space-y-2 backdrop-blur-xs transition ${
+                    stat.active 
+                      ? 'bg-[#1e4d39] border-2 border-emerald-400 shadow-md' 
+                      : 'bg-[#133220]/90 border border-emerald-600/30'
+                  }`}
                 >
                   <div className="flex items-center gap-1.5 text-emerald-300 text-[11px] font-bold">
                     <IconComponent className="w-3.5 h-3.5 text-emerald-400" />
@@ -133,7 +174,7 @@ export default function StudentDashboard({ currentUser }) {
 
         </div>
 
-        {/* ================= QUICK ACTIONS (3 CARDS - BROWSE EVENTS REMOVED) ================= */}
+        {/* ================= QUICK ACTIONS (3 CARDS) ================= */}
         <div className="space-y-4">
           <h2 className="text-base font-bold text-slate-900">Quick Actions</h2>
 
@@ -145,8 +186,8 @@ export default function StudentDashboard({ currentUser }) {
               onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
               className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#eef7f0] text-[#2d8a4e] border border-[#cbe6d2] flex items-center justify-center shrink-0 group-hover:bg-[#2d8a4e] group-hover:text-white transition">
-                <Trophy className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
+                <Award className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 Submit New Achievement
@@ -159,86 +200,132 @@ export default function StudentDashboard({ currentUser }) {
               onClick={() => navigate('/student/portfolio')}
               className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#eef7f0] text-[#2d8a4e] border border-[#cbe6d2] flex items-center justify-center shrink-0 group-hover:bg-[#2d8a4e] group-hover:text-white transition">
-                <FileText className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
+                <Eye className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 View Portfolio
               </span>
             </button>
 
-            {/* 3. My Achievements Card */}
+            {/* 3. View Achievements Card */}
             <button
               type="button"
               onClick={() => navigate('/student/achievements')}
               className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#eef7f0] text-[#2d8a4e] border border-[#cbe6d2] flex items-center justify-center shrink-0 group-hover:bg-[#2d8a4e] group-hover:text-white transition">
+              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
                 <Star className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
-                My Achievements
+                View Achievements
               </span>
             </button>
 
           </div>
         </div>
 
-        {/* ================= ACHIEVEMENTS TIMELINE ================= */}
+        {/* ================= ACCOMPLISHMENTS TIMELINE ================= */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900">Achievements Timeline</h2>
-            <button
-              type="button"
-              onClick={() => navigate('/student/achievements')}
-              className="text-xs font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>View All</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          
+          {/* Header & Filter Pill Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-base font-bold text-slate-900">Accomplishments Timeline</h2>
+            
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span>Showing {filteredTimeline.length} of {allTimelineItems.length} records</span>
+            </div>
           </div>
 
+          {/* Category Filter Pills Row */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {['All', 'Academic', 'Leadership', 'Community', 'Sports'].map((cat) => {
+              const isSelected = selectedCategoryFilter === cat
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setSelectedCategoryFilter(cat)}
+                  className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
+                    isSelected 
+                      ? 'bg-[#1b4332] text-white shadow-xs' 
+                      : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'
+                  }`}
+                >
+                  {cat}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Timeline List Items */}
           <div className="space-y-3">
-            {timelineItems.map((item) => {
+            {filteredTimeline.map((item) => {
               const IconComp = item.icon
               return (
                 <div
                   key={item.id}
-                  className="p-4 bg-white rounded-2xl border border-slate-100 shadow-xs hover:border-emerald-200 transition flex items-center justify-between gap-4"
+                  className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:border-emerald-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
                       <IconComp className="w-5 h-5" />
                     </div>
 
                     <div className="min-w-0 space-y-1">
-                      <h3 className="text-xs font-bold text-slate-900 truncate">{item.title}</h3>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span className="text-slate-400 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> {item.date}
+                      <h3 className="text-xs font-extrabold text-slate-900 leading-snug">{item.title}</h3>
+                      <p className="text-[11px] text-slate-500 font-medium line-clamp-1">{item.description}</p>
+                      
+                      <div className="flex flex-wrap items-center gap-2.5 text-[11px] pt-1">
+                        <span className="text-slate-400 font-semibold flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-slate-400" /> {item.date}
                         </span>
                         <span>•</span>
-                        <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                        <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
                           item.statusType === 'verified'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
-                          {item.status}
+                          {item.status} ✓
                         </span>
+                        <span>•</span>
+                        <span className="text-slate-500 font-medium">{item.issuer}</span>
                       </div>
                     </div>
                   </div>
 
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-extrabold border border-emerald-100 shrink-0">
-                    {item.category}
-                  </span>
+                  {/* Right Side: Proof Pill & Category Badge */}
+                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/student/achievements')}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Proof</span>
+                    </button>
+
+                    <span className="px-3 py-1.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[11px] font-extrabold border border-emerald-100">
+                      {item.category}
+                    </span>
+                  </div>
+
                 </div>
               )
             })}
           </div>
+
         </div>
 
       </div>
+
+      {/* DIGITAL BARCODE ID MODAL */}
+      <DigitalBarcodeIDCard
+        user={student}
+        isOpen={isBarcodeModalOpen}
+        onClose={() => setIsBarcodeModalOpen(false)}
+      />
     </MainLayout>
   )
 }

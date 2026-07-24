@@ -137,6 +137,17 @@ graph LR
   - `← Back` (Returns to Step 2)
   - `Submit Entry ✓` (Primary Emerald CTA)
 
+### Phase 3.2: Dedicated Student Public Portfolio & Accomplishments Profile Workspace (`/student/portfolio`) [UPCOMING / IN PLANNING]
+- **Objective**: Build `StudentPortfolioPage.jsx` (`/student/portfolio`) matching design screenshots featuring hero banner with avatar, About Me card, vertical Experience & Involvement timeline, Featured Achievements grid, Supporting Evidence gallery, Contact & Skills cards, and category navigation redirect logic.
+- **Key Components & Layout**:
+  1. **Hero Header Profile Banner (NDMU Forest Green `#1b4332`)**: Large student avatar with verified badge, Full Name (*Maria Santos*), Student ID (*2024-01234*), Program (*BS Computer Science*), Year Level & Age (*3rd Year - 21 yrs*), Location (*Koronadal City, South Cotabato*), and 3 Right Stat Pill Cards (`5 Total`, `3 Verified`, `30 Points`).
+  2. **About Me Card**: Narrative student bio and academic background statement.
+  3. **Experience & Involvement Timeline Card**: Vertical timeline showcasing student positions (*President • Computer Society NDMU*, *Dean's Lister • CEAC NDMU*, *Community Extension • Koronadal City Barangay Program*, *Hackathon Finalist • DICT RegTech 2024*, *Core Developer • University Web Dev Team*).
+  4. **Featured Achievements Grid**: Cards showing verified achievements with banner illustrations/emojis and category badges.
+  5. **Supporting Evidence Section**: Evidence gallery cards displaying thumbnail previews for certificates.
+  6. **Interactive Navigation Logic**: Clicking a category item under *Achievements by Category* or in *Supporting Evidence* redirects to the **Achievements Section** (`/student/achievements`) with that category pre-filtered!
+  7. **Right Sidebar Widgets**: Contact Information card, Skills & Competencies card with proficiency dots, Achievements by Category card, and 4-stat Portfolio Summary card (`5 Total`, `3 Verified`, `1 Pending`, `30 Points`).
+
 ### Phase 4: Faculty & Personnel Professional Portfolio Interface [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.
 

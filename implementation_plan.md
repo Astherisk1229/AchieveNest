@@ -203,6 +203,40 @@ graph LR
   - `Submit Entry ✓` (Primary Emerald CTA)
 $$
 
+---
+
+### Phase 3.2: Dedicated Student Public Portfolio & Accomplishments Profile Workspace (`/student/portfolio`)
+
+#### Objective
+Build the standalone **Student Portfolio Page** (`src/pages/StudentPortfolioPage.jsx`), accessible via the left sidebar `Portfolio` menu item (`/student/portfolio`), matching the design screenshots and Google Docs requirements.
+
+#### User Review Required
+> [!IMPORTANT]
+> **Category Navigation Logic**: As per Google Docs revision requirements, clicking a category item under *Achievements by Category* or inside *Supporting Evidence* will redirect back to the **Achievements Section** (`/student/achievements`) with that specific category pre-filtered!
+
+#### Proposed Changes
+
+##### [NEW] [StudentPortfolioPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/StudentPortfolioPage.jsx)
+- **Hero Header Profile Banner (NDMU Forest Green `#1b4332`)**: Large student avatar with verified icon badge, Full Name (*Maria Santos*), Student ID (*2024-01234*), Program (*BS Computer Science*), Year & Age (*3rd Year - 21 yrs*), Location (*Koronadal City, South Cotabato*), and 3 Right Stat Pill Cards (`5 Total`, `3 Verified`, `30 Points`).
+- **About Me Card**: Narrative student bio and academic background statement.
+- **Experience & Involvement Timeline Card**: Vertical timeline showcasing student positions (*President • Computer Society NDMU*, *Dean's Lister • CEAC NDMU*, *Community Extension • Koronadal City Barangay Program*, *Hackathon Finalist • DICT RegTech 2024*, *Core Developer • University Web Dev Team*).
+- **Featured Achievements Grid**: Cards showing verified achievements with banner illustrations/emojis and category badges.
+- **Supporting Evidence Section**: Evidence gallery cards displaying thumbnail previews for certificates.
+- **Right Sidebar Widgets**:
+  - **Contact Information Card**: Email (`student@ndmu.edu.ph`), Phone (`+63 912 345 6789`), Address (`Koronadal City, South Cotabato`).
+  - **Skills & Competencies Card**: Skill pills with proficiency indicators (*Expert*, *Proficient*, *Familiar*) for Leadership, Communication, Technical Skills, Teamwork, Problem Solving, Critical Thinking, Public Speaking, Time Management, Research, Project Management.
+  - **Achievements by Category Card**: Interactive category list (*Academic: 2*, *Leadership: 1*, *Community: 1*, *Sports: 1*). Clicking a category navigates to `/student/achievements` pre-filtered to that category.
+  - **Portfolio Summary Card**: 4-stat grid (`5 Total`, `3 Verified`, `1 Pending`, `30 Points`).
+
+##### [MODIFY] [App.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/App.jsx)
+- Register route `/student/portfolio` rendering `StudentPortfolioPage`.
+
+##### [MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)
+- Update `Portfolio` sidebar menu item link to `/student/portfolio`.
+
+##### [MODIFY] [StudentAchievementsPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/StudentAchievementsPage.jsx)
+- Handle pre-filtered category initialization from navigation state (`location.state?.selectedCategory`).
+
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:
    - **Title**: "Achievements", Subtitle: *"View, manage, and track your achievements. Attach supporting documents for verification by your program coordinator."*

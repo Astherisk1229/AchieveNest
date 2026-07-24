@@ -1,0 +1,324 @@
+# AchieveNest: Exhaustive Phased Technical Implementation Plan
+
+**Notre Dame of Marbel University (NDMU)**  
+*Web-Based Achievement, Portfolio, and Recognition Management System for Students and Personnel*
+
+---
+
+> [!NOTE]
+> **System Architecture & Database Schema Reference**: For complete database tables (22 tables), Row Level Security (RLS) policies, ERD diagrams, and backend API specifications, please refer to the primary design document:  
+> 📄 **[achievenest_system_design.md](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/achievenest_system_design.md)**
+
+---
+
+## Phased Implementation Architecture
+
+```mermaid
+flowchart TD
+    P0["Phase 0: Development Environment & Tech Stack Setup<br/>(React 19 + Vite, Tailwind 4, NDMU Forest Green & White Palette)"] --> P1["Phase 1: Automatic Identification Login Portal<br/>(Equal 50/50 Split Layout, NDMU Branding & Demo Accounts)"]
+    P1 --> P2["Phase 2: Global Shell & Dynamic Role Switcher<br/>(Navigation Header, Active Context & Notifications)"]
+    P2 --> P3["Phase 3: Student Portfolio & Digital Barcode ID<br/>(Submission Modal, Barcode Card & Verified Vault)"]
+    P3 --> P4["Phase 4: Personnel Professional Portfolio<br/>(Research, Training & Faculty Accomplishment Vault)"]
+    P4 --> P5["Phase 5: Department Secretary Endorsement Portal<br/>(Department-Scoped Faculty Verification & Audit Trail)"]
+    P5 --> P6["Phase 6: HR Office Directory & Accreditation Suite<br/>(Personnel Catalog & Secretary Role Delegation)"]
+    P6 --> P7["Phase 7: OSAD Admin & Barcode Event Suite<br/>(Org Charter Management & Live Scanner Session)"]
+    P7 --> P8["Phase 8: TOPSIS Recognition & Awardee Engine<br/>(Araw ng Parangal Automated Rankings & Criteria Tuning)"]
+    P8 --> P9["Phase 9: Interactive Dev Server Audit & Verification<br/>(Responsive Breakpoint Audit at http://localhost:5174/)"]
+```
+
+---
+
+## Detailed Component & Phase Breakdown
+$$
+DONE
+### Phase 0: Development Environment & Technology Stack Setup
+
+#### Objective
+Configure and establish the complete technical ecosystem, developer dependencies, framework settings, and institutional color system for **AchieveNest**.
+
+> [!IMPORTANT]
+> **Development Scope Note**: After setting up the system stack specifications, since development is being conducted inside **Antigravity**, our active workspace focus and direct modification scope is dedicated to the **Frontend Application (React 19 + Vite + Tailwind CSS 4)**. The PHP CodeIgniter 4 API backend and Supabase infrastructure serve as the external service layer.
+
+#### Master Technology Stack
+
+| Category | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Frontend Framework** | React 19 + Vite | Builds a fast, modern, and interactive single-page application. |
+| **Programming Language** | JavaScript (ES6+) | Implements the frontend application logic. |
+| **Styling Framework** | Tailwind CSS 4 | Creates responsive, modern, and customizable user interfaces using utility classes. |
+| **Frontend Routing** | React Router | Handles client-side navigation between pages. |
+| **HTTP Client** | Axios | Sends HTTP requests between the React frontend and the backend REST API. |
+| **Backend Language** | PHP 8.3+ | Implements the server-side application logic. |
+| **Backend Framework** | CodeIgniter 4.6+ | Develops the RESTful API, routing, authentication, and business logic following the MVC architecture. |
+| **Architecture** | MVC (Model-View-Controller) | Organizes the application's code into separate components for maintainability. |
+| **Programming Paradigm** | Object-Oriented Programming (OOP) | Structures the backend using classes and objects for modular development. |
+| **API** | RESTful API | Enables communication between the frontend and backend. |
+| **Cloud Backend** | Supabase | Provides cloud-based backend services. |
+| **Database** | PostgreSQL (Supabase) | Stores system data securely. |
+| **Authentication** | Supabase Authentication + JWT | Manages user authentication and secure session handling. |
+| **File Storage** | Supabase Storage | Stores uploaded certificates, portfolio files, and other documents. |
+| **Real-Time Services** | Supabase Realtime | Supports real-time notifications and updates. |
+| **PDF Generation** | mPDF | Generates printable portfolios, certificates, and reports. |
+| **QR Code Generation** | Endroid QR Code | Generates QR codes for attendance and certificate verification. |
+| **QR Code Scanning** | html5-qrcode | Scans QR codes using a device's camera. |
+| **Data Import/Export** | CSV and Excel | Imports student and personnel masterlists and exports administrative records and reports. |
+| **Security** | JWT, Password Hashing, Role-Based Access Control (RBAC), Input Validation, Secure File Handling | Protects user accounts, uploaded files, and system data. |
+| **Development Environment** | Antigravity | AI-assisted integrated development environment for coding and project management. |
+| **Dependency Manager (PHP)** | Composer | Installs and manages PHP packages and libraries. |
+| **Package Manager (JavaScript)** | npm | Installs and manages JavaScript dependencies. |
+| **Version Control** | Git | Tracks changes to the source code. |
+| **Repository Hosting** | GitHub | Stores the source code and supports collaboration and version control. |
+
+#### Official NDMU Institutional Color Palette & Design System
+
+| Token Name | Color / Hex | Tailwind Utility | Application & Usage |
+| :--- | :--- | :--- | :--- |
+| **NDMU Forest Green (Primary)** | `#1b4332` / `#143823` | `from-[#12361e] via-[#1b4332] to-[#0d2816]` | Left brand panel, dark hero backgrounds, primary institutional headers. |
+| **Action Accent Green** | `#2d8a4e` (Hover: `#236e3e`) | `bg-[#2d8a4e] hover:bg-[#236e3e]` | Primary action buttons (`Sign In`), interactive CTAs, active status badges. |
+| **Mint Tint Container** | `#eef7f0` (Border: `#cbe6d2`) | `bg-[#eef7f0] border-[#cbe6d2]` | Demo accounts box, card highlights, subtle background fills. |
+| **Institutional Gold / Amber** | `#f59e0b` / `#d4af37` | `text-amber-500`, `border-amber-400` | NDMU Crest details, gold star highlights, accreditation accents. |
+| **Clean Pure White** | `#ffffff` | `bg-white`, `text-white` | Right authentication panel, input backgrounds, pill cards. |
+| **Slate Dark Neutral** | `#0f172a` / `#334155` | `text-slate-900`, `text-slate-500` | Primary headings, subtexts, and form field labels. |
+
+---
+DONE
+### Phase 1: Automatic Identification Login Portal & Recovery Suite
+
+#### Objective
+Build an official, split-screen **Login Portal** (`src/pages/Login.jsx`) divided 50%/50% between the NDMU Forest Green brand panel and clean white authentication panel, featuring automatic system role routing.
+
+#### Technical Specifications & Layout Structure
+1. **50/50 Split Screen Container (`src/pages/Login.jsx`)**:
+   - **Left Panel (50% - NDMU Forest Green `#1b4332`)**:
+     - NDMU emblem badge logo with `AchieveNest` title.
+     - Campus hero card overlaid with white accreditation banner (*PAASCU Accredited, ISO Certified, CHED Recognized*).
+     - *"Your journey of excellence starts here."* feature list with checkmark icons.
+     - Statistical counters row (**2,500+** Active Students, **15,000+** Achievements, **98%** Satisfaction).
+   - **Right Panel (50% - Clean White Background)**:
+     - **Welcome back** heading & subtitle.
+     - Email Address (`your.email@ndmu.edu.ph`) & Password input fields.
+     - `Keep me signed in` checkbox & solid green **Sign In** CTA button (`bg-[#2d8a4e]`).
+     - **Demo Accounts Card** (`bg-[#eef7f0]`):
+       - 1-Click quick fill buttons for **Student**, **Personnel**, **Coordinator**, **Organization**, and **OSAD Admin**.
+2. **Automatic System Identification Engine (`src/services/authService.js`)**:
+   - Evaluates `user_type` on login:
+     - `student` $\rightarrow$ Routes to `/student/dashboard`
+     - `personnel` $\rightarrow$ Routes to `/personnel/dashboard`
+     - `hr_staff` $\rightarrow$ Routes to `/hr/dashboard`
+     - `osad_staff` $\rightarrow$ Routes to `/osad/dashboard`
+3. **Password Reset Request Modal (`src/components/auth/PasswordResetModal.jsx`)**:
+   - Triggered by password reset requests, logging entries into `password_reset_requests` table for OSAD Staff resolution (per SRS Figure 17/26).
+
+$$
+---
+$$
+DONE
+### Phase 2: Global App Shell, Navigation & Personnel Dynamic Role Switcher
+
+#### Objective
+Establish the primary application layout (`src/layouts/MainLayout.jsx`) and top header navbar (`src/components/Navbar.jsx`) utilizing the NDMU Forest Green header styling, active user state, and dynamic role switcher.
+
+#### Technical Specifications & Component Structure
+1. **Header Navigation Shell (`src/components/Navbar.jsx`)**:
+   - Deep forest green (`#1b4332`) top bar with NDMU branding badge, quick search shortcut, notification trigger, and profile avatar menu.
+2. **Personnel Role Context Switcher (`src/components/RoleSwitcher.jsx`)**:
+   - Dropdown menu allowing multi-role personnel to switch contexts:
+     - `Faculty / Personnel View` *(Base portfolio view)*
+     - `Department Secretary` *(If assigned by HR Staff)*
+     - `Program Coordinator` *(If assigned by OSAD Staff)*
+     - `Organization Moderator` *(If assigned by OSAD Staff)*
+3. **In-App Notification Center (`src/components/NotificationPopover.jsx`)**:
+   - Bell icon with unread count badge rendering alerts from `notifications` table.
+
+$$
+---
+
+$$
+DONE
+### Phase 3: Student Portfolio & Digital NDMU Barcode ID Interface
+
+#### Objective
+Construct the **Student Dashboard** (`src/pages/StudentDashboard.jsx`) featuring student profile summary, achievement stats, filterable achievement list, digital NDMU ID barcode preview card, and submission modal.
+$$
+
+$$
+DONE
+### Phase 3.1: Dedicated Student Achievements Catalog & Verification Workspace
+
+#### Objective
+Build the standalone **Student Achievements Catalog Page** (`src/pages/StudentAchievementsPage.jsx`), accessible via the left sidebar `Achievements` menu item (`/student/achievements`), featuring grid/list view modes, category & status toolbars, category breakdown sidebar widget, export utilities, and achievement submission modal integration.
+
+#### UI & Feature Specifications (Matching Design Mockup)
+1. **Header Action Bar & Metrics Row**:
+   - **Title**: "Achievements", Subtitle: *"View, manage, and track your achievements. Attach supporting documents for verification by your program coordinator."*
+   - **Top Right Actions**: `Export Achievements` (export to CSV/PDF) and `+ Add Achievement` (launches `AchievementSubmissionModal`).
+   - **3 Stat Pills Row**: `5 Total Achievements`, `3 Verified`, `1 Pending Review`.
+2. **Filter & Search Control Toolbar**:
+   - Live Search Input (*"Search achievements..."*).
+   - Filter Selectors: `Category` (*Academic, Leadership, Community, Sports, Recognition, Professional Development*), `Status` (*Verified, Pending Review, Returned*), `Sort` (*Newest First, Oldest First*).
+   - View Mode Switcher: Grid View 🔲 vs List View ☰.
+3. **Main Content Grid (2 Column Layout)**:
+   - **Left Column (3/4 Width)**:
+     - **Achievement Card Grid**: Green certificate header graphics with category icons, title, issuing campus/location, completion date, verification status pill (`Verified`, `Pending Review`, `Returned`), and action context menu (`...`).
+     - Pagination bar at bottom (*"Showing 1-5 of 5 achievements"*).
+   - **Right Column (1/4 Width - Sidebar Widgets)**:
+     - **"By Category" Widget**: Interactive list displaying category icons and count badges (*Academic: 2, Leadership: 1, Community: 1, Sports: 1, Recognition: 0, Professional Development: 0*). Clicking any category filters the achievements grid immediately.
+     - **"Upload Tips" Widget**: Instructions for faster coordinator verification and accepted file formats (*PDF, JPG, PNG*).
+
+#### Proposed Components & Routes
+- **[NEW] [StudentAchievementsPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/StudentAchievementsPage.jsx)**: Standalone student achievements catalog page matching design mockup.
+- **[MODIFY] [App.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/App.jsx)**: Register route `/student/achievements`.
+- **[MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)**: Link `Achievements` nav item to `/student/achievements`.
+$$
+
+---
+$$
+DONE
+### Phase 4: Faculty & Personnel Professional Portfolio Interface
+
+#### Objective
+Build the comprehensive **Personnel Dashboard** (`src/pages/PersonnelDashboard.jsx`) mirroring the layout structure, interactive stats, timeline cards, digital barcode ID card, basic information editor, and accomplishment submission modals of the Student Dashboard.
+
+#### UI & Structural Alignment with Student Dashboard
+1. **Hero Summary Banner (NDMU Forest Green `#1b4332`)**:
+   - **Header Title**: "Personnel Professional Portfolio".
+   - **Profile Details**: Faculty name, employee ID, academic rank/designation, department, and contact info.
+   - **Digital ID Barcode Button**: Interactive button launching `DigitalBarcodeIDCard` modal for faculty attendance scanning.
+   - **5 Filter Stats Cards Row**: `Total Accomplishments`, `Verified` (HR Verified), `Pending` (Secretary Review), `Endorsed` (Department Endorsed), and `Total Proofs`. Clicking any stat card filters the timeline accordingly.
+2. **Quick Actions Bar (3 Cards)**:
+   - **Submit New Accomplishment**: Launches `PersonnelSubmissionModal`.
+   - **Edit Basic Information**: Launches `EditBasicInfoModal` to edit rank, department, degree, contact number, and specialization.
+   - **My Verified Proofs**: Quick filter for verified certificates.
+3. **Accomplishments Timeline & Category Filter Tabs**:
+   - Filter pills: `All`, `Research & Publications`, `Seminars & Workshops`, `Extension Services`, `Institutional Awards`, `Certifications & Licenses`.
+   - Accomplishment cards matching Student Dashboard timeline item layout (category tag, status pill, date, issuer, proof file preview button).
+4. **Supporting Evidence Vault & Category Cards**:
+   - Interactive category cards. Clicking any card sets the timeline category filter and scrolls smoothly back to the Accomplishments section.
+
+#### Proposed Components
+- **[MODIFY] [PersonnelDashboard.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)**: Main personnel dashboard mirroring Student Dashboard layout.
+- **[NEW] [EditBasicInfoModal.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/EditBasicInfoModal.jsx)**: Modal for editing faculty basic information and academic credentials.
+- **[NEW] [PersonnelSubmissionModal.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelSubmissionModal.jsx)**: Modal for submitting faculty accomplishments and proof attachments.
+$$
+$$
+DONE
+### Phase 4.5: Personnel Multi-Role Context Switcher & Dynamic Profile Menu
+
+#### Objective
+Implement the **Personnel Multi-Role Context Switcher** (`src/components/Header.jsx`, `src/components/RoleSwitcher.jsx`, and `src/components/Sidebar.jsx`) allowing personnel users to dynamically switch between their assigned administrative roles without logging out.
+
+#### Assignable Personnel Roles & Context Scopes
+A `personnel` user type can be assigned any combination of the following **3 Administrative Roles**:
+1. **`program_coordinator` (Program Coordinator)**: Verifies student achievement submissions for an academic degree program.
+2. **`organization_moderator` (Organization Moderator / Account)**: Moderates student org events, manages barcode attendance scanner sessions, and generates digital certificates.
+3. **`department_secretary` (Department Secretary)**: Reviews and endorses department faculty accomplishment submissions to HR Staff.
+4. **`personnel` (Faculty / Personnel View)**: Default primary employee portfolio view.
+
+#### UI & Technical Specifications
+1. **Header Profile Dropdown Menu (`src/components/Header.jsx`)**:
+   - **Profile Header Card**: Avatar circle/image, full name (`Dr. Ana Reyes`), user type badge (`Personnel`).
+   - **Action Items**:
+     - 👤 **My Profile**: View and edit basic credentials.
+     - ⚙️ **Settings**: Account and system preferences.
+     - 🔄 **Switch To (Submenu Accordion)**: Expandable role selector menu displaying assigned roles (`Program Coordinator`, `Organization Moderator`, `Department Secretary`, `Faculty / Personnel View`).
+     - 🚪 **Logout**: Red action link for ending session.
+2. **Context Persistence & Shell Synchronization**:
+   - Updates `user.active_role_context` state in real-time.
+   - Synchronizes left sidebar (`src/components/Sidebar.jsx`) top portal badge (`Personnel Portal`, `Coordinator Portal`, `Org Moderator Portal`, `Dept Secretary Portal`).
+
+#### Proposed Components
+- **[MODIFY] [Header.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Header.jsx)**: Integrated top-right profile dropdown with expandable `Switch To` role menu listing `program_coordinator`, `organization_moderator`, `department_secretary`, and `personnel`.
+- **[MODIFY] [RoleSwitcher.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/RoleSwitcher.jsx)**: Role switcher engine supporting the 3 assigned personnel roles.
+- **[MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)**: Active role context badge & navigation synchronization.
+$$
+
+$$
+DONE
+### Phase 4.6: Program Coordinator Verification & Management Portal
+
+#### Objective
+Build the dedicated **Program Coordinator View** (`src/components/coordinator/CoordinatorDashboardView.jsx`), rendered when personnel switches active context to `program_coordinator`, allowing assigned faculty to verify student achievement submissions within their assigned degree program scope (e.g., *BS Computer Science*).
+
+#### UI & Technical Specifications (Matching Design Mockup & Specs)
+1. **Hero Summary Banner (NDMU Forest Green `#1b4332`)**:
+   - **Header**: Shield Icon, "Program Coordinator Dashboard", Subtitle: *"Achievement Verification & Management"*, and NDMU emblem badge.
+   - **4 Stat Counters Row**:
+     - `Pending Reviews`: **1**
+     - `Verified`: **3**
+     - `Returned`: **1**
+     - `Avg Review Time`: **2.5 hrs**
+2. **Program Scope Filter Notice Banner**:
+   - Mint container (`bg-[#eef7f0] border-[#cbe6d2]`): **Program Scope: BS Computer Science**.
+   - Notice: *"You can only view and manage students enrolled in your assigned program."*
+3. **Pending Verification Queue Card Section**:
+   - Header: **Pending Verification Queue** (Subtitle: *BS Computer Science students only*, Badge: `1 pending`).
+   - Queue Item Card: Student Avatar, Achievement Title (*Community Outreach Volunteer*), Student Name & Category (*Maria Santos • Community*), Date & Proof Doc Count (*3/20/2026 • 1 docs*), with quick review/approve/return modal triggers.
+4. **Verification Summary — BS Computer Science**:
+   - Summary stat cards: `3 Verified Achievements`, `1 Pending Review`, `1 Returned with Remarks`.
+5. **Sidebar Navigation & Shell Synchronization**:
+   - Blue Role Badge: `Program Coordinator` (with Shield icon).
+   - Navigation links: `Overview` (active green pill), `Verification Workspace`, `Students`, `Reports`.
+
+#### Proposed Components
+- **[NEW] [CoordinatorDashboardView.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/coordinator/CoordinatorDashboardView.jsx)**: Dedicated Program Coordinator overview dashboard component matching UI design mockup.
+- **[MODIFY] [PersonnelDashboard.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)**: Render `CoordinatorDashboardView` when `active_role_context === 'program_coordinator'`.
+- **[MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)**: Update sidebar role badge and navigation items (`Overview`, `Verification Workspace`, `Students`, `Reports`) for Program Coordinator context.
+$$
+
+
+---
+
+### Phase 4.7: GitHub Version Control Checkpoint & Repository Snapshot
+
+#### Objective
+Establish a clean Git version control checkpoint (commit and push to GitHub repository or create a local release branch/tag) after Phase 4.6, securing all working implementations (Student Dashboard, Student Achievements Catalog, Personnel Portfolio, Personnel Multi-Role Switcher, and Program Coordinator Portal) to guarantee system rollback safety before beginning Phase 5.
+
+#### Action Steps & Commands
+1. **Repository Safety Audit & Status Check**:
+   - Run `git status` to verify modified and untracked components.
+2. **Stage & Commit Stable Workspace**:
+   - Stage all codebase updates (`git add .`).
+   - Create a structured commit: `git commit -m "feat: complete Phase 4.6 Program Coordinator Portal and Phase 3.1 Achievements Catalog"`.
+3. **Branching / Tagging / Remote Push**:
+   - Create a checkpoint tag/branch (`git tag -a v0.4.6-stable -m "Stable release after Phase 4.6 implementation"`).
+   - Push commits and tags to remote repository (`git push origin main --tags` or inspect remote branch state).
+
+#### Verification Plan
+- Verify clean `git status` (no uncommitted or lost work).
+- Ensure dev server builds cleanly (`npm run build`).
+
+
+---
+
+### Phase 5: Department Secretary Endorsement & Verification Portal
+
+#### Objective
+Implement the **Department Secretary Review Panel** (`src/pages/SecretaryDashboard.jsx`) for reviewing and endorsing department faculty submissions.
+
+---
+
+### Phase 6: HR Office Directory & Accreditation Suite
+
+#### Objective
+Construct the **HR Staff Dashboard** (`src/pages/HRDashboard.jsx`) for monitoring university-wide employee accomplishments and assigning `department_secretary` roles.
+
+---
+
+### Phase 7: OSAD Admin Suite, Student Org Governance & Barcode Attendance Generator
+
+#### Objective
+Build the **OSAD Administrator Dashboard** (`src/pages/OSADDashboard.jsx`) for student organization charter administration, barcode event attendance, and digital certificates.
+
+---
+
+### Phase 8: TOPSIS Decision Support Engine & Recognition Suite
+
+#### Objective
+Implement the automated **TOPSIS** multi-criteria recognition engine (`src/services/topsisEngine.js`) for ranking *Araw ng Parangal* award candidates.
+
+---
+
+### Phase 9: Interactive Dev Server Audit & Verification
+
+#### Objective
+Execute comprehensive end-to-end testing across all user role portals on the local Vite server (`http://localhost:5174/`).

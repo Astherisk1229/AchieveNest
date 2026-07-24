@@ -310,6 +310,27 @@ Implement the dedicated Account Settings workspace (`src/pages/AccountPage.jsx`)
   - `Request Password Reset` CTA button with ticket tracking notification toast.
 $$
 
+---
+
+### Phase 3.6: Interactive Notifications Workspace & Management Center
+
+#### Objective
+Build `NotificationsPage.jsx` (`/notifications` and `/student/notifications`) following the exact reference UI mockup, featuring category filters, bulk actions (`Mark all read`, `Clear all`), individual read/delete controls, and bottom notification metric stat cards.
+
+#### Proposed Changes
+
+##### [NEW] [NotificationsPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/NotificationsPage.jsx)
+- **Header Card**: Title: **Notifications**, Subtitle: *"X unread notifications"*, Bulk controls: `✓ Mark all read`, `🗑️ Clear all`.
+- **Filter Pills**: `All (4)`, `Unread (3)`, `Read (1)`.
+- **Row-Divided Feed Card**: Notification entries with type icons, message body, time + `Mark as read` / `Delete` links, and unread dot indicator.
+- **Bottom 4 Metric Stat Cards**: `Total` (4), `Unread` (3), `Success` (2), `Warnings` (1).
+
+##### [MODIFY] [App.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/App.jsx)
+- Add `/notifications` and `/student/notifications` routes pointing to `NotificationsPage.jsx`.
+
+##### [MODIFY] [Sidebar.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)
+- Connect sidebar footer `Notifications` button to `/notifications`.
+
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:
    - **Title**: "Achievements", Subtitle: *"View, manage, and track your achievements. Attach supporting documents for verification by your program coordinator."*

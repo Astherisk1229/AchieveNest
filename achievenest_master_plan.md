@@ -192,6 +192,26 @@ graph LR
   - **Security Settings Card**:
     - **Password Reset Container**: Mint callout card with helper text *"To reset your password, submit a request to OSAD. They will verify your identity and provide you with new credentials."*
     - **Request Password Reset CTA**: Interactive button triggering confirmation toast & OSAD ticket tracking.
+
+### Phase 3.6: Interactive Notifications Workspace & Management Center [UPCOMING / IN PLANNING]
+- **Objective**: Build `NotificationsPage.jsx` (`/notifications` and `/student/notifications`) following the exact reference UI mockup, featuring category filters, bulk actions (`Mark all read`, `Clear all`), individual read/delete controls, and bottom notification metric stat cards.
+- **UI & Technical Specifications**:
+  - **Header Card & Bulk Control Toolbar**:
+    - Title: **Notifications** with unread counter subtitle (*"X unread notifications"*).
+    - Top Right Actions: `✓ Mark all read` (marks all entries as read) and `🗑️ Clear all` (removes all entries with empty state).
+    - Filter Pills Row: `All (4)`, `Unread (3)`, `Read (1)` with active green pill styling.
+  - **Interactive Notifications Feed Card**:
+    - Row-divided notification items featuring:
+      - Category type icons (*Green Check for Verification/Certificate Ready*, *Amber Warning for Revisions*, *Blue Info for New Events*).
+      - Title & Description message text (*"Your submission 'Dean's Lister' has been verified"*).
+      - Timestamp + Inline Action Links: `2 hours ago` • `Mark as read` (green link) • `Delete` (red link).
+      - Unread indicator dot on far right margin.
+  - **Bottom 4 Notification Metric Stat Cards Grid**:
+    - `Total` (4) (Blue bell icon)
+    - `Unread` (3) (Orange exclamation icon)
+    - `Success` (2) (Green check icon)
+    - `Warnings` (1) (Amber warning icon)
+  - **App Shell Integration**: Connects with `Sidebar.jsx` Account section and `NotificationPopover.jsx`.
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.
 
 ### Phase 4.5: Personnel Multi-Role Context Switcher & Profile Menu [COMPLETED - ✅ IMPLEMENTED & WORKING]

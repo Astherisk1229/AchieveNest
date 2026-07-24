@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
 import AchievementSubmissionModal from '../components/student/AchievementSubmissionModal'
+import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import { 
   Trophy, 
   CheckCircle2, 
@@ -11,15 +13,37 @@ import {
   FileText, 
   Star,
   QrCode,
-  Filter
+  Filter,
+  ChevronRight,
+  BookOpen,
+  Users,
+  Heart,
+  Edit3
 } from 'lucide-react'
 
 export default function StudentDashboard({ currentUser }) {
+  const navigate = useNavigate()
   const user = currentUser || { full_name: 'Maria Santos', student_id: '2024-01234', program: 'BS Information Technology' }
+
+  // Student Profile state
+  const [profile, setProfile] = useState({
+    full_name: user?.full_name || 'Maria Santos',
+    student_id: user?.student_id || '2024-01234',
+    employee_id: user?.student_id || '2024-01234',
+    user_type: 'student',
+    designation: '3rd Year Undergraduate Student',
+    department: 'College of Information Technology',
+    educational_attainment: 'BS Information Technology',
+    contact_number: '+63 917 123 4567',
+    email: user?.email || 'maria.santos@ndmu.edu.ph',
+    specialization: 'Software Engineering, Web Development',
+    years_of_service: 'AY 2024-2025'
+  })
 
   // Modals state
   const [isBarcodeOpen, setIsBarcodeOpen] = useState(false)
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
+  const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState('All')
 
   // Achievements State
@@ -31,7 +55,8 @@ export default function StudentDashboard({ currentUser }) {
       status: 'Verified',
       category: 'Academic',
       icon: Trophy,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'
+      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
+      attached_file_name: 'deans_list_cert.pdf'
     },
     {
       id: 2,
@@ -39,58 +64,87 @@ export default function StudentDashboard({ currentUser }) {
       date: 'Jan 10, 2026',
       status: 'Verified',
       category: 'Leadership',
-      icon: Trophy,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'
+      icon: Users,
+      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
+      attached_file_name: 'ssc_president_appointment.pdf'
     },
     {
       id: 3,
-      title: 'Community Outreach Volunteer',
-      date: 'Mar 20, 2026',
-      status: 'Pending',
-      category: 'Community',
-      icon: FileText,
-      iconColor: 'text-amber-600 bg-amber-50 border-amber-200'
-    },
-    {
-      id: 4,
       title: 'Basketball Intramurals Champion',
       date: 'Feb 14, 2026',
       status: 'Verified',
       category: 'Sports',
-      icon: Star,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'
+      icon: Award,
+      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
+      attached_file_name: 'intramurals_champ_cert.pdf'
+    },
+    {
+      id: 4,
+      title: 'Community Outreach Volunteer',
+      date: 'Mar 20, 2026',
+      status: 'Pending',
+      category: 'Community',
+      icon: Heart,
+      iconColor: 'text-amber-700 bg-amber-50 border-amber-200',
+      attached_file_name: 'outreach_certificate.pdf'
     },
     {
       id: 5,
       title: 'Best Research Paper Award',
-      date: 'Nov 05, 2025',
+      date: 'Apr 5, 2026',
       status: 'Returned',
       category: 'Academic',
-      icon: Trophy,
-      iconColor: 'text-rose-600 bg-rose-50 border-rose-200'
+      icon: BookOpen,
+      iconColor: 'text-rose-700 bg-rose-50 border-rose-200',
+      attached_file_name: 'research_paper_award.pdf'
     }
   ])
 
-  const handleAddNewAchievement = (newEntry) => {
-    setAchievements([newEntry, ...achievements])
+  // Save basic info
+  const handleSaveBasicInfo = (updatedData) => {
+    setProfile(prev => ({
+      ...prev,
+      ...updatedData
+    }))
   }
 
-  // Filtered Achievements
+  // Add achievement submission
+  const handleAddNewAchievement = (newEntry) => {
+    setAchievements([
+      {
+        ...newEntry,
+        icon: Trophy,
+        iconColor: 'text-amber-700 bg-amber-50 border-amber-200'
+      },
+      ...achievements
+    ])
+  }
+
+  // Category vault click
+  const handleCategoryCardClick = (catName) => {
+    setActiveFilter(catName)
+    const timelineEl = document.getElementById('student-timeline')
+    if (timelineEl) {
+      timelineEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  // Counts
+  const totalCount = achievements.length
+  const verifiedCount = achievements.filter(a => a.status === 'Verified').length
+  const pendingCount = achievements.filter(a => a.status === 'Pending').length
+  const returnedCount = achievements.filter(a => a.status === 'Returned').length
+  const certificatesCount = verifiedCount
+
+  // Filtered timeline
   const filteredAchievements = achievements.filter(item => {
     if (activeFilter === 'All') return true
     if (activeFilter === 'Verified') return item.status === 'Verified'
     if (activeFilter === 'Pending') return item.status === 'Pending'
     if (activeFilter === 'Returned') return item.status === 'Returned'
     if (activeFilter === 'Certificates') return item.status === 'Verified'
-    return true
+    return item.category === activeFilter
   })
-
-  // Quick Stats Counts
-  const totalCount = achievements.length
-  const verifiedCount = achievements.filter(a => a.status === 'Verified').length
-  const pendingCount = achievements.filter(a => a.status === 'Pending').length
-  const returnedCount = achievements.filter(a => a.status === 'Returned').length
-  const certificatesCount = verifiedCount
 
   return (
     <MainLayout>
@@ -106,9 +160,9 @@ export default function StudentDashboard({ currentUser }) {
                 <Trophy className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-extrabold text-white tracking-tight">Student Achievement Portfolio</h1>
+                <h1 className="text-2xl font-extrabold text-white tracking-tight">Student Portfolio & Achievements</h1>
                 <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
-                  {user.full_name} • {user.student_id || '2024-01234'}
+                  {profile.full_name} • ID: {profile.student_id} • {profile.department}
                 </p>
               </div>
             </div>
@@ -117,8 +171,8 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => setIsBarcodeOpen(true)}
-              className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white flex items-center gap-2 transition text-xs font-bold shadow-md group"
-              title="Click to expand Digital Student ID Barcode"
+              className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white flex items-center gap-2 transition text-xs font-bold shadow-md group shrink-0"
+              title="Click to expand NDMU Digital ID Barcode"
             >
               <QrCode className="w-4 h-4 text-amber-300 group-hover:scale-110 transition" />
               <span className="hidden sm:inline">Digital ID Barcode</span>
@@ -129,6 +183,7 @@ export default function StudentDashboard({ currentUser }) {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 relative z-10">
             
             <button
+              type="button"
               onClick={() => setActiveFilter('All')}
               className={`p-4 rounded-2xl border text-left transition ${
                 activeFilter === 'All'
@@ -144,6 +199,7 @@ export default function StudentDashboard({ currentUser }) {
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveFilter('Verified')}
               className={`p-4 rounded-2xl border text-left transition ${
                 activeFilter === 'Verified'
@@ -159,6 +215,7 @@ export default function StudentDashboard({ currentUser }) {
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveFilter('Pending')}
               className={`p-4 rounded-2xl border text-left transition ${
                 activeFilter === 'Pending'
@@ -168,12 +225,13 @@ export default function StudentDashboard({ currentUser }) {
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
                 <Clock className="w-4 h-4 text-amber-300" />
-                <span>Pending</span>
+                <span>Pending Review</span>
               </div>
               <p className="text-3xl font-black text-white">{pendingCount}</p>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveFilter('Returned')}
               className={`p-4 rounded-2xl border text-left transition ${
                 activeFilter === 'Returned'
@@ -189,6 +247,7 @@ export default function StudentDashboard({ currentUser }) {
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveFilter('Certificates')}
               className={`p-4 rounded-2xl border text-left transition ${
                 activeFilter === 'Certificates'
@@ -213,45 +272,45 @@ export default function StudentDashboard({ currentUser }) {
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
-            {/* Card 1: Submit New Achievement (Navigates to Achievements Page & Opens Modal) */}
+            {/* Card 1: Submit New Achievement (Navigates to Achievements Section & Opens Form Overlay) */}
             <button
               type="button"
               onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Award className="w-6 h-6" />
+                <Trophy className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
                 Submit New Achievement
               </span>
             </button>
 
-            {/* Card 2: View Portfolio */}
+            {/* Card 2: Edit Basic Information */}
             <button
               type="button"
-              onClick={() => setActiveFilter('All')}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
+              onClick={() => setIsEditInfoOpen(true)}
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <FileText className="w-6 h-6" />
+                <Edit3 className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                View Portfolio
+                Edit Basic Information
               </span>
             </button>
 
-            {/* Card 3: My Certificates */}
+            {/* Card 3: My Verified Certificates */}
             <button
               type="button"
-              onClick={() => setActiveFilter('Certificates')}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
+              onClick={() => navigate('/student/achievements')}
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
                 <Star className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                My Certificates
+                My Verified Certificates
               </span>
             </button>
 
@@ -259,8 +318,9 @@ export default function StudentDashboard({ currentUser }) {
         </div>
 
         {/* ================= ACHIEVEMENTS TIMELINE SECTION ================= */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
+        <div id="student-timeline" className="scroll-mt-6">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <span>Achievements Timeline</span>
               {activeFilter !== 'All' && (
@@ -275,63 +335,67 @@ export default function StudentDashboard({ currentUser }) {
             </div>
           </div>
 
+          {/* Timeline Cards List */}
           <div className="space-y-3">
-            {filteredAchievements.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-white border border-slate-100 text-center text-slate-400 text-xs">
-                No achievement entries found under "{activeFilter}" category filter.
-              </div>
-            ) : (
-              filteredAchievements.map((item) => {
-                const IconComponent = item.icon || Trophy
-                return (
-                  <div
-                    key={item.id}
-                    className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:shadow-sm transition flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'}`}>
-                        <IconComponent className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 leading-tight">{item.title}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-400 font-medium">📅 {item.date}</span>
-                          <span className="text-slate-300">•</span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              item.status === 'Verified'
-                                ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]'
-                                : item.status === 'Pending'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}
-                          >
-                            {item.status}
-                          </span>
-                        </div>
+            {filteredAchievements.map((item) => {
+              const IconComp = item.icon || Trophy
+              return (
+                <div
+                  key={item.id}
+                  className="p-4 rounded-2xl bg-white border border-slate-100 shadow-2xs hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'}`}>
+                      <IconComp className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 leading-tight">{item.title}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-400 font-medium">📅 {item.date}</span>
+                        <span className="text-slate-300">•</span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            item.status === 'Verified'
+                              ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]'
+                              : item.status === 'Pending'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
+                        >
+                          {item.status}
+                        </span>
                       </div>
                     </div>
+                  </div>
 
+                  <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
                     <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0">
                       {item.category}
                     </span>
                   </div>
-                )
-              })
-            )}
+                </div>
+              )
+            })}
           </div>
+
         </div>
 
       </div>
 
-      {/* Digital Barcode ID Card Modal */}
+      {/* MODALS */}
       <DigitalBarcodeIDCard
-        user={user}
+        user={profile}
         isOpen={isBarcodeOpen}
         onClose={() => setIsBarcodeOpen(false)}
       />
 
-      {/* Submit Achievement Entry Modal */}
+      <EditBasicInfoModal
+        isOpen={isEditInfoOpen}
+        onClose={() => setIsEditInfoOpen(false)}
+        currentInfo={profile}
+        onSave={handleSaveBasicInfo}
+      />
+
       <AchievementSubmissionModal
         isOpen={isSubmitOpen}
         onClose={() => setIsSubmitOpen(false)}

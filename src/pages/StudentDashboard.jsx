@@ -220,20 +220,20 @@ export default function StudentDashboard({ currentUser }) {
 
         </div>
 
-        {/* ================= QUICK ACTIONS (3 CARDS - BUMPED FONT SIZE) ================= */}
+        {/* ================= QUICK ACTIONS (3 CARDS - VERTICAL LAYOUT LIKE PERSONNEL) ================= */}
         <div className="space-y-4">
           <h2 className="text-lg font-extrabold text-slate-900">Quick Actions</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             
             {/* 1. Submit New Achievement Card */}
             <button
               type="button"
               onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
-              className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
+              className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex flex-col items-center justify-center text-center space-y-3 cursor-pointer group"
             >
-              <div className="w-13 h-13 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
-                <Award className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition border border-emerald-400/30">
+                <Award className="w-7 h-7" />
               </div>
               <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 Submit New Achievement
@@ -244,10 +244,10 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => navigate('/student/portfolio')}
-              className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
+              className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex flex-col items-center justify-center text-center space-y-3 cursor-pointer group"
             >
-              <div className="w-13 h-13 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
-                <Eye className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition border border-emerald-400/30">
+                <Eye className="w-7 h-7" />
               </div>
               <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 View Portfolio
@@ -258,10 +258,10 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => navigate('/student/achievements')}
-              className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
+              className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex flex-col items-center justify-center text-center space-y-3 cursor-pointer group"
             >
-              <div className="w-13 h-13 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
-                <Star className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition border border-emerald-400/30">
+                <Star className="w-7 h-7" />
               </div>
               <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 View Achievements

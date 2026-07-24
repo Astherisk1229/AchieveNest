@@ -153,9 +153,13 @@ graph LR
   - **Left Panel (65% width)**:
     - Live multi-page interactive preview renderer with pagination controls (`< Page X of Y >`, page jump dropdown).
     - **Page 1**: Official NDMU Cover Page (University Crest, Student Info, Program Seal).
-    - **Page 2**: Table of Contents & Executive Summary (Dynamic stats recalculation).
+    - **Page 2**: Table of Contents & Executive Summary (Dynamic stats recalculation based on selected items).
     - **Page 3 (and each category start)**: Full-page Category Separator Slide (e.g. `1. ACADEMIC ACHIEVEMENTS`).
-    - **Page 4+**: Dedicated 1-Page Per Achievement (Metadata, QR Code, Verification Badge + Certificate Scan).
+    - **Page 4+ (Dedicated Self-Contained 1-Page Per Achievement)**:
+      - **Strict Layout Guarantee**: Every achievement page fits **ALL important metadata on the top 35-40%**, immediately followed by **1 full attached certificate scan / document proof on the lower 60-65% of the EXACT SAME PAGE**.
+      - **Top Metadata Section**: Title, Event/Competition Name, Issuing Entity, Geographic Scope Level, Rank Conferred, Academic Term, Date Conferred, Verifier Name, System QR Code, and `Verified ✓` badge.
+      - **Bottom Certificate Section**: High-resolution scanned certificate / evidence preview box.
+      - Page break rule: `page-break-after: always` to ensure zero overflow.
   - **Right Panel (35% width)**:
     - **Template Selection**: *Official NDMU Dossier*, *Modern Clean*, *Executive 1-Pager*.
     - **Structure Toggles**: Switches for `Include Cover Page`, `Include Table of Contents`, `Include Category Separators`, and `Chronological Sorting (Newest First)`.

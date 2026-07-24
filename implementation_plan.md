@@ -254,10 +254,10 @@ This allows students and university personnel to customize their export by toggl
 > 1. **Strict PDF Portfolio Focus:** Dedicated 100% to print-ready PDF portfolio export (CSV format removed).
 > 2. **Client-Side Multi-Page Preview & Rendering:** Live React document preview renderer on the left pane with browser print styling (`@media print` page breaks per achievement) & PDF export helper (`portfolioPdfGenerator.js`).
 > 3. **Multi-Page Dossier Structure:**
->    - **Page 1:** Official NDMU Cover Page
->    - **Page 2:** Table of Contents & Executive Summary
+>    - **Page 1:** Official NDMU Cover Page (University Crest, Title, Student Metadata, Degree Program, Official Seal)
+>    - **Page 2:** Table of Contents & Executive Summary (Dynamic stats recalculation based on checked items)
 >    - **Page 3 (and each category start):** Full-page Category Separator Slide (e.g. `1. ACADEMIC ACHIEVEMENTS`)
->    - **Page 4+:** Dedicated 1-Page Per Achievement (Metadata, QR Code, Verification Badge + Attached Certificate Scan)
+>    - **Page 4+ (Dedicated Self-Contained 1-Page Per Achievement):** All important metadata (Title, Event, Issuer, Scope, Rank, Term, Date, Verifier, QR code, `Verified ✓` badge) on top 35-40%, immediately followed by **1 full attached certificate scan / document proof on the lower 60-65% of the EXACT SAME PAGE**. Guaranteed 1-page bounds per achievement with `page-break-after: always`.
 
 #### Proposed Changes
 

@@ -19,13 +19,13 @@ import {
   Eye,
   BookOpen,
   Users,
-  Heart,
-  ExternalLink
+  Heart
 } from 'lucide-react'
 
 export default function StudentDashboard({ currentUser }) {
   const navigate = useNavigate()
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false)
+  const [activeStatFilter, setActiveStatFilter] = useState('all') // 'all' | 'verified' | 'pending' | 'returned' | 'proofs'
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All')
 
   const student = currentUser || {
@@ -36,16 +36,7 @@ export default function StudentDashboard({ currentUser }) {
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
   }
 
-  // 5 Summary Metrics
-  const stats = [
-    { label: 'Total Records', value: 5, icon: Trophy, active: true },
-    { label: 'Verified', value: 3, icon: CheckCircle2, active: false },
-    { label: 'Pending Review', value: 1, icon: Clock, active: false },
-    { label: 'Returned', value: 1, icon: RotateCcw, active: false },
-    { label: 'Total Proofs', value: 3, icon: Award, active: false }
-  ]
-
-  // Timeline Items matching Personnel UI structure
+  // All Timeline Items Data
   const allTimelineItems = [
     {
       id: 1,
@@ -56,6 +47,7 @@ export default function StudentDashboard({ currentUser }) {
       statusType: 'verified',
       category: 'Academic',
       issuer: 'NDMU CITE / DOST Region XII',
+      hasProof: true,
       icon: BookOpen
     },
     {
@@ -67,6 +59,7 @@ export default function StudentDashboard({ currentUser }) {
       statusType: 'verified',
       category: 'Leadership',
       issuer: 'NDMU OSAD / COMELEC',
+      hasProof: true,
       icon: Users
     },
     {
@@ -78,6 +71,7 @@ export default function StudentDashboard({ currentUser }) {
       statusType: 'pending',
       category: 'Community',
       issuer: 'Koronadal City LGU / NDMU CES',
+      hasProof: false,
       icon: Heart
     },
     {
@@ -89,38 +83,85 @@ export default function StudentDashboard({ currentUser }) {
       statusType: 'verified',
       category: 'Sports',
       issuer: 'NDMU Athletics Office',
+      hasProof: true,
       icon: Trophy
     },
     {
       id: 5,
-      title: 'Best Research Paper Award',
-      description: 'Peer-reviewed research article on predictive student performance modeling using deep learning algorithms.',
-      date: 'Oct 10, 2025',
-      status: 'Verified',
-      statusType: 'verified',
+      title: 'Special Project Resubmission Required',
+      description: 'Returned by Program Coordinator for missing high-resolution certificate attachment scan.',
+      date: 'Jan 05, 2026',
+      status: 'Returned',
+      statusType: 'returned',
       category: 'Academic',
-      issuer: 'DICT Region XII IT Summit',
-      icon: Award
+      issuer: 'NDMU CITE Department',
+      hasProof: false,
+      icon: RotateCcw
     }
   ]
 
-  // Filter timeline items based on category pill
-  const filteredTimeline = selectedCategoryFilter === 'All'
-    ? allTimelineItems
-    : allTimelineItems.filter(item => item.category === selectedCategoryFilter)
+  // 5 Interactive Stat Cards Header Configuration
+  const stats = [
+    { 
+      key: 'all', 
+      label: 'Total Records', 
+      value: allTimelineItems.length, 
+      icon: Trophy 
+    },
+    { 
+      key: 'verified', 
+      label: 'Verified', 
+      value: allTimelineItems.filter(i => i.statusType === 'verified').length, 
+      icon: CheckCircle2 
+    },
+    { 
+      key: 'pending', 
+      label: 'Pending Review', 
+      value: allTimelineItems.filter(i => i.statusType === 'pending').length, 
+      icon: Clock 
+    },
+    { 
+      key: 'returned', 
+      label: 'Returned', 
+      value: allTimelineItems.filter(i => i.statusType === 'returned').length, 
+      icon: RotateCcw 
+    },
+    { 
+      key: 'proofs', 
+      label: 'Total Proofs', 
+      value: allTimelineItems.filter(i => i.hasProof).length, 
+      icon: Award 
+    }
+  ]
+
+  // Combined Filtering Logic for Timeline
+  const filteredTimeline = allTimelineItems.filter(item => {
+    // 1. Stat Filter
+    let matchesStat = true
+    if (activeStatFilter === 'verified') matchesStat = item.statusType === 'verified'
+    if (activeStatFilter === 'pending') matchesStat = item.statusType === 'pending'
+    if (activeStatFilter === 'returned') matchesStat = item.statusType === 'returned'
+    if (activeStatFilter === 'proofs') matchesStat = item.hasProof === true
+
+    // 2. Category Filter
+    let matchesCategory = true
+    if (selectedCategoryFilter !== 'All') matchesCategory = item.category === selectedCategoryFilter
+
+    return matchesStat && matchesCategory
+  })
 
   return (
     <MainLayout>
       <div className="space-y-8 font-sans pb-12">
         
-        {/* ================= HERO HEADER BANNER (PERSONNEL MATCHING UI) ================= */}
+        {/* ================= HERO HEADER BANNER (PERSONNEL EXACT MATCHING COLOR & STYLE) ================= */}
         <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden space-y-6">
           
           {/* Top Banner Row: Title + Context Badge + Digital Barcode Button */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md shrink-0 border border-emerald-400/40">
                 <Award className="w-6 h-6" />
               </div>
               <div className="space-y-0.5">
@@ -149,25 +190,30 @@ export default function StudentDashboard({ currentUser }) {
             </button>
           </div>
 
-          {/* 5 Stat Counter Cards Grid inside Hero Banner */}
+          {/* 5 CLICKABLE INTERACTIVE STAT CARDS GRID */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-            {stats.map((stat, idx) => {
+            {stats.map((stat) => {
               const IconComponent = stat.icon
+              const isSelected = activeStatFilter === stat.key
+
               return (
-                <div 
-                  key={idx} 
-                  className={`p-4 rounded-2xl space-y-2 backdrop-blur-xs transition ${
-                    stat.active 
-                      ? 'bg-[#1e4d39] border-2 border-emerald-400 shadow-md' 
-                      : 'bg-[#133220]/90 border border-emerald-600/30'
+                <button
+                  key={stat.key}
+                  type="button"
+                  onClick={() => setActiveStatFilter(stat.key)}
+                  className={`p-4 rounded-2xl space-y-2 text-left transition cursor-pointer transform hover:-translate-y-0.5 ${
+                    isSelected 
+                      ? 'bg-[#2d8a4e] border-2 border-amber-400 shadow-xl ring-2 ring-amber-400/30' 
+                      : 'bg-[#0f2e1d]/90 hover:bg-[#153e28] border border-emerald-600/30'
                   }`}
+                  title={`Filter by ${stat.label}`}
                 >
-                  <div className="flex items-center gap-1.5 text-emerald-300 text-[11px] font-bold">
-                    <IconComponent className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-emerald-200 text-[11px] font-bold">
+                    <IconComponent className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-300' : 'text-emerald-400'}`} />
                     <span className="truncate">{stat.label}</span>
                   </div>
                   <p className="text-2xl font-black text-white">{stat.value}</p>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -228,7 +274,7 @@ export default function StudentDashboard({ currentUser }) {
         {/* ================= ACCOMPLISHMENTS TIMELINE ================= */}
         <div className="space-y-4">
           
-          {/* Header & Filter Pill Buttons */}
+          {/* Header & Record Counter */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-base font-bold text-slate-900">Accomplishments Timeline</h2>
             
@@ -260,61 +306,77 @@ export default function StudentDashboard({ currentUser }) {
           </div>
 
           {/* Timeline List Items */}
-          <div className="space-y-3">
-            {filteredTimeline.map((item) => {
-              const IconComp = item.icon
-              return (
-                <div
-                  key={item.id}
-                  className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:border-emerald-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"
-                >
-                  <div className="flex items-start gap-4 min-w-0">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <IconComp className="w-5 h-5" />
-                    </div>
+          {filteredTimeline.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-3xl border border-slate-100 space-y-2">
+              <p className="text-sm font-bold text-slate-700">No accomplishments found for the selected filter</p>
+              <button 
+                onClick={() => { setActiveStatFilter('all'); setSelectedCategoryFilter('All'); }}
+                className="text-xs font-bold text-[#2d8a4e] hover:underline"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredTimeline.map((item) => {
+                const IconComp = item.icon
+                return (
+                  <div
+                    key={item.id}
+                    className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:border-emerald-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"
+                  >
+                    <div className="flex items-start gap-4 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <IconComp className="w-5 h-5" />
+                      </div>
 
-                    <div className="min-w-0 space-y-1">
-                      <h3 className="text-xs font-extrabold text-slate-900 leading-snug">{item.title}</h3>
-                      <p className="text-[11px] text-slate-500 font-medium line-clamp-1">{item.description}</p>
-                      
-                      <div className="flex flex-wrap items-center gap-2.5 text-[11px] pt-1">
-                        <span className="text-slate-400 font-semibold flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-slate-400" /> {item.date}
-                        </span>
-                        <span>•</span>
-                        <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
-                          item.statusType === 'verified'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {item.status} ✓
-                        </span>
-                        <span>•</span>
-                        <span className="text-slate-500 font-medium">{item.issuer}</span>
+                      <div className="min-w-0 space-y-1">
+                        <h3 className="text-xs font-extrabold text-slate-900 leading-snug">{item.title}</h3>
+                        <p className="text-[11px] text-slate-500 font-medium line-clamp-1">{item.description}</p>
+                        
+                        <div className="flex flex-wrap items-center gap-2.5 text-[11px] pt-1">
+                          <span className="text-slate-400 font-semibold flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-slate-400" /> {item.date}
+                          </span>
+                          <span>•</span>
+                          <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                            item.statusType === 'verified'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : item.statusType === 'pending'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                            {item.status} ✓
+                          </span>
+                          <span>•</span>
+                          <span className="text-slate-500 font-medium">{item.issuer}</span>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Right Side: Proof Pill & Category Badge */}
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+                      {item.hasProof && (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/student/achievements')}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Proof</span>
+                        </button>
+                      )}
+
+                      <span className="px-3 py-1.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[11px] font-extrabold border border-emerald-100">
+                        {item.category}
+                      </span>
+                    </div>
+
                   </div>
-
-                  {/* Right Side: Proof Pill & Category Badge */}
-                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/student/achievements')}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Proof</span>
-                    </button>
-
-                    <span className="px-3 py-1.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[11px] font-extrabold border border-emerald-100">
-                      {item.category}
-                    </span>
-                  </div>
-
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
 
         </div>
 

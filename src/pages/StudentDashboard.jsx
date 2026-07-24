@@ -154,26 +154,26 @@ export default function StudentDashboard({ currentUser }) {
     <MainLayout>
       <div className="space-y-8 font-sans pb-12">
         
-        {/* ================= HERO HEADER BANNER (PERSONNEL EXACT MATCHING COLOR & STYLE) ================= */}
+        {/* ================= HERO HEADER BANNER (PROMINENT TYPOGRAPHY SIZE) ================= */}
         <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden space-y-6">
           
           {/* Top Banner Row: Title + Context Badge + Digital Barcode Button */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md shrink-0 border border-emerald-400/40">
-                <Award className="w-6 h-6" />
+              <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md shrink-0 border border-emerald-400/40">
+                <Award className="w-7 h-7" />
               </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                     Student Achievement Portfolio
                   </h1>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-extrabold uppercase tracking-wider">
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-extrabold uppercase tracking-wider">
                     CONTEXT: STUDENT
                   </span>
                 </div>
-                <p className="text-xs text-emerald-200/90 font-medium">
+                <p className="text-sm font-semibold text-emerald-200/90">
                   {student.full_name} • {student.student_id} • {student.college}
                 </p>
               </div>
@@ -183,15 +183,15 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => setIsBarcodeModalOpen(true)}
-              className="px-4 py-2 rounded-2xl bg-[#133220]/90 hover:bg-[#2d8a4e] border border-emerald-600/40 text-white font-extrabold text-xs flex items-center gap-2 transition shadow-md cursor-pointer shrink-0 self-start md:self-auto"
+              className="px-4 py-2.5 rounded-2xl bg-[#133220]/90 hover:bg-[#2d8a4e] border border-emerald-600/40 text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 transition shadow-md cursor-pointer shrink-0 self-start md:self-auto"
             >
               <QrCode className="w-4 h-4 text-emerald-300" />
               <span>Digital ID Barcode</span>
             </button>
           </div>
 
-          {/* 5 CLICKABLE INTERACTIVE STAT CARDS GRID */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {/* 5 CLICKABLE INTERACTIVE STAT CARDS GRID (PROMINENT NUMBERS) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
             {stats.map((stat) => {
               const IconComponent = stat.icon
               const isSelected = activeStatFilter === stat.key
@@ -201,18 +201,18 @@ export default function StudentDashboard({ currentUser }) {
                   key={stat.key}
                   type="button"
                   onClick={() => setActiveStatFilter(stat.key)}
-                  className={`p-4 rounded-2xl space-y-2 text-left transition cursor-pointer transform hover:-translate-y-0.5 ${
+                  className={`p-4 sm:p-5 rounded-2xl space-y-2 text-left transition cursor-pointer transform hover:-translate-y-0.5 ${
                     isSelected 
                       ? 'bg-[#2d8a4e] border-2 border-amber-400 shadow-xl ring-2 ring-amber-400/30' 
                       : 'bg-[#0f2e1d]/90 hover:bg-[#153e28] border border-emerald-600/30'
                   }`}
                   title={`Filter by ${stat.label}`}
                 >
-                  <div className="flex items-center gap-1.5 text-emerald-200 text-[11px] font-bold">
-                    <IconComponent className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-300' : 'text-emerald-400'}`} />
+                  <div className="flex items-center gap-2 text-emerald-200 text-xs font-bold">
+                    <IconComponent className={`w-4 h-4 ${isSelected ? 'text-amber-300' : 'text-emerald-400'}`} />
                     <span className="truncate">{stat.label}</span>
                   </div>
-                  <p className="text-2xl font-black text-white">{stat.value}</p>
+                  <p className="text-3xl sm:text-4xl font-black text-white">{stat.value}</p>
                 </button>
               )
             })}
@@ -220,9 +220,9 @@ export default function StudentDashboard({ currentUser }) {
 
         </div>
 
-        {/* ================= QUICK ACTIONS (3 CARDS) ================= */}
+        {/* ================= QUICK ACTIONS (3 CARDS - BUMPED FONT SIZE) ================= */}
         <div className="space-y-4">
-          <h2 className="text-base font-bold text-slate-900">Quick Actions</h2>
+          <h2 className="text-lg font-extrabold text-slate-900">Quick Actions</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
@@ -230,12 +230,12 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
-              className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
+              className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
+              <div className="w-13 h-13 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
                 <Award className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
+              <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 Submit New Achievement
               </span>
             </button>
@@ -244,12 +244,12 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => navigate('/student/portfolio')}
-              className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
+              className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
+              <div className="w-13 h-13 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
                 <Eye className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
+              <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 View Portfolio
               </span>
             </button>
@@ -258,12 +258,12 @@ export default function StudentDashboard({ currentUser }) {
             <button
               type="button"
               onClick={() => navigate('/student/achievements')}
-              className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
+              className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition flex items-center gap-4 text-left cursor-pointer group"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
+              <div className="w-13 h-13 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition">
                 <Star className="w-6 h-6" />
               </div>
-              <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition">
+              <span className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">
                 View Achievements
               </span>
             </button>
@@ -271,15 +271,15 @@ export default function StudentDashboard({ currentUser }) {
           </div>
         </div>
 
-        {/* ================= ACCOMPLISHMENTS TIMELINE ================= */}
+        {/* ================= ACCOMPLISHMENTS TIMELINE (PROMINENT FONT SIZE) ================= */}
         <div className="space-y-4">
           
           {/* Header & Record Counter */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-base font-bold text-slate-900">Accomplishments Timeline</h2>
+            <h2 className="text-lg font-extrabold text-slate-900">Accomplishments Timeline</h2>
             
             <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <Filter className="w-4 h-4 text-slate-400" />
               <span>Showing {filteredTimeline.length} of {allTimelineItems.length} records</span>
             </div>
           </div>
@@ -293,10 +293,10 @@ export default function StudentDashboard({ currentUser }) {
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategoryFilter(cat)}
-                  className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
+                  className={`px-4.5 py-2 rounded-2xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
                     isSelected 
                       ? 'bg-[#1b4332] text-white shadow-xs' 
-                      : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'
+                      : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80'
                   }`}
                 >
                   {cat}
@@ -317,29 +317,29 @@ export default function StudentDashboard({ currentUser }) {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {filteredTimeline.map((item) => {
                 const IconComp = item.icon
                 return (
                   <div
                     key={item.id}
-                    className="p-5 bg-white rounded-3xl border border-slate-100 shadow-xs hover:border-emerald-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"
+                    className="p-5 sm:p-6 bg-white rounded-3xl border border-slate-100 shadow-xs hover:border-emerald-200 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative overflow-hidden"
                   >
-                    <div className="flex items-start gap-4 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-                        <IconComp className="w-5 h-5" />
+                    <div className="flex items-start gap-4.5 min-w-0">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                        <IconComp className="w-6 h-6" />
                       </div>
 
-                      <div className="min-w-0 space-y-1">
-                        <h3 className="text-xs font-extrabold text-slate-900 leading-snug">{item.title}</h3>
-                        <p className="text-[11px] text-slate-500 font-medium line-clamp-1">{item.description}</p>
+                      <div className="min-w-0 space-y-1.5">
+                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug">{item.title}</h3>
+                        <p className="text-xs text-slate-600 font-medium line-clamp-1">{item.description}</p>
                         
-                        <div className="flex flex-wrap items-center gap-2.5 text-[11px] pt-1">
-                          <span className="text-slate-400 font-semibold flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-slate-400" /> {item.date}
+                        <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                          <span className="text-slate-500 font-semibold flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" /> {item.date}
                           </span>
                           <span>•</span>
-                          <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                          <span className={`font-bold px-2.5 py-0.5 rounded-full text-xs ${
                             item.statusType === 'verified'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : item.statusType === 'pending'
@@ -360,14 +360,14 @@ export default function StudentDashboard({ currentUser }) {
                         <button
                           type="button"
                           onClick={() => navigate('/student/achievements')}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                         >
-                          <FileText className="w-3.5 h-3.5 text-slate-500" />
+                          <FileText className="w-4 h-4 text-slate-600" />
                           <span>Proof</span>
                         </button>
                       )}
 
-                      <span className="px-3 py-1.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[11px] font-extrabold border border-emerald-100">
+                      <span className="px-3.5 py-2 rounded-2xl bg-emerald-50 text-emerald-800 text-xs font-extrabold border border-emerald-200">
                         {item.category}
                       </span>
                     </div>

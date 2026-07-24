@@ -166,6 +166,18 @@ graph LR
     - **Item Checklist**: Collapsible category tree with checkboxes allowing students to pick/unpick specific items.
     - **Dynamic CTA**: `Download Portfolio PDF (X Pages)`.
 
+### Phase 3.4: Student Account & Profile Information Edit Suite [UPCOMING / IN PLANNING]
+- **Objective**: Build `EditStudentInfoModal.jsx` allowing students to edit non-immutable profile fields (Bio, Contact info, Skills, Experience timeline) while protecting registrar-managed fields (Full Name, Student ID, Degree Program, College).
+- **Field Mutability Rules**:
+  - **Editable Fields**: Avatar Image, About Me narrative bio, Phone Number, Secondary Email, Address, Social/Portfolio URLs, Skills & Competencies (with 3-dot proficiency levels), Experience & Involvement entries (Role, Organization, Period).
+  - **Read-Only / Protected System Fields**: Full Name (*Maria Santos*), Student ID (*2024-01234*), Program (*BS Computer Science*), College (*College of Information Technology*), Academic Year/Year Level.
+- **Key Components**:
+  - `EditStudentInfoModal.jsx`: Tabbed modal dialog featuring:
+    - **Tab 1: Bio & Contact Details**: Avatar preview & URL, About Me statement, Phone, Email, Location.
+    - **Tab 2: Skills & Competencies Manager**: Add/remove skill tags with 3-dot level selectors (*1: Familiar, 2: Proficient, 3: Expert*).
+    - **Tab 3: Experience & Involvement Timeline**: Add/edit/delete position entries (*Role title, Organization, Period*).
+  - Integrates directly with `StudentPortfolioPage.jsx` and top-right profile header.
+
 ### Phase 4: Faculty & Personnel Professional Portfolio Interface [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.
 

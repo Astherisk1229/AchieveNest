@@ -270,6 +270,23 @@ This allows students and university personnel to customize their export by toggl
 - Specialized print/PDF generation helper with clean CSS page break rules (`page-break-after: always`).
 $$
 
+---
+
+### Phase 3.4: Student Account & Profile Information Edit Suite
+
+#### Objective
+Build `EditStudentInfoModal.jsx` allowing students to edit non-immutable profile fields (Bio, Contact info, Skills, Experience timeline) while protecting registrar-managed fields (Full Name, Student ID, Degree Program, College).
+
+#### Proposed Changes
+
+##### [NEW] [EditStudentInfoModal.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/student/EditStudentInfoModal.jsx)
+- **Tab 1: Bio & Contact Details**: Avatar preview & URL input, About Me narrative statement, Phone number, Secondary Email, Present Address.
+- **Tab 2: Skills & Competencies Manager**: Interactive list allowing students to add/remove skill tags and set 3-dot proficiency levels (*Familiar, Proficient, Expert*).
+- **Tab 3: Experience & Involvement Timeline**: Add/edit/delete position entries (*Role title, Organization/Unit name, Start & End Period*).
+
+##### [MODIFY] [StudentPortfolioPage.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/StudentPortfolioPage.jsx)
+- Add `Edit Profile` button triggering `EditStudentInfoModal.jsx` and updating local student state dynamically.
+
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:
    - **Title**: "Achievements", Subtitle: *"View, manage, and track your achievements. Attach supporting documents for verification by your program coordinator."*

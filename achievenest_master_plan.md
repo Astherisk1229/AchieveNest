@@ -178,7 +178,7 @@ graph LR
     - **Tab 3: Experience & Involvement Timeline**: Add/edit/delete position entries (*Role title, Organization, Period*).
   - Integrates directly with `StudentPortfolioPage.jsx` and top-right profile header.
 
-### Phase 3.5: Account Section & OSAD Security Management Page [UPCOMING / IN PLANNING]
+### Phase 3.5: Account Section & OSAD Security Management Page [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Implement the dedicated Account Settings workspace (`/account` and `/student/account`) following the exact UI mockup, featuring system identity fields, protected registrar notices, and OSAD password reset requests.
 - **UI Architecture & Layout Specifications**:
   - **Profile Avatar Header Card**: Large avatar preview, Name (*Maria Santos*), Account Type badge (*Student Account*), and `Change Profile Picture` action.

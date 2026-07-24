@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import StudentDashboard from './pages/StudentDashboard'
 import StudentAchievementsPage from './pages/StudentAchievementsPage'
 import StudentPortfolioPage from './pages/StudentPortfolioPage'
+import AccountPage from './pages/AccountPage'
 import PersonnelDashboard from './pages/PersonnelDashboard'
 import HRDashboard from './pages/HRDashboard'
 import OSADDashboard from './pages/OSADDashboard'
@@ -18,6 +19,9 @@ export default function App() {
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/achievements" element={<StudentAchievementsPage />} />
       <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
+      <Route path="/student/account" element={<AccountPage />} />
+      <Route path="/personnel/account" element={<AccountPage />} />
+      <Route path="/account" element={<AccountPage />} />
       <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
       <Route path="/hr/dashboard" element={<HRDashboard />} />
       <Route path="/osad/dashboard" element={<OSADDashboard />} />

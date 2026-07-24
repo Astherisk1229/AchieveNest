@@ -308,6 +308,7 @@ Implement the dedicated Account Settings workspace (`src/pages/AccountPage.jsx`)
 - **Security Settings Card**:
   - Green callout container explaining OSAD password reset policy (*"To reset your password, submit a request to OSAD. They will verify your identity and provide you with new credentials."*)
   - `Request Password Reset` CTA button with ticket tracking notification toast.
+$$
 
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:

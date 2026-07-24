@@ -146,7 +146,21 @@ graph LR
   4. **Featured Achievements Grid**: Cards showing verified achievements with banner illustrations/emojis and category badges.
   5. **Supporting Evidence Section**: Evidence gallery cards displaying thumbnail previews for certificates.
   6. **Interactive Navigation Logic**: Clicking a category item under *Achievements by Category* or in *Supporting Evidence* redirects to the **Achievements Section** (`/student/achievements`) with that category pre-filtered!
-  7. **Right Sidebar Widgets**: Contact Information card, Skills & Competencies card with proficiency dots, Achievements by Category card, and 4-stat Portfolio Summary card (`5 Total`, `3 Verified`, `1 Pending`, `30 Points`).
+### Phase 3.3: Canva-Style Portfolio Export Flow & Multi-Page PDF Generator [UPCOMING / IN PLANNING]
+- **Objective**: Transform the export modal into a Canva-style split-screen workspace (`w-full max-w-6xl`) with multi-page live document rendering, custom structure toggles, template selectors, and interactive page-by-page PDF generation (strictly PDF portfolio).
+- **Key Architectural Specs & Layout**:
+  - **Strict PDF Focus**: Dedicated 100% to print-ready PDF portfolio export (CSV format removed).
+  - **Left Panel (65% width)**:
+    - Live multi-page interactive preview renderer with pagination controls (`< Page X of Y >`, page jump dropdown).
+    - **Page 1**: Official NDMU Cover Page (University Crest, Student Info, Program Seal).
+    - **Page 2**: Table of Contents & Executive Summary (Dynamic stats recalculation).
+    - **Page 3 (and each category start)**: Full-page Category Separator Slide (e.g. `1. ACADEMIC ACHIEVEMENTS`).
+    - **Page 4+**: Dedicated 1-Page Per Achievement (Metadata, QR Code, Verification Badge + Certificate Scan).
+  - **Right Panel (35% width)**:
+    - **Template Selection**: *Official NDMU Dossier*, *Modern Clean*, *Executive 1-Pager*.
+    - **Structure Toggles**: Switches for `Include Cover Page`, `Include Table of Contents`, `Include Category Separators`, and `Chronological Sorting (Newest First)`.
+    - **Item Checklist**: Collapsible category tree with checkboxes allowing students to pick/unpick specific items.
+    - **Dynamic CTA**: `Download Portfolio PDF (X Pages)`.
 
 ### Phase 4: Faculty & Personnel Professional Portfolio Interface [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.

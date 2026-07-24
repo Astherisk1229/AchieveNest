@@ -238,6 +238,37 @@ Build the standalone **Student Portfolio Page** (`src/pages/StudentPortfolioPage
 - Handle pre-filtered category initialization from navigation state (`location.state?.selectedCategory`).
 $$
 
+---
+
+### Phase 3.3: Canva-Style Portfolio Export Flow & Multi-Page PDF Generator
+
+#### Objective
+Transform the current export modal in AchieveNest into a full-featured **Canva-style interactive export modal & multi-page PDF generation engine** (strictly PDF portfolio).
+
+This allows students and university personnel to customize their export by toggling document structures (Cover Page, Table of Contents, Category Separator Slides), selecting/unselecting individual achievements grouped by category, sorting chronologically, and previewing page-by-page before generating a print-ready PDF portfolio dossier.
+
+#### User Review Required
+
+> [!IMPORTANT]
+> **Key Architectural Choices & PDF Rendering Engine:**
+> 1. **Strict PDF Portfolio Focus:** Dedicated 100% to print-ready PDF portfolio export (CSV format removed).
+> 2. **Client-Side Multi-Page Preview & Rendering:** Live React document preview renderer on the left pane with browser print styling (`@media print` page breaks per achievement) & PDF export helper (`portfolioPdfGenerator.js`).
+> 3. **Multi-Page Dossier Structure:**
+>    - **Page 1:** Official NDMU Cover Page
+>    - **Page 2:** Table of Contents & Executive Summary
+>    - **Page 3 (and each category start):** Full-page Category Separator Slide (e.g. `1. ACADEMIC ACHIEVEMENTS`)
+>    - **Page 4+:** Dedicated 1-Page Per Achievement (Metadata, QR Code, Verification Badge + Attached Certificate Scan)
+
+#### Proposed Changes
+
+##### [MODIFY] [ExportPortfolioPreviewModal.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/student/ExportPortfolioPreviewModal.jsx)
+- Redesign modal into a wide split-screen workspace (`w-full max-w-6xl` canvas).
+- **Left Panel (65% width):** Live multi-page interactive preview renderer with page controls (`< Page X of Y >`, page jump dropdown).
+- **Right Panel (35% width):** Template selection dropdown, Structure toggles (`Include Cover Page`, `Include Table of Contents`, `Include Category Separators`), Item checklist with category checkboxes, and `Download Portfolio PDF (X Pages)` action button.
+
+##### [NEW] [portfolioPdfGenerator.js](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/services/portfolioPdfGenerator.js)
+- Specialized print/PDF generation helper with clean CSS page break rules (`page-break-after: always`).
+
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:
    - **Title**: "Achievements", Subtitle: *"View, manage, and track your achievements. Attach supporting documents for verification by your program coordinator."*

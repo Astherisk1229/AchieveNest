@@ -268,6 +268,7 @@ This allows students and university personnel to customize their export by toggl
 
 ##### [NEW] [portfolioPdfGenerator.js](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/services/portfolioPdfGenerator.js)
 - Specialized print/PDF generation helper with clean CSS page break rules (`page-break-after: always`).
+$$
 
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:

@@ -199,6 +199,7 @@ graph LR
 - **Step 3 Action Buttons**:
   - `← Back` (Returns to Step 2)
   - `Submit Entry ✓` (Primary Emerald CTA)
+$$
 
 #### UI & Feature Specifications (Matching Design Mockup)
 1. **Header Action Bar & Metrics Row**:

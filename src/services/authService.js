@@ -10,6 +10,8 @@ export const DEMO_USERS = {
     full_name: 'Juan A. Dela Cruz',
     user_type: 'student',
     student_id: '2023-0142',
+    department: 'Department of Computer Studies',
+    college: 'College of Information Technology Education (CITE)',
     program: 'BS Information Technology',
     year_level: '3rd Year',
     gpa: 3.85,
@@ -120,6 +122,24 @@ export function getCurrentUser() {
     }
   }
 
+  return raw
+}
+
+export function updateUserRoleContext(newRoleContext) {
+  const local = localStorage.getItem(STORAGE_KEY_USER)
+  const session = sessionStorage.getItem(STORAGE_KEY_USER)
+  let raw = null
+  if (local) raw = JSON.parse(local)
+  else if (session) raw = JSON.parse(session)
+  if (!raw) raw = { ...DEMO_USERS.personnel }
+
+  raw.active_role_context = newRoleContext
+
+  if (local) {
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+  } else {
+    sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+  }
   return raw
 }
 

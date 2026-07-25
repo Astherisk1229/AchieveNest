@@ -54,10 +54,13 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   // Filter out active role context for personnel users
   const availableSwitchRoles = allPersonnelRoles.filter(role => role.id !== activeRoleContext)
 
-  // Label display helper for user type
+  // Label display helper for user type & active role context
   const getUserTypeLabel = () => {
+    if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
+    if (activeRoleContext === 'department_secretary') return 'Department Secretary'
+    if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
+    if (activeRoleContext === 'personnel') return 'Personnel'
     if (userType === 'student') return 'Student'
-    if (userType === 'personnel') return 'Personnel'
     return userType.replace('_', ' ')
   }
 

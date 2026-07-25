@@ -73,6 +73,11 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
   const navItems = getNavItems()
 
+  // Active state indicators
+  const isNotificationsActive = location.pathname.includes('notifications')
+  const isAccountActive = location.pathname.includes('account')
+  const isSettingsActive = location.pathname.includes('settings')
+
   return (
     <aside className="w-64 bg-[#143823] text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-[#1e4a30] selection:bg-[#2d8a4e] selection:text-white font-sans overflow-y-auto">
       <div>
@@ -131,7 +136,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">Navigation</p>
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = location.pathname === item.path
+            const isActive = location.pathname === item.path || (item.path.includes('account') && isAccountActive)
             return (
               <button
                 key={item.label}
@@ -141,7 +146,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                     navigate(item.path)
                   }
                 }}
-                className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition ${
+                className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
                   isActive
                     ? 'bg-[#2d8a4e] text-white shadow-xs'
                     : 'text-emerald-100/80 hover:bg-[#1b4332] hover:text-white'
@@ -163,7 +168,11 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         <button
           type="button"
           onClick={() => navigate('/notifications')}
-          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-emerald-100/80 hover:bg-[#1b4332] hover:text-white flex items-center gap-3 transition cursor-pointer"
+          className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+            isNotificationsActive
+              ? 'bg-[#2d8a4e] text-white shadow-xs'
+              : 'text-emerald-100/80 hover:bg-[#1b4332] hover:text-white'
+          }`}
         >
           <Bell className="w-4 h-4 text-emerald-300" />
           <span>Notifications</span>
@@ -171,8 +180,12 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
         <button
           type="button"
-          onClick={() => navigate('/student/account')}
-          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-emerald-100/80 hover:bg-[#1b4332] hover:text-white flex items-center gap-3 transition cursor-pointer"
+          onClick={() => navigate('/student/settings')}
+          className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+            isSettingsActive
+              ? 'bg-[#2d8a4e] text-white shadow-xs'
+              : 'text-emerald-100/80 hover:bg-[#1b4332] hover:text-white'
+          }`}
         >
           <Settings className="w-4 h-4 text-emerald-300" />
           <span>Settings</span>
@@ -181,7 +194,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 flex items-center gap-3 transition"
+          className="w-full px-3 py-2.5 rounded-xl font-bold text-xs text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 flex items-center gap-3 transition cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Logout</span>

@@ -25,29 +25,28 @@ import {
   FileCheck2
 } from 'lucide-react'
 
-export default function PersonnelDashboard({ currentUser }) {
-  const activeRoleContext = currentUser?.active_role_context || 'personnel'
+import { getCurrentUser } from '../services/authService'
 
-  // If active role context is Program Coordinator, render dedicated Program Coordinator Dashboard View
-  if (activeRoleContext === 'program_coordinator') {
-    return (
-      <MainLayout>
-        <CoordinatorDashboardView currentUser={currentUser} />
-      </MainLayout>
-    )
+export default function PersonnelDashboard({ currentUser: propUser }) {
+  const [currentUserState, setCurrentUserState] = useState(propUser || getCurrentUser())
+
+  const handleRoleChange = (newRoleContext, updatedUser) => {
+    setCurrentUserState(updatedUser || getCurrentUser())
   }
+
+  const activeRoleContext = currentUserState?.active_role_context || 'personnel'
 
   // Current user / profile state for Personnel View
   const [profile, setProfile] = useState({
-    full_name: currentUser?.full_name || 'Dr. Maria Santos',
-    student_id: currentUser?.employee_id || 'EMP-2021-0842',
-    employee_id: currentUser?.employee_id || 'EMP-2021-0842',
+    full_name: currentUserState?.full_name || 'Dr. Maria Santos',
+    student_id: currentUserState?.employee_id || 'EMP-2021-0842',
+    employee_id: currentUserState?.employee_id || 'EMP-2021-0842',
     user_type: 'personnel',
     designation: 'Associate Professor & Research Coordinator',
     department: 'College of Information Technology',
     educational_attainment: 'Ph.D. in Computer Science',
     contact_number: '+63 917 845 2910',
-    email: currentUser?.email || 'maria.santos@ndmu.edu.ph',
+    email: currentUserState?.email || 'maria.santos@ndmu.edu.ph',
     specialization: 'Artificial Intelligence, Educational Technology, Data Analytics',
     years_of_service: '8 Years'
   })
@@ -183,8 +182,11 @@ export default function PersonnelDashboard({ currentUser }) {
   const certificatesCount = verifiedCount
 
   return (
-    <MainLayout>
-      <div className="space-y-8 font-sans">
+    <MainLayout onRoleChange={handleRoleChange}>
+      {activeRoleContext === 'program_coordinator' ? (
+        <CoordinatorDashboardView currentUser={currentUserState} />
+      ) : (
+        <div className="space-y-8 font-sans">
         
         {/* ================= HERO SUMMARY BANNER ================= */}
         <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
@@ -457,6 +459,7 @@ export default function PersonnelDashboard({ currentUser }) {
         </div>
 
       </div>
+      )}
 
       {/* MODALS */}
       <DigitalBarcodeIDCard

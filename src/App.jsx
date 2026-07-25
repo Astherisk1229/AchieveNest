@@ -5,6 +5,7 @@ import StudentDashboard from './pages/StudentDashboard'
 import StudentAchievementsPage from './pages/StudentAchievementsPage'
 import StudentPortfolioPage from './pages/StudentPortfolioPage'
 import AccountPage from './pages/AccountPage'
+import SettingsPage from './pages/SettingsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import PersonnelDashboard from './pages/PersonnelDashboard'
 import HRDashboard from './pages/HRDashboard'
@@ -23,6 +24,11 @@ export default function App() {
       <Route path="/student/account" element={<AccountPage />} />
       <Route path="/personnel/account" element={<AccountPage />} />
       <Route path="/account" element={<AccountPage />} />
+
+      {/* Dedicated Settings Routes */}
+      <Route path="/student/settings" element={<SettingsPage />} />
+      <Route path="/personnel/settings" element={<SettingsPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       
       {/* Notifications Routes */}
       <Route path="/notifications" element={<NotificationsPage />} />

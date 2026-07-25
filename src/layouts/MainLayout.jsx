@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
-import { getCurrentUser } from '../services/authService'
+import { getCurrentUser, updateUserRoleContext } from '../services/authService'
 
-export default function MainLayout({ children }) {
-  const [currentUser, setCurrentUser] = useState(null)
+export default function MainLayout({ children, onRoleChange: externalRoleChange }) {
+  const [currentUser, setCurrentUser] = useState(getCurrentUser())
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   useEffect(() => {
@@ -15,15 +15,10 @@ export default function MainLayout({ children }) {
   }, [])
 
   const handleRoleChange = (newRoleContext) => {
-    if (currentUser) {
-      const updatedUser = { ...currentUser, active_role_context: newRoleContext }
-      setCurrentUser(updatedUser)
-      
-      if (localStorage.getItem('achievenest_current_user')) {
-        localStorage.setItem('achievenest_current_user', JSON.stringify(updatedUser))
-      } else {
-        sessionStorage.setItem('achievenest_current_user', JSON.stringify(updatedUser))
-      }
+    const updated = updateUserRoleContext(newRoleContext)
+    setCurrentUser({ ...updated })
+    if (externalRoleChange) {
+      externalRoleChange(newRoleContext, updated)
     }
   }
 

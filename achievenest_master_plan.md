@@ -193,6 +193,16 @@ graph LR
     - **Password Reset Container**: Mint callout card with helper text *"To reset your password, submit a request to OSAD. They will verify your identity and provide you with new credentials."*
     - **Request Password Reset CTA**: Interactive button triggering confirmation toast & OSAD ticket tracking.
 
+### Phase 3.5.1: Dual Password Reset Suite for Students [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Implement a dual-mode password management workflow in `AccountPage.jsx` featuring instant self-service password updates for logged-in students alongside OSAD administrative ticket requests for forgotten credentials or locked-out accounts.
+- **UI Architecture & Workflow Specifications**:
+  - **Option 1: Instant Self-Service Password Change (Primary)**:
+    - **Step 1: Current Password Verification**: Verify current password with visibility toggles.
+    - **Step 2: New Password & Strength Meter**: Password strength indicator, character requirements checklist (min 8 chars, uppercase, number/special char), and real-time password matching validation.
+    - **Step 3: Security Audit Confirmation**: Confirmation toast and security email audit dispatch alert.
+  - **Option 2: OSAD Reset Ticket Request (Fallback / Helpdesk)**:
+    - Secondary action (`Forgot Password? Request OSAD Reset`) triggering ticket generation (`#OSAD-2026-XXXX`) for forgotten passwords or administrative identity resets.
+
 ### Phase 3.6: Interactive Notifications Workspace & Management Center [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Build `NotificationsPage.jsx` (`/notifications` and `/student/notifications`) following the exact reference UI mockup, featuring category filters, bulk actions (`Mark all read`, `Clear all`), individual read/delete controls, and bottom notification metric stat cards.
 - **UI & Technical Specifications**:
@@ -214,11 +224,36 @@ graph LR
   - **App Shell Integration**: Connects with `Sidebar.jsx` Account section and `NotificationPopover.jsx`.
 - Implemented `PersonnelDashboard.jsx`, `EditBasicInfoModal.jsx`, and `PersonnelSubmissionModal.jsx`.
 
+### Phase 3.7: Portfolio Privacy, Sharing & Settings Enhancements [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Enhance the Account & Settings workspace with dedicated privacy controls, custom shareable portfolio links, PDF export visibility options, unified theme notification preferences, and improved account management actions.
+- **UI Architecture & Feature Specifications**:
+  - **Portfolio Privacy & Sharing Card (New)**:
+    - **Public Portfolio Toggle**: Easily turn public access on or off.
+    - **Custom Shareable Link**: Direct link `achievenest.ndmu.edu/p/maria-santos` with a `Copy Link` button.
+    - **PDF Export Visibility Controls**: Checkboxes to include/exclude Student ID and Phone number on exported PDFs.
+  - **Notification Preferences Card (Unified Theme)**:
+    - All toggle switches and icon badges match the official NDMU Forest Green color scheme (`#2d8a4e`) for visual consistency.
+  - **Account & Security Card (Improved Actions)**:
+    - **Explicit Action Buttons**: Explicit action buttons (`Update`, `Download CSV`) on the right side of each option.
+    - **Deactivate Public Portfolio**: Replaces the inappropriate "Delete Account" option with a soft red deactivation button that respects institutional university records.
+
 ### Phase 4.5: Personnel Multi-Role Context Switcher & Profile Menu [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - Implemented multi-role switching in `Header.jsx` and `Sidebar.jsx` supporting `program_coordinator`, `organization_moderator`, `department_secretary`, and `personnel`.
 
 ### Phase 4.6: Program Coordinator Verification & Management Portal [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - Implemented `CoordinatorDashboardView.jsx` with hero summary banner, 4 stat counter cards, program scope notice (*BS Computer Science*), pending verification queue, and verification summary cards.
+
+### Phase 4.6.1: Program Coordinator Verification & Student Roster Workspace [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Expand `CoordinatorDashboardView.jsx` with multi-tab workspace navigation (`Overview`, `Verification Workspace`, `Students`, `Reports`), document proof preview modal, search filtering, and student roster management restricted to assigned program scope (*BS Computer Science*).
+- **UI & Technical Specifications**:
+  - **Multi-Tab Workspace Navigation**:
+    - `Overview`: Hero banner, 4 stat counter cards (*Pending Reviews (1)*, *Verified (3)*, *Returned (1)*, *Avg Review Time (2.5 hrs)*), pending queue, and program verification summary cards.
+    - `Verification Workspace`: Filterable queue table with document proof preview modal, TOPSIS point preview, and approval/return actions.
+    - `Students`: Program student directory grid displaying verified points, achievement counters, and student dossier access.
+    - `Reports`: Program verification compliance analytics and CSV export capability.
+  - **Submission Review & Proof Modal**:
+    - High-resolution certificate preview, student metadata breakdown, required return remarks textarea, and `Approve & Verify` / `Return with Remarks` CTAs.
+  - **Strict Program Scope Enforcement**: Restricted to assigned program (*BS Computer Science*) for institutional privacy and role-based access control.
 
 ### Phase 4.7: GitHub Version Control Checkpoint & Repository Snapshot [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - Initialized local Git repository, created initial commit `71b5acd`, tagged `v0.4.6-stable`, and pushed to remote GitHub repository `https://github.com/Astherisk1229/AchieveNest.git`.

@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { ChevronDown, UserCheck, Building2, BookOpen, Users, Check } from 'lucide-react'
+import { getCurrentUser } from '../services/authService'
 
-export default function RoleSwitcher({ currentUser, onSwitchRole }) {
+export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
   const [isOpen, setIsOpen] = useState(false)
+  const currentUser = propUser || getCurrentUser()
 
   if (!currentUser || currentUser.user_type !== 'personnel') {
     return null

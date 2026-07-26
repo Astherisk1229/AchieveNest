@@ -69,14 +69,17 @@ export default function CoordinatorDashboardView({ currentUser }) {
       student_name: 'Maria Santos',
       student_id: '2024-01234',
       program: 'BS Computer Science',
+      event_name: 'Barangay Digital Literacy Program 2026',
+      issuer: 'Barangay Poblacion City Government',
       category: 'Community',
+      scope_level: 'Local / City Level',
+      rank_conferred: 'Participant / Special Award',
+      academic_year: 'AY 2025-2026',
+      semester: '2nd Semester',
       date: '3/20/2026',
       docs_count: 1,
       attached_file_name: 'community_outreach_proof.pdf',
       description: 'Participated in a 3-day barangay digital literacy workshop for local officials.',
-      scope_level: 'Local / City Level',
-      rank_conferred: 'Participant / Special Award',
-      points: 5,
       status: 'Pending'
     },
     {
@@ -85,30 +88,36 @@ export default function CoordinatorDashboardView({ currentUser }) {
       student_name: 'Angela Castro',
       student_id: '2024-05678',
       program: 'BS Computer Science',
+      event_name: '12th SOCCSKSARGEN IT Summit Hackathon',
+      issuer: 'DICT Region XII / NDMU CITE',
       category: 'Academic',
+      scope_level: 'Regional (Region XII)',
+      rank_conferred: 'Champion / 1st Place',
+      academic_year: 'AY 2025-2026',
+      semester: '2nd Semester',
       date: '3/18/2026',
       docs_count: 2,
       attached_file_name: 'dict_hackathon_certificate.pdf',
       description: 'Awarded 1st Place overall in the Region XII IT Summit Software Development Hackathon.',
-      scope_level: 'Regional (Region XII)',
-      rank_conferred: 'Champion / 1st Place',
-      points: 15,
       status: 'Pending'
     },
     {
       id: 103,
-      title: 'Dean\'s Lister - First Semester AY 2025-2026',
+      title: "Dean's Lister - First Semester AY 2025-2026",
       student_name: 'Maria Santos',
       student_id: '2024-01234',
       program: 'BS Computer Science',
+      event_name: 'NDMU First Semester AY 2025-2026 Academic Recognition',
+      issuer: 'Notre Dame of Marbel University Registrar',
       category: 'Academic',
+      scope_level: 'Institutional / Campus-Wide',
+      rank_conferred: "Dean's Lister",
+      academic_year: 'AY 2025-2026',
+      semester: '1st Semester',
       date: '2/10/2026',
       docs_count: 1,
       attached_file_name: 'deans_lister_cert_ay2526.pdf',
       description: 'Achieved GPA of 3.85 for 1st Semester AY 2025-2026.',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Dean\'s Lister',
-      points: 10,
       status: 'Verified'
     },
     {
@@ -117,14 +126,17 @@ export default function CoordinatorDashboardView({ currentUser }) {
       student_name: 'Juan Dela Cruz',
       student_id: '2023-0142',
       program: 'BS Computer Science',
+      event_name: 'NDMU Computer Society Officer Election AY 2025-2026',
+      issuer: 'NDMU Computer Society / CEAC Dean\'s Office',
       category: 'Leadership',
+      scope_level: 'Institutional / Campus-Wide',
+      rank_conferred: 'Leadership Officer / Lead',
+      academic_year: 'AY 2025-2026',
+      semester: '1st Semester',
       date: '1/15/2026',
       docs_count: 1,
       attached_file_name: 'org_president_appointment.pdf',
       description: 'Elected President of the NDMU Computer Society for AY 2025-2026.',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Leadership Officer / Lead',
-      points: 10,
       status: 'Verified'
     },
     {
@@ -133,14 +145,17 @@ export default function CoordinatorDashboardView({ currentUser }) {
       student_name: 'Mark Bautista',
       student_id: '2023-0988',
       program: 'BS Computer Science',
+      event_name: 'NDMU Intramurals 2025 Men\'s Volleyball Tournament',
+      issuer: 'NDMU Athletics Office',
       category: 'Athletics',
+      scope_level: 'Institutional / Campus-Wide',
+      rank_conferred: 'Finalist / Runner-Up',
+      academic_year: 'AY 2025-2026',
+      semester: '1st Semester',
       date: '12/05/2025',
       docs_count: 1,
       attached_file_name: 'intramurals_volleyball_runnerup.pdf',
       description: '2nd Place finish in NDMU Intramurals Men\'s Volleyball Tournament.',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Finalist / Runner-Up',
-      points: 5,
       status: 'Returned',
       return_remarks: 'Please attach an official signed certification from the Athletics Office. Scanned photo is unreadable.'
     }
@@ -434,8 +449,8 @@ export default function CoordinatorDashboardView({ currentUser }) {
                     },
                     {
                       id: 'act-4',
-                      title: 'Program Points Synchronized',
-                      detail: 'TOPSIS point distribution updated across 4 BS Computer Science student dossiers',
+                      title: 'Program Activity Synchronized',
+                      detail: 'Verification records updated across 4 BS Computer Science student dossiers.',
                       timestamp: 'Yesterday at 4:15 PM',
                       type: 'system',
                       icon: TrendingUp,
@@ -509,10 +524,10 @@ export default function CoordinatorDashboardView({ currentUser }) {
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
                     <div className="flex items-center gap-2 text-[#1e5831] font-extrabold">
                       <Award className="w-4 h-4 text-[#2d8a4e]" />
-                      <span>TOPSIS Point Weighting</span>
+                      <span>Verification Scope Standards</span>
                     </div>
                     <p className="text-slate-600 leading-relaxed text-[11px] font-medium pt-1">
-                      Points are assigned automatically based on verified scope level (Institutional, Regional, National, or International).
+                      Achievements are verified based on scope level: Institutional, Local, Regional, National, or International. Ensure the submitted scope matches proof documents.
                     </p>
                   </div>
 
@@ -668,6 +683,9 @@ export default function CoordinatorDashboardView({ currentUser }) {
                         <div>
                           <p className="text-sm font-extrabold text-slate-900">{workspaceItem.student_name}</p>
                           <p className="text-[11px] text-slate-500 font-medium">Student ID: {workspaceItem.student_id}</p>
+                          {workspaceItem.program && (
+                            <p className="text-[11px] text-[#2d8a4e] font-semibold">{workspaceItem.program}</p>
+                          )}
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${
@@ -703,7 +721,41 @@ export default function CoordinatorDashboardView({ currentUser }) {
                             <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Scope Level</span>
                             <span className="text-xs font-semibold text-slate-700">{workspaceItem.scope_level}</span>
                           </div>
+                          {workspaceItem.rank_conferred && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Rank / Position</span>
+                              <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-bold border border-blue-100">{workspaceItem.rank_conferred}</span>
+                            </div>
+                          )}
+                          {workspaceItem.academic_year && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Academic Year</span>
+                              <span className="text-xs font-semibold text-slate-700">{workspaceItem.academic_year}</span>
+                            </div>
+                          )}
+                          {workspaceItem.semester && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Semester</span>
+                              <span className="text-xs font-semibold text-slate-700">{workspaceItem.semester}</span>
+                            </div>
+                          )}
                         </div>
+                        {(workspaceItem.event_name || workspaceItem.issuer) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                            {workspaceItem.event_name && (
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
+                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Event / Competition Name</p>
+                                <p className="text-xs font-semibold text-slate-800 leading-snug">{workspaceItem.event_name}</p>
+                              </div>
+                            )}
+                            {workspaceItem.issuer && (
+                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
+                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Issuing Body / Organization</p>
+                                <p className="text-xs font-semibold text-slate-800 leading-snug">{workspaceItem.issuer}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div>
                           <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1.5">Description</p>
                           <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl px-4 py-3">
@@ -812,7 +864,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
                       {workspaceItem.status === 'Verified' && (
                         <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 rounded-xl border border-emerald-200">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <p className="text-xs font-bold text-emerald-700">This submission has been verified and TOPSIS points have been awarded.</p>
+                          <p className="text-xs font-bold text-emerald-700">This submission has been verified and approved successfully.</p>
                         </div>
                       )}
 

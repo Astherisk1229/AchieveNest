@@ -23,7 +23,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
   const [eventName, setEventName] = useState('')
   const [issuerOrganization, setIssuerOrganization] = useState('')
 
-  // Step 2 Form Data (TOPSIS Weighting Fields)
+  // Step 2 Form Data (Classification, Scope & Rank Fields)
   const [categoryId, setCategoryId] = useState('Academic')
   const [scopeLevel, setScopeLevel] = useState('Institutional / Campus-Wide')
   const [rankConferred, setRankConferred] = useState("Dean's Lister")

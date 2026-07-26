@@ -23,7 +23,7 @@ export default function NotificationPopover() {
     {
       id: 'notif_3',
       title: 'Araw ng Parangal Criteria Tuned',
-      message: 'OSAD Staff updated TOPSIS category weight multipliers for AY 2025-2026.',
+      message: 'OSAD Staff updated achievement verification criteria for AY 2025-2026.',
       type: 'award',
       time: '3h ago',
       is_read: true

@@ -320,6 +320,33 @@ graph LR
   - Ensure URL query parameter fallback defaults safely to `'overview'` if `?tab=reports` is accessed.
 
 
+### Phase 4.6.6: Verification Workspace — Full Achievement Detail Panel [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Enhance the right-column Inspection & Verification Panel in the `Verification Workspace` tab of `CoordinatorDashboardView.jsx` so that the Program Coordinator sees **every field the student submitted** in `AchievementSubmissionModal.jsx` — nothing is hidden.
+- **Gap Analysis** (Fields submitted by student vs. currently shown in detail panel):
+
+  | Student Submission Field | Currently Shown? | Action |
+  |---|---|---|
+  | Award / Achievement Title | ✅ Yes | Keep |
+  | Category | ✅ Yes | Keep |
+  | Date Conferred | ✅ Yes | Keep |
+  | Geographic Scope / Level | ✅ Yes | Keep |
+  | Narrative Description | ✅ Yes | Keep |
+  | Supporting Document file | ✅ Yes | Keep |
+  | **Event / Competition Name** | ❌ Missing | Add |
+  | **Issuing Body / Organization** | ❌ Missing | Add |
+  | **Rank / Position Conferred** | ❌ Missing | Add |
+  | **Academic Year** | ❌ Missing | Add |
+  | **Term / Semester** | ❌ Missing | Add |
+  | **Student Program** | ❌ Missing | Add to header |
+
+- **UI & Technical Specifications**:
+  - **Student Header Section** (top bar): Add the student's **Program / Course** label beneath the Student ID.
+  - **Achievement Details Card** (metadata badges row): Add `Event / Competition Name`, `Issuing Body / Organization`, `Rank / Position Conferred`, `Academic Year`, `Term / Semester` as labeled metadata chips alongside the existing `Category`, `Date`, and `Scope Level` chips.
+  - **Data Model**: Ensure the `initialSubmissionsData` array in `CoordinatorDashboardView.jsx` and the `AchievementModel.js` model contain all new fields (`event_name`, `issuer`, `rank_conferred`, `academic_year`, `semester`). Seed them with realistic sample values in existing demo entries.
+  - **MVC Compliance**: No new business logic inside the View. The `AchievementModel.js` model stores field definitions; `VerificationController.js` reads from models; `useVerification.js` hook exposes the hydrated item to the View.
+  - **Zero UI Redesign**: The existing 2-column master-detail layout, fonts, spacing, and color palette must remain 100% unchanged. Only the **right detail panel's content area** is extended with the missing fields.
+
+
 ### Phase 4.8: Personnel Achievements & Portfolio Workspaces (Student Design Parity) [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Establish 100% design and feature parity between Student and Personnel portals by creating dedicated `PersonnelAchievementsPage.jsx` (`/personnel/achievements`) and `PersonnelPortfolioPage.jsx` (`/personnel/portfolio`), using student pages as exact visual and functional references.
 - **UI Architecture & Workflow Specifications**:

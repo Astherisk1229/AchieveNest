@@ -8,6 +8,8 @@ import AccountPage from './pages/AccountPage'
 import SettingsPage from './pages/SettingsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import PersonnelDashboard from './pages/PersonnelDashboard'
+import PersonnelAchievementsPage from './pages/PersonnelAchievementsPage'
+import PersonnelPortfolioPage from './pages/PersonnelPortfolioPage'
 import HRDashboard from './pages/HRDashboard'
 import OSADDashboard from './pages/OSADDashboard'
 
@@ -23,6 +25,8 @@ export default function App() {
       <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
       <Route path="/student/account" element={<AccountPage />} />
       <Route path="/personnel/account" element={<AccountPage />} />
+      <Route path="/personnel/achievements" element={<PersonnelAchievementsPage />} />
+      <Route path="/personnel/portfolio" element={<PersonnelPortfolioPage />} />
       <Route path="/account" element={<AccountPage />} />
 
       {/* Dedicated Settings Routes */}
@@ -36,6 +40,7 @@ export default function App() {
       <Route path="/personnel/notifications" element={<NotificationsPage />} />
 
       <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
+      <Route path="/personnel/portfolio" element={<PersonnelDashboard />} />
       <Route path="/hr/dashboard" element={<HRDashboard />} />
       <Route path="/osad/dashboard" element={<OSADDashboard />} />
 

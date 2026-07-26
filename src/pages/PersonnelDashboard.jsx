@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
 import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
@@ -28,6 +29,7 @@ import {
 import { getCurrentUser } from '../services/authService'
 
 export default function PersonnelDashboard({ currentUser: propUser }) {
+  const navigate = useNavigate()
   const [currentUserState, setCurrentUserState] = useState(propUser || getCurrentUser())
 
   const handleRoleChange = (newRoleContext, updatedUser) => {
@@ -318,8 +320,8 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
             {/* Card 1: Submit New Accomplishment */}
             <button
               type="button"
-              onClick={() => setIsSubmitOpen(true)}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
+              onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true } })}
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
                 <Award className="w-6 h-6" />
@@ -333,7 +335,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
             <button
               type="button"
               onClick={() => setIsEditInfoOpen(true)}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
                 <Edit3 className="w-6 h-6" />
@@ -346,8 +348,8 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
             {/* Card 3: My Verified Proofs */}
             <button
               type="button"
-              onClick={() => setActiveFilter('Certificates')}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group"
+              onClick={() => navigate('/personnel/achievements')}
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
                 <Star className="w-6 h-6" />

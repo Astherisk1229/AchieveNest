@@ -63,6 +63,15 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       ]
     }
 
+    if (activeContext === 'personnel') {
+      return [
+        { label: 'Homepage', icon: Home, path: '/personnel/dashboard' },
+        { label: 'Achievements', icon: Award, path: '/personnel/achievements' },
+        { label: 'Portfolio', icon: FolderKanban, path: '/personnel/portfolio' },
+        { label: 'Account', icon: User, path: '/personnel/account' },
+      ]
+    }
+
     return [
       { label: 'Homepage', icon: Home, path: portalInfo.path },
       { label: 'Achievements', icon: Award, path: '/student/achievements' },

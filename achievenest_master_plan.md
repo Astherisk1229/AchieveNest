@@ -255,8 +255,17 @@ graph LR
     - High-resolution certificate preview, student metadata breakdown, required return remarks textarea, and `Approve & Verify` / `Return with Remarks` CTAs.
   - **Strict Program Scope Enforcement**: Restricted to assigned program (*BS Computer Science*) for institutional privacy and role-based access control.
 
-### Phase 4.7: GitHub Version Control Checkpoint & Repository Snapshot [COMPLETED - ✅ IMPLEMENTED & WORKING]
-- Created commit `edf4d94` (*feat: Add Phase 3.5.1 Dual Password Reset Suite, Phase 4.6.1 Program Coordinator Workspace & real-time role switching*), tagged `v0.4.6.1-stable`, and pushed to remote GitHub repository `https://github.com/Astherisk1229/AchieveNest.git`.
+### Phase 4.8: Personnel Achievements & Portfolio Workspaces (Student Design Parity) [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Establish 100% design and feature parity between Student and Personnel portals by creating dedicated `PersonnelAchievementsPage.jsx` (`/personnel/achievements`) and `PersonnelPortfolioPage.jsx` (`/personnel/portfolio`), using student pages as exact visual and functional references.
+- **UI Architecture & Workflow Specifications**:
+  - **Personnel Achievements Workspace (`PersonnelAchievementsPage.jsx`)**:
+    - **Header & Action Toolbar**: Search, category filters (*Research & Publications*, *Seminars & Workshops*, *Extension Services*, *Institutional Awards*, *Certifications & Licenses*), status filters (*HR Verified*, *Dept Endorsed*, *Pending Review*), grid/list view toggle, and CSV export.
+    - **3-Step Wizard Modal (`PersonnelSubmissionModal.jsx`)**: Step 1 Basic Info -> Step 2 Category & Scope -> Step 3 Proof Attachment & Summary.
+  - **Personnel Portfolio Workspace (`PersonnelPortfolioPage.jsx`)**:
+    - **Hero Profile Banner**: Faculty avatar, full name, employee ID, designation, department, and CTAs (*Edit Profile*, *Share Link*, *Export PDF Dossier*).
+    - **Academic & Research Profile**: Specialization, years of service, academic appointments timeline, contact details, and core competencies badges.
+    - **Accomplishment Showcase Gallery**: Category showcase cards (*Research & Publications*, *Seminars & Workshops*, *Extension Services*, *Institutional Awards*).
+    - **Export PDF Modal (`ExportPortfolioPreviewModal.jsx`)**: Generates official NDMU faculty portfolio PDF.
 
 ### Phase 5: Department Secretary Endorsement & Verification Portal [UPCOMING]
 - Build `SecretaryDashboardView.jsx` allowing department secretaries to review faculty submissions.

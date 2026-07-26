@@ -345,3 +345,11 @@ graph LR
 
 ### Phase 8: TOPSIS Decision Support Engine & Recognition Suite [UPCOMING]
 - Build multi-criteria TOPSIS evaluation engine for automated student & faculty award ranking.
+
+---
+
+### System Architecture & Development Analysis (OOP & MVC)
+- Documented in detail inside [SYSTEM_ARCHITECTURE_ANALYSIS.md](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md).
+- Evaluates OOP Paradigm (Encapsulation, Memory Optimization, Data Redundancy Elimination) and MVC Structure.
+- Outlines a 3-phase zero-UI-change refactoring plan to introduce `src/models/` and `src/controllers/`.
+

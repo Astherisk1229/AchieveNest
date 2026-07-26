@@ -704,69 +704,91 @@ export default function CoordinatorDashboardView({ currentUser }) {
 
                     <div className="p-6 space-y-5">
 
-                      {/* Achievement Details */}
-                      <div className="space-y-3">
+                      {/* Achievement Details & Metadata */}
+                      <div className="space-y-4">
+                        
+                        {/* Title Box */}
                         <div>
-                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Achievement Title</p>
-                          <h3 className="text-lg font-extrabold text-slate-900 leading-tight">{workspaceItem.title}</h3>
+                          <p className="text-[10px] font-extrabold text-[#2d8a4e] uppercase tracking-wider mb-1">Achievement Title</p>
+                          <h3 className="text-xl font-extrabold text-slate-900 leading-tight">{workspaceItem.title}</h3>
                         </div>
-                        <div className="flex flex-wrap gap-2.5">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Category</span>
-                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">{workspaceItem.category}</span>
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Date</span>
-                            <span className="flex items-center gap-1 text-xs font-semibold text-slate-700">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                              {workspaceItem.date}
-                            </span>
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Scope Level</span>
-                            <span className="text-xs font-semibold text-slate-700">{workspaceItem.scope_level}</span>
-                          </div>
-                          {workspaceItem.rank_conferred && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Rank / Position</span>
-                              <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-bold border border-blue-100">{workspaceItem.rank_conferred}</span>
+
+                        {/* Structured Classification & Scope Grid Card */}
+                        <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4.5 space-y-3.5">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4">
+                            
+                            {/* Category */}
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Category</p>
+                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                                {workspaceItem.category}
+                              </span>
                             </div>
-                          )}
-                          {workspaceItem.academic_year && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Academic Year</span>
-                              <span className="text-xs font-semibold text-slate-700">{workspaceItem.academic_year}</span>
+
+                            {/* Scope Level */}
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Scope Level</p>
+                              <p className="text-xs font-bold text-slate-800">{workspaceItem.scope_level}</p>
                             </div>
-                          )}
-                          {workspaceItem.semester && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Semester</span>
-                              <span className="text-xs font-semibold text-slate-700">{workspaceItem.semester}</span>
+
+                            {/* Rank / Position */}
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Rank / Position</p>
+                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-extrabold border border-blue-100">
+                                {workspaceItem.rank_conferred || 'Participant'}
+                              </span>
                             </div>
-                          )}
+
+                            {/* Date Conferred */}
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Date Conferred</p>
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                                <Calendar className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                                <span>{workspaceItem.date}</span>
+                              </div>
+                            </div>
+
+                            {/* Academic Year */}
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Academic Year</p>
+                              <p className="text-xs font-bold text-slate-800">{workspaceItem.academic_year || 'AY 2025-2026'}</p>
+                            </div>
+
+                            {/* Semester */}
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Term / Semester</p>
+                              <p className="text-xs font-bold text-slate-800">{workspaceItem.semester || '1st Semester'}</p>
+                            </div>
+
+                          </div>
                         </div>
+
+                        {/* Event Name & Issuing Body Cards */}
                         {(workspaceItem.event_name || workspaceItem.issuer) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {workspaceItem.event_name && (
-                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
-                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Event / Competition Name</p>
-                                <p className="text-xs font-semibold text-slate-800 leading-snug">{workspaceItem.event_name}</p>
+                              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Event / Competition Name</p>
+                                <p className="text-xs font-extrabold text-slate-800 leading-snug">{workspaceItem.event_name}</p>
                               </div>
                             )}
                             {workspaceItem.issuer && (
-                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-0.5">
-                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Issuing Body / Organization</p>
-                                <p className="text-xs font-semibold text-slate-800 leading-snug">{workspaceItem.issuer}</p>
+                              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Issuing Body / Organization</p>
+                                <p className="text-xs font-extrabold text-slate-800 leading-snug">{workspaceItem.issuer}</p>
                               </div>
                             )}
                           </div>
                         )}
+
+                        {/* Description Box */}
                         <div>
-                          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1.5">Description</p>
-                          <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl px-4 py-3">
-                            <p className="text-xs text-emerald-900 font-medium leading-relaxed">{workspaceItem.description}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Narrative Description</p>
+                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
+                            <p className="text-xs text-emerald-950 font-medium leading-relaxed">{workspaceItem.description}</p>
                           </div>
                         </div>
+
                       </div>
 
                       {/* Supporting Documents & Proofs */}

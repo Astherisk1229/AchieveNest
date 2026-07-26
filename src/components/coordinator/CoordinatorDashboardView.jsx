@@ -1241,16 +1241,6 @@ export default function CoordinatorDashboardView({ currentUser }) {
                       </div>
                     </div>
                   </div>
-
-                  {/* Export Report CTA */}
-                  <button
-                    type="button"
-                    onClick={() => triggerToast(`Exported official dossier transcript for ${selectedStudentDossier.full_name}`)}
-                    className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold shadow-md transition flex items-center gap-2 cursor-pointer border border-emerald-400/30"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Export Dossier PDF</span>
-                  </button>
                 </div>
 
                 {/* 4 Summary Counters Row */}

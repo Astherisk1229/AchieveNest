@@ -347,6 +347,44 @@ graph LR
   - **Zero UI Redesign**: The existing 2-column master-detail layout, fonts, spacing, and color palette must remain 100% unchanged. Only the **right detail panel's content area** is extended with the missing fields.
 
 
+### Phase 4.7.1: Program Coordinator Student Dossier & Portfolio Inspection Modal [UPCOMING / IN PLAN]
+- **Objective**: Create a comprehensive, interactive Student Portfolio Dossier Modal when the Program Coordinator clicks any student card in the `Students` directory tab (`activeTab === 'students'`).
+- **Detailed Plan & Specification of What the Coordinator Will See**:
+
+  1. **👤 Student Profile Header Banner**:
+     - **Avatar & Personal Info**: Student Profile Avatar, Full Name, Student ID (`2021-00123`), NDMU Institutional Email (`maria.santos@ndmu.edu.ph`).
+     - **Academic Context**: Course / Program (`BS Computer Science`), Department (`Department of Computer Studies`), Year Level badge (`4th Year`).
+     - **Summary Counter Cards**:
+       - 🏆 `Total Achievements` (e.g. `12`)
+       - ✅ `Verified` (e.g. `10`)
+       - ⏳ `Pending Review` (e.g. `2`)
+       - 🔄 `Returned for Revision` (e.g. `0`)
+
+  2. **📂 Categorized Accomplishment Portfolio Tabs**:
+     - **Tab 1: Verified Accomplishments**:
+       - Displays every approved achievement earned by this student.
+       - Each entry shows: Title, Category pill, Date Conferred, Scope Level, Event Name, Issuing Body, and attached proof files (*Certificate Document* and *Photo Evidence of Participation*).
+     - **Tab 2: Pending Submissions**:
+       - Shows active pending submissions waiting for coordinator review.
+       - Includes quick inline `[Approve & Verify]` and `[Return for Revision]` action buttons.
+     - **Tab 3: Returned Submissions**:
+       - Displays entries returned to the student along with the coordinator's recorded feedback/remarks.
+
+  3. **📄 Document & Photo Evidence Inspector**:
+     - Integrated preview viewer for certificate PDFs and event participation photos directly inside the student's dossier.
+
+  4. **📥 Action Toolbar**:
+     - `[Export Student Dossier PDF / Report]` button to download an official accomplishment record.
+     - `[Filter by Category]` dropdown (Academic, Leadership, Athletics, Community, Recognition).
+     - `[Close Dossier]` button.
+
+- **Architectural & MVC Compliance**:
+  - **Model (`StudentModel.js` & `AchievementModel.js`)**: Encapsulate student portfolio query methods and dossier data fields inside domain classes.
+  - **Controller (`RosterController.js`)**: Place logic for filtering student-specific achievements by status and category inside `RosterController.js`.
+  - **Hook (`useStudentRoster.js`)**: Connect the dossier modal to the controller.
+  - **View (`CoordinatorDashboardView.jsx`)**: Render the presentational dossier modal while strictly maintaining visual parity and design system standards.
+
+
 ### Phase 4.8: Personnel Achievements & Portfolio Workspaces (Student Design Parity) [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Establish 100% design and feature parity between Student and Personnel portals by creating dedicated `PersonnelAchievementsPage.jsx` (`/personnel/achievements`) and `PersonnelPortfolioPage.jsx` (`/personnel/portfolio`), using student pages as exact visual and functional references.
 - **UI Architecture & Workflow Specifications**:

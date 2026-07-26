@@ -34,6 +34,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
   // Step 3 Form Data
   const [description, setDescription] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
+  const [participationPhoto, setParticipationPhoto] = useState(null)
 
   // System States
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -75,7 +76,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
     setCurrentStep(3)
   }
 
-  // File Upload Handler
+  // Certificate File Upload Handler
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -88,6 +89,19 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
     }
   }
 
+  // Participation Photo Upload Handler
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Photo file size exceeds maximum limit of 5MB.')
+        return
+      }
+      setError('')
+      setParticipationPhoto(file)
+    }
+  }
+
   // Final Step 3 Submission
   const handleFinalSubmit = async (e) => {
     e.preventDefault()
@@ -95,6 +109,10 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
 
     if (!attachedFile) {
       setError('Supporting Evidence Document attachment (PDF/JPG/PNG) is required.')
+      return
+    }
+    if (!participationPhoto) {
+      setError('Photo Evidence of Participation (JPG/PNG) is required.')
       return
     }
 
@@ -122,7 +140,8 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
         status: 'Pending Review',
         location: issuerOrganization.trim(),
         description: description.trim(),
-        attached_file_name: attachedFile ? attachedFile.name : 'certificate_proof.pdf'
+        attached_file_name: attachedFile ? attachedFile.name : 'certificate_proof.pdf',
+        participation_photo_name: participationPhoto ? participationPhoto.name : 'participation_photo.jpg'
       }
 
       onSubmitAchievement(newEntry)
@@ -134,6 +153,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
       setIssuerOrganization('')
       setDescription('')
       setAttachedFile(null)
+      setParticipationPhoto(null)
       onClose()
     } catch (err) {
       setError('Failed to submit achievement entry. Please try again.')
@@ -421,6 +441,46 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                       <span className="truncate max-w-[240px]">{attachedFile.name}</span>
                     </div>
                     <span className="text-[10px] text-emerald-700">{(attachedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Participation Photo Upload */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Photo Evidence of Participation (JPG/PNG) *
+                  <span className="ml-1.5 text-[10px] font-medium text-slate-400 normal-case">— A photo showing you as a legitimate participant at the event</span>
+                </label>
+
+                <div className="relative border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-2xl p-6 text-center transition bg-slate-50/50 hover:bg-blue-50/30 cursor-pointer group">
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={handlePhotoChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center group-hover:scale-110 transition">
+                      <UploadCloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-slate-800 group-hover:text-blue-600 transition">
+                        Click or drag participation photo here
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                        JPG, PNG only — up to 5MB
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {participationPhoto && (
+                  <div className="mt-2 p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between text-xs text-blue-900 font-bold">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span className="truncate max-w-[240px]">{participationPhoto.name}</span>
+                    </div>
+                    <span className="text-[10px] text-blue-700">{(participationPhoto.size / 1024 / 1024).toFixed(2)} MB</span>
                   </div>
                 )}
               </div>

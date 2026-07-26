@@ -21,6 +21,7 @@ export default class AchievementModel {
   #status
   #return_remarks
   #docs_count
+  #participation_photo_name
 
   constructor(data = {}) {
     this.#id = data.id || `ach_${Math.random().toString(36).substr(2, 9)}`
@@ -41,6 +42,7 @@ export default class AchievementModel {
     this.#status = data.status || 'Pending' // 'Pending' | 'Verified' | 'Returned'
     this.#return_remarks = data.return_remarks || ''
     this.#docs_count = Number(data.docs_count) || 1
+    this.#participation_photo_name = data.participation_photo_name || ''
   }
 
   // Encapsulated Getters
@@ -62,6 +64,7 @@ export default class AchievementModel {
   get status() { return this.#status }
   get return_remarks() { return this.#return_remarks }
   get docs_count() { return this.#docs_count }
+  get participation_photo_name() { return this.#participation_photo_name }
 
   // State Mutator Methods
   verify() {
@@ -108,7 +111,8 @@ export default class AchievementModel {
       date: this.#date,
       status: this.#status,
       return_remarks: this.#return_remarks,
-      docs_count: this.#docs_count
+      docs_count: this.#docs_count,
+      participation_photo_name: this.#participation_photo_name
     }
   }
 

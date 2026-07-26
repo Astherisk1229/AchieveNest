@@ -77,8 +77,9 @@ export default function CoordinatorDashboardView({ currentUser }) {
       academic_year: 'AY 2025-2026',
       semester: '2nd Semester',
       date: '3/20/2026',
-      docs_count: 1,
+      docs_count: 2,
       attached_file_name: 'community_outreach_proof.pdf',
+      participation_photo_name: 'event_outreach_photo.jpg',
       description: 'Participated in a 3-day barangay digital literacy workshop for local officials.',
       status: 'Pending'
     },
@@ -98,6 +99,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
       date: '3/18/2026',
       docs_count: 2,
       attached_file_name: 'dict_hackathon_certificate.pdf',
+      participation_photo_name: 'hackathon_awarding_photo.jpg',
       description: 'Awarded 1st Place overall in the Region XII IT Summit Software Development Hackathon.',
       status: 'Pending'
     },
@@ -115,8 +117,9 @@ export default function CoordinatorDashboardView({ currentUser }) {
       academic_year: 'AY 2025-2026',
       semester: '1st Semester',
       date: '2/10/2026',
-      docs_count: 1,
+      docs_count: 2,
       attached_file_name: 'deans_lister_cert_ay2526.pdf',
+      participation_photo_name: 'deans_list_awarding_photo.jpg',
       description: 'Achieved GPA of 3.85 for 1st Semester AY 2025-2026.',
       status: 'Verified'
     },
@@ -134,8 +137,9 @@ export default function CoordinatorDashboardView({ currentUser }) {
       academic_year: 'AY 2025-2026',
       semester: '1st Semester',
       date: '1/15/2026',
-      docs_count: 1,
+      docs_count: 2,
       attached_file_name: 'org_president_appointment.pdf',
+      participation_photo_name: 'officer_induction_photo.jpg',
       description: 'Elected President of the NDMU Computer Society for AY 2025-2026.',
       status: 'Verified'
     },
@@ -153,8 +157,9 @@ export default function CoordinatorDashboardView({ currentUser }) {
       academic_year: 'AY 2025-2026',
       semester: '1st Semester',
       date: '12/05/2025',
-      docs_count: 1,
+      docs_count: 2,
       attached_file_name: 'intramurals_volleyball_runnerup.pdf',
+      participation_photo_name: 'volleyball_match_photo.jpg',
       description: '2nd Place finish in NDMU Intramurals Men\'s Volleyball Tournament.',
       status: 'Returned',
       return_remarks: 'Please attach an official signed certification from the Athletics Office. Scanned photo is unreadable.'
@@ -764,9 +769,11 @@ export default function CoordinatorDashboardView({ currentUser }) {
                         </div>
                       </div>
 
-                      {/* Supporting Documents */}
+                      {/* Supporting Documents & Proofs */}
                       <div className="space-y-2.5">
-                        <p className="text-xs font-extrabold text-slate-800">Supporting Documents ({workspaceItem.docs_count})</p>
+                        <p className="text-xs font-extrabold text-slate-800">Supporting Documents &amp; Evidence ({workspaceItem.docs_count || 1})</p>
+                        
+                        {/* Certificate Document */}
                         <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-[#2d8a4e]/10 text-[#2d8a4e] flex items-center justify-center shrink-0">
@@ -774,7 +781,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
                             </div>
                             <div>
                               <p className="text-xs font-extrabold text-slate-800">{workspaceItem.attached_file_name}</p>
-                              <p className="text-[11px] text-slate-400 font-medium">~{Math.round(Math.random() * 300 + 200)} KB</p>
+                              <p className="text-[11px] text-slate-400 font-medium">Certificate / Award Proof • ~345 KB</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -795,6 +802,38 @@ export default function CoordinatorDashboardView({ currentUser }) {
                             </button>
                           </div>
                         </div>
+
+                        {/* Photo Evidence of Participation */}
+                        {workspaceItem.participation_photo_name && (
+                          <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-extrabold text-slate-800">{workspaceItem.participation_photo_name}</p>
+                                <p className="text-[11px] text-blue-600 font-bold">Photo Evidence of Participation • ~1.2 MB</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReviewItem(workspaceItem)}
+                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                View Photo
+                              </button>
+                              <button
+                                type="button"
+                                className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                Download
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Returned Remarks Display */}

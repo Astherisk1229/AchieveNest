@@ -385,6 +385,30 @@ graph LR
   - **View (`CoordinatorDashboardView.jsx`)**: Render the presentational dossier modal while strictly maintaining visual parity and design system standards.
 
 
+### Phase 4.7.2: Program Coordinator Profile & Notification Settings Redesign [UPCOMING / IN PLAN]
+- **Objective**: Redesign the Program Coordinator Settings workspace (`SettingsPage.jsx` when accessed in Program Coordinator / Personnel context) to match the reference mockup image with exact visual parity.
+- **Detailed Specifications (Based on Reference Mockup)**:
+
+  1. **👤 Profile Settings Card**:
+     - **Header**: Circular green icon container with user silhouette icon, Title `Profile Settings`, Subtitle `Manage your account information`.
+     - **Form Fields Grid**:
+       - `Full Name`: Input field initialized with `Dr. Ana Reyes`.
+       - `Email Address`: Input field initialized with `personnel@ndmu.edu.ph`.
+       - `Department`: Input field initialized with `CEAC - College of Engineering, Architecture, and Computing`.
+
+  2. **🔔 Notification Preferences Card**:
+     - **Header**: Circular blue icon container with notification bell icon, Title `Notification Preferences`, Subtitle `Choose how you want to be notified`.
+     - **Toggle Settings List**:
+       - ✉️ **Email Notifications**: Subtitle `Receive updates via email` • **[Toggle ON - Green]**
+       - 🔔 **Push Notifications**: Subtitle `Get instant notifications` • **[Toggle ON - Green]**
+       - 🛡️ **Achievement Alerts**: Subtitle `Notify when achievements are verified` • **[Toggle ON - Green]**
+       - ✉️ **Weekly Digest**: Subtitle `Receive weekly summary emails` • **[Toggle OFF - Gray]**
+
+- **Architectural & MVC Standards**:
+  - Delegate state updates and user model modifications to `UserModel.js` and `AuthController.js`.
+  - Ensure zero UI layout disruption while matching 100% of the rounded card borders, spacing, and colors.
+
+
 ### Phase 4.8: Personnel Achievements & Portfolio Workspaces (Student Design Parity) [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Establish 100% design and feature parity between Student and Personnel portals by creating dedicated `PersonnelAchievementsPage.jsx` (`/personnel/achievements`) and `PersonnelPortfolioPage.jsx` (`/personnel/portfolio`), using student pages as exact visual and functional references.
 - **UI Architecture & Workflow Specifications**:

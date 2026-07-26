@@ -106,6 +106,8 @@ export async function authenticateUser(email, password, rememberMe = true) {
   return sessionPayload
 }
 
+import AuthController from '../controllers/AuthController'
+
 export function getCurrentUser() {
   const local = localStorage.getItem(STORAGE_KEY_USER)
   const session = sessionStorage.getItem(STORAGE_KEY_USER)
@@ -128,6 +130,7 @@ export function getCurrentUser() {
 }
 
 export function updateUserRoleContext(newRoleContext) {
+  const userModel = AuthController.updateUserRoleContext(newRoleContext)
   const local = localStorage.getItem(STORAGE_KEY_USER)
   const session = sessionStorage.getItem(STORAGE_KEY_USER)
   let raw = null

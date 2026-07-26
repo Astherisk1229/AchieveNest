@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useVerification } from '../../hooks/useVerification'
+import { useStudentRoster } from '../../hooks/useStudentRoster'
 import { 
   Shield, 
   ShieldCheck,
@@ -59,12 +61,8 @@ export default function CoordinatorDashboardView({ currentUser }) {
     }
   }
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All') // 'All' | 'Pending' | 'Verified' | 'Returned'
-
-
-  // Master List of Student Submissions (BS Computer Science Scope)
-  const [allSubmissions, setAllSubmissions] = useState([
+  // Master Initial Submissions Data
+  const [initialSubmissionsData] = useState([
     {
       id: 101,
       title: 'Community Outreach Volunteer',
@@ -148,11 +146,8 @@ export default function CoordinatorDashboardView({ currentUser }) {
     }
   ])
 
-  const [yearFilter, setYearFilter] = useState('All Years')
-  const [courseFilter, setCourseFilter] = useState('All Courses')
-
-  // Program Student Roster
-  const [studentRoster] = useState([
+  // Initial Student Roster Data
+  const [initialStudentsData] = useState([
     {
       id: 'usr_std_001',
       student_id: '2021-00123',
@@ -220,6 +215,30 @@ export default function CoordinatorDashboardView({ currentUser }) {
     }
   ])
 
+  // Custom MVC Bridge Hooks
+  const {
+    allSubmissions,
+    filteredSubmissions,
+    pendingCount,
+    verifiedCount,
+    returnedCount,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    handleApprove: handleApproveHook,
+    handleReturn: handleReturnHook,
+    handleExportCSVReport: handleExportCSVReportHook
+  } = useVerification(initialSubmissionsData)
+
+  const {
+    filteredStudents,
+    yearFilter,
+    setYearFilter,
+    courseFilter,
+    setCourseFilter
+  } = useStudentRoster(initialStudentsData)
+
   const [selectedReviewItem, setSelectedReviewItem] = useState(null)
   const [selectedStudentDossier, setSelectedStudentDossier] = useState(null)
   const [selectedWorkspaceItem, setSelectedWorkspaceItem] = useState(null)
@@ -232,81 +251,30 @@ export default function CoordinatorDashboardView({ currentUser }) {
     setTimeout(() => setToastMessage(''), 3000)
   }
 
-  // Summary counts
-  const pendingCount = allSubmissions.filter(s => s.status === 'Pending').length
-  const verifiedCount = allSubmissions.filter(s => s.status === 'Verified').length
-  const returnedCount = allSubmissions.filter(s => s.status === 'Returned').length
-
-  // Approve action
+  // Wrapper handlers using Hook + Toast
   const handleApprove = (itemId) => {
-    setAllSubmissions(prev => prev.map(item => 
-      item.id === itemId ? { ...item, status: 'Verified', return_remarks: '' } : item
-    ))
+    handleApproveHook(itemId)
     triggerToast('Achievement approved & verified successfully!')
     setSelectedReviewItem(null)
   }
 
-  // Return action
   const handleReturn = (itemId) => {
     if (!returnRemarks.trim()) {
       alert('Please provide remarks explaining why the achievement is being returned.')
       return
     }
-    setAllSubmissions(prev => prev.map(item => 
-      item.id === itemId ? { ...item, status: 'Returned', return_remarks: returnRemarks.trim() } : item
-    ))
+    handleReturnHook(itemId, returnRemarks.trim())
     triggerToast('Achievement returned to student with remarks.')
     setSelectedReviewItem(null)
     setReturnRemarks('')
   }
 
-  // Export Program CSV Report
   const handleExportCSVReport = () => {
-    const headers = ['Submission ID', 'Student Name', 'Student ID', 'Title', 'Category', 'Scope Level', 'Points', 'Status', 'Date']
-    const rows = allSubmissions.map(s => [
-      `SUB-${s.id}`,
-      `"${s.student_name}"`,
-      `"${s.student_id}"`,
-      `"${s.title.replace(/"/g, '""')}"`,
-      `"${s.category}"`,
-      `"${s.scope_level}"`,
-      s.points,
-      `"${s.status}"`,
-      `"${s.date}"`
-    ])
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `BS_Computer_Science_Verification_Report_2026.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    handleExportCSVReportHook(user.program_scope || 'BS Computer Science')
     triggerToast('BS Computer Science verification CSV report downloaded!')
   }
 
-  // Filtered Submissions for Tab 2 (Workspace)
-  const filteredSubmissions = (allSubmissions || []).filter(item => {
-    if (!item) return false
-    const q = (searchQuery || '').toLowerCase()
-    const matchesSearch = (item.title || '').toLowerCase().includes(q) || 
-                          (item.student_name || '').toLowerCase().includes(q) ||
-                          (item.category || '').toLowerCase().includes(q)
-    const matchesStatus = statusFilter === 'All' || item.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  // Filtered Students for Tab 3 (Roster)
-  const filteredStudents = (studentRoster || []).filter(std => {
-    if (!std) return false
-    const q = (searchQuery || '').toLowerCase()
-    const matchesSearch = (std.full_name || '').toLowerCase().includes(q) ||
-                          (std.student_id || '').toLowerCase().includes(q) ||
-                          (std.email || '').toLowerCase().includes(q)
-    const matchesYear = yearFilter === 'All Years' || std.year_level === yearFilter
-    const matchesCourse = courseFilter === 'All Courses' || (std.program || '').toLowerCase().includes(courseFilter.toLowerCase())
-    return matchesSearch && matchesYear && matchesCourse
-  })
+  // (Filtered submissions and students are provided by useVerification & useStudentRoster hooks)
 
 
   return (

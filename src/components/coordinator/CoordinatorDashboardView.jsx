@@ -43,7 +43,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
     department: 'Department of Computer Studies'
   }
 
-  // Active Workspace Tab driven by URL query parameter: 'overview' | 'workspace' | 'students' | 'reports'
+  // Active Workspace Tab driven by URL query parameter: 'overview' | 'workspace' | 'students'
   let activeTabParam = null
   try {
     activeTabParam = searchParams ? searchParams.get('tab') : null
@@ -51,7 +51,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
     activeTabParam = null
   }
 
-  const activeTab = ['overview', 'workspace', 'students', 'reports'].includes(activeTabParam) ? activeTabParam : 'overview'
+  const activeTab = ['overview', 'workspace', 'students'].includes(activeTabParam) ? activeTabParam : 'overview'
 
   const setActiveTab = (tabName) => {
     try {
@@ -967,49 +967,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
         </div>
       )}
 
-      {/* ================= TAB 4: REPORTS & ANALYTICS ================= */}
-      {activeTab === 'reports' && (
-        <div className="space-y-6 animate-in fade-in duration-150">
-          
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-lg font-extrabold text-slate-900">Program Verification Metrics & Analytics</h2>
-                <p className="text-xs text-slate-500 font-medium">Compliance performance for BS Computer Science</p>
-              </div>
-              <button
-                type="button"
-                onClick={handleExportCSVReport}
-                className="px-4 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export Program CSV</span>
-              </button>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-100 space-y-1">
-                <p className="text-xs font-bold text-slate-600">Verification Compliance Rate</p>
-                <p className="text-3xl font-black text-[#2d8a4e]">85%</p>
-                <p className="text-[11px] text-emerald-800 font-semibold">High institutional compliance</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-100 space-y-1">
-                <p className="text-xs font-bold text-slate-600">Avg Verification Turnaround</p>
-                <p className="text-3xl font-black text-[#2d8a4e]">2.5 Hours</p>
-                <p className="text-[11px] text-emerald-800 font-semibold">Well within 24h SLA target</p>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-100 space-y-1">
-                <p className="text-xs font-bold text-slate-600">Total Program Verified Points</p>
-                <p className="text-3xl font-black text-[#2d8a4e]">110 Points</p>
-                <p className="text-[11px] text-emerald-800 font-semibold">Accumulated TOPSIS score</p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      )}
 
       {/* REVIEW & APPROVAL PROOF MODAL */}
       {selectedReviewItem && (

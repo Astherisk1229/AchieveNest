@@ -14,8 +14,7 @@ import {
   Building2,
   Users,
   UserCheck,
-  FileCheck2,
-  BarChart3
+  FileCheck2
 } from 'lucide-react'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
@@ -61,7 +60,6 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         { label: 'Overview', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
         { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
         { label: 'Students', icon: Users, path: '/personnel/dashboard?tab=students', tab: 'students' },
-        { label: 'Reports', icon: BarChart3, path: '/personnel/dashboard?tab=reports', tab: 'reports' },
       ]
     }
 

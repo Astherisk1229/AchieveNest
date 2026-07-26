@@ -312,6 +312,14 @@ graph LR
         - Orange/Amber indicator dot + count text: `2 pending`.
 
 
+### Phase 4.6.5: Program Coordinator Reports Section Removal [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Remove the **Reports** section (`activeTab === 'reports'`) and its sidebar navigation link from the Program Coordinator workspace in `CoordinatorDashboardView.jsx` and `Sidebar.jsx`.
+- **UI & Technical Specifications**:
+  - Remove the **Reports** navigation menu item from the Program Coordinator sidebar options in `Sidebar.jsx`.
+  - Remove the `activeTab === 'reports'` view block from `CoordinatorDashboardView.jsx`.
+  - Ensure URL query parameter fallback defaults safely to `'overview'` if `?tab=reports` is accessed.
+
+
 ### Phase 4.8: Personnel Achievements & Portfolio Workspaces (Student Design Parity) [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Establish 100% design and feature parity between Student and Personnel portals by creating dedicated `PersonnelAchievementsPage.jsx` (`/personnel/achievements`) and `PersonnelPortfolioPage.jsx` (`/personnel/portfolio`), using student pages as exact visual and functional references.
 - **UI Architecture & Workflow Specifications**:

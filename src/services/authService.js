@@ -113,7 +113,9 @@ export function getCurrentUser() {
   if (local) raw = JSON.parse(local)
   else if (session) raw = JSON.parse(session)
   
-  if (!raw) raw = DEMO_USERS.personnel
+  if (!raw) {
+    raw = { ...DEMO_USERS.personnel, active_role_context: 'personnel' }
+  }
 
   // Ensure personnel users always have assigned roles populated
   if (raw && (raw.user_type === 'personnel' || !raw.user_type)) {
@@ -135,13 +137,12 @@ export function updateUserRoleContext(newRoleContext) {
 
   raw.active_role_context = newRoleContext
 
-  if (local) {
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
-  } else {
-    sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
-  }
+  localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+  sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
   return raw
 }
+
+
 
 export function logoutUser() {
   localStorage.removeItem(STORAGE_KEY_USER)

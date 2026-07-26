@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { getCurrentUser, logoutUser } from '../services/authService'
 import { 
   Home, 
@@ -21,6 +21,7 @@ import {
 export default function Sidebar({ currentUser, onRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const user = currentUser || getCurrentUser()
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -30,13 +31,14 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   }
 
   const activeContext = user?.active_role_context || user?.user_type || 'student'
+  const activeTabParam = searchParams.get('tab') || 'overview'
 
   const getPortalInfo = () => {
     switch (activeContext) {
       case 'student':
         return { label: 'Student Portal', path: '/student/dashboard', roleTitle: 'Student' }
       case 'program_coordinator':
-        return { label: 'Program Coordinator', path: '/personnel/dashboard', roleTitle: 'Program Coordinator' }
+        return { label: 'Program Coordinator', path: '/personnel/dashboard?tab=overview', roleTitle: 'Program Coordinator' }
       case 'organization_moderator':
         return { label: 'Org Moderator Portal', path: '/personnel/dashboard', roleTitle: 'Organization Account' }
       case 'department_secretary':
@@ -56,10 +58,10 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const getNavItems = () => {
     if (activeContext === 'program_coordinator') {
       return [
-        { label: 'Overview', icon: Home, path: '/personnel/dashboard' },
-        { label: 'Verification Workspace', icon: ShieldCheck, path: '#workspace' },
-        { label: 'Students', icon: Users, path: '#students' },
-        { label: 'Reports', icon: BarChart3, path: '#reports' },
+        { label: 'Overview', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
+        { label: 'Students', icon: Users, path: '/personnel/dashboard?tab=students', tab: 'students' },
+        { label: 'Reports', icon: BarChart3, path: '/personnel/dashboard?tab=reports', tab: 'reports' },
       ]
     }
 
@@ -117,7 +119,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search..."
-              className="w-full pl-9.5 pr-3 py-2 rounded-xl bg-[#0c2416] border border-[#1e4a30] text-xs font-medium text-white placeholder-emerald-200/50 focus:outline-none focus:border-[#2d8a4e] transition"
+              className="w-full pl-9.5 pr-3 py-2 rounded-xl bg-[#0c2416] border border-[#1e4a30] text-xs font-medium text-[#ffffff] placeholder-emerald-200/50 focus:outline-none focus:border-[#2d8a4e] transition"
             />
           </div>
         </div>
@@ -145,15 +147,14 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">Navigation</p>
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = location.pathname === item.path || (item.path.includes('account') && isAccountActive)
+            const isTabActive = activeContext === 'program_coordinator' && location.pathname === '/personnel/dashboard' && item.tab === activeTabParam
+            const isActive = isTabActive || (location.pathname === item.path && !item.tab) || (item.path.includes('account') && isAccountActive)
             return (
               <button
                 key={item.label}
                 type="button"
                 onClick={() => {
-                  if (item.path.startsWith('/')) {
-                    navigate(item.path)
-                  }
+                  navigate(item.path)
                 }}
                 className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
                   isActive
@@ -167,6 +168,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             )
           })}
         </div>
+
+
 
       </div>
 

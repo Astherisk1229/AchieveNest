@@ -255,6 +255,63 @@ graph LR
     - High-resolution certificate preview, student metadata breakdown, required return remarks textarea, and `Approve & Verify` / `Return with Remarks` CTAs.
   - **Strict Program Scope Enforcement**: Restricted to assigned program (*BS Computer Science*) for institutional privacy and role-based access control.
 
+### Phase 4.6.2: Program Coordinator Overview Section Content Refinement [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Streamline the lower section of `CoordinatorDashboardView.jsx` (`activeTab === 'overview'`) by removing redundant progress charts and duplicate sidebar shortcuts, replacing them with a focused 2-column layout featuring a **Recent Verification Activity Log** and **Coordinator Guidelines & SLA Policy**.
+- **UI & Technical Specifications**:
+  - **Top Cards Preserved**: Hero Banner (*Dr. Ana Reyes*), 4 Stat Counter Cards (*Pending Reviews*, *Verified*, *Returned*, *Avg Review Time*), and Program Scope Notice Banner (*BS Computer Science*) remain 100% intact.
+  - **Refined Overview Layout (Option 2 Streamlined)**:
+    - **Left Column (span-2)**: **Recent Verification Activity Log** — Real-time audit stream of student submissions, approved entries, returned items with remarks, and TOPSIS point synchronizations.
+    - **Right Column (span-1)**: **Coordinator Guidelines & Verification Standards** — Institutional SLA policy (24-48h turnaround), proof document criteria, TOPSIS scoring reference, and return remarks requirements.
+
+### Phase 4.6.3: Verification Workspace Master-Detail Redesign [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Redesign the **Verification Workspace** tab (`activeTab === 'workspace'`) in `CoordinatorDashboardView.jsx` based on the reference layout into a responsive master-detail 2-column workspace for rapid submission inspection, document proof review, and instant decision handling.
+- **UI & Technical Specifications**:
+  - **Top Action & Search Toolbar**:
+    - Title: `Verification Workspace` with subtitle `Review and verify student achievement submissions`.
+    - Right Action Buttons: `[Filter]` button (with filter icon) and solid green `[Export Queue]` button (with download icon).
+    - Full-width Search Bar with status filter pills on the right: `Pending (N)`, `Returned (N)`, `All (N)`.
+  - **Split 2-Column Master-Detail Layout**:
+    - **Left Column: Submission Queue (1/3 Width)**:
+      - Header displaying active queue total e.g., `Submission Queue (1)`.
+      - Interactive scrollable list of queued student submission cards.
+      - Active item card highlights with a blue border, subtle blue background tint, rounded corners, student avatar, achievement title, student name, document counter badge (`1 docs`), and status pill (`Pending`, `Returned`, `Verified`).
+    - **Right Column: Inspection & Verification Panel (2/3 Width)**:
+      - **Student Header Section**: Avatar, Student Name, Student ID (`Student ID: 2024-01234`), and status pill (`PENDING`, `RETURNED`, `VERIFIED`).
+      - **Achievement Details Card**:
+        - Title: e.g., `Community Outreach Volunteer`.
+        - Key-value metadata badges: `Category` (green pill), `Date` (calendar icon), `Venue` / `Scope Level`.
+        - `Description` Container: Light green shaded box displaying student submission notes.
+      - **Supporting Documents Section**:
+        - Header `Supporting Documents (N)`.
+        - Document file container showing download icon, filename (`photo_evidence.jpg`), filesize (`445.3 KB`), and action buttons: `[View]` (blue button with eye icon) and `[Download]` (outlined button with download icon).
+      - **Comments / Feedback Section**:
+        - Header `Comments / Feedback` with message icon.
+        - Textarea for providing feedback or specifying what needs to be revised.
+      - **Decision Action Bar**:
+        - `Return for Revision` button (amber outline CTA requiring feedback remarks).
+        - `Approve & Verify` button (solid green CTA to verify achievement and award points).
+
+
+### Phase 4.6.4: Program Student Roster Directory Redesign [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Objective**: Redesign the **Students** tab (`activeTab === 'students'`) in `CoordinatorDashboardView.jsx` based on the reference design into an interactive 3-column student card grid with multi-level filtering and individual accomplishment summaries.
+- **UI & Technical Specifications**:
+  - **Top Banner & Search/Filter Controls**:
+    - **Header Card**: Title `Students` with green rounded icon badge and subtitle `5 students in your program` (dynamic count). Export Data button removed per requirement.
+    - **Search & Dropdown Filter Toolbar**:
+      - Search Input: `Search by name, ID, or email...` with search icon.
+      - Year Level Filter Dropdown: `All Years`, `1st Year`, `2nd Year`, `3rd Year`, `4th Year`.
+      - Course/Program Filter Dropdown: `All Courses`, `BS Computer Science`, `BS Information Technology`, `BS Nursing`, `BS Business Administration`.
+  - **Student Cards Grid Layout (3 Columns)**:
+    - **Student Card Component**:
+      - **Header Section**: Avatar icon container (dark purple/slate circle silhouette), Student Full Name (bold text), Student ID (`2021-00123`), and Course/Department info (`BS Computer Science (CEAC)`).
+      - **Middle Stats Container (Soft Light-Green Shaded Box)**:
+        - **Achievements Column**: Icon, label `Achievements`, bold count (e.g., `12`).
+        - **Points Column**: Icon, label `Points`, bold points total (e.g., `450`).
+      - **Bottom Status Breakdown Footer**:
+        - Green indicator dot + count text: `10 verified`.
+        - Orange/Amber indicator dot + count text: `2 pending`.
+
+
 ### Phase 4.8: Personnel Achievements & Portfolio Workspaces (Student Design Parity) [COMPLETED - ✅ IMPLEMENTED & WORKING]
 - **Objective**: Establish 100% design and feature parity between Student and Personnel portals by creating dedicated `PersonnelAchievementsPage.jsx` (`/personnel/achievements`) and `PersonnelPortfolioPage.jsx` (`/personnel/portfolio`), using student pages as exact visual and functional references.
 - **UI Architecture & Workflow Specifications**:

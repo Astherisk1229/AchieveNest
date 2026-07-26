@@ -32,11 +32,31 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
   const navigate = useNavigate()
   const [currentUserState, setCurrentUserState] = useState(propUser || getCurrentUser())
 
+  React.useEffect(() => {
+    const user = propUser || getCurrentUser()
+    if (user) {
+      setCurrentUserState(user)
+    }
+  }, [propUser])
+
+  React.useEffect(() => {
+    const syncUser = () => {
+      const u = getCurrentUser()
+      if (u) setCurrentUserState({ ...u })
+    }
+    window.addEventListener('storage', syncUser)
+    return () => window.removeEventListener('storage', syncUser)
+  }, [])
+
   const handleRoleChange = (newRoleContext, updatedUser) => {
-    setCurrentUserState(updatedUser || getCurrentUser())
+    const updated = updatedUser || updateUserRoleContext(newRoleContext)
+    setCurrentUserState({ ...updated })
   }
 
-  const activeRoleContext = currentUserState?.active_role_context || 'personnel'
+  const currentUser = propUser || currentUserState || getCurrentUser()
+  const activeRoleContext = currentUser?.active_role_context || 'personnel'
+
+
 
   // Current user / profile state for Personnel View
   const [profile, setProfile] = useState({
@@ -186,7 +206,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
   return (
     <MainLayout onRoleChange={handleRoleChange}>
       {activeRoleContext === 'program_coordinator' ? (
-        <CoordinatorDashboardView currentUser={currentUserState} />
+        <CoordinatorDashboardView currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
         

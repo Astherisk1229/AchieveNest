@@ -1,26 +1,44 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { getCurrentUser, updateUserRoleContext } from '../services/authService'
 
 export default function MainLayout({ children, onRoleChange: externalRoleChange }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [currentUser, setCurrentUser] = useState(getCurrentUser())
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
   useEffect(() => {
-    const user = getCurrentUser()
-    if (user) {
-      setCurrentUser(user)
+    const syncUser = () => {
+      const user = getCurrentUser()
+      if (user) {
+        setCurrentUser({ ...user })
+      }
     }
+    syncUser()
+    window.addEventListener('storage', syncUser)
+    return () => window.removeEventListener('storage', syncUser)
   }, [])
 
   const handleRoleChange = (newRoleContext) => {
     const updated = updateUserRoleContext(newRoleContext)
     setCurrentUser({ ...updated })
+    
+    // Auto-navigate to personnel dashboard if role switches to personnel/coordinator mode from another page
+    if (['program_coordinator', 'personnel', 'organization_moderator', 'department_secretary'].includes(newRoleContext)) {
+      if (location.pathname !== '/personnel/dashboard') {
+        navigate('/personnel/dashboard')
+      }
+    }
+
     if (externalRoleChange) {
       externalRoleChange(newRoleContext, updated)
     }
   }
+
+
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-[#f4f8f5] text-slate-900 font-sans selection:bg-[#2d8a4e] selection:text-white">

@@ -261,6 +261,8 @@ export default function CoordinatorDashboardView({ currentUser }) {
 
   const [selectedReviewItem, setSelectedReviewItem] = useState(null)
   const [selectedStudentDossier, setSelectedStudentDossier] = useState(null)
+  const [dossierActiveTab, setDossierActiveTab] = useState('verified') // 'verified' | 'pending' | 'returned'
+  const [dossierCategoryFilter, setDossierCategoryFilter] = useState('All')
   const [selectedWorkspaceItem, setSelectedWorkspaceItem] = useState(null)
   const [workspaceRemarks, setWorkspaceRemarks] = useState('')
   const [returnRemarks, setReturnRemarks] = useState('')
@@ -1169,59 +1171,331 @@ export default function CoordinatorDashboardView({ currentUser }) {
         </div>
       )}
 
-      {/* STUDENT DOSSIER QUICK PREVIEW MODAL */}
-      {selectedStudentDossier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 space-y-5">
-            <button
-              onClick={() => setSelectedStudentDossier(null)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {/* ================= PHASE 4.7.1: COMPREHENSIVE STUDENT PORTFOLIO DOSSIER MODAL ================= */}
+      {selectedStudentDossier && (() => {
+        // Filter submissions for this specific student
+        const studentSubmissions = allSubmissions.filter(s =>
+          s.student_name.toLowerCase().trim() === selectedStudentDossier.full_name.toLowerCase().trim() ||
+          s.student_id === selectedStudentDossier.student_id
+        )
 
-            <div className="flex items-center gap-4">
-              <img
-                src={selectedStudentDossier.avatar_url}
-                alt={selectedStudentDossier.full_name}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-[#2d8a4e]"
-              />
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900">{selectedStudentDossier.full_name}</h3>
-                <p className="text-xs text-slate-500 font-medium">{selectedStudentDossier.student_id} • {selectedStudentDossier.program}</p>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-[#2d8a4e] font-extrabold text-[10px] mt-1 inline-block border border-emerald-100">
-                  {selectedStudentDossier.year_level}
-                </span>
-              </div>
-            </div>
+        const studentVerified = studentSubmissions.filter(s => s.status === 'Verified')
+        const studentPending = studentSubmissions.filter(s => s.status === 'Pending')
+        const studentReturned = studentSubmissions.filter(s => s.status === 'Returned')
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Total Verified Points:</span>
-                <span className="font-extrabold text-[#2d8a4e]">{selectedStudentDossier.verified_points} Points</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Submitted Achievements:</span>
-                <span className="font-bold text-slate-800">{selectedStudentDossier.total_submissions} Entries</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Program Scope:</span>
-                <span className="font-bold text-slate-800">BS Computer Science</span>
-              </div>
-            </div>
+        // Apply active tab & category filtering
+        let activeList = dossierActiveTab === 'verified' ? studentVerified
+          : dossierActiveTab === 'pending' ? studentPending
+          : studentReturned
 
-            <div className="flex items-center justify-end pt-2">
+        if (dossierCategoryFilter !== 'All') {
+          activeList = activeList.filter(s => s.category.toLowerCase() === dossierCategoryFilter.toLowerCase())
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200 font-sans">
+            <div className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
+              
+              {/* Close Button */}
               <button
                 type="button"
                 onClick={() => setSelectedStudentDossier(null)}
-                className="px-5 py-2.5 rounded-2xl bg-[#2d8a4e] text-white font-bold text-xs shadow-md"
+                className="absolute top-4 right-4 z-10 p-2.5 text-slate-400 hover:text-slate-900 rounded-2xl hover:bg-slate-100 transition cursor-pointer"
               >
-                Close Summary ✓
+                <X className="w-5 h-5" />
               </button>
+
+              {/* Modal Header & Student Profile Banner Box */}
+              <div className="p-6 sm:p-8 bg-[#1b4332] text-white border-b border-[#245233] shrink-0 space-y-6">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-200/90 tracking-wide uppercase">
+                  <User className="w-4 h-4 text-emerald-400" />
+                  <span>Student Portfolio Dossier • Institutional Accomplishment Record</span>
+                </div>
+
+                {/* Profile Info Row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    {selectedStudentDossier.avatar_url ? (
+                      <img
+                        src={selectedStudentDossier.avatar_url}
+                        alt={selectedStudentDossier.full_name}
+                        className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shadow-md shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-[#2d8a4e] text-white font-black text-xl flex items-center justify-center border-2 border-emerald-400 shrink-0">
+                        {selectedStudentDossier.full_name.charAt(0)}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">{selectedStudentDossier.full_name}</h3>
+                      <p className="text-xs text-emerald-200 font-semibold mt-0.5">
+                        Student ID: {selectedStudentDossier.student_id} • {selectedStudentDossier.email}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 font-extrabold text-[10px] border border-emerald-400/40">
+                          {selectedStudentDossier.program}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-white font-extrabold text-[10px] border border-white/20">
+                          {selectedStudentDossier.year_level}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Export Report CTA */}
+                  <button
+                    type="button"
+                    onClick={() => triggerToast(`Exported official dossier transcript for ${selectedStudentDossier.full_name}`)}
+                    className="self-start sm:self-auto px-4 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold shadow-md transition flex items-center gap-2 cursor-pointer border border-emerald-400/30"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export Dossier PDF</span>
+                  </button>
+                </div>
+
+                {/* 4 Summary Counters Row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  <div className="p-3.5 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
+                    <p className="text-[10px] font-bold text-emerald-200/80 uppercase tracking-wider">Total Submissions</p>
+                    <p className="text-2xl font-black text-white">{studentSubmissions.length}</p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
+                    <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Verified</p>
+                    <p className="text-2xl font-black text-emerald-400">{studentVerified.length}</p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
+                    <p className="text-[10px] font-bold text-amber-200/80 uppercase tracking-wider">Pending Review</p>
+                    <p className="text-2xl font-black text-amber-300">{studentPending.length}</p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Returned</p>
+                    <p className="text-2xl font-black text-slate-200">{studentReturned.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dossier Controls Toolbar */}
+              <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                {/* 3 Status Filter Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setDossierActiveTab('verified')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer border ${
+                      dossierActiveTab === 'verified'
+                        ? 'bg-[#2d8a4e] text-white border-[#2d8a4e] shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Verified ({studentVerified.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDossierActiveTab('pending')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer border ${
+                      dossierActiveTab === 'pending'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Pending ({studentPending.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDossierActiveTab('returned')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer border ${
+                      dossierActiveTab === 'returned'
+                        ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Returned ({studentReturned.length})
+                  </button>
+                </div>
+
+                {/* Category Dropdown Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">Category:</span>
+                  <select
+                    value={dossierCategoryFilter}
+                    onChange={(e) => setDossierCategoryFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-extrabold text-slate-800 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                  >
+                    <option value="All">All Categories</option>
+                    <option value="Academic">Academic</option>
+                    <option value="Leadership">Leadership</option>
+                    <option value="Community">Community</option>
+                    <option value="Athletics">Athletics</option>
+                    <option value="Recognition">Recognition</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Scrollable Submissions List Body */}
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                {activeList.length === 0 ? (
+                  <div className="p-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 space-y-2">
+                    <Award className="w-8 h-8 text-slate-400 mx-auto" />
+                    <p className="text-xs font-bold text-slate-600">No {dossierActiveTab} accomplishments found</p>
+                    <p className="text-[11px] text-slate-400">Try changing the status tab or category filter above.</p>
+                  </div>
+                ) : (
+                  activeList.map(item => (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4 hover:border-emerald-300 transition"
+                    >
+                      {/* Header Row */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <span className="text-[10px] font-extrabold text-[#2d8a4e] uppercase tracking-wider">Achievement Entry</span>
+                          <h4 className="text-base font-extrabold text-slate-900 leading-snug">{item.title}</h4>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                          item.status === 'Verified' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : item.status === 'Returned' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                          {item.status.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {/* Structured Details Grid */}
+                      <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Category</p>
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                            {item.category}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Scope Level</p>
+                          <p className="font-bold text-slate-800">{item.scope_level}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Rank / Position</p>
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-100">
+                            {item.rank_conferred || 'Participant'}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Date Conferred</p>
+                          <p className="font-bold text-slate-800">{item.date}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Academic Year</p>
+                          <p className="font-bold text-slate-800">{item.academic_year || 'AY 2025-2026'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Semester</p>
+                          <p className="font-bold text-slate-800">{item.semester || '1st Semester'}</p>
+                        </div>
+                      </div>
+
+                      {/* Event & Issuer */}
+                      {(item.event_name || item.issuer) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          {item.event_name && (
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Event / Competition Name</p>
+                              <p className="font-extrabold text-slate-800">{item.event_name}</p>
+                            </div>
+                          )}
+                          {item.issuer && (
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Issuing Organization</p>
+                              <p className="font-extrabold text-slate-800">{item.issuer}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Narrative Description */}
+                      {item.description && (
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Description</p>
+                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 text-xs font-medium text-emerald-950">
+                            {item.description}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Supporting Proof Attachments */}
+                      <div className="space-y-2 pt-1 border-t border-slate-100">
+                        <p className="text-xs font-extrabold text-slate-800">Attached Proof Documents</p>
+                        
+                        {/* Certificate */}
+                        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3 text-xs">
+                          <div className="flex items-center gap-2.5">
+                            <FileText className="w-4 h-4 text-[#2d8a4e]" />
+                            <span className="font-extrabold text-slate-800">{item.attached_file_name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReviewItem(item)}
+                            className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition"
+                          >
+                            View Document
+                          </button>
+                        </div>
+
+                        {/* Photo Evidence */}
+                        {item.participation_photo_name && (
+                          <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-2.5">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                              <span className="font-extrabold text-slate-800">{item.participation_photo_name}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReviewItem(item)}
+                              className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition"
+                            >
+                              View Photo
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Inline Decision Actions for Pending Items */}
+                      {item.status === 'Pending' && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => handleReturn(item.id)}
+                            className="px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-extrabold text-xs border border-amber-200 transition cursor-pointer"
+                          >
+                            Return for Revision
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApprove(item.id)}
+                            className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                          >
+                            Approve &amp; Verify ✓
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentDossier(null)}
+                  className="px-6 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
+                >
+                  Close Dossier ✓
+                </button>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
     </div>
   )

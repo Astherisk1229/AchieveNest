@@ -26,7 +26,8 @@ import {
   Lock,
   RefreshCw,
   Eye,
-  Check
+  Check,
+  BarChart3
 } from 'lucide-react'
 
 import useOSAD from '../../hooks/useOSAD'
@@ -42,6 +43,7 @@ export default function OSADDashboardView({ currentUser }) {
     accreditationReports,
     auditLogs,
     getUsers,
+    getStudentLeaderboards,
     assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,
@@ -76,6 +78,7 @@ export default function OSADDashboardView({ currentUser }) {
   const [selectedCategoryForRanking, setSelectedCategoryForRanking] = useState(awardCategories[0]?.id || 'award-01')
   const [generatedCandidates, setGeneratedCandidates] = useState([])
   const [hasRanked, setHasRanked] = useState(false)
+  const [leaderboardFilter, setLeaderboardFilter] = useState('all') // 'all' | 'CEAC' | 'CBA'
 
   // Audit Log Search State
   const [auditSearchTerm, setAuditSearchTerm] = useState('')
@@ -698,6 +701,241 @@ export default function OSADDashboardView({ currentUser }) {
               </button>
             </div>
           </div>
+
+          {/* ========================================================================= */}
+          {/* STUDENT POINTS LEADERBOARD GRAPH CARD                                      */}
+          {/* ========================================================================= */}
+          {(() => {
+            const leaderboardData = getStudentLeaderboards(leaderboardFilter)
+            const topStudent = leaderboardData[0]
+            const secondStudent = leaderboardData[1]
+            const thirdStudent = leaderboardData[2]
+
+            return (
+              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-6">
+                
+                {/* Header & Filter Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                        <span>Student Points Leaderboard & Analytics Graph</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#2d8a4e] border border-emerald-200 text-[10px] font-bold">
+                          LIVE POINT RANKS
+                        </span>
+                      </h2>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Visualizing verified student achievement points across university colleges
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Filter Pills */}
+                  <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0">
+                    {[
+                      { id: 'all', label: 'All Students' },
+                      { id: 'CEAC', label: 'CEAC (Engineering & IT)' },
+                      { id: 'CBA', label: 'CBA (Business)' }
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setLeaderboardFilter(f.id)}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
+                          leaderboardFilter === f.id
+                            ? 'bg-[#1b4332] text-white shadow-xs'
+                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top 3 Podium Cards */}
+                {leaderboardData.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    {/* #1 Top Ranker */}
+                    {topStudent && (
+                      <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-amber-100/40 to-emerald-50/50 border-2 border-amber-400/50 shadow-md relative overflow-hidden flex flex-col justify-between space-y-3">
+                        <div className="flex items-start justify-between">
+                          <span className="w-9 h-9 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center font-black text-sm shadow-md border border-amber-300">
+                            🥇 #1
+                          </span>
+                          <span className="px-3 py-1 rounded-full bg-amber-500 text-white font-black text-xs shadow-xs">
+                            {topStudent.total_points} PTS
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="font-extrabold text-base text-slate-900 leading-snug">{topStudent.student_name}</h3>
+                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{topStudent.student_id} • {topStudent.program}</p>
+                          <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center gap-1">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                            <span>{topStudent.verified_count} Verified Proofs</span>
+                          </p>
+                        </div>
+
+                        {/* Visual Bar */}
+                        <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
+                          <div className="bg-gradient-to-r from-amber-500 to-emerald-600 h-full rounded-full w-full"></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* #2 Ranker */}
+                    {secondStudent && (
+                      <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+                        <div className="flex items-start justify-between">
+                          <span className="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 flex items-center justify-center font-black text-sm border border-slate-300">
+                            🥈 #2
+                          </span>
+                          <span className="px-3 py-1 rounded-full bg-slate-800 text-white font-black text-xs shadow-xs">
+                            {secondStudent.total_points} PTS
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="font-extrabold text-base text-slate-900 leading-snug">{secondStudent.student_name}</h3>
+                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{secondStudent.student_id} • {secondStudent.program}</p>
+                          <p className="text-[11px] font-bold text-slate-600 mt-1">
+                            {secondStudent.verified_count} Verified Proofs
+                          </p>
+                        </div>
+
+                        {/* Visual Bar */}
+                        <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="bg-[#2d8a4e] h-full rounded-full"
+                            style={{ width: `${secondStudent.percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* #3 Ranker */}
+                    {thirdStudent && (
+                      <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+                        <div className="flex items-start justify-between">
+                          <span className="w-9 h-9 rounded-2xl bg-amber-900/10 text-amber-800 flex items-center justify-center font-black text-sm border border-amber-800/20">
+                            🥉 #3
+                          </span>
+                          <span className="px-3 py-1 rounded-full bg-slate-700 text-white font-black text-xs shadow-xs">
+                            {thirdStudent.total_points} PTS
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 className="font-extrabold text-base text-slate-900 leading-snug">{thirdStudent.student_name}</h3>
+                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{thirdStudent.student_id} • {thirdStudent.program}</p>
+                          <p className="text-[11px] font-bold text-slate-600 mt-1">
+                            {thirdStudent.verified_count} Verified Proofs
+                          </p>
+                        </div>
+
+                        {/* Visual Bar */}
+                        <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                          <div
+                            className="bg-[#2d8a4e] h-full rounded-full"
+                            style={{ width: `${thirdStudent.percentage}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
+                {/* Main Visual Points Bar Graph Chart */}
+                <div className="bg-slate-50/70 p-6 rounded-3xl border border-slate-200/80 space-y-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-[#2d8a4e]" />
+                      <span>Visual Points Comparison Bar Graph</span>
+                    </h3>
+                    <span className="text-[11px] font-bold text-slate-400 font-mono">
+                      Scale: 0 to 500 Points
+                    </span>
+                  </div>
+
+                  {/* Graph Grid Lines */}
+                  <div className="space-y-4 relative">
+                    
+                    {/* Axis Ticks */}
+                    <div className="flex justify-between text-[10px] font-mono font-bold text-slate-400 border-b border-slate-200 pb-1.5 px-1">
+                      <span>0 PTS</span>
+                      <span>100 PTS</span>
+                      <span>200 PTS</span>
+                      <span>300 PTS</span>
+                      <span>400 PTS</span>
+                      <span>500 PTS</span>
+                    </div>
+
+                    {/* Student Horizontal Points Bars */}
+                    <div className="space-y-3.5 pt-1">
+                      {leaderboardData.map((student) => (
+                        <div key={student.id} className="space-y-1.5 group">
+                          
+                          {/* Student Header Label & Point Badge */}
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2.5">
+                              <span className={`w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shrink-0 ${
+                                student.rank === 1 ? 'bg-amber-400 text-amber-950 font-black' :
+                                student.rank === 2 ? 'bg-slate-300 text-slate-800' :
+                                student.rank === 3 ? 'bg-amber-800/20 text-amber-800' : 'bg-slate-200 text-slate-600'
+                              }`}>
+                                #{student.rank}
+                              </span>
+                              <span className="font-extrabold text-slate-900">{student.student_name}</span>
+                              <span className="text-slate-400 font-mono text-[11px]">({student.student_id})</span>
+                              <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">• {student.program}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-slate-500 font-mono">
+                                {student.verified_count} Proofs
+                              </span>
+                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black shadow-2xs ${
+                                student.rank === 1
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : 'bg-emerald-50 text-[#1e5831] border border-emerald-200'
+                              }`}>
+                                {student.total_points} PTS
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Graphical Bar */}
+                          <div className="w-full bg-slate-200/80 rounded-2xl h-4 p-0.5 border border-slate-200 overflow-hidden relative">
+                            <div
+                              className={`h-full rounded-xl transition-all duration-500 flex items-center justify-end pr-2 text-[9px] font-black text-white ${
+                                student.rank === 1
+                                  ? 'bg-gradient-to-r from-[#1b4332] via-[#2d8a4e] to-emerald-400 shadow-sm'
+                                  : student.rank === 2
+                                  ? 'bg-gradient-to-r from-[#1b4332] to-[#2d8a4e]'
+                                  : 'bg-gradient-to-r from-slate-700 to-[#2d8a4e]'
+                              }`}
+                              style={{ width: `${Math.max(student.percentage, 8)}%` }}
+                            >
+                              <span className="drop-shadow-xs">{student.total_points}</span>
+                            </div>
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            )
+          })()}
 
           {/* Evaluation Results Section */}
           {hasRanked && (

@@ -459,6 +459,30 @@ class OSADController {
     return [...this.#awardees]
   }
 
+  getStudentLeaderboards(collegeFilter = 'all') {
+    const students = this.#users
+      .filter(u => u.role === 'student' && (collegeFilter === 'all' || u.college === collegeFilter || u.program.toLowerCase().includes(collegeFilter.toLowerCase())))
+      .map(std => ({
+        id: std.id,
+        student_name: std.full_name,
+        student_id: std.student_id,
+        program: std.program,
+        college: std.college,
+        year_level: std.year_level,
+        total_points: std.total_points,
+        verified_count: std.verified_count
+      }))
+      .sort((a, b) => b.total_points - a.total_points)
+
+    const maxPoints = Math.max(...students.map(s => s.total_points), 500)
+
+    return students.map((std, index) => ({
+      ...std,
+      rank: index + 1,
+      percentage: Math.round((std.total_points / maxPoints) * 100)
+    }))
+  }
+
   generateAwardCandidates(awardCategoryId) {
     const category = this.#awardCategories.find(a => a.id === awardCategoryId)
     if (!category) return []

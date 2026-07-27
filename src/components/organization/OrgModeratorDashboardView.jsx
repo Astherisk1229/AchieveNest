@@ -39,6 +39,7 @@ import {
 
 import useOrganization from '../../hooks/useOrganization'
 import AttendanceController from '../../controllers/AttendanceController'
+import OrganizationController from '../../controllers/OrganizationController'
 import EventCreationModal from './EventCreationModal'
 import AttendanceScannerModal from './AttendanceScannerModal'
 import DigitalCertificateModal from './DigitalCertificateModal'
@@ -46,7 +47,8 @@ import DigitalCertificateModal from './DigitalCertificateModal'
 export default function OrgModeratorDashboardView({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const activeTab = searchParams.get('tab') || 'overview'
+  const rawTab = searchParams.get('tab')
+  const activeTab = (!rawTab || rawTab === 'dashboard' || rawTab === 'overview') ? 'dashboard' : rawTab
 
   const { orgInfo, events, metrics, createEvent, updateEvent, archiveEvent } = useOrganization()
 
@@ -1103,7 +1105,7 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                     {profileData.code}
                   </p>
                   <p className="text-xs text-emerald-200/90 font-medium pt-0.5">
-                    Est. {profileData.established_year} • Adviser: {profileData.moderator_name}
+                    Adviser: {profileData.moderator_name}
                   </p>
                 </div>
               </div>
@@ -1269,8 +1271,8 @@ export default function OrgModeratorDashboardView({ currentUser }) {
             </div>
           </div>
 
-          {/* Section 2: Bottom 3 Quick Info Stat Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Section 2: Bottom Quick Info Stat Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-md flex items-center gap-4">
               <div className="w-11 h-11 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -1279,16 +1281,6 @@ export default function OrgModeratorDashboardView({ currentUser }) {
               <div className="truncate">
                 <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Email</p>
                 <p className="text-xs font-extrabold text-slate-900 truncate mt-0.5">{profileData.contact_email}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-md flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Users className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Established</p>
-                <p className="text-xs font-extrabold text-slate-900 mt-0.5">{profileData.established_year}</p>
               </div>
             </div>
 
@@ -1309,7 +1301,7 @@ export default function OrgModeratorDashboardView({ currentUser }) {
       {/* ========================================================================= */}
       {/* 4. DEFAULT DASHBOARD / OVERVIEW VIEW                                      */}
       {/* ========================================================================= */}
-      {(!activeTab || activeTab === 'overview') && (
+      {(!activeTab || activeTab === 'overview' || activeTab === 'dashboard') && (
         <div className="space-y-8 animate-in fade-in duration-200">
 
           {/* Hero Organization Banner Card */}

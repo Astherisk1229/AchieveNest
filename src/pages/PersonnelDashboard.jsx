@@ -5,6 +5,7 @@ import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
 import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import PersonnelSubmissionModal from '../components/personnel/PersonnelSubmissionModal'
 import CoordinatorDashboardView from '../components/coordinator/CoordinatorDashboardView'
+import OrgModeratorDashboardView from '../components/organization/OrgModeratorDashboardView'
 import { 
   Award, 
   Upload, 
@@ -26,35 +27,30 @@ import {
   FileCheck2
 } from 'lucide-react'
 
-import { getCurrentUser } from '../services/authService'
+import { getCurrentUser, updateUserRoleContext } from '../services/authService'
 
 export default function PersonnelDashboard({ currentUser: propUser }) {
   const navigate = useNavigate()
-  const [currentUserState, setCurrentUserState] = useState(propUser || getCurrentUser())
-
-  React.useEffect(() => {
-    const user = propUser || getCurrentUser()
-    if (user) {
-      setCurrentUserState(user)
-    }
-  }, [propUser])
+  const [currentUserState, setCurrentUserState] = useState(() => propUser || getCurrentUser())
 
   React.useEffect(() => {
     const syncUser = () => {
       const u = getCurrentUser()
       if (u) setCurrentUserState({ ...u })
     }
+    syncUser()
     window.addEventListener('storage', syncUser)
     return () => window.removeEventListener('storage', syncUser)
-  }, [])
+  }, [propUser])
 
   const handleRoleChange = (newRoleContext, updatedUser) => {
     const updated = updatedUser || updateUserRoleContext(newRoleContext)
     setCurrentUserState({ ...updated })
   }
 
-  const currentUser = propUser || currentUserState || getCurrentUser()
-  const activeRoleContext = currentUser?.active_role_context || 'personnel'
+  const activeUser = getCurrentUser()
+  const currentUser = propUser || currentUserState || activeUser
+  const activeRoleContext = activeUser?.active_role_context || currentUser?.active_role_context || 'personnel'
 
 
 
@@ -207,6 +203,8 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
     <MainLayout onRoleChange={handleRoleChange}>
       {activeRoleContext === 'program_coordinator' ? (
         <CoordinatorDashboardView currentUser={currentUser} />
+      ) : activeRoleContext === 'organization_moderator' ? (
+        <OrgModeratorDashboardView currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
         

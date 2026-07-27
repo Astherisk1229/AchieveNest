@@ -34,6 +34,7 @@ export const DEMO_USERS = {
     email: 'coordinator@ndmu.edu.ph',
     full_name: 'Prof. Ricardo Gomez',
     user_type: 'personnel',
+    active_role_context: 'program_coordinator',
     employee_id: 'EMP-2015-012',
     department: 'College of Information Technology',
     academic_rank: 'Program Coordinator',
@@ -43,14 +44,16 @@ export const DEMO_USERS = {
   organization: {
     id: 'usr_mod_001',
     email: 'moderator@ndmu.edu.ph',
-    full_name: 'Engr. Sarah Lim',
+    full_name: 'Dr. Ana Reyes',
     user_type: 'personnel',
+    active_role_context: 'organization_moderator',
     employee_id: 'EMP-2019-088',
-    department: 'ITS Student Organization',
+    department: 'Computer Society NDMU',
     academic_rank: 'Organization Moderator',
     avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
     assigned_roles: ['organization_moderator', 'program_coordinator', 'department_secretary']
   },
+
   osad: {
     id: 'usr_osad_001',
     email: 'osad@ndmu.edu.ph',
@@ -142,8 +145,12 @@ export function updateUserRoleContext(newRoleContext) {
 
   localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
   sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+
+  // Dispatch custom storage event so other components sync instantly in real-time
+  window.dispatchEvent(new Event('storage'))
   return raw
 }
+
 
 
 

@@ -12,6 +12,8 @@ import PersonnelAchievementsPage from './pages/PersonnelAchievementsPage'
 import PersonnelPortfolioPage from './pages/PersonnelPortfolioPage'
 import HRDashboard from './pages/HRDashboard'
 import OSADDashboard from './pages/OSADDashboard'
+import OfficerScannerPage from './pages/OfficerScannerPage'
+
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -94,6 +96,7 @@ export default function App() {
         <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
         <Route path="/hr/dashboard" element={<HRDashboard />} />
         <Route path="/osad/dashboard" element={<OSADDashboard />} />
+        <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />
 
         {/* Fallback Redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

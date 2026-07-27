@@ -8,7 +8,7 @@
 
 ## 1. System Development Overview
 
-Achievenest was developed as a modern web application designed for educational institutions to track, verify, and quantify student accomplishments using multi-criteria scoring models (such as TOPSIS). 
+Achievenest was developed as a modern web application designed for educational institutions to track, verify, and quantify student accomplishments using multi-criteria recognition models. 
 
 ### Key Technologies Utilized
 - **Frontend Framework:** React 19 (Vite Build Tooling)
@@ -30,7 +30,7 @@ Achievenest was developed as a modern web application designed for educational i
 | OOP Principle | Current Implementation Status | Vulnerability / Deficiency |
 | :--- | :--- | :--- |
 | **Encapsulation** | **Low** — Data objects (Students, Submissions, User Sessions) are handled as raw, unvalidated JSON/JS literals throughout component state (`useState`). | Security parameters like `active_role_context` or `verified_points` can be mutated directly by inline UI handlers without validation guards. |
-| **Abstraction** | **Moderate** — `authService.js` provides helper functions for authentication, but lacks class-based interface contracts. | Business rules (e.g., SLA turnaround calculation, TOPSIS point weighting) are embedded directly inside JSX rendering functions. |
+| **Abstraction** | **Moderate** — `authService.js` provides helper functions for authentication, but lacks class-based interface contracts. | Business rules (e.g., SLA turnaround calculation, achievement point weighting) are embedded directly inside JSX rendering functions. |
 | **Inheritance & Reuse** | **Low** — Shared properties across user roles (Student, Program Coordinator, Department Secretary, OSAD) are re-declared across separate arrays and components. | Duplicate data definitions across `PersonnelDashboard.jsx`, `CoordinatorDashboardView.jsx`, and `authService.js` cause memory redundancy. |
 | **Polymorphism** | **Low** — Role-specific view behaviors rely on `switch/case` or `if/else` conditionals rather than polymorphic class handlers. | Scalability is constrained when adding new institutional roles. |
 
@@ -77,7 +77,7 @@ Created structured ES6 OOP domain classes with private properties, validation, a
 src/
 └── models/
     ├── UserModel.js             # Base User entity with Encapsulation & Role Enum
-    ├── StudentModel.js          # Extends UserModel; calculates TOPSIS & verified stats
+    ├── StudentModel.js          # Extends UserModel; calculates achievement points & verified stats
     ├── AchievementModel.js      # Encapsulates accomplishment submission details & proof URLs
     └── VerificationQueueModel.js# Manages queue data operations, search, & status filtering
 ```

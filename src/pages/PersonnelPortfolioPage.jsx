@@ -33,8 +33,17 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
 
+  const activeUser = currentUser || getCurrentUser()
+  const activeRoleContext = activeUser?.active_role_context || 'personnel'
+
+  React.useEffect(() => {
+    if (['organization_moderator', 'program_coordinator', 'department_secretary'].includes(activeRoleContext)) {
+      navigate('/personnel/dashboard', { replace: true })
+    }
+  }, [activeRoleContext, navigate])
+
   // Personnel Profile State
-  const [personnel, setPersonnel] = useState(currentUser || getCurrentUser() || {
+  const [personnel, setPersonnel] = useState(activeUser || {
     full_name: 'Dr. Maria Santos',
     student_id: 'EMP-2021-0842', // map to student_id field name for modal parity
     employee_id: 'EMP-2021-0842',

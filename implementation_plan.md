@@ -24,7 +24,7 @@ flowchart TD
     P4 --> P5["Phase 5: Department Secretary Endorsement Portal<br/>(Department-Scoped Faculty Verification & Audit Trail)"]
     P5 --> P6["Phase 6: HR Office Directory & Accreditation Suite<br/>(Personnel Catalog & Secretary Role Delegation)"]
     P6 --> P7["Phase 7: OSAD Admin & Barcode Event Suite<br/>(Org Charter Management & Live Scanner Session)"]
-    P7 --> P8["Phase 8: TOPSIS Recognition & Awardee Engine<br/>(Araw ng Parangal Automated Rankings & Criteria Tuning)"]
+    P7 --> P8["Phase 8: Automated Student Recognition Engine<br/>(Araw ng Parangal Automated Rankings & Criteria Tuning)"]
     P8 --> P9["Phase 9: Interactive Dev Server Audit & Verification<br/>(Responsive Breakpoint Audit at http://localhost:5174/)"]
 ```
 
@@ -172,7 +172,7 @@ graph LR
   - `Cancel` (Ghost button → closes modal)
   - `Next: Scope & Rank →` (Primary Emerald CTA)
 
-##### 🌐 STEP 2: Classification, Scope & Rank Weighting (For TOPSIS Scoring)
+##### 🌐 STEP 2: Classification, Scope & Rank Weighting
 - **Header Subtitle**: Step 2 of 3: Scope & Rank
 - **Step Badge 2**: `2. Scope & Rank` (Active Green Pill)
 
@@ -565,10 +565,10 @@ Build the **OSAD Administrator Dashboard** (`src/pages/OSADDashboard.jsx`) for s
 
 ---
 
-### Phase 8: TOPSIS Decision Support Engine & Recognition Suite
+### Phase 8: Automated Student Recognition & Honor Roll Suite
 
 #### Objective
-Implement the automated **TOPSIS** multi-criteria recognition engine (`src/services/topsisEngine.js`) for ranking *Araw ng Parangal* award candidates.
+Implement the automated multi-criteria recognition engine (`src/services/recognitionEngine.js`) for ranking *Araw ng Parangal* award candidates.
 
 ---
 

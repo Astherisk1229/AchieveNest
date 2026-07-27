@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import PersonnelSubmissionModal from '../components/personnel/PersonnelSubmissionModal'
 import { 
@@ -31,11 +31,20 @@ import {
 import { getCurrentUser } from '../services/authService'
 
 export default function PersonnelAchievementsPage({ currentUser }) {
+  const navigate = useNavigate()
   const user = currentUser || getCurrentUser() || {
     full_name: 'Dr. Maria Santos',
     employee_id: 'EMP-2021-0842',
     department: 'Department of Computer Studies'
   }
+
+  const activeRoleContext = user?.active_role_context || 'personnel'
+
+  useEffect(() => {
+    if (['organization_moderator', 'program_coordinator', 'department_secretary'].includes(activeRoleContext)) {
+      navigate('/personnel/dashboard', { replace: true })
+    }
+  }, [activeRoleContext, navigate])
 
   const location = useLocation()
 

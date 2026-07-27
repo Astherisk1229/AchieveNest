@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getCurrentUser, logoutUser } from '../services/authService'
+import { getCurrentUser, logoutUser, updateUserRoleContext } from '../services/authService'
 import NotificationPopover from './NotificationPopover'
 import { 
   Menu, 
@@ -38,6 +38,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   }
 
   const handleSelectRole = (roleId) => {
+    updateUserRoleContext(roleId)
     if (onRoleChange) {
       onRoleChange(roleId)
     }

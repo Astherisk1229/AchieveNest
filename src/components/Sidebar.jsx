@@ -14,7 +14,10 @@ import {
   Building2,
   Users,
   UserCheck,
-  FileCheck2
+  FileCheck2,
+  LayoutGrid,
+  Calendar,
+  QrCode
 } from 'lucide-react'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
@@ -55,11 +58,31 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
   // Navigation Items according to active role context
   const getNavItems = () => {
+    if (activeContext === 'osad_staff' || location.pathname.includes('/osad/')) {
+      return [
+        { label: 'OSAD Command Center', icon: Home, path: '/osad/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Account Management', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
+        { label: 'Award Categories', icon: Award, path: '/osad/dashboard?tab=awards', tab: 'awards' },
+        { label: 'Identify Awardees', icon: LayoutGrid, path: '/osad/dashboard?tab=awardees', tab: 'awardees' },
+        { label: 'Accreditation Reports', icon: FileCheck2, path: '/osad/dashboard?tab=reports', tab: 'reports' },
+        { label: 'System Audit Logs', icon: ShieldCheck, path: '/osad/dashboard?tab=audit', tab: 'audit' },
+      ]
+    }
+
     if (activeContext === 'program_coordinator') {
       return [
         { label: 'Overview', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
         { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
         { label: 'Students', icon: Users, path: '/personnel/dashboard?tab=students', tab: 'students' },
+      ]
+    }
+
+    if (activeContext === 'organization_moderator') {
+      return [
+        { label: 'Dashboard', icon: LayoutGrid, path: '/personnel/dashboard?tab=dashboard', tab: 'dashboard' },
+        { label: 'Manage Events', icon: Calendar, path: '/personnel/dashboard?tab=events', tab: 'events' },
+        { label: 'Attendance Sessions', icon: QrCode, path: '/personnel/dashboard?tab=attendance', tab: 'attendance' },
+        { label: 'Manage Profile', icon: User, path: '/personnel/dashboard?tab=profile', tab: 'profile' },
       ]
     }
 
@@ -86,6 +109,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const isNotificationsActive = location.pathname.includes('notifications')
   const isAccountActive = location.pathname.includes('account')
   const isSettingsActive = location.pathname.includes('settings')
+
+  const defaultTabForContext = activeContext === 'organization_moderator' ? 'dashboard' : 'overview'
+  const currentActiveTab = activeTabParam || defaultTabForContext
 
   return (
     <aside className="w-64 bg-[#143823] text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-[#1e4a30] selection:bg-[#2d8a4e] selection:text-white font-sans overflow-y-auto">
@@ -124,18 +150,22 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
         {/* Active Portal / Role Badge */}
         <div className="px-4 py-2">
-          <div className={`w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-between shadow-sm border ${
+          <div className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-between shadow-sm border ${
             activeContext === 'program_coordinator' 
-              ? 'bg-[#1d6bba] border-blue-400/40' 
-              : 'bg-[#2d8a4e] border-emerald-400/30'
+              ? 'bg-[#1d6bba] border-blue-400/40 text-white font-bold' 
+              : activeContext === 'organization_moderator'
+              ? 'bg-emerald-500/20 text-emerald-100 border-emerald-500/30'
+              : 'bg-[#2d8a4e] border-emerald-400/30 text-white font-bold'
           }`}>
             <span className="flex items-center gap-2">
               {activeContext === 'program_coordinator' ? (
                 <ShieldCheck className="w-4 h-4 text-blue-200" />
+              ) : activeContext === 'organization_moderator' ? (
+                <Building2 className="w-4 h-4 text-emerald-300" />
               ) : (
                 <UserCheck className="w-4 h-4 text-emerald-300" />
               )}
-              {portalInfo.label}
+              {portalInfo.roleTitle || portalInfo.label}
             </span>
           </div>
         </div>
@@ -145,8 +175,10 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">Navigation</p>
           {navItems.map((item) => {
             const Icon = item.icon
-            const isTabActive = activeContext === 'program_coordinator' && location.pathname === '/personnel/dashboard' && item.tab === activeTabParam
-            const isActive = isTabActive || (location.pathname === item.path && !item.tab) || (item.path.includes('account') && isAccountActive)
+            const isTabActive = item.tab && item.tab === currentActiveTab
+            const isPathActive = location.pathname === item.path.split('?')[0] && !item.tab
+            const isAccountPageActive = !item.tab && item.path.includes('account') && isAccountActive && !location.pathname.includes('/osad/')
+            const isActive = item.tab ? isTabActive : (isPathActive || isAccountPageActive)
             return (
               <button
                 key={item.label}
@@ -162,6 +194,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               >
                 <Icon className="w-4 h-4 text-emerald-300" />
                 <span>{item.label}</span>
+
               </button>
             )
           })}

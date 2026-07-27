@@ -44,6 +44,7 @@ export default function OSADDashboardView({ currentUser }) {
     auditLogs,
     getUsers,
     getStudentLeaderboards,
+    getAccreditationReportDetails,
     assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,
@@ -79,6 +80,10 @@ export default function OSADDashboardView({ currentUser }) {
   const [generatedCandidates, setGeneratedCandidates] = useState([])
   const [hasRanked, setHasRanked] = useState(false)
   const [leaderboardFilter, setLeaderboardFilter] = useState('all') // 'all' | 'CEAC' | 'CBA'
+
+  // Accreditation Reports Inspection State
+  const [selectedReportId, setSelectedReportId] = useState('rpt-01')
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
 
   // Audit Log Search State
   const [auditSearchTerm, setAuditSearchTerm] = useState('')
@@ -1040,65 +1045,280 @@ export default function OSADDashboardView({ currentUser }) {
       {/* ========================================================================= */}
       {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
       {/* ========================================================================= */}
-      {activeTab === 'reports' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
+      {/* ========================================================================= */}
+      {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
+      {/* ========================================================================= */}
+      {activeTab === 'reports' && (() => {
+        const activeReportDetails = getAccreditationReportDetails(selectedReportId)
 
-          {/* Module Header */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
-                <FileSpreadsheet className="w-6 h-6" />
+        return (
+          <div className="space-y-6 animate-in fade-in duration-200">
+
+            {/* Module Header */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+                  <FileSpreadsheet className="w-6 h-6" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                    University Accreditation & Institutional Reports Suite
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Inspect Report Contents, Department Metrics & Included Records Prior to Exporting
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  University Accreditation & Institutional Reports Suite
-                </h1>
-                <p className="text-xs text-slate-500 font-medium">
-                  Generate Official Accreditation Compliance Summaries for PACUCOA, CHEd, and OSAD Annual Reporting
-                </p>
+
+              <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+                <button
+                  onClick={() => setIsPreviewModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 text-slate-600" />
+                  <span>Full Screen Inspection</span>
+                </button>
+                
+                <button
+                  onClick={() => showToast(`Exported [${activeReportDetails.title}] as Official PDF Document!`)}
+                  className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-emerald-300" />
+                  <span>Export Active Report PDF</span>
+                </button>
               </div>
             </div>
 
-            <button
-              onClick={() => showToast('Generated Custom Accreditation Report PDF preview!')}
-              className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export All Reports (PDF/CSV)</span>
-            </button>
-          </div>
+            {/* Interactive Report Selector Cards Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {accreditationReports.map(rpt => {
+                const isSelected = rpt.id === selectedReportId
+                return (
+                  <div
+                    key={rpt.id}
+                    onClick={() => setSelectedReportId(rpt.id)}
+                    className={`p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                      isSelected
+                        ? 'bg-[#eef7f0] border-[#2d8a4e] shadow-md ring-2 ring-[#2d8a4e]/30'
+                        : 'bg-white border-slate-200/80 hover:border-emerald-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#1e5831] text-[10px] font-extrabold">
+                          {rpt.agency}
+                        </span>
+                        {isSelected && (
+                          <span className="px-2 py-0.5 rounded-full bg-[#2d8a4e] text-white text-[9px] font-extrabold uppercase">
+                            Inspecting Content
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-extrabold text-sm text-slate-900 leading-snug">{rpt.title}</h3>
+                    </div>
 
-          {/* Pre-Compiled Reports Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {accreditationReports.map(rpt => (
-              <div key={rpt.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-[#2d8a4e] border border-emerald-200 text-[10px] font-extrabold">
-                    {rpt.agency}
-                  </span>
-                  <h3 className="font-extrabold text-base text-slate-900 leading-snug">{rpt.title}</h3>
-                  <p className="text-xs font-bold text-emerald-800">{rpt.accreditation_status}</p>
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 text-slate-600 font-bold">
+                      <span>{rpt.accreditation_status}</span>
+                      <span className="text-[#2d8a4e] font-extrabold">{rpt.total_student_achievements + rpt.total_faculty_accomplishments} total recs</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* LIVE REPORT DOCUMENT CONTENT INSPECTION PANEL */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6 relative overflow-hidden">
+              
+              {/* Document Header Seal Banner */}
+              <div className="border-b-2 border-slate-900/10 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[#1b4332] text-white p-2.5 flex items-center justify-center shrink-0 shadow-md">
+                    <svg viewBox="0 0 100 100" className="w-full h-full">
+                      <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
+                      <circle cx="50" cy="50" r="28" fill="#ffffff" />
+                      <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-amber-900 tracking-widest">NOTRE DAME OF MARBEL UNIVERSITY</p>
+                    <p className="text-[9px] font-extrabold text-slate-500 uppercase">OFFICE OF STUDENT AFFAIRS & SERVICES (OSAD)</p>
+                    <h2 className="text-lg font-serif font-extrabold text-slate-900 pt-0.5">{activeReportDetails.title}</h2>
+                    <p className="text-xs font-bold text-[#2d8a4e] mt-0.5">Agency: {activeReportDetails.agency} • Period: {activeReportDetails.period} • Generated: {activeReportDetails.generated_date}</p>
+                  </div>
                 </div>
 
-                <div className="space-y-3 pt-3 border-t border-slate-100 text-xs">
-                  <div className="grid grid-cols-2 gap-2 text-slate-600 font-medium">
-                    <p>Student Recs: <strong className="text-slate-900">{rpt.total_student_achievements}</strong></p>
-                    <p>Faculty Recs: <strong className="text-slate-900">{rpt.total_faculty_accomplishments}</strong></p>
-                  </div>
-
-                  <button
-                    onClick={() => showToast(`Downloading ${rpt.agency} Accreditation Compliance Report...`)}
-                    className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Download Report PDF</span>
-                  </button>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <span className="px-3.5 py-1.5 rounded-2xl bg-emerald-50 text-[#1e5831] border border-emerald-200 text-xs font-black flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#2d8a4e]" />
+                    <span>{activeReportDetails.accreditation_status}</span>
+                  </span>
                 </div>
               </div>
-            ))}
+
+              {/* Summary Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Student Accomplishments</p>
+                  <p className="text-xl font-extrabold text-slate-900 mt-0.5">{activeReportDetails.total_student_achievements} Records</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Faculty Achievements</p>
+                  <p className="text-xl font-extrabold text-slate-900 mt-0.5">{activeReportDetails.total_faculty_accomplishments} Records</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Combined Total Scope</p>
+                  <p className="text-xl font-extrabold text-[#2d8a4e] mt-0.5">{activeReportDetails.total_student_achievements + activeReportDetails.total_faculty_accomplishments} Verified</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compliance Index</p>
+                  <p className="text-xl font-extrabold text-amber-700 mt-0.5">{activeReportDetails.accreditation_status}</p>
+                </div>
+              </div>
+
+              {/* Section 1: Departmental Compliance Breakdown Table */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-[#2d8a4e]" />
+                  <span>Section A: Departmental Achievement & Compliance Breakdown</span>
+                </h3>
+
+                <div className="overflow-x-auto border border-slate-200/80 rounded-2xl">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                      <tr>
+                        <th className="p-3.5">College / Department</th>
+                        <th className="p-3.5">Student Records</th>
+                        <th className="p-3.5">Faculty Records</th>
+                        <th className="p-3.5">Verification Rate</th>
+                        <th className="p-3.5 text-right">Audit Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                      {activeReportDetails.departmentBreakdown.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/80 transition">
+                          <td className="p-3.5 font-extrabold text-slate-900">{row.dept}</td>
+                          <td className="p-3.5 font-bold text-[#2d8a4e]">{row.student_records} recs</td>
+                          <td className="p-3.5 font-bold text-amber-800">{row.faculty_records} recs</td>
+                          <td className="p-3.5 font-mono font-bold text-slate-700">{row.verification_rate}</td>
+                          <td className="p-3.5 text-right">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#1e5831] border border-emerald-200 text-[10px] font-extrabold">
+                              {row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Section 2: Sample Included Verified Records Audit */}
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#2d8a4e]" />
+                  <span>Section B: Sample Verified Bundled Accomplishment Entries</span>
+                </h3>
+
+                <div className="overflow-x-auto border border-slate-200/80 rounded-2xl">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                      <tr>
+                        <th className="p-3.5">Accomplishment Title</th>
+                        <th className="p-3.5">Category</th>
+                        <th className="p-3.5">Owner / Faculty</th>
+                        <th className="p-3.5">Department</th>
+                        <th className="p-3.5">Verification Badge</th>
+                        <th className="p-3.5 text-right">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {activeReportDetails.includedRecordsSample.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition">
+                          <td className="p-3.5 font-extrabold text-slate-900">{item.title}</td>
+                          <td className="p-3.5 font-semibold text-slate-600">{item.category}</td>
+                          <td className="p-3.5 font-bold text-slate-800">{item.owner}</td>
+                          <td className="p-3.5 font-mono text-slate-500">{item.dept}</td>
+                          <td className="p-3.5">
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold">
+                              {item.verified_by}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right font-mono text-slate-500">{item.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Section 3: Official Signatory Approval Box */}
+              <div className="pt-6 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compiled & Certified By</p>
+                  <p className="font-extrabold text-slate-900 text-sm">Director Marcus Vance, Ph.D.</p>
+                  <p className="text-slate-500 font-medium text-[11px]">Director, Office of Student Affairs & Services (OSAD)</p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Institutional Verification Seal</p>
+                  <p className="font-extrabold text-slate-900 text-sm">Notre Dame of Marbel University Central Registrar</p>
+                  <p className="text-slate-500 font-medium text-[11px]">Accreditation Audit Serial: NDMU-OSAD-2026-ACC-882</p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Full Screen Preview Inspection Modal */}
+            {isPreviewModalOpen && (
+              <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 relative">
+                  
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="w-6 h-6 text-[#2d8a4e]" />
+                      <h3 className="font-extrabold text-lg text-slate-900">Document Inspection View</h3>
+                    </div>
+                    
+                    <button
+                      onClick={() => setIsPreviewModalOpen(false)}
+                      className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                    >
+                      ✕ Close Inspection
+                    </button>
+                  </div>
+
+                  {/* Render Detailed Inspection */}
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                    <h2 className="text-xl font-serif font-extrabold text-slate-900">{activeReportDetails.title}</h2>
+                    <p className="text-xs text-slate-600 font-medium">Agency Target: {activeReportDetails.agency} • Status: {activeReportDetails.accreditation_status}</p>
+                    
+                    <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
+                      <p className="font-bold text-slate-800">Verification Certification:</p>
+                      <p className="text-slate-600 leading-relaxed">
+                        This official report contains {activeReportDetails.total_student_achievements} verified student achievements and {activeReportDetails.total_faculty_accomplishments} faculty accomplishments compiled from Notre Dame of Marbel University's central achievement ledger.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      onClick={() => {
+                        showToast(`Exported ${activeReportDetails.title} PDF!`)
+                        setIsPreviewModalOpen(false)
+                      }}
+                      className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition shadow-md flex items-center gap-2 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Confirm & Export PDF</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ========================================================================= */}
       {/* 6. SYSTEM AUDIT LOGS MODULE (tab === 'audit')                              */}

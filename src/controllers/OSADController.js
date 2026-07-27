@@ -544,6 +544,30 @@ class OSADController {
     return [...this.#accreditationReports]
   }
 
+  getAccreditationReportDetails(reportId) {
+    const report = this.#accreditationReports.find(r => r.id === reportId) || this.#accreditationReports[0]
+    
+    const departmentBreakdown = [
+      { dept: 'College of Engineering, Architecture & Computing (CEAC)', student_records: 184, faculty_records: 76, verification_rate: '98.2%', status: 'Compliant' },
+      { dept: 'College of Business & Accountancy (CBA)', student_records: 122, faculty_records: 52, verification_rate: '95.4%', status: 'Compliant' },
+      { dept: 'College of Arts & Sciences (CAS)', student_records: 64, faculty_records: 38, verification_rate: '94.8%', status: 'Compliant' },
+      { dept: 'College of Education (CED)', student_records: 42, faculty_records: 22, verification_rate: '97.0%', status: 'Compliant' },
+    ]
+
+    const includedRecordsSample = [
+      { id: 'rec-1', title: 'Machine Learning Frameworks in Higher Education Analytics', category: 'Research & Publications', owner: 'Dr. Maria Santos', dept: 'CEAC', verified_by: 'HR Verified', date: 'Jan 15, 2026' },
+      { id: 'rec-2', title: 'National Hackathon Competition 2026 - 1st Place Winner', category: 'Student Competition', owner: 'Juan Dela Cruz', dept: 'CEAC', verified_by: 'OSAD Verified', date: 'Feb 10, 2026' },
+      { id: 'rec-3', title: 'CHED Regional Training on AI Curriculum Integration', category: 'Seminars & Workshops', owner: 'Engr. Roberto Cruz', dept: 'CEAC', verified_by: 'HR Verified', date: 'Dec 04, 2025' },
+      { id: 'rec-4', title: 'Barangay Smart Literacy Outreach Program', category: 'Extension Services', owner: 'Prof. Grace Tan', dept: 'CBA', verified_by: 'OSAD Verified', date: 'Nov 20, 2025' },
+    ]
+
+    return {
+      ...report,
+      departmentBreakdown,
+      includedRecordsSample
+    }
+  }
+
   // --- Audit Logs ---
   getAuditLogs(searchTerm = '', categoryFilter = 'all') {
     return this.#auditLogs.filter(log => {

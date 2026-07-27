@@ -80,6 +80,10 @@ export default function useOSAD() {
     return OSADController.getStudentLeaderboards(collegeFilter)
   }, [])
 
+  const getAccreditationReportDetails = useCallback((reportId) => {
+    return OSADController.getAccreditationReportDetails(reportId)
+  }, [])
+
   return {
     metrics,
     awardCategories,
@@ -88,6 +92,7 @@ export default function useOSAD() {
     auditLogs,
     getUsers,
     getStudentLeaderboards,
+    getAccreditationReportDetails,
     assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,

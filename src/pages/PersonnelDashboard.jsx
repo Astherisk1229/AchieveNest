@@ -251,7 +251,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
                 <Award className="w-4 h-4 text-amber-300" />
                 <span>Total Achievements</span>
               </div>
-              <p className="text-3xl font-black text-white">{recentAccomplishments.length} <span className="text-xs font-normal text-emerald-200">Records</span></p>
+              <p className="text-3xl font-black text-white">{accomplishments.length} <span className="text-xs font-normal text-emerald-200">Records</span></p>
             </button>
 
             {/* Card 2: HR Verified Records */}
@@ -264,7 +264,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
                 <CheckCircle2 className="w-4 h-4 text-emerald-300" />
                 <span>Verified Records</span>
               </div>
-              <p className="text-3xl font-black text-white">{recentAccomplishments.filter(a => a.status === 'Verified' || a.status === 'HR Verified').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
+              <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.status === 'Verified' || a.status === 'HR Verified').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
             </button>
 
             {/* Card 3: Pending Review */}
@@ -277,7 +277,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
                 <BookOpen className="w-4 h-4 text-amber-300" />
                 <span>Pending Review</span>
               </div>
-              <p className="text-3xl font-black text-white">{recentAccomplishments.filter(a => a.status === 'Pending Review' || a.status === 'Pending').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
+              <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.status === 'Pending Review' || a.status === 'Pending').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
             </button>
 
             {/* Card 4: Supporting Proofs */}
@@ -290,7 +290,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
                 <ShieldCheck className="w-4 h-4 text-emerald-300" />
                 <span>Attached Proofs</span>
               </div>
-              <p className="text-3xl font-black text-white">{recentAccomplishments.filter(a => a.proof_file || a.attached_file_name).length} <span className="text-xs font-normal text-emerald-300/80">Files</span></p>
+              <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.proof_file || a.attached_file_name).length} <span className="text-xs font-normal text-emerald-300/80">Files</span></p>
             </button>
 
             {/* Card 5: Portfolio Lifecycle Status */}
@@ -304,9 +304,9 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
                 <span>Portfolio Status</span>
               </div>
               <p className="text-sm font-extrabold text-amber-300 line-clamp-1">
-                {portfolioState?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
-                 portfolioState?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
-                 portfolioState?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
+                {portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
+                 portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
+                 portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
               </p>
             </button>
 

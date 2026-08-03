@@ -53,6 +53,25 @@ export default class AuthController {
     return user
   }
 
+  /**
+   * Demo role context switcher helper for Personnel, Department Secretary, and HR.
+   */
+  static switchDemoRole(roleKey, departmentId = 'DEP-CEAC') {
+    const user = this.getCurrentUser()
+    if (roleKey === 'dep_sec') {
+      user.active_role_context = 'dep_sec'
+      user.department = 'College of Engineering, Architecture & Computing'
+    } else if (roleKey === 'hr') {
+      user.active_role_context = 'hr'
+      user.department = 'Human Resources Office'
+    } else {
+      user.active_role_context = 'personnel'
+      user.department = 'College of Engineering, Architecture & Computing'
+    }
+    this.saveUser(user)
+    return user
+  }
+
   static saveUser(userInstance) {
     this.#cachedUser = userInstance
     const payload = JSON.stringify(userInstance.toJSON())

@@ -71,11 +71,11 @@ This matrix provides an authoritative, complete inventory of all interactive but
 | **Secretary View** | `Endorse to HR` Button | Action Trigger | Endorses faculty accomplishment to HR Office queue and stamps `Dept Endorsed` | ⏳ **IN PLANNING (Phase 5)** |
 | **Secretary View** | `Return to Faculty` Button | Action Trigger | Returns faculty accomplishment submission with required correction remarks | ⏳ **IN PLANNING (Phase 5)** |
 
-### 🏛️ F. HR Office Directory & OSAD Admin Suite
+### 🏛️ F. Standalone Institutional Accounts (Sole Accounts: OSAD & HR Office)
 | View / Component | Clickable Element | Interaction Type | Behavior & Display Output | Current Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **HR Staff Dashboard** | Faculty Directory & Accreditation | Management | Manages university-wide records, exports accreditation reports & assigns secretary roles | ⏳ **IN PLANNING (Phase 6)** |
-| **OSAD Admin Suite** | Org Moderation & Attendance | Scanner Engine | Moderates student org charters, runs barcode scanner sessions & generates digital certificates | ⏳ **IN PLANNING (Phase 7)** |
+| **OSAD Executive Admin Portal** | Executive Command Center & Governance | Sole Institutional Account | University-wide student affairs portal (`/osad/dashboard`), role assignments, award ranking, accreditation reporting & audit logs | ✅ **COMPLETED (Phase 7)** |
+| **HR Office Executive Portal** | Executive Command Center & HR Suite | Sole Institutional Account | Standalone HR institutional portal (`/hr/dashboard`), 4 Core HR Modules: Executive Command Center, Personnel Directory & Rank Track, Faculty Verification Queue & Accreditation Reports | ✅ **COMPLETED (Phase 8)** |
 
 ---
 
@@ -780,6 +780,61 @@ Build a comprehensive university-wide executive administration suite for the **O
   - Award category & criteria modifications.
   - System logins, security events, and high-risk administrative overrides.
 - **Audit Search & Filter Engine**: Filter logs by Timestamp, Admin User, Action Category, and Target User/Entity.
+
+### Phase 8: Human Resource (HR) Office Executive Admin Portal (`HRDashboardView.jsx`) [COMPLETED - ✅ IMPLEMENTED & WORKING]
+- **Account Model Paradigm**:
+  > **Sole Institutional Account**: The **Human Resources (HR) Office Account** is a dedicated, standalone institutional account (`/hr/dashboard`). It acts like the **OSAD Executive Account** — it is **NOT** a role assigned to a personnel/faculty account via the multi-role switcher (unlike Program Coordinator, Org Moderator, or Department Secretary which are assigned onto individual faculty profiles). It serves as a top-level university administrative authority for Human Resource management across all personnel, faculty, and administrative staff.
+
+- **Objective**: Build `HRDashboardView.jsx` to provide full executive governance over university employee records, faculty rank tracks, administrative role assignments, final verification of faculty accomplishments, HR service awards, PACUCOA/CHEd accreditation reporting, and HR security audit logs.
+
+#### **Module 1: HR Executive Command Center (`tab=overview`)**
+- **Metrics Summary Cards**:
+  - `Total University Personnel`: Total count of active university employees (Faculty, Administrative Staff, Maintenance & Technical).
+  - `Verified Faculty Accomplishments`: Total count of verified professional publications, extension services, research, and certifications.
+  - `Pending Secretary Endorsements`: Submissions endorsed by Department Secretaries awaiting final HR verification.
+  - `Active Academic Departments & Units`: Breakdown of departments with appointed Department Secretaries.
+  - `CHEd / PACUCOA Personnel Accreditation Readiness Score`: Institutional HR compliance status metric.
+- **HR Executive Action Hub**: Quick-action modules for *Personnel Governance*, *Accomplishment Verification*, *Service Award Engine*, and *Accreditation Exporter*.
+- **Personnel Analytics & Academic Rank Charts**: Visual distribution of faculty academic ranks (Instructor I-IV, Assistant Professor I-IV, Associate Professor I-IV, Full Professor I-VII), employment tenure, and annual research/training metrics.
+
+#### **Module 2: University Personnel Directory & Rank Track Management (`tab=personnel`)**
+- **Unified Employee Directory**: Search, filter, and view personnel records across all university colleges (*CEAC, CBA, CAS, CED, CON*) and administrative offices.
+- **Employee Profile Inspector**: Deep inspection of faculty credentials, employment history, degrees, certifications, assigned department, and verified accomplishment records.
+- **Academic Rank & Tenure Management**:
+  - Assign/update faculty rank designations and promotion tracks.
+  - Manage employment standing (*Full-Time Permanent, Part-Time, Probationary, On Leave, Emeritus*).
+  - Record tenure milestones and length-of-service track metrics.
+
+#### **Module 3: Administrative Role Assignment & Governance Suite (`tab=roles`)**
+- **Sole Account Administrative Governance**:
+  - **Appoint Department Secretary**: Assign qualified faculty/staff to serve as Department Secretary with endorsement authority for their department.
+  - **Appoint Program Coordinator**: Assign faculty members as Program Coordinators for specific academic degree programs.
+  - **Appoint Organization Moderator**: Assign faculty/staff as official advisers/moderators for recognized student organizations.
+- **Role Permission Audit & Revocation**: Monitor, audit, renew, or revoke assigned administrative privileges with mandatory audit log recording.
+
+#### **Module 4: Faculty Accomplishment Final Verification Queue (`tab=verification`)**
+- **Endorsed Submissions Portal**: Review queue for faculty accomplishments forwarded by Department Secretaries (`dept_endorsed`).
+- **Proof & Citation Inspector Modal**: Document viewer for uploaded research papers, conference certificates, extension project evidence, and publisher letters.
+- **Final Verification Actions**:
+  - `Final Verification & HR Seal`: Formally verify accomplishment, stamp HR seal, and credit promotion/ranking points.
+  - `Return to Secretary / Faculty`: Return submission with mandatory HR audit notes for corrections.
+- **Bulk Verification Engine**: Approve batch submissions for faculty attendance at institutional seminars and mandatory trainings.
+
+#### **Module 5: HR Service Awards & Automated Ranking Engine (`tab=awards`)**
+- **Faculty & Staff Service Award Categories**: Setup and configure award categories (*e.g., Outstanding Researcher, Excellence in Teaching, Extension Service Leadership, 10/20/30-Year Loyalty & Service Awards*).
+- **Automated Candidate Identification Engine**:
+  - Run ranking algorithms against verified accomplishment points, research impact, and tenure length.
+  - Dynamic university-wide and college-level faculty leaderboards.
+- **Awardee Selection & Honor Roll Bulletin Exporter**: Formal awardee designation, HR Director signature stamping, and PDF/CSV honor roll bulletin exports.
+
+#### **Module 6: HR Accreditation & Compliance Reporting Suite (`tab=reports`)**
+- **CHEd & PACUCOA Faculty Compliance Exporter**: Generate standardized faculty qualification and publication matrices for university accreditation compliance.
+- **Custom Personnel Report Builder**: Filter by College, Department, Academic Year, Rank, or Employment Status; export as official PDF or CSV spreadsheet.
+- **Promotion Board Dossier Compiler**: Automatically bundle verified accomplishment records into formatted portfolios for faculty rank promotion boards.
+
+#### **Module 7: HR System Audit Trail (`tab=audit`)**
+- **Real-Time HR Security Audit Trail**: Centralized log table capturing all HR administrative actions (rank modifications, role assignments, final verification stamps, award overrides).
+- **Audit Search & Filter Engine**: Filter logs by Timestamp, HR Admin User, Action Type, and Target Employee ID.
 
 ---
 

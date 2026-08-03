@@ -21,7 +21,8 @@ export default function Login() {
     { label: 'Personnel', desc: 'Faculty / personnel view', email: 'faculty@ndmu.edu.ph' },
     { label: 'Coordinator', desc: 'Program coordinator view', email: 'coordinator@ndmu.edu.ph' },
     { label: 'Organization', desc: 'Org moderator view', email: 'moderator@ndmu.edu.ph' },
-    { label: 'OSAD Admin', desc: 'System administration', email: 'osad@ndmu.edu.ph' }
+    { label: 'OSAD Admin', desc: 'Student affairs admin', email: 'osad@ndmu.edu.ph' },
+    { label: 'HR Admin', desc: 'Human resource executive', email: 'hr@ndmu.edu.ph' }
   ]
 
   const handleSelectDemo = (demoEmail) => {

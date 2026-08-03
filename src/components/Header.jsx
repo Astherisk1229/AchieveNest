@@ -61,6 +61,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     if (activeRoleContext === 'department_secretary') return 'Department Secretary'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
     if (activeRoleContext === 'personnel') return 'Personnel'
+    if (activeRoleContext === 'hr_staff' || userType === 'hr_staff') return 'HR Staff'
+    if (activeRoleContext === 'osad_staff' || userType === 'osad_staff') return 'OSAD Staff'
     if (userType === 'student') return 'Student'
     return userType.replace('_', ' ')
   }

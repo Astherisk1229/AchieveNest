@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   X, 
   Award, 
@@ -6,31 +6,106 @@ import {
   CheckCircle2, 
   AlertCircle, 
   FileText, 
-  ChevronRight, 
-  ChevronLeft, 
   Check, 
   Building, 
   Globe, 
   Calendar,
-  Sparkles
+  Sparkles,
+  Paperclip,
+  GraduationCap,
+  Users,
+  BookOpen,
+  Heart,
+  ShieldCheck
 } from 'lucide-react'
 
-export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAccomplishment }) {
-  // Wizard Step Control (1, 2, 3)
-  const [currentStep, setCurrentStep] = useState(1)
+import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 
-  // Step 1 Form Data
-  const [title, setTitle] = useState('')
-  const [issuingEntity, setIssuingEntity] = useState('')
-  const [academicYear, setAcademicYear] = useState('AY 2025-2026')
+// Helper component for required field labels (Red Asterisk when unfilled -> Green Checkmark when filled)
+const ReqLabel = ({ label, value }) => {
+  const isFilled = value !== undefined && value !== null && String(value).trim() !== ''
+  return (
+    <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+      <span>{label}</span>
+      {isFilled ? (
+        <span className="text-[#2d8a4e] text-[11px] font-extrabold flex items-center gap-0.5" title="Field Requirement Completed">
+          <Check className="w-3.5 h-3.5 text-[#2d8a4e] stroke-[3]" />
+        </span>
+      ) : (
+        <span className="text-rose-500 font-extrabold text-xs" title="Required Field">*</span>
+      )}
+    </label>
+  )
+}
+
+export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, initialCategory = '' }) {
+  // Helper for Academic Year Infer
+  const inferAcademicYear = (dateStr) => {
+    if (!dateStr) return 'AY 2025-2026'
+    const d = new Date(dateStr)
+    const year = d.getFullYear()
+    const month = d.getMonth() + 1 // 1..12
+    const startYear = month >= 6 ? year : year - 1
+    return `AY ${startYear}-${startYear + 1}`
+  }
+
+  // Active Category State
+  const [category, setCategory] = useState(initialCategory || 'A.1 Degree/s')
   const [dateAchieved, setDateAchieved] = useState(new Date().toISOString().split('T')[0])
+  const [academicYear, setAcademicYear] = useState(() => inferAcademicYear(new Date().toISOString().split('T')[0]))
 
-  // Step 2 Form Data (Category & Scope Classification)
-  const [category, setCategory] = useState('Research & Publications')
-  const [scopeLevel, setScopeLevel] = useState('International / Scopus / WoS')
-  const [impactLevel, setImpactLevel] = useState('Lead Author / Principal Investigator')
+  // Tailored Category Fields
+  // A.1 Degree/s
+  const [degreeLevel, setDegreeLevel] = useState('Ph.D. Degree Holder')
+  const [degreeTitle, setDegreeTitle] = useState('')
+  const [institution, setInstitution] = useState('')
+  const [unitsCompleted, setUnitsCompleted] = useState('18')
 
-  // Step 3 Form Data
+  // A.2 Membership
+  const [orgName, setOrgName] = useState('')
+  const [orgPosition, setOrgPosition] = useState('Member')
+  const [officeHeld, setOfficeHeld] = useState('')
+
+  // A.3 Seminar
+  const [seminarTitle, setSeminarTitle] = useState('')
+  const [organizerVenue, setOrganizerVenue] = useState('')
+  const [scopeLevel, setScopeLevel] = useState('National')
+
+  // B.1 Speaker / Consultancy
+  const [eventTitle, setEventTitle] = useState('')
+  const [speakerRole, setSpeakerRole] = useState('Keynote Speaker')
+  const [sponsoringAgency, setSponsoringAgency] = useState('')
+
+  // B.2 Publication
+  const [pubTitle, setPubTitle] = useState('')
+  const [pubType, setPubType] = useState('Scholarly Paper')
+  const [publisherIssn, setPublisherIssn] = useState('')
+
+  // B.3 Conduct of Research
+  const [researchTitle, setResearchTitle] = useState('')
+  const [researchRole, setResearchRole] = useState('Lead Researcher')
+  const [fundingStatus, setFundingStatus] = useState('Completed Institutional Research')
+
+  // B.4 Recognition or Awards
+  const [awardTitle, setAwardTitle] = useState('')
+  const [conferringBody, setConferringBody] = useState('')
+  const [awardType, setAwardType] = useState('Awardee')
+
+  // B.5 Instructional Materials
+  const [materialTitle, setMaterialTitle] = useState('')
+  const [matType, setMatType] = useState('Workbooks / Exercises / Lecture Notes (Bound)')
+  const [courseUsedIn, setCourseUsedIn] = useState('')
+
+  // B.6 Creative Work
+  const [creativeTitle, setCreativeTitle] = useState('')
+  const [exhibitionVenue, setExhibitionVenue] = useState('')
+
+  // C.1 / C.2 Service & Community
+  const [serviceTitle, setServiceTitle] = useState('')
+  const [sponsoringOrg, setSponsoringOrg] = useState('')
+  const [subType, setSubType] = useState('C.1.1 Moderator of Clubs / Organizations')
+
+  // Proof Attachment & Remarks
   const [description, setDescription] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
 
@@ -38,37 +113,69 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    if (initialCategory) {
+      setCategory(initialCategory)
+    }
+  }, [initialCategory])
+
+  // Sync Academic Year automatically on Date Achieved change
+  const handleDateChange = (e) => {
+    const d = e.target.value
+    setDateAchieved(d)
+    setAcademicYear(inferAcademicYear(d))
+  }
+
   if (!isOpen) return null
 
-  // Step 1 Validation & Next
-  const handleStep1Next = (e) => {
-    e.preventDefault()
-    setError('')
-
-    if (!title.trim() || title.trim().length < 5) {
-      setError('Accomplishment Title is required (minimum 5 characters).')
-      return
+  // Live Points Calculation
+  const calculateEstimatedPoints = () => {
+    if (category.startsWith('A.1')) {
+      if (degreeLevel.includes('Ph.D. Degree Holder')) return 40
+      if (degreeLevel.includes('Ph.D. Units')) return Math.min(10, Math.floor(Number(unitsCompleted || 0) / 3) * 2)
+      if (degreeLevel.includes('Master') && degreeLevel.includes('Holder')) return 20
+      return Math.min(10, Math.floor(Number(unitsCompleted || 0) / 3) * 1)
     }
-    if (!issuingEntity.trim()) {
-      setError('Issuing Entity / Institution / Journal is required.')
-      return
+    if (category.startsWith('A.2')) return orgPosition === 'Officer' ? 10 : 5
+    if (category.startsWith('A.3')) {
+      if (scopeLevel.includes('In-House')) return 3
+      if (scopeLevel.includes('City')) return 4
+      if (scopeLevel.includes('Regional')) return 6
+      if (scopeLevel.includes('National')) return 8
+      return 10
     }
-
-    setCurrentStep(2)
+    if (category.startsWith('B.1')) {
+      if (speakerRole.includes('Keynote')) return 10
+      if (speakerRole.includes('Resource')) return 8
+      if (speakerRole.includes('Facilitator')) return 6
+      if (speakerRole.includes('Judge')) return 5
+      return 3
+    }
+    if (category.startsWith('B.2')) {
+      if (pubType.includes('Book')) return 5
+      if (pubType.includes('Article')) return 4
+      return 5
+    }
+    if (category.startsWith('B.3')) {
+      if (fundingStatus.includes('Externally')) return 20
+      if (fundingStatus.includes('Institutional')) return 15
+      return 10
+    }
+    if (category.startsWith('B.4')) {
+      if (awardType === 'Awardee') {
+        return scopeLevel.includes('National') || scopeLevel.includes('International') ? 40 : scopeLevel.includes('Regional') ? 30 : 10
+      }
+      return scopeLevel.includes('National') ? 20 : scopeLevel.includes('Regional') ? 15 : 5
+    }
+    if (category.startsWith('B.5')) return matType.includes('Workbook') ? 20 : 10
+    if (category.startsWith('B.6')) return 20
+    if (category.startsWith('C.1')) return 20
+    if (category.startsWith('C.2')) return subType.includes('Church') || subType.includes('Community') ? 25 : 5
+    return 5
   }
 
-  // Step 2 Validation & Next
-  const handleStep2Next = (e) => {
-    e.preventDefault()
-    setError('')
-
-    if (!category || !scopeLevel || !academicYear || !dateAchieved) {
-      setError('Please complete all category, scope, and date fields.')
-      return
-    }
-
-    setCurrentStep(3)
-  }
+  const estimatedPts = calculateEstimatedPoints()
+  const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, degreeLevel || subType || pubType)
 
   // File Upload Handler
   const handleFileChange = (e) => {
@@ -83,11 +190,31 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
     }
   }
 
-  // Final Step 3 Submission
+  // Extract Normalized Title & Issuer based on Category
+  const getNormalizedTitleAndIssuer = () => {
+    if (category.startsWith('A.1')) return { title: degreeTitle || degreeLevel, issuer: institution || 'Grad School' }
+    if (category.startsWith('A.2')) return { title: orgName || 'Professional Org', issuer: officeHeld || orgPosition }
+    if (category.startsWith('A.3')) return { title: seminarTitle || 'Seminar/Training', issuer: organizerVenue || 'NDMU' }
+    if (category.startsWith('B.1')) return { title: eventTitle || 'Talk/Consultancy', issuer: sponsoringAgency || 'Sponsoring Agency' }
+    if (category.startsWith('B.2')) return { title: pubTitle || 'Publication Work', issuer: publisherIssn || 'Publisher' }
+    if (category.startsWith('B.3')) return { title: researchTitle || 'Research Project', issuer: fundingStatus }
+    if (category.startsWith('B.4')) return { title: awardTitle || 'Recognition/Award', issuer: conferringBody || 'Conferring Org' }
+    if (category.startsWith('B.5')) return { title: materialTitle || 'Instructional Material', issuer: courseUsedIn || 'Department' }
+    if (category.startsWith('B.6')) return { title: creativeTitle || 'Creative Output', issuer: exhibitionVenue || 'Exhibition Venue' }
+    return { title: serviceTitle || 'Service Project', issuer: sponsoringOrg || 'LGU/Parish' }
+  }
+
+  // Form Submission Handler
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
+    const { title: resolvedTitle, issuer: resolvedIssuer } = getNormalizedTitleAndIssuer()
+
+    if (!resolvedTitle.trim() || resolvedTitle.trim().length < 3) {
+      setError('Please complete the primary title field for this category.')
+      return
+    }
     if (!attachedFile) {
       setError('Supporting Proof Document attachment (PDF/JPG/PNG) is required.')
       return
@@ -95,378 +222,694 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
     try {
       setIsSubmitting(true)
-      await new Promise(resolve => setTimeout(resolve, 600))
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       const formattedDate = new Date(dateAchieved).toLocaleDateString('en-US', { 
         month: 'short', 
-        day: '2-digit', 
+        day: 'numeric', 
         year: 'numeric' 
       })
 
       const newEntry = {
         id: Date.now(),
-        title: title.trim(),
-        category,
-        academic_year: academicYear,
-        scope_level: scopeLevel,
-        impact_level: impactLevel,
+        title: resolvedTitle.trim(),
+        issuer: resolvedIssuer.trim(),
         date: formattedDate,
-        status: 'Pending',
-        statusLabel: 'Pending Review',
-        issuer: issuingEntity.trim(),
+        academic_year: academicYear,
+        category: category,
+        scope_level: scopeLevel,
+        claimed_points: estimatedPts,
+        status: 'Pending Review',
         description: description.trim(),
-        attached_file_name: attachedFile ? attachedFile.name : 'faculty_proof_document.pdf',
-        icon: FileText
+        attached_file_name: attachedFile ? attachedFile.name : 'proof_document.pdf'
       }
 
-      onSubmitAccomplishment(newEntry)
+      if (onSubmitAccomplishment) {
+        onSubmitAccomplishment(newEntry)
+      }
 
-      // Reset form & step
-      setCurrentStep(1)
-      setTitle('')
-      setIssuingEntity('')
-      setDescription('')
-      setAttachedFile(null)
+      setIsSubmitting(false)
       onClose()
     } catch (err) {
-      setError('Failed to submit personnel accomplishment entry. Please try again.')
-    } finally {
       setIsSubmitting(false)
+      setError('Failed to submit accomplishment. Please try again.')
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200 font-sans">
-      <div className="relative w-full max-w-xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+      
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={() => { setCurrentStep(1); setError(''); onClose(); }}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition cursor-pointer"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3.5 mb-4 shrink-0">
-          <div className="p-3 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] shadow-2xs">
-            <Award className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-xl font-extrabold text-slate-900">Submit Personnel Accomplishment</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              {currentStep === 1 && 'Step 1 of 3: Basic Accomplishment Details'}
-              {currentStep === 2 && 'Step 2 of 3: Category & Institutional Scope'}
-              {currentStep === 3 && 'Step 3 of 3: Proof Attachment & Summary'}
-            </p>
-          </div>
-        </div>
-
-        {/* Wizard Step Badges Bar */}
-        <div className="grid grid-cols-3 gap-2 mb-4 shrink-0">
-          <div className={`py-1.5 px-3 rounded-xl text-center text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-            currentStep === 1 
-              ? 'bg-[#2d8a4e] text-white shadow-xs' 
-              : currentStep > 1 
-              ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]' 
-              : 'bg-slate-100 text-slate-400'
-          }`}>
-            {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : <span>1</span>}
-            <span>Basic Info</span>
+        {/* ================= MODAL HEADER WITH LIVE ESTIMATED POINTS BADGE ================= */}
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Log New Accomplishment</h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#1b4332] text-amber-300 text-[11px] font-extrabold shadow-2xs border border-emerald-700/50">
+                  NDMU Ranking Record
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Category-Tailored Fields • Auto Academic Year ({academicYear})
+              </p>
+            </div>
           </div>
 
-          <div className={`py-1.5 px-3 rounded-xl text-center text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-            currentStep === 2 
-              ? 'bg-[#2d8a4e] text-white shadow-xs' 
-              : currentStep > 2 
-              ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]' 
-              : 'bg-slate-100 text-slate-400'
-          }`}>
-            {currentStep > 2 ? <Check className="w-3.5 h-3.5" /> : <span>2</span>}
-            <span>Category & Scope</span>
-          </div>
-
-          <div className={`py-1.5 px-3 rounded-xl text-center text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-            currentStep === 3 
-              ? 'bg-[#2d8a4e] text-white shadow-xs' 
-              : 'bg-slate-100 text-slate-400'
-          }`}>
-            <span>3</span>
-            <span>Proof & Summary</span>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Error Alert Message */}
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
+          <div className="mx-5 mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Modal Form Scrollable Content */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-4 text-xs">
+        {/* ================= CATEGORY-TAILORED ADAPTIVE FORM SCROLLABLE BODY ================= */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
           
-          {/* ================= STEP 1: BASIC ACCOMPLISHMENT DETAILS ================= */}
-          {currentStep === 1 && (
-            <form id="wizard-step-1" onSubmit={handleStep1Next} className="space-y-4">
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Accomplishment / Publication Title *
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Machine Learning Frameworks in Higher Education Analytics"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition font-medium"
-                  required
-                />
-              </div>
+          {/* CATEGORY SELECTOR AT VERY TOP */}
+          <div>
+            <ReqLabel label="Category (NDMU Rating Sheet)" value={category} />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-emerald-50/40 text-xs font-bold text-[#1b4332] focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none transition"
+            >
+              <option value="A.1 Degree/s">Area A: A.1 Educational Qualifications / Degrees</option>
+              <option value="A.2 Active Membership to Prof Orgs">Area A: A.2 Active Membership in Professional Orgs</option>
+              <option value="A.3 Attendance to Seminars/Trainings">Area A: A.3 Attendance to Seminars / Trainings</option>
+              <option value="B.1 Guest Lecturer / Consultant / Judge">Area B: B.1 Guest Lecturer / Resource Person / Consultant</option>
+              <option value="B.2 Publication">Area B: B.2 Publication (Papers, Books, Articles)</option>
+              <option value="B.3 Conduct of Research">Area B: B.3 Conduct of Research</option>
+              <option value="B.4 Professional Recognition or Awards">Area B: B.4 Recognition or Awards</option>
+              <option value="B.5 Production of Instructional Materials">Area B: B.5 Instructional Materials</option>
+              <option value="B.6 Creative Work">Area B: B.6 Creative Work</option>
+              <option value="C.1 Extra-Curricular Activities">Area C: C.1 School Involvement (Extracurricular/Orgs)</option>
+              <option value="C.2 Community Involvement">Area C: C.2 Community & Civic Involvement</option>
+            </select>
+          </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Issuing Entity / Journal / Conference / Institution *
-                </label>
-                <input
-                  type="text"
-                  value={issuingEntity}
-                  onChange={(e) => setIssuingEntity(e.target.value)}
-                  placeholder="e.g. IEEE Access Journal / CHED Region XII / DOST"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition font-medium"
-                  required
-                />
-              </div>
+          {/* ================= 100% CATEGORY-TAILORED DYNAMIC INPUTS ================= */}
 
+          {/* A.1 DEGREE TAILORED INPUTS */}
+          {category.startsWith('A.1') && (
+            <div className="space-y-3 animate-in fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Academic Year *
-                  </label>
+                  <ReqLabel label="Degree Level" value={degreeLevel} />
                   <select
-                    value={academicYear}
-                    onChange={(e) => setAcademicYear(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    value={degreeLevel}
+                    onChange={(e) => setDegreeLevel(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e]"
                   >
-                    <option value="AY 2025-2026">AY 2025-2026</option>
-                    <option value="AY 2024-2025">AY 2024-2025</option>
-                    <option value="AY 2023-2024">AY 2023-2024</option>
+                    <option value="Ph.D. Degree Holder">Ph.D. Degree Holder (40 pts)</option>
+                    <option value="Ph.D. Units">Ph.D. Units Earned (2 pts / 3 units)</option>
+                    <option value="Master's Degree Holder">Master's Degree Holder (20 pts)</option>
+                    <option value="Master's Units">Master's Units Earned (1 pt / 3 units)</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Date Achieved / Published *
-                  </label>
+                  <ReqLabel label="Degree Program / Specialization" value={degreeTitle} />
                   <input
-                    type="date"
-                    value={dateAchieved}
-                    onChange={(e) => setDateAchieved(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    type="text"
+                    value={degreeTitle}
+                    onChange={(e) => setDegreeTitle(e.target.value)}
+                    placeholder="e.g. Ph.D. in Computer Science / MA in Education"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
                     required
                   />
                 </div>
               </div>
 
-            </form>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className={degreeLevel.includes('Units') ? '' : 'sm:col-span-2'}>
+                  <ReqLabel label="University / Conferring Institution" value={institution} />
+                  <input
+                    type="text"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    placeholder="e.g. Ateneo de Manila University"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    required
+                  />
+                </div>
+
+                {degreeLevel.includes('Units') && (
+                  <div>
+                    <ReqLabel label="Units Completed" value={unitsCompleted} />
+                    <input
+                      type="number"
+                      value={unitsCompleted}
+                      onChange={(e) => setUnitsCompleted(e.target.value)}
+                      placeholder="e.g. 18"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
-          {/* ================= STEP 2: CATEGORY & SCOPE CLASSIFICATION ================= */}
-          {currentStep === 2 && (
-            <form id="wizard-step-2" onSubmit={handleStep2Next} className="space-y-4">
-              
+          {/* A.2 MEMBERSHIP TAILORED INPUTS */}
+          {category.startsWith('A.2') && (
+            <div className="space-y-3 animate-in fade-in">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
-                  >
-                    <option value="Research & Publications">Research & Publications</option>
-                    <option value="Seminars & Workshops">Seminars & Workshops</option>
-                    <option value="Extension Services">Extension Services</option>
-                    <option value="Institutional Awards">Institutional Awards</option>
-                    <option value="Certifications & Licenses">Certifications & Licenses</option>
-                  </select>
+                  <ReqLabel label="Organization Name" value={orgName} />
+                  <input
+                    type="text"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    required
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Academic / Geographic Scope *
-                  </label>
+                  <ReqLabel label="Membership Position" value={orgPosition} />
                   <select
-                    value={scopeLevel}
-                    onChange={(e) => setScopeLevel(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    value={orgPosition}
+                    onChange={(e) => setOrgPosition(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
                   >
-                    <option value="International / Scopus / WoS">International / Scopus / WoS</option>
-                    <option value="National / CHED Recognized">National / CHED Recognized</option>
-                    <option value="Regional (Region XII)">Regional (Region XII)</option>
-                    <option value="Institutional / Campus-Wide">Institutional / Campus-Wide</option>
+                    <option value="Member">Regular Member (5 pts)</option>
+                    <option value="Officer">Officer / Board Member (10 pts)</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Impact & Role Conferred *
-                </label>
-                <select
-                  value={impactLevel}
-                  onChange={(e) => setImpactLevel(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
-                >
-                  <option value="Lead Author / Principal Investigator">Lead Author / Principal Investigator</option>
-                  <option value="Co-Author / Co-Investigator">Co-Author / Co-Investigator</option>
-                  <option value="Keynote Speaker / Resource Person">Keynote Speaker / Resource Person</option>
-                  <option value="Participant / Recipient">Participant / Recipient</option>
-                </select>
-              </div>
-
-              {/* Institutional Endorsement Notice */}
-              <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-100 space-y-1">
-                <div className="flex items-center gap-1.5 text-[#1e5831] font-bold text-xs">
-                  <Sparkles className="w-4 h-4 text-[#2d8a4e]" />
-                  <span>Faculty Accreditation Notice</span>
+              {orgPosition === 'Officer' && (
+                <div>
+                  <ReqLabel label="Specific Office Held" value={officeHeld} />
+                  <input
+                    type="text"
+                    value={officeHeld}
+                    onChange={(e) => setOfficeHeld(e.target.value)}
+                    placeholder="e.g. Vice President for External Affairs"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                  />
                 </div>
-                <p className="text-[11px] text-emerald-900/80 leading-relaxed font-medium">
-                  Submitted personnel accomplishments will be reviewed by your Department Secretary and endorsed to HR for accreditation points.
-                </p>
-              </div>
-
-            </form>
+              )}
+            </div>
           )}
 
-          {/* ================= STEP 3: PROOF ATTACHMENT & SUMMARY ================= */}
-          {currentStep === 3 && (
-            <form id="wizard-step-3" onSubmit={handleSubmit} className="space-y-4">
-              
-              {/* Supporting Evidence File Upload Box */}
+          {/* A.3 SEMINARS TAILORED INPUTS */}
+          {category.startsWith('A.3') && (
+            <div className="space-y-3 animate-in fade-in">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Attach Official Supporting Document Proof * (PDF, JPG, PNG - Max 10MB)
-                </label>
-                
-                <div className="relative border-2 border-dashed border-slate-200 hover:border-[#2d8a4e] rounded-2xl p-4 text-center transition bg-slate-50/50 hover:bg-emerald-50/30 group">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  
-                  <div className="flex flex-col items-center justify-center space-y-1.5">
-                    <div className="p-2.5 rounded-xl bg-white text-[#2d8a4e] border border-slate-200 group-hover:border-emerald-300 shadow-2xs transition">
-                      <UploadCloud className="w-6 h-6" />
-                    </div>
-
-                    {attachedFile ? (
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-slate-900 flex items-center justify-center gap-1">
-                          <CheckCircle2 className="w-4 h-4 text-[#2d8a4e]" />
-                          <span>{attachedFile.name}</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-semibold">
-                          {(attachedFile.size / (1024 * 1024)).toFixed(2)} MB • Click to replace file
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-slate-800">
-                          Click or drag certificate PDF, scanned memo, or photo proof here
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-medium">
-                          Supported file types: PDF, JPG, PNG (Max 10MB)
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Description / Abstract */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Executive Summary / Abstract / Description (Optional)
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
-                  placeholder="Provide a brief summary of the research article, extension project, or seminar objective..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none font-medium"
+                <ReqLabel label="Seminar / Training Title" value={seminarTitle} />
+                <input
+                  type="text"
+                  value={seminarTitle}
+                  onChange={(e) => setSeminarTitle(e.target.value)}
+                  placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
                 />
               </div>
 
-              {/* Submission Overview Card */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1 font-medium">
-                <p className="font-bold text-slate-900 flex items-center justify-between">
-                  <span>Summary Review:</span>
-                  <span className="text-[#2d8a4e] font-extrabold">{category}</span>
-                </p>
-                <p className="text-slate-600 truncate">• {title || 'Untitled Accomplishment'}</p>
-                <p className="text-slate-500">• {scopeLevel} • {academicYear}</p>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <ReqLabel label="Organizer / Issuing Entity & Venue" value={organizerVenue} />
+                  <input
+                    type="text"
+                    value={organizerVenue}
+                    onChange={(e) => setOrganizerVenue(e.target.value)}
+                    placeholder="e.g. CHED Region XII / NDMU Campus"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                    required
+                  />
+                </div>
 
-            </form>
+                <div>
+                  <ReqLabel label="Geographic Scope" value={scopeLevel} />
+                  <select
+                    value={scopeLevel}
+                    onChange={(e) => setScopeLevel(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="In-House">In-House (NDMU) (3 pts)</option>
+                    <option value="Local">City / Provincial (4 pts)</option>
+                    <option value="Regional">Regional (6 pts)</option>
+                    <option value="National">National (8 pts)</option>
+                    <option value="International">International (10 pts)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           )}
 
-        </div>
+          {/* B.1 SPEAKER / CONSULTANCY TAILORED INPUTS */}
+          {category.startsWith('B.1') && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Event / Activity Title" value={eventTitle} />
+                <input
+                  type="text"
+                  value={eventTitle}
+                  onChange={(e) => setEventTitle(e.target.value)}
+                  placeholder="e.g. Keynote Address on Machine Learning in Higher Ed Analytics"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
+                />
+              </div>
 
-        {/* Modal Action Controls Footer */}
-        <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between shrink-0">
-          {currentStep > 1 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <ReqLabel label="Role Played" value={speakerRole} />
+                  <select
+                    value={speakerRole}
+                    onChange={(e) => setSpeakerRole(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Keynote Speaker">Keynote Speaker (10 pts)</option>
+                    <option value="Resource Person">Resource Person / Consultant (8 pts)</option>
+                    <option value="Facilitator">Facilitator / Organizer (6 pts)</option>
+                    <option value="Judge">Judge / Evaluator (5 pts)</option>
+                    <option value="Reactor">Reactor / Panelist (3 pts)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <ReqLabel label="Sponsoring Agency / Venue" value={sponsoringAgency} />
+                  <input
+                    type="text"
+                    value={sponsoringAgency}
+                    onChange={(e) => setSponsoringAgency(e.target.value)}
+                    placeholder="e.g. DOST Region XII / Ateneo"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <ReqLabel label="Scope Level" value={scopeLevel} />
+                  <select
+                    value={scopeLevel}
+                    onChange={(e) => setScopeLevel(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Local">Local</option>
+                    <option value="Regional">Regional</option>
+                    <option value="National">National</option>
+                    <option value="International">International</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* B.2 PUBLICATION TAILORED INPUTS */}
+          {category.startsWith('B.2') && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Title of Published Work / Book" value={pubTitle} />
+                <input
+                  type="text"
+                  value={pubTitle}
+                  onChange={(e) => setPubTitle(e.target.value)}
+                  placeholder="e.g. Predictive Student Performance Modeling Using Deep Learning"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <ReqLabel label="Type of Publication" value={pubType} />
+                  <select
+                    value={pubType}
+                    onChange={(e) => setPubType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Book">Book (5 pts max)</option>
+                    <option value="Scholarly Paper">Scholarly Paper (5 pts max)</option>
+                    <option value="Research Output">Research Output (5 pts max)</option>
+                    <option value="Journal Article">Journal Article (4 pts max)</option>
+                    <option value="Monograph">Monograph (4 pts max)</option>
+                    <option value="Compilation">Compilation (5 pts max)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <ReqLabel label="Publisher & ISSN/ISBN" value={publisherIssn} />
+                  <input
+                    type="text"
+                    value={publisherIssn}
+                    onChange={(e) => setPublisherIssn(e.target.value)}
+                    placeholder="e.g. IEEE Access / ISSN: 2169-3536"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <ReqLabel label="Publication Reach" value={scopeLevel} />
+                  <select
+                    value={scopeLevel}
+                    onChange={(e) => setScopeLevel(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Local">Local</option>
+                    <option value="Regional">Regional</option>
+                    <option value="National">National</option>
+                    <option value="International">International / Scopus</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* B.3 CONDUCT OF RESEARCH TAILORED INPUTS */}
+          {category.startsWith('B.3') && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Research Project Title" value={researchTitle} />
+                <input
+                  type="text"
+                  value={researchTitle}
+                  onChange={(e) => setResearchTitle(e.target.value)}
+                  placeholder="e.g. AI-Driven Student Retention & Early Warning Analytics Framework"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <ReqLabel label="Research Role" value={researchRole} />
+                  <select
+                    value={researchRole}
+                    onChange={(e) => setResearchRole(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Lead Researcher">Lead Researcher / Principal Investigator</option>
+                    <option value="Co-Researcher">Co-Researcher / Project Member</option>
+                  </select>
+                </div>
+
+                <div>
+                  <ReqLabel label="Funding Status" value={fundingStatus} />
+                  <select
+                    value={fundingStatus}
+                    onChange={(e) => setFundingStatus(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Completed Institutional Research">Completed Institutional Research (15 pts)</option>
+                    <option value="Externally Funded Research Project">Externally Funded Project (20 pts)</option>
+                    <option value="Ongoing Commissioned Research">Ongoing Commissioned Research (10 pts)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* B.4 RECOGNITION OR AWARDS TAILORED INPUTS */}
+          {category.startsWith('B.4') && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Award Title / Honor Received" value={awardTitle} />
+                <input
+                  type="text"
+                  value={awardTitle}
+                  onChange={(e) => setAwardTitle(e.target.value)}
+                  placeholder="e.g. NDMU Outstanding Research Faculty of the Year"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <ReqLabel label="Conferring Body / Institution" value={conferringBody} />
+                  <input
+                    type="text"
+                    value={conferringBody}
+                    onChange={(e) => setConferringBody(e.target.value)}
+                    placeholder="e.g. Notre Dame of Marbel University"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <ReqLabel label="Recognition Type" value={awardType} />
+                  <select
+                    value={awardType}
+                    onChange={(e) => setAwardType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Awardee">Awardee / Recipient</option>
+                    <option value="Nominee">Nominee</option>
+                  </select>
+                </div>
+
+                <div>
+                  <ReqLabel label="Award Scope" value={scopeLevel} />
+                  <select
+                    value={scopeLevel}
+                    onChange={(e) => setScopeLevel(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Local">Local (10 pts)</option>
+                    <option value="Regional">Provincial / Regional (30 pts)</option>
+                    <option value="National">National / International (40 pts)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* B.5 INSTRUCTIONAL MATERIALS TAILORED INPUTS */}
+          {category.startsWith('B.5') && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Title of Material" value={materialTitle} />
+                <input
+                  type="text"
+                  value={materialTitle}
+                  onChange={(e) => setMaterialTitle(e.target.value)}
+                  placeholder="e.g. Bound Laboratory Exercises Manual for Artificial Intelligence"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <ReqLabel label="Material Type" value={matType} />
+                  <select
+                    value={matType}
+                    onChange={(e) => setMatType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                  >
+                    <option value="Workbooks / Exercises / Lecture Notes (Bound)">Workbooks / Exercises / Notes (Bound - 20 pts)</option>
+                    <option value="Modules (Bound)">Modules (Bound - 10 pts)</option>
+                    <option value="Reviewers (Bound)">Reviewers (Bound - 10 pts)</option>
+                    <option value="Audio-Visual Aids">Audio-Visual Aids / Software (10 pts)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <ReqLabel label="Subject / Course Code Used In" value={courseUsedIn} />
+                  <input
+                    type="text"
+                    value={courseUsedIn}
+                    onChange={(e) => setCourseUsedIn(e.target.value)}
+                    placeholder="e.g. ITE 311 - Machine Learning"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* B.6 CREATIVE WORK TAILORED INPUTS */}
+          {category.startsWith('B.6') && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Description / Title of Creative Output" value={creativeTitle} />
+                <input
+                  type="text"
+                  value={creativeTitle}
+                  onChange={(e) => setCreativeTitle(e.target.value)}
+                  placeholder="e.g. University Digital Archiving Software / Artistic Performance"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                  required
+                />
+              </div>
+
+              <div>
+                <ReqLabel label="Venue / Exhibition / Medium" value={exhibitionVenue} />
+                <input
+                  type="text"
+                  value={exhibitionVenue}
+                  onChange={(e) => setExhibitionVenue(e.target.value)}
+                  placeholder="e.g. NDMU CITE Gallery / GitHub Open Source Repository"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {/* C.1 / C.2 SERVICE TAILORED INPUTS */}
+          {(category.startsWith('C.1') || category.startsWith('C.2')) && (
+            <div className="space-y-3 animate-in fade-in">
+              <div>
+                <ReqLabel label="Service Sub-Type" value={subType} />
+                <select
+                  value={subType}
+                  onChange={(e) => setSubType(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
+                >
+                  <option value="C.1.1 Moderator of Clubs / Organizations">C.1.1 Moderator of Clubs / Organizations (20 pts max)</option>
+                  <option value="C.1.2 Coach / Trainer">C.1.2 Coach / Trainer (20 pts max)</option>
+                  <option value="C.1.3 Membership in Working Committees">C.1.3 Membership in Working Committees (20 pts max)</option>
+                  <option value="C.2.1 Active Church Involvement">C.2.1 Active Church Involvement (25 pts max)</option>
+                  <option value="C.2.2 Community / Civic Involvement">C.2.2 Community / Civic Involvement (25 pts max)</option>
+                  <option value="C.2.3 Support to Charity / Projects">C.2.3 Support to Charity / Projects (5 pts max)</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <ReqLabel label="Name of Club / Service Project" value={serviceTitle} />
+                  <input
+                    type="text"
+                    value={serviceTitle}
+                    onChange={(e) => setServiceTitle(e.target.value)}
+                    placeholder="e.g. Computer Science Student Society / Barangay Smart Literacy Outreach"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <ReqLabel label="Sponsoring LGU / NGO / Institution" value={sponsoringOrg} />
+                  <input
+                    type="text"
+                    value={sponsoringOrg}
+                    onChange={(e) => setSponsoringOrg(e.target.value)}
+                    placeholder="e.g. Koronadal City LGU / Marist Parish"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SINGLE COMMON DATE FIELD */}
+          <div>
+            <ReqLabel label={`Date Achieved / Conferred (Auto AY: ${academicYear})`} value={dateAchieved} />
+            <input
+              type="date"
+              value={dateAchieved}
+              onChange={handleDateChange}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+              required
+            />
+          </div>
+
+          {/* INLINE PROOF ATTACHMENT BOX WITH LIVE HINT */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <ReqLabel label="Supporting Proof Attachment" value={attachedFile} />
+              <span className="text-[11px] font-bold text-emerald-700">PDF / JPG / PNG (Max 10MB)</span>
+            </div>
+
+            {/* Proof Hint Banner */}
+            <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[#1e5831] text-[11px] font-semibold flex items-center gap-2">
+              <Paperclip className="w-3.5 h-3.5 text-[#2d8a4e] shrink-0" />
+              <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
+            </div>
+
+            <div className="relative border-2 border-dashed border-slate-200 hover:border-[#2d8a4e] rounded-2xl p-4 text-center transition bg-slate-50/50 hover:bg-[#eef7f0]/30 cursor-pointer group">
+              <input
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#2d8a4e] group-hover:scale-110 transition shadow-2xs">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                {attachedFile ? (
+                  <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Attached: {attachedFile.name} ({(attachedFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Drag & drop certificate here or click to browse</p>
+                    <p className="text-[11px] text-slate-400">PDF, PNG, JPG up to 10MB</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* OPTIONAL REMARKS */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Remarks / Executive Summary (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Provide additional details or publication DOI links if applicable..."
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 outline-none transition focus:border-[#2d8a4e]"
+            />
+          </div>
+
+          {/* ACTION BUTTONS FOOTER */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <button
               type="button"
-              onClick={() => setCurrentStep(prev => prev - 1)}
-              className="px-4 py-2.5 rounded-2xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => { setCurrentStep(1); setError(''); onClose(); }}
-              className="px-4 py-2.5 rounded-2xl text-slate-500 hover:text-slate-800 font-bold text-xs transition cursor-pointer"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition"
             >
               Cancel
             </button>
-          )}
-
-          {currentStep < 3 ? (
             <button
               type="submit"
-              form={`wizard-step-${currentStep}`}
-              className="px-5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-1 shadow-md transition cursor-pointer"
-            >
-              <span>Next: {currentStep === 1 ? 'Category & Scope' : 'Proof & Summary'}</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              form="wizard-step-3"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 shadow-md transition cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
-                <span>Submitting...</span>
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
+                </>
               ) : (
                 <>
-                  <Check className="w-4 h-4" />
-                  <span>Submit Accomplishment ✓</span>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>Save Accomplishment</span>
                 </>
               )}
             </button>
-          )}
-        </div>
+          </div>
 
+        </form>
       </div>
     </div>
   )

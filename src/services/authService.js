@@ -63,6 +63,17 @@ export const DEMO_USERS = {
     department: 'Office of Student Affairs & Development',
     avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     assigned_roles: []
+  },
+
+  hr: {
+    id: 'usr_hr_001',
+    email: 'hr@ndmu.edu.ph',
+    full_name: 'Director Evelyn Tan',
+    user_type: 'hr_staff',
+    employee_id: 'HR-2010-001',
+    department: 'Human Resources Office',
+    avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    assigned_roles: []
   }
 }
 

@@ -56,22 +56,46 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   const [sortOrder, setSortOrder] = useState('newest')
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
 
+  const [initialModalCategory, setInitialModalCategory] = useState('')
+
   useEffect(() => {
     if (location.state?.openSubmissionModal) {
       setIsSubmitOpen(true)
+      if (location.state?.initialCategory) {
+        setInitialModalCategory(location.state.initialCategory)
+      }
     }
     if (location.state?.selectedCategory) {
       setSelectedCategory(location.state.selectedCategory)
     }
   }, [location.state])
 
-  // Category definitions with icons
-  const categoryDefs = [
-    { name: 'Research & Publications', icon: BookOpen },
-    { name: 'Seminars & Workshops', icon: Users },
-    { name: 'Extension Services', icon: Heart },
-    { name: 'Institutional Awards', icon: Award },
-    { name: 'Certifications & Licenses', icon: ShieldCheck }
+  // Grouped NDMU Rating Sheet Categories (Clean Personnel Labels)
+  const categoryGroups = [
+    {
+      area: 'Area A: Professional Development',
+      badge: '70 Max Pts',
+      items: [
+        { name: 'Degrees & Orgs', icon: GraduationCap, label: 'Degrees & Orgs' },
+        { name: 'Seminars & Trainings', icon: Users, label: 'Seminars & Trainings' }
+      ]
+    },
+    {
+      area: 'Area B: Productivity & Creative Work',
+      badge: '50 Max Pts',
+      items: [
+        { name: 'Lectures & Publications', icon: BookOpen, label: 'Lectures & Publications' },
+        { name: 'Research & Awards', icon: Award, label: 'Research & Awards' },
+        { name: 'Instructional Materials', icon: FileCheck, label: 'Instructional Materials' }
+      ]
+    },
+    {
+      area: 'Area C: Service & Leadership',
+      badge: '40 Max Pts',
+      items: [
+        { name: 'Service & Community', icon: Heart, label: 'Service & Community' }
+      ]
+    }
   ]
 
   // Achievements State
@@ -82,7 +106,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       location: 'IEEE Access Journal (Scopus)',
       date: 'Apr 15, 2026',
       status: 'Verified',
-      category: 'Research & Publications',
+      category: 'B.2 Publication',
       description: 'Peer-reviewed research article on predictive student performance modeling.',
       icon: BookOpen,
       attached_file_name: 'ieee_access_publication_santos.pdf'
@@ -93,7 +117,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       location: 'CHED Region XII',
       date: 'Mar 20, 2026',
       status: 'Pending Review',
-      category: 'Seminars & Workshops',
+      category: 'A.3 Attendance to Seminars/Trainings',
       description: 'Resource speaker and trainer for 45 IT department faculty members.',
       icon: Users,
       attached_file_name: 'ched_ai_workshop_certificate.pdf'
@@ -104,7 +128,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       location: 'City Government of Koronadal',
       date: 'Feb 14, 2026',
       status: 'Verified',
-      category: 'Extension Services',
+      category: 'C.2 Community Involvement',
       description: 'Project Lead for community IT extension program training local barangay secretaries.',
       icon: Heart,
       attached_file_name: 'lgu_extension_project_mou.pdf'
@@ -115,7 +139,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       location: 'Notre Dame of Marbel University',
       date: 'Jan 10, 2026',
       status: 'Verified',
-      category: 'Institutional Awards',
+      category: 'B.4 Professional Recognition or Awards',
       description: 'Conferred during University Foundation Day for highest Scopus citations.',
       icon: Award,
       attached_file_name: 'outstanding_faculty_award_2026.pdf'
@@ -126,7 +150,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       location: 'Amazon Web Services',
       date: 'Nov 5, 2025',
       status: 'Returned',
-      category: 'Certifications & Licenses',
+      category: 'A.2 Active Membership to Prof Orgs',
       description: 'International cloud architecture professional certification.',
       icon: ShieldCheck,
       attached_file_name: 'aws_solutions_architect_certificate.pdf'
@@ -141,7 +165,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       location: newEntry.issuer || 'NDMU CITE',
       date: newEntry.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       status: 'Pending Review',
-      category: newEntry.category || 'Research & Publications',
+      category: newEntry.category || 'B.2 Publication',
       description: newEntry.description || '',
       icon: BookOpen,
       attached_file_name: newEntry.attached_file_name || 'proof_document.pdf'
@@ -175,7 +199,17 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   const filteredAchievements = achievements.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           item.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCat = selectedCategory === 'All' || item.category === selectedCategory
+    const matchesCat = selectedCategory === 'All' || 
+      item.category === selectedCategory ||
+      (selectedCategory.startsWith('Area A') && item.category.startsWith('A.')) ||
+      (selectedCategory.startsWith('Area B') && item.category.startsWith('B.')) ||
+      (selectedCategory.startsWith('Area C') && item.category.startsWith('C.')) ||
+      (selectedCategory === 'Degrees & Orgs' && (item.category.includes('Degree') || item.category.includes('Membership') || item.category.includes('A.1') || item.category.includes('A.2'))) ||
+      (selectedCategory === 'Seminars & Trainings' && (item.category.includes('Seminar') || item.category.includes('Training') || item.category.includes('A.3'))) ||
+      (selectedCategory === 'Lectures & Publications' && (item.category.includes('Lecturer') || item.category.includes('Publication') || item.category.includes('B.1') || item.category.includes('B.2'))) ||
+      (selectedCategory === 'Research & Awards' && (item.category.includes('Research') || item.category.includes('Award') || item.category.includes('Recognition') || item.category.includes('B.3') || item.category.includes('B.4'))) ||
+      (selectedCategory === 'Instructional Materials' && (item.category.includes('Instructional') || item.category.includes('Material') || item.category.includes('B.5'))) ||
+      (selectedCategory === 'Service & Community' && (item.category.includes('Service') || item.category.includes('Community') || item.category.includes('Involvement') || item.category.includes('C.1') || item.category.includes('C.2')))
     const matchesStatus = selectedStatus === 'All' || item.status === selectedStatus
     return matchesSearch && matchesCat && matchesStatus
   }).sort((a, b) => {
@@ -194,8 +228,8 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     <MainLayout>
       <div className="space-y-6 font-sans">
         
-        {/* ================= 1. HEADER TITLE & TOP ACTIONS ROW ================= */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* ================= 1. HEADER TITLE BAR ================= */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Achievements</h1>
             <p className="text-xs text-slate-500 mt-1 max-w-2xl">
@@ -249,7 +283,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span><strong className="text-slate-900">{verifiedCount}</strong> Verified</span>
+            <span><strong className="text-emerald-900">{verifiedCount}</strong> Verified</span>
           </button>
 
           <button
@@ -262,7 +296,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            <span><strong className="text-slate-900">{pendingCount}</strong> Pending Review</span>
+            <span><strong className="text-amber-900">{pendingCount}</strong> Pending Review</span>
           </button>
         </div>
 
@@ -284,14 +318,29 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           {/* Select Controls & View Mode */}
           <div className="flex flex-wrap items-center gap-2">
             
-            {/* Category Select */}
+            {/* Category Select Organized with Optgroups */}
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition"
             >
               <option value="All">Category: All</option>
-              {categoryDefs.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+
+              <optgroup label="Overall Rating Areas">
+                <option value="Area A: Professional Dev">Area A: Professional Development</option>
+                <option value="Area B: Productivity & Creative">Area B: Productivity & Creative Work</option>
+                <option value="Area C: Service & Leadership">Area C: Service & Leadership</option>
+              </optgroup>
+
+              {categoryGroups.map((group) => (
+                <optgroup key={group.area} label={group.area}>
+                  {group.items.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
 
             {/* Status Select */}
@@ -473,41 +522,61 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <div className="space-y-5">
             
             {/* Widget 1: "By Category" List */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-3">
+            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-4">
               <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
                 <Filter className="w-4 h-4 text-[#2d8a4e]" />
                 <span>By Category</span>
               </h2>
 
-              <div className="space-y-1 pt-1">
-                {categoryDefs.map(cat => {
-                  const CatIcon = cat.icon
-                  const count = achievements.filter(a => a.category === cat.name).length
-                  const isSelected = selectedCategory === cat.name
+              <div className="space-y-4 pt-1">
+                {categoryGroups.map((group) => (
+                  <div key={group.area} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-emerald-800 uppercase tracking-wider px-1">
+                      <span>{group.area}</span>
+                      <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">{group.badge}</span>
+                    </div>
 
-                  return (
-                    <button
-                      key={cat.name}
-                      type="button"
-                      onClick={() => setSelectedCategory(isSelected ? 'All' : cat.name)}
-                      className={`w-full p-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
-                        isSelected 
-                          ? 'bg-[#eef7f0] text-[#1e5831] font-bold border border-[#cbe6d2]' 
-                          : 'text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <CatIcon className="w-4 h-4 text-[#2d8a4e]" />
-                        <span>{cat.name}</span>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isSelected ? 'bg-[#2d8a4e] text-white' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {count}
-                      </span>
-                    </button>
-                  )
-                })}
+                    <div className="space-y-1">
+                      {group.items.map((cat) => {
+                        const CatIcon = cat.icon
+                        const count = achievements.filter(a => 
+                          a.category === cat.name || 
+                          (cat.name === 'Degrees & Orgs' && (a.category.includes('A.1') || a.category.includes('A.2') || a.category.includes('Degree') || a.category.includes('Membership'))) ||
+                          (cat.name === 'Seminars & Trainings' && (a.category.includes('A.3') || a.category.includes('Seminar') || a.category.includes('Training'))) ||
+                          (cat.name === 'Lectures & Publications' && (a.category.includes('B.1') || a.category.includes('B.2') || a.category.includes('Publication') || a.category.includes('Lecturer'))) ||
+                          (cat.name === 'Research & Awards' && (a.category.includes('B.3') || a.category.includes('B.4') || a.category.includes('Research') || a.category.includes('Award'))) ||
+                          (cat.name === 'Instructional Materials' && (a.category.includes('B.5') || a.category.includes('B.6') || a.category.includes('Instructional') || a.category.includes('Material'))) ||
+                          (cat.name === 'Service & Community' && (a.category.includes('C.') || a.category.includes('Service') || a.category.includes('Community')))
+                        ).length
+
+                        const isSelected = selectedCategory === cat.name
+
+                        return (
+                          <button
+                            key={cat.name}
+                            type="button"
+                            onClick={() => setSelectedCategory(isSelected ? 'All' : cat.name)}
+                            className={`w-full p-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
+                              isSelected 
+                                ? 'bg-[#eef7f0] text-[#1e5831] font-bold border border-[#cbe6d2]' 
+                                : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <CatIcon className="w-4 h-4 text-[#2d8a4e]" />
+                              <span>{cat.name}</span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isSelected ? 'bg-[#2d8a4e] text-white' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {count}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -540,11 +609,12 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
       </div>
 
-      {/* 3-STEP PERSONNEL SUBMISSION MODAL */}
+      {/* SINGLE ADAPTIVE PERSONNEL SUBMISSION MODAL */}
       <PersonnelSubmissionModal
         isOpen={isSubmitOpen}
         onClose={() => setIsSubmitOpen(false)}
         onSubmitAccomplishment={handleAddNewAchievement}
+        initialCategory={initialModalCategory}
       />
     </MainLayout>
   )

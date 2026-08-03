@@ -58,6 +58,15 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
   // Navigation Items according to active role context
   const getNavItems = () => {
+    if (activeContext === 'hr_staff' || location.pathname.includes('/hr/')) {
+      return [
+        { label: 'Executive Command Center', icon: Home, path: '/hr/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Personnel Directory & Rank', icon: Users, path: '/hr/dashboard?tab=personnel', tab: 'personnel' },
+        { label: 'Faculty Verification Queue', icon: FileCheck2, path: '/hr/dashboard?tab=verification', tab: 'verification' },
+        { label: 'Accreditation & Audit Logs', icon: ShieldCheck, path: '/hr/dashboard?tab=reports', tab: 'reports' },
+      ]
+    }
+
     if (activeContext === 'osad_staff' || location.pathname.includes('/osad/')) {
       return [
         { label: 'OSAD Command Center', icon: Home, path: '/osad/dashboard?tab=overview', tab: 'overview' },
@@ -155,6 +164,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               ? 'bg-[#1d6bba] border-blue-400/40 text-white font-bold' 
               : activeContext === 'organization_moderator'
               ? 'bg-emerald-500/20 text-emerald-100 border-emerald-500/30'
+              : activeContext === 'hr_staff' || location.pathname.includes('/hr/')
+              ? 'bg-emerald-700/80 border-emerald-400/50 text-white font-bold'
               : 'bg-[#2d8a4e] border-emerald-400/30 text-white font-bold'
           }`}>
             <span className="flex items-center gap-2">
@@ -162,6 +173,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                 <ShieldCheck className="w-4 h-4 text-blue-200" />
               ) : activeContext === 'organization_moderator' ? (
                 <Building2 className="w-4 h-4 text-emerald-300" />
+              ) : activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? (
+                <Building2 className="w-4 h-4 text-emerald-200" />
               ) : (
                 <UserCheck className="w-4 h-4 text-emerald-300" />
               )}

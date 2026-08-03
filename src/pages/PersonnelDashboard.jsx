@@ -28,10 +28,12 @@ import {
 } from 'lucide-react'
 
 import { getCurrentUser, updateUserRoleContext } from '../services/authService'
+import { usePersonnelPortfolio } from '../hooks/usePersonnelPortfolio'
 
 export default function PersonnelDashboard({ currentUser: propUser }) {
   const navigate = useNavigate()
   const [currentUserState, setCurrentUserState] = useState(() => propUser || getCurrentUser())
+  const { portfolio, totals, autoPopulateFromVault } = usePersonnelPortfolio(currentUserState?.employee_id || 'EMP-2021-0842')
 
   React.useEffect(() => {
     const syncUser = () => {
@@ -51,8 +53,6 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
   const activeUser = getCurrentUser()
   const currentUser = propUser || currentUserState || activeUser
   const activeRoleContext = activeUser?.active_role_context || currentUser?.active_role_context || 'personnel'
-
-
 
   // Current user / profile state for Personnel View
   const [profile, setProfile] = useState({
@@ -173,31 +173,27 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
     ])
   }
 
-  // Category card click logic
-  const handleCategoryCardClick = (catName) => {
-    setActiveFilter(catName)
-    const timelineEl = document.getElementById('achievements-timeline')
-    if (timelineEl) {
-      timelineEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
+  // NDMU Ranking Totals
+  const claimedTotals = totals?.claimed || { acceptedTotal: 123, acceptedA: 50, acceptedB: 50, acceptedC: 23 }
+  const currentPortfolioStatus = portfolio?.status === 'HR_APPROVED'
+    ? 'HR Approved'
+    : portfolio?.status === 'ENDORSED_TO_HR'
+    ? 'Dept Endorsed'
+    : portfolio?.status === 'SUBMITTED_TO_DEP_SEC' || portfolio?.status === 'UNDER_DEP_SEC_REVIEW'
+    ? 'Pending Review'
+    : 'Draft Portfolio'
 
-  // Filtered List
+  // Filtered List for Timeline
   const filteredAccomplishments = accomplishments.filter(item => {
     if (activeFilter === 'All') return true
-    if (activeFilter === 'Verified') return item.status === 'Verified'
-    if (activeFilter === 'Pending') return item.status === 'Pending'
-    if (activeFilter === 'Endorsed') return item.status === 'Endorsed'
-    if (activeFilter === 'Certificates') return item.status === 'Verified'
+    if (activeFilter === 'Degrees & Orgs') return item.category.includes('Degree') || item.category.includes('Membership') || item.category.includes('A.1') || item.category.includes('A.2')
+    if (activeFilter === 'Seminars & Trainings') return item.category.includes('Seminar') || item.category.includes('Training') || item.category.includes('A.3')
+    if (activeFilter === 'Lectures & Publications') return item.category.includes('Lecturer') || item.category.includes('Publication') || item.category.includes('B.1') || item.category.includes('B.2')
+    if (activeFilter === 'Research & Awards') return item.category.includes('Research') || item.category.includes('Award') || item.category.includes('Recognition') || item.category.includes('B.3') || item.category.includes('B.4')
+    if (activeFilter === 'Instructional Materials') return item.category.includes('Instructional') || item.category.includes('Material') || item.category.includes('B.5')
+    if (activeFilter === 'Service & Community') return item.category.includes('Service') || item.category.includes('Community') || item.category.includes('Involvement') || item.category.includes('C.1') || item.category.includes('C.2')
     return item.category === activeFilter
   })
-
-  // Counts for Stats Row
-  const totalCount = accomplishments.length
-  const verifiedCount = accomplishments.filter(a => a.status === 'Verified').length
-  const pendingCount = accomplishments.filter(a => a.status === 'Pending').length
-  const endorsedCount = accomplishments.filter(a => a.status === 'Endorsed').length
-  const certificatesCount = verifiedCount
 
   return (
     <MainLayout onRoleChange={handleRoleChange}>
@@ -242,100 +238,120 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
             </button>
           </div>
 
-          {/* 5 Stats Cards Row */}
+          {/* 5 Personnel Portfolio Record Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 relative z-10">
             
+            {/* Card 1: Total Achievements */}
             <button
               type="button"
-              onClick={() => setActiveFilter('All')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'All'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <FolderKanban className="w-4 h-4 text-emerald-300" />
-                <span>Total Records</span>
-              </div>
-              <p className="text-3xl font-black text-white">{totalCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Verified')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Verified'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>HR Verified</span>
-              </div>
-              <p className="text-3xl font-black text-white">{verifiedCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Pending')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Pending'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <Clock className="w-4 h-4 text-amber-300" />
-                <span>Pending Review</span>
-              </div>
-              <p className="text-3xl font-black text-white">{pendingCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Endorsed')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Endorsed'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <RotateCcw className="w-4 h-4 text-emerald-300" />
-                <span>Dept. Endorsed</span>
-              </div>
-              <p className="text-3xl font-black text-white">{endorsedCount}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('Certificates')}
-              className={`p-4 rounded-2xl border text-left transition ${
-                activeFilter === 'Certificates'
-                  ? 'bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50'
-                  : 'bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28]'
-              }`}
+              onClick={() => navigate('/personnel/achievements')}
+              className="p-4 rounded-2xl border text-left transition bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50 hover:bg-[#257542] cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
                 <Award className="w-4 h-4 text-amber-300" />
-                <span>Total Proofs</span>
+                <span>Total Achievements</span>
               </div>
-              <p className="text-3xl font-black text-white">{certificatesCount}</p>
+              <p className="text-3xl font-black text-white">{recentAccomplishments.length} <span className="text-xs font-normal text-emerald-200">Records</span></p>
+            </button>
+
+            {/* Card 2: HR Verified Records */}
+            <button
+              type="button"
+              onClick={() => navigate('/personnel/achievements')}
+              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                <span>Verified Records</span>
+              </div>
+              <p className="text-3xl font-black text-white">{recentAccomplishments.filter(a => a.status === 'Verified' || a.status === 'HR Verified').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
+            </button>
+
+            {/* Card 3: Pending Review */}
+            <button
+              type="button"
+              onClick={() => navigate('/personnel/achievements')}
+              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
+                <BookOpen className="w-4 h-4 text-amber-300" />
+                <span>Pending Review</span>
+              </div>
+              <p className="text-3xl font-black text-white">{recentAccomplishments.filter(a => a.status === 'Pending Review' || a.status === 'Pending').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
+            </button>
+
+            {/* Card 4: Supporting Proofs */}
+            <button
+              type="button"
+              onClick={() => navigate('/personnel/portfolio')}
+              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                <span>Attached Proofs</span>
+              </div>
+              <p className="text-3xl font-black text-white">{recentAccomplishments.filter(a => a.proof_file || a.attached_file_name).length} <span className="text-xs font-normal text-emerald-300/80">Files</span></p>
+            </button>
+
+            {/* Card 5: Portfolio Lifecycle Status */}
+            <button
+              type="button"
+              onClick={() => navigate('/personnel/portfolio')}
+              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
+            >
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
+                <ShieldCheck className="w-4 h-4 text-amber-300" />
+                <span>Portfolio Status</span>
+              </div>
+              <p className="text-sm font-extrabold text-amber-300 line-clamp-1">
+                {portfolioState?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
+                 portfolioState?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
+                 portfolioState?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
+              </p>
             </button>
 
           </div>
-
         </div>
 
         {/* ================= QUICK ACTIONS SECTION ================= */}
         <div>
-          <h2 className="text-base font-bold text-slate-800 mb-3">Quick Actions</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h2 className="text-base font-bold text-slate-800">Quick Actions</h2>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true, initialCategory: 'A.3 Attendance to Seminars/Trainings' } })}
+                className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-bold border border-emerald-200/80 shrink-0 transition cursor-pointer"
+              >
+                + Log Seminar
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true, initialCategory: 'B.2 Publication' } })}
+                className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-bold border border-emerald-200/80 shrink-0 transition cursor-pointer"
+              >
+                + Log Publication
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true, initialCategory: 'B.1 Guest Lecturer / Consultant / Judge' } })}
+                className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-bold border border-emerald-200/80 shrink-0 transition cursor-pointer"
+              >
+                + Log Speaker
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true, initialCategory: 'A.2 Active Membership to Prof Orgs' } })}
+                className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 text-[11px] font-bold border border-emerald-200/80 shrink-0 transition cursor-pointer"
+              >
+                + Log Org/Service
+              </button>
+            </div>
+          </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
-            {/* Card 1: Submit New Accomplishment */}
+            {/* Card 1: Add Achievement */}
             <button
               type="button"
               onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true } })}
@@ -345,11 +361,25 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
                 <Award className="w-6 h-6" />
               </div>
               <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                Submit New Accomplishment
+                Add Achievement
               </span>
             </button>
 
-            {/* Card 2: Edit Basic Information */}
+            {/* Card 2: Manage Portfolio */}
+            <button
+              type="button"
+              onClick={() => navigate('/personnel/portfolio')}
+              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
+                <FileText className="w-6 h-6" />
+              </div>
+              <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
+                Manage Portfolio
+              </span>
+            </button>
+
+            {/* Card 3: Edit Basic Information */}
             <button
               type="button"
               onClick={() => setIsEditInfoOpen(true)}
@@ -360,20 +390,6 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
               </div>
               <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
                 Edit Basic Information
-              </span>
-            </button>
-
-            {/* Card 3: My Verified Proofs */}
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/achievements')}
-              className="p-5 rounded-2xl bg-white border border-slate-100 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Star className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 group-hover:text-[#2d8a4e] transition">
-                My Verified Proofs
               </span>
             </button>
 
@@ -400,7 +416,15 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
 
           {/* Filter Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-3 scrollbar-none">
-            {['All', 'Research & Publications', 'Seminars & Workshops', 'Extension Services', 'Institutional Awards', 'Certifications & Licenses'].map((cat) => (
+            {[
+              'All',
+              'Degrees & Orgs',
+              'Seminars & Trainings',
+              'Lectures & Publications',
+              'Research & Awards',
+              'Instructional Materials',
+              'Service & Community'
+            ].map((cat) => (
               <button
                 key={cat}
                 type="button"

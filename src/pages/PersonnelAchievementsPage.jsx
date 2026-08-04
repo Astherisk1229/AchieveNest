@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import PersonnelSubmissionModal from '../components/personnel/PersonnelSubmissionModal'
+import RichAchievementSearchBar from '../components/personnel/RichAchievementSearchBar'
+import AchievementPopoverMenu from '../components/personnel/AchievementPopoverMenu'
+import AchievementPreviewModal from '../components/personnel/AchievementPreviewModal'
+import usePersonnelAchievements from '../hooks/usePersonnelAchievements'
 import { 
   Trophy, 
   Plus, 
   Download, 
-  Search, 
   Filter, 
   LayoutGrid, 
   List, 
@@ -14,8 +17,6 @@ import {
   Users, 
   Heart, 
   Award, 
-  Briefcase, 
-  Star, 
   MoreVertical, 
   CheckCircle2, 
   Clock, 
@@ -25,8 +26,9 @@ import {
   ChevronRight,
   Info,
   BookOpen,
-  Building2,
-  ShieldCheck
+  Star,
+  ExternalLink,
+  Briefcase
 } from 'lucide-react'
 import { getCurrentUser } from '../services/authService'
 
@@ -48,14 +50,36 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
   const location = useLocation()
 
-  // State controls
-  const [isSubmitOpen, setIsSubmitOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('All')
-  const [selectedStatus, setSelectedStatus] = useState('All')
-  const [sortOrder, setSortOrder] = useState('newest')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
+  // Use custom MVC bridge hook
+  const {
+    achievements,
+    filteredAchievements,
+    searchSuggestions,
+    stats,
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory,
+    selectedStatus,
+    setSelectedStatus,
+    sortOrder,
+    setSortOrder,
+    viewMode,
+    setViewMode,
+    previewItem,
+    setPreviewItem,
+    popoverState,
+    setPopoverState,
+    addAchievement,
+    updateAchievement,
+    deleteAchievement,
+    toggleFavorite,
+    attachToPortfolio
+  } = usePersonnelAchievements()
 
+  // Submission & Edit Modals State
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
   const [initialModalCategory, setInitialModalCategory] = useState('')
 
   useEffect(() => {
@@ -68,9 +92,9 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     if (location.state?.selectedCategory) {
       setSelectedCategory(location.state.selectedCategory)
     }
-  }, [location.state])
+  }, [location.state, setSelectedCategory])
 
-  // Grouped NDMU Rating Sheet Categories (Clean Personnel Labels)
+  // Grouped NDMU Rating Sheet Categories
   const categoryGroups = [
     {
       area: 'Area A: Professional Development',
@@ -98,92 +122,41 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     }
   ]
 
-  // Achievements State
-  const [achievements, setAchievements] = useState([
-    {
-      id: 1,
-      title: 'Machine Learning Frameworks in Higher Education Analytics',
-      location: 'IEEE Access Journal (Scopus)',
-      date: 'Apr 15, 2026',
-      status: 'Verified',
-      category: 'B.2 Publication',
-      description: 'Peer-reviewed research article on predictive student performance modeling.',
-      icon: BookOpen,
-      attached_file_name: 'ieee_access_publication_santos.pdf'
-    },
-    {
-      id: 2,
-      title: 'CHED Regional Training on AI Curriculum Integration',
-      location: 'CHED Region XII',
-      date: 'Mar 20, 2026',
-      status: 'Pending Review',
-      category: 'A.3 Attendance to Seminars/Trainings',
-      description: 'Resource speaker and trainer for 45 IT department faculty members.',
-      icon: Users,
-      attached_file_name: 'ched_ai_workshop_certificate.pdf'
-    },
-    {
-      id: 3,
-      title: 'Koronadal City LGU Digital Governance Extension Project',
-      location: 'City Government of Koronadal',
-      date: 'Feb 14, 2026',
-      status: 'Verified',
-      category: 'C.2 Community Involvement',
-      description: 'Project Lead for community IT extension program training local barangay secretaries.',
-      icon: Heart,
-      attached_file_name: 'lgu_extension_project_mou.pdf'
-    },
-    {
-      id: 4,
-      title: 'NDMU Outstanding Research Faculty of the Year',
-      location: 'Notre Dame of Marbel University',
-      date: 'Jan 10, 2026',
-      status: 'Verified',
-      category: 'B.4 Professional Recognition or Awards',
-      description: 'Conferred during University Foundation Day for highest Scopus citations.',
-      icon: Award,
-      attached_file_name: 'outstanding_faculty_award_2026.pdf'
-    },
-    {
-      id: 5,
-      title: 'AWS Certified Solutions Architect - Associate',
-      location: 'Amazon Web Services',
-      date: 'Nov 5, 2025',
-      status: 'Returned',
-      category: 'A.2 Active Membership to Prof Orgs',
-      description: 'International cloud architecture professional certification.',
-      icon: ShieldCheck,
-      attached_file_name: 'aws_solutions_architect_certificate.pdf'
-    }
-  ])
-
   // Add new achievement handler
   const handleAddNewAchievement = (newEntry) => {
-    const formattedEntry = {
-      id: newEntry.id || Date.now(),
-      title: newEntry.title,
-      location: newEntry.issuer || 'NDMU CITE',
-      date: newEntry.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      status: 'Pending Review',
-      category: newEntry.category || 'B.2 Publication',
-      description: newEntry.description || '',
-      icon: BookOpen,
-      attached_file_name: newEntry.attached_file_name || 'proof_document.pdf'
+    if (editingItem) {
+      updateAchievement(editingItem.id, newEntry)
+      setEditingItem(null)
+    } else {
+      addAchievement(newEntry)
     }
+  }
 
-    setAchievements([formattedEntry, ...achievements])
+  // File download simulation helper
+  const handleDownloadProof = (item) => {
+    const filename = item.attached_file_name || 'proof_document.pdf'
+    const blob = new Blob([`NDMU Proof Document: ${item.title}\nIssuer: ${item.location}\nDate: ${item.date}`], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   // Export CSV Handler
   const handleExportCSV = () => {
-    const headers = ['ID', 'Title', 'Issuing Institution', 'Category', 'Date', 'Status']
+    const headers = ['ID', 'Title', 'Issuing Institution', 'Category', 'Date', 'Status', 'Portfolio Status']
     const rows = achievements.map(a => [
       a.id,
       `"${a.title.replace(/"/g, '""')}"`,
       `"${a.location}"`,
       `"${a.category}"`,
       `"${a.date}"`,
-      `"${a.status}"`
+      `"${a.status}"`,
+      `"${a.portfolio_status || 'Available'}"`
     ])
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const encodedUri = encodeURI(csvContent)
@@ -195,34 +168,18 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     document.body.removeChild(link)
   }
 
-  // Filtered & Sorted List
-  const filteredAchievements = achievements.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.location.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCat = selectedCategory === 'All' || 
-      item.category === selectedCategory ||
-      (selectedCategory.startsWith('Area A') && item.category.startsWith('A.')) ||
-      (selectedCategory.startsWith('Area B') && item.category.startsWith('B.')) ||
-      (selectedCategory.startsWith('Area C') && item.category.startsWith('C.')) ||
-      (selectedCategory === 'Degrees & Orgs' && (item.category.includes('Degree') || item.category.includes('Membership') || item.category.includes('A.1') || item.category.includes('A.2'))) ||
-      (selectedCategory === 'Seminars & Trainings' && (item.category.includes('Seminar') || item.category.includes('Training') || item.category.includes('A.3'))) ||
-      (selectedCategory === 'Lectures & Publications' && (item.category.includes('Lecturer') || item.category.includes('Publication') || item.category.includes('B.1') || item.category.includes('B.2'))) ||
-      (selectedCategory === 'Research & Awards' && (item.category.includes('Research') || item.category.includes('Award') || item.category.includes('Recognition') || item.category.includes('B.3') || item.category.includes('B.4'))) ||
-      (selectedCategory === 'Instructional Materials' && (item.category.includes('Instructional') || item.category.includes('Material') || item.category.includes('B.5'))) ||
-      (selectedCategory === 'Service & Community' && (item.category.includes('Service') || item.category.includes('Community') || item.category.includes('Involvement') || item.category.includes('C.1') || item.category.includes('C.2')))
-    const matchesStatus = selectedStatus === 'All' || item.status === selectedStatus
-    return matchesSearch && matchesCat && matchesStatus
-  }).sort((a, b) => {
-    if (sortOrder === 'newest') return new Date(b.date) - new Date(a.date)
-    if (sortOrder === 'oldest') return new Date(a.date) - new Date(b.date)
-    if (sortOrder === 'title') return a.title.localeCompare(b.title)
-    return 0
-  })
+  // Open popover menu anchored at mouse coordinates
+  const handleOpenPopover = (e, item) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    setPopoverState({
+      id: item.id,
+      x: rect.left,
+      y: rect.bottom
+    })
+  }
 
-  // Quick Stat Counts
-  const totalCount = achievements.length
-  const verifiedCount = achievements.filter(a => a.status === 'Verified').length
-  const pendingCount = achievements.filter(a => a.status === 'Pending Review' || a.status === 'Pending').length
+  const activePopoverItem = achievements.find(a => a.id === popoverState.id)
 
   return (
     <MainLayout>
@@ -233,7 +190,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Achievements</h1>
             <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-              View, manage, and track your achievements. Attach supporting documents for verification by your department secretary and HR.
+              Log and manage your official accomplishment records. Consolidate proof documents for inclusion in your annual NDMU evaluation portfolio.
             </p>
           </div>
 
@@ -244,12 +201,12 @@ export default function PersonnelAchievementsPage({ currentUser }) {
               className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] text-xs font-bold flex items-center gap-2 transition shadow-2xs cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>Export Achievements</span>
+              <span>Export CSV</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setIsSubmitOpen(true)}
+              onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
               className="px-4.5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md cursor-pointer"
             >
               <Plus className="w-4 h-4" />
@@ -258,7 +215,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           </div>
         </div>
 
-        {/* ================= 2. 3 STAT PILLS ROW ================= */}
+        {/* ================= 2. STAT PILLS ROW ================= */}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -270,7 +227,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-[#2d8a4e]"></span>
-            <span><strong className="text-slate-900">{totalCount}</strong> Total Achievements</span>
+            <span><strong className="text-slate-900">{stats.total}</strong> Total Logged</span>
           </button>
 
           <button
@@ -283,7 +240,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span><strong className="text-emerald-900">{verifiedCount}</strong> Verified</span>
+            <span><strong className="text-emerald-900">{stats.verified}</strong> Verified in Portfolio</span>
           </button>
 
           <button
@@ -296,24 +253,35 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             }`}
           >
             <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            <span><strong className="text-amber-900">{pendingCount}</strong> Pending Review</span>
+            <span><strong className="text-amber-900">{stats.pending}</strong> Pending Review</span>
           </button>
+
+          {stats.returned > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedStatus('Returned')}
+              className={`px-4 py-2 rounded-full border text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                selectedStatus === 'Returned'
+                  ? 'bg-rose-50 border-rose-400 text-rose-900 ring-2 ring-rose-300/40 shadow-xs'
+                  : 'bg-white/80 border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+              <span><strong className="text-rose-900">{stats.returned}</strong> Returned</span>
+            </button>
+          )}
         </div>
 
-        {/* ================= 3. FILTER & SEARCH CONTROL TOOLBAR ================= */}
+        {/* ================= 3. FILTER & RICH SEARCH CONTROL TOOLBAR ================= */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-3">
           
-          {/* Search Box */}
-          <div className="relative flex-1 min-w-[200px] sm:min-w-[280px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search achievements..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 text-xs text-slate-800 outline-none transition"
-            />
-          </div>
+          {/* Rich Autocomplete & Grouped Suggestions Search Input */}
+          <RichAchievementSearchBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            suggestions={searchSuggestions}
+            onSelectSuggestion={(val) => setSearchTerm(val)}
+          />
 
           {/* Select Controls & View Mode */}
           <div className="flex flex-wrap items-center gap-2">
@@ -322,13 +290,13 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition"
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition cursor-pointer"
             >
               <option value="All">Category: All</option>
 
               <optgroup label="Overall Rating Areas">
-                <option value="Area A: Professional Dev">Area A: Professional Development</option>
-                <option value="Area B: Productivity & Creative">Area B: Productivity & Creative Work</option>
+                <option value="Area A: Professional Development">Area A: Professional Development</option>
+                <option value="Area B: Productivity & Creative Work">Area B: Productivity & Creative Work</option>
                 <option value="Area C: Service & Leadership">Area C: Service & Leadership</option>
               </optgroup>
 
@@ -347,7 +315,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition"
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition cursor-pointer"
             >
               <option value="All">Status: All</option>
               <option value="Verified">Verified</option>
@@ -359,7 +327,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition"
+              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition cursor-pointer"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -403,36 +371,60 @@ export default function PersonnelAchievementsPage({ currentUser }) {
               </div>
             ) : viewMode === 'grid' ? (
               
-              /* GRID VIEW MATCHING STUDENT UI REFERENCE EXACLTY */
+              /* GRID VIEW MATCHING USER REFERENCE IMAGE */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {filteredAchievements.map((item) => {
-                  const CategoryIcon = item.icon || Trophy
+                  const CategoryIcon = BookOpen
                   return (
                     <div
                       key={item.id}
-                      className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition overflow-hidden flex flex-col justify-between group"
+                      onClick={() => setPreviewItem(item)}
+                      className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition overflow-hidden flex flex-col justify-between group cursor-pointer relative"
                     >
-                      {/* Green Certificate Banner Top Graphic */}
+                      {/* Green Certificate Banner Top Graphic with Hover Controls */}
                       <div className="bg-[#2d8a4e] h-32 p-4 flex flex-col items-center justify-center text-white relative">
-                        <button
-                          type="button"
-                          onClick={() => alert(`Options for: ${item.title}`)}
-                          className="absolute top-3 right-3 p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
+                        
+                        {/* Hover Quick Action Buttons Top Right (Favorite & 3-Dot Options) */}
+                        <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition z-10">
+                          {/* Favorite Star Toggle Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id) }}
+                            className={`p-1.5 rounded-full backdrop-blur-md transition cursor-pointer ${
+                              item.is_favorited ? 'bg-amber-400 text-slate-900 shadow-sm' : 'bg-white/20 hover:bg-white/30 text-white'
+                            }`}
+                            title={item.is_favorited ? 'Unfavorite' : 'Favorite'}
+                          >
+                            <Star className={`w-3.5 h-3.5 ${item.is_favorited ? 'fill-slate-900' : ''}`} />
+                          </button>
+
+                          {/* 3-Dot Options Button (Matches User Reference Image) */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenPopover(e, item)}
+                            className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 text-white transition cursor-pointer shadow-sm"
+                            title="More options"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         
                         <CategoryIcon className="w-7 h-7 text-amber-300 mb-1" />
-                        <span className="text-[10px] font-black tracking-widest uppercase text-emerald-100">CERTIFICATE</span>
+                        <span className="text-[10px] font-black tracking-widest uppercase text-emerald-100">PROOF CERTIFICATE</span>
                       </div>
 
                       {/* Card Content Body */}
                       <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                         <div>
-                          {/* Category Tag */}
-                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] text-[10px] font-bold mb-2">
-                            {item.category}
-                          </span>
+                          {/* Category Tag & Portfolio Link Badge */}
+                          <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                            <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] text-[10px] font-bold">
+                              {item.category}
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-400 truncate max-w-[140px]">
+                              {item.portfolio_status || 'Available'}
+                            </span>
+                          </div>
                           
                           <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition leading-snug">
                             {item.title}
@@ -449,7 +441,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                               <CheckCircle2 className="w-3 h-3 text-[#2d8a4e]" /> Verified
                             </span>
                           )}
-                          {item.status === 'Pending Review' && (
+                          {(item.status === 'Pending Review' || item.status === 'Pending') && (
                             <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold flex items-center gap-1">
                               <Clock className="w-3 h-3 text-amber-600" /> Pending Review
                             </span>
@@ -470,39 +462,43 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
               /* LIST VIEW */
               <div className="space-y-3">
-                {filteredAchievements.map((item) => {
-                  const CategoryIcon = item.icon || Trophy
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-[#2d8a4e] transition flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-10 h-10 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center shrink-0">
-                          <CategoryIcon className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
-                          <p className="text-xs text-slate-400">{item.location} • {item.date}</p>
-                        </div>
+                {filteredAchievements.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setPreviewItem(item)}
+                    className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-[#2d8a4e] transition flex items-center justify-between gap-4 cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-10 h-10 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center shrink-0">
+                        <BookOpen className="w-5 h-5" />
                       </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100">
-                          {item.category}
-                        </span>
-                        <span className="text-xs font-bold text-slate-700">{item.status}</span>
+                      <div className="truncate">
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#2d8a4e] transition truncate">{item.title}</h3>
+                        <p className="text-xs text-slate-400">{item.location} • {item.date}</p>
                       </div>
                     </div>
-                  )
-                })}
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100">
+                        {item.category}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenPopover(e, item)}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
             )}
 
             {/* Pagination Footer */}
             <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center justify-between text-xs text-slate-500">
-              <span>Showing <strong>1-{filteredAchievements.length}</strong> of <strong>{totalCount}</strong> achievements</span>
+              <span>Showing <strong>1-{filteredAchievements.length}</strong> of <strong>{stats.total}</strong> achievements</span>
               <div className="flex items-center gap-1">
                 <button disabled className="p-1.5 rounded-lg border border-slate-200 text-slate-300 cursor-not-allowed">
                   <ChevronLeft className="w-4 h-4" />
@@ -580,21 +576,19 @@ export default function PersonnelAchievementsPage({ currentUser }) {
               </div>
             </div>
 
-            {/* Widget 2: "Upload Tips" Box */}
+            {/* Widget 2: Portfolio Consolidation Tip */}
             <div className="bg-[#eef7f0]/60 rounded-3xl p-5 border border-[#cbe6d2] space-y-3 text-xs">
               <div className="flex items-center gap-2 text-[#1e5831] font-extrabold">
-                <Info className="w-4 h-4 text-[#2d8a4e]" />
-                <span>Upload Tips</span>
+                <Briefcase className="w-4 h-4 text-[#2d8a4e]" />
+                <span>Annual Ranking Tip</span>
               </div>
 
-              <ul className="space-y-2 text-slate-600 text-[11px] leading-relaxed list-disc pl-4">
-                <li>Upload supporting documents for faster verification by your department secretary.</li>
-                <li>Ensure documents are clear and legible before uploading.</li>
-                <li>Include official certificates, publication memos, or event proofs.</li>
-              </ul>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Log individual accomplishments here to build your proof library. To submit for evaluation, attach items to your <strong>AY 2025-2026 Evaluation Portfolio</strong> package.
+              </p>
 
               <div className="pt-2 border-t border-[#cbe6d2]">
-                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Accepted File Formats</p>
+                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Accepted Proof Formats</p>
                 <div className="flex items-center gap-1.5">
                   <span className="px-2 py-0.5 rounded-md bg-white border border-[#cbe6d2] text-[10px] font-bold text-slate-700">PDF</span>
                   <span className="px-2 py-0.5 rounded-md bg-white border border-[#cbe6d2] text-[10px] font-bold text-slate-700">JPG</span>
@@ -609,12 +603,51 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
       </div>
 
-      {/* SINGLE ADAPTIVE PERSONNEL SUBMISSION MODAL */}
+      {/* THREE-DOT POPOVER OPTIONS MENU */}
+      {popoverState.id && (
+        <AchievementPopoverMenu
+          achievement={activePopoverItem}
+          position={popoverState}
+          onClose={() => setPopoverState({ id: null, x: 0, y: 0 })}
+          onOpenPreview={(item) => setPreviewItem(item)}
+          onEdit={(item) => {
+            setEditingItem(item)
+            setIsSubmitOpen(true)
+          }}
+          onDownload={handleDownloadProof}
+          onResubmit={(item) => {
+            setEditingItem(item)
+            setIsSubmitOpen(true)
+          }}
+          onAttachPortfolio={attachToPortfolio}
+          onDelete={deleteAchievement}
+          onToggleFavorite={toggleFavorite}
+        />
+      )}
+
+      {/* DUAL-PANE LIGHTBOX PREVIEW MODAL */}
+      <AchievementPreviewModal
+        isOpen={Boolean(previewItem)}
+        achievement={previewItem}
+        onClose={() => setPreviewItem(null)}
+        onEdit={(item) => {
+          setEditingItem(item)
+          setIsSubmitOpen(true)
+        }}
+        onDownload={handleDownloadProof}
+        onResubmit={(item) => {
+          setEditingItem(item)
+          setIsSubmitOpen(true)
+        }}
+      />
+
+      {/* PERSONNEL SUBMISSION & EDIT MODAL */}
       <PersonnelSubmissionModal
         isOpen={isSubmitOpen}
-        onClose={() => setIsSubmitOpen(false)}
+        onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
         onSubmitAccomplishment={handleAddNewAchievement}
         initialCategory={initialModalCategory}
+        editingItem={editingItem}
       />
     </MainLayout>
   )

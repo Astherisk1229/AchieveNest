@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
+import SecurityController from '../../controllers/SecurityController.js'
 
 // Helper component for required field labels (Red Asterisk when unfilled -> Green Checkmark when filled)
 const ReqLabel = ({ label, value }) => {
@@ -177,16 +178,21 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   const estimatedPts = calculateEstimatedPoints()
   const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, degreeLevel || subType || pubType)
 
-  // File Upload Handler
-  const handleFileChange = (e) => {
+  // Enhanced Security File Upload Handler (10MB Limit + Magic Byte Binary Inspection + Filename Sanitization)
+  const handleFileChange = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size exceeds maximum limit of 10MB.')
+      setError('')
+      const validation = await SecurityController.validateFileUpload(file)
+      if (!validation.isValid) {
+        setError(validation.error)
+        setAttachedFile(null)
+        e.target.value = ''
         return
       }
-      setError('')
-      setAttachedFile(file)
+      const sanitizedName = SecurityController.sanitizeFilename(file.name)
+      const cleanFile = new File([file], sanitizedName, { type: file.type })
+      setAttachedFile(cleanFile)
     }
   }
 

@@ -66,7 +66,18 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+import useIdleSession from './hooks/useIdleSession'
+import SessionTimeoutModal from './components/common/SessionTimeoutModal'
+
 export default function App() {
+  const handleLogout = () => {
+    localStorage.removeItem('achievenest_current_user')
+    sessionStorage.clear()
+    window.location.href = '/'
+  }
+
+  const { showWarning, secondsRemaining, stayLoggedIn } = useIdleSession(handleLogout)
+
   return (
     <ErrorBoundary>
       <Routes>
@@ -101,7 +112,16 @@ export default function App() {
         {/* Fallback Redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      {/* Global University Terminal Inactivity Session Warning Modal */}
+      <SessionTimeoutModal
+        isOpen={showWarning}
+        secondsRemaining={secondsRemaining}
+        onStayLoggedIn={stayLoggedIn}
+        onLogoutNow={handleLogout}
+      />
     </ErrorBoundary>
   )
 }
+
 

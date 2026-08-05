@@ -27,7 +27,9 @@ import {
   Building2,
   Sparkles,
   ExternalLink,
-  Paperclip
+  Paperclip,
+  Clock,
+  CreditCard
 } from 'lucide-react'
 import { getCurrentUser } from '../services/authService'
 import { usePersonnelPortfolio } from '../hooks/usePersonnelPortfolio'
@@ -168,54 +170,12 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     <MainLayout>
       <div className="space-y-6 font-sans">
         
-        {/* ================= 1. HEADER ACTION BAR ================= */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Portfolio</h1>
-            <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-              Faculty Profile Showcase • Present your portfolio using Canva-Style Booklet Viewer with 1 Page per Accomplishment.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            
-            {/* PROMINENT CANVA BOOKLET VIEW BUTTON */}
-            <button
-              type="button"
-              onClick={() => setIsCanvaModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-[#1b4332] hover:bg-[#123124] text-amber-300 border border-emerald-800 text-xs font-black flex items-center gap-2 transition shadow-md cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>🎨 Portfolio Booklet View</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-2 transition shadow-2xs cursor-pointer"
-            >
-              <Edit3 className="w-4 h-4 text-[#2d8a4e]" />
-              <span>Edit Profile</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleShareProfile}
-              className="px-3.5 py-2 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-2 transition shadow-2xs cursor-pointer"
-            >
-              <Share2 className="w-4 h-4 text-slate-500" />
-              <span>Share</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsExportModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export Portfolio</span>
-            </button>
-          </div>
+        {/* ================= 1. PAGE TITLE HEADER ================= */}
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Portfolio</h1>
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+            Faculty Profile Showcase • Present your portfolio using Canva-Style Booklet Viewer with 1 Page per Accomplishment.
+          </p>
         </div>
 
         {/* Copy Toast Alert */}
@@ -226,56 +186,175 @@ export default function PersonnelPortfolioPage({ currentUser }) {
           </div>
         )}
 
-        {/* ================= 2. HERO PROFILE BANNER ================= */}
-        <div className="relative p-6 sm:p-8 rounded-3xl bg-[#1b4332] text-white shadow-xl overflow-hidden border border-emerald-950">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            
-            {/* Left: Avatar & Basic Details */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-              <div className="relative">
-                <img
-                  src={personnel.avatar_url}
-                  alt={personnel.full_name}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover border-2 border-amber-300 shadow-md"
-                />
-                <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#2d8a4e] text-white flex items-center justify-center border-2 border-[#1b4332]">
-                  <Check className="w-3.5 h-3.5" />
-                </span>
-              </div>
+        {/* ================= 2. HERO PROFILE BANNER (EXACT SPECIFICATION IMPLEMENTATION) ================= */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-6 relative">
+          
+          {/* SVG Background Layer: Left-Oriented Green Curvy Banner Shape with Faded Campus Backdrop */}
+          <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
+            <svg viewBox="0 0 1200 240" preserveAspectRatio="none" className="w-full h-full">
+              <defs>
+                <linearGradient id="heroGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#143d2b" />
+                  <stop offset="50%" stopColor="#1b4332" />
+                  <stop offset="100%" stopColor="#0d281e" />
+                </linearGradient>
+                <pattern id="latticePattern" width="24" height="24" patternUnits="userSpaceOnUse">
+                  <path d="M0 24L24 0M0 0l24 24" stroke="#ffffff" strokeWidth="1" strokeOpacity="0.08" />
+                </pattern>
+                <clipPath id="leftGreenCurveClip">
+                  <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" />
+                </clipPath>
+              </defs>
+              
+              {/* Left Green Curvy Shape Background (Matches Exact User Drawn Curve Line) */}
+              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#heroGreenGrad)" />
+              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#latticePattern)" />
+            </svg>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight">{personnel.full_name}</h2>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-900/80 text-amber-300 text-[10px] font-bold border border-emerald-700">
-                    {portfolio?.status || 'Draft Portfolio'}
-                  </span>
-                </div>
-                <p className="text-xs text-emerald-200 font-semibold">{personnel.designation} • {personnel.department} ({portfolio?.academic_year || 'AY 2025-2026'})</p>
-                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-300 pt-1 font-medium">
-                  <span className="flex items-center gap-1.5"><GraduationCap className="w-3.5 h-3.5 text-amber-300" /> Ph.D. Holder</span>
-                  <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-300" /> {personnel.year_level}</span>
-                  <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-amber-300" /> {personnel.location}</span>
-                </div>
-              </div>
+            {/* Campus Background Image Overlay clipped to Left Green Curvy Shape */}
+            <div className="absolute top-0 left-0 w-[18%] h-full mix-blend-overlay opacity-30 pointer-events-none overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 40% 100%, 0 100%)' }}>
+              <img
+                src="/assets/ndmu_campus_banner-Cf5FMJ9w.png"
+                alt="NDMU Campus Backdrop"
+                className="w-full h-full object-cover"
+              />
             </div>
-
-            {/* Right: Quick Stat Badges */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="px-4 py-3 rounded-2xl bg-emerald-950/80 border border-emerald-800/80 text-center">
-                <span className="text-xl font-black text-amber-300 block">{verifiedAccomplishments.length + 2}</span>
-                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Total</span>
-              </div>
-              <div className="px-4 py-3 rounded-2xl bg-emerald-950/80 border border-emerald-800/80 text-center">
-                <span className="text-xl font-black text-emerald-400 block">{verifiedAccomplishments.length}</span>
-                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Verified</span>
-              </div>
-              <div className="px-4 py-3 rounded-2xl bg-emerald-950/80 border border-emerald-800/80 text-center">
-                <span className="text-xl font-black text-white block">{verifiedAccomplishments.length + 2}</span>
-                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Proofs Attached</span>
-              </div>
-            </div>
-
           </div>
+
+          {/* Banner Header Body: Left Brand Logo & Right University Motto */}
+          <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
+            {/* NDMU Brand Logo & Seal (Left on Green Shape) */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-sm shadow-md shrink-0">
+                🔰
+              </div>
+              <div className="leading-tight">
+                <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
+                <span className="text-[9px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
+              </div>
+            </div>
+
+            {/* Motto Right (On Reserved White Area) */}
+            <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
+              Veritas • Caritas • Excellentia
+            </div>
+          </div>
+
+          {/* White Reserved Content Area with Overlapping Avatar & Details */}
+          <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 relative z-20">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+              
+              {/* Left Column: Avatar Overlapping 1/3 Green & 2/3 White + Reserved White Details */}
+              <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+                
+                {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
+                <div className="relative shrink-0 z-30 sm:-mb-1">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden">
+                    <img
+                      src={personnel.avatar_url}
+                      alt={personnel.full_name}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Faculty Details & Info Chips (In Reserved White Content Space) */}
+                <div className="space-y-1.5 pt-1 sm:pt-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">{personnel.full_name}</h2>
+                    <span className="w-5 h-5 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
+                      ✓
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-extrabold text-[#2d8a4e]">Associate Professor</p>
+                  <p className="text-xs text-slate-600 font-semibold">{personnel.department || 'College of Information Technology'}</p>
+                  <p className="text-xs text-slate-500 font-medium">Notre Dame of Marbel University</p>
+
+                  {/* Compact Credential Chips Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
+                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <span>Ph.D. in Information Technology</span>
+                    </div>
+
+                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
+                      <Clock className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <span>10+ Years of Service</span>
+                    </div>
+
+                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
+                      <CreditCard className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <span>Faculty ID: 2025-001</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Far-Right Column: Edit Profile (Top), 4 Stat Cards (Middle), Share & Export Buttons (Bottom) */}
+              <div className="flex flex-col items-start lg:items-end justify-between gap-4 shrink-0 pt-2 lg:pt-0">
+                
+                {/* Upper Right Action Button: Edit Profile */}
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-[#1b4332] text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <span>Edit Profile</span>
+                </button>
+
+                {/* 4 Summary Stat Cards Row */}
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">5</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Achievements</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">8</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Publications</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">12</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Trainings</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">3</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Awards</span>
+                  </div>
+                </div>
+
+                {/* Lower Right Action Buttons: Share & Export Portfolio */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleShareProfile}
+                    className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Share</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-md cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export Portfolio</span>
+                    <Download className="w-3 h-3 text-emerald-300" />
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
         {/* ================= 3. TWO COLUMN MAIN CONTENT GRID ================= */}
@@ -536,6 +615,20 @@ export default function PersonnelPortfolioPage({ currentUser }) {
           portfolio={portfolio}
           user={personnel}
         />
+
+        {/* FLOATING PERSISTENT PORTFOLIO BOOKLET BUTTON (LOWER RIGHT CORNER) */}
+        <button
+          type="button"
+          onClick={() => setIsCanvaModalOpen(true)}
+          className="fixed bottom-6 right-6 z-40 px-5 py-3.5 rounded-full bg-[#1b4332] hover:bg-[#123124] text-amber-300 border-2 border-amber-300/40 shadow-2xl hover:shadow-emerald-900/50 font-extrabold text-xs flex items-center gap-2.5 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
+          title="Open Canva-Style Portfolio Booklet View"
+        >
+          <div className="w-7 h-7 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-300 shrink-0 group-hover:rotate-12 transition">
+            <BookOpen className="w-4 h-4 text-amber-300" />
+          </div>
+          <span className="tracking-wide">Portfolio Booklet View</span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+        </button>
 
       </div>
     </MainLayout>

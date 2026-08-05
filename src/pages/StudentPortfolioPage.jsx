@@ -23,7 +23,10 @@ import {
   Check,
   Share2,
   Download,
-  Edit3
+  Edit3,
+  Sparkles,
+  Clock,
+  CreditCard
 } from 'lucide-react'
 
 export default function StudentPortfolioPage({ currentUser }) {
@@ -160,98 +163,178 @@ export default function StudentPortfolioPage({ currentUser }) {
     <MainLayout>
       <div className="space-y-6 font-sans pb-12">
         
-        {/* ================= TOP ACTION BAR: EDIT PROFILE, SHARE & EXPORT PORTFOLIO ================= */}
-        <div className="flex items-center justify-end gap-3 relative">
+        {/* Toast Alert */}
+        {showCopiedToast && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>Portfolio link copied to clipboard!</span>
+          </div>
+        )}
+
+        {/* ================= HERO HEADER PROFILE BANNER (EXACT SPECIFICATION IMPLEMENTATION) ================= */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-6 relative">
           
-          {showCopiedToast && (
-            <div className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] text-white text-xs font-bold shadow-md animate-in fade-in duration-200 flex items-center gap-1.5">
-              <Check className="w-3.5 h-3.5 text-emerald-200" />
-              <span>Portfolio link copied to clipboard!</span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setIsEditModalOpen(true)}
-            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold text-xs flex items-center gap-2 shadow-2xs hover:shadow-xs transition cursor-pointer"
-          >
-            <Edit3 className="w-4 h-4 text-[#2d8a4e]" />
-            <span>Edit Profile</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSharePortfolio}
-            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-2 shadow-2xs hover:shadow-xs transition cursor-pointer"
-          >
-            <Share2 className="w-4 h-4 text-slate-500" />
-            <span>Share</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="px-4.5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export Portfolio</span>
-          </button>
-
-        </div>
-
-        {/* ================= HERO HEADER PROFILE BANNER ================= */}
-        <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            
-            {/* Left Avatar & Core Bio */}
-            <div className="flex items-center gap-5">
-              <div className="relative shrink-0">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-emerald-500/40 p-1 bg-white overflow-hidden shadow-2xl">
-                  <img
-                    src={student.avatar_url}
-                    alt={student.full_name}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#2d8a4e] border-2 border-white flex items-center justify-center text-white shadow-md">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">{student.full_name}</h1>
-                <p className="text-xs text-emerald-200/90 font-medium tracking-wide">{student.student_id}</p>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-100/80 font-medium pt-1">
-                  <span className="flex items-center gap-1.5"><GraduationCap className="w-4 h-4 text-emerald-300" /> {student.program}</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-emerald-300" /> {student.year_level} - {student.age} yrs</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-300" /> {student.location}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right 3 Stat Pills */}
-            <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
+          {/* SVG Background Layer: Left-Oriented Green Curvy Banner Shape with Faded Campus Backdrop */}
+          <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
+            <svg viewBox="0 0 1200 240" preserveAspectRatio="none" className="w-full h-full">
+              <defs>
+                <linearGradient id="studentHeroGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#143d2b" />
+                  <stop offset="50%" stopColor="#1b4332" />
+                  <stop offset="100%" stopColor="#0d281e" />
+                </linearGradient>
+                <pattern id="studentLatticePattern" width="24" height="24" patternUnits="userSpaceOnUse">
+                  <path d="M0 24L24 0M0 0l24 24" stroke="#ffffff" strokeWidth="1" strokeOpacity="0.08" />
+                </pattern>
+              </defs>
               
-              <div className="px-5 py-3 rounded-2xl bg-[#133220]/90 border border-emerald-600/30 text-center min-w-[75px] shadow-sm">
-                <p className="text-2xl font-black text-white">5</p>
-                <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Total</p>
+              {/* Left Green Curvy Shape Background (Matches Exact User Drawn Curve Line) */}
+              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#studentHeroGreenGrad)" />
+              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#studentLatticePattern)" />
+            </svg>
+
+            {/* Campus Background Image Overlay clipped to Left Green Curvy Shape */}
+            <div className="absolute top-0 left-0 w-[18%] h-full mix-blend-overlay opacity-30 pointer-events-none overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 40% 100%, 0 100%)' }}>
+              <img
+                src="/assets/ndmu_campus_banner-Cf5FMJ9w.png"
+                alt="NDMU Campus Backdrop"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+
+          {/* Banner Header Body: Left Brand Logo & Right University Motto */}
+          <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
+            {/* NDMU Brand Logo & Seal (Left on Green Shape) */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-sm shadow-md shrink-0">
+                🔰
+              </div>
+              <div className="leading-tight">
+                <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
+                <span className="text-[9px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
+              </div>
+            </div>
+
+            {/* Motto Right (On Reserved White Area) */}
+            <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
+              Veritas • Caritas • Excellentia
+            </div>
+          </div>
+
+          {/* White Reserved Content Area with Overlapping Avatar & Details */}
+          <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 relative z-20">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+              
+              {/* Left Column: Avatar Overlapping 1/3 Green & 2/3 White + Reserved White Details */}
+              <div className="flex flex-col sm:flex-row sm:items-end gap-5">
+                
+                {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
+                <div className="relative shrink-0 z-30 sm:-mb-1">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden">
+                    <img
+                      src={student.avatar_url}
+                      alt={student.full_name}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Student Details & Info Chips (In Reserved White Content Space) */}
+                <div className="space-y-1.5 pt-1 sm:pt-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">{student.full_name}</h2>
+                    <span className="w-5 h-5 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
+                      ✓
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-extrabold text-[#2d8a4e]">{student.program || 'BS Computer Science'}</p>
+                  <p className="text-xs text-slate-600 font-semibold">{student.year_level || '3rd Year Student'} • Notre Dame of Marbel University</p>
+                  <p className="text-xs text-slate-500 font-medium">{student.location}</p>
+
+                  {/* Compact Credential Chips Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
+                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
+                      <GraduationCap className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <span>{student.program || 'BS Computer Science'}</span>
+                    </div>
+
+                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
+                      <Clock className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <span>{student.year_level || '3rd Year'} ({student.age || 21} yrs)</span>
+                    </div>
+
+                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
+                      <CreditCard className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <span>Student ID: {student.student_id || '2024-01234'}</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              <div className="px-5 py-3 rounded-2xl bg-[#133220]/90 border border-emerald-600/30 text-center min-w-[75px] shadow-sm">
-                <p className="text-2xl font-black text-white">3</p>
-                <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Verified</p>
-              </div>
+              {/* Far-Right Column: Edit Profile (Top), 4 Stat Cards (Middle), Share & Export Buttons (Bottom) */}
+              <div className="flex flex-col items-start lg:items-end justify-between gap-4 shrink-0 pt-2 lg:pt-0">
+                
+                {/* Upper Right Action Button: Edit Profile */}
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-[#1b4332] text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <span>Edit Profile</span>
+                </button>
 
-              <div className="px-5 py-3 rounded-2xl bg-[#133220]/90 border border-emerald-600/30 text-center min-w-[75px] shadow-sm">
-                <p className="text-2xl font-black text-amber-300">30</p>
-                <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Points</p>
+                {/* 4 Summary Stat Cards Row */}
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">5</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Achievements</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">3</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Verified</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">5</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Trainings</span>
+                  </div>
+
+                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
+                    <span className="text-xl font-black text-[#1b4332] block leading-none">2</span>
+                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Awards</span>
+                  </div>
+                </div>
+
+                {/* Lower Right Action Buttons: Share & Export Portfolio */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSharePortfolio}
+                    className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Share</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-md cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export Portfolio</span>
+                    <Download className="w-3 h-3 text-emerald-300" />
+                  </button>
+                </div>
+
               </div>
 
             </div>
-
           </div>
 
         </div>
@@ -563,6 +646,20 @@ export default function StudentPortfolioPage({ currentUser }) {
         skills={skills}
         onSave={handleSaveStudentProfile}
       />
+
+      {/* FLOATING PERSISTENT PORTFOLIO BOOKLET BUTTON (LOWER RIGHT CORNER) */}
+      <button
+        type="button"
+        onClick={() => setIsExportModalOpen(true)}
+        className="fixed bottom-6 right-6 z-40 px-5 py-3.5 rounded-full bg-[#2d8a4e] hover:bg-[#236e3e] text-white border-2 border-emerald-300/40 shadow-2xl hover:shadow-emerald-900/50 font-extrabold text-xs flex items-center gap-2.5 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
+        title="Open Student Portfolio Booklet & Export Builder"
+      >
+        <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white shrink-0 group-hover:rotate-12 transition">
+          <BookOpen className="w-4 h-4 text-white" />
+        </div>
+        <span className="tracking-wide">Portfolio Booklet View</span>
+        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+      </button>
     </MainLayout>
   )
 }

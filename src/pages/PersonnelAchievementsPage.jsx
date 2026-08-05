@@ -171,10 +171,12 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   // Open popover menu anchored at mouse coordinates
   const handleOpenPopover = (e, item) => {
     e.stopPropagation()
-    const rect = e.currentTarget.getBoundingClientRect()
+    const targetElement = e.currentTarget
+    const rect = targetElement.getBoundingClientRect()
     setPopoverState({
       id: item.id,
-      x: rect.left,
+      targetElement,
+      x: rect.left + rect.width / 2,
       y: rect.bottom
     })
   }
@@ -607,6 +609,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       {popoverState.id && (
         <AchievementPopoverMenu
           achievement={activePopoverItem}
+          targetElement={popoverState.targetElement}
           position={popoverState}
           onClose={() => setPopoverState({ id: null, x: 0, y: 0 })}
           onOpenPreview={(item) => setPreviewItem(item)}

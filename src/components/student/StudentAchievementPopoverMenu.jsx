@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { 
   ExternalLink, 
   Info, 
@@ -13,10 +13,10 @@ import {
 } from 'lucide-react'
 
 /**
- * AchievementPopoverMenu.jsx
- * Popover dropdown menu for achievement cards matching the design reference image.
+ * StudentAchievementPopoverMenu.jsx
+ * Popover dropdown menu for student achievement cards strictly adapted to student logic.
  */
-export default function AchievementPopoverMenu({
+export default function StudentAchievementPopoverMenu({
   achievement,
   targetElement = null,
   position = { x: 0, y: 0 },
@@ -30,8 +30,8 @@ export default function AchievementPopoverMenu({
   onToggleFavorite
 }) {
   const popoverRef = useRef(null)
-  const [copied, setCopied] = React.useState(false)
-  const [currentPos, setCurrentPos] = React.useState(position)
+  const [copied, setCopied] = useState(false)
+  const [currentPos, setCurrentPos] = useState(position)
 
   // Sync position whenever initial position or targetElement changes
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function AchievementPopoverMenu({
     function handleClickOutside(e) {
       if (
         popoverRef.current && 
-        !popoverRef.current.contains(e.target) &&
+        !popoverRef.current.contains(e.target) && 
         (!targetElement || !targetElement.contains(e.target))
       ) {
         onClose()
@@ -101,21 +101,23 @@ export default function AchievementPopoverMenu({
 
   if (!achievement) return null
 
-  const isEditable = achievement.canEdit ? achievement.canEdit() : achievement.status !== 'Verified'
-  const isDeletable = achievement.canDelete ? achievement.canDelete() : achievement.status !== 'Verified'
+  const isEditable = achievement.status === 'Pending Review' || achievement.status === 'Pending' || achievement.status === 'Returned' || achievement.status === 'Draft'
+  const isDeletable = achievement.status !== 'Verified'
   const isReturned = achievement.status === 'Returned'
+  const isInPortfolio = Boolean(achievement.portfolio_id)
 
-  const handleCopyLink = (e) => {
+  const handleCopyRefCode = (e) => {
     e.stopPropagation()
-    const shareText = `[AchieveNest] ${achievement.title} (${achievement.category}) - Ref: ${achievement.id}`
+    const refCode = achievement.id ? `REF-${String(achievement.id).toUpperCase()}` : 'REF-STU-2026-9842'
+    const shareText = `[AchieveNest Student Submission] Title: "${achievement.title}" | Category: ${achievement.category} | Ref Code: ${refCode}`
     navigator.clipboard.writeText(shareText)
     setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setTimeout(() => setCopied(false), 2200)
   }
 
   // Calculate position on the RIGHT side of the option button
   const popoverWidth = 288 // w-72 = 288px
-  const popoverHeight = 380
+  const popoverHeight = 390
   const HEADER_HEIGHT = 72 // Height of stationary top white header bar + padding
 
   let leftPos = 0
@@ -167,7 +169,7 @@ export default function AchievementPopoverMenu({
       style={style}
       className="fixed z-50 w-72 bg-white rounded-3xl shadow-2xl border border-slate-200/90 py-2.5 px-1 font-sans text-slate-800 animate-in fade-in zoom-in-95 duration-150"
     >
-      {/* Header section matching user reference image */}
+      {/* Header section matching design system */}
       <div className="px-3 py-2 border-b border-slate-100 mb-1">
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-xs font-black text-slate-900 truncate leading-snug" title={achievement.title}>
@@ -178,14 +180,14 @@ export default function AchievementPopoverMenu({
               type="button"
               onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
               className="p-1 rounded-full text-slate-400 hover:text-[#2d8a4e] hover:bg-[#eef7f0] transition cursor-pointer"
-              title="Edit Title"
+              title="Edit Submission"
             >
               <Edit3 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
         <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
-          {achievement.category} • <span className="text-[#2d8a4e] font-semibold">{achievement.portfolio_status || achievement.status}</span>
+          {achievement.category} • <span className="text-[#2d8a4e] font-semibold">{achievement.status}</span>
         </p>
       </div>
 
@@ -202,27 +204,27 @@ export default function AchievementPopoverMenu({
           <span>Open in Preview Viewer</span>
         </button>
 
-        {/* Action 2: View Details & Score */}
+        {/* Action 2: View Full Details & Remarks (NO Points) */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
           className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
         >
           <Info className="w-4 h-4 text-slate-400" />
-          <span>Details & Points Breakdown</span>
+          <span>View Full Details & Remarks</span>
         </button>
 
-        {/* Action 3: Add/View in Portfolio */}
+        {/* Action 3: Add/View in Student Portfolio */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onAttachPortfolio(achievement.id); onClose() }}
           className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#eef7f0] hover:text-[#1e5831] font-semibold transition cursor-pointer"
         >
-          <PlusCircle className="w-4 h-4 text-emerald-600" />
-          <span>Attach to Annual Portfolio</span>
+          <PlusCircle className={`w-4 h-4 ${isInPortfolio ? 'text-emerald-700 fill-emerald-100' : 'text-emerald-600'}`} />
+          <span>{isInPortfolio ? 'Remove from Student Portfolio' : 'Attach to Student Portfolio'}</span>
         </button>
 
-        {/* Action 4: Toggle Favorite */}
+        {/* Action 4: Toggle Favorite Highlights */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(achievement.id); onClose() }}
@@ -240,11 +242,11 @@ export default function AchievementPopoverMenu({
             className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
           >
             <Edit3 className="w-4 h-4 text-slate-500" />
-            <span>Edit Accomplishment</span>
+            <span>Edit Submission</span>
           </button>
         )}
 
-        {/* Action 6: Download Attached File */}
+        {/* Action 6: Download Attached Proof */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onDownload(achievement); onClose() }}
@@ -254,29 +256,29 @@ export default function AchievementPopoverMenu({
           <span>Download Proof Document</span>
         </button>
 
-        {/* Action 7: Re-submit (If returned) */}
+        {/* Action 7: Re-submit with Corrections (If returned) */}
         {isReturned && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onResubmit(achievement); onClose() }}
-            className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-700 bg-rose-50/60 hover:bg-rose-100 font-bold transition cursor-pointer"
+            className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition cursor-pointer"
           >
             <RotateCcw className="w-4 h-4 text-rose-600" />
             <span>Re-submit with Corrections</span>
           </button>
         )}
 
-        {/* Action 8: Copy Link */}
+        {/* Action 8: Copy Submission Reference Code */}
         <button
           type="button"
-          onClick={handleCopyLink}
+          onClick={handleCopyRefCode}
           className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
         >
           {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-400" />}
-          <span>{copied ? 'Reference Copied!' : 'Copy Link / Reference ID'}</span>
+          <span>{copied ? 'Reference Code Copied!' : 'Copy Submission Reference ID'}</span>
         </button>
 
-        {/* Divider & Delete Action */}
+        {/* Action 9: Delete Submission */}
         {isDeletable && (
           <>
             <div className="my-1 border-t border-slate-100" />

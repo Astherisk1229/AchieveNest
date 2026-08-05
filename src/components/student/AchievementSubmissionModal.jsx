@@ -14,7 +14,7 @@ import {
   Calendar
 } from 'lucide-react'
 
-export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAchievement }) {
+export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAchievement, initialData = null }) {
   // Wizard Step Control (1, 2, 3)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -22,6 +22,33 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
   const [title, setTitle] = useState('')
   const [eventName, setEventName] = useState('')
   const [issuerOrganization, setIssuerOrganization] = useState('')
+
+  // Prefill effect for editing / resubmitting
+  React.useEffect(() => {
+    if (initialData) {
+      setTitle(initialData.title || '')
+      setEventName(initialData.event_name || initialData.title || '')
+      setIssuerOrganization(initialData.issuer || initialData.location || '')
+      setCategoryId(initialData.category || 'Academic')
+      setScopeLevel(initialData.scope_level || 'Institutional / Campus-Wide')
+      setRankConferred(initialData.rank_conferred || "Participant / Special Award")
+      setAcademicYear(initialData.academic_year || 'AY 2025-2026')
+      setSemester(initialData.semester || '1st Semester')
+      setDescription(initialData.description || '')
+    } else {
+      setTitle('')
+      setEventName('')
+      setIssuerOrganization('')
+      setCategoryId('Academic')
+      setScopeLevel('Institutional / Campus-Wide')
+      setRankConferred("Dean's Lister")
+      setAcademicYear('AY 2025-2026')
+      setSemester('1st Semester')
+      setDescription('')
+      setAttachedFile(null)
+      setParticipationPhoto(null)
+    }
+  }, [initialData, isOpen])
 
   // Step 2 Form Data (Classification, Scope & Rank Fields)
   const [categoryId, setCategoryId] = useState('Academic')

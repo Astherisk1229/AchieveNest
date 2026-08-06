@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { getCurrentUser, updateUserRoleContext } from '../services/authService'
+import { ArrowUp } from 'lucide-react'
 
 export default function MainLayout({ children, onRoleChange: externalRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [currentUser, setCurrentUser] = useState(getCurrentUser())
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const mainRef = useRef(null)
 
   useEffect(() => {
     const syncUser = () => {
@@ -21,6 +24,36 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
     window.addEventListener('storage', syncUser)
     return () => window.removeEventListener('storage', syncUser)
   }, [])
+
+  useEffect(() => {
+    const mainEl = mainRef.current
+
+    const handleScroll = () => {
+      const scrollTop = mainEl ? mainEl.scrollTop : window.scrollY
+      if (scrollTop > 200) {
+        setShowScrollTop(true)
+      } else {
+        setShowScrollTop(false)
+      }
+    }
+
+    if (mainEl) {
+      mainEl.addEventListener('scroll', handleScroll)
+    }
+    window.addEventListener('scroll', handleScroll)
+
+    return () => {
+      if (mainEl) mainEl.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
+
+  const scrollToTop = () => {
+    if (mainRef.current) {
+      mainRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const handleRoleChange = (newRoleContext) => {
     const updated = updateUserRoleContext(newRoleContext)
@@ -37,8 +70,6 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
       externalRoleChange(newRoleContext, updated)
     }
   }
-
-
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-[#f4f8f5] text-slate-900 font-sans selection:bg-[#2d8a4e] selection:text-white relative">
@@ -73,7 +104,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         />
 
         {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#f4f8f5]">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#f4f8f5] relative">
           <div className="container-responsive space-y-6">
             {React.Children.map(children, child => {
               if (React.isValidElement(child)) {
@@ -86,7 +117,22 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         
       </div>
 
+      {/* Floating Scroll To Top Button */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+          title="Back to Top"
+          className="fixed bottom-6 right-6 z-50 p-3 sm:px-4 sm:py-3 rounded-full bg-[#1b4332] hover:bg-[#2d8a4e] text-white font-extrabold text-xs shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95 border border-emerald-400/30 flex items-center gap-2 group cursor-pointer animate-in fade-in slide-in-from-bottom-4"
+        >
+          <ArrowUp className="w-4 h-4 text-emerald-300 group-hover:text-white transition-transform group-hover:-translate-y-0.5" />
+          <span className="hidden sm:inline">Back to Top</span>
+        </button>
+      )}
+
     </div>
   )
 }
+
 

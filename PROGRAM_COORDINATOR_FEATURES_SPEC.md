@@ -84,7 +84,9 @@ The **Verification Queue Workspace** is the core operational hub for reviewing, 
 - **Section Headers & Titles**: Standardized typography scale (`text-base font-extrabold text-slate-900` for headers; `text-lg font-extrabold text-slate-900` for titles).
 - **NDMU Color Token Standards**: NDMU Dark Emerald (`#1b4332`), Forest Emerald Accent (`#2d8a4e`), Soft Emerald Tints (`bg-emerald-50 text-emerald-800`), Slate Neutrals (`slate-900`, `slate-700`, `slate-500`), and semantic status badges (`Pending` 🟡 Blue/Amber, `Verified` 🟢 Emerald, `Returned` 🔴 Rose/Amber).
 
-### B. Unified Search, Status & Integrated Filter Control Bar
+### B. Minimal Verification Workspace Header & Unified Filter Control Bar
+- **Minimal Workspace Header**: Clean, uncluttered header containing only the workspace title and subtext for a 100% streamlined verification interface.
+
 - **Strict Active Academic Year Scope (`AY 2025-2026`)**: All items in the Verification Workspace are strictly locked to the current active **AY 2025-2026**. Past academic years (e.g., AY 2024-2025) are archived and completely excluded from active coordinator verification.
 - **Search Bar Input**: Real-time text search filtering by Student Name, Student ID (e.g., `2024-01234`), Achievement Title, or Issuing Organization.
 - **Status Filter Tabs**:
@@ -101,9 +103,11 @@ The **Verification Queue Workspace** is the core operational hub for reviewing, 
 
 
 
+
 ### C. Master-Detail Queue & Inspection Panel (`CoordinatorDashboardView.jsx`)
-1. **Left Master Queue List (Minimal Queue Box)**:
-   - **Minimal Header Box**: Clean, light gray header (`bg-slate-50 border-b border-slate-200/80`) displaying `Submission Queue` and subtle item count badge.
+1. **Sticky Top Control Bar**: The top title (`Verification Workspace...`), search input, status pills, category/scope dropdowns, and active AY badge are pinned to the top of the workspace (`sticky top-0 z-30`).
+2. **Left Master Queue List (Stationary Queue Box)**: Pinned directly below the top control bar (`lg:sticky lg:top-[215px] lg:h-[calc(100vh-235px)] flex flex-col`) with its own internal vertical scrollbar (`overflow-y-auto`). Selecting items or scrolling through student details on the right does NOT scroll the queue box or top control bar out of view.
+
    - **Queue Item Cards**:
      - Minimal Avatar badge (`bg-slate-100 text-slate-700 font-extrabold`; converts to `#1b4332` emerald badge when selected).
      - Student Name & Student ID subtitle (`Angela Castro • 2024-05678`).
@@ -112,15 +116,18 @@ The **Verification Queue Workspace** is the core operational hub for reviewing, 
      - Supporting proof files counter (`X docs`).
      - Selected Card State: Soft Emerald tint (`bg-[#f2f9f4]`), sleek 3px accent bar (`border-l-3 border-[#1b4332]`), bold emerald title, and active pill badge (`Viewing`).
 
+2. **Right Inspection Panel (Internal Body Scroll Layout)**:
+   - **Student Profile Header (Fixed Top of Right Card)**: Displays Student Avatar, Full Name, Student ID, Program Scope, and Status Pill Badge (`shrink-0`).
+   - **Scrollable Detail Content Body (`flex-1 overflow-y-auto min-h-0`)**: Contains all detailed information that scrolls smoothly within the right card container:
+     - **Achievement Title & Metadata Grid**: Standardized 6-grid field layout (*Category, Scope Level, Rank/Position, Date Conferred, Academic Year, Term/Semester*).
+     - **Event & Issuing Organization Cards**: Dedicated cards for event name and issuing body.
+     - **Narrative Description**: Structured container (`bg-slate-50 border border-slate-200/80 rounded-xl p-4`).
+     - **Supporting Documents & Evidence**: High-contrast attachment cards with file type icon, filename, file size, and primary **View** & **Download** actions.
+     - **Feedback Remarks Textarea**: Dedicated textarea for return or audit comments.
+   - **Fixed Bottom Decision Action Dock**: Pinned at the bottom of the right card (`shrink-0 border-t border-slate-200`) providing single-location decision actions (**`Return for Revision`** and **`Approve & Verify`**).
 
-2. **Right Inspection Panel**:
-   - **Student Profile Header**: Avatar, Full Name, Student ID, Program Scope, and Status Pill Badge.
-   - **Achievement Title & Metadata Grid**: Standardized 6-grid field layout (*Category, Scope Level, Rank/Position, Date Conferred, Academic Year, Term/Semester*).
-   - **Event & Issuing Organization Cards**: Dedicated cards for event name and issuing body.
-   - **Narrative Description**: Structured container (`bg-slate-50 border border-slate-200/80 rounded-xl p-4`).
-   - **Supporting Documents & Evidence**: High-contrast attachment cards with file type icon, filename, file size, and primary **View** & **Download** actions.
-   - **Feedback Remarks Textarea**: Dedicated textarea for return or audit comments.
-   - **Decision Action Bar**: Primary NDMU Emerald **Approve & Verify** button (`bg-[#1b4332] hover:bg-[#2d8a4e]`) and Amber **Return for Revision** button.
+
+
 
 
 ---
@@ -167,16 +174,18 @@ The **Student Roster** section allows coordinators to inspect the full achieveme
 - **Year Level Filter Dropdown**: Filter by `1st Year`, `2nd Year`, `3rd Year`, or `4th Year`.
 - **Course Filter Dropdown**: Filter by specific academic program options.
 
-### B. Simplified High-Readability Student Data Table (`CoordinatorDashboardView.jsx`)
-The student roster is rendered in a simplified, 5-column data table designed for high contrast and rapid visual scanning while preserving NDMU brand colors (`#1b4332` emerald theme):
+### B. High-Readability 6-Column Student Data Table (`CoordinatorDashboardView.jsx`)
+The student roster is rendered in a clean, 6-column data table with separate **Program** and **Year Level** columns sharing uniform typography (`font-extrabold text-slate-800 text-xs`) and NDMU brand styling (`#1b4332` emerald theme):
 
-| Table Column | Data Rendered & Alignment | Interactive Features |
+| Table Column | Data Rendered & Alignment | Visual Styling & Interactive Features |
 | :--- | :--- | :--- |
-| **Student Information** | Avatar photo (40px), Full Name (`font-extrabold text-slate-900`), Student ID (`font-mono`), & Institutional Email (Left-Aligned). | Hovering highlights the student row in soft green; clicking anywhere on the row opens the **Student Dossier Modal**. |
-| **Program & Year** | Academic Program title & Year Level pill badge (`4th Year`, `3rd Year`) (Left-Aligned). | Clean departmental taxonomy breakdown. |
+| **Student Information** | Avatar photo (36px), Full Name (`font-extrabold text-slate-900`), Student ID (`font-mono`), & Institutional Email (Left-Aligned). | Hovering highlights row in soft emerald tint; clicking row opens **Student Dossier Modal**. |
+| **Program** | Academic Program title (e.g., `BS Computer Science (CEAC)`) (Left-Aligned). | Bold slate typography (`font-extrabold text-slate-800 text-xs`). |
+| **Year Level** | Student Year Level (e.g., `4th Year`, `3rd Year`) (Left-Aligned). | Matches Program column font style for 100% visual uniformity (`font-extrabold text-slate-800 text-xs`). |
 | **Achievements** | Large achievement count (e.g., `12`) with verified/pending status subtitle (`10 Verified • 2 Pending`) (Centered). | Quantitative accomplishment tally with instant audit visibility. |
-| **Verified Merit Points** | Horizontal emerald point badge (`⭐ 450 Points`) (Centered). | High-visibility emerald badge displaying total accredited merit points. |
+| **Verified Points** | Horizontal emerald point badge (`↗ 450 Points`) (Centered). | High-visibility emerald badge displaying total accredited merit points. |
 | **Action** | NDMU Dark Emerald Button **`[ 👁️ Inspect Dossier ]`** (Centered). | Opens the **Student Achievements Portfolio Inspector Modal** (`selectedStudentDossier`). |
+
 
 
 #### User Click Pathways per Student Row:
@@ -186,23 +195,35 @@ The student roster is rendered in a simplified, 5-column data table designed for
 
 ---
 
-## 7. Interactive Student Achievements Portfolio Inspector Modal
+## 7. Full Student Portfolio Inspector View (`selectedStudentDossier`)
 
-When a coordinator clicks **"Inspect Dossier"** on any student card, the **Student Achievements Portfolio Inspector Modal** (`selectedStudentDossier`) opens.
+When a Program Coordinator clicks **"Inspect Dossier"** or clicks any student row in the Student Roster, the system seamlessly replaces the Roster Table with the **Full Student Portfolio View** inline inside the main layout (`<MainLayout>`). The **Left Navigation Sidebar** and **Topbar** remain 100% visible and accessible.
 
-### A. Student Header Summary
-- Renders Student Name, Avatar, Student ID, Academic Program, Year Level, and Total Verified Points badge.
+### A. Navigation Header
+- **`[ ← Back to Students Roster ]`** button returning directly to the Students Roster table.
+- **`[ Export Student Portfolio ]`** action button generating an official accomplishment report.
 
-### B. Dossier Navigation Tabs
-- **`Verified Achievements` Tab**: Lists all approved achievements in student's portfolio.
-- **`Pending Approval` Tab**: Lists items awaiting review.
-- **`Returned` Tab**: Lists returned items with coordinator feedback.
 
-### C. Category Filter Dropdown
-- Filters student's achievements by: `All Categories`, `Academic`, `Leadership`, `Community`, `Athletics`, `Culture & Arts`.
 
-### D. Detailed Achievement Item Inspection & Document View
-- Clicking any achievement in the student's dossier opens a Canva-style side preview displaying the certificate PDF, photo evidence, and full accreditation details.
+### B. Hero Profile Banner Card (Matching Student Portfolio Page)
+- **NDMU SVG Curvy Shape & Campus Backdrop**: Features the green SVG shape with NDMU seal, logo, and motto (`Veritas • Caritas • Excellentia`).
+- **Circular Profile Avatar with Verified Badge**: Overlapping avatar with green verified mark `✓`.
+- **Student Details & Info Chips**: Student Name, Program (`BS Computer Science`), Year Level (`3rd Year`), Location (`Koronadal City, South Cotabato`), and ID chip (`Student ID: 2024-01234`).
+- **4 Stat Counters**: Submissions, Verified 🟢, Pending 🔵, Returned 🟡.
+
+### C. Main Two-Column Portfolio Layout
+1. **Left Main Column (2/3 Width)**:
+   - **About Me Card**: Personal statement and academic profile summary.
+   - **Experience & Involvement Card**: Timeline of leadership roles (*Computer Society President*, *Dean's Lister*, *Community Extension Volunteer*).
+   - **Accomplishment Record Section**:
+     - **Status Filter Tabs**: `All Submissions`, `Verified`, `Pending Review`, `Returned`.
+     - **Category Dropdown Filter**: `All Categories`, `Academic`, `Leadership`, `Community`, `Athletics`, `Recognition`.
+     - **Achievement Cards**: Full details, attached proof documents, coordinator return remarks (for returned items), and direct **`Approve & Verify ✓`** / **`Return for Revision`** quick audit action buttons (for pending items).
+2. **Right Column (1/3 Width)**:
+   - **Contact Information Card**: Institutional Email, Phone number, and Address.
+   - **Skills & Competencies Card**: Categorized skills with proficiency badges (*Leadership*, *Communication*, *Technical Skills*, *Teamwork*, *Problem Solving*, *Time Management*).
+
+
 
 ---
 

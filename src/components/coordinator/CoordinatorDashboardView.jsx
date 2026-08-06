@@ -268,6 +268,14 @@ export default function CoordinatorDashboardView({ currentUser }) {
   const [returnRemarks, setReturnRemarks] = useState('')
   const [toastMessage, setToastMessage] = useState('')
 
+  // Verification Workspace Filter States (Default: Current AY 2025-2026)
+  const [categoryFilter, setCategoryFilter] = useState('All Categories')
+  const [scopeFilter, setScopeFilter] = useState('All Scopes')
+  const [ayFilter, setAyFilter] = useState('AY 2025-2026')
+  const [sortBy, setSortBy] = useState('Newest')
+
+
+
   const triggerToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(''), 3000)
@@ -559,107 +567,253 @@ export default function CoordinatorDashboardView({ currentUser }) {
 
       {/* ================= TAB 2: VERIFICATION WORKSPACE (Master-Detail) ================= */}
       {activeTab === 'workspace' && (() => {
-        const workspaceItem = selectedWorkspaceItem || filteredSubmissions[0] || null
+        // Multi-Criteria Filtering & Sorting Algorithm (Strictly Active AY 2025-2026)
+        const finalSubmissions = (filteredSubmissions || []).filter(item => {
+          // Strictly exclude past academic years from active verification queue
+          const itemAY = item.academic_year || 'AY 2025-2026'
+          if (itemAY !== 'AY 2025-2026') return false
+
+          if (categoryFilter !== 'All Categories' && item.category !== categoryFilter) return false
+          if (scopeFilter !== 'All Scopes' && item.scope_level !== scopeFilter) return false
+          return true
+        }).sort((a, b) => {
+          if (sortBy === 'Newest') return new Date(b.date || 0) - new Date(a.date || 0)
+          if (sortBy === 'Oldest') return new Date(a.date || 0) - new Date(b.date || 0)
+          if (sortBy === 'Name') return (a.student_name || '').localeCompare(b.student_name || '')
+          if (sortBy === 'Title') return (a.title || '').localeCompare(b.title || '')
+          return 0
+        })
+
+        const workspaceItem = selectedWorkspaceItem || finalSubmissions[0] || null
+
+        // Active Filter Counter & Reset Handler
+        const activeFiltersCount =
+          (categoryFilter !== 'All Categories' ? 1 : 0) +
+          (scopeFilter !== 'All Scopes' ? 1 : 0) +
+          (sortBy !== 'Newest' ? 1 : 0)
+
+        const resetWorkspaceFilters = () => {
+          setCategoryFilter('All Categories')
+          setScopeFilter('All Scopes')
+          setSortBy('Newest')
+        }
+
         return (
           <div className="space-y-4 animate-in fade-in duration-150">
 
-            {/* === TOOLBAR === */}
-            <div className="bg-white rounded-2xl px-5 py-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+
+            {/* === TOOLBAR HEADER === */}
+            <div className="bg-white rounded-2xl px-5 py-4 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-extrabold text-slate-900">Verification Workspace</h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">Review and verify student achievement submissions</p>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Review and verify active <strong className="text-[#2d8a4e]">AY 2025-2026</strong> student achievement submissions
+                </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button type="button" className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-200">
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>Filter</span>
-                </button>
-                <button type="button" onClick={handleExportCSVReport} className="px-3.5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm">
+                <button
+                  type="button"
+                  onClick={handleExportCSVReport}
+                  className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
                   <Download className="w-3.5 h-3.5" />
                   <span>Export Queue</span>
                 </button>
               </div>
             </div>
 
-            {/* === SEARCH + STATUS FILTER ROW === */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="relative flex-1">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Search className="w-4 h-4" />
+            {/* === UNIFIED SEARCH & FILTER CONTROL BAR === */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-xs space-y-3">
+              
+              {/* Row 1: Search Bar Input + Status Filter Pills */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by title, student name, or Student ID..."
+                    className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] focus:bg-white transition"
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by title or student name..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition shadow-xs"
-                />
+
+                {/* Status Pills */}
+                <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 md:pb-0">
+                  {[
+                    ['All', finalSubmissions.length],
+                    ['Pending', finalSubmissions.filter(s => s.status === 'Pending').length],
+                    ['Returned', finalSubmissions.filter(s => s.status === 'Returned').length],
+                    ['Verified', finalSubmissions.filter(s => s.status === 'Verified').length]
+                  ].map(([label, count]) => {
+                    const isSelected = statusFilter === label
+                    let activeClass = 'bg-[#1b4332] text-white border-[#1b4332]'
+                    if (label === 'Pending') activeClass = 'bg-blue-600 text-white border-blue-600'
+                    if (label === 'Returned') activeClass = 'bg-amber-600 text-white border-amber-600'
+                    if (label === 'Verified') activeClass = 'bg-emerald-700 text-white border-emerald-700'
+
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setStatusFilter(label)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border whitespace-nowrap ${
+                          isSelected
+                            ? `${activeClass} shadow-2xs`
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {label} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {[['All', allSubmissions.length], ['Pending', allSubmissions.filter(s=>s.status==='Pending').length], ['Returned', allSubmissions.filter(s=>s.status==='Returned').length], ['Verified', allSubmissions.filter(s=>s.status==='Verified').length]].map(([label, count]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setStatusFilter(label)}
-                    className={`px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer border whitespace-nowrap ${
-                      statusFilter === label
-                        ? label === 'Pending' ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : label === 'Returned' ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                          : 'bg-[#2d8a4e] text-white border-[#2d8a4e] shadow-sm'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {label} {count > 0 ? `(${count})` : ''}
-                  </button>
-                ))}
+
+              {/* Row 2: Integrated Filter Controls (Category, Scope Level, Active Academic Year Badge, Sort Order) */}
+              <div className="pt-2 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                
+                {/* Category Dropdown */}
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                >
+                  <option value="All Categories">All Categories</option>
+                  <option value="Academic">Academic</option>
+                  <option value="Leadership">Leadership</option>
+                  <option value="Community">Community</option>
+                  <option value="Athletics">Athletics</option>
+                  <option value="Culture & Arts">Culture &amp; Arts</option>
+                  <option value="Research & Innovation">Research</option>
+                </select>
+
+                {/* Scope Level Dropdown */}
+                <select
+                  value={scopeFilter}
+                  onChange={(e) => setScopeFilter(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                >
+                  <option value="All Scopes">All Scope Levels</option>
+                  <option value="Institutional / Campus-Wide">Institutional</option>
+                  <option value="Local / City Level">Local / City</option>
+                  <option value="Regional Level">Regional</option>
+                  <option value="National Level">National</option>
+                  <option value="International Level">International</option>
+                </select>
+
+                {/* Static Active Academic Year Indicator */}
+                <div className="w-full px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-extrabold text-[#1b4332] flex items-center justify-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <span>AY 2025-2026 (Active)</span>
+                </div>
+
+                {/* Sort Order Dropdown */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                >
+                  <option value="Newest">Sort: Newest First</option>
+                  <option value="Oldest">Sort: Oldest First</option>
+                  <option value="Name">Sort: Student Name A-Z</option>
+                  <option value="Title">Sort: Title A-Z</option>
+                </select>
+
               </div>
+
             </div>
+
+
 
             {/* === MASTER-DETAIL SPLIT === */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-              {/* LEFT: Queue List */}
+              {/* LEFT: Queue List (Minimal Queue Box) */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-xs font-extrabold text-slate-700">Submission Queue ({filteredSubmissions.length})</p>
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+                  
+                  {/* Minimal Header Box */}
+                  <div className="px-4 py-3 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-800 tracking-wide">Submission Queue</span>
+                    <span className="text-[11px] font-bold text-slate-600 bg-slate-200/80 px-2.5 py-0.5 rounded-full">
+                      {finalSubmissions.length}
+                    </span>
                   </div>
-                  <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-                    {filteredSubmissions.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                        No submissions match your current filters.
+
+                  {/* Item List */}
+                  <div className="divide-y divide-slate-100 max-h-[620px] overflow-y-auto">
+                    {finalSubmissions.length === 0 ? (
+                      <div className="p-8 text-center text-slate-400 text-xs font-medium space-y-2">
+                        <p className="font-bold text-slate-600">No submissions match your current filters.</p>
+                        <p className="text-[11px] text-slate-400">Try adjusting your category or status filters.</p>
                       </div>
                     ) : (
-                      filteredSubmissions.map(item => {
+                      finalSubmissions.map(item => {
                         const isActive = workspaceItem?.id === item.id
                         return (
                           <button
                             key={item.id}
                             type="button"
                             onClick={() => { setSelectedWorkspaceItem(item); setWorkspaceRemarks('') }}
-                            className={`w-full text-left p-4 transition cursor-pointer ${
-                              isActive ? 'bg-blue-50 border-l-[3px] border-blue-500' : 'hover:bg-slate-50 border-l-[3px] border-transparent'
+                            className={`w-full text-left px-4 py-3 transition cursor-pointer flex items-center justify-between gap-3 ${
+                              isActive
+                                ? 'bg-[#f2f9f4] border-l-3 border-[#1b4332]'
+                                : 'hover:bg-slate-50/80 border-l-3 border-transparent'
                             }`}
                           >
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#2d8a4e] flex items-center justify-center font-extrabold text-xs shrink-0 mt-0.5">
+                            <div className="flex items-start gap-3 min-w-0 flex-1">
+                              {/* Avatar Badge */}
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-xs shrink-0 mt-0.5 transition ${
+                                isActive
+                                  ? 'bg-[#1b4332] text-white shadow-2xs'
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}>
                                 {(item.student_name || '?').charAt(0)}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs font-extrabold text-slate-900 leading-snug truncate">{item.title}</p>
-                                <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">{item.student_name}</p>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                    item.status === 'Verified' ? 'bg-emerald-100 text-emerald-800'
-                                    : item.status === 'Returned' ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-blue-100 text-blue-700'
+
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <p className={`text-xs leading-snug truncate ${isActive ? 'font-extrabold text-[#1b4332]' : 'font-bold text-slate-800'}`}>
+                                  {item.title}
+                                </p>
+                                <p className="text-[11px] text-slate-500 font-medium truncate">
+                                  {item.student_name} • <span className="font-mono text-slate-400">{item.student_id}</span>
+                                </p>
+                                
+                                <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                  {/* Status Pill */}
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                                    item.status === 'Verified' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : item.status === 'Returned' ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200'
                                   }`}>
                                     {item.status}
                                   </span>
-                                  <span className="text-[10px] text-slate-400 font-medium">{item.docs_count} doc{item.docs_count !== 1 ? 's' : ''}</span>
+
+                                  {/* Category Tag */}
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/70">
+                                    {item.category}
+                                  </span>
+
+                                  {/* Docs Count */}
+                                  <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                                    <FileText className="w-3 h-3 text-slate-400" />
+                                    {item.docs_count} doc{item.docs_count !== 1 ? 's' : ''}
+                                  </span>
                                 </div>
                               </div>
                             </div>
+
+                            {/* Minimal Active Indicator Pill */}
+                            {isActive && (
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-100/90 text-[#1b4332] text-[10px] font-extrabold border border-emerald-300/60 shrink-0">
+                                Viewing
+                              </span>
+                            )}
                           </button>
                         )
                       })
@@ -668,224 +822,222 @@ export default function CoordinatorDashboardView({ currentUser }) {
                 </div>
               </div>
 
+
+
               {/* RIGHT: Inspection & Verification Panel */}
               <div className="lg:col-span-2">
+
                 {!workspaceItem ? (
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-12 flex flex-col items-center justify-center text-center space-y-3">
                     <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
                       <FileText className="w-6 h-6 text-slate-400" />
                     </div>
-                    <p className="text-sm font-extrabold text-slate-600">No Submission Selected</p>
-                    <p className="text-xs text-slate-400 font-medium">Click on a submission from the queue to begin review.</p>
+                    <p className="text-sm font-extrabold text-slate-700">No Submission Selected</p>
+                    <p className="text-xs text-slate-500 font-medium">Click on a submission from the queue to begin review.</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                  <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
 
-                    {/* Student Header */}
-                    <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between gap-4">
+                    {/* Student Profile Header */}
+                    <div className="px-6 py-4.5 bg-slate-50/80 border-b border-slate-200/80 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3.5">
-                        <div className="w-11 h-11 rounded-full bg-emerald-100 text-[#2d8a4e] flex items-center justify-center font-extrabold text-base shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center font-extrabold text-sm shrink-0">
                           {(workspaceItem.student_name || '?').charAt(0)}
                         </div>
                         <div>
-                          <p className="text-sm font-extrabold text-slate-900">{workspaceItem.student_name}</p>
-                          <p className="text-[11px] text-slate-500 font-medium">Student ID: {workspaceItem.student_id}</p>
+                          <p className="text-sm font-extrabold text-slate-900 leading-snug">{workspaceItem.student_name}</p>
+                          <p className="text-[11px] text-slate-500 font-mono">Student ID: {workspaceItem.student_id}</p>
                           {workspaceItem.program && (
-                            <p className="text-[11px] text-[#2d8a4e] font-semibold">{workspaceItem.program}</p>
+                            <p className="text-[11px] text-[#2d8a4e] font-bold mt-0.5">{workspaceItem.program}</p>
                           )}
                         </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-[11px] font-extrabold border ${
-                        workspaceItem.status === 'Verified' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : workspaceItem.status === 'Returned' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-extrabold tracking-wide uppercase border ${
+                        workspaceItem.status === 'Verified' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : workspaceItem.status === 'Returned' ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : 'bg-blue-50 text-blue-700 border-blue-200'
                       }`}>
-                        {workspaceItem.status.toUpperCase()}
+                        {workspaceItem.status}
                       </span>
                     </div>
 
-                    <div className="p-6 space-y-5">
+                    <div className="p-6 space-y-6">
 
-                      {/* Achievement Details & Metadata */}
-                      <div className="space-y-4">
-                        
-                        {/* Title Box */}
-                        <div>
-                          <p className="text-[10px] font-extrabold text-[#2d8a4e] uppercase tracking-wider mb-1">Achievement Title</p>
-                          <h3 className="text-xl font-extrabold text-slate-900 leading-tight">{workspaceItem.title}</h3>
-                        </div>
+                      {/* Achievement Title Box */}
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Achievement Title</p>
+                        <h3 className="text-lg font-extrabold text-slate-900 leading-snug">{workspaceItem.title}</h3>
+                      </div>
 
-                        {/* Structured Classification & Scope Grid Card */}
-                        <div className="bg-slate-50/80 border border-slate-200/90 rounded-2xl p-4.5 space-y-3.5">
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4">
-                            
-                            {/* Category */}
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Category</p>
-                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                                {workspaceItem.category}
-                              </span>
-                            </div>
-
-                            {/* Scope Level */}
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Scope Level</p>
-                              <p className="text-xs font-bold text-slate-800">{workspaceItem.scope_level}</p>
-                            </div>
-
-                            {/* Rank / Position */}
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Rank / Position</p>
-                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-extrabold border border-blue-100">
-                                {workspaceItem.rank_conferred || 'Participant'}
-                              </span>
-                            </div>
-
-                            {/* Date Conferred */}
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Date Conferred</p>
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-                                <Calendar className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                                <span>{workspaceItem.date}</span>
-                              </div>
-                            </div>
-
-                            {/* Academic Year */}
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Academic Year</p>
-                              <p className="text-xs font-bold text-slate-800">{workspaceItem.academic_year || 'AY 2025-2026'}</p>
-                            </div>
-
-                            {/* Semester */}
-                            <div>
-                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Term / Semester</p>
-                              <p className="text-xs font-bold text-slate-800">{workspaceItem.semester || '1st Semester'}</p>
-                            </div>
-
+                      {/* Structured Metadata Grid */}
+                      <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4.5 space-y-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-4">
+                          
+                          {/* Category */}
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Category</p>
+                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80">
+                              {workspaceItem.category}
+                            </span>
                           </div>
-                        </div>
 
-                        {/* Event Name & Issuing Body Cards */}
-                        {(workspaceItem.event_name || workspaceItem.issuer) && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {workspaceItem.event_name && (
-                              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Event / Competition Name</p>
-                                <p className="text-xs font-extrabold text-slate-800 leading-snug">{workspaceItem.event_name}</p>
-                              </div>
-                            )}
-                            {workspaceItem.issuer && (
-                              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-1">
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Issuing Body / Organization</p>
-                                <p className="text-xs font-extrabold text-slate-800 leading-snug">{workspaceItem.issuer}</p>
-                              </div>
-                            )}
+                          {/* Scope Level */}
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Scope Level</p>
+                            <p className="text-xs font-bold text-slate-900">{workspaceItem.scope_level}</p>
                           </div>
-                        )}
 
-                        {/* Description Box */}
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Narrative Description</p>
-                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4">
-                            <p className="text-xs text-emerald-950 font-medium leading-relaxed">{workspaceItem.description}</p>
+                          {/* Rank / Position */}
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Rank / Position</p>
+                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-800 text-xs font-bold border border-blue-200/80">
+                              {workspaceItem.rank_conferred || 'Participant'}
+                            </span>
                           </div>
-                        </div>
 
+                          {/* Date Conferred */}
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Date Conferred</p>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                              <Calendar className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                              <span>{workspaceItem.date}</span>
+                            </div>
+                          </div>
+
+                          {/* Academic Year */}
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Academic Year</p>
+                            <p className="text-xs font-bold text-slate-900">{workspaceItem.academic_year || 'AY 2025-2026'}</p>
+                          </div>
+
+                          {/* Semester */}
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Term / Semester</p>
+                            <p className="text-xs font-bold text-slate-900">{workspaceItem.semester || '1st Semester'}</p>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Event Name & Issuing Body Cards */}
+                      {(workspaceItem.event_name || workspaceItem.issuer) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {workspaceItem.event_name && (
+                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
+                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Event / Competition Name</p>
+                              <p className="text-xs font-bold text-slate-900 leading-snug">{workspaceItem.event_name}</p>
+                            </div>
+                          )}
+                          {workspaceItem.issuer && (
+                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
+                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Issuing Body / Organization</p>
+                              <p className="text-xs font-bold text-slate-900 leading-snug">{workspaceItem.issuer}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Narrative Description */}
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Narrative Description</p>
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+                          <p className="text-xs text-slate-800 font-medium leading-relaxed">{workspaceItem.description}</p>
+                        </div>
                       </div>
 
                       {/* Supporting Documents & Proofs */}
-                      <div className="space-y-2.5">
-                        <p className="text-xs font-extrabold text-slate-800">Supporting Documents &amp; Evidence ({workspaceItem.docs_count || 1})</p>
+                      <div className="space-y-3 pt-2 border-t border-slate-100">
+                        <p className="text-xs font-extrabold text-slate-900">Supporting Documents &amp; Evidence ({workspaceItem.docs_count || 1})</p>
                         
-                        {/* Certificate Document */}
-                        <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                        {/* Certificate Document Card */}
+                        <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-[#2d8a4e]/10 text-[#2d8a4e] flex items-center justify-center shrink-0">
-                              <Download className="w-4 h-4" />
+                            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#2d8a4e] flex items-center justify-center shrink-0 border border-emerald-100">
+                              <FileText className="w-4 h-4" />
                             </div>
                             <div>
-                              <p className="text-xs font-extrabold text-slate-800">{workspaceItem.attached_file_name}</p>
-                              <p className="text-[11px] text-slate-400 font-medium">Certificate / Award Proof • ~345 KB</p>
+                              <p className="text-xs font-bold text-slate-900">{workspaceItem.attached_file_name}</p>
+                              <p className="text-[11px] text-slate-500 font-mono">Validated PDF • ~345 KB</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
                               onClick={() => setSelectedReviewItem(workspaceItem)}
-                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                             >
                               <Eye className="w-3.5 h-3.5" />
-                              View
+                              <span>View</span>
                             </button>
                             <button
                               type="button"
-                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
+                              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
                             >
                               <Download className="w-3.5 h-3.5" />
-                              Download
+                              <span>Download</span>
                             </button>
                           </div>
                         </div>
 
-                        {/* Photo Evidence of Participation */}
+                        {/* Photo Evidence Card */}
                         {workspaceItem.participation_photo_name && (
-                          <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 flex items-center justify-between gap-3">
+                          <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                              <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
                                 <FileText className="w-4 h-4" />
                               </div>
                               <div>
-                                <p className="text-xs font-extrabold text-slate-800">{workspaceItem.participation_photo_name}</p>
-                                <p className="text-[11px] text-blue-600 font-bold">Photo Evidence of Participation • ~1.2 MB</p>
+                                <p className="text-xs font-bold text-slate-900">{workspaceItem.participation_photo_name}</p>
+                                <p className="text-[11px] text-slate-500 font-mono">Photo Evidence • ~1.2 MB</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => setSelectedReviewItem(workspaceItem)}
-                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                               >
                                 <Eye className="w-3.5 h-3.5" />
-                                View Photo
+                                <span>View Photo</span>
                               </button>
                               <button
                                 type="button"
-                                className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
+                                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
                               >
                                 <Download className="w-3.5 h-3.5" />
-                                Download
+                                <span>Download</span>
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
 
-                      {/* Returned Remarks Display */}
+                      {/* Previous Returned Remarks Display */}
                       {workspaceItem.return_remarks && (
-                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
-                          <p className="text-[10px] text-amber-700 font-bold uppercase tracking-wider mb-1">Previous Return Remarks</p>
-                          <p className="text-xs text-amber-800 font-medium leading-relaxed">{workspaceItem.return_remarks}</p>
+                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/80 space-y-1">
+                          <p className="text-[11px] text-amber-800 font-bold uppercase tracking-wide">Previous Return Remarks</p>
+                          <p className="text-xs text-amber-900 font-medium leading-relaxed">{workspaceItem.return_remarks}</p>
                         </div>
                       )}
 
-                      {/* Comments / Feedback */}
-                      <div className="space-y-2">
+                      {/* Comments / Feedback Textarea */}
+                      <div className="space-y-1.5 pt-2 border-t border-slate-100">
                         <div className="flex items-center gap-2">
                           <MessageSquare className="w-4 h-4 text-slate-500" />
-                          <p className="text-xs font-extrabold text-slate-800">Comments / Feedback</p>
+                          <label className="text-xs font-bold text-slate-800">Comments / Feedback</label>
                         </div>
                         <textarea
                           value={workspaceRemarks}
                           onChange={(e) => setWorkspaceRemarks(e.target.value)}
                           rows={3}
                           placeholder="Provide feedback or specify what needs to be revised..."
-                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] resize-none transition"
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] focus:bg-white transition resize-none"
                         />
                       </div>
 
                       {/* Decision Action Bar */}
                       {workspaceItem.status !== 'Verified' && (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-3 border-t border-slate-100">
                           <button
                             type="button"
                             onClick={() => {
@@ -900,11 +1052,12 @@ export default function CoordinatorDashboardView({ currentUser }) {
                               setWorkspaceRemarks('')
                               triggerToast('Submission returned to student with your remarks.')
                             }}
-                            className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-white hover:bg-amber-50 text-amber-700 font-extrabold text-xs border border-amber-300 transition cursor-pointer flex items-center justify-center gap-1.5"
+                            className="px-5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-300 transition cursor-pointer flex items-center justify-center gap-1.5"
                           >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Return for Revision
+                            <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                            <span>Return for Revision</span>
                           </button>
+
                           {workspaceItem.status === 'Pending' && (
                             <button
                               type="button"
@@ -916,14 +1069,15 @@ export default function CoordinatorDashboardView({ currentUser }) {
                                 setWorkspaceRemarks('')
                                 triggerToast('Achievement approved & verified successfully!')
                               }}
-                              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+                              className="px-6 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer flex items-center justify-center gap-2"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Approve &amp; Verify
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              <span>Approve &amp; Verify</span>
                             </button>
                           )}
                         </div>
                       )}
+
                       {workspaceItem.status === 'Verified' && (
                         <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 rounded-xl border border-emerald-200">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -940,6 +1094,7 @@ export default function CoordinatorDashboardView({ currentUser }) {
           </div>
         )
       })()}
+
 
       {/* ================= TAB 3: STUDENTS ROSTER (Redesigned) ================= */}
       {activeTab === 'students' && (

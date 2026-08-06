@@ -77,28 +77,51 @@ The **Departmental Overview** section provides a high-level analytics dashboard 
 
 ## 4. Verification Queue & Review Workspace (`tab=workspace`)
 
-The **Verification Queue Workspace** is the core operational hub for reviewing, auditing, approving, and returning student achievement submissions.
+The **Verification Queue Workspace** is the core operational hub for reviewing, auditing, approving, and returning student achievement submissions, built using standardized typography tokens and an intuitive Master-Detail layout.
 
-### A. Search & Status Filter Controls
+### A. Typography & Design Tokens
+- **Metadata Labels**: Standardized across all fields (`text-[11px] font-bold text-slate-500 uppercase tracking-wide`).
+- **Section Headers & Titles**: Standardized typography scale (`text-base font-extrabold text-slate-900` for headers; `text-lg font-extrabold text-slate-900` for titles).
+- **NDMU Color Token Standards**: NDMU Dark Emerald (`#1b4332`), Forest Emerald Accent (`#2d8a4e`), Soft Emerald Tints (`bg-emerald-50 text-emerald-800`), Slate Neutrals (`slate-900`, `slate-700`, `slate-500`), and semantic status badges (`Pending` 🟡 Blue/Amber, `Verified` 🟢 Emerald, `Returned` 🔴 Rose/Amber).
+
+### B. Unified Search, Status & Integrated Filter Control Bar
+- **Strict Active Academic Year Scope (`AY 2025-2026`)**: All items in the Verification Workspace are strictly locked to the current active **AY 2025-2026**. Past academic years (e.g., AY 2024-2025) are archived and completely excluded from active coordinator verification.
 - **Search Bar Input**: Real-time text search filtering by Student Name, Student ID (e.g., `2024-01234`), Achievement Title, or Issuing Organization.
 - **Status Filter Tabs**:
-  - **`All Submissions`**: Displays complete queue history.
-  - **`Pending Review`**: Filters strictly for items needing coordinator evaluation.
-  - **`Verified`**: Displays approved achievements.
-  - **`Returned`**: Displays items returned for student revisions.
+  - **`All`**: Displays active academic year queue history.
+  - **`Pending`**: Filters strictly for items needing coordinator evaluation (`bg-blue-600 text-white`).
+  - **`Returned`**: Displays items returned for student revisions (`bg-amber-600 text-white`).
+  - **`Verified`**: Displays approved achievements (`bg-[#1b4332] text-white`).
+- **Integrated Filter Controls (Row 2)**:
+  - **Category**: `All Categories`, `Academic`, `Leadership`, `Community`, `Athletics`, `Culture & Arts`, `Research`.
+  - **Scope Level**: `All Scope Levels`, `Institutional`, `Local / City`, `Regional`, `National`, `International`.
+  - **Active Academic Year Badge**: Static badge displaying `AY 2025-2026 (Active)`.
+  - **Sort Order**: `Sort: Newest First`, `Sort: Oldest First`, `Sort: Student Name A-Z`, `Sort: Title A-Z`.
 
-### B. Submission Card Layout & Metadata Fields
-Each submission card renders complete verification metadata:
-- **Student Name & Student ID**: (e.g., *Maria Santos • 2024-01234*)
-- **Academic Program**: (e.g., *BS Computer Science*)
-- **Achievement Title**: (e.g., *Regional Coding Hackathon Champion*)
-- **Event / Activity Name**: (e.g., *12th SOCCSKSARGEN IT Summit Hackathon*)
-- **Issuing Authority / Organization**: (e.g., *DICT Region XII / NDMU CITE*)
-- **Category & Scope Level**: (e.g., *Academic • Regional Level*)
-- **Rank / Distinction Conferred**: (e.g., *Champion / 1st Place*)
-- **Academic Term**: (e.g., *AY 2025-2026 • 2nd Semester*)
-- **Date Awarded**: (e.g., *3/18/2026*)
-- **Document Proof Indicators**: Attached PDF Proof and Participation Photo badge.
+
+
+
+### C. Master-Detail Queue & Inspection Panel (`CoordinatorDashboardView.jsx`)
+1. **Left Master Queue List (Minimal Queue Box)**:
+   - **Minimal Header Box**: Clean, light gray header (`bg-slate-50 border-b border-slate-200/80`) displaying `Submission Queue` and subtle item count badge.
+   - **Queue Item Cards**:
+     - Minimal Avatar badge (`bg-slate-100 text-slate-700 font-extrabold`; converts to `#1b4332` emerald badge when selected).
+     - Student Name & Student ID subtitle (`Angela Castro • 2024-05678`).
+     - Category pill badge (`Academic`, `Athletics`, `Community`, `Leadership`).
+     - Status pill badge with semantic colors (`Pending Review`, `Verified`, `Returned`).
+     - Supporting proof files counter (`X docs`).
+     - Selected Card State: Soft Emerald tint (`bg-[#f2f9f4]`), sleek 3px accent bar (`border-l-3 border-[#1b4332]`), bold emerald title, and active pill badge (`Viewing`).
+
+
+2. **Right Inspection Panel**:
+   - **Student Profile Header**: Avatar, Full Name, Student ID, Program Scope, and Status Pill Badge.
+   - **Achievement Title & Metadata Grid**: Standardized 6-grid field layout (*Category, Scope Level, Rank/Position, Date Conferred, Academic Year, Term/Semester*).
+   - **Event & Issuing Organization Cards**: Dedicated cards for event name and issuing body.
+   - **Narrative Description**: Structured container (`bg-slate-50 border border-slate-200/80 rounded-xl p-4`).
+   - **Supporting Documents & Evidence**: High-contrast attachment cards with file type icon, filename, file size, and primary **View** & **Download** actions.
+   - **Feedback Remarks Textarea**: Dedicated textarea for return or audit comments.
+   - **Decision Action Bar**: Primary NDMU Emerald **Approve & Verify** button (`bg-[#1b4332] hover:bg-[#2d8a4e]`) and Amber **Return for Revision** button.
+
 
 ---
 

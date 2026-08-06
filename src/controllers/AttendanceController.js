@@ -35,11 +35,60 @@ const MOCK_STUDENT_DATABASE = {
   }
 }
 
+// Mock Student Officer Barcode Database
+const MOCK_OFFICER_DATABASE = {
+  'OFFICER-2024-001': {
+    officer_id: 'OFFICER-2024-001',
+    student_id: '2021-00988',
+    full_name: 'Juan Dela Cruz',
+    position: 'CompSoc Vice President (Gate 1 Operator)',
+    organization: 'Computer Society NDMU',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
+  },
+  'OFFICER-2024-002': {
+    officer_id: 'OFFICER-2024-002',
+    student_id: '2022-00412',
+    full_name: 'Maria Clara Santos',
+    position: 'Student Affairs Secretary (Gate 2 Operator)',
+    organization: 'Computer Society NDMU',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
+  },
+  'OFFICER-2024-003': {
+    officer_id: 'OFFICER-2024-003',
+    student_id: '2023-00155',
+    full_name: 'Marcus Aurelius Vance',
+    position: 'Logistics Officer (Main Hall Access)',
+    organization: 'Computer Society NDMU',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'
+  }
+}
+
 // Initial Scanned Feed Seed
 const STORAGE_KEY_ATTENDANCE = 'achievenest_attendance_sessions'
 
 class AttendanceController {
   #sessions
+
+  getMockOfficerDatabase() {
+    return MOCK_OFFICER_DATABASE
+  }
+
+  verifyOfficerBarcode(barcodeInput) {
+    if (!barcodeInput) throw new Error('Please scan or enter your Student Officer Barcode ID!')
+    const cleanCode = barcodeInput.trim().toUpperCase()
+    
+    // Direct match or fallback officer match
+    const matched = MOCK_OFFICER_DATABASE[cleanCode] || {
+      officer_id: cleanCode,
+      student_id: cleanCode,
+      full_name: `Officer ${cleanCode}`,
+      position: 'Verified Student Gatekeeper',
+      organization: 'NDMU Student Council'
+    }
+
+    return matched
+  }
+
 
   constructor() {
     this.#sessions = {

@@ -113,6 +113,24 @@ export default function OfficerScannerPage() {
     } catch (e) {}
   }
 
+  // Student Officer Authentication Lock state
+  const [activeOfficer, setActiveOfficer] = useState(null)
+  const [officerBarcode, setOfficerBarcode] = useState('')
+  const [officerError, setOfficerError] = useState('')
+
+  const handleAuthenticateOfficer = (barcodeToUse) => {
+    const code = barcodeToUse || officerBarcode
+    setOfficerError('')
+
+    try {
+      const officer = AttendanceController.verifyOfficerBarcode(code)
+      setActiveOfficer(officer)
+      setOfficerBarcode('')
+    } catch (err) {
+      setOfficerError(err.message || 'Invalid Officer Barcode ID')
+    }
+  }
+
   // Handle student check-in barcode scan
   const handleScanSubmit = (codeToScan) => {
     setErrorMessage('')
@@ -120,7 +138,8 @@ export default function OfficerScannerPage() {
     if (!targetCode) return
 
     try {
-      const record = AttendanceController.recordScan(activeEventId, targetCode, 'Officer Alex (Gate 1)')
+      const officerLabel = activeOfficer ? `${activeOfficer.full_name} (${activeOfficer.position.split(' ')[0]})` : 'Officer Alex (Gate 1)'
+      const record = AttendanceController.recordScan(activeEventId, targetCode, officerLabel)
       setScannedStudent(record)
       setIsModalOpen(true)
       playSuccessChime()
@@ -134,6 +153,7 @@ export default function OfficerScannerPage() {
     AttendanceController.updateSessionStatus(activeEventId, 'Active')
     playUnlockChime()
   }
+
 
   return (
     <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-[#2d8a4e] selection:text-white pb-12">
@@ -244,12 +264,114 @@ export default function OfficerScannerPage() {
             <p className="text-xs text-slate-400">Total Scanned: {session.scanned_list.length} student participants</p>
           </div>
 
+        ) : !activeOfficer ? (
+
+          /* ========================================================================= */
+          /* STATE B: OFFICER BARCODE AUTHENTICATION LOCK REQUIRED                     */
+          /* ========================================================================= */
+          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-3xl p-8 border border-amber-500/30 text-center space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 mx-auto shadow-xl">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2 max-w-sm mx-auto">
+              <h3 className="text-xl font-extrabold text-white">Student Officer Authentication Required</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Assigned Gate Officers must scan or enter their official <strong className="text-emerald-400">NDMU Officer Barcode ID</strong> to unlock the scanner terminal.
+              </p>
+            </div>
+
+            {/* Officer Barcode Input Form */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleAuthenticateOfficer()
+              }} 
+              className="w-full max-w-sm mx-auto space-y-3"
+            >
+              <input
+                type="text"
+                placeholder="Scan Officer Barcode (e.g., OFFICER-2024-001)..."
+                value={officerBarcode}
+                onChange={(e) => setOfficerBarcode(e.target.value)}
+                className="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-700 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 shadow-inner"
+                autoFocus
+              />
+
+              {officerError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400" />
+                  <span>{officerError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Unlock className="w-4 h-4" />
+                <span>Authenticate Officer & Unlock Terminal</span>
+              </button>
+            </form>
+
+            {/* Quick Test Officer Presets */}
+            <div className="pt-2 border-t border-slate-800 w-full max-w-sm mx-auto text-center space-y-2">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quick Officer Barcode Presets:</p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleAuthenticateOfficer('OFFICER-2024-001')}
+                  className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-950 text-emerald-400 border border-slate-700 hover:border-emerald-500 text-[11px] font-mono font-bold transition cursor-pointer"
+                >
+                  OFFICER-2024-001 (Juan - VP)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAuthenticateOfficer('OFFICER-2024-002')}
+                  className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-950 text-emerald-400 border border-slate-700 hover:border-emerald-500 text-[11px] font-mono font-bold transition cursor-pointer"
+                >
+                  OFFICER-2024-002 (Maria - Sec)
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
 
           /* ========================================================================= */
-          /* STATE B: ACTIVE SCANNER WORKSPACE                                         */
+          /* STATE C: ACTIVE SCANNER WORKSPACE (UNLOCKED OFFICER SHIFT)                */
           /* ========================================================================= */
           <div className="space-y-6 animate-in fade-in duration-200">
+
+            {/* Active Duty Officer Badge Bar */}
+            <div className="p-4 bg-emerald-950/80 rounded-2xl border border-emerald-800 text-white flex items-center justify-between text-xs shadow-lg">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={activeOfficer.avatar} 
+                  alt={activeOfficer.full_name}
+                  className="w-9 h-9 rounded-full border border-emerald-400 object-cover" 
+                />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-white text-xs">{activeOfficer.full_name}</span>
+                    <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-400/30">
+                      ON DUTY
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-emerald-300/80 font-medium">{activeOfficer.position}</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveOfficer(null)}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-rose-300 hover:text-rose-200 border border-slate-700 hover:border-rose-500 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Lock Terminal & Transfer Duty"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Switch Officer</span>
+              </button>
+            </div>
+
             
             {/* Camera Scanner Container */}
             <div className="bg-slate-950 rounded-3xl border-2 border-emerald-500/50 p-6 text-center space-y-4 shadow-2xl relative overflow-hidden">

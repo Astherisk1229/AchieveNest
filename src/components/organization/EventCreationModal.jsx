@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { X, Calendar, MapPin, Clock, Layers, Sparkles, Eye, ShieldCheck, CheckCircle2, ChevronRight, ChevronLeft, Building2, User } from 'lucide-react'
+import { X, Calendar, MapPin, Clock, Layers, Sparkles, Eye, ShieldCheck, CheckCircle2, ChevronRight, ChevronLeft, Building2, User, Upload, Image } from 'lucide-react'
 import OrganizationController from '../../controllers/OrganizationController'
+import SignatureVault, { parseSignatoryInfo } from '../../utils/signatureVault'
+
 
 export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onUpdateEvent, editingEvent }) {
   const [activeStep, setActiveStep] = useState(1)
+
+  const defaultVault = SignatureVault.getSignatures()
 
   const [formData, setFormData] = useState({
     title: '',
@@ -18,14 +22,18 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
     attendance_start_time: '08:30',
     attendance_end_time: '09:30',
     osad_template_id: 'OSAD-TPL-03',
-    signatory_1: 'Dr. Ana Reyes (Club Moderator)',
-    signatory_2: 'Prof. Juan Dela Cruz (OSAD Director)'
+    signatory_1: defaultVault.signatory_1,
+    signatory_2: defaultVault.signatory_2,
+    signatory_1_img: defaultVault.signatory_1_img,
+    signatory_2_img: defaultVault.signatory_2_img
   })
 
   // Smart Auto-Matching template result
   const autoMatch = OrganizationController.autoMatchOSADTemplate(formData.category, formData.title)
 
   useEffect(() => {
+    const vault = SignatureVault.getSignatures()
+
     if (editingEvent) {
       setFormData({
         title: editingEvent.title || '',
@@ -40,8 +48,10 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
         attendance_start_time: editingEvent.attendance_start_time || '08:30',
         attendance_end_time: editingEvent.attendance_end_time || '09:30',
         osad_template_id: editingEvent.osad_template_id || OrganizationController.autoMatchOSADTemplate(editingEvent.category || 'Workshop', editingEvent.title || '').id,
-        signatory_1: editingEvent.signatory_1 || 'Dr. Ana Reyes (Club Moderator)',
-        signatory_2: editingEvent.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)'
+        signatory_1: editingEvent.signatory_1 || vault.signatory_1,
+        signatory_2: editingEvent.signatory_2 || vault.signatory_2,
+        signatory_1_img: editingEvent.signatory_1_img || vault.signatory_1_img,
+        signatory_2_img: editingEvent.signatory_2_img || vault.signatory_2_img
       })
     } else {
       setFormData({
@@ -57,12 +67,29 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
         attendance_start_time: '08:30',
         attendance_end_time: '09:30',
         osad_template_id: OrganizationController.autoMatchOSADTemplate('Workshop', '').id,
-        signatory_1: 'Dr. Ana Reyes (Club Moderator)',
-        signatory_2: 'Prof. Juan Dela Cruz (OSAD Director)'
+        signatory_1: vault.signatory_1,
+        signatory_2: vault.signatory_2,
+        signatory_1_img: vault.signatory_1_img,
+        signatory_2_img: vault.signatory_2_img
       })
     }
     setActiveStep(1)
   }, [editingEvent, isOpen])
+
+  const handleSigImageUpload = (sigKey, file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUri = e.target.result
+      const updatedData = { ...formData, [sigKey]: dataUri }
+      setFormData(updatedData)
+      SignatureVault.saveSignatures({
+        [sigKey]: dataUri
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
 
   // Automatically sync osad_template_id when user changes Category if user hasn't manually selected a template
   const handleCategoryChange = (e) => {
@@ -412,10 +439,10 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                   </select>
                 </div>
 
-                {/* Signatory Inputs */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                {/* Signatory Inputs & Digital Signature Upload */}
+                <div className="space-y-4 pt-2 border-t border-slate-100">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Primary Signatory Name & Title
                     </label>
                     <input
@@ -424,10 +451,23 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                       onChange={(e) => setFormData({ ...formData, signatory_1: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
                     />
+                    <div className="flex items-center gap-2">
+                      <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-[#2d8a4e] border border-slate-200 text-[11px] font-bold cursor-pointer transition flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Signature PNG</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleSigImageUpload('signatory_1_img', e.target.files[0])}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-medium italic">Saved in Vault</span>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Secondary Signatory Name & Title
                     </label>
                     <input
@@ -436,6 +476,19 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                       onChange={(e) => setFormData({ ...formData, signatory_2: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
                     />
+                    <div className="flex items-center gap-2">
+                      <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-[#2d8a4e] border border-slate-200 text-[11px] font-bold cursor-pointer transition flex items-center gap-1.5">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Signature PNG</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleSigImageUpload('signatory_2_img', e.target.files[0])}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-medium italic">Saved in Vault</span>
+                    </div>
                   </div>
                 </div>
 
@@ -494,26 +547,63 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     </p>
                   </div>
 
-                  {/* Signatures */}
-                  <div className="pt-4 grid grid-cols-2 gap-4 border-t border-amber-900/20 max-w-sm mx-auto relative z-10 text-[10px]">
-                    <div>
-                      <div className="h-6 flex items-end justify-center">
-                        <span className="font-serif italic text-emerald-800 font-bold">A. Reyes</span>
-                      </div>
-                      <div className="border-t border-slate-400 pt-0.5 font-bold text-slate-800 truncate">
-                        {formData.signatory_1}
-                      </div>
-                    </div>
+                  {/* Rendered Digital Signatures (Signature over printed name format) */}
+                  <div className="pt-4 grid grid-cols-2 gap-6 border-t border-amber-900/20 max-w-md mx-auto relative z-10 text-[10px]">
+                    {(() => {
+                      const sig1 = parseSignatoryInfo(formData.signatory_1, 'Dr. Ana Reyes', 'Club Moderator')
+                      const sig2 = parseSignatoryInfo(formData.signatory_2, 'Prof. Juan Dela Cruz', 'OSAD Director')
 
-                    <div>
-                      <div className="h-6 flex items-end justify-center">
-                        <span className="font-serif italic text-amber-900 font-bold">J. Dela Cruz</span>
-                      </div>
-                      <div className="border-t border-slate-400 pt-0.5 font-bold text-slate-800 truncate">
-                        {formData.signatory_2}
-                      </div>
-                    </div>
+                      return (
+                        <>
+                          {/* Signatory 1 */}
+                          <div className="flex flex-col items-center justify-end text-center relative">
+                            {/* Floating Signature Graphic */}
+                            <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                              {formData.signatory_1_img ? (
+                                <img src={formData.signatory_1_img} alt="Signatory 1" className="h-9 max-w-[130px] object-contain" />
+                              ) : (
+                                <span className="font-serif italic text-emerald-800 font-bold text-xs">A. Reyes</span>
+                              )}
+                            </div>
+                            {/* Printed Name */}
+                            <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
+                              {sig1.name}
+                            </p>
+                            {/* Signature Line */}
+                            <div className="w-full border-t border-slate-700 my-0.5"></div>
+                            {/* Official Position / Title */}
+                            <p className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wider truncate max-w-full">
+                              {sig1.title}
+                            </p>
+                          </div>
+
+                          {/* Signatory 2 */}
+                          <div className="flex flex-col items-center justify-end text-center relative">
+                            {/* Floating Signature Graphic */}
+                            <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                              {formData.signatory_2_img ? (
+                                <img src={formData.signatory_2_img} alt="Signatory 2" className="h-9 max-w-[130px] object-contain" />
+                              ) : (
+                                <span className="font-serif italic text-amber-900 font-bold text-xs">J. Dela Cruz</span>
+                              )}
+                            </div>
+                            {/* Printed Name */}
+                            <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
+                              {sig2.name}
+                            </p>
+                            {/* Signature Line */}
+                            <div className="w-full border-t border-slate-700 my-0.5"></div>
+                            {/* Official Position / Title */}
+                            <p className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wider truncate max-w-full">
+                              {sig2.title}
+                            </p>
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
+
+
 
                   <div className="text-[9px] font-mono text-slate-400 pt-1">
                     Verification Code: NDMU-OSAD-2026-X8921 • OSAD Seal Verified

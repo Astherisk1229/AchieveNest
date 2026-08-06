@@ -32,10 +32,12 @@ import {
   Mail,
   Share2,
   Check,
-  ShieldAlert,
-  AlertTriangle,
-  UserCheck
+  UserCheck,
+  Eye,
+  Upload
 } from 'lucide-react'
+
+
 
 import useOrganization from '../../hooks/useOrganization'
 import AttendanceController from '../../controllers/AttendanceController'
@@ -43,6 +45,11 @@ import OrganizationController from '../../controllers/OrganizationController'
 import EventCreationModal from './EventCreationModal'
 import AttendanceScannerModal from './AttendanceScannerModal'
 import DigitalCertificateModal from './DigitalCertificateModal'
+import EventCardOptionsMenu from './EventCardOptionsMenu'
+import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../utils/signatureVault'
+
+
+
 
 export default function OrgModeratorDashboardView({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -197,6 +204,26 @@ export default function OrgModeratorDashboardView({ currentUser }) {
     setIsCertModalOpen(true)
   }
 
+  // Signature Vault state & Handler
+  const [vaultSignatures, setVaultSignatures] = useState(SignatureVault.getSignatures())
+
+  const handleDetailSigUpload = (sigKey, file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUri = e.target.result
+      const updatedVault = SignatureVault.saveSignatures({ [sigKey]: dataUri })
+      setVaultSignatures(updatedVault)
+      if (selectedEventDetail) {
+        setSelectedEventDetail({
+          ...selectedEventDetail,
+          [sigKey]: dataUri
+        })
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
   // Copy Officer Scanner link
   const handleCopyOfficerLink = () => {
     const link = `${window.location.origin}/scanner/${activeAttendanceEvtId}`
@@ -204,6 +231,7 @@ export default function OrgModeratorDashboardView({ currentUser }) {
     setShowCopiedToast(true)
     setTimeout(() => setShowCopiedToast(false), 3000)
   }
+
 
   // Session Control Actions
   const handleSessionControl = (newStatus) => {
@@ -517,19 +545,51 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Verified Signatories</p>
-                    <div className="space-y-1.5 text-xs">
-                      <p className="font-extrabold text-slate-800 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                        {selectedEventDetail.signatory_1 || 'Dr. Ana Reyes (Club Moderator)'}
-                      </p>
-                      <p className="font-extrabold text-slate-800 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                        {selectedEventDetail.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)'}
-                      </p>
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Verified Signatories & Vault Signatures</p>
+                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Vault Synced</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      {/* Signatory 1 Upload Row */}
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
+                        <p className="font-extrabold text-slate-800 flex items-center gap-1.5 truncate">
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e] shrink-0" />
+                          <span className="truncate">{selectedEventDetail.signatory_1 || 'Dr. Ana Reyes (Club Moderator)'}</span>
+                        </p>
+                        <label className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#2d8a4e] border border-emerald-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shrink-0">
+                          <Upload className="w-3 h-3" />
+                          <span>Upload PNG</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleDetailSigUpload('signatory_1_img', e.target.files[0])}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {/* Signatory 2 Upload Row */}
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
+                        <p className="font-extrabold text-slate-800 flex items-center gap-1.5 truncate">
+                          <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="truncate">{selectedEventDetail.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)'}</span>
+                        </p>
+                        <label className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shrink-0">
+                          <Upload className="w-3 h-3" />
+                          <span>Upload PNG</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleDetailSigUpload('signatory_2_img', e.target.files[0])}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
+
 
                   <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-slate-700 font-medium space-y-1">
                     <span className="font-extrabold text-emerald-900 block flex items-center gap-1">
@@ -583,26 +643,63 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                       </p>
                     </div>
 
-                    {/* Signatures */}
-                    <div className="pt-4 grid grid-cols-2 gap-4 border-t border-amber-900/20 max-w-sm mx-auto relative z-10 text-[10px]">
-                      <div>
-                        <div className="h-6 flex items-end justify-center">
-                          <span className="font-serif italic text-emerald-800 font-bold">A. Reyes</span>
-                        </div>
-                        <div className="border-t border-slate-400 pt-0.5 font-bold text-slate-800 truncate">
-                          {selectedEventDetail.signatory_1 || 'Dr. Ana Reyes (Club Moderator)'}
-                        </div>
-                      </div>
+                    {/* Rendered Digital Signatures (Signature Over Printed Name Format) */}
+                    <div className="pt-4 grid grid-cols-2 gap-6 border-t border-amber-900/20 max-w-md mx-auto relative z-10 text-[10px]">
+                      {(() => {
+                        const sig1 = parseSignatoryInfo(selectedEventDetail.signatory_1, 'Dr. Ana Reyes', 'Club Moderator')
+                        const sig2 = parseSignatoryInfo(selectedEventDetail.signatory_2, 'Prof. Juan Dela Cruz', 'OSAD Director')
 
-                      <div>
-                        <div className="h-6 flex items-end justify-center">
-                          <span className="font-serif italic text-amber-900 font-bold">J. Dela Cruz</span>
-                        </div>
-                        <div className="border-t border-slate-400 pt-0.5 font-bold text-slate-800 truncate">
-                          {selectedEventDetail.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)'}
-                        </div>
-                      </div>
+                        return (
+                          <>
+                            {/* Signatory 1 */}
+                            <div className="flex flex-col items-center justify-end text-center relative">
+                              {/* Floating Signature Graphic */}
+                              <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                                <img
+                                  src={selectedEventDetail.signatory_1_img || SignatureVault.getSignatures().signatory_1_img || DEFAULT_SIG_1_IMG}
+                                  alt="Primary Signatory Signature"
+                                  className="h-9 max-w-[130px] object-contain"
+                                />
+                              </div>
+                              {/* Printed Name */}
+                              <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
+                                {sig1.name}
+                              </p>
+                              {/* Signature Line */}
+                              <div className="w-full border-t border-slate-700 my-0.5"></div>
+                              {/* Official Position / Title */}
+                              <p className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wider truncate max-w-full">
+                                {sig1.title}
+                              </p>
+                            </div>
+
+                            {/* Signatory 2 */}
+                            <div className="flex flex-col items-center justify-end text-center relative">
+                              {/* Floating Signature Graphic */}
+                              <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                                <img
+                                  src={selectedEventDetail.signatory_2_img || SignatureVault.getSignatures().signatory_2_img || DEFAULT_SIG_2_IMG}
+                                  alt="Secondary Signatory Signature"
+                                  className="h-9 max-w-[130px] object-contain"
+                                />
+                              </div>
+                              {/* Printed Name */}
+                              <p className="font-extrabold text-slate-900 text-[11px] tracking-wide uppercase z-0 truncate max-w-full">
+                                {sig2.name}
+                              </p>
+                              {/* Signature Line */}
+                              <div className="w-full border-t border-slate-700 my-0.5"></div>
+                              {/* Official Position / Title */}
+                              <p className="text-[9.5px] font-bold text-slate-600 uppercase tracking-wider truncate max-w-full">
+                                {sig2.title}
+                              </p>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
+
+
 
                     <div className="text-[9px] font-mono text-slate-400 pt-1">
                       Verification Code: NDMU-OSAD-2026-X8921 • OSAD Accreditation Badge Verified
@@ -834,8 +931,8 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                       </div>
                     </div>
 
-                    {/* Right Column: Status Pill + Actions (Details / Edit / Archive) */}
-                    <div className="flex items-center justify-between md:justify-end gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                    {/* Right Column: Status Pill + Actions (Preview / Attendance / Options) */}
+                    <div className="flex items-center justify-between md:justify-end gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100" onClick={(e) => e.stopPropagation()}>
                       <span className={`px-3 py-1 rounded-full text-[11px] font-bold shadow-xs ${evt.status === 'Ongoing'
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         : evt.status === 'Completed'
@@ -848,38 +945,33 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                       </span>
 
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleViewEventDetails(evt)
-                        }}
+                        onClick={() => handleViewEventDetails(evt)}
                         className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2d8a4e] border border-emerald-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
                       >
-                        <ExternalLink className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                        <span>Details</span>
+                        <Eye className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                        <span>Preview</span>
                       </button>
 
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleOpenEditModal(evt)
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-[#2d8a4e] border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                        onClick={() => handleGoToAttendanceSession(evt.id)}
+                        className="px-3 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs"
                       >
-                        <Edit className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Edit</span>
+                        <QrCode className="w-3.5 h-3.5 text-white" />
+                        <span>Attendance</span>
                       </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleArchiveEvent(evt.id)
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                        <span>Archive</span>
-                      </button>
+                      <EventCardOptionsMenu
+                        event={evt}
+                        onViewDetails={(e) => handleViewEventDetails(e)}
+                        onMonitorAttendance={(id) => handleGoToAttendanceSession(id)}
+                        onLaunchScanner={(e) => handleOpenScanner(e)}
+                        onEditEvent={(e) => handleOpenEditModal(e)}
+                        onPreviewCertificates={(e) => handleOpenCertificates(e)}
+                        onExportCSV={(e) => AttendanceController.exportCSV(e.id, e.title)}
+                        onArchiveEvent={(id) => handleArchiveEvent(id)}
+                      />
                     </div>
+
                   </div>
                 ))
               )}
@@ -1271,6 +1363,81 @@ export default function OrgModeratorDashboardView({ currentUser }) {
             </div>
           </div>
 
+          {/* Persistent Digital Signature Vault Management Card */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center font-bold shadow-xs">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                    Digital Signature Vault & Institutional Signatories
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Upload official signatory signature PNGs once to auto pre-fill all event digital certificates.
+                  </p>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold border border-emerald-200 self-start sm:self-auto">
+                Vault Active & Synced
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* Primary Signatory Vault Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Primary Signatory</span>
+                  <p className="font-extrabold text-slate-900 text-sm">{vaultSignatures.signatory_1}</p>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-4">
+                  <div className="h-10 flex items-center justify-center flex-1">
+                    <img src={vaultSignatures.signatory_1_img || DEFAULT_SIG_1_IMG} alt="Sig 1" className="h-9 max-w-[140px] object-contain" />
+                  </div>
+                  <label className="px-3 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload PNG</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDetailSigUpload('signatory_1_img', e.target.files[0])}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Secondary Signatory Vault Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3 flex flex-col justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Secondary Signatory</span>
+                  <p className="font-extrabold text-slate-900 text-sm">{vaultSignatures.signatory_2}</p>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-4">
+                  <div className="h-10 flex items-center justify-center flex-1">
+                    <img src={vaultSignatures.signatory_2_img || DEFAULT_SIG_2_IMG} alt="Sig 2" className="h-9 max-w-[140px] object-contain" />
+                  </div>
+                  <label className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload PNG</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDetailSigUpload('signatory_2_img', e.target.files[0])}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+
           {/* Section 2: Bottom Quick Info Stat Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
@@ -1344,50 +1511,71 @@ export default function OrgModeratorDashboardView({ currentUser }) {
               </div>
             </div>
 
-            {/* 4 Stat Counter Cards Grid */}
+            {/* 4 Interactive Operational Metric Cards Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
 
-              <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-md flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setSearchParams({ tab: 'events' })}
+                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
+                title="Click to Manage All Events"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Events This Year</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">EVENTS (AY 25-26)</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.events_this_year}</p>
                 </div>
-              </div>
+              </button>
 
-              <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-md flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setSearchParams({ tab: 'attendance' })}
+                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
+                title="Click to Monitor Live Attendance Sessions"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Participants</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">TOTAL ATTENDEES</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.total_participants}</p>
                 </div>
-              </div>
+              </button>
 
-              <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-md flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={() => handleOpenCertificates()}
+                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
+                title="Click to Preview & Issue Digital Certificates"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Award className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Certs Issued</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">DIGITAL CERTS ISSUED</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.certs_issued}</p>
                 </div>
-              </div>
+              </button>
 
-              <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-md flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setSearchParams({ tab: 'profile' })}
+                className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
+                title="Click to View Organization Profile & Roster"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Members</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">REGISTERED MEMBERS</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.active_members}</p>
                 </div>
-              </div>
+              </button>
 
             </div>
+
 
           </div>
 
@@ -1434,8 +1622,8 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                     {/* Upper 3D Graphic Banner */}
                     <div className="h-36 bg-gradient-to-br from-emerald-800 via-slate-800 to-slate-900 p-5 relative flex items-center justify-between text-white overflow-hidden">
 
-                      {/* Status Badge */}
-                      <div className="absolute top-4 right-4 z-10">
+                      {/* Status Badge & Options Menu */}
+                      <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-[11px] font-bold shadow-xs ${isOngoing
                           ? 'bg-emerald-400 text-emerald-950 border border-emerald-300'
                           : isCompleted
@@ -1444,6 +1632,20 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                           }`}>
                           {evt.status}
                         </span>
+
+                        <EventCardOptionsMenu
+                          event={evt}
+                          onViewDetails={(e) => {
+                            setSearchParams({ tab: 'events' })
+                            handleViewEventDetails(e)
+                          }}
+                          onMonitorAttendance={(id) => handleGoToAttendanceSession(id)}
+                          onLaunchScanner={(e) => handleOpenScanner(e)}
+                          onEditEvent={(e) => handleOpenEditModal(e)}
+                          onPreviewCertificates={(e) => handleOpenCertificates(e)}
+                          onExportCSV={(e) => AttendanceController.exportCSV(e.id, e.title)}
+                          onArchiveEvent={(id) => handleArchiveEvent(id)}
+                        />
                       </div>
 
                       {/* Title overlay */}
@@ -1476,14 +1678,39 @@ export default function OrgModeratorDashboardView({ currentUser }) {
                         </div>
                       </div>
 
-                      {/* Participants Counter */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-500">Total Participants</span>
-                        <span className="font-extrabold text-[#2d8a4e] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{evt.participants_count} checked in</span>
+                      {/* Participants Counter & Footer Action Buttons */}
+                      <div className="pt-3 border-t border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-500">Total Participants</span>
+                          <span className="font-extrabold text-[#2d8a4e] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{evt.participants_count} checked in</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchParams({ tab: 'events' })
+                              handleViewEventDetails(evt)
+                            }}
+                            className="flex-1 py-2 px-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-[#2d8a4e] text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Preview</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleGoToAttendanceSession(evt.id)}
+                            className="flex-1 py-2 px-3 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <QrCode className="w-3.5 h-3.5 text-white" />
+                            <span>Attendance</span>
+                          </button>
+                        </div>
                       </div>
 
-
                     </div>
+
 
                   </div>
                 )

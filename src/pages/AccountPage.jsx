@@ -163,13 +163,17 @@ export default function AccountPage({ currentUser }) {
           
           <div className="flex items-center gap-6">
             <div className="relative shrink-0">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[#2d8a4e] p-1 bg-white overflow-hidden shadow-md">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[#2d8a4e] p-1 bg-white overflow-hidden shadow-md aspect-square">
                 <img
                   src={avatarUrl}
                   alt={fullName}
-                  className="w-full h-full object-cover rounded-xl"
+                  width="96"
+                  height="96"
+                  className="w-full h-full object-cover rounded-xl aspect-square"
+                  decoding="async"
                 />
               </div>
+
               <button
                 type="button"
                 onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}

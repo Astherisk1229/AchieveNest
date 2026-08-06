@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import ExportPortfolioPreviewModal from '../components/student/ExportPortfolioPreviewModal'
 import EditStudentInfoModal from '../components/student/EditStudentInfoModal'
+import campusBanner from '../assets/ndmu_campus_banner.png'
+
 import { 
   Trophy, 
   CheckCircle2, 
@@ -183,22 +185,24 @@ export default function StudentPortfolioPage({ currentUser }) {
                   <stop offset="50%" stopColor="#1b4332" />
                   <stop offset="100%" stopColor="#0d281e" />
                 </linearGradient>
-                <pattern id="studentLatticePattern" width="24" height="24" patternUnits="userSpaceOnUse">
-                  <path d="M0 24L24 0M0 0l24 24" stroke="#ffffff" strokeWidth="1" strokeOpacity="0.08" />
-                </pattern>
               </defs>
-              
-              {/* Left Green Curvy Shape Background (Matches Exact User Drawn Curve Line) */}
+
+              {/* Left Green Curvy Shape Background */}
               <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#studentHeroGreenGrad)" />
-              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#studentLatticePattern)" />
             </svg>
+
+
 
             {/* Campus Background Image Overlay clipped to Left Green Curvy Shape */}
             <div className="absolute top-0 left-0 w-[18%] h-full mix-blend-overlay opacity-30 pointer-events-none overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 40% 100%, 0 100%)' }}>
               <img
-                src="/assets/ndmu_campus_banner-Cf5FMJ9w.png"
+                src={campusBanner}
                 alt="NDMU Campus Backdrop"
+                width="1200"
+                height="240"
                 className="w-full h-full object-cover"
+                decoding="async"
+                loading="eager"
               />
             </div>
           </div>
@@ -231,14 +235,21 @@ export default function StudentPortfolioPage({ currentUser }) {
                 
                 {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
                 <div className="relative shrink-0 z-30 sm:-mb-1">
-                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden aspect-square">
                     <img
                       src={student.avatar_url}
                       alt={student.full_name}
-                      className="w-full h-full object-cover rounded-full"
+                      width="144"
+                      height="144"
+                      className="w-full h-full object-cover rounded-full aspect-square"
+                      fetchpriority="high"
+                      decoding="async"
+                      loading="eager"
                     />
                   </div>
                 </div>
+
+
 
                 {/* Student Details & Info Chips (In Reserved White Content Space) */}
                 <div className="space-y-1.5 pt-1 sm:pt-0">

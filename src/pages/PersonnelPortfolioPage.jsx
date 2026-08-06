@@ -4,20 +4,22 @@ import MainLayout from '../layouts/MainLayout'
 import ExportPortfolioPreviewModal from '../components/student/ExportPortfolioPreviewModal'
 import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import PersonnelPortfolioCanvaView from '../components/personnel/PersonnelPortfolioCanvaView'
-import { 
-  Trophy, 
-  CheckCircle2, 
-  Award, 
-  MapPin, 
-  Calendar, 
-  GraduationCap, 
-  Mail, 
-  Phone, 
-  Users, 
-  BookOpen, 
-  Heart, 
-  Star, 
-  FileText, 
+import campusBanner from '../assets/ndmu_campus_banner.png'
+
+import {
+  Trophy,
+  CheckCircle2,
+  Award,
+  MapPin,
+  Calendar,
+  GraduationCap,
+  Mail,
+  Phone,
+  Users,
+  BookOpen,
+  Heart,
+  Star,
+  FileText,
   ArrowRight,
   ShieldCheck,
   Check,
@@ -169,7 +171,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   return (
     <MainLayout>
       <div className="space-y-6 font-sans">
-        
+
         {/* ================= 1. PAGE TITLE HEADER ================= */}
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Portfolio</h1>
@@ -188,7 +190,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
         {/* ================= 2. HERO PROFILE BANNER (EXACT SPECIFICATION IMPLEMENTATION) ================= */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-6 relative">
-          
+
           {/* SVG Background Layer: Left-Oriented Green Curvy Banner Shape with Faded Campus Backdrop */}
           <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
             <svg viewBox="0 0 1200 240" preserveAspectRatio="none" className="w-full h-full">
@@ -198,25 +200,24 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <stop offset="50%" stopColor="#1b4332" />
                   <stop offset="100%" stopColor="#0d281e" />
                 </linearGradient>
-                <pattern id="latticePattern" width="24" height="24" patternUnits="userSpaceOnUse">
-                  <path d="M0 24L24 0M0 0l24 24" stroke="#ffffff" strokeWidth="1" strokeOpacity="0.08" />
-                </pattern>
-                <clipPath id="leftGreenCurveClip">
-                  <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" />
-                </clipPath>
               </defs>
-              
-              {/* Left Green Curvy Shape Background (Matches Exact User Drawn Curve Line) */}
+
+              {/* Left Green Curvy Shape Background */}
               <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#heroGreenGrad)" />
-              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#latticePattern)" />
             </svg>
+
+
 
             {/* Campus Background Image Overlay clipped to Left Green Curvy Shape */}
             <div className="absolute top-0 left-0 w-[18%] h-full mix-blend-overlay opacity-30 pointer-events-none overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 40% 100%, 0 100%)' }}>
               <img
-                src="/assets/ndmu_campus_banner-Cf5FMJ9w.png"
+                src={campusBanner}
                 alt="NDMU Campus Backdrop"
+                width="1200"
+                height="240"
                 className="w-full h-full object-cover"
+                decoding="async"
+                loading="eager"
               />
             </div>
           </div>
@@ -236,27 +237,34 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
             {/* Motto Right (On Reserved White Area) */}
             <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
-              Veritas • Caritas • Excellentia
+              Character, Competence and Culture in harmony
             </div>
           </div>
 
           {/* White Reserved Content Area with Overlapping Avatar & Details */}
           <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 relative z-20">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-              
+
               {/* Left Column: Avatar Overlapping 1/3 Green & 2/3 White + Reserved White Details */}
               <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                
+
                 {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
                 <div className="relative shrink-0 z-30 sm:-mb-1">
-                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden aspect-square">
                     <img
                       src={personnel.avatar_url}
                       alt={personnel.full_name}
-                      className="w-full h-full object-cover rounded-full"
+                      width="144"
+                      height="144"
+                      className="w-full h-full object-cover rounded-full aspect-square"
+                      fetchpriority="high"
+                      decoding="async"
+                      loading="eager"
                     />
                   </div>
                 </div>
+
+
 
                 {/* Faculty Details & Info Chips (In Reserved White Content Space) */}
                 <div className="space-y-1.5 pt-1 sm:pt-0">
@@ -294,7 +302,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
               {/* Far-Right Column: Edit Profile (Top), 4 Stat Cards (Middle), Share & Export Buttons (Bottom) */}
               <div className="flex flex-col items-start lg:items-end justify-between gap-4 shrink-0 pt-2 lg:pt-0">
-                
+
                 {/* Upper Right Action Button: Edit Profile */}
                 <button
                   type="button"
@@ -359,10 +367,10 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
         {/* ================= 3. TWO COLUMN MAIN CONTENT GRID ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
+
           {/* LEFT COLUMN (8/12 width): ABOUT ME, TIMELINE & FEATURED ACCOMPLISHMENTS */}
           <div className="lg:col-span-8 space-y-6">
-            
+
             {/* ABOUT ME CARD */}
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
@@ -487,7 +495,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
           {/* RIGHT COLUMN (4/12 width): CONTACT INFO, SKILLS & ACCOMPLISHMENTS BY CATEGORY */}
           <div className="lg:col-span-4 space-y-6">
-            
+
             {/* CONTACT INFORMATION CARD */}
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">

@@ -18,6 +18,8 @@ export default class EventModel {
   #osad_template_id
   #signatory_1
   #signatory_2
+  #signatory_1_img
+  #signatory_2_img
   #attendance_start_time
   #attendance_end_time
   #session_status
@@ -39,6 +41,8 @@ export default class EventModel {
     this.#osad_template_id = data.osad_template_id || 'OSAD-TPL-01'
     this.#signatory_1 = data.signatory_1 || 'Dr. Ana Reyes (Club Moderator)'
     this.#signatory_2 = data.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)'
+    this.#signatory_1_img = data.signatory_1_img || null
+    this.#signatory_2_img = data.signatory_2_img || null
 
     this.#attendance_start_time = data.attendance_start_time || '08:30'
     this.#attendance_end_time = data.attendance_end_time || '09:30'
@@ -62,6 +66,8 @@ export default class EventModel {
   get osad_template_id() { return this.#osad_template_id }
   get signatory_1() { return this.#signatory_1 }
   get signatory_2() { return this.#signatory_2 }
+  get signatory_1_img() { return this.#signatory_1_img }
+  get signatory_2_img() { return this.#signatory_2_img }
   get attendance_start_time() { return this.#attendance_start_time }
   get attendance_end_time() { return this.#attendance_end_time }
   get session_status() { return this.#session_status }
@@ -96,11 +102,14 @@ export default class EventModel {
       osad_template_id: this.#osad_template_id,
       signatory_1: this.#signatory_1,
       signatory_2: this.#signatory_2,
+      signatory_1_img: this.#signatory_1_img,
+      signatory_2_img: this.#signatory_2_img,
       attendance_start_time: this.#attendance_start_time,
       attendance_end_time: this.#attendance_end_time,
       session_status: this.#session_status,
       scanned_participants: this.#scanned_participants
     }
   }
+
 }
 

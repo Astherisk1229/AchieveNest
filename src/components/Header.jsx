@@ -93,13 +93,19 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 transition group"
           >
-            <div className="w-9.5 h-9.5 rounded-full border-2 border-[#2d8a4e] p-0.5 overflow-hidden shrink-0 shadow-xs">
+            <div className="w-9.5 h-9.5 rounded-full border-2 border-[#2d8a4e] p-0.5 overflow-hidden shrink-0 shadow-xs aspect-square">
               <img
                 src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt="User Avatar"
-                className="w-full h-full object-cover rounded-full"
+                width="38"
+                height="38"
+                className="w-full h-full object-cover rounded-full aspect-square"
+                fetchpriority="high"
+                decoding="async"
+                loading="eager"
               />
             </div>
+
 
             <div className="text-left hidden sm:block">
               <p className="text-xs font-bold text-slate-900 leading-tight">{user?.full_name || 'Juan A. Dela Cruz'}</p>

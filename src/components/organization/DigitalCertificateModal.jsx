@@ -1,5 +1,8 @@
 import React from 'react'
 import { X, Award, Download, CheckCircle2, ShieldCheck, QrCode } from 'lucide-react'
+import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../utils/signatureVault'
+
+
 
 export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }) {
   if (!isOpen) return null
@@ -60,20 +63,64 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
                 For active participation in the event <span className="font-bold text-slate-900">{activeEvent?.title || 'Computer Society Tech Summit 2026'}</span> hosted by Computer Society NDMU on <span className="font-semibold">{activeEvent?.date || 'August 15, 2026'}</span>.
               </p>
 
-              <div className="pt-6 flex items-center justify-around border-t border-amber-200/60 mt-4">
-                <div className="text-center">
-                  <p className="text-xs font-bold text-slate-900">Dr. Ana Reyes</p>
-                  <p className="text-[10px] text-slate-500 uppercase font-semibold">Organization Moderator</p>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-xl bg-white border border-amber-200 shadow-sm">
-                  <QrCode className="w-8 h-8 text-slate-800" />
-                  <div className="text-left text-[9px] leading-tight text-slate-500 font-mono">
-                    <p className="font-bold text-slate-900">VERIFIED NDMU</p>
-                    <p>ID: CERT-2026-8492</p>
-                  </div>
-                </div>
+              <div className="pt-6 grid grid-cols-3 items-center gap-4 border-t border-amber-200/60 mt-4">
+                {(() => {
+                  const sig1 = parseSignatoryInfo(activeEvent?.signatory_1 || 'Dr. Ana Reyes (Club Moderator)', 'Dr. Ana Reyes', 'Club Moderator')
+                  const sig2 = parseSignatoryInfo(activeEvent?.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)', 'Prof. Juan Dela Cruz', 'OSAD Director')
+
+                  return (
+                    <>
+                      {/* Signatory 1 */}
+                      <div className="flex flex-col items-center justify-end text-center relative">
+                        <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                          <img
+                            src={activeEvent?.signatory_1_img || SignatureVault.getSignatures().signatory_1_img || DEFAULT_SIG_1_IMG}
+                            alt="Signatory 1"
+                            className="h-9 max-w-[120px] object-contain"
+                          />
+                        </div>
+                        <p className="font-extrabold text-slate-900 text-xs tracking-wide uppercase z-0 truncate max-w-full">
+                          {sig1.name}
+                        </p>
+                        <div className="w-full border-t border-slate-700 my-0.5"></div>
+                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider truncate max-w-full">
+                          {sig1.title}
+                        </p>
+                      </div>
+
+                      {/* Security Verification Badge */}
+                      <div className="flex items-center justify-center gap-2 p-2 rounded-xl bg-white border border-amber-200 shadow-2xs">
+                        <QrCode className="w-7 h-7 text-slate-800 shrink-0" />
+                        <div className="text-left text-[8.5px] leading-tight text-slate-500 font-mono">
+                          <p className="font-bold text-slate-900">VERIFIED NDMU</p>
+                          <p>ID: CERT-2026-8492</p>
+                        </div>
+                      </div>
+
+                      {/* Signatory 2 */}
+                      <div className="flex flex-col items-center justify-end text-center relative">
+                        <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
+                          <img
+                            src={activeEvent?.signatory_2_img || SignatureVault.getSignatures().signatory_2_img || DEFAULT_SIG_2_IMG}
+                            alt="Signatory 2"
+                            className="h-9 max-w-[120px] object-contain"
+                          />
+                        </div>
+                        <p className="font-extrabold text-slate-900 text-xs tracking-wide uppercase z-0 truncate max-w-full">
+                          {sig2.name}
+                        </p>
+                        <div className="w-full border-t border-slate-700 my-0.5"></div>
+                        <p className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider truncate max-w-full">
+                          {sig2.title}
+                        </p>
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
+
             </div>
+
 
           </div>
 

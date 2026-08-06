@@ -41,15 +41,26 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
 
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-[#f4f8f5] text-slate-900 font-sans selection:bg-[#2d8a4e] selection:text-white">
+    <div className="h-screen w-screen flex overflow-hidden bg-[#f4f8f5] text-slate-900 font-sans selection:bg-[#2d8a4e] selection:text-white relative">
       
-      {/* Fixed Left Sidebar */}
+      {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
       {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Component (Off-canvas drawer on mobile < 1024px, permanent sidebar on >= 1024px) */}
+      <div className={`fixed inset-y-0 left-0 z-50 lg:static lg:z-auto transition-transform duration-300 ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'
+      }`}>
         <Sidebar
           currentUser={currentUser}
           onRoleChange={handleRoleChange}
         />
-      )}
+      </div>
 
       {/* Right Column (Header Fixed Top + Scrollable Content Body) */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
@@ -61,14 +72,16 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
           onRoleChange={handleRoleChange}
         />
 
-        {/* Independent Scrollable Workspace Area */}
-        <main className="flex-1 overflow-y-auto p-6 sm:p-8 w-full max-w-full space-y-6 bg-[#f4f8f5]">
-          {React.Children.map(children, child => {
-            if (React.isValidElement(child)) {
-              return React.cloneElement(child, { currentUser, onRoleChange: handleRoleChange })
-            }
-            return child
-          })}
+        {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#f4f8f5]">
+          <div className="container-responsive space-y-6">
+            {React.Children.map(children, child => {
+              if (React.isValidElement(child)) {
+                return React.cloneElement(child, { currentUser, onRoleChange: handleRoleChange })
+              }
+              return child
+            })}
+          </div>
         </main>
         
       </div>
@@ -76,3 +89,4 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
     </div>
   )
 }
+

@@ -1016,68 +1016,99 @@ export default function CoordinatorDashboardView({ currentUser }) {
 
           </div>
 
-          {/* Student Cards Grid (3 Columns) */}
+          {/* Simplified High-Readability Student Data Table */}
           {filteredStudents.length === 0 ? (
             <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 text-xs font-medium">
               No students found matching your search or filter criteria.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredStudents.map(std => (
-                <div
-                  key={std.id}
-                  onClick={() => setSelectedStudentDossier(std)}
-                  className="bg-white rounded-3xl p-6 border border-slate-200 hover:border-emerald-400 hover:shadow-md transition cursor-pointer flex flex-col justify-between space-y-5"
-                >
-                  {/* Top Info: Avatar + Name + Student ID + Program */}
-                  <div className="flex items-start gap-3.5">
-                    <div className="w-11 h-11 rounded-full bg-slate-800 text-white flex items-center justify-center font-extrabold text-base shrink-0 shadow-xs mt-0.5">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-extrabold text-slate-900 truncate leading-snug">{std.full_name}</h3>
-                      <p className="text-xs text-slate-400 font-semibold">{std.student_id}</p>
-                      <p className="text-xs text-slate-400 font-medium truncate mt-0.5">{std.program}</p>
-                    </div>
-                  </div>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
+                      <th className="py-3 px-4">Student Information</th>
+                      <th className="py-3 px-4">Program & Year</th>
+                      <th className="py-3 px-4 text-center">Achievements</th>
+                      <th className="py-3 px-4 text-center">Verified Points</th>
+                      <th className="py-3 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                    {filteredStudents.map(std => (
+                      <tr
+                        key={std.id}
+                        onClick={() => setSelectedStudentDossier(std)}
+                        className="hover:bg-emerald-50/60 transition cursor-pointer group"
+                      >
+                        {/* Student Information */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={std.avatar_url}
+                              alt={std.full_name}
+                              className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition text-xs leading-tight">
+                                {std.full_name}
+                              </p>
+                              <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                                {std.student_id} <span className="text-slate-300">•</span> {std.email}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
 
-                  {/* Middle Stats Container (Soft Light-Green Shaded Box) */}
-                  <div className="bg-[#eef7f0] border border-[#cbe6d2] rounded-2xl p-4 grid grid-cols-2 gap-4">
-                    {/* Achievements Stat */}
-                    <div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-medium text-[11px] mb-1">
-                        <Award className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Achievements</span>
-                      </div>
-                      <p className="text-2xl font-black text-slate-900">{std.achievements_count}</p>
-                    </div>
+                        {/* Program & Year Level */}
+                        <td className="py-3 px-4">
+                          <p className="font-extrabold text-slate-800 text-xs leading-tight">{std.program}</p>
+                          <span className="inline-block mt-0.5 px-2 py-0.2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/60 text-[10px] font-bold">
+                            {std.year_level}
+                          </span>
+                        </td>
 
-                    {/* Points Stat */}
-                    <div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-medium text-[11px] mb-1">
-                        <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Points</span>
-                      </div>
-                      <p className="text-2xl font-black text-slate-900">{std.verified_points}</p>
-                    </div>
-                  </div>
+                        {/* Achievements Tally */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <span className="font-extrabold text-slate-900 text-sm">{std.achievements_count}</span>
+                          <span className="text-[10px] text-slate-500 font-semibold ml-2">
+                            (<span className="text-emerald-700 font-bold">{std.verified_count} Verified</span> • <span className="text-amber-700 font-bold">{std.pending_count} Pending</span>)
+                          </span>
+                        </td>
 
-                  {/* Bottom Status Breakdown Footer */}
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs font-bold">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                      <span>{std.verified_count} verified</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                      <span>{std.pending_count} pending</span>
-                    </div>
-                  </div>
+                        {/* Verified Merit Points */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 text-[#1b4332] font-extrabold text-xs border border-emerald-200">
+                            <TrendingUp className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                            <span>{std.verified_points} Points</span>
+                          </span>
+                        </td>
 
-                </div>
-              ))}
+                        {/* Action Button */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedStudentDossier(std)
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white text-xs font-bold transition shadow-2xs inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Inspect Dossier</span>
+                          </button>
+                        </td>
+
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
           )}
+
+
 
         </div>
       )}

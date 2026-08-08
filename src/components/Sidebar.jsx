@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { getCurrentUser, logoutUser } from '../services/authService'
+import useTheme from '../hooks/useTheme'
 import { 
   Home, 
   Award, 
@@ -17,11 +18,14 @@ import {
   FileCheck2,
   LayoutGrid,
   Calendar,
-  QrCode
+  QrCode,
+  Sun,
+  Moon
 } from 'lucide-react'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
   const navigate = useNavigate()
+  const { isDark, toggleTheme } = useTheme()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const user = currentUser || getCurrentUser()
@@ -121,14 +125,23 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
   const defaultTabForContext = activeContext === 'organization_moderator' ? 'dashboard' : 'overview'
   const currentActiveTab = activeTabParam || defaultTabForContext
+  const isOSADAdmin = activeContext === 'osad_staff' || location.pathname.includes('/osad/')
 
   return (
-    <aside className="w-64 bg-[#143823] text-white flex flex-col justify-between shrink-0 h-screen sticky top-0 border-r border-[#1e4a30] selection:bg-[#2d8a4e] selection:text-white font-sans overflow-y-auto">
+    <aside className={`w-64 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 ${
+      isOSADAdmin
+        ? 'bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white'
+        : 'bg-[#1b4332] dark:bg-[#07130b] text-white border-r border-[#285d3c] dark:border-emerald-950/80 selection:bg-[#2d8a4e] selection:text-white'
+    }`}>
       <div>
         
         {/* Brand Header */}
-        <div className="p-5 flex items-center gap-3 border-b border-[#1e4a30]">
-          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
+        <div className={`p-5 flex items-center gap-3 border-b ${
+          isOSADAdmin
+            ? 'border-slate-100 dark:border-slate-800/80'
+            : 'border-[#285d3c] dark:border-emerald-950/80'
+        }`}>
+          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0 border border-slate-100">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
               <circle cx="50" cy="50" r="28" fill="#ffffff" />
@@ -136,48 +149,52 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             </svg>
           </div>
           <div>
-            <h1 className="font-extrabold text-xl text-[#ffffff] leading-tight tracking-tight">AchieveNest</h1>
-            <p className="text-xs text-emerald-200/80 font-bold tracking-widest uppercase">NDMU</p>
+            <h1 className={`font-extrabold text-xl leading-tight tracking-tight ${
+              isOSADAdmin ? 'text-slate-900 dark:text-white' : 'text-[#ffffff]'
+            }`}>AchieveNest</h1>
+            <p className={`text-xs font-bold tracking-widest uppercase ${
+              isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-200/80 dark:text-emerald-400/80'
+            }`}>NDMU OSAD</p>
           </div>
         </div>
 
         {/* Sidebar Search Input */}
         <div className="p-4 pb-2">
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-emerald-200/60">
+            <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${
+              isOSADAdmin ? 'text-slate-400 dark:text-slate-500' : 'text-emerald-200/60 dark:text-emerald-400/60'
+            }`}>
               <Search className="w-4 h-4" />
             </div>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search..."
-              className="w-full pl-9.5 pr-3 py-2 rounded-xl bg-[#0c2416] border border-[#1e4a30] text-xs font-medium text-[#ffffff] placeholder-emerald-200/50 focus:outline-none focus:border-[#2d8a4e] transition"
+              placeholder="Search OSAD Portal..."
+              className={`w-full pl-9.5 pr-3 py-2 rounded-xl text-xs font-medium focus:outline-none focus:border-[#2d8a4e] transition ${
+                isOSADAdmin
+                  ? 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400'
+                  : 'bg-[#133626] dark:bg-[#030a05] border border-[#245236] dark:border-emerald-950/80 text-white placeholder-emerald-200/50 dark:placeholder-slate-500'
+              }`}
             />
           </div>
         </div>
 
         {/* Active Portal / Role Badge */}
         <div className="px-4 py-2">
-          <div className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-between shadow-sm border ${
-            activeContext === 'program_coordinator' 
+          <div className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-between shadow-xs border ${
+            isOSADAdmin
+              ? 'bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#2d8a4e]/30 dark:border-emerald-800/60 font-bold'
+              : activeContext === 'program_coordinator' 
               ? 'bg-[#1d6bba] border-blue-400/40 text-white font-bold' 
               : activeContext === 'organization_moderator'
               ? 'bg-emerald-500/20 text-emerald-100 border-emerald-500/30'
               : activeContext === 'hr_staff' || location.pathname.includes('/hr/')
               ? 'bg-emerald-700/80 border-emerald-400/50 text-white font-bold'
-              : 'bg-[#2d8a4e] border-emerald-400/30 text-white font-bold'
+              : 'bg-[#2d8a4e] dark:bg-[#184528] border-emerald-400/30 dark:border-emerald-700/50 text-white font-bold'
           }`}>
             <span className="flex items-center gap-2">
-              {activeContext === 'program_coordinator' ? (
-                <ShieldCheck className="w-4 h-4 text-blue-200" />
-              ) : activeContext === 'organization_moderator' ? (
-                <Building2 className="w-4 h-4 text-emerald-300" />
-              ) : activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? (
-                <Building2 className="w-4 h-4 text-emerald-200" />
-              ) : (
-                <UserCheck className="w-4 h-4 text-emerald-300" />
-              )}
+              <ShieldCheck className={`w-4 h-4 ${isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-300'}`} />
               {portalInfo.roleTitle || portalInfo.label}
             </span>
           </div>
@@ -185,7 +202,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
         {/* Navigation Items */}
         <div className="px-3 pt-3 space-y-1">
-          <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">Navigation</p>
+          <p className={`px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 ${
+            isOSADAdmin ? 'text-slate-400 dark:text-slate-400' : 'text-emerald-300/70 dark:text-emerald-400/70'
+          }`}>Navigation</p>
           {navItems.map((item) => {
             const Icon = item.icon
             const isTabActive = item.tab && item.tab === currentActiveTab
@@ -199,60 +218,97 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                 onClick={() => {
                   navigate(item.path)
                 }}
-                className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+                className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
                   isActive
-                    ? 'bg-[#2d8a4e] text-white shadow-xs'
-                    : 'text-emerald-100/80 hover:bg-[#1b4332] hover:text-white'
+                    ? isOSADAdmin
+                      ? 'bg-[#eef7f0] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#2d8a4e]/30 dark:border-emerald-700/50 shadow-2xs'
+                      : 'bg-[#2d8a4e] dark:bg-[#184528] text-white dark:text-emerald-100 shadow-2xs border border-emerald-400/20 dark:border-emerald-600/40'
+                    : isOSADAdmin
+                      ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                      : 'text-emerald-100/80 dark:text-slate-300 hover:bg-[#205236] dark:hover:bg-[#0c2415] hover:text-white'
                 }`}
               >
-                <Icon className="w-4 h-4 text-emerald-300" />
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
+                  isActive
+                    ? isOSADAdmin
+                      ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
+                      : 'bg-white/20 text-white'
+                    : isOSADAdmin
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
+                      : 'bg-emerald-500/15 dark:bg-emerald-950/60 text-emerald-300 dark:text-emerald-400'
+                }`}>
+                  <Icon className="w-3.5 h-3.5" />
+                </div>
                 <span>{item.label}</span>
-
               </button>
             )
           })}
         </div>
 
-
-
       </div>
 
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-[#1e4a30] space-y-1">
-        <p className="px-3 text-[10px] uppercase font-bold tracking-wider text-emerald-300/60 mb-2">Account</p>
+      <div className={`p-4 border-t space-y-1 ${
+        isOSADAdmin ? 'border-slate-100 dark:border-slate-800/80' : 'border-[#285d3c] dark:border-emerald-950/80'
+      }`}>
+        <p className={`px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 ${
+          isOSADAdmin ? 'text-slate-400 dark:text-slate-400' : 'text-emerald-300/70 dark:text-emerald-400/70'
+        }`}>Account</p>
         
         <button
           type="button"
           onClick={() => navigate('/notifications')}
-          className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+          className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
             isNotificationsActive
-              ? 'bg-[#2d8a4e] text-white shadow-xs'
-              : 'text-emerald-100/80 hover:bg-[#1b4332] hover:text-white'
+              ? isOSADAdmin
+                ? 'bg-[#eef7f0] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#2d8a4e]/30 dark:border-emerald-700/50 shadow-2xs'
+                : 'bg-[#2d8a4e] dark:bg-[#184528] text-white dark:text-emerald-100 shadow-2xs border border-emerald-400/20 dark:border-emerald-600/40'
+              : isOSADAdmin
+                ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                : 'text-emerald-100/80 dark:text-slate-300 hover:bg-[#205236] dark:hover:bg-[#0c2415] hover:text-white'
           }`}
         >
-          <Bell className="w-4 h-4 text-emerald-300" />
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
+            isNotificationsActive
+              ? isOSADAdmin ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950' : 'bg-white/20 text-white'
+              : isOSADAdmin ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-emerald-500/15 dark:bg-emerald-950/60 text-emerald-300 dark:text-emerald-400'
+          }`}>
+            <Bell className="w-3.5 h-3.5" />
+          </div>
           <span>Notifications</span>
         </button>
 
         <button
           type="button"
           onClick={() => navigate('/student/settings')}
-          className={`w-full px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+          className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
             isSettingsActive
-              ? 'bg-[#2d8a4e] text-white shadow-xs'
-              : 'text-emerald-100/80 hover:bg-[#1b4332] hover:text-white'
+              ? isOSADAdmin
+                ? 'bg-[#eef7f0] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#2d8a4e]/30 dark:border-emerald-700/50 shadow-2xs'
+                : 'bg-[#2d8a4e] dark:bg-[#184528] text-white dark:text-emerald-100 shadow-2xs border border-emerald-400/20 dark:border-emerald-600/40'
+              : isOSADAdmin
+                ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                : 'text-emerald-100/80 dark:text-slate-300 hover:bg-[#205236] dark:hover:bg-[#0c2415] hover:text-white'
           }`}
         >
-          <Settings className="w-4 h-4 text-emerald-300" />
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
+            isSettingsActive
+              ? isOSADAdmin ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950' : 'bg-white/20 text-white'
+              : isOSADAdmin ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-emerald-500/15 dark:bg-emerald-950/60 text-emerald-300 dark:text-emerald-400'
+          }`}>
+            <Settings className="w-3.5 h-3.5" />
+          </div>
           <span>Settings</span>
         </button>
 
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full px-3 py-2.5 rounded-xl font-bold text-xs text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 flex items-center gap-3 transition cursor-pointer"
+          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-700 dark:hover:text-rose-200 flex items-center gap-3 transition cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center shrink-0">
+            <LogOut className="w-3.5 h-3.5" />
+          </div>
           <span>Logout</span>
         </button>
       </div>

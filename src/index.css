@@ -3,6 +3,10 @@
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  html {
+    font-size: 90%;
+  }
+
   :root {
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-heading: 'Plus Jakarta Sans', var(--font-sans);
@@ -23,6 +27,17 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
+  }
+
+  select option {
+    background-color: #ffffff;
+    color: #0f172a;
+    padding: 8px 12px;
+  }
+
+  .dark select option {
+    background-color: #131e2e;
+    color: #f8fafc;
   }
 }
 

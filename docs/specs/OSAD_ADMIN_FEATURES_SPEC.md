@@ -8,13 +8,21 @@ This document provides an exhaustive, step-by-step specification of all system f
 
 ### A. Role Definition & Core Mandate
 - **User Role**: OSAD Administrator / OSAD Staff (`role_context: 'osad_staff'`, e.g., *Director Marcus Vance, Ph.D. — Director, Office of Student Affairs & Services*).
-- **Primary Responsibility**: Central university-wide oversight of student affairs, governance of faculty administrative roles (assigning and revoking Program Coordinator and Organization Moderator privileges), definition of multi-criteria award scoring standards and certificate templates, execution of automated honor roll candidate ranking algorithms, compilation and export of official accreditation reports (PACUCOA, CHEd, OSAD Parangal), and real-time monitoring of system security audit logs.
+- **Primary Responsibility**: Central governance of all Student accounts, creation of Academic Departments, Student Organizations, and Student Clubs, delegation of faculty administrative roles across the 3-tier organizational hierarchy, definition of multi-criteria award scoring standards, execution of automated honor roll candidate ranking algorithms, compilation of official accreditation reports (PACUCOA, CHEd, OSAD Parangal), and monitoring system security audit logs.
+- **Workflow Governance Rules & 3-Tier Hierarchy (Finalized Standard)**:
+  - **3-Tier Organizational & Role Architecture**:
+    1. **College Department** (Tier 1: `CEAC`, `CBA`, `CAS`, `CED`) $\rightarrow$ Assigned Role: **College Dean**
+    2. **Student Organization** (Tier 2: `Computer Society NDMU`, `Junior Executive Club`) $\rightarrow$ Assigned Role: **Program Coordinator**
+    3. **Student Club** (Tier 3: `AI & Robotics Student Guild`, `FinTech Circle`) $\rightarrow$ Assigned Role: **Organization Moderator**
+  - **Account & Student Governance**: Handles and manages all **Student accounts** across the university ecosystem.
+  - **Portfolio Access Boundaries**: Can view all **Student portfolios**, but **cannot** view Personnel portfolios (strictly preserving privacy boundaries between OSAD Admin and HR Admin).
+  - **Searchable Personnel Selector Utility**: Integrates a searchable modal (`PersonnelSelectorModal.jsx`) when assigning Deans, Program Coordinators, or Organization Moderators, allowing instant search by name or dashless Employee ID (`EMP7491`) to eliminate scrolling.
 
 ### B. OOP & MVC Architectural Compliance
 Strictly following the project guidelines in [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md) and [`AGENTS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md):
 - **Domain Controller ([`src/controllers/OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js))**:
-  - Encapsulates private fields (`#users`, `#awardCategories`, `#awardees`, `#auditLogs`, `#accreditationReports`) inside an ES6 singleton class.
-  - Controls business logic for role assignments/revocations, category CRUD, candidate ranking algorithms, report compilation, and transaction logging.
+  - Encapsulates private fields (`#users`, `#departments`, `#organizations`, `#clubs`, `#awardCategories`, `#awardees`, `#auditLogs`, `#accreditationReports`) inside an ES6 singleton class.
+  - Controls business logic for 3-tier entity management, role assignments (`assignCollegeDean`, `assignProgramCoordinator`, `assignOrganizationModerator`), category CRUD, candidate ranking algorithms, report compilation, and transaction logging.
 - **Bridge Hook ([`src/hooks/useOSAD.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/hooks/useOSAD.js))**:
   - Custom React hook connecting View components to [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js), providing state synchronization, filter state management, and toast notifications.
 - **Lightweight View ([`src/components/osad/OSADDashboardView.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/osad/OSADDashboardView.jsx))**:
@@ -28,11 +36,15 @@ The OSAD Admin Portal utilizes URL search parameters (`/osad/dashboard?tab=<tab_
 | Sidebar Navigation Label | Tab Query Parameter | Primary Purpose |
 | :--- | :--- | :--- |
 | **OSAD Command Center** | `tab=overview` | Executive metrics, quick-action navigation hub, college achievement breakdown |
-| **Account Management** | `tab=accounts` | Search university accounts, assign/revoke Coordinator & Moderator roles |
+| **Student Governance** | `tab=accounts` | Manage Student accounts, view Student portfolios |
+| **College Departments** | `tab=departments` | Create College Departments, assign **College Deans** from Personnel list |
+| **Student Organizations** | `tab=organizations` | Create Student Organizations, assign **Program Coordinators** from Personnel list |
+| **Student Clubs** | `tab=clubs` | Create Student Special Interest Clubs, assign **Organization Moderators** |
 | **Award Categories** | `tab=awards` | Configure multi-criteria award standards, point multipliers & certificate templates |
 | **Identify Awardees** | `tab=awardees` | Run automated honor roll ranking algorithm & confirm official awardees |
 | **Accreditation Reports** | `tab=reports` | Live inspection & export of PACUCOA, CHEd, & OSAD annual audit reports |
 | **System Audit Logs** | `tab=audit` | Real-time security trail tracking administrative transactions and role modifications |
+
 
 ---
 
@@ -84,44 +96,59 @@ Four high-impact quick-action shortcut buttons for immediate navigation:
 
 ---
 
-## 3. Section 2: User Account Governance & Administrative Role Assignment (`tab=accounts`)
+## 3. Section 2: Student Account Governance & Student Portfolio Viewer (`tab=accounts`)
 
-The **Account Management & Role Assignment Suite** empowers OSAD administrators to inspect all user accounts across the university ecosystem and delegate administrative roles to faculty members.
+The **Student Account Governance Suite** enables OSAD administrators to manage student accounts, inspect individual student portfolios, and verify student records.
 
-### A. Control Bar & Search Filter
-- **Role Filter Pills**: `All Accounts` | `Students` | `Personnel & Faculty`
-- **Real-Time Search Bar**: Instant text search filtering by full name, Student ID / Employee ID (e.g., `EMP-7491`), department, or program.
-
-### B. Account Governance Table Schema
-
-| Column Name | Description & Data Formatting |
-| :--- | :--- |
-| **User Details** | Full Name & NDMU Email address |
-| **ID Number** | Monospaced Student ID (`2023-10492`) or Employee ID (`EMP-[#2d8a4e]-201`) |
-| **Role Context** | Semantic Pill Badge: `Student` (Emerald) vs `Faculty / Personnel` (Purple) |
-| **Department / Program** | Academic program or department assignment |
-| **Assigned Administrative Roles** | Active administrative role badges with inline revocation triggers |
-| **Actions** | Role assignment trigger buttons (`+ Assign Coordinator`, `+ Assign Moderator`) |
-
-### C. Inline Role Revocation Workflow
-- **Revoke Button (`×`)**: Clicking the inline `×` on any assigned role badge invokes `revokeRole(userId, roleId)` in [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js).
-- **Data Cleanup**: Nullifies `coordinator_program` or `moderator_org` on the target user object.
-- **Audit & Toast**: Logs a `ROLE_REVOCATION` entry in audit trail and displays toast feedback: `"Revoked role [program_coordinator] from Engr. Roberto Cruz"`.
-
-### D. Role Assignment Modal Dialogs
-When an administrator clicks `+ Assign Coordinator` or `+ Assign Moderator`:
-1. **Target User Header**: Displays target faculty member's name and department.
-2. **Program / Organization Dropdown**:
-   - **Program Coordinator Modal**: Select from `BS Computer Science`, `BS Information Technology`, `BS Civil Engineering`, `BS Business Administration`.
-   - **Organization Moderator Modal**: Select from `Computer Society NDMU`, `Junior Executive Club`, `Supreme Student Council`, `Civil Engineering Association`.
-3. **Form Submission**:
-   - Executes `assignProgramCoordinator()` or `assignOrganizationModerator()`.
-   - Adds `ROLE_ASSIGNMENT` record to central audit log.
-   - Triggers confirmation toast: `"Assigned Program Coordinator role for [BS Computer Science] to Engr. Roberto Cruz"`.
+### A. Control Bar, Search Filter & Access Boundaries
+- **Student Roster Filters**: `All Student Accounts` | `By College` | `By Academic Year`
+- **Real-Time Student Search Bar**: Instant text search filtering by student full name, Student ID (`2023-10492`), or academic program.
+- **Strict Portfolio Access Boundary Enforcement**:
+  - OSAD Administrators can view all **Student Portfolios** (e.g. clicking *"View Student Portfolio"* opens full student achievement ledger).
+  - **Personnel Portfolios** are strictly inaccessible to OSAD Admin (reserved exclusively for HR Admin governance).
 
 ---
 
-## 4. Section 3: Award Categories & Multi-Criteria Scoring Setup (`tab=awards`)
+## 4. Section 3: Academic Department Creation & Program Coordinator Assignment (`tab=departments`)
+
+The **Departments & Programs Governance Module** allows OSAD Admin to manage academic departments and delegate verification authority to faculty members.
+
+### A. Department Creation & Setup Workflow
+- **"Create Academic Department" Modal**:
+  - **Department Name**: e.g., *College of Engineering, Architecture & Computing (CEAC)*.
+  - **Academic Code**: e.g., `CEAC`.
+  - **Degree Programs Managed**: Multi-select tags (e.g., `BS Computer Science`, `BS Information Technology`, `BS Civil Engineering`).
+- **Program Coordinator Verification Workflow**:
+  - Assigning a Program Coordinator to a department/program establishes the official verification gatekeeper.
+  - Student achievement submissions must be verified by the assigned Program Coordinator before officially appearing in student portfolios.
+
+### B. Personnel Selection Utility & Role Assignment
+- **Searchable Personnel Selection Utility**:
+  - When assigning a Program Coordinator, the modal presents a searchable Personnel dropdown/input.
+  - Allows OSAD Admin to quickly search by faculty name or Employee ID (e.g., `EMP-7491`) to select candidates effortlessly without scrolling through long faculty lists.
+- **Data Action**: Invokes `assignProgramCoordinator(personnelId, programId)` in [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js).
+
+---
+
+## 5. Section 4: Student Organization & Org Moderator Governance (`tab=organizations`)
+
+The **Student Organizations Governance Module** allows OSAD Admin to manage recognized campus student organizations and assign faculty moderators.
+
+### A. Organization Creation & Setup Workflow
+- **"Create Student Organization" Modal**:
+  - **Organization Name**: e.g., *NDMU Computer Society*, *Supreme Student Council*, *Junior Executive Club*.
+  - **Category**: `Academic`, `Special Interest`, `Student Government`, `Cultural`.
+- **Org Moderator Governance**:
+  - Assigns an Organization Moderator from the Personnel list to handle and supervise the organization account and event logs.
+
+### B. Personnel Selection Utility for Org Moderators
+- **Searchable Personnel Selection Utility**:
+  - Features real-time search filtering across all faculty/personnel records.
+  - Allows rapid assignment of Organization Moderator roles with automated audit trail recording (`ROLE_ASSIGNMENT`).
+
+---
+
+## 6. Section 5: Award Categories & Multi-Criteria Scoring Setup (`tab=awards`)
 
 The **Award Management Module** enables OSAD administrators to define university-wide recognition standards, set point eligibility thresholds, assign scoring weight multipliers, and bind official OSAD certificate templates.
 

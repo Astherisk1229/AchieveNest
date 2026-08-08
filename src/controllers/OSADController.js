@@ -6,18 +6,114 @@
 
 class OSADController {
   #users
+  #departments
+  #organizations
+  #clubs
   #awardCategories
   #awardees
   #auditLogs
   #accreditationReports
 
   constructor() {
+    // 3-Tier Hierarchy: College Department (Dean) > Organization (Program Coordinator) > Club (Organization Moderator)
+    this.#departments = [
+      {
+        id: 'dept-01',
+        name: 'College of Engineering, Architecture & Computing (CEAC)',
+        code: 'CEAC',
+        programs: ['BS Computer Science', 'BS Information Technology', 'BS Civil Engineering'],
+        dean_name: 'Dr. Ana Reyes',
+        dean_id: 'usr-[#2d8a4e]-201',
+        student_count: 320,
+        status: 'Active'
+      },
+      {
+        id: 'dept-02',
+        name: 'College of Business & Accountancy (CBA)',
+        code: 'CBA',
+        programs: ['BS Business Administration', 'BS Accountancy'],
+        dean_name: 'Prof. Grace Tan',
+        dean_id: 'usr-[#2d8a4e]-203',
+        student_count: 245,
+        status: 'Active'
+      },
+      {
+        id: 'dept-03',
+        name: 'College of Arts & Sciences (CAS)',
+        code: 'CAS',
+        programs: ['BA Communication', 'BS Psychology'],
+        dean_name: 'Dr. Fernando Alonzo',
+        dean_id: 'usr-[#2d8a4e]-204',
+        student_count: 190,
+        status: 'Active'
+      }
+    ]
+
+    this.#organizations = [
+      {
+        id: 'org-01',
+        name: 'Computer Society NDMU',
+        category: 'Academic & Technology',
+        coordinator_name: 'Engr. Roberto Cruz',
+        coordinator_id: 'usr-[#2d8a4e]-202',
+        member_count: 140,
+        status: 'Active'
+      },
+      {
+        id: 'org-02',
+        name: 'Junior Executive Club',
+        category: 'Business Leadership',
+        coordinator_name: 'Prof. Grace Tan',
+        coordinator_id: 'usr-[#2d8a4e]-203',
+        member_count: 95,
+        status: 'Active'
+      },
+      {
+        id: 'org-03',
+        name: 'Supreme Student Council',
+        category: 'Student Government',
+        coordinator_name: 'Engr. Roberto Cruz',
+        coordinator_id: 'usr-[#2d8a4e]-202',
+        member_count: 220,
+        status: 'Active'
+      }
+    ]
+
+    this.#clubs = [
+      {
+        id: 'club-01',
+        name: 'AI & Robotics Student Guild',
+        parent_org: 'Computer Society NDMU',
+        moderator_name: 'Dr. Ana Reyes',
+        moderator_id: 'usr-[#2d8a4e]-201',
+        member_count: 45,
+        status: 'Active'
+      },
+      {
+        id: 'club-02',
+        name: 'FinTech & Accounting Circle',
+        parent_org: 'Junior Executive Club',
+        moderator_name: 'Prof. Grace Tan',
+        moderator_id: 'usr-[#2d8a4e]-203',
+        member_count: 38,
+        status: 'Active'
+      },
+      {
+        id: 'club-03',
+        name: 'Green Campus Environment Club',
+        parent_org: 'Supreme Student Council',
+        moderator_name: 'Dr. Fernando Alonzo',
+        moderator_id: 'usr-[#2d8a4e]-204',
+        member_count: 60,
+        status: 'Active'
+      }
+    ]
     this.#users = [
       // Students
       {
         id: 'usr-std-101',
         full_name: 'Juan Dela Cruz',
-        student_id: '2023-10492',
+        student_id: '202310492',
         role: 'student',
         program: 'BS Computer Science',
         year_level: '3rd Year',
@@ -30,7 +126,7 @@ class OSADController {
       {
         id: 'usr-std-102',
         full_name: 'Maria Clara Santos',
-        student_id: '2023-10495',
+        student_id: '202310495',
         role: 'student',
         program: 'BS Computer Science',
         year_level: '4th Year',
@@ -43,7 +139,7 @@ class OSADController {
       {
         id: 'usr-std-103',
         full_name: 'Alex Gonzaga',
-        student_id: '2024-11002',
+        student_id: '202411002',
         role: 'student',
         program: 'BS Information Technology',
         year_level: '2nd Year',
@@ -56,7 +152,7 @@ class OSADController {
       {
         id: 'usr-std-104',
         full_name: 'Samantha Ray',
-        student_id: '2022-09821',
+        student_id: '202209821',
         role: 'student',
         program: 'BS Business Administration',
         year_level: '4th Year',
@@ -69,7 +165,7 @@ class OSADController {
       {
         id: 'usr-std-105',
         full_name: 'David Miller',
-        student_id: '2023-10511',
+        student_id: '202310511',
         role: 'student',
         program: 'BS Civil Engineering',
         year_level: '3rd Year',
@@ -80,11 +176,11 @@ class OSADController {
         status: 'Active'
       },
 
-      // Personnel / Faculty
+      // Personnel / Faculty (Employee IDs formatted without dashes per university standard)
       {
         id: 'usr-[#2d8a4e]-201',
         full_name: 'Dr. Ana Reyes',
-        employee_id: 'EMP-8821',
+        employee_id: 'EMP8821',
         role: 'personnel',
         academic_rank: 'Associate Professor',
         department: 'Computer Science Department',
@@ -97,7 +193,7 @@ class OSADController {
       {
         id: 'usr-[#2d8a4e]-202',
         full_name: 'Engr. Roberto Cruz',
-        employee_id: 'EMP-7491',
+        employee_id: 'EMP7491',
         role: 'personnel',
         academic_rank: 'Assistant Professor',
         department: 'Computer Science Department',
@@ -110,7 +206,7 @@ class OSADController {
       {
         id: 'usr-[#2d8a4e]-203',
         full_name: 'Prof. Grace Tan',
-        employee_id: 'EMP-6102',
+        employee_id: 'EMP6102',
         role: 'personnel',
         academic_rank: 'Senior Lecturer',
         department: 'Business Administration',
@@ -123,7 +219,7 @@ class OSADController {
       {
         id: 'usr-[#2d8a4e]-204',
         full_name: 'Dr. Fernando Alonzo',
-        employee_id: 'EMP-9011',
+        employee_id: 'EMP9011',
         role: 'personnel',
         academic_rank: 'Full Professor',
         department: 'Civil Engineering Department',
@@ -207,7 +303,7 @@ class OSADController {
       {
         id: 'awd-rec-01',
         student_name: 'Maria Clara Santos',
-        student_id: '2023-10495',
+        student_id: '202310495',
         program: 'BS Computer Science',
         award_title: 'Institutional Academic Honor Roll',
         rank: 1,
@@ -218,7 +314,7 @@ class OSADController {
       {
         id: 'awd-rec-02',
         student_name: 'Samantha Ray',
-        student_id: '2022-09821',
+        student_id: '202209821',
         program: 'BS Business Administration',
         award_title: 'Leadership Excellence Award',
         rank: 1,
@@ -229,7 +325,7 @@ class OSADController {
       {
         id: 'awd-rec-03',
         student_name: 'Juan Dela Cruz',
-        student_id: '2023-10492',
+        student_id: '202310492',
         program: 'BS Computer Science',
         award_title: 'Leadership Excellence Award',
         rank: 2,
@@ -321,6 +417,170 @@ class OSADController {
     ]
   }
 
+  // --- Pre-Imported Student Soft-Mapping & Auto-Reconciliation Engine ---
+  reconcileStudentsWithDepartment(department) {
+    if (!department || !department.programs) return 0
+    let reconciledCount = 0
+
+    this.#users.forEach(usr => {
+      if (usr.role === 'student' && usr.program) {
+        const matchesProgram = department.programs.some(p => 
+          usr.program.toLowerCase().includes(p.toLowerCase()) || 
+          p.toLowerCase().includes(usr.program.toLowerCase())
+        )
+        if (matchesProgram) {
+          usr.department_id = department.id
+          usr.college = department.code
+          reconciledCount++
+        }
+      }
+    })
+
+    if (reconciledCount > 0) {
+      this.addAuditLog(
+        'STUDENT_AUTO_RECONCILIATION',
+        `Auto-reconciled ${reconciledCount} pre-imported student accounts to department [${department.name}] (${department.code})`,
+        department.code,
+        'SUCCESS'
+      )
+    }
+
+    return reconciledCount
+  }
+
+  // --- Department Governance & Hierarchy ---
+  getDepartments() {
+    return [...this.#departments]
+  }
+
+  createDepartment(deptData) {
+    const newDept = {
+      id: `dept-${Date.now()}`,
+      name: deptData.name,
+      code: deptData.code || deptData.name.split(' ').map(w => w[0]).join(''),
+      programs: deptData.programs || [],
+      dean_name: deptData.dean_name || 'Unassigned',
+      dean_id: deptData.dean_id || null,
+      student_count: 0,
+      status: 'Active'
+    }
+
+    if (deptData.dean_id) {
+      this.assignCollegeDean(deptData.dean_id, newDept.code)
+    }
+
+    // Auto-reconcile pre-imported students with this newly created department
+    const reconciledCount = this.reconcileStudentsWithDepartment(newDept)
+    newDept.student_count = reconciledCount || (deptData.programs ? deptData.programs.length * 80 : 0)
+
+    this.#departments.push(newDept)
+
+    this.addAuditLog(
+      'DEPARTMENT_CREATED',
+      `Created academic department [${newDept.name}] (${newDept.code}) with ${newDept.student_count} reconciled students`,
+      newDept.name,
+      'SUCCESS'
+    )
+    return { department: newDept, reconciledCount }
+  }
+
+  // --- Student Organization Governance ---
+  getOrganizations() {
+    return [...this.#organizations]
+  }
+
+  createOrganization(orgData) {
+    const newOrg = {
+      id: `org-${Date.now()}`,
+      name: orgData.name,
+      category: orgData.category || 'Special Interest',
+      coordinator_name: orgData.coordinator_name || 'Unassigned',
+      coordinator_id: orgData.coordinator_id || null,
+      member_count: 0,
+      status: 'Active'
+    }
+
+    if (orgData.coordinator_id) {
+      this.assignProgramCoordinator(orgData.coordinator_id, newOrg.name)
+    }
+
+    this.#organizations.push(newOrg)
+
+    this.addAuditLog(
+      'ORGANIZATION_CREATED',
+      `Created student organization [${newOrg.name}]`,
+      newOrg.name,
+      'SUCCESS'
+    )
+    return newOrg
+  }
+
+  // --- Personnel Selection Utility (Searchable Faculty List) ---
+  getPersonnelList(searchQuery = '') {
+    const term = searchQuery.toLowerCase().trim()
+    const cleanTerm = term.replace(/-/g, '')
+    return this.#users
+      .filter(u => u.role === 'personnel')
+      .filter(u => {
+        if (!term) return true
+        const cleanEmpId = (u.employee_id || '').toLowerCase().replace(/-/g, '')
+        return (
+          u.full_name.toLowerCase().includes(term) ||
+          cleanEmpId.includes(cleanTerm) ||
+          (u.department && u.department.toLowerCase().includes(term)) ||
+          (u.email && u.email.toLowerCase().includes(term))
+        )
+      })
+  }
+
+  // --- Student Portfolio Access (Strictly Restricted from Personnel Portfolios) ---
+  getStudentPortfolios(searchQuery = '', collegeFilter = 'all') {
+    const term = searchQuery.toLowerCase().trim()
+    return this.#users
+      .filter(u => u.role === 'student')
+      .filter(u => {
+        const matchCollege = collegeFilter === 'all' ? true : u.college === collegeFilter
+        const matchTerm = !term ? true : (
+          u.full_name.toLowerCase().includes(term) ||
+          u.student_id.toLowerCase().includes(term) ||
+          u.program.toLowerCase().includes(term)
+        )
+        return matchCollege && matchTerm
+      })
+      .map(std => ({
+        ...std,
+        portfolio_items: [
+          {
+            id: `p-rec-${std.id}-1`,
+            title: `1st Place — National ${std.program.includes('Computer') ? 'Hackathon & AI Challenge' : 'Academic Summit'} 2026`,
+            category: 'National Competition',
+            points: 120,
+            date: '2026-02-14',
+            status: 'OSAD Verified',
+            proof_url: 'https://ndmu.edu.ph/proof/cert-881.pdf'
+          },
+          {
+            id: `p-rec-${std.id}-2`,
+            title: 'NDMU Supreme Student Council Executive Leadership Service',
+            category: 'Student Leadership',
+            points: 100,
+            date: '2026-01-20',
+            status: 'OSAD Verified',
+            proof_url: 'https://ndmu.edu.ph/proof/cert-882.pdf'
+          },
+          {
+            id: `p-rec-${std.id}-3`,
+            title: 'Community Outreach & Extension Volunteer Accreditation',
+            category: 'Community Extension',
+            points: 80,
+            date: '2025-11-18',
+            status: 'OSAD Verified',
+            proof_url: 'https://ndmu.edu.ph/proof/cert-883.pdf'
+          }
+        ]
+      }))
+  }
+
   // --- Metrics Overview ---
   getMetrics() {
     const totalStudents = this.#users.filter(u => u.role === 'student').length
@@ -339,9 +599,10 @@ class OSADController {
   }
 
   // --- User Account Management & Role Assignment ---
-  getUsers(roleFilter = 'all', searchTerm = '') {
-    return this.#users.filter(u => {
+  getUsers(roleFilter = 'student', searchTerm = '', collegeFilter = 'all', sortBy = 'name') {
+    let result = this.#users.filter(u => {
       const matchRole = roleFilter === 'all' ? true : u.role === roleFilter
+      const matchCollege = collegeFilter === 'all' ? true : (u.college === collegeFilter || (u.department && u.department.includes(collegeFilter)))
       const term = searchTerm.toLowerCase()
       const matchTerm = !term ? true : (
         u.full_name.toLowerCase().includes(term) ||
@@ -351,42 +612,125 @@ class OSADController {
         (u.department && u.department.toLowerCase().includes(term)) ||
         (u.program && u.program.toLowerCase().includes(term))
       )
-      return matchRole && matchTerm
+      return matchRole && matchCollege && matchTerm
     })
+
+    // Sorting
+    result.sort((a, b) => {
+      if (sortBy === 'points') return (b.total_points || 0) - (a.total_points || 0)
+      if (sortBy === 'proofs') return (b.verified_count || 0) - (a.verified_count || 0)
+      if (sortBy === 'id') return (a.student_id || a.employee_id || '').localeCompare(b.student_id || b.employee_id || '')
+      return a.full_name.localeCompare(b.full_name)
+    })
+
+    return result
   }
 
-  assignProgramCoordinator(userId, programName) {
+  // --- 3-Tier Administrative Role Assignment ---
+  assignCollegeDean(userId, collegeName) {
     const usr = this.#users.find(u => u.id === userId)
     if (!usr) return null
+    if (!usr.assigned_roles) usr.assigned_roles = []
+    if (!usr.assigned_roles.includes('college_dean')) {
+      usr.assigned_roles.push('college_dean')
+    }
+    usr.dean_college = collegeName
+
+    // Update department record
+    const dept = this.#departments.find(d => d.name.includes(collegeName) || d.code === collegeName)
+    if (dept) {
+      dept.dean_name = usr.full_name
+      dept.dean_id = usr.id
+    }
+
+    this.addAuditLog(
+      'ROLE_ASSIGNMENT',
+      `Assigned role [College Dean] for ${collegeName}`,
+      usr.full_name,
+      'INFO'
+    )
+    return { ...usr }
+  }
+
+  assignProgramCoordinator(userId, orgName) {
+    const usr = this.#users.find(u => u.id === userId)
+    if (!usr) return null
+    if (!usr.assigned_roles) usr.assigned_roles = []
     if (!usr.assigned_roles.includes('program_coordinator')) {
       usr.assigned_roles.push('program_coordinator')
     }
-    usr.coordinator_program = programName
+    usr.coordinator_program = orgName
+
+    // Update organization record
+    const org = this.#organizations.find(o => o.name === orgName)
+    if (org) {
+      org.coordinator_name = usr.full_name
+      org.coordinator_id = usr.id
+    }
 
     this.addAuditLog(
       'ROLE_ASSIGNMENT',
-      `Assigned role [Program Coordinator] for ${programName}`,
+      `Assigned role [Program Coordinator] for ${orgName}`,
       usr.full_name,
       'INFO'
     )
     return { ...usr }
   }
 
-  assignOrganizationModerator(userId, orgName) {
+  assignOrganizationModerator(userId, clubName) {
     const usr = this.#users.find(u => u.id === userId)
     if (!usr) return null
+    if (!usr.assigned_roles) usr.assigned_roles = []
     if (!usr.assigned_roles.includes('organization_moderator')) {
       usr.assigned_roles.push('organization_moderator')
     }
-    usr.moderator_org = orgName
+    usr.moderator_org = clubName
+
+    // Update club record
+    const club = this.#clubs.find(c => c.name === clubName)
+    if (club) {
+      club.moderator_name = usr.full_name
+      club.moderator_id = usr.id
+    }
 
     this.addAuditLog(
       'ROLE_ASSIGNMENT',
-      `Assigned role [Organization Moderator] for ${orgName}`,
+      `Assigned role [Organization Moderator] for ${clubName}`,
       usr.full_name,
       'INFO'
     )
     return { ...usr }
+  }
+
+  // --- Student Clubs Governance ---
+  getClubs() {
+    return [...this.#clubs]
+  }
+
+  createClub(clubData) {
+    const newClub = {
+      id: `club-${Date.now()}`,
+      name: clubData.name,
+      parent_org: clubData.parent_org || 'Computer Society NDMU',
+      moderator_name: clubData.moderator_name || 'Unassigned',
+      moderator_id: clubData.moderator_id || null,
+      member_count: 0,
+      status: 'Active'
+    }
+
+    if (clubData.moderator_id) {
+      this.assignOrganizationModerator(clubData.moderator_id, newClub.name)
+    }
+
+    this.#clubs.push(newClub)
+
+    this.addAuditLog(
+      'CLUB_CREATED',
+      `Created student club [${newClub.name}] under [${newClub.parent_org}]`,
+      newClub.name,
+      'SUCCESS'
+    )
+    return newClub
   }
 
   revokeRole(userId, roleId) {

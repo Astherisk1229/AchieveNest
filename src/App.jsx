@@ -68,6 +68,7 @@ class ErrorBoundary extends React.Component {
 
 import useIdleSession from './hooks/useIdleSession'
 import SessionTimeoutModal from './components/common/SessionTimeoutModal'
+import { ThemeProvider } from './context/ThemeContext'
 
 export default function App() {
   const handleLogout = () => {
@@ -79,48 +80,50 @@ export default function App() {
   const { showWarning, secondsRemaining, stayLoggedIn } = useIdleSession(handleLogout)
 
   return (
-    <ErrorBoundary>
-      <Routes>
-        {/* Public Login Route */}
-        <Route path="/" element={<Login />} />
+    <ThemeProvider>
+      <ErrorBoundary>
+        <Routes>
+          {/* Public Login Route */}
+          <Route path="/" element={<Login />} />
 
-        {/* Primary Dashboard Routes */}
-        <Route path="/student/dashboard" element={<StudentDashboard />} />
-        <Route path="/student/achievements" element={<StudentAchievementsPage />} />
-        <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
-        <Route path="/student/account" element={<AccountPage />} />
-        <Route path="/personnel/account" element={<AccountPage />} />
-        <Route path="/personnel/achievements" element={<PersonnelAchievementsPage />} />
-        <Route path="/personnel/portfolio" element={<PersonnelPortfolioPage />} />
-        <Route path="/account" element={<AccountPage />} />
+          {/* Primary Dashboard Routes */}
+          <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/achievements" element={<StudentAchievementsPage />} />
+          <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
+          <Route path="/student/account" element={<AccountPage />} />
+          <Route path="/personnel/account" element={<AccountPage />} />
+          <Route path="/personnel/achievements" element={<PersonnelAchievementsPage />} />
+          <Route path="/personnel/portfolio" element={<PersonnelPortfolioPage />} />
+          <Route path="/account" element={<AccountPage />} />
 
-        {/* Dedicated Settings Routes */}
-        <Route path="/student/settings" element={<SettingsPage />} />
-        <Route path="/personnel/settings" element={<SettingsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        
-        {/* Notifications Routes */}
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/student/notifications" element={<NotificationsPage />} />
-        <Route path="/personnel/notifications" element={<NotificationsPage />} />
+          {/* Dedicated Settings Routes */}
+          <Route path="/student/settings" element={<SettingsPage />} />
+          <Route path="/personnel/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          
+          {/* Notifications Routes */}
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/student/notifications" element={<NotificationsPage />} />
+          <Route path="/personnel/notifications" element={<NotificationsPage />} />
 
-        <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
-        <Route path="/hr/dashboard" element={<HRDashboard />} />
-        <Route path="/osad/dashboard" element={<OSADDashboard />} />
-        <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />
+          <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
+          <Route path="/hr/dashboard" element={<HRDashboard />} />
+          <Route path="/osad/dashboard" element={<OSADDashboard />} />
+          <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />
 
-        {/* Fallback Redirect */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Fallback Redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
-      {/* Global University Terminal Inactivity Session Warning Modal */}
-      <SessionTimeoutModal
-        isOpen={showWarning}
-        secondsRemaining={secondsRemaining}
-        onStayLoggedIn={stayLoggedIn}
-        onLogoutNow={handleLogout}
-      />
-    </ErrorBoundary>
+        {/* Global University Terminal Inactivity Session Warning Modal */}
+        <SessionTimeoutModal
+          isOpen={showWarning}
+          secondsRemaining={secondsRemaining}
+          onStayLoggedIn={stayLoggedIn}
+          onLogoutNow={handleLogout}
+        />
+      </ErrorBoundary>
+    </ThemeProvider>
   )
 }
 

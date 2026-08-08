@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -11,6 +13,12 @@
     background-color: #f4f8f5;
     color: #0f172a;
     overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .dark body {
+    background-color: #0b1329;
+    color: #f8fafc;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -54,13 +62,25 @@
   background: #f4f8f5;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #0b1329;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 9999px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }
 
 /* Standardized Responsive Main Content Container Limit (Tailwind 1280px / xl standard) */
@@ -69,5 +89,17 @@
   max-width: 1280px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Hide Scrollbar Utility (Chrome, Safari, Edge, Firefox) */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 

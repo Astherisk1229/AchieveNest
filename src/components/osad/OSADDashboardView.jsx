@@ -177,23 +177,21 @@ export default function OSADDashboardView({ currentUser }) {
       {/* 1. OSAD EXECUTIVE COMMAND CENTER MODULE (tab === 'overview')              */}
       {/* ========================================================================= */}
       {activeTab === 'overview' && (
-        <div className="space-y-8 animate-in fade-in duration-200">
+        <div className="space-y-6 animate-in fade-in duration-200 font-sans">
 
-          {/* Hero Executive Header Banner (Pristine Executive Context) */}
-          <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+          {/* Hero Executive Header Banner (Minimalist Utilitarian Architecture) */}
+          <div className="bg-[#1b4332] dark:bg-[#0a2417] text-white p-6 sm:p-7 rounded-2xl border border-[#245233] dark:border-emerald-900/60 relative overflow-hidden shadow-xs">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
               <div className="flex items-start sm:items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
-                  <Trophy className="w-7 h-7 text-emerald-300" />
+                <div className="w-12 h-12 rounded-xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shrink-0 shadow-xs">
+                  <Trophy className="w-6 h-6 text-emerald-200" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider">
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider">
                       CENTRAL EXECUTIVE GOVERNANCE
                     </span>
-                    <span className="px-3 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/50 text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-700/50 text-[10px] font-bold">
                       AY 2025-2026 • Main Campus
                     </span>
                   </div>
@@ -206,7 +204,7 @@ export default function OSADDashboardView({ currentUser }) {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#0c2416] border border-[#1e4a30] shrink-0 self-start md:self-auto space-y-1">
+              <div className="p-3.5 rounded-xl bg-[#0c2416] border border-[#1e4a30] shrink-0 self-start md:self-auto space-y-0.5">
                 <p className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">Accreditation Readiness</p>
                 <div className="flex items-center gap-2 text-xs font-extrabold text-white">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -216,138 +214,138 @@ export default function OSADDashboardView({ currentUser }) {
             </div>
           </div>
 
-          {/* Dedicated Executive Action & Governance Hub */}
+          {/* Executive Quick Action & Governance Hub (Minimalist 2-Color Bento Box Grid) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-[#2d8a4e]" />
+              <h2 className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
                 Executive Quick Action & Governance Hub
               </h2>
-              <span className="text-[11px] font-bold text-slate-400">4 Administrative Workflows</span>
+              <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">4 Workflows</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <button
                 onClick={() => setSearchParams({ tab: 'accounts' })}
-                className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-md hover:shadow-xl hover:border-emerald-300 transition duration-300 text-left flex flex-col justify-between space-y-4 group cursor-pointer"
+                className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center font-bold shrink-0 group-hover:scale-105 transition">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
                     <UserCheck className="w-5 h-5" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] group-hover:translate-x-0.5 transition" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-[#2d8a4e] transition">Account & Role Governance</h3>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Assign Program Coordinator & Org Moderator roles to faculty</p>
+                  <h3 className="font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">Account & Role Governance</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Assign Program Coordinator & Org Moderator roles to faculty</p>
                 </div>
               </button>
 
               <button
                 onClick={() => setSearchParams({ tab: 'awardees' })}
-                className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-md hover:shadow-xl hover:border-amber-300 transition duration-300 text-left flex flex-col justify-between space-y-4 group cursor-pointer"
+                className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-400 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold shrink-0 group-hover:scale-105 transition">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center font-bold shrink-0">
                     <Trophy className="w-5 h-5" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-600 group-hover:translate-x-0.5 transition" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-amber-700 transition">Award Ranking Engine</h3>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Run automated multi-criteria honor roll scoring algorithm</p>
+                  <h3 className="font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-amber-400 transition">Award Ranking Engine</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Run automated multi-criteria honor roll scoring algorithm</p>
                 </div>
               </button>
 
               <button
                 onClick={() => setSearchParams({ tab: 'reports' })}
-                className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-md hover:shadow-xl hover:border-blue-300 transition duration-300 text-left flex flex-col justify-between space-y-4 group cursor-pointer"
+                className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-bold shrink-0 group-hover:scale-105 transition">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-700 group-hover:translate-x-0.5 transition" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-blue-800 transition">Accreditation Reports</h3>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Export PACUCOA, CHEd, & OSAD annual audit PDFs/CSVs</p>
+                  <h3 className="font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">Accreditation Reports</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Export PACUCOA, CHEd, & OSAD annual audit PDFs/CSVs</p>
                 </div>
               </button>
 
               <button
                 onClick={() => setSearchParams({ tab: 'audit' })}
-                className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-md hover:shadow-xl hover:border-purple-300 transition duration-300 text-left flex flex-col justify-between space-y-4 group cursor-pointer"
+                className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-400 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
               >
                 <div className="flex items-center justify-between">
-                  <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center font-bold shrink-0 group-hover:scale-105 transition">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center font-bold shrink-0">
                     <ShieldCheck className="w-5 h-5" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-purple-700 group-hover:translate-x-0.5 transition" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-purple-800 transition">System Security Logs</h3>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Inspect real-time administrative logs and security trail</p>
+                  <h3 className="font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-amber-400 transition">System Security Logs</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Inspect real-time administrative logs and security trail</p>
                 </div>
               </button>
             </div>
           </div>
 
-          {/* Redesigned High-Impact Executive KPI Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex items-center gap-4 hover:shadow-lg transition">
-              <div className="w-13 h-13 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 font-bold">
-                <Users className="w-6.5 h-6.5" />
+          {/* High-Impact Executive KPI Counter Cards (Strict 2-Color Bento Grid) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 flex items-center gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-2xs dark:shadow-none">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
+                <Users className="w-6 h-6" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Enrolled Students</p>
-                <p className="text-2xl font-extrabold text-slate-900">{metrics.total_students} Accounts</p>
-                <p className="text-[11px] text-emerald-800 font-extrabold">5 Colleges • 18 Programs</p>
+                <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Enrolled Students</p>
+                <p className="text-xl font-extrabold text-slate-900 dark:text-white">{metrics.total_students} Accounts</p>
+                <p className="text-[11px] text-[#2d8a4e] dark:text-emerald-400 font-extrabold">5 Colleges • 18 Programs</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex items-center gap-4 hover:shadow-lg transition">
-              <div className="w-13 h-13 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0 font-bold">
-                <ShieldCheck className="w-6.5 h-6.5" />
+            <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 flex items-center gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-2xs dark:shadow-none">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
+                <ShieldCheck className="w-6 h-6" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Verified Records</p>
-                <p className="text-2xl font-extrabold text-[#2d8a4e]">{metrics.total_verified_achievements}</p>
-                <p className="text-[11px] text-emerald-700 font-extrabold">+14.2% vs Last Academic Term</p>
+                <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Verified Records</p>
+                <p className="text-xl font-extrabold text-[#2d8a4e] dark:text-emerald-400">{metrics.total_verified_achievements}</p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-extrabold">+14.2% vs Last Term</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex items-center gap-4 hover:shadow-lg transition">
-              <div className="w-13 h-13 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 font-bold">
-                <Award className="w-6.5 h-6.5" />
+            <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 flex items-center gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-2xs dark:shadow-none">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center shrink-0 font-bold">
+                <Award className="w-6 h-6" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Active OSAD Awards</p>
-                <p className="text-2xl font-extrabold text-slate-900">{metrics.active_awards} Standards</p>
-                <p className="text-[11px] text-amber-700 font-extrabold">OSAD Templates 01-05 Attached</p>
+                <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Active OSAD Awards</p>
+                <p className="text-xl font-extrabold text-slate-900 dark:text-white">{metrics.active_awards} Standards</p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 font-extrabold">OSAD Templates 01-05 Attached</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex items-center gap-4 hover:shadow-lg transition">
-              <div className="w-13 h-13 rounded-2xl bg-slate-100 text-slate-800 border border-slate-200 flex items-center justify-center shrink-0 font-bold">
-                <ShieldAlert className="w-6.5 h-6.5 text-[#2d8a4e]" />
+            <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 flex items-center gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition shadow-2xs dark:shadow-none">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
+                <ShieldAlert className="w-6 h-6 text-[#2d8a4e] dark:text-emerald-400" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Security & Audit Trail</p>
-                <p className="text-2xl font-extrabold text-slate-900">Protected</p>
-                <p className="text-[11px] text-slate-600 font-extrabold">Zero Unresolved Audit Alerts</p>
+                <p className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider">Security & Audit Trail</p>
+                <p className="text-xl font-extrabold text-slate-900 dark:text-white">Protected</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300 font-extrabold">Zero Unresolved Alerts</p>
               </div>
             </div>
           </div>
 
-          {/* University Achievement Analytics & Recent Awardees Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* University Achievement Analytics & Recent Awardees Bento Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
             {/* Achievement Analytics Graph Card */}
-            <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <TrendingUp className="w-4.5 h-4.5 text-[#2d8a4e]" />
+            <div className="lg:col-span-7 bg-white dark:bg-[#131e2e] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 space-y-5 shadow-2xs dark:shadow-none">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>University Achievement Distribution by College</span>
                 </h3>
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">AY 2025-2026</span>
@@ -356,71 +354,71 @@ export default function OSADDashboardView({ currentUser }) {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between text-xs font-bold mb-1">
-                    <span className="text-slate-800">CEAC - Engineering, Architecture & Computing</span>
-                    <span className="text-[#2d8a4e]">420 Achievements (33.5%)</span>
+                    <span className="text-slate-800 dark:text-slate-200">CEAC - Engineering, Architecture & Computing</span>
+                    <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">420 Achievements (33.5%)</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full bg-[#2d8a4e] rounded-full" style={{ width: '33.5%' }}></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between text-xs font-bold mb-1">
-                    <span className="text-slate-800">CBA - Business & Accountancy</span>
-                    <span className="text-[#2d8a4e]">310 Achievements (24.7%)</span>
-                  </div>
-                  <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full bg-emerald-600 rounded-full" style={{ width: '24.7%' }}></div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-[#1b4332] dark:bg-emerald-500 rounded-full" style={{ width: '33.5%' }}></div>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between text-xs font-bold mb-1">
-                    <span className="text-slate-800">CAS - Arts & Sciences</span>
-                    <span className="text-[#2d8a4e]">280 Achievements (22.3%)</span>
+                    <span className="text-slate-800 dark:text-slate-200">CBA - Business & Accountancy</span>
+                    <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">310 Achievements (24.7%)</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: '22.3%' }}></div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-[#2d8a4e] dark:bg-emerald-600 rounded-full" style={{ width: '24.7%' }}></div>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between text-xs font-bold mb-1">
-                    <span className="text-slate-800">CED - College of Education</span>
-                    <span className="text-[#2d8a4e]">244 Achievements (19.5%)</span>
+                    <span className="text-slate-800 dark:text-slate-200">CAS - Arts & Sciences</span>
+                    <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">280 Achievements (22.3%)</span>
                   </div>
-                  <div className="w-full h-3 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full bg-emerald-400 rounded-full" style={{ width: '19.5%' }}></div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-emerald-600 dark:bg-emerald-700 rounded-full" style={{ width: '22.3%' }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-xs font-bold mb-1">
+                    <span className="text-slate-800 dark:text-slate-200">CED - College of Education</span>
+                    <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">244 Achievements (19.5%)</span>
+                  </div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full bg-emerald-500 dark:bg-emerald-800 rounded-full" style={{ width: '19.5%' }}></div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Confirmed Awardees List Card */}
-            <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Award className="w-4.5 h-4.5 text-amber-500" />
+            <div className="lg:col-span-5 bg-white dark:bg-[#131e2e] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-2xs dark:shadow-none">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>Recent Confirmed OSAD Awardees</span>
                 </h3>
                 <button
                   onClick={() => setSearchParams({ tab: 'awardees' })}
-                  className="text-xs font-bold text-[#2d8a4e] hover:underline flex items-center gap-1"
+                  className="text-xs font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <span>View All</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800/60 overflow-hidden">
                 {awardees.map(awd => (
-                  <div key={awd.id} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                  <div key={awd.id} className="p-3.5 bg-white dark:bg-[#131e2e] hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition flex items-center justify-between">
                     <div className="space-y-0.5 min-w-0">
-                      <p className="text-xs font-extrabold text-slate-900 truncate">{awd.student_name}</p>
-                      <p className="text-[11px] font-bold text-[#2d8a4e] truncate">{awd.award_title}</p>
+                      <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{awd.student_name}</p>
+                      <p className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 truncate">{awd.award_title}</p>
                       <p className="text-[10px] text-slate-400 font-medium">{awd.program} • {awd.total_score} pts</p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-extrabold border border-amber-200 shrink-0">
+                    <span className="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold border border-amber-200/80 dark:border-amber-800/50 shrink-0">
                       Rank #{awd.rank}
                     </span>
                   </div>
@@ -435,65 +433,68 @@ export default function OSADDashboardView({ currentUser }) {
       {/* ========================================================================= */}
       {/* 2. ACCOUNT MANAGEMENT & ROLE ASSIGNMENT MODULE (tab === 'accounts')        */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 2. ACCOUNT MANAGEMENT & ROLE ASSIGNMENT MODULE (tab === 'accounts')        */}
+      {/* ========================================================================= */}
       {activeTab === 'accounts' && (
         <div className="space-y-6 animate-in fade-in duration-200">
 
           {/* Module Header */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
                 <UserCheck className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  Account Management & Role Assignment Suite
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  Account Management &amp; Role Assignment Suite
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">
-                  Inspect University Accounts & Assign Program Coordinator and Organization Moderator Roles
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Inspect University Accounts &amp; Assign Program Coordinator and Organization Moderator Roles
                 </p>
               </div>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl self-start md:self-auto">
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl self-start md:self-auto">
               <button
                 onClick={() => setUserRoleFilter('all')}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${userRoleFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${userRoleFilter === 'all' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 All Accounts
               </button>
               <button
                 onClick={() => setUserRoleFilter('student')}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${userRoleFilter === 'student' ? 'bg-white text-[#2d8a4e] shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${userRoleFilter === 'student' ? 'bg-white dark:bg-slate-900 text-[#2d8a4e] dark:text-emerald-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Students
               </button>
               <button
                 onClick={() => setUserRoleFilter('personnel')}
-                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${userRoleFilter === 'personnel' ? 'bg-white text-purple-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${userRoleFilter === 'personnel' ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
-                Personnel & Faculty
+                Personnel &amp; Faculty
               </button>
             </div>
           </div>
 
           {/* Search Bar */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-3">
             <Search className="w-5 h-5 text-slate-400 shrink-0" />
             <input
               type="text"
               placeholder="Search accounts by name, ID number, department, or program..."
               value={userSearchTerm}
               onChange={(e) => setUserSearchTerm(e.target.value)}
-              className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-xs font-bold text-slate-800 dark:text-white focus:outline-none placeholder:text-slate-400"
             />
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
                   <tr>
                     <th className="p-4">User Details</th>
                     <th className="p-4">ID Number</th>
@@ -503,7 +504,7 @@ export default function OSADDashboardView({ currentUser }) {
                     <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {filteredUsers.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
@@ -512,22 +513,22 @@ export default function OSADDashboardView({ currentUser }) {
                     </tr>
                   ) : (
                     filteredUsers.map(usr => (
-                      <tr key={usr.id} className="hover:bg-slate-50/80 transition">
-                        <td className="p-4 font-extrabold text-slate-900">
+                      <tr key={usr.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                        <td className="p-4 font-extrabold text-slate-900 dark:text-white">
                           <div>
                             <p className="text-xs">{usr.full_name}</p>
                             <p className="text-[10px] text-slate-400 font-normal">{usr.email}</p>
                           </div>
                         </td>
-                        <td className="p-4 font-mono font-bold text-slate-700">
+                        <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">
                           {usr.student_id || usr.employee_id}
                         </td>
                         <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${usr.role === 'student' ? 'bg-emerald-50 text-[#2d8a4e] border-emerald-200' : 'bg-purple-50 text-purple-800 border-purple-200'}`}>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${usr.role === 'student' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' : 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'}`}>
                             {usr.role === 'student' ? 'Student' : 'Faculty / Personnel'}
                           </span>
                         </td>
-                        <td className="p-4 text-slate-600 font-bold">
+                        <td className="p-4 text-slate-600 dark:text-slate-300 font-bold">
                           {usr.program || usr.department}
                         </td>
                         <td className="p-4">
@@ -536,7 +537,7 @@ export default function OSADDashboardView({ currentUser }) {
                               <span className="text-[10px] text-slate-400 italic">None</span>
                             ) : (
                               usr.assigned_roles.map(r => (
-                                <span key={r} className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-extrabold border border-slate-200 flex items-center gap-1">
+                                <span key={r} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700 flex items-center gap-1">
                                   {r === 'program_coordinator' ? `Coordinator (${usr.coordinator_program})` :
                                    r === 'organization_moderator' ? `Moderator (${usr.moderator_org})` : r}
                                   <button
@@ -562,7 +563,7 @@ export default function OSADDashboardView({ currentUser }) {
                                   setSelectedUserForRole(usr)
                                   setRoleModalType('coordinator')
                                 }}
-                                className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2d8a4e] border border-emerald-200 text-[11px] font-extrabold transition cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-extrabold transition cursor-pointer"
                               >
                                 + Assign Coordinator
                               </button>
@@ -571,7 +572,7 @@ export default function OSADDashboardView({ currentUser }) {
                                   setSelectedUserForRole(usr)
                                   setRoleModalType('moderator')
                                 }}
-                                className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 text-[11px] font-extrabold transition cursor-pointer"
+                                className="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 text-[11px] font-extrabold transition cursor-pointer"
                               >
                                 + Assign Moderator
                               </button>
@@ -595,16 +596,16 @@ export default function OSADDashboardView({ currentUser }) {
         <div className="space-y-6 animate-in fade-in duration-200">
 
           {/* Module Header */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
                 <Award className="w-6 h-6 text-amber-500" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  University Award Categories & Scoring Criteria Setup
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  University Award Categories &amp; Scoring Criteria Setup
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Configure Multi-Criteria Scoring Standards, Point Multipliers, and Attached OSAD Certificate Templates
                 </p>
               </div>
@@ -622,36 +623,36 @@ export default function OSADDashboardView({ currentUser }) {
           {/* Award Category Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {awardCategories.map(cat => (
-              <div key={cat.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4 flex flex-col justify-between hover:shadow-xl transition duration-300">
+              <div key={cat.id} className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-4 flex flex-col justify-between hover:shadow-xl dark:hover:border-emerald-500/50 transition duration-300">
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-extrabold">
+                    <span className="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-[10px] font-extrabold">
                       {cat.category_type}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${cat.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${cat.is_active ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                       {cat.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
 
-                  <h3 className="font-extrabold text-base text-slate-900 leading-snug">{cat.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed font-medium line-clamp-3">{cat.description}</p>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{cat.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium line-clamp-3">{cat.description}</p>
                 </div>
 
-                <div className="space-y-3 pt-3 border-t border-slate-100 text-xs">
-                  <div className="grid grid-cols-2 gap-2 text-slate-700">
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-300">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
                       <p className="text-[10px] text-slate-400 font-extrabold uppercase">Min Points</p>
-                      <p className="font-extrabold text-[#2d8a4e] text-sm">{cat.min_points} pts</p>
+                      <p className="font-extrabold text-[#2d8a4e] dark:text-emerald-400 text-sm">{cat.min_points} pts</p>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
                       <p className="text-[10px] text-slate-400 font-extrabold uppercase">Multiplier</p>
-                      <p className="font-extrabold text-amber-700 text-sm">{cat.weight_multiplier}x</p>
+                      <p className="font-extrabold text-amber-700 dark:text-amber-400 text-sm">{cat.weight_multiplier}x</p>
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100 text-[11px]">
-                    <p className="text-[10px] font-bold text-emerald-800 uppercase">Attached OSAD Template</p>
-                    <p className="font-extrabold text-slate-900 truncate">{cat.attached_template_name} ({cat.attached_template_id})</p>
+                  <div className="p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-800/40 text-[11px]">
+                    <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">Attached OSAD Template</p>
+                    <p className="font-extrabold text-slate-900 dark:text-white truncate">{cat.attached_template_name} ({cat.attached_template_id})</p>
                   </div>
                 </div>
               </div>
@@ -667,16 +668,16 @@ export default function OSADDashboardView({ currentUser }) {
         <div className="space-y-6 animate-in fade-in duration-200">
 
           {/* Module Header */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center shrink-0">
                 <Trophy className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  Automated Candidate Identification & Ranking Engine
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  Automated Candidate Identification &amp; Ranking Engine
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Run Algorithm Against Active Award Criteria to Generate Ranked Roster of Eligible Awardees
                 </p>
               </div>
@@ -690,7 +691,7 @@ export default function OSADDashboardView({ currentUser }) {
                   setSelectedCategoryForRanking(e.target.value)
                   setHasRanked(false)
                 }}
-                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#2d8a4e] cursor-pointer shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e] cursor-pointer shadow-xs"
               >
                 {awardCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.title} ({cat.min_points} pts min)</option>
@@ -717,22 +718,22 @@ export default function OSADDashboardView({ currentUser }) {
             const thirdStudent = leaderboardData[2]
 
             return (
-              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-6">
+              <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-6">
                 
                 {/* Header & Filter Controls */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-                      <BarChart3 className="w-5 h-5 text-amber-600" />
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div>
-                      <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                        <span>Student Points Leaderboard & Analytics Graph</span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#2d8a4e] border border-emerald-200 text-[10px] font-bold">
+                      <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                        <span>Student Points Leaderboard &amp; Analytics Graph</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 text-[10px] font-bold">
                           LIVE POINT RANKS
                         </span>
                       </h2>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                         Visualizing verified student achievement points across university colleges
                       </p>
                     </div>
@@ -751,8 +752,8 @@ export default function OSADDashboardView({ currentUser }) {
                         onClick={() => setLeaderboardFilter(f.id)}
                         className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
                           leaderboardFilter === f.id
-                            ? 'bg-[#1b4332] text-white shadow-xs'
-                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
+                            ? 'bg-[#1b4332] dark:bg-emerald-700 text-white shadow-xs'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                         }`}
                       >
                         {f.label}
@@ -767,7 +768,7 @@ export default function OSADDashboardView({ currentUser }) {
                     
                     {/* #1 Top Ranker */}
                     {topStudent && (
-                      <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-amber-100/40 to-emerald-50/50 border-2 border-amber-400/50 shadow-md relative overflow-hidden flex flex-col justify-between space-y-3">
+                      <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-amber-100/40 to-emerald-50/50 dark:from-amber-950/40 dark:via-amber-900/20 dark:to-emerald-950/40 border-2 border-amber-400/50 dark:border-amber-500/50 shadow-md relative overflow-hidden flex flex-col justify-between space-y-3">
                         <div className="flex items-start justify-between">
                           <span className="w-9 h-9 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center font-black text-sm shadow-md border border-amber-300">
                             🥇 #1
@@ -778,16 +779,16 @@ export default function OSADDashboardView({ currentUser }) {
                         </div>
 
                         <div>
-                          <h3 className="font-extrabold text-base text-slate-900 leading-snug">{topStudent.student_name}</h3>
-                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{topStudent.student_id} • {topStudent.program}</p>
-                          <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center gap-1">
+                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{topStudent.student_name}</h3>
+                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">{topStudent.student_id} • {topStudent.program}</p>
+                          <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1">
                             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                             <span>{topStudent.verified_count} Verified Proofs</span>
                           </p>
                         </div>
 
                         {/* Visual Bar */}
-                        <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
+                        <div className="w-full bg-slate-200/80 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                           <div className="bg-gradient-to-r from-amber-500 to-emerald-600 h-full rounded-full w-full"></div>
                         </div>
                       </div>
@@ -795,28 +796,28 @@ export default function OSADDashboardView({ currentUser }) {
 
                     {/* #2 Ranker */}
                     {secondStudent && (
-                      <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between space-y-3">
                         <div className="flex items-start justify-between">
-                          <span className="w-9 h-9 rounded-2xl bg-slate-200 text-slate-700 flex items-center justify-center font-black text-sm border border-slate-300">
+                          <span className="w-9 h-9 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-black text-sm border border-slate-300 dark:border-slate-600">
                             🥈 #2
                           </span>
-                          <span className="px-3 py-1 rounded-full bg-slate-800 text-white font-black text-xs shadow-xs">
+                          <span className="px-3 py-1 rounded-full bg-slate-800 dark:bg-slate-900 text-white font-black text-xs shadow-xs">
                             {secondStudent.total_points} PTS
                           </span>
                         </div>
 
                         <div>
-                          <h3 className="font-extrabold text-base text-slate-900 leading-snug">{secondStudent.student_name}</h3>
-                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{secondStudent.student_id} • {secondStudent.program}</p>
-                          <p className="text-[11px] font-bold text-slate-600 mt-1">
+                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{secondStudent.student_name}</h3>
+                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">{secondStudent.student_id} • {secondStudent.program}</p>
+                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1">
                             {secondStudent.verified_count} Verified Proofs
                           </p>
                         </div>
 
                         {/* Visual Bar */}
-                        <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
                           <div
-                            className="bg-[#2d8a4e] h-full rounded-full"
+                            className="bg-[#2d8a4e] dark:bg-emerald-500 h-full rounded-full"
                             style={{ width: `${secondStudent.percentage}%` }}
                           ></div>
                         </div>
@@ -825,28 +826,28 @@ export default function OSADDashboardView({ currentUser }) {
 
                     {/* #3 Ranker */}
                     {thirdStudent && (
-                      <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between space-y-3">
                         <div className="flex items-start justify-between">
-                          <span className="w-9 h-9 rounded-2xl bg-amber-900/10 text-amber-800 flex items-center justify-center font-black text-sm border border-amber-800/20">
+                          <span className="w-9 h-9 rounded-2xl bg-amber-900/10 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center font-black text-sm border border-amber-800/20 dark:border-amber-800/50">
                             🥉 #3
                           </span>
-                          <span className="px-3 py-1 rounded-full bg-slate-700 text-white font-black text-xs shadow-xs">
+                          <span className="px-3 py-1 rounded-full bg-slate-700 dark:bg-slate-900 text-white font-black text-xs shadow-xs">
                             {thirdStudent.total_points} PTS
                           </span>
                         </div>
 
                         <div>
-                          <h3 className="font-extrabold text-base text-slate-900 leading-snug">{thirdStudent.student_name}</h3>
-                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{thirdStudent.student_id} • {thirdStudent.program}</p>
-                          <p className="text-[11px] font-bold text-slate-600 mt-1">
+                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{thirdStudent.student_name}</h3>
+                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">{thirdStudent.student_id} • {thirdStudent.program}</p>
+                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1">
                             {thirdStudent.verified_count} Verified Proofs
                           </p>
                         </div>
 
                         {/* Visual Bar */}
-                        <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
                           <div
-                            className="bg-[#2d8a4e] h-full rounded-full"
+                            className="bg-[#2d8a4e] dark:bg-emerald-500 h-full rounded-full"
                             style={{ width: `${thirdStudent.percentage}%` }}
                           ></div>
                         </div>
@@ -857,10 +858,10 @@ export default function OSADDashboardView({ currentUser }) {
                 )}
 
                 {/* Main Visual Points Bar Graph Chart */}
-                <div className="bg-slate-50/70 p-6 rounded-3xl border border-slate-200/80 space-y-5">
+                <div className="bg-slate-50/70 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-700/60 space-y-5">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-[#2d8a4e]" />
+                    <h3 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                       <span>Visual Points Comparison Bar Graph</span>
                     </h3>
                     <span className="text-[11px] font-bold text-slate-400 font-mono">
@@ -872,7 +873,7 @@ export default function OSADDashboardView({ currentUser }) {
                   <div className="space-y-4 relative">
                     
                     {/* Axis Ticks */}
-                    <div className="flex justify-between text-[10px] font-mono font-bold text-slate-400 border-b border-slate-200 pb-1.5 px-1">
+                    <div className="flex justify-between text-[10px] font-mono font-bold text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-1.5 px-1">
                       <span>0 PTS</span>
                       <span>100 PTS</span>
                       <span>200 PTS</span>
@@ -891,24 +892,24 @@ export default function OSADDashboardView({ currentUser }) {
                             <div className="flex items-center gap-2.5">
                               <span className={`w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shrink-0 ${
                                 student.rank === 1 ? 'bg-amber-400 text-amber-950 font-black' :
-                                student.rank === 2 ? 'bg-slate-300 text-slate-800' :
-                                student.rank === 3 ? 'bg-amber-800/20 text-amber-800' : 'bg-slate-200 text-slate-600'
+                                student.rank === 2 ? 'bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white' :
+                                student.rank === 3 ? 'bg-amber-800/20 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                               }`}>
                                 #{student.rank}
                               </span>
-                              <span className="font-extrabold text-slate-900">{student.student_name}</span>
+                              <span className="font-extrabold text-slate-900 dark:text-white">{student.student_name}</span>
                               <span className="text-slate-400 font-mono text-[11px]">({student.student_id})</span>
-                              <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">• {student.program}</span>
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">• {student.program}</span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                              <span className="text-[11px] font-bold text-slate-500 font-mono">
+                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
                                 {student.verified_count} Proofs
                               </span>
                               <span className={`px-2.5 py-0.5 rounded-full text-xs font-black shadow-2xs ${
                                 student.rank === 1
-                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                  : 'bg-emerald-50 text-[#1e5831] border border-emerald-200'
+                                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                                  : 'bg-emerald-50 dark:bg-emerald-950/80 text-[#1e5831] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                               }`}>
                                 {student.total_points} PTS
                               </span>
@@ -916,7 +917,7 @@ export default function OSADDashboardView({ currentUser }) {
                           </div>
 
                           {/* Graphical Bar */}
-                          <div className="w-full bg-slate-200/80 rounded-2xl h-4 p-0.5 border border-slate-200 overflow-hidden relative">
+                          <div className="w-full bg-slate-200/80 dark:bg-slate-800 rounded-2xl h-4 p-0.5 border border-slate-200 dark:border-slate-700 overflow-hidden relative">
                             <div
                               className={`h-full rounded-xl transition-all duration-500 flex items-center justify-end pr-2 text-[9px] font-black text-white ${
                                 student.rank === 1
@@ -944,17 +945,17 @@ export default function OSADDashboardView({ currentUser }) {
 
           {/* Evaluation Results Section */}
           {hasRanked && (
-            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Award className="w-4.5 h-4.5 text-[#2d8a4e]" />
+            <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Award className="w-4.5 h-4.5 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Ranked Eligible Candidates ({generatedCandidates.length} Evaluated)</span>
                 </h3>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
                     <tr>
                       <th className="p-4">Rank</th>
                       <th className="p-4">Student Name</th>
@@ -965,7 +966,7 @@ export default function OSADDashboardView({ currentUser }) {
                       <th className="p-4 text-right">Confirmation Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {generatedCandidates.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
@@ -974,17 +975,17 @@ export default function OSADDashboardView({ currentUser }) {
                       </tr>
                     ) : (
                       generatedCandidates.map(cand => (
-                        <tr key={cand.student_id} className="hover:bg-slate-50/80 transition">
-                          <td className="p-4 font-extrabold text-amber-700">
-                            <span className="w-7 h-7 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-xs">
+                        <tr key={cand.student_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                          <td className="p-4 font-extrabold text-amber-700 dark:text-amber-400">
+                            <span className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 flex items-center justify-center text-xs">
                               #{cand.rank}
                             </span>
                           </td>
-                          <td className="p-4 font-extrabold text-slate-900">{cand.student_name}</td>
-                          <td className="p-4 font-mono font-bold text-slate-600">{cand.student_id}</td>
-                          <td className="p-4 font-bold text-slate-700">{cand.program}</td>
-                          <td className="p-4 font-extrabold text-[#2d8a4e]">{cand.total_points} pts</td>
-                          <td className="p-4 font-extrabold text-amber-700 text-sm">{cand.weighted_score} pts</td>
+                          <td className="p-4 font-extrabold text-slate-900 dark:text-white">{cand.student_name}</td>
+                          <td className="p-4 font-mono font-bold text-slate-600 dark:text-slate-400">{cand.student_id}</td>
+                          <td className="p-4 font-bold text-slate-700 dark:text-slate-300">{cand.program}</td>
+                          <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400">{cand.total_points} pts</td>
+                          <td className="p-4 font-extrabold text-amber-700 dark:text-amber-400 text-sm">{cand.weighted_score} pts</td>
                           <td className="p-4 text-right">
                             <button
                               onClick={() => handleConfirmAwardeeAction(cand)}
@@ -1004,15 +1005,15 @@ export default function OSADDashboardView({ currentUser }) {
           )}
 
           {/* Confirmed Awardees Roster Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md p-6 space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md p-6 space-y-4">
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <Award className="w-4.5 h-4.5 text-amber-500" />
               <span>Official Confirmed OSAD Awardees Roster</span>
             </h3>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
                   <tr>
                     <th className="p-4">Rank</th>
                     <th className="p-4">Awardee Name</th>
@@ -1023,16 +1024,16 @@ export default function OSADDashboardView({ currentUser }) {
                     <th className="p-4 text-right">Confirmed Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {awardees.map(awd => (
-                    <tr key={awd.id} className="hover:bg-slate-50/80 transition">
-                      <td className="p-4 font-extrabold text-amber-700">Rank #{awd.rank}</td>
-                      <td className="p-4 font-extrabold text-slate-900">{awd.student_name}</td>
-                      <td className="p-4 font-mono font-bold text-slate-600">{awd.student_id}</td>
-                      <td className="p-4 text-slate-700 font-bold">{awd.program}</td>
-                      <td className="p-4 font-extrabold text-[#2d8a4e]">{awd.award_title}</td>
-                      <td className="p-4 font-extrabold text-amber-700">{awd.total_score} pts</td>
-                      <td className="p-4 text-right text-slate-500 font-mono text-[11px]">{awd.confirmed_at}</td>
+                    <tr key={awd.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                      <td className="p-4 font-extrabold text-amber-700 dark:text-amber-400">Rank #{awd.rank}</td>
+                      <td className="p-4 font-extrabold text-slate-900 dark:text-white">{awd.student_name}</td>
+                      <td className="p-4 font-mono font-bold text-slate-600 dark:text-slate-400">{awd.student_id}</td>
+                      <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">{awd.program}</td>
+                      <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400">{awd.award_title}</td>
+                      <td className="p-4 font-extrabold text-amber-700 dark:text-amber-400">{awd.total_score} pts</td>
+                      <td className="p-4 text-right text-slate-500 dark:text-slate-400 font-mono text-[11px]">{awd.confirmed_at}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1048,6 +1049,9 @@ export default function OSADDashboardView({ currentUser }) {
       {/* ========================================================================= */}
       {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
+      {/* ========================================================================= */}
       {activeTab === 'reports' && (() => {
         const activeReportDetails = getAccreditationReportDetails(selectedReportId)
 
@@ -1055,17 +1059,17 @@ export default function OSADDashboardView({ currentUser }) {
           <div className="space-y-6 animate-in fade-in duration-200">
 
             {/* Module Header */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
                   <FileSpreadsheet className="w-6 h-6" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                    University Accreditation & Institutional Reports Suite
+                  <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    University Accreditation &amp; Institutional Reports Suite
                   </h1>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Inspect Report Contents, Department Metrics & Included Records Prior to Exporting
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Inspect Report Contents, Department Metrics &amp; Included Records Prior to Exporting
                   </p>
                 </div>
               </div>
@@ -1073,9 +1077,9 @@ export default function OSADDashboardView({ currentUser }) {
               <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
                 <button
                   onClick={() => setIsPreviewModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
                 >
-                  <Eye className="w-4 h-4 text-slate-600" />
+                  <Eye className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                   <span>Full Screen Inspection</span>
                 </button>
                 
@@ -1099,13 +1103,13 @@ export default function OSADDashboardView({ currentUser }) {
                     onClick={() => setSelectedReportId(rpt.id)}
                     className={`p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
                       isSelected
-                        ? 'bg-[#eef7f0] border-[#2d8a4e] shadow-md ring-2 ring-[#2d8a4e]/30'
-                        : 'bg-white border-slate-200/80 hover:border-emerald-300 hover:shadow-sm'
+                        ? 'bg-[#eef7f0] dark:bg-emerald-950/60 border-[#2d8a4e] dark:border-emerald-500 shadow-md ring-2 ring-[#2d8a4e]/30'
+                        : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-slate-700 hover:shadow-sm'
                     }`}
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#1e5831] text-[10px] font-extrabold">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-[#1e5831] dark:text-emerald-300 text-[10px] font-extrabold">
                           {rpt.agency}
                         </span>
                         {isSelected && (
@@ -1114,12 +1118,12 @@ export default function OSADDashboardView({ currentUser }) {
                           </span>
                         )}
                       </div>
-                      <h3 className="font-extrabold text-sm text-slate-900 leading-snug">{rpt.title}</h3>
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">{rpt.title}</h3>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 text-slate-600 font-bold">
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold">
                       <span>{rpt.accreditation_status}</span>
-                      <span className="text-[#2d8a4e] font-extrabold">{rpt.total_student_achievements + rpt.total_faculty_accomplishments} total recs</span>
+                      <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">{rpt.total_student_achievements + rpt.total_faculty_accomplishments} total recs</span>
                     </div>
                   </div>
                 )
@@ -1127,12 +1131,12 @@ export default function OSADDashboardView({ currentUser }) {
             </div>
 
             {/* LIVE REPORT DOCUMENT CONTENT INSPECTION PANEL */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6 relative overflow-hidden">
+            <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-6 relative overflow-hidden">
               
               {/* Document Header Seal Banner */}
-              <div className="border-b-2 border-slate-900/10 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="border-b-2 border-slate-900/10 dark:border-slate-800 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#1b4332] text-white p-2.5 flex items-center justify-center shrink-0 shadow-md">
+                  <div className="w-14 h-14 rounded-2xl bg-[#1b4332] dark:bg-[#071910] text-white p-2.5 flex items-center justify-center shrink-0 shadow-md border border-emerald-900/50">
                     <svg viewBox="0 0 100 100" className="w-full h-full">
                       <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
                       <circle cx="50" cy="50" r="28" fill="#ffffff" />
@@ -1140,16 +1144,16 @@ export default function OSADDashboardView({ currentUser }) {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-amber-900 tracking-widest">NOTRE DAME OF MARBEL UNIVERSITY</p>
-                    <p className="text-[9px] font-extrabold text-slate-500 uppercase">OFFICE OF STUDENT AFFAIRS & SERVICES (OSAD)</p>
-                    <h2 className="text-lg font-serif font-extrabold text-slate-900 pt-0.5">{activeReportDetails.title}</h2>
-                    <p className="text-xs font-bold text-[#2d8a4e] mt-0.5">Agency: {activeReportDetails.agency} • Period: {activeReportDetails.period} • Generated: {activeReportDetails.generated_date}</p>
+                    <p className="text-[10px] font-black uppercase text-amber-900 dark:text-amber-400 tracking-widest">NOTRE DAME OF MARBEL UNIVERSITY</p>
+                    <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase">OFFICE OF STUDENT AFFAIRS &amp; SERVICES (OSAD)</p>
+                    <h2 className="text-lg font-serif font-extrabold text-slate-900 dark:text-white pt-0.5">{activeReportDetails.title}</h2>
+                    <p className="text-xs font-bold text-[#2d8a4e] dark:text-emerald-400 mt-0.5">Agency: {activeReportDetails.agency} • Period: {activeReportDetails.period} • Generated: {activeReportDetails.generated_date}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="px-3.5 py-1.5 rounded-2xl bg-emerald-50 text-[#1e5831] border border-emerald-200 text-xs font-black flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-[#2d8a4e]" />
+                  <span className="px-3.5 py-1.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-xs font-black flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                     <span>{activeReportDetails.accreditation_status}</span>
                   </span>
                 </div>
@@ -1157,34 +1161,34 @@ export default function OSADDashboardView({ currentUser }) {
 
               {/* Summary Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
                   <p className="text-[10px] font-extrabold text-slate-400 uppercase">Student Accomplishments</p>
-                  <p className="text-xl font-extrabold text-slate-900 mt-0.5">{activeReportDetails.total_student_achievements} Records</p>
+                  <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">{activeReportDetails.total_student_achievements} Records</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
                   <p className="text-[10px] font-extrabold text-slate-400 uppercase">Faculty Achievements</p>
-                  <p className="text-xl font-extrabold text-slate-900 mt-0.5">{activeReportDetails.total_faculty_accomplishments} Records</p>
+                  <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">{activeReportDetails.total_faculty_accomplishments} Records</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
                   <p className="text-[10px] font-extrabold text-slate-400 uppercase">Combined Total Scope</p>
-                  <p className="text-xl font-extrabold text-[#2d8a4e] mt-0.5">{activeReportDetails.total_student_achievements + activeReportDetails.total_faculty_accomplishments} Verified</p>
+                  <p className="text-xl font-extrabold text-[#2d8a4e] dark:text-emerald-400 mt-0.5">{activeReportDetails.total_student_achievements + activeReportDetails.total_faculty_accomplishments} Verified</p>
                 </div>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
                   <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compliance Index</p>
-                  <p className="text-xl font-extrabold text-amber-700 mt-0.5">{activeReportDetails.accreditation_status}</p>
+                  <p className="text-xl font-extrabold text-amber-700 dark:text-amber-400 mt-0.5">{activeReportDetails.accreditation_status}</p>
                 </div>
               </div>
 
               {/* Section 1: Departmental Compliance Breakdown Table */}
               <div className="space-y-3">
-                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-[#2d8a4e]" />
-                  <span>Section A: Departmental Achievement & Compliance Breakdown</span>
+                <h3 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <span>Section A: Departmental Achievement &amp; Compliance Breakdown</span>
                 </h3>
 
-                <div className="overflow-x-auto border border-slate-200/80 rounded-2xl">
+                <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-2xl">
                   <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
                       <tr>
                         <th className="p-3.5">College / Department</th>
                         <th className="p-3.5">Student Records</th>
@@ -1193,15 +1197,15 @@ export default function OSADDashboardView({ currentUser }) {
                         <th className="p-3.5 text-right">Audit Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-800 dark:text-slate-200">
                       {activeReportDetails.departmentBreakdown.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80 transition">
-                          <td className="p-3.5 font-extrabold text-slate-900">{row.dept}</td>
-                          <td className="p-3.5 font-bold text-[#2d8a4e]">{row.student_records} recs</td>
-                          <td className="p-3.5 font-bold text-amber-800">{row.faculty_records} recs</td>
-                          <td className="p-3.5 font-mono font-bold text-slate-700">{row.verification_rate}</td>
+                        <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                          <td className="p-3.5 font-extrabold text-slate-900 dark:text-white">{row.dept}</td>
+                          <td className="p-3.5 font-bold text-[#2d8a4e] dark:text-emerald-400">{row.student_records} recs</td>
+                          <td className="p-3.5 font-bold text-amber-800 dark:text-amber-300">{row.faculty_records} recs</td>
+                          <td className="p-3.5 font-mono font-bold text-slate-700 dark:text-slate-300">{row.verification_rate}</td>
                           <td className="p-3.5 text-right">
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#1e5831] border border-emerald-200 text-[10px] font-extrabold">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-[10px] font-extrabold">
                               {row.status}
                             </span>
                           </td>
@@ -1214,14 +1218,14 @@ export default function OSADDashboardView({ currentUser }) {
 
               {/* Section 2: Sample Included Verified Records Audit */}
               <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#2d8a4e]" />
+                <h3 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Section B: Sample Verified Bundled Accomplishment Entries</span>
                 </h3>
 
-                <div className="overflow-x-auto border border-slate-200/80 rounded-2xl">
+                <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-2xl">
                   <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
                       <tr>
                         <th className="p-3.5">Accomplishment Title</th>
                         <th className="p-3.5">Category</th>
@@ -1231,19 +1235,19 @@ export default function OSADDashboardView({ currentUser }) {
                         <th className="p-3.5 text-right">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
                       {activeReportDetails.includedRecordsSample.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/80 transition">
-                          <td className="p-3.5 font-extrabold text-slate-900">{item.title}</td>
-                          <td className="p-3.5 font-semibold text-slate-600">{item.category}</td>
-                          <td className="p-3.5 font-bold text-slate-800">{item.owner}</td>
-                          <td className="p-3.5 font-mono text-slate-500">{item.dept}</td>
+                        <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                          <td className="p-3.5 font-extrabold text-slate-900 dark:text-white">{item.title}</td>
+                          <td className="p-3.5 font-semibold text-slate-600 dark:text-slate-400">{item.category}</td>
+                          <td className="p-3.5 font-bold text-slate-800 dark:text-slate-200">{item.owner}</td>
+                          <td className="p-3.5 font-mono text-slate-500 dark:text-slate-400">{item.dept}</td>
                           <td className="p-3.5">
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold">
                               {item.verified_by}
                             </span>
                           </td>
-                          <td className="p-3.5 text-right font-mono text-slate-500">{item.date}</td>
+                          <td className="p-3.5 text-right font-mono text-slate-500 dark:text-slate-400">{item.date}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1252,17 +1256,17 @@ export default function OSADDashboardView({ currentUser }) {
               </div>
 
               {/* Section 3: Official Signatory Approval Box */}
-              <div className="pt-6 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compiled & Certified By</p>
-                  <p className="font-extrabold text-slate-900 text-sm">Director Marcus Vance, Ph.D.</p>
-                  <p className="text-slate-500 font-medium text-[11px]">Director, Office of Student Affairs & Services (OSAD)</p>
+              <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compiled &amp; Certified By</p>
+                  <p className="font-extrabold text-slate-900 dark:text-white text-sm">Director Marcus Vance, Ph.D.</p>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">Director, Office of Student Affairs &amp; Services (OSAD)</p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
                   <p className="text-[10px] font-extrabold text-slate-400 uppercase">Institutional Verification Seal</p>
-                  <p className="font-extrabold text-slate-900 text-sm">Notre Dame of Marbel University Central Registrar</p>
-                  <p className="text-slate-500 font-medium text-[11px]">Accreditation Audit Serial: NDMU-OSAD-2026-ACC-882</p>
+                  <p className="font-extrabold text-slate-900 dark:text-white text-sm">Notre Dame of Marbel University Central Registrar</p>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">Accreditation Audit Serial: NDMU-OSAD-2026-ACC-882</p>
                 </div>
               </div>
 
@@ -1271,30 +1275,30 @@ export default function OSADDashboardView({ currentUser }) {
             {/* Full Screen Preview Inspection Modal */}
             {isPreviewModalOpen && (
               <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-                <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 relative">
+                <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
                   
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                     <div className="flex items-center gap-3">
-                      <FileSpreadsheet className="w-6 h-6 text-[#2d8a4e]" />
-                      <h3 className="font-extrabold text-lg text-slate-900">Document Inspection View</h3>
+                      <FileSpreadsheet className="w-6 h-6 text-[#2d8a4e] dark:text-emerald-400" />
+                      <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">Document Inspection View</h3>
                     </div>
                     
                     <button
                       onClick={() => setIsPreviewModalOpen(false)}
-                      className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                      className="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer"
                     >
                       ✕ Close Inspection
                     </button>
                   </div>
 
                   {/* Render Detailed Inspection */}
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-                    <h2 className="text-xl font-serif font-extrabold text-slate-900">{activeReportDetails.title}</h2>
-                    <p className="text-xs text-slate-600 font-medium">Agency Target: {activeReportDetails.agency} • Status: {activeReportDetails.accreditation_status}</p>
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+                    <h2 className="text-xl font-serif font-extrabold text-slate-900 dark:text-white">{activeReportDetails.title}</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Agency Target: {activeReportDetails.agency} • Status: {activeReportDetails.accreditation_status}</p>
                     
-                    <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
-                      <p className="font-bold text-slate-800">Verification Certification:</p>
-                      <p className="text-slate-600 leading-relaxed">
+                    <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                      <p className="font-bold text-slate-800 dark:text-slate-200">Verification Certification:</p>
+                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
                         This official report contains {activeReportDetails.total_student_achievements} verified student achievements and {activeReportDetails.total_faculty_accomplishments} faculty accomplishments compiled from Notre Dame of Marbel University's central achievement ledger.
                       </p>
                     </div>
@@ -1309,7 +1313,7 @@ export default function OSADDashboardView({ currentUser }) {
                       className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition shadow-md flex items-center gap-2 cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
-                      <span>Confirm & Export PDF</span>
+                      <span>Confirm &amp; Export PDF</span>
                     </button>
                   </div>
                 </div>
@@ -1327,16 +1331,16 @@ export default function OSADDashboardView({ currentUser }) {
         <div className="space-y-6 animate-in fade-in duration-200">
 
           {/* Module Header */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6 text-emerald-600" />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  System Security & Transaction Audit Logs
+                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  System Security &amp; Transaction Audit Logs
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Real-Time Security Trail Tracking Administrative Role Changes, Verification Overrides, and Criteria Updates
                 </p>
               </div>
@@ -1344,7 +1348,7 @@ export default function OSADDashboardView({ currentUser }) {
 
             <button
               onClick={() => showToast('Exported Security Audit Trail CSV!')}
-              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
+              className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
               <span>Export Audit CSV</span>
@@ -1352,7 +1356,7 @@ export default function OSADDashboardView({ currentUser }) {
           </div>
 
           {/* Search & Filter Controls */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center gap-3">
+          <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center gap-3">
             <div className="flex-1 flex items-center gap-3 w-full">
               <Search className="w-5 h-5 text-slate-400 shrink-0" />
               <input
@@ -1360,7 +1364,7 @@ export default function OSADDashboardView({ currentUser }) {
                 placeholder="Search audit logs by admin user, action type, or target entity..."
                 value={auditSearchTerm}
                 onChange={(e) => setAuditSearchTerm(e.target.value)}
-                className="w-full bg-transparent text-xs font-bold text-slate-800 focus:outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-xs font-bold text-slate-800 dark:text-white focus:outline-none placeholder:text-slate-400"
               />
             </div>
 
@@ -1368,7 +1372,7 @@ export default function OSADDashboardView({ currentUser }) {
               <select
                 value={auditSeverityFilter}
                 onChange={(e) => setAuditSeverityFilter(e.target.value)}
-                className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-white focus:outline-none cursor-pointer"
               >
                 <option value="all">All Severities</option>
                 <option value="INFO">Info</option>
@@ -1379,10 +1383,10 @@ export default function OSADDashboardView({ currentUser }) {
           </div>
 
           {/* Audit Trail Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-md overflow-hidden">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-50 text-slate-600 font-extrabold border-b border-slate-200/80">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
                   <tr>
                     <th className="p-4">Timestamp</th>
                     <th className="p-4">Admin User</th>
@@ -1392,7 +1396,7 @@ export default function OSADDashboardView({ currentUser }) {
                     <th className="p-4 text-right">Severity</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                   {filteredAuditLogs.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
@@ -1401,18 +1405,18 @@ export default function OSADDashboardView({ currentUser }) {
                     </tr>
                   ) : (
                     filteredAuditLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-slate-50/80 transition">
-                        <td className="p-4 font-mono text-[11px] text-slate-500 font-bold">{log.timestamp}</td>
-                        <td className="p-4 font-extrabold text-slate-900">{log.admin_user}</td>
+                      <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                        <td className="p-4 font-mono text-[11px] text-slate-500 dark:text-slate-400 font-bold">{log.timestamp}</td>
+                        <td className="p-4 font-extrabold text-slate-900 dark:text-white">{log.admin_user}</td>
                         <td className="p-4">
-                          <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 text-[10px] font-extrabold border border-slate-200">
+                          <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700">
                             {log.action_type}
                           </span>
                         </td>
-                        <td className="p-4 font-bold text-slate-800">{log.target_entity}</td>
-                        <td className="p-4 text-slate-600 font-medium max-w-xs truncate">{log.details}</td>
+                        <td className="p-4 font-bold text-slate-800 dark:text-slate-200">{log.target_entity}</td>
+                        <td className="p-4 text-slate-600 dark:text-slate-300 font-medium max-w-xs truncate">{log.details}</td>
                         <td className="p-4 text-right">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${log.severity === 'SUCCESS' ? 'bg-emerald-100 text-emerald-800' : log.severity === 'WARNING' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${log.severity === 'SUCCESS' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300' : log.severity === 'WARNING' ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
                             {log.severity}
                           </span>
                         </td>
@@ -1431,29 +1435,29 @@ export default function OSADDashboardView({ currentUser }) {
       {/* Assign Role Modal */}
       {selectedUserForRole && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-[#2d8a4e]" />
+          <div className="w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <UserCheck className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
                 <span>Assign {roleModalType === 'coordinator' ? 'Program Coordinator' : 'Organization Moderator'} Role</span>
               </h3>
-              <button onClick={() => setSelectedUserForRole(null)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+              <button onClick={() => setSelectedUserForRole(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-sm cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleAssignRoleSubmit} className="space-y-4">
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 space-y-1">
                 <p className="text-[10px] font-extrabold text-slate-400 uppercase">Target Faculty Member</p>
-                <p className="text-xs font-extrabold text-slate-900">{selectedUserForRole.full_name}</p>
-                <p className="text-[11px] text-slate-500 font-medium">{selectedUserForRole.department}</p>
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white">{selectedUserForRole.full_name}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{selectedUserForRole.department}</p>
               </div>
 
               {roleModalType === 'coordinator' ? (
                 <div>
-                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Select Academic Program</label>
+                  <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Select Academic Program</label>
                   <select
                     value={assignedProgram}
                     onChange={(e) => setAssignedProgram(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                   >
                     <option value="BS Computer Science">BS Computer Science</option>
                     <option value="BS Information Technology">BS Information Technology</option>
@@ -1463,11 +1467,11 @@ export default function OSADDashboardView({ currentUser }) {
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">Select Student Organization</label>
+                  <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">Select Student Organization</label>
                   <select
                     value={assignedOrg}
                     onChange={(e) => setAssignedOrg(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                   >
                     <option value="Computer Society NDMU">Computer Society NDMU</option>
                     <option value="Junior Executive Club">Junior Executive Club</option>
@@ -1477,19 +1481,19 @@ export default function OSADDashboardView({ currentUser }) {
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setSelectedUserForRole(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition"
+                  className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
                 >
-                  Confirm & Assign Role
+                  Confirm &amp; Assign Role
                 </button>
               </div>
             </form>
@@ -1500,34 +1504,34 @@ export default function OSADDashboardView({ currentUser }) {
       {/* Add Award Category Modal */}
       {isAddAwardOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+          <div className="w-full max-w-lg bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-500" />
                 <span>Create New OSAD Award Category</span>
               </h3>
-              <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+              <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-sm cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleCreateAwardSubmit} className="space-y-4 text-xs font-medium">
               <div>
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Award Title</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Award Title</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Outstanding Student Researcher of the Year"
                   value={newAwardData.title}
                   onChange={(e) => setNewAwardData({ ...newAwardData, title: e.target.value })}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Category Type</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Category Type</label>
                 <select
                   value={newAwardData.category_type}
                   onChange={(e) => setNewAwardData({ ...newAwardData, category_type: e.target.value })}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                 >
                   <option value="Student Leadership">Student Leadership</option>
                   <option value="Research & Innovation">Research & Innovation</option>
@@ -1539,18 +1543,18 @@ export default function OSADDashboardView({ currentUser }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Min Points Required</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Min Points Required</label>
                   <input
                     type="number"
                     min="50"
                     max="1000"
                     value={newAwardData.min_points}
                     onChange={(e) => setNewAwardData({ ...newAwardData, min_points: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Scoring Multiplier</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Scoring Multiplier</label>
                   <input
                     type="number"
                     step="0.1"
@@ -1558,13 +1562,13 @@ export default function OSADDashboardView({ currentUser }) {
                     max="3.0"
                     value={newAwardData.weight_multiplier}
                     onChange={(e) => setNewAwardData({ ...newAwardData, weight_multiplier: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Attached OSAD Certificate Template</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Attached OSAD Certificate Template</label>
                 <select
                   value={newAwardData.attached_template_id}
                   onChange={(e) => setNewAwardData({
@@ -1572,7 +1576,7 @@ export default function OSADDashboardView({ currentUser }) {
                     attached_template_id: e.target.value,
                     attached_template_name: e.target.options[e.target.selectedIndex].text
                   })}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                 >
                   <option value="OSAD-TPL-01">Official NDMU Certificate of Participation</option>
                   <option value="OSAD-TPL-02">Certificate of Leadership & Merit</option>
@@ -1583,27 +1587,27 @@ export default function OSADDashboardView({ currentUser }) {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Description & Criteria Notes</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Description & Criteria Notes</label>
                 <textarea
                   rows={3}
                   placeholder="Describe award objectives and criteria details..."
                   value={newAwardData.description}
                   onChange={(e) => setNewAwardData({ ...newAwardData, description: e.target.value })}
-                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddAwardOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition"
+                  className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
                 >
                   Create Category
                 </button>

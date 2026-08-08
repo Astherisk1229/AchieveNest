@@ -72,7 +72,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   }
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-[#f4f8f5] text-slate-900 font-sans selection:bg-[#2d8a4e] selection:text-white relative">
+    <div className="h-screen w-screen flex overflow-hidden bg-[#f4f8f5] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#2d8a4e] selection:text-white relative transition-colors duration-200">
       
       {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
       {isSidebarOpen && (
@@ -94,7 +94,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
       </div>
 
       {/* Right Column (Header Fixed Top + Scrollable Content Body) */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 bg-[#f4f8f5] dark:bg-[#0b1320] transition-colors duration-200">
         
         {/* Stationary Fixed Header Bar */}
         <Header
@@ -104,7 +104,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         />
 
         {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#f4f8f5] relative">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#f4f8f5] dark:bg-[#0b1320] transition-colors duration-200 relative">
           <div className="container-responsive space-y-6">
             {React.Children.map(children, child => {
               if (React.isValidElement(child)) {

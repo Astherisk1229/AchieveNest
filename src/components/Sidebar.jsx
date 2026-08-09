@@ -18,14 +18,12 @@ import {
   FileCheck2,
   LayoutGrid,
   Calendar,
-  QrCode,
-  Sun,
-  Moon
+  QrCode
 } from 'lucide-react'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
   const navigate = useNavigate()
-  const { isDark, toggleTheme } = useTheme()
+  const { isDark } = useTheme()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const user = currentUser || getCurrentUser()
@@ -42,7 +40,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const getPortalInfo = () => {
     switch (activeContext) {
       case 'student':
-        return { label: 'Student Portal', path: '/student/dashboard', roleTitle: 'Student' }
+        return { label: 'Student Portal', path: '/student/dashboard', roleTitle: 'Student Portal' }
       case 'program_coordinator':
         return { label: 'Program Coordinator', path: '/personnel/dashboard?tab=overview', roleTitle: 'Program Coordinator' }
       case 'organization_moderator':
@@ -54,7 +52,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       case 'osad_staff':
         return { label: 'OSAD Admin Portal', path: '/osad/dashboard', roleTitle: 'OSAD Admin' }
       default:
-        return { label: 'Personnel Portal', path: '/personnel/dashboard', roleTitle: 'Personnel' }
+        return { label: 'Personnel Portal', path: '/personnel/dashboard', roleTitle: 'Personnel Portal' }
     }
   }
 
@@ -101,6 +99,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       ]
     }
 
+    if (activeContext === 'department_secretary') {
+      return [
+        { label: 'Evaluator Workbench', icon: ShieldCheck, path: '/personnel/dashboard?tab=workbench', tab: 'workbench' },
+        { label: 'Department Roster', icon: Users, path: '/personnel/dashboard?tab=roster', tab: 'roster' },
+        { label: 'My Personal Portfolio', icon: FolderKanban, path: '/personnel/portfolio' },
+        { label: 'My Achievements', icon: Award, path: '/personnel/achievements' },
+        { label: 'Account', icon: User, path: '/personnel/account' },
+      ]
+    }
+
     if (activeContext === 'personnel') {
       return [
         { label: 'Homepage', icon: Home, path: '/personnel/dashboard' },
@@ -127,23 +135,14 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
   const defaultTabForContext = activeContext === 'organization_moderator' ? 'dashboard' : 'overview'
   const currentActiveTab = activeTabParam || defaultTabForContext
-  const isOSADAdmin = activeContext === 'osad_staff' || location.pathname.includes('/osad/')
 
   return (
-    <aside className={`w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 ${
-      isOSADAdmin
-        ? 'bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white'
-        : 'bg-[#1b4332] dark:bg-[#07130b] text-white border-r border-[#285d3c] dark:border-emerald-950/80 selection:bg-[#2d8a4e] selection:text-white'
-    }`}>
+    <aside className="w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white">
       <div>
         
         {/* Brand Header */}
-        <div className={`p-4 flex items-center gap-3 border-b ${
-          isOSADAdmin
-            ? 'border-slate-100 dark:border-slate-800/80'
-            : 'border-[#285d3c] dark:border-emerald-950/80'
-        }`}>
-          <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs shrink-0 border border-slate-100">
+        <div className="p-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80">
+          <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-2xs shrink-0 border border-slate-200/80">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
               <circle cx="50" cy="50" r="28" fill="#ffffff" />
@@ -151,52 +150,34 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             </svg>
           </div>
           <div>
-            <h1 className={`font-extrabold text-lg leading-tight tracking-tight ${
-              isOSADAdmin ? 'text-slate-900 dark:text-white' : 'text-[#ffffff]'
-            }`}>AchieveNest</h1>
-            <p className={`text-[10px] font-bold tracking-widest uppercase ${
-              isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-200/80 dark:text-emerald-400/80'
-            }`}>NDMU OSAD</p>
+            <h1 className="font-extrabold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">AchieveNest</h1>
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-[#2d8a4e] dark:text-emerald-400">
+              {activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? 'NDMU OSAD' : 'Student Portal'}
+            </p>
           </div>
         </div>
 
         {/* Sidebar Search Input */}
         <div className="p-3 pb-1.5">
           <div className="relative">
-            <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
-              isOSADAdmin ? 'text-slate-400 dark:text-slate-500' : 'text-emerald-200/60 dark:text-emerald-400/60'
-            }`}>
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
               <Search className="w-3.5 h-3.5" />
             </div>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search OSAD Portal..."
-              className={`w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#2d8a4e] transition ${
-                isOSADAdmin
-                  ? 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400'
-                  : 'bg-[#133626] dark:bg-[#030a05] border border-[#245236] dark:border-emerald-950/80 text-white placeholder-emerald-200/50 dark:placeholder-slate-500'
-              }`}
+              placeholder={activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? "Search OSAD Portal..." : "Search Portal..."}
+              className="w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#2d8a4e] transition bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400"
             />
           </div>
         </div>
 
         {/* Active Portal / Role Badge */}
         <div className="px-3 py-1.5">
-          <div className={`w-full py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-between shadow-2xs border ${
-            isOSADAdmin
-              ? 'bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#2d8a4e]/30 dark:border-emerald-800/60 font-bold'
-              : activeContext === 'program_coordinator' 
-              ? 'bg-[#1d6bba] border-blue-400/40 text-white font-bold' 
-              : activeContext === 'organization_moderator'
-              ? 'bg-emerald-500/20 text-emerald-100 border-emerald-500/30'
-              : activeContext === 'hr_staff' || location.pathname.includes('/hr/')
-              ? 'bg-emerald-700/80 border-emerald-400/50 text-white font-bold'
-              : 'bg-[#2d8a4e] dark:bg-[#184528] border-emerald-400/30 dark:border-emerald-700/50 text-white font-bold'
-          }`}>
+          <div className="w-full py-2 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between shadow-2xs border bg-[#edf3ec] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#d2e6d5] dark:border-emerald-800/60">
             <span className="flex items-center gap-1.5 text-[11px]">
-              <ShieldCheck className={`w-3.5 h-3.5 ${isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-300'}`} />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
               {portalInfo.roleTitle || portalInfo.label}
             </span>
           </div>
@@ -204,9 +185,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
         {/* Navigation Items */}
         <div className="px-3 pt-3 space-y-1">
-          <p className={`px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 ${
-            isOSADAdmin ? 'text-slate-400 dark:text-slate-400' : 'text-emerald-300/70 dark:text-emerald-400/70'
-          }`}>Navigation</p>
+          <p className="px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 text-slate-400 dark:text-slate-400">
+            Navigation
+          </p>
           {navItems.map((item) => {
             const Icon = item.icon
             const isTabActive = item.tab && item.tab === currentActiveTab
@@ -220,24 +201,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                 onClick={() => {
                   navigate(item.path)
                 }}
-                className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+                className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
                   isActive
-                    ? isOSADAdmin
-                      ? 'bg-[#eef7f0] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#2d8a4e]/30 dark:border-emerald-700/50 shadow-2xs'
-                      : 'bg-[#2d8a4e] dark:bg-[#184528] text-white dark:text-emerald-100 shadow-2xs border border-emerald-400/20 dark:border-emerald-600/40'
-                    : isOSADAdmin
-                      ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-                      : 'text-emerald-100/80 dark:text-slate-300 hover:bg-[#205236] dark:hover:bg-[#0c2415] hover:text-white'
+                    ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
                   isActive
-                    ? isOSADAdmin
-                      ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
-                      : 'bg-white/20 text-white'
-                    : isOSADAdmin
-                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
-                      : 'bg-emerald-500/15 dark:bg-emerald-950/60 text-emerald-300 dark:text-emerald-400'
+                    ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
+                    : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
                 }`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
@@ -250,30 +223,24 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       </div>
 
       {/* Sidebar Footer */}
-      <div className={`p-4 border-t space-y-1 ${
-        isOSADAdmin ? 'border-slate-100 dark:border-slate-800/80' : 'border-[#285d3c] dark:border-emerald-950/80'
-      }`}>
-        <p className={`px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 ${
-          isOSADAdmin ? 'text-slate-400 dark:text-slate-400' : 'text-emerald-300/70 dark:text-emerald-400/70'
-        }`}>Account</p>
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 space-y-1">
+        <p className="px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 text-slate-400 dark:text-slate-400">
+          Account
+        </p>
         
         <button
           type="button"
           onClick={() => navigate('/notifications')}
-          className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+          className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
             isNotificationsActive
-              ? isOSADAdmin
-                ? 'bg-[#eef7f0] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#2d8a4e]/30 dark:border-emerald-700/50 shadow-2xs'
-                : 'bg-[#2d8a4e] dark:bg-[#184528] text-white dark:text-emerald-100 shadow-2xs border border-emerald-400/20 dark:border-emerald-600/40'
-              : isOSADAdmin
-                ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-                : 'text-emerald-100/80 dark:text-slate-300 hover:bg-[#205236] dark:hover:bg-[#0c2415] hover:text-white'
+              ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
             isNotificationsActive
-              ? isOSADAdmin ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950' : 'bg-white/20 text-white'
-              : isOSADAdmin ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-emerald-500/15 dark:bg-emerald-950/60 text-emerald-300 dark:text-emerald-400'
+              ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
+              : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
           }`}>
             <Bell className="w-3.5 h-3.5" />
           </div>
@@ -283,20 +250,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         <button
           type="button"
           onClick={() => navigate('/student/settings')}
-          className={`w-full px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-3 transition cursor-pointer ${
+          className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
             isSettingsActive
-              ? isOSADAdmin
-                ? 'bg-[#eef7f0] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#2d8a4e]/30 dark:border-emerald-700/50 shadow-2xs'
-                : 'bg-[#2d8a4e] dark:bg-[#184528] text-white dark:text-emerald-100 shadow-2xs border border-emerald-400/20 dark:border-emerald-600/40'
-              : isOSADAdmin
-                ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-                : 'text-emerald-100/80 dark:text-slate-300 hover:bg-[#205236] dark:hover:bg-[#0c2415] hover:text-white'
+              ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
             isSettingsActive
-              ? isOSADAdmin ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950' : 'bg-white/20 text-white'
-              : isOSADAdmin ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' : 'bg-emerald-500/15 dark:bg-emerald-950/60 text-emerald-300 dark:text-emerald-400'
+              ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
+              : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
           }`}>
             <Settings className="w-3.5 h-3.5" />
           </div>
@@ -306,9 +269,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full px-3 py-2 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-700 dark:hover:text-rose-200 flex items-center gap-3 transition cursor-pointer"
+          className="w-full px-3 py-2 rounded-xl font-extrabold text-xs text-[#9f2f2d] dark:text-rose-400 hover:bg-[#fdebec] dark:hover:bg-rose-950/50 hover:text-[#9f2f2d] flex items-center gap-3 transition cursor-pointer group"
         >
-          <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#fdebec] dark:bg-rose-950/60 text-[#9f2f2d] dark:text-rose-400 border border-[#f5c6cb] dark:border-rose-900/50 flex items-center justify-center shrink-0">
             <LogOut className="w-3.5 h-3.5" />
           </div>
           <span>Logout</span>
@@ -318,3 +281,4 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     </aside>
   )
 }
+

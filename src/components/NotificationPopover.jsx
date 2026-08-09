@@ -1,30 +1,38 @@
 import React, { useState } from 'react'
-import { Bell, CheckCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, CheckCheck, ChevronRight } from 'lucide-react'
 
 export default function NotificationPopover() {
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState([
     {
       id: 'notif_1',
-      title: 'Achievement Verification Status Updated',
-      message: 'Your publication "AI in Higher Education" was verified by Program Coordinator.',
+      title: 'Achievement Verified',
+      message: 'Your submission "Dean\'s Lister - First Semester AY 2025-2026" has been verified.',
       type: 'verification',
+      targetPath: '/student/achievements',
+      navState: { highlightId: 1, filterStatus: 'Verified' },
       time: '10m ago',
       is_read: false
     },
     {
       id: 'notif_2',
-      title: 'Department Endorsement Notice',
-      message: 'Department Secretary endorsed 3 faculty research submissions to HR Office.',
-      type: 'endorsement',
+      title: 'Revision Requested',
+      message: 'Please update your "Best Research Paper" submission with a higher resolution scan.',
+      type: 'warning',
+      targetPath: '/student/achievements',
+      navState: { highlightId: 5, filterStatus: 'Returned' },
       time: '1h ago',
       is_read: false
     },
     {
       id: 'notif_3',
-      title: 'Araw ng Parangal Criteria Tuned',
-      message: 'OSAD Staff updated achievement verification criteria for AY 2025-2026.',
-      type: 'award',
+      title: 'Certificate Ready',
+      message: 'Your official verified certificate for NDMU Tech Summit 2025 is ready for download.',
+      type: 'certificate',
+      targetPath: '/student/portfolio',
+      navState: { openBookletModal: true },
       time: '3h ago',
       is_read: true
     }
@@ -32,16 +40,47 @@ export default function NotificationPopover() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
+  React.useEffect(() => {
+    const handleAddResetNotification = () => {
+      setNotifications(prev => [
+        {
+          id: `notif_reset_${Date.now()}`,
+          title: '⚠️ Password Reset Requested',
+          message: 'Student Juan Dela Cruz (2023-0142) submitted a password reset request.',
+          type: 'warning',
+          targetPath: '/osad/dashboard?tab=accounts',
+          navState: {},
+          time: 'Just now',
+          is_read: false
+        },
+        ...prev
+      ])
+    }
+    window.addEventListener('achievenest_reset_request_submitted', handleAddResetNotification)
+    return () => window.removeEventListener('achievenest_reset_request_submitted', handleAddResetNotification)
+  }, [])
+
   const markAllRead = () => {
     setNotifications(notifications.map(n => ({ ...n, is_read: true })))
   }
 
+  const handleNotificationClick = (notif) => {
+    // 1. Mark as read
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
+    // 2. Close popover
+    setIsOpen(false)
+    // 3. Navigate to target path with nav state
+    if (notif.targetPath) {
+      navigate(notif.targetPath, { state: notif.navState })
+    }
+  }
+
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-left font-sans">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 hover:text-slate-900 transition backdrop-blur-md shadow-2xs"
+        className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 hover:text-slate-900 transition backdrop-blur-md shadow-2xs cursor-pointer"
         aria-label="Notifications"
       >
         <Bell className="w-5.5 h-5.5 text-slate-700" />
@@ -68,8 +107,9 @@ export default function NotificationPopover() {
               </div>
               {unreadCount > 0 && (
                 <button
+                  type="button"
                   onClick={markAllRead}
-                  className="text-xs text-[#2d8a4e] hover:underline flex items-center gap-1 font-semibold"
+                  className="text-xs text-[#2d8a4e] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   Mark read
@@ -82,24 +122,29 @@ export default function NotificationPopover() {
                 <p className="text-xs text-slate-400 text-center py-6">No notifications found.</p>
               ) : (
                 notifications.map((notif) => (
-                  <div
+                  <button
                     key={notif.id}
-                    className={`p-3 rounded-xl border text-left transition ${
-                      notif.is_read ? 'bg-slate-50 border-slate-100 opacity-75' : 'bg-[#f7faf8] border-[#cbe6d2]'
+                    type="button"
+                    onClick={() => handleNotificationClick(notif)}
+                    className={`w-full p-3 rounded-xl border text-left transition cursor-pointer group flex items-start justify-between gap-2 ${
+                      notif.is_read ? 'bg-slate-50 border-slate-100 opacity-75 hover:opacity-100' : 'bg-[#f7faf8] border-[#cbe6d2] hover:border-[#2d8a4e]'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-900">{notif.title}</span>
-                      <span className="text-[10px] text-slate-400">{notif.time}</span>
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition truncate">{notif.title}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0">{notif.time}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{notif.message}</p>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{notif.message}</p>
-                  </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] group-hover:translate-x-0.5 transition shrink-0 mt-1" />
+                  </button>
                 ))
               )}
             </div>
 
             <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
-              <span className="text-[10px] text-slate-400 font-mono">AchieveNest Realtime Gateway</span>
+              <span className="text-[10px] text-slate-400 font-mono">AchieveNest Gateway</span>
               <button
                 type="button"
                 onClick={() => { setIsOpen(false); navigate('/notifications'); }}

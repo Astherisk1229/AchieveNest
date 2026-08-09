@@ -35,6 +35,10 @@ import useOSAD from '../../hooks/useOSAD'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 import PersonnelSelectorModal from './PersonnelSelectorModal'
 import SearchablePersonnelDropdown from './SearchablePersonnelDropdown'
+import OSADAccountsTab from './tabs/OSADAccountsTab'
+import OSADAwardeesTab from './tabs/OSADAwardeesTab'
+import OSADReportsTab from './tabs/OSADReportsTab'
+import OSADAuditTab from './tabs/OSADAuditTab'
 
 export default function OSADDashboardView({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -64,6 +68,9 @@ export default function OSADDashboardView({ currentUser }) {
     createAwardCategory,
     generateAwardCandidates,
     confirmAwardee,
+    resetStudentPassword,
+    getPasswordResetRequests,
+    approvePasswordResetRequest,
     refreshAuditLogs
   } = useOSAD()
 
@@ -498,265 +505,22 @@ export default function OSADDashboardView({ currentUser }) {
       {/* ========================================================================= */}
       {/* 2. STUDENT GOVERNANCE & ACCOUNTS MODULE (tab === 'accounts')              */}
       {/* ========================================================================= */}
-      {activeTab === 'accounts' && (() => {
-        const filteredUserList = getUsers('student', userSearchTerm, selectedCollege, selectedSort)
-        const totalFilteredCount = filteredUserList.length
-
-        const handleExportRosterCsv = () => {
-          showToast('Exported Official NDMU Student Roster CSV!')
-        }
-
-        return (
-          <div className="space-y-6 animate-in fade-in duration-200 font-sans">
-
-            {/* Module Header */}
-            <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  Student Governance &amp; Accounts Suite
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Inspect NDMU Student Records, Verify Achievement Ledgers, &amp; Review Student Portfolios
-                </p>
-              </div>
-            </div>
-
-            {/* Multi-Criteria Filter Controls Toolbar */}
-            <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-              
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search students by name, ID number, or program..."
-                  value={userSearchTerm}
-                  onChange={(e) => setUserSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e] placeholder:text-slate-400"
-                />
-              </div>
-
-              {/* Multi-Criteria Custom Dropdown Filters & Actions */}
-              <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                
-                {/* Custom College Filter Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCollegeDropdownOpen(!isCollegeDropdownOpen)
-                      setIsSortDropdownOpen(false)
-                    }}
-                    className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700/80 font-extrabold text-xs text-slate-800 dark:text-slate-100 hover:border-[#2d8a4e] transition cursor-pointer shadow-2xs"
-                  >
-                    <Filter className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
-                    <span>{
-                      selectedCollege === 'all' ? 'All Colleges' :
-                      selectedCollege === 'CEAC' ? 'CEAC (Engineering & IT)' :
-                      selectedCollege === 'CBA' ? 'CBA (Business)' :
-                      selectedCollege === 'CAS' ? 'CAS (Arts & Sciences)' :
-                      selectedCollege === 'CED' ? 'CED (Education)' : selectedCollege
-                    }</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isCollegeDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isCollegeDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsCollegeDropdownOpen(false)} />
-                      <div className="absolute top-full mt-1.5 left-0 z-50 w-56 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                        {[
-                          { value: 'all', label: 'All Colleges' },
-                          { value: 'CEAC', label: 'CEAC (Engineering & IT)' },
-                          { value: 'CBA', label: 'CBA (Business)' },
-                          { value: 'CAS', label: 'CAS (Arts & Sciences)' },
-                          { value: 'CED', label: 'CED (Education)' }
-                        ].map((opt) => {
-                          const isSelected = selectedCollege === opt.value
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => {
-                                setSelectedCollege(opt.value)
-                                setIsCollegeDropdownOpen(false)
-                              }}
-                              className={`w-full px-3 py-2 rounded-xl text-left text-xs font-extrabold transition flex items-center justify-between cursor-pointer ${
-                                isSelected
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
-                              }`}
-                            >
-                              <span>{opt.label}</span>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Custom Sort By Dropdown */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSortDropdownOpen(!isSortDropdownOpen)
-                      setIsCollegeDropdownOpen(false)
-                    }}
-                    className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700/80 font-extrabold text-xs text-slate-800 dark:text-slate-100 hover:border-[#2d8a4e] transition cursor-pointer shadow-2xs"
-                  >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Sort:</span>
-                    <span>{
-                      selectedSort === 'name' ? 'Name (A-Z)' :
-                      selectedSort === 'id' ? 'Student ID' :
-                      selectedSort === 'points' ? 'Total Points (High-Low)' :
-                      selectedSort === 'proofs' ? 'Verified Proofs (High-Low)' : selectedSort
-                    }</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isSortDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsSortDropdownOpen(false)} />
-                      <div className="absolute top-full mt-1.5 left-0 z-50 w-56 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
-                        {[
-                          { value: 'name', label: 'Name (A-Z)' },
-                          { value: 'id', label: 'Student ID' },
-                          { value: 'points', label: 'Total Points (High to Low)' },
-                          { value: 'proofs', label: 'Verified Proofs (High to Low)' }
-                        ].map((opt) => {
-                          const isSelected = selectedSort === opt.value
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => {
-                                setSelectedSort(opt.value)
-                                setIsSortDropdownOpen(false)
-                              }}
-                              className={`w-full px-3 py-2 rounded-xl text-left text-xs font-extrabold transition flex items-center justify-between cursor-pointer ${
-                                isSelected
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60'
-                                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
-                              }`}
-                            >
-                              <span>{opt.label}</span>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Roster Export CSV */}
-                <button
-                  type="button"
-                  onClick={handleExportRosterCsv}
-                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                >
-                  <Download className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
-                  <span>Export CSV</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Dedicated Student Governance Table */}
-            <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
-                    <tr>
-                      <th className="p-4">User Details</th>
-                      <th className="p-4">Student ID</th>
-                      <th className="p-4">Degree Program &amp; Year</th>
-                      <th className="p-4">Verified Proofs</th>
-                      <th className="p-4">Total Points</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {filteredUserList.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
-                          No student accounts found matching your search.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUserList.map(usr => (
-                        <tr key={usr.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                          
-                          {/* User Details */}
-                          <td className="p-4 font-extrabold text-slate-900 dark:text-white">
-                            <div>
-                              <p className="text-xs font-extrabold">{usr.full_name}</p>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{usr.email}</p>
-                            </div>
-                          </td>
-
-                          {/* Student ID Number (Without dashes) */}
-                          <td className="p-4 font-mono font-extrabold text-slate-700 dark:text-slate-300">
-                            {usr.student_id ? usr.student_id.replace(/-/g, '') : 'N/A'}
-                          </td>
-
-                          {/* Degree Program & Year Level */}
-                          <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">
-                            <div>
-                              <p className="text-xs">{usr.program}</p>
-                              <p className="text-[10px] text-slate-400 font-normal">{usr.year_level || 'Enrolled Student'}</p>
-                            </div>
-                          </td>
-
-                          {/* Verified Proofs Count */}
-                          <td className="p-4 font-extrabold text-slate-900 dark:text-white">
-                            <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[11px] font-extrabold border border-slate-200 dark:border-slate-700">
-                              {usr.verified_count || 8} Proofs
-                            </span>
-                          </td>
-
-                          {/* Total Points */}
-                          <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400 text-sm">
-                            {usr.total_points || 320} PTS
-                          </td>
-
-                          {/* Actions */}
-                          <td className="p-4 text-right">
-                            <button
-                              onClick={() => {
-                                const studentPortfolios = getStudentPortfolios(usr.full_name)
-                                const fullStudent = studentPortfolios[0] || usr
-                                setViewingStudentPortfolio(fullStudent)
-                              }}
-                              className="px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-[11px] font-extrabold transition cursor-pointer flex items-center gap-1.5 ml-auto shadow-2xs"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View Student Portfolio</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Roster Pagination Footer */}
-              <div className="p-4 bg-slate-50/80 dark:bg-slate-800/40 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-bold">
-                <span>Showing 1–{totalFilteredCount} of {totalFilteredCount} Student Accounts</span>
-                <div className="flex items-center gap-1.5">
-                  <button disabled className="px-3 py-1 rounded-lg bg-slate-200/60 dark:bg-slate-800 text-slate-400 text-[11px] font-bold cursor-not-allowed">Previous</button>
-                  <button disabled className="px-3 py-1 rounded-lg bg-slate-200/60 dark:bg-slate-800 text-slate-400 text-[11px] font-bold cursor-not-allowed">Next</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
+      {activeTab === 'accounts' && (
+        <OSADAccountsTab
+          userSearchTerm={userSearchTerm}
+          setUserSearchTerm={setUserSearchTerm}
+          selectedCollege={selectedCollege}
+          setSelectedCollege={setSelectedCollege}
+          selectedSort={selectedSort}
+          setSelectedSort={setSelectedSort}
+          getUsers={getUsers}
+          getStudentPortfolios={getStudentPortfolios}
+          resetStudentPassword={resetStudentPassword}
+          getPasswordResetRequests={getPasswordResetRequests}
+          approvePasswordResetRequest={approvePasswordResetRequest}
+          showToast={showToast}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* 2B. COLLEGE DEPARTMENTS & DEAN GOVERNANCE (tab === 'departments')          */}
@@ -1044,758 +808,32 @@ export default function OSADDashboardView({ currentUser }) {
       {/* 4. IDENTIFY AWARDEES & RANKING ENGINE MODULE (tab === 'awardees')          */}
       {/* ========================================================================= */}
       {activeTab === 'awardees' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-
-          {/* Module Header */}
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  Automated Candidate Identification &amp; Ranking Engine
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Run Algorithm Against Active Award Criteria to Generate Ranked Roster of Eligible Awardees
-                </p>
-              </div>
-            </div>
-
-            {/* Category Selector Controls */}
-            <div className="flex items-center gap-3 self-start md:self-auto">
-              <select
-                value={selectedCategoryForRanking}
-                onChange={(e) => {
-                  setSelectedCategoryForRanking(e.target.value)
-                  setHasRanked(false)
-                }}
-                className="px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e] cursor-pointer shadow-xs"
-              >
-                {awardCategories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.title} ({cat.min_points} pts min)</option>
-                ))}
-              </select>
-
-              <button
-                onClick={handleRunRankingEngine}
-                className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer shrink-0"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-200" />
-                <span>Run Ranking Engine</span>
-              </button>
-                </div>
-              </div>
-
-              {/* ========================================================================= */}
-              {/* STUDENT POINTS LEADERBOARD GRAPH CARD                                      */}
-              {/* ========================================================================= */}
-              <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-6">
-                
-                {/* Header & Filter Controls */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                      <BarChart3 className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                        <span>Student Points Leaderboard &amp; Analytics Graph</span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 text-[10px] font-bold">
-                          LIVE POINT RANKS
-                        </span>
-                      </h2>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                        Visualizing verified student achievement points across university colleges
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Filter Pills */}
-                  <div className="flex items-center gap-2 shrink-0 overflow-x-auto pb-1 sm:pb-0">
-                    {[
-                      { id: 'all', label: 'All Students' },
-                      { id: 'CEAC', label: 'CEAC (Engineering & IT)' },
-                      { id: 'CBA', label: 'CBA (Business)' }
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setLeaderboardFilter(f.id)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shrink-0 ${
-                          leaderboardFilter === f.id
-                            ? 'bg-[#1b4332] dark:bg-emerald-700 text-white shadow-xs'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top 3 Podium Cards (Utmost 2-Color Minimalist Architecture: Slate + Emerald) */}
-                {getStudentLeaderboards(leaderboardFilter).length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    
-                    {/* #1 Top Ranker */}
-                    {getStudentLeaderboards(leaderboardFilter)[0] && (
-                      <div className="p-5 rounded-3xl bg-emerald-50/70 dark:bg-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-700/60 shadow-sm relative overflow-hidden flex flex-col justify-between space-y-3">
-                        <div className="flex items-start justify-between">
-                          <span className="w-9 h-9 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center font-black text-sm shadow-xs">
-                            #1
-                          </span>
-                          <span className="px-3 py-1 rounded-full bg-[#2d8a4e] text-white font-extrabold text-xs shadow-xs">
-                            {getStudentLeaderboards(leaderboardFilter)[0].total_points} PTS
-                          </span>
-                        </div>
-
-                        <div>
-                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{getStudentLeaderboards(leaderboardFilter)[0].student_name}</h3>
-                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">{getStudentLeaderboards(leaderboardFilter)[0].student_id} • {getStudentLeaderboards(leaderboardFilter)[0].program}</p>
-                          <p className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 mt-1 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
-                            <span>{getStudentLeaderboards(leaderboardFilter)[0].verified_count} Verified Proofs</span>
-                          </p>
-                        </div>
-
-                        {/* Visual Bar */}
-                        <div className="w-full bg-slate-200/80 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                          <div className="bg-[#2d8a4e] dark:bg-emerald-500 h-full rounded-full w-full"></div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* #2 Ranker */}
-                    {getStudentLeaderboards(leaderboardFilter)[1] && (
-                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between space-y-3">
-                        <div className="flex items-start justify-between">
-                          <span className="w-9 h-9 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center font-extrabold text-sm border border-slate-300 dark:border-slate-600">
-                            #2
-                          </span>
-                          <span className="px-3 py-1 rounded-full bg-slate-900 dark:bg-slate-900 text-white font-extrabold text-xs shadow-xs">
-                            {getStudentLeaderboards(leaderboardFilter)[1].total_points} PTS
-                          </span>
-                        </div>
-
-                        <div>
-                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{getStudentLeaderboards(leaderboardFilter)[1].student_name}</h3>
-                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">{getStudentLeaderboards(leaderboardFilter)[1].student_id} • {getStudentLeaderboards(leaderboardFilter)[1].program}</p>
-                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1">
-                            {getStudentLeaderboards(leaderboardFilter)[1].verified_count} Verified Proofs
-                          </p>
-                        </div>
-
-                        {/* Visual Bar */}
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-                          <div
-                            className="bg-[#2d8a4e] dark:bg-emerald-500 h-full rounded-full"
-                            style={{ width: `${getStudentLeaderboards(leaderboardFilter)[1].percentage}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* #3 Ranker */}
-                    {getStudentLeaderboards(leaderboardFilter)[2] && (
-                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between space-y-3">
-                        <div className="flex items-start justify-between">
-                          <span className="w-9 h-9 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center font-extrabold text-sm border border-slate-300 dark:border-slate-600">
-                            #3
-                          </span>
-                          <span className="px-3 py-1 rounded-full bg-slate-900 dark:bg-slate-900 text-white font-extrabold text-xs shadow-xs">
-                            {getStudentLeaderboards(leaderboardFilter)[2].total_points} PTS
-                          </span>
-                        </div>
-
-                        <div>
-                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{getStudentLeaderboards(leaderboardFilter)[2].student_name}</h3>
-                          <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">{getStudentLeaderboards(leaderboardFilter)[2].student_id} • {getStudentLeaderboards(leaderboardFilter)[2].program}</p>
-                          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1">
-                            {getStudentLeaderboards(leaderboardFilter)[2].verified_count} Verified Proofs
-                          </p>
-                        </div>
-
-                        {/* Visual Bar */}
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
-                          <div
-                            className="bg-[#2d8a4e] dark:bg-emerald-500 h-full rounded-full"
-                            style={{ width: `${getStudentLeaderboards(leaderboardFilter)[2].percentage}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-                {/* Main Visual Points Bar Graph Chart */}
-                <div className="bg-slate-50/70 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-700/60 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
-                      <span>Visual Points Comparison Bar Graph</span>
-                    </h3>
-                    <span className="text-[11px] font-bold text-slate-400 font-mono">
-                      Scale: 0 to 500 Points
-                    </span>
-                  </div>
-
-                  {/* Graph Grid Lines */}
-                  <div className="space-y-4 relative">
-                    
-                    {/* Axis Ticks */}
-                    <div className="flex justify-between text-[10px] font-mono font-bold text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-1.5 px-1">
-                      <span>0 PTS</span>
-                      <span>100 PTS</span>
-                      <span>200 PTS</span>
-                      <span>300 PTS</span>
-                      <span>400 PTS</span>
-                      <span>500 PTS</span>
-                    </div>
-
-                    {/* Student Horizontal Points Bars */}
-                    <div className="space-y-3.5 pt-1">
-                      {getStudentLeaderboards(leaderboardFilter).map((student) => (
-                        <div key={student.id} className="space-y-1.5 group">
-                          
-                          {/* Student Header Label & Point Badge */}
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2.5">
-                              <span className={`w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shrink-0 ${
-                                student.rank === 1 ? 'bg-[#2d8a4e] text-white font-extrabold' :
-                                'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                              }`}>
-                                #{student.rank}
-                              </span>
-                              <span className="font-extrabold text-slate-900 dark:text-white">{student.student_name}</span>
-                              <span className="text-slate-400 font-mono text-[11px]">({student.student_id})</span>
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">• {student.program}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
-                                {student.verified_count} Proofs
-                              </span>
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black shadow-2xs ${
-                                student.rank === 1 ? 'bg-emerald-100 dark:bg-emerald-950 text-[#1e5831] dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' :
-                                'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
-                              }`}>
-                                {student.total_points} PTS
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Graphical Bar */}
-                          <div className="w-full bg-slate-200/80 dark:bg-slate-800 rounded-2xl h-4 p-0.5 border border-slate-200 dark:border-slate-700 overflow-hidden relative">
-                            <div
-                              className={`h-full rounded-xl transition-all duration-500 flex items-center justify-end pr-2 text-[9px] font-black text-white ${
-                                student.rank === 1
-                                  ? 'bg-[#2d8a4e] dark:bg-emerald-500 shadow-sm'
-                                  : student.rank === 2
-                                  ? 'bg-[#2d8a4e] dark:bg-emerald-600'
-                                  : 'bg-slate-700 dark:bg-slate-600'
-                              }`}
-                              style={{ width: `${Math.max(student.percentage, 8)}%` }}
-                            >
-                              <span className="drop-shadow-xs">{student.total_points}</span>
-                            </div>
-                          </div>
-
-                        </div>
-                      ))}
-                    </div>
-
-                  </div>
-                </div>
-
-              </div>
-
-          {/* Evaluation Results Section */}
-          {hasRanked && (
-            <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Award className="w-4.5 h-4.5 text-[#2d8a4e] dark:text-emerald-400" />
-                  <span>Ranked Eligible Candidates ({generatedCandidates.length} Evaluated)</span>
-                </h3>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
-                    <tr>
-                      <th className="p-4">Rank</th>
-                      <th className="p-4">Student Name</th>
-                      <th className="p-4">Student ID</th>
-                      <th className="p-4">Program</th>
-                      <th className="p-4">Total Points</th>
-                      <th className="p-4">Weighted Score</th>
-                      <th className="p-4 text-right">Confirmation Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                    {generatedCandidates.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-400 font-medium">
-                          No candidates met the minimum point criteria for this category.
-                        </td>
-                      </tr>
-                    ) : (
-                      generatedCandidates.map(cand => (
-                        <tr key={cand.student_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                          <td className="p-4 font-extrabold text-slate-900 dark:text-white">
-                            <span className="w-7 h-7 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-[#2d8a4e] dark:text-emerald-300 flex items-center justify-center text-xs font-extrabold">
-                              #{cand.rank}
-                            </span>
-                          </td>
-                          <td className="p-4 font-extrabold text-slate-900 dark:text-white">{cand.student_name}</td>
-                          <td className="p-4 font-mono font-bold text-slate-600 dark:text-slate-400">{cand.student_id}</td>
-                          <td className="p-4 font-bold text-slate-700 dark:text-slate-300">{cand.program}</td>
-                          <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400">{cand.total_points} pts</td>
-                          <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400 text-sm">{cand.weighted_score} pts</td>
-                          <td className="p-4 text-right">
-                            <button
-                              onClick={() => handleConfirmAwardeeAction(cand)}
-                              className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center gap-1.5 ml-auto"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Confirm Awardee</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Confirmed Awardees Roster Table */}
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md p-6 space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Award className="w-4.5 h-4.5 text-[#2d8a4e] dark:text-emerald-400" />
-              <span>Official Confirmed OSAD Awardees Roster</span>
-            </h3>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
-                  <tr>
-                    <th className="p-4">Rank</th>
-                    <th className="p-4">Awardee Name</th>
-                    <th className="p-4">Student ID</th>
-                    <th className="p-4">Degree Program</th>
-                    <th className="p-4">Award Category</th>
-                    <th className="p-4">Total Score</th>
-                    <th className="p-4 text-right">Confirmed Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {awardees.map(awd => (
-                    <tr key={awd.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                      <td className="p-4 font-extrabold text-slate-900 dark:text-white">Rank #{awd.rank}</td>
-                      <td className="p-4 font-extrabold text-slate-900 dark:text-white">{awd.student_name}</td>
-                      <td className="p-4 font-mono font-bold text-slate-600 dark:text-slate-400">{awd.student_id}</td>
-                      <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">{awd.program}</td>
-                      <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400">{awd.award_title}</td>
-                      <td className="p-4 font-extrabold text-[#2d8a4e] dark:text-emerald-400">{awd.total_score} pts</td>
-                      <td className="p-4 text-right text-slate-500 dark:text-slate-400 font-mono text-[11px]">{awd.confirmed_at}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <OSADAwardeesTab
+          awardCategories={awardCategories}
+          awardees={awardees}
+          getStudentLeaderboards={getStudentLeaderboards}
+          confirmAwardee={confirmAwardee}
+        />
       )}
 
+
       {/* ========================================================================= */}
       {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
       {/* ========================================================================= */}
-      {/* ========================================================================= */}
-      {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
-      {/* ========================================================================= */}
-      {/* ========================================================================= */}
-      {/* 5. REPORTS SECTION & ACCREDITATION SUITE (tab === 'reports')               */}
-      {/* ========================================================================= */}
-      {activeTab === 'reports' && (() => {
-        const activeReportDetails = getAccreditationReportDetails(selectedReportId)
-
-        return (
-          <div className="space-y-6 animate-in fade-in duration-200">
-
-            {/* Module Header */}
-            <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                  <FileSpreadsheet className="w-6 h-6" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                    University Accreditation &amp; Institutional Reports Suite
-                  </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    Inspect Report Contents, Department Metrics &amp; Included Records Prior to Exporting
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-                <button
-                  onClick={() => setIsPreviewModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
-                >
-                  <Eye className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                  <span>Full Screen Inspection</span>
-                </button>
-                
-                <button
-                  onClick={() => showToast(`Exported [${activeReportDetails.title}] as Official PDF Document!`)}
-                  className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
-                >
-                  <Download className="w-4 h-4 text-emerald-300" />
-                  <span>Export Active Report PDF</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Interactive Report Selector Cards Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {accreditationReports.map(rpt => {
-                const isSelected = rpt.id === selectedReportId
-                return (
-                  <div
-                    key={rpt.id}
-                    onClick={() => setSelectedReportId(rpt.id)}
-                    className={`p-5 rounded-3xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
-                      isSelected
-                        ? 'bg-[#eef7f0] dark:bg-emerald-950/60 border-[#2d8a4e] dark:border-emerald-500 shadow-md ring-2 ring-[#2d8a4e]/30'
-                        : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-slate-700 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-[#1e5831] dark:text-emerald-300 text-[10px] font-extrabold">
-                          {rpt.agency}
-                        </span>
-                        {isSelected && (
-                          <span className="px-2 py-0.5 rounded-full bg-[#2d8a4e] text-white text-[9px] font-extrabold uppercase">
-                            Inspecting Content
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">{rpt.title}</h3>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold">
-                      <span>{rpt.accreditation_status}</span>
-                      <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">{rpt.total_student_achievements + rpt.total_faculty_accomplishments} total recs</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* LIVE REPORT DOCUMENT CONTENT INSPECTION PANEL */}
-            <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-6 relative overflow-hidden">
-              
-              {/* Document Header Seal Banner */}
-              <div className="border-b-2 border-slate-900/10 dark:border-slate-800 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#1b4332] dark:bg-[#071910] text-white p-2.5 flex items-center justify-center shrink-0 shadow-md border border-emerald-900/50">
-                    <svg viewBox="0 0 100 100" className="w-full h-full">
-                      <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#ffffff" strokeWidth="4" />
-                      <circle cx="50" cy="50" r="28" fill="#ffffff" />
-                      <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#0f4625" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-slate-900 dark:text-white tracking-widest">NOTRE DAME OF MARBEL UNIVERSITY</p>
-                    <p className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase">OFFICE OF STUDENT AFFAIRS &amp; SERVICES (OSAD)</p>
-                    <h2 className="text-lg font-serif font-extrabold text-slate-900 dark:text-white pt-0.5">{activeReportDetails.title}</h2>
-                    <p className="text-xs font-bold text-[#2d8a4e] dark:text-emerald-400 mt-0.5">Agency: {activeReportDetails.agency} • Period: {activeReportDetails.period} • Generated: {activeReportDetails.generated_date}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="px-3.5 py-1.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-xs font-black flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
-                    <span>{activeReportDetails.accreditation_status}</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Summary Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Student Accomplishments</p>
-                  <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">{activeReportDetails.total_student_achievements} Records</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Faculty Achievements</p>
-                  <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-0.5">{activeReportDetails.total_faculty_accomplishments} Records</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Combined Total Scope</p>
-                  <p className="text-xl font-extrabold text-[#2d8a4e] dark:text-emerald-400 mt-0.5">{activeReportDetails.total_student_achievements + activeReportDetails.total_faculty_accomplishments} Verified</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compliance Index</p>
-                  <p className="text-xl font-extrabold text-[#2d8a4e] dark:text-emerald-400 mt-0.5">{activeReportDetails.accreditation_status}</p>
-                </div>
-              </div>
-
-              {/* Section 1: Departmental Compliance Breakdown Table */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
-                  <span>Section A: Departmental Achievement &amp; Compliance Breakdown</span>
-                </h3>
-
-                <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-2xl">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
-                      <tr>
-                        <th className="p-3.5">College / Department</th>
-                        <th className="p-3.5">Student Records</th>
-                        <th className="p-3.5">Faculty Records</th>
-                        <th className="p-3.5">Verification Rate</th>
-                        <th className="p-3.5 text-right">Audit Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-800 dark:text-slate-200">
-                      {activeReportDetails.departmentBreakdown.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                          <td className="p-3.5 font-extrabold text-slate-900 dark:text-white">{row.dept}</td>
-                          <td className="p-3.5 font-bold text-[#2d8a4e] dark:text-emerald-400">{row.student_records} recs</td>
-                          <td className="p-3.5 font-bold text-slate-700 dark:text-slate-300">{row.faculty_records} recs</td>
-                          <td className="p-3.5 font-mono font-bold text-slate-700 dark:text-slate-300">{row.verification_rate}</td>
-                          <td className="p-3.5 text-right">
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-[10px] font-extrabold">
-                              {row.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Section 2: Sample Included Verified Records Audit */}
-              <div className="space-y-3 pt-2">
-                <h3 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
-                  <span>Section B: Sample Verified Bundled Accomplishment Entries</span>
-                </h3>
-
-                <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-2xl">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
-                      <tr>
-                        <th className="p-3.5">Accomplishment Title</th>
-                        <th className="p-3.5">Category</th>
-                        <th className="p-3.5">Owner / Faculty</th>
-                        <th className="p-3.5">Department</th>
-                        <th className="p-3.5">Verification Badge</th>
-                        <th className="p-3.5 text-right">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium text-slate-700 dark:text-slate-300">
-                      {activeReportDetails.includedRecordsSample.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                          <td className="p-3.5 font-extrabold text-slate-900 dark:text-white">{item.title}</td>
-                          <td className="p-3.5 font-semibold text-slate-600 dark:text-slate-400">{item.category}</td>
-                          <td className="p-3.5 font-bold text-slate-800 dark:text-slate-200">{item.owner}</td>
-                          <td className="p-3.5 font-mono text-slate-500 dark:text-slate-400">{item.dept}</td>
-                          <td className="p-3.5">
-                            <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-bold">
-                              {item.verified_by}
-                            </span>
-                          </td>
-                          <td className="p-3.5 text-right font-mono text-slate-500 dark:text-slate-400">{item.date}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Section 3: Official Signatory Approval Box */}
-              <div className="pt-6 border-t border-slate-200/80 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Compiled &amp; Certified By</p>
-                  <p className="font-extrabold text-slate-900 dark:text-white text-sm">Director Marcus Vance, Ph.D.</p>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">Director, Office of Student Affairs &amp; Services (OSAD)</p>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60 space-y-2">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase">Institutional Verification Seal</p>
-                  <p className="font-extrabold text-slate-900 dark:text-white text-sm">Notre Dame of Marbel University Central Registrar</p>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">Accreditation Audit Serial: NDMU-OSAD-2026-ACC-882</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Full Screen Preview Inspection Modal */}
-            {isPreviewModalOpen && (
-              <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative">
-                  
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                    <div className="flex items-center gap-3">
-                      <FileSpreadsheet className="w-6 h-6 text-[#2d8a4e] dark:text-emerald-400" />
-                      <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">Document Inspection View</h3>
-                    </div>
-                    
-                    <button
-                      onClick={() => setIsPreviewModalOpen(false)}
-                      className="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer"
-                    >
-                      ✕ Close Inspection
-                    </button>
-                  </div>
-
-                  {/* Render Detailed Inspection */}
-                  <div className="p-6 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-                    <h2 className="text-xl font-serif font-extrabold text-slate-900 dark:text-white">{activeReportDetails.title}</h2>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">Agency Target: {activeReportDetails.agency} • Status: {activeReportDetails.accreditation_status}</p>
-                    
-                    <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                      <p className="font-bold text-slate-800 dark:text-slate-200">Verification Certification:</p>
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                        This official report contains {activeReportDetails.total_student_achievements} verified student achievements and {activeReportDetails.total_faculty_accomplishments} faculty accomplishments compiled from Notre Dame of Marbel University's central achievement ledger.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <button
-                      onClick={() => {
-                        showToast(`Exported ${activeReportDetails.title} PDF!`)
-                        setIsPreviewModalOpen(false)
-                      }}
-                      className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition shadow-md flex items-center gap-2 cursor-pointer"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Confirm &amp; Export PDF</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-          </div>
-        )
-      })()}
-
+      {activeTab === 'reports' && (
+        <OSADReportsTab
+          accreditationReports={accreditationReports}
+          getAccreditationReportDetails={getAccreditationReportDetails}
+        />
+      )}
       {/* ========================================================================= */}
       {/* 6. SYSTEM AUDIT LOGS MODULE (tab === 'audit')                              */}
       {/* ========================================================================= */}
       {activeTab === 'audit' && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-
-          {/* Module Header */}
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  System Security &amp; Transaction Audit Logs
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Real-Time Security Trail Tracking Administrative Role Changes, Verification Overrides, and Criteria Updates
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => showToast('Exported Security Audit Trail CSV!')}
-              className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Export Audit CSV</span>
-            </button>
-          </div>
-
-          {/* Search & Filter Controls */}
-          <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center gap-3">
-            <div className="flex-1 flex items-center gap-3 w-full">
-              <Search className="w-5 h-5 text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search audit logs by admin user, action type, or target entity..."
-                value={auditSearchTerm}
-                onChange={(e) => setAuditSearchTerm(e.target.value)}
-                className="w-full bg-transparent text-xs font-bold text-slate-800 dark:text-white focus:outline-none placeholder:text-slate-400"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <select
-                value={auditSeverityFilter}
-                onChange={(e) => setAuditSeverityFilter(e.target.value)}
-                className="px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-white focus:outline-none cursor-pointer"
-              >
-                <option value="all">All Severities</option>
-                <option value="INFO">Info</option>
-                <option value="SUCCESS">Success</option>
-                <option value="WARNING">Warning</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Audit Trail Table */}
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold border-b border-slate-200/80 dark:border-slate-800">
-                  <tr>
-                    <th className="p-4">Timestamp</th>
-                    <th className="p-4">Admin User</th>
-                    <th className="p-4">Action Type</th>
-                    <th className="p-4">Target Entity</th>
-                    <th className="p-4">Transaction Details</th>
-                    <th className="p-4 text-right">Severity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {filteredAuditLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
-                        No audit logs found matching your filter parameters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAuditLogs.map(log => (
-                      <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
-                        <td className="p-4 font-mono text-[11px] text-slate-500 dark:text-slate-400 font-bold">{log.timestamp}</td>
-                        <td className="p-4 font-extrabold text-slate-900 dark:text-white">{log.admin_user}</td>
-                        <td className="p-4">
-                          <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700">
-                            {log.action_type}
-                          </span>
-                        </td>
-                        <td className="p-4 font-bold text-slate-800 dark:text-slate-200">{log.target_entity}</td>
-                        <td className="p-4 text-slate-600 dark:text-slate-300 font-medium max-w-xs truncate">{log.details}</td>
-                        <td className="p-4 text-right">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${log.severity === 'SUCCESS' ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>
-                            {log.severity}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <OSADAuditTab
+          auditLogs={auditLogs}
+          refreshAuditLogs={refreshAuditLogs}
+        />
       )}
 
       {/* ================= MODALS ================= */}
@@ -2283,12 +1321,8 @@ export default function OSADDashboardView({ currentUser }) {
       )}
 
       {/* Student Portfolio Viewing Inspection Modal (Paginated Student Portfolio) */}
-      {viewingStudentPortfolio && (() => {
-        const cleanStudentId = (viewingStudentPortfolio.student_id || '202310492').replace(/-/g, '')
-        const totalModalPages = 3
-
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200 font-sans">
+      {viewingStudentPortfolio && (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200 font-sans">
             <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-4xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-6">
               
               {/* Modal Top Header & Page Navigation Bar */}
@@ -2300,7 +1334,7 @@ export default function OSADDashboardView({ currentUser }) {
                   <div>
                     <h2 className="text-base font-extrabold tracking-tight">Student Portfolio Inspection</h2>
                     <p className="text-[11px] text-slate-400 font-mono">
-                      {viewingStudentPortfolio.full_name} • ID: {cleanStudentId}
+                      {viewingStudentPortfolio.full_name} • ID: {viewingStudentPortfolio.student_id || '2023-10492'}
                     </p>
                   </div>
                 </div>
@@ -2549,12 +1583,12 @@ export default function OSADDashboardView({ currentUser }) {
                   </button>
 
                   <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 px-2">
-                    Page {portfolioModalPage} of {totalModalPages}
+                    Page {portfolioModalPage} of 3
                   </span>
 
                   <button
-                    disabled={portfolioModalPage === totalModalPages}
-                    onClick={() => setPortfolioModalPage(prev => Math.min(totalModalPages, prev + 1))}
+                    disabled={portfolioModalPage === 3}
+                    onClick={() => setPortfolioModalPage(prev => Math.min(3, prev + 1))}
                     className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition shadow-2xs"
                   >
                     Next Page
@@ -2571,8 +1605,7 @@ export default function OSADDashboardView({ currentUser }) {
 
             </div>
           </div>
-        )
-      })()}
+        )}
 
       {/* Searchable Personnel Selection Utility Modal */}
       <PersonnelSelectorModal

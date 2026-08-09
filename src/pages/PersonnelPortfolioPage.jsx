@@ -336,8 +336,8 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   </div>
                 </div>
 
-                {/* Lower Right Action Buttons: Share & Export Portfolio */}
-                <div className="flex items-center gap-2">
+                {/* Lower Right Action Buttons: Share & Booklet View / Export */}
+                <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={handleShareProfile}
@@ -349,12 +349,12 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
                   <button
                     type="button"
-                    onClick={() => setIsExportModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-md cursor-pointer"
+                    onClick={() => setIsCanvaModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Export Portfolio</span>
-                    <Download className="w-3 h-3 text-emerald-300" />
+                    <BookOpen className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Portfolio Booklet View</span>
+                    <Sparkles className="w-3 h-3 text-amber-300" />
                   </button>
                 </div>
 
@@ -623,20 +623,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
           portfolio={portfolio}
           user={personnel}
         />
-
-        {/* FLOATING PERSISTENT PORTFOLIO BOOKLET BUTTON (LOWER RIGHT CORNER) */}
-        <button
-          type="button"
-          onClick={() => setIsCanvaModalOpen(true)}
-          className="fixed bottom-6 right-6 z-40 px-5 py-3.5 rounded-full bg-[#1b4332] hover:bg-[#123124] text-amber-300 border-2 border-amber-300/40 shadow-2xl hover:shadow-emerald-900/50 font-extrabold text-xs flex items-center gap-2.5 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
-          title="Open Canva-Style Portfolio Booklet View"
-        >
-          <div className="w-7 h-7 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-300 shrink-0 group-hover:rotate-12 transition">
-            <BookOpen className="w-4 h-4 text-amber-300" />
-          </div>
-          <span className="tracking-wide">Portfolio Booklet View</span>
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-        </button>
 
       </div>
     </MainLayout>

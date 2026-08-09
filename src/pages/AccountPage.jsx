@@ -22,8 +22,11 @@ import {
   HelpCircle
 } from 'lucide-react'
 import { getCurrentUser } from '../services/authService'
+import { useAuth } from '../context/AuthContext'
 
 export default function AccountPage({ currentUser }) {
+  const { activeRoleContext, switchRoleContext } = useAuth()
+  
   const [user, setUser] = useState(currentUser || getCurrentUser() || {
     full_name: 'Maria Santos',
     student_id: '2024-01234',
@@ -412,51 +415,53 @@ export default function AccountPage({ currentUser }) {
 
         </div>
 
-        {/* ================= SECURITY SETTINGS CARD (DUAL PASSWORD RESET SUITE - PHASE 3.5.1) ================= */}
-        <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-5">
-          
-          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#2d8a4e]" />
-            <span>Security & Credential Settings</span>
-          </h2>
+        {/* ================= SECURITY SETTINGS CARD (ONLY IN PRIMARY USER ACCOUNTS) ================= */}
+        {!['department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeRoleContext) && (
+          <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-5">
+            
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#2d8a4e]" />
+              <span>Security & Credential Settings</span>
+            </h2>
 
-          <div className="p-5 sm:p-6 bg-emerald-50/70 border border-emerald-100 rounded-3xl space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-white text-[#2d8a4e] border border-emerald-200 shrink-0 shadow-xs">
-                <KeyRound className="w-6 h-6" />
+            <div className="p-5 sm:p-6 bg-[#eef7f0]/70 dark:bg-emerald-950/30 border border-[#d2e8d7] dark:border-emerald-800/50 rounded-3xl space-y-4">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 text-[#2d8a4e] border border-[#d2e8d7] dark:border-emerald-800/60 shrink-0 shadow-xs">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Password Management</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+                    Update your password instantly using our 3-step self-service wizard, or request password reset assistance if you forgot your credentials.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-extrabold text-slate-900">Password Management</h3>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  Update your password instantly using our 3-step self-service wizard, or request OSAD helpdesk assistance if you forgot your credentials.
-                </p>
+
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                {/* Primary Action: Direct Instant Self-Service Change */}
+                <button
+                  type="button"
+                  onClick={() => setIsSelfServiceModalOpen(true)}
+                  className="px-5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 transition shadow-md cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Change Password (Instant)</span>
+                </button>
+
+                {/* Secondary Fallback Action: Password Reset Request */}
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(true)}
+                  className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <HelpCircle className="w-4 h-4 text-slate-500" />
+                  <span>Forgot Password? Request Reset</span>
+                </button>
               </div>
             </div>
 
-            <div className="pt-2 flex flex-wrap items-center gap-3">
-              {/* Primary Action: Direct Instant Self-Service Change */}
-              <button
-                type="button"
-                onClick={() => setIsSelfServiceModalOpen(true)}
-                className="px-5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 transition shadow-md cursor-pointer"
-              >
-                <KeyRound className="w-4 h-4" />
-                <span>Change Password (Instant)</span>
-              </button>
-
-              {/* Secondary Fallback Action: OSAD Reset Ticket Request */}
-              <button
-                type="button"
-                onClick={() => setShowResetModal(true)}
-                className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs border border-slate-200 transition cursor-pointer flex items-center gap-1.5"
-              >
-                <HelpCircle className="w-4 h-4 text-slate-500" />
-                <span>Forgot Password? Request OSAD Reset</span>
-              </button>
-            </div>
           </div>
-
-        </div>
+        )}
 
       </div>
 

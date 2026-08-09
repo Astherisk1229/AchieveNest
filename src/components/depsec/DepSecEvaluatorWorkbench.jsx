@@ -123,30 +123,30 @@ export default function DepSecEvaluatorWorkbench({
           <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl px-4 pt-3 gap-2">
             <button
               onClick={() => setActiveArea('A')}
-              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all ${
                 activeArea === 'A'
-                  ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                  : 'border-transparent text-slate-500'
+                  ? 'border-[#2d8a4e] text-[#1b4332] dark:text-emerald-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Area A: Prof. Dev ({verified.acceptedA} pts)
             </button>
             <button
               onClick={() => setActiveArea('B')}
-              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all ${
                 activeArea === 'B'
-                  ? 'border-teal-500 text-teal-600 dark:text-teal-400'
-                  : 'border-transparent text-slate-500'
+                  ? 'border-[#2d8a4e] text-[#1b4332] dark:text-emerald-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Area B: Productivity ({verified.acceptedB} pts)
             </button>
             <button
               onClick={() => setActiveArea('C')}
-              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all ${
                 activeArea === 'C'
-                  ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                  : 'border-transparent text-slate-500'
+                  ? 'border-[#2d8a4e] text-[#1b4332] dark:text-emerald-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Area C: Leadership ({verified.acceptedC} pts)

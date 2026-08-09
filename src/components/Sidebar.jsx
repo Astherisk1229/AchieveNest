@@ -101,10 +101,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (activeContext === 'department_secretary') {
       return [
-        { label: 'Evaluator Workbench', icon: ShieldCheck, path: '/personnel/dashboard?tab=workbench', tab: 'workbench' },
-        { label: 'Department Roster', icon: Users, path: '/personnel/dashboard?tab=roster', tab: 'roster' },
-        { label: 'My Personal Portfolio', icon: FolderKanban, path: '/personnel/portfolio' },
-        { label: 'My Achievements', icon: Award, path: '/personnel/achievements' },
+        { label: 'Overview', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
+        { label: 'Personnel Roster', icon: Users, path: '/personnel/dashboard?tab=personnel', tab: 'personnel' },
         { label: 'Account', icon: User, path: '/personnel/account' },
       ]
     }
@@ -129,12 +128,13 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const navItems = getNavItems()
 
   // Active state indicators
+  const isDashboardPage = location.pathname.includes('dashboard')
   const isNotificationsActive = location.pathname.includes('notifications')
   const isAccountActive = location.pathname.includes('account')
   const isSettingsActive = location.pathname.includes('settings')
 
   const defaultTabForContext = activeContext === 'organization_moderator' ? 'dashboard' : 'overview'
-  const currentActiveTab = activeTabParam || defaultTabForContext
+  const currentActiveTab = isDashboardPage ? (activeTabParam || defaultTabForContext) : null
 
   return (
     <aside className="w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white">
@@ -190,10 +190,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           </p>
           {navItems.map((item) => {
             const Icon = item.icon
-            const isTabActive = item.tab && item.tab === currentActiveTab
-            const isPathActive = location.pathname === item.path.split('?')[0] && !item.tab
-            const isAccountPageActive = !item.tab && item.path.includes('account') && isAccountActive && !location.pathname.includes('/osad/')
-            const isActive = item.tab ? isTabActive : (isPathActive || isAccountPageActive)
+            const isTabActive = item.tab && isDashboardPage && item.tab === currentActiveTab
+            const isPathActive = !item.tab && location.pathname === item.path.split('?')[0]
+            const isActive = Boolean(isTabActive || isPathActive)
             return (
               <button
                 key={item.label}

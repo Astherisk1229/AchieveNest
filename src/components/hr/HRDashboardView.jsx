@@ -21,6 +21,7 @@ export default function HRDashboardView({ currentUser }) {
     pendingEndorsements,
     accomplishments,
     auditLogs,
+    passwordResets,
     searchQuery, setSearchQuery,
     collegeFilter, setCollegeFilter,
     selectedPersonnel, setSelectedPersonnel,
@@ -30,14 +31,28 @@ export default function HRDashboardView({ currentUser }) {
     stats,
     handleUpdateRank,
     handleSealVerification,
-    handleReturnAccomplishment
+    handleReturnAccomplishment,
+    handleApprovePasswordReset
   } = useHR()
 
-  // Modal Form State
+  // Modal Form State & Password Reset Temp Pass Inputs
   const [newRank, setNewRank] = useState('Assistant Professor I')
   const [newStatus, setNewStatus] = useState('Full-Time Permanent')
   const [returnRemarks, setReturnRemarks] = useState('')
   const [sealCode, setSealCode] = useState('HR-SEAL-2026-0099')
+  const [tempPassMap, setTempPassMap] = useState({})
+  const [toastMsg, setToastMsg] = useState(null)
+
+  const showToast = (msg) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(null), 3500)
+  }
+
+  const handleApproveResetClick = (reqId, email) => {
+    const customPass = tempPassMap[reqId] || 'NDMU-Faculty2026!'
+    handleApprovePasswordReset(reqId, customPass, hrUser.full_name)
+    showToast(`Approved password reset for [${email}]. Issued temp credentials: ${customPass}`)
+  }
 
   // Open Rank Modal Helper
   const openRankModal = (personnel) => {
@@ -94,7 +109,7 @@ export default function HRDashboardView({ currentUser }) {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Human Resource (HR) Office Executive Admin Portal
+              Human Resources (HR) Executive Portal
             </h1>
             <p className="text-xs sm:text-sm text-emerald-200/90 mt-1 font-medium">
               {hrUser.full_name} ({hrUser.employee_id}) • University Personnel Governance & Verification Suite
@@ -144,6 +159,14 @@ export default function HRDashboardView({ currentUser }) {
         </div>
       </div>
 
+      {/* Toast Notification Banner */}
+      {toastMsg && (
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-emerald-900 text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* ================= MODULE 1: EXECUTIVE COMMAND CENTER ================= */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
@@ -184,13 +207,13 @@ export default function HRDashboardView({ currentUser }) {
 
             <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Accreditation Ready</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Password Reset Requests</span>
                 <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-                  <ShieldCheck className="w-5 h-5" />
+                  <Lock className="w-5 h-5" />
                 </div>
               </div>
-              <p className="text-3xl font-black text-purple-700 mt-2">{stats.accreditationScore}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">CHEd / PACUCOA Target met</p>
+              <p className="text-3xl font-black text-purple-700 mt-2">{stats.pendingResets}</p>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Faculty Reset Queue</p>
             </div>
           </div>
 
@@ -234,6 +257,78 @@ export default function HRDashboardView({ currentUser }) {
                 <p className="text-xs text-emerald-200 mt-1 font-medium">Download standardized CSV matrix for institutional compliance audit.</p>
               </button>
             </div>
+          </div>
+
+          {/* Faculty & Personnel Password Reset Queue Card */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Faculty &amp; Personnel Password Reset Queue</h3>
+                  <p className="text-xs text-slate-500 font-medium">HR oversight for faculty, program coordinator, &amp; department secretary password resets</p>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-extrabold text-xs">
+                {passwordResets.filter(r => r.status === 'pending').length} Pending Requests
+              </span>
+            </div>
+
+            {passwordResets.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 font-medium">
+                No active password reset requests in queue.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {passwordResets.map(req => (
+                  <div key={req.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-extrabold text-slate-900">{req.user_name || req.user_email}</p>
+                        <p className="text-[11px] text-slate-500 font-medium">{req.user_email}</p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        req.status === 'approved' 
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}>
+                        {req.status === 'approved' ? '✓ Approved' : '● Pending HR Review'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/60 font-medium leading-relaxed">
+                      "{req.remarks || 'Requested institutional password reset.'}"
+                    </p>
+
+                    {req.status === 'pending' ? (
+                      <div className="space-y-2 pt-1">
+                        <input
+                          type="text"
+                          placeholder="Temp password (default: NDMU-Faculty2026!)"
+                          value={tempPassMap[req.id] || ''}
+                          onChange={(e) => setTempPassMap({ ...tempPassMap, [req.id]: e.target.value })}
+                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 bg-white text-slate-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleApproveResetClick(req.id, req.user_email)}
+                          className="w-full py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs transition cursor-pointer shadow-xs"
+                        >
+                          Approve &amp; Issue Temporary Credentials
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#1b4332] flex items-center justify-between">
+                        <span>Temporary Credentials:</span>
+                        <span className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-300 text-slate-800">{req.temp_password || 'NDMU-Faculty2026!'}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

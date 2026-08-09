@@ -21,6 +21,7 @@ export default function Login() {
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotReason, setForgotReason] = useState('')
+  const [forgotTargetOffice, setForgotTargetOffice] = useState('osad') // 'osad' | 'hr'
   const [forgotSubmitting, setForgotSubmitting] = useState(false)
   const [forgotSuccess, setForgotSuccess] = useState(false)
 
@@ -349,7 +350,11 @@ export default function Login() {
                 </div>
                 <h4 className="text-base font-extrabold text-slate-900">Reset Request Dispatched!</h4>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  Your request has been logged and sent to the **Office of Student Affairs &amp; Development (OSAD)**. An OSAD officer will review your request and issue your temporary credentials.
+                  {forgotTargetOffice === 'hr' ? (
+                    <>Your password reset request has been logged and routed to <strong>Human Resources (HR)</strong>. An HR administrator will review your personnel record and issue temporary credentials.</>
+                  ) : (
+                    <>Your password reset request has been logged and routed to <strong>OSAD</strong>. An OSAD administrator will review your student record and issue temporary credentials.</>
+                  )}
                 </p>
                 <button
                   type="button"
@@ -366,8 +371,7 @@ export default function Login() {
                   if (!forgotEmail) return
                   setForgotSubmitting(true)
                   try {
-                    await requestPasswordReset(forgotEmail, forgotReason)
-                    window.dispatchEvent(new Event('achievenest_reset_request_submitted'))
+                    await requestPasswordReset(forgotEmail, forgotReason, forgotTargetOffice)
                     setForgotSuccess(true)
                   } catch (err) {
                     console.error('Request reset error:', err)
@@ -378,15 +382,55 @@ export default function Login() {
                 className="p-6 space-y-4"
               >
                 <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Select Account Category for Reset
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForgotTargetOffice('osad')}
+                      className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer ${
+                        forgotTargetOffice === 'osad'
+                          ? 'border-[#1b4332] bg-emerald-50/70 text-[#1b4332]'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold">Student Reset</span>
+                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">OSAD Admin</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setForgotTargetOffice('hr')}
+                      className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer ${
+                        forgotTargetOffice === 'hr'
+                          ? 'border-[#1b4332] bg-emerald-50/70 text-[#1b4332]'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold">Faculty / Personnel Reset</span>
+                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">Human Resources</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Institutional Email Address (@ndmu.edu.ph)
                   </label>
                   <input
                     type="email"
                     value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setForgotEmail(val)
+                      // Auto-switch target department if email suggests faculty/personnel
+                      if (val.includes('faculty') || val.includes('coord') || val.includes('sec') || val.includes('mod') || val.includes('hr')) {
+                        setForgotTargetOffice('hr')
+                      }
+                    }}
                     required
-                    placeholder="student@ndmu.edu.ph"
+                    placeholder={forgotTargetOffice === 'hr' ? 'faculty@ndmu.edu.ph' : 'student@ndmu.edu.ph'}
                     className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#1b4332]"
                   />
                 </div>
@@ -406,7 +450,11 @@ export default function Login() {
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 font-medium">
-                  OSAD Admin will verify your student record and send an approval notification once approved.
+                  {forgotTargetOffice === 'hr' ? (
+                    <>Human Resources (HR) will verify your employee record and issue your temporary credentials.</>
+                  ) : (
+                    <>OSAD will verify your student record and send an approval notification once approved.</>
+                  )}
                 </div>
 
                 <div className="pt-2 flex items-center justify-end gap-2">
@@ -422,7 +470,11 @@ export default function Login() {
                     disabled={forgotSubmitting}
                     className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#12361e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
                   >
-                    {forgotSubmitting ? 'Submitting Request...' : 'Submit Request to OSAD'}
+                    {forgotSubmitting 
+                      ? 'Submitting Request...' 
+                      : forgotTargetOffice === 'hr' 
+                        ? 'Submit Request to HR' 
+                        : 'Submit Request to OSAD'}
                   </button>
                 </div>
               </form>

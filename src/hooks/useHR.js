@@ -12,6 +12,7 @@ export function useHR() {
   const [accomplishments, setAccomplishments] = useState([])
   const [serviceAwards, setServiceAwards] = useState([])
   const [auditLogs, setAuditLogs] = useState([])
+  const [passwordResets, setPasswordResets] = useState([])
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
@@ -31,11 +32,13 @@ export function useHR() {
     const accList = HRController.getAccomplishments()
     const awdList = HRController.getServiceAwards()
     const logs = HRController.getAuditLogs()
+    const resets = HRController.getPersonnelPasswordResetRequests()
 
     setPersonnelList(pList)
     setAccomplishments(accList)
     setServiceAwards(awdList)
     setAuditLogs(logs)
+    setPasswordResets(resets)
 
     if (awdList.length > 0 && !selectedAwardId) {
       setSelectedAwardId(awdList[0].id)
@@ -44,6 +47,13 @@ export function useHR() {
 
   useEffect(() => {
     refreshData()
+    const handleResetEvent = () => refreshData()
+    window.addEventListener('achievenest_reset_request_submitted', handleResetEvent)
+    window.addEventListener('storage', handleResetEvent)
+    return () => {
+      window.removeEventListener('achievenest_reset_request_submitted', handleResetEvent)
+      window.removeEventListener('storage', handleResetEvent)
+    }
   }, [refreshData])
 
   // Recalculate candidates when award changes or personnel list refreshes
@@ -83,6 +93,12 @@ export function useHR() {
     setIsProofModalOpen(false)
   }
 
+  const handleApprovePasswordReset = (requestId, tempPassword = 'NDMU-Faculty2026!', hrOfficerName = 'Director Evelyn Tan') => {
+    const res = HRController.approvePersonnelPasswordReset(requestId, tempPassword, hrOfficerName)
+    refreshData()
+    return res
+  }
+
   // --- Filtered Computed Lists ---
   const filteredPersonnel = personnelList.filter(p => {
     const matchesSearch = p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -99,6 +115,7 @@ export function useHR() {
     totalPersonnel: personnelList.length,
     verifiedAccomplishments: accomplishments.filter(a => a.status === 'hr_verified').length,
     pendingEndorsements: pendingEndorsements.length,
+    pendingResets: passwordResets.filter(r => r.status === 'pending').length,
     accreditationScore: '98.4%'
   }
 
@@ -111,6 +128,7 @@ export function useHR() {
     pendingEndorsements,
     serviceAwards,
     auditLogs,
+    passwordResets,
     searchQuery,
     setSearchQuery,
     collegeFilter,
@@ -132,6 +150,7 @@ export function useHR() {
     handleRevokeRole,
     handleSealVerification,
     handleReturnAccomplishment,
+    handleApprovePasswordReset,
     refreshData
   }
 }

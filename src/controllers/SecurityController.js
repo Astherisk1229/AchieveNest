@@ -139,4 +139,53 @@ export default class SecurityController {
     window.crypto.getRandomValues(array)
     return Array.from(array, b => b.toString(16).padStart(2, '0')).join('')
   }
+
+  static AUDIT_LOGS_KEY = 'achievenest_system_audit_logs'
+
+  /**
+   * Logs a real-time security or transaction audit event into local storage event bus.
+   */
+  static logEvent(actionType, actorName = 'System', roleContext = 'System', details = '') {
+    try {
+      const logs = JSON.parse(localStorage.getItem(SecurityController.AUDIT_LOGS_KEY) || '[]')
+      const newEntry = {
+        id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        action_type: actionType,
+        actor_name: actorName,
+        role_context: roleContext,
+        details: details,
+        ip_address: '192.168.1.100 (NDMU Campus Subnet)'
+      }
+      logs.unshift(newEntry)
+      if (logs.length > 100) logs.pop()
+      localStorage.setItem(SecurityController.AUDIT_LOGS_KEY, JSON.stringify(logs))
+      window.dispatchEvent(new Event('storage'))
+      return newEntry
+    } catch (err) {
+      console.error('Failed to log security audit event:', err)
+      return null
+    }
+  }
+
+  /**
+   * Retrieves system audit logs. Auto-seeds sample audit entries if empty.
+   */
+  static getAuditLogs() {
+    try {
+      const logs = JSON.parse(localStorage.getItem(SecurityController.AUDIT_LOGS_KEY) || '[]')
+      if (logs.length === 0) {
+        const seedLogs = [
+          { id: 'aud_1', timestamp: new Date().toISOString(), action_type: 'PORTFOLIO_ENDORSED', actor_name: 'Dept. Secretary', role_context: 'department_secretary', details: 'Endorsed faculty ranking portfolio for Dr. Maria Santos to HR.', ip_address: '192.168.1.104' },
+          { id: 'aud_2', timestamp: new Date(Date.now() - 3600000).toISOString(), action_type: 'SCORE_LOCKED', actor_name: 'Director Evelyn Tan', role_context: 'hr_staff', details: 'Official HR score locked at 148/160 for Associate Professor ranking.', ip_address: '192.168.1.102' },
+          { id: 'aud_3', timestamp: new Date(Date.now() - 7200000).toISOString(), action_type: 'ACHIEVEMENT_VERIFIED', actor_name: 'Dr. Ana Reyes', role_context: 'program_coordinator', details: 'Verified National AI Summit research award for BS Computer Science.', ip_address: '192.168.1.110' }
+        ]
+        localStorage.setItem(SecurityController.AUDIT_LOGS_KEY, JSON.stringify(seedLogs))
+        return seedLogs
+      }
+      return logs
+    } catch {
+      return []
+    }
+  }
 }

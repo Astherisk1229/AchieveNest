@@ -51,7 +51,19 @@ export const DEMO_USERS = {
     department: 'Computer Society NDMU',
     academic_rank: 'Organization Moderator',
     avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-    assigned_roles: ['organization_moderator', 'program_coordinator', 'department_secretary']
+    assigned_roles: ['personnel', 'organization_moderator', 'program_coordinator', 'department_secretary']
+  },
+  depsec: {
+    id: 'usr_depsec_001',
+    email: 'sec@ndmu.edu.ph',
+    full_name: 'Dr. Maria Santos',
+    user_type: 'personnel',
+    active_role_context: 'department_secretary',
+    employee_id: 'EMP-2021-0842',
+    department: 'College of Engineering, Architecture & Computing',
+    academic_rank: 'Department Secretary',
+    avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    assigned_roles: ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
   },
 
   osad: {
@@ -71,7 +83,7 @@ export const DEMO_USERS = {
     full_name: 'Director Evelyn Tan',
     user_type: 'hr_staff',
     employee_id: 'HR-2010-001',
-    department: 'Human Resources Office',
+    department: 'Human Resources',
     avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
     assigned_roles: []
   }
@@ -98,6 +110,12 @@ export async function authenticateUser(email, password, rememberMe = true) {
       matchedUser = { ...DEMO_USERS.osad, user_type: 'hr_staff', email: cleanEmail }
     } else if (cleanEmail.includes('osad')) {
       matchedUser = { ...DEMO_USERS.osad, email: cleanEmail }
+    } else if (cleanEmail.includes('sec')) {
+      matchedUser = { ...DEMO_USERS.depsec, email: cleanEmail }
+    } else if (cleanEmail.includes('coord')) {
+      matchedUser = { ...DEMO_USERS.coordinator, email: cleanEmail }
+    } else if (cleanEmail.includes('mod')) {
+      matchedUser = { ...DEMO_USERS.organization, email: cleanEmail }
     } else {
       matchedUser = { ...DEMO_USERS.personnel, email: cleanEmail, full_name: cleanEmail.split('@')[0].toUpperCase() }
     }
@@ -108,7 +126,7 @@ export async function authenticateUser(email, password, rememberMe = true) {
     active_role_context: matchedUser.active_role_context || matchedUser.user_type,
     assigned_roles: matchedUser.assigned_roles && matchedUser.assigned_roles.length > 0
       ? matchedUser.assigned_roles
-      : (matchedUser.user_type === 'personnel' ? ['program_coordinator', 'organization_moderator', 'department_secretary'] : []),
+      : (matchedUser.user_type === 'personnel' || matchedUser.user_type === 'department_secretary' || matchedUser.user_type === 'program_coordinator' || matchedUser.user_type === 'organization_moderator' ? ['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary'] : []),
     token: `jwt_mock_${Date.now()}_${matchedUser.id}`,
     logged_in_at: new Date().toISOString()
   }
@@ -138,9 +156,12 @@ export function getCurrentUser() {
   }
 
   // Ensure personnel users always have assigned roles populated
-  if (raw && (raw.user_type === 'personnel' || !raw.user_type)) {
+  const isPersonnel = ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(raw.user_type) ||
+                      ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(raw.active_role_context)
+
+  if (isPersonnel) {
     if (!raw.assigned_roles || raw.assigned_roles.length === 0) {
-      raw.assigned_roles = ['program_coordinator', 'organization_moderator', 'department_secretary']
+      raw.assigned_roles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
     }
   }
 
@@ -157,6 +178,9 @@ export function updateUserRoleContext(newRoleContext) {
   if (!raw) raw = { ...DEMO_USERS.personnel }
 
   raw.active_role_context = newRoleContext
+  if (!raw.assigned_roles || raw.assigned_roles.length === 0) {
+    raw.assigned_roles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
+  }
 
   localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
   sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
@@ -174,13 +198,30 @@ export function logoutUser() {
   sessionStorage.removeItem(STORAGE_KEY_USER)
 }
 
-export async function requestPasswordReset(email, reason) {
+export async function requestPasswordReset(email, reason, requestedTargetOffice = 'auto') {
   await new Promise(resolve => setTimeout(resolve, 500))
 
+  const cleanEmail = email.trim().toLowerCase()
+  let targetOffice = requestedTargetOffice
+
+  if (targetOffice === 'auto') {
+    // Auto-detect target office based on email or user designation
+    if (cleanEmail.includes('faculty') || cleanEmail.includes('personnel') || cleanEmail.includes('coord') || cleanEmail.includes('sec') || cleanEmail.includes('mod') || cleanEmail.includes('prof') || cleanEmail.includes('dr')) {
+      targetOffice = 'hr'
+    } else {
+      targetOffice = 'osad'
+    }
+  }
+
   const existingResets = JSON.parse(localStorage.getItem(STORAGE_KEY_RESETS) || '[]')
+  const matchedUser = Object.values(DEMO_USERS).find(u => u.email.toLowerCase() === cleanEmail)
+
   const resetRequest = {
     id: `req_${Date.now()}`,
-    user_email: email,
+    user_email: cleanEmail,
+    user_name: matchedUser ? matchedUser.full_name : cleanEmail.split('@')[0].toUpperCase(),
+    user_type: targetOffice === 'hr' ? 'personnel' : 'student',
+    target_office: targetOffice, // 'hr' (Human Resources) vs 'osad' (Office of Student Affairs & Development)
     remarks: reason,
     status: 'pending',
     requested_at: new Date().toISOString()
@@ -189,5 +230,7 @@ export async function requestPasswordReset(email, reason) {
   existingResets.push(resetRequest)
   localStorage.setItem(STORAGE_KEY_RESETS, JSON.stringify(existingResets))
 
+  window.dispatchEvent(new Event('achievenest_reset_request_submitted'))
   return resetRequest
 }
+

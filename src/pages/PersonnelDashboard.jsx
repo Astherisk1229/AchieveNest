@@ -6,7 +6,7 @@ import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import PersonnelSubmissionModal from '../components/personnel/PersonnelSubmissionModal'
 import CoordinatorDashboardView from '../components/coordinator/CoordinatorDashboardView'
 import OrgModeratorDashboardView from '../components/organization/OrgModeratorDashboardView'
-import DepSecEvaluatorWorkbench from '../components/depsec/DepSecEvaluatorWorkbench'
+import DepSecDashboardView from '../components/depsec/DepSecDashboardView'
 import DepSecPortfolioRoster from '../components/depsec/DepSecPortfolioRoster'
 import { 
   Award, 
@@ -204,7 +204,7 @@ export default function PersonnelDashboard({ currentUser: propUser }) {
       ) : activeRoleContext === 'organization_moderator' ? (
         <OrgModeratorDashboardView currentUser={currentUser} />
       ) : activeRoleContext === 'department_secretary' ? (
-        <DepSecEvaluatorWorkbench currentUser={currentUser} />
+        <DepSecDashboardView currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
         

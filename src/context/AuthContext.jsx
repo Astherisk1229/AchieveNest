@@ -1,33 +1,36 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { getCurrentUser, updateUserRoleContext, logoutUser } from '../services/authService'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { getCurrentUser, authenticateUser, updateUserRoleContext, logoutUser } from '../services/authService'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getCurrentUser())
+  const [isLoading, setIsLoading] = useState(false)
 
-  useEffect(() => {
-    // Listen for storage events (e.g. across tabs)
-    const handleStorage = () => {
-      setUser(getCurrentUser())
-    }
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
+  const syncUserFromStorage = useCallback(() => {
+    const current = getCurrentUser()
+    setUser(current)
   }, [])
 
-  const login = (userData) => {
-    setUser(userData)
-    if (userData) {
-      localStorage.setItem('achievenest_current_user', JSON.stringify(userData))
-      sessionStorage.setItem('achievenest_current_user', JSON.stringify(userData))
+  useEffect(() => {
+    const handleStorageChange = () => {
+      syncUserFromStorage()
     }
-    window.dispatchEvent(new Event('storage'))
-  }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [syncUserFromStorage])
 
-  const switchRole = (newRoleContext) => {
-    const updated = updateUserRoleContext(newRoleContext)
-    setUser({ ...updated })
-    return updated
+  const login = async (email, password, rememberMe = true) => {
+    setIsLoading(true)
+    try {
+      const loggedUser = await authenticateUser(email, password, rememberMe)
+      setUser(loggedUser)
+      setIsLoading(false)
+      return loggedUser
+    } catch (err) {
+      setIsLoading(false)
+      throw err
+    }
   }
 
   const logout = () => {
@@ -35,25 +38,29 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
-  const updateUserProfile = (newFields) => {
-    const current = getCurrentUser() || {}
-    const updated = { ...current, ...newFields }
-    localStorage.setItem('achievenest_current_user', JSON.stringify(updated))
-    setUser(updated)
+  const switchRoleContext = (newRoleContext) => {
+    const updated = updateUserRoleContext(newRoleContext)
+    setUser({ ...updated })
     return updated
   }
 
+  const activeRoleContext = user?.active_role_context || user?.user_type || 'student'
+  const isAuthenticated = !!user
+
+  const value = {
+    user,
+    setUser,
+    activeRoleContext,
+    isAuthenticated,
+    isLoading,
+    login,
+    logout,
+    switchRoleContext,
+    syncUserFromStorage
+  }
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        activeRoleContext: user?.active_role_context || user?.user_type || 'student',
-        login,
-        switchRole,
-        logout,
-        updateUserProfile
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )
@@ -66,3 +73,5 @@ export function useAuth() {
   }
   return context
 }
+
+export default AuthContext

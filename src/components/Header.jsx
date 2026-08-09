@@ -33,8 +33,9 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   }
 
   const userType = user?.user_type || 'student'
-  const isStudent = userType === 'student'
   const activeRoleContext = user?.active_role_context || userType
+  
+  const isPersonnelUser = userType !== 'student' && userType !== 'osad_staff' && userType !== 'hr_staff'
 
   const handleLogout = () => {
     logoutUser()
@@ -42,18 +43,20 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   }
 
   const handleSelectRole = (roleId) => {
-    updateUserRoleContext(roleId)
+    const updated = updateUserRoleContext(roleId)
     if (onRoleChange) {
-      onRoleChange(roleId)
+      onRoleChange(roleId, updated)
     }
+    // Personnel Dashboard handles all personnel sub-role views dynamically
+    navigate('/personnel/dashboard')
   }
 
   // Personnel role options for role switcher
   const allPersonnelRoles = [
-    { id: 'program_coordinator', label: 'Program Coordinator', icon: ShieldCheck },
-    { id: 'organization_moderator', label: 'Organization Account', icon: Users },
-    { id: 'department_secretary', label: 'Department Secretary', icon: Building2 },
-    { id: 'personnel', label: 'Faculty / Personnel View', icon: UserCheck }
+    { id: 'personnel', label: 'Personnel Account View', icon: UserCheck },
+    { id: 'department_secretary', label: 'Department Secretary View', icon: Building2 },
+    { id: 'program_coordinator', label: 'Program Coordinator View', icon: ShieldCheck },
+    { id: 'organization_moderator', label: 'Organization Account View', icon: Users }
   ]
 
   // Filter out active role context for personnel users
@@ -165,8 +168,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                     <span>Settings &amp; Preferences</span>
                   </button>
 
-                  {/* Switch To Accordion Submenu */}
-                  {!isStudent && userType === 'personnel' && (
+                  {/* Switch Workspace Accordion Submenu */}
+                  {isPersonnelUser && availableSwitchRoles.length > 0 && (
                     <div className="pt-1">
                       <button
                         type="button"
@@ -175,7 +178,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                       >
                         <div className="flex items-center gap-2.5">
                           <RefreshCw className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                          <span>Switch To</span>
+                          <span>Switch Workspace Context</span>
                         </div>
                         {isSwitchToOpen ? (
                           <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
@@ -184,7 +187,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                         )}
                       </button>
 
-                      {/* Expandable Role Options List for Personnel */}
+                      {/* Expandable Role Options List */}
                       {isSwitchToOpen && (
                         <div className="ml-3 pl-3 my-1 border-l-2 border-slate-100 dark:border-slate-800 space-y-1">
                           {availableSwitchRoles.map(role => {

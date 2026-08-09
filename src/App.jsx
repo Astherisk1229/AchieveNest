@@ -100,6 +100,10 @@ export default function App() {
 
             {/* Personnel & Faculty Dashboard Routes */}
             <Route path="/personnel/dashboard" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><PersonnelDashboard /></ProtectedRoute>} />
+            <Route path="/personnel" element={<Navigate to="/personnel/dashboard" replace />} />
+            <Route path="/depsec" element={<Navigate to="/personnel/dashboard" replace />} />
+            <Route path="/coordinator" element={<Navigate to="/personnel/dashboard" replace />} />
+            <Route path="/org-moderator" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/personnel/achievements" element={<ProtectedRoute><PersonnelAchievementsPage /></ProtectedRoute>} />
             <Route path="/personnel/portfolio" element={<ProtectedRoute><PersonnelPortfolioPage /></ProtectedRoute>} />
             <Route path="/personnel/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />

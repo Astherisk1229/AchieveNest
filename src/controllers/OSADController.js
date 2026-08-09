@@ -617,7 +617,7 @@ class OSADController {
       if (raw) {
         const parsed = JSON.parse(raw)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
+          return parsed.filter(r => r.target_office === 'osad' || r.user_type === 'student' || !r.target_office)
         }
       }
     } catch (e) {
@@ -631,6 +631,7 @@ class OSADController {
         student_name: 'Juan Dela Cruz',
         student_id: '2023-0142',
         program: 'BS Information Technology',
+        target_office: 'osad',
         remarks: 'Locked out of account. Forgot institutional password.',
         status: 'pending',
         requested_at: new Date(Date.now() - 3600000).toISOString()

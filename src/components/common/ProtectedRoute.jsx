@@ -2,22 +2,24 @@ import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-export default function ProtectedRoute({ children, allowedRoles }) {
-  const { user, activeRoleContext } = useAuth()
+export default function ProtectedRoute({ allowedRoles = [], children }) {
+  const { user, isAuthenticated, activeRoleContext } = useAuth()
   const location = useLocation()
 
-  if (!user) {
-    // User is not logged in -> redirect to login
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (allowedRoles && allowedRoles.length > 0) {
-    const userRole = activeRoleContext || user.user_type
-    const isAllowed = allowedRoles.includes(userRole) || allowedRoles.includes(user.user_type)
-    
-    if (!isAllowed) {
-      // User is logged in but lacks allowed role -> fallback to home
-      return <Navigate to="/" replace />
+  if (allowedRoles.length > 0) {
+    const userRole = user?.user_type
+    const isAuthorized = allowedRoles.includes(userRole) || allowedRoles.includes(activeRoleContext)
+
+    if (!isAuthorized) {
+      // Redirect to authorized portal landing route based on user type
+      if (userRole === 'osad_staff') return <Navigate to="/osad/dashboard" replace />
+      if (userRole === 'hr_staff') return <Navigate to="/hr/dashboard" replace />
+      if (userRole === 'personnel') return <Navigate to="/personnel/dashboard" replace />
+      return <Navigate to="/student/dashboard" replace />
     }
   }
 

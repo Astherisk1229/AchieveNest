@@ -5,11 +5,13 @@
  */
 
 import { PersonnelEntity, FacultyAccomplishmentEntity, ServiceAwardCategoryEntity, HRAuditLogEntity } from '../models/HRModel'
+import SecurityController from './SecurityController.js'
 
 const STORAGE_KEY_PERSONNEL = 'achievenest_hr_personnel_v1'
 const STORAGE_KEY_VERIFICATION = 'achievenest_hr_verifications_v1'
 const STORAGE_KEY_AWARDS = 'achievenest_hr_awards_v1'
 const STORAGE_KEY_AUDIT = 'achievenest_hr_audit_logs_v1'
+const STORAGE_KEY_RESETS = 'achievenest_password_resets'
 
 const DEFAULT_PERSONNEL = [
   {
@@ -337,6 +339,68 @@ class HRController {
     })
     raw.unshift(newLog.toJSON())
     localStorage.setItem(STORAGE_KEY_AUDIT, JSON.stringify(raw))
+  }
+
+  /**
+   * Retrieves pending and approved password reset requests targeted for the HR Office.
+   * Auto-seeds a sample personnel reset request if storage is empty.
+   */
+  getPersonnelPasswordResetRequests() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_RESETS)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hrRequests = parsed.filter(r => r.target_office === 'hr' || r.user_type === 'personnel')
+          if (hrRequests.length > 0) return hrRequests
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch HR password reset requests:', e)
+    }
+
+    return [
+      {
+        id: 'req_hr_01',
+        user_email: 'faculty@ndmu.edu.ph',
+        user_name: 'Dr. Maria Santos',
+        user_type: 'personnel',
+        target_office: 'hr',
+        remarks: 'Locked out of personnel portal after password change attempt.',
+        status: 'pending',
+        requested_at: new Date(Date.now() - 1800000).toISOString()
+      }
+    ]
+  }
+
+  /**
+   * Approves a personnel password reset request, issues temporary credentials, and logs an audit trail.
+   */
+  approvePersonnelPasswordReset(requestId, tempPassword = 'NDMU-Faculty2026!', hrOfficerName = 'Director Evelyn Tan') {
+    const requests = JSON.parse(localStorage.getItem(STORAGE_KEY_RESETS) || '[]')
+    let hrRequests = this.getPersonnelPasswordResetRequests()
+    const targetReq = hrRequests.find(r => r.id === requestId) || requests.find(r => r.id === requestId)
+
+    if (targetReq) {
+      targetReq.status = 'approved'
+      targetReq.approved_at = new Date().toISOString()
+      targetReq.temp_password = tempPassword
+
+      // Update in storage
+      const updatedAll = requests.map(r => r.id === requestId ? targetReq : r)
+      if (!requests.some(r => r.id === requestId)) {
+        updatedAll.push(targetReq)
+      }
+      localStorage.setItem(STORAGE_KEY_RESETS, JSON.stringify(updatedAll))
+
+      // Audit logs
+      this.logAudit('PERSONNEL_PASSWORD_RESET_APPROVED', targetReq.user_name || targetReq.user_email, `Approved personnel password reset. Issued temporary credentials.`)
+      SecurityController.logEvent('PERSONNEL_PASSWORD_RESET_APPROVED', hrOfficerName, 'hr_staff', `Approved personnel password reset for ${targetReq.user_name} (${targetReq.user_email}).`)
+      
+      window.dispatchEvent(new Event('storage'))
+    }
+
+    return targetReq
   }
 }
 

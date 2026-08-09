@@ -8,38 +8,53 @@ export default function DepSecPortfolioRoster({
   statusFilter,
   setStatusFilter,
   onSelectPortfolio,
-  selectedPortfolio
+  selectedPortfolio,
+  currentUser
 }) {
-  const getStatusBadge = (status) => {
+  const isSelfPortfolio = (p) => {
+    if (!p) return false
+    if (currentUser?.id && p.personnel_id === currentUser.id) return true
+    return p.personnel_name.toLowerCase().includes('secretary')
+  }
+
+  const getStatusBadge = (status, isSelf = false) => {
+    if (isSelf) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-[#d2e8d7] dark:border-emerald-800/60">
+          <ShieldCheck className="w-3 h-3" /> Self-Portfolio (HR Direct)
+        </span>
+      )
+    }
+
     switch (status) {
       case 'HR_APPROVED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-[#d2e8d7] dark:border-emerald-800/60">
             <CheckCircle2 className="w-3 h-3" /> HR Approved
           </span>
         )
       case 'ENDORSED_TO_HR':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-[#d2e8d7] dark:border-emerald-800/60">
             <ShieldCheck className="w-3 h-3" /> Endorsed to HR
           </span>
         )
       case 'UNDER_DEP_SEC_REVIEW':
       case 'SUBMITTED_TO_DEP_SEC':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <Clock className="w-3 h-3" /> Pending Review
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+            <Clock className="w-3 h-3 text-[#2d8a4e]" /> Pending Review
           </span>
         )
       case 'RETURNED_TO_PERSONNEL':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
             <AlertTriangle className="w-3 h-3" /> Revision Requested
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
             Draft
           </span>
         )
@@ -111,6 +126,7 @@ export default function DepSecPortfolioRoster({
                 const totals = p.calculateAcceptedCappedTotals()
                 const { verified } = totals
                 const isSelected = selectedPortfolio?.id === p.id
+                const isSelf = isSelfPortfolio(p)
 
                 return (
                   <tr
@@ -125,7 +141,14 @@ export default function DepSecPortfolioRoster({
                           {p.personnel_name.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-bold text-slate-900 dark:text-white">{p.personnel_name}</div>
+                          <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            {p.personnel_name}
+                            {isSelf && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold border border-amber-200">
+                                You
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[11px] text-slate-400">{p.personnel_id} • {p.academic_year}</div>
                         </div>
                       </div>
@@ -136,7 +159,7 @@ export default function DepSecPortfolioRoster({
                     </td>
 
                     <td className="py-3.5 px-4">
-                      {getStatusBadge(p.status)}
+                      {getStatusBadge(p.status, isSelf)}
                     </td>
 
                     <td className="py-3.5 px-4 text-center font-extrabold text-slate-900 dark:text-white text-sm">
@@ -144,26 +167,32 @@ export default function DepSecPortfolioRoster({
                     </td>
 
                     <td className="py-3.5 px-4 text-center">
-                      <div className="inline-flex items-center gap-2 text-[11px] font-semibold">
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <div className="inline-flex items-center gap-1.5 text-[11px] font-bold">
+                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           A: {verified.acceptedA}
                         </span>
-                        <span className="px-2 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           B: {verified.acceptedB}
                         </span>
-                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           C: {verified.acceptedC}
                         </span>
                       </div>
                     </td>
 
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => onSelectPortfolio(p)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-xs text-white bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 transition-all shadow"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Evaluate
-                      </button>
+                      {isSelf ? (
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 italic block">
+                          Bypasses to HR
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => onSelectPortfolio(p)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-xs text-white bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 transition-all shadow"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Evaluate
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )

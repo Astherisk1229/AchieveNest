@@ -6,51 +6,45 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
   const [isOpen, setIsOpen] = useState(false)
   const currentUser = propUser || getCurrentUser()
 
-  if (!currentUser || currentUser.user_type !== 'personnel') {
+  const isPersonnel = currentUser && (
+    ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(currentUser.user_type) ||
+    ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(currentUser.active_role_context)
+  )
+
+  if (!currentUser || !isPersonnel) {
     return null
   }
 
   const availableRoles = [
     {
       id: 'personnel',
-      title: 'Faculty / Personnel View',
-      subtitle: 'Primary Employee Portfolio',
+      title: 'Personnel Account',
+      subtitle: 'Primary Employee Portfolio & Achievements',
       icon: UserCheck,
-      color: 'text-[#2d8a4e] bg-emerald-50 border-emerald-200'
-    }
-  ]
-
-  const assignedRoles = currentUser.assigned_roles || []
-
-  if (assignedRoles.includes('department_secretary')) {
-    availableRoles.push({
+      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+    },
+    {
       id: 'department_secretary',
       title: 'Department Secretary',
       subtitle: 'Faculty Endorsement & Review Panel',
       icon: Building2,
-      color: 'text-amber-700 bg-amber-50 border-amber-200'
-    })
-  }
-
-  if (assignedRoles.includes('program_coordinator')) {
-    availableRoles.push({
+      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+    },
+    {
       id: 'program_coordinator',
       title: 'Program Coordinator',
       subtitle: 'Degree Program Verification',
       icon: BookOpen,
-      color: 'text-blue-700 bg-blue-50 border-blue-200'
-    })
-  }
-
-  if (assignedRoles.includes('organization_moderator')) {
-    availableRoles.push({
+      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+    },
+    {
       id: 'organization_moderator',
       title: 'Organization Moderator',
       subtitle: 'Org Events & Scanner Management',
       icon: Users,
-      color: 'text-purple-700 bg-purple-50 border-purple-200'
-    })
-  }
+      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+    }
+  ]
 
   const currentRoleObj = availableRoles.find(r => r.id === currentUser.active_role_context) || availableRoles[0]
   const CurrentIcon = currentRoleObj.icon

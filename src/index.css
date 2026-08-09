@@ -14,7 +14,7 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: #f4f8f5;
+    background-color: #dfebd9;
     color: #0f172a;
     overflow-x: hidden;
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -74,7 +74,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #f4f8f5;
+  background: #dfebd9;
 }
 
 .dark ::-webkit-scrollbar-track {

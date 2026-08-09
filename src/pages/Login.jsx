@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
-import { authenticateUser } from '../services/authService'
+import { Mail, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, X } from 'lucide-react'
+import { authenticateUser, requestPasswordReset } from '../services/authService'
+import { useAuth } from '../context/AuthContext'
 import campusBanner from '../assets/ndmu_campus_banner.png'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { login } = useAuth()
   
   // Form State
   const [email, setEmail] = useState('')
@@ -14,6 +16,13 @@ export default function Login() {
   const [keepSignedIn, setKeepSignedIn] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+
+  // Forgot Password Request Modal State
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotReason, setForgotReason] = useState('')
+  const [forgotSubmitting, setForgotSubmitting] = useState(false)
+  const [forgotSuccess, setForgotSuccess] = useState(false)
 
   // Demo Accounts Presets
   const demoAccounts = [
@@ -43,6 +52,9 @@ export default function Login() {
     try {
       setIsSubmitting(true)
       const session = await authenticateUser(email, password, keepSignedIn)
+      if (login) {
+        login(session)
+      }
       
       switch (session.user_type) {
         case 'student':
@@ -242,7 +254,7 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Checkbox */}
+            {/* Checkbox & Forgot Password Link */}
             <div className="flex items-center justify-between pt-0.5">
               <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 font-medium select-none">
                 <input
@@ -253,6 +265,19 @@ export default function Login() {
                 />
                 <span>Keep me signed in</span>
               </label>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotEmail(email || 'student@ndmu.edu.ph')
+                  setForgotReason('Locked out of institutional account. Please reset my credentials.')
+                  setForgotSuccess(false)
+                  setIsForgotModalOpen(true)
+                }}
+                className="text-xs font-semibold text-[#1b4332] hover:underline cursor-pointer"
+              >
+                Forgot password?
+              </button>
             </div>
 
             {/* Submit Button */}
@@ -289,6 +314,123 @@ export default function Login() {
         </div>
 
       </div>
+
+      {/* Student Password Reset Request Modal */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans text-slate-900">
+            
+            {/* Modal Header */}
+            <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-200 flex items-center justify-center font-extrabold text-sm shrink-0 border border-emerald-400/30">
+                  <KeyRound className="w-5 h-5 text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Request Password Reset</h3>
+                  <p className="text-xs text-emerald-200/90 font-medium">NDMU OSAD Administrative Assistance</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsForgotModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {forgotSuccess ? (
+              <div className="p-6 space-y-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#1b4332] border border-emerald-200 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6 text-[#1b4332]" />
+                </div>
+                <h4 className="text-base font-extrabold text-slate-900">Reset Request Dispatched!</h4>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Your request has been logged and sent to the **Office of Student Affairs &amp; Development (OSAD)**. An OSAD officer will review your request and issue your temporary credentials.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotModalOpen(false)}
+                  className="w-full py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#12361e] text-white font-extrabold text-xs shadow-2xs transition cursor-pointer"
+                >
+                  Return to Login
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (!forgotEmail) return
+                  setForgotSubmitting(true)
+                  try {
+                    await requestPasswordReset(forgotEmail, forgotReason)
+                    window.dispatchEvent(new Event('achievenest_reset_request_submitted'))
+                    setForgotSuccess(true)
+                  } catch (err) {
+                    console.error('Request reset error:', err)
+                  } finally {
+                    setForgotSubmitting(false)
+                  }
+                }}
+                className="p-6 space-y-4"
+              >
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Institutional Email Address (@ndmu.edu.ph)
+                  </label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    placeholder="student@ndmu.edu.ph"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#1b4332]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Remarks / Reason for Assistance
+                  </label>
+                  <textarea
+                    value={forgotReason}
+                    onChange={(e) => setForgotReason(e.target.value)}
+                    rows={3}
+                    required
+                    placeholder="Explain why you need a password reset..."
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#1b4332]"
+                  />
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 font-medium">
+                  OSAD Admin will verify your student record and send an approval notification once approved.
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={forgotSubmitting}
+                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#12361e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
+                  >
+                    {forgotSubmitting ? 'Submitting Request...' : 'Submit Request to OSAD'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+          </div>
+        </div>
+      )}
 
     </div>
   )

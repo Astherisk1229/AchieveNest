@@ -68,6 +68,9 @@ export default function OSADDashboardView({ currentUser }) {
     createAwardCategory,
     generateAwardCandidates,
     confirmAwardee,
+    resetStudentPassword,
+    getPasswordResetRequests,
+    approvePasswordResetRequest,
     refreshAuditLogs
   } = useOSAD()
 
@@ -504,8 +507,6 @@ export default function OSADDashboardView({ currentUser }) {
       {/* ========================================================================= */}
       {activeTab === 'accounts' && (
         <OSADAccountsTab
-          userRoleFilter={userRoleFilter}
-          setUserRoleFilter={setUserRoleFilter}
           userSearchTerm={userSearchTerm}
           setUserSearchTerm={setUserSearchTerm}
           selectedCollege={selectedCollege}
@@ -513,8 +514,11 @@ export default function OSADDashboardView({ currentUser }) {
           selectedSort={selectedSort}
           setSelectedSort={setSelectedSort}
           getUsers={getUsers}
-          getPersonnelList={getPersonnelList}
-          assignProgramCoordinator={assignProgramCoordinator}
+          getStudentPortfolios={getStudentPortfolios}
+          resetStudentPassword={resetStudentPassword}
+          getPasswordResetRequests={getPasswordResetRequests}
+          approvePasswordResetRequest={approvePasswordResetRequest}
+          showToast={showToast}
         />
       )}
 

@@ -1,6 +1,6 @@
 import UserModel from '../models/UserModel'
 
-const STORAGE_KEY_USER = 'achievenest_user_session'
+const STORAGE_KEY_USER = 'achievenest_current_user'
 
 /**
  * AuthController.js
@@ -24,23 +24,11 @@ export default class AuthController {
       if (raw) {
         this.#cachedUser = UserModel.fromJSON(raw)
       } else {
-        // Default Demo User
-        this.#cachedUser = new UserModel({
-          id: 'usr_coord_001',
-          student_id: '2024-00000',
-          full_name: 'Dr. Ana Reyes',
-          email: 'ana.reyes@ndmu.edu.ph',
-          role: 'personnel',
-          active_role_context: 'personnel',
-          program_scope: 'BS Computer Science',
-          department: 'College of Engineering & Architecture',
-          designation: 'Program Coordinator & Associate Professor'
-        })
-        this.saveUser(this.#cachedUser)
+        return null
       }
     } catch (e) {
       console.error('AuthController getCurrentUser error:', e)
-      this.#cachedUser = new UserModel()
+      return null
     }
 
     return this.#cachedUser
@@ -48,6 +36,7 @@ export default class AuthController {
 
   static updateUserRoleContext(newRoleContext) {
     const user = this.getCurrentUser()
+    if (!user) return null
     user.active_role_context = newRoleContext
     this.saveUser(user)
     return user
@@ -58,6 +47,7 @@ export default class AuthController {
    */
   static switchDemoRole(roleKey, departmentId = 'DEP-CEAC') {
     const user = this.getCurrentUser()
+    if (!user) return null
     if (roleKey === 'dep_sec') {
       user.active_role_context = 'dep_sec'
       user.department = 'College of Engineering, Architecture & Computing'
@@ -74,7 +64,8 @@ export default class AuthController {
 
   static saveUser(userInstance) {
     this.#cachedUser = userInstance
-    const payload = JSON.stringify(userInstance.toJSON())
+    const rawData = userInstance && typeof userInstance.toJSON === 'function' ? userInstance.toJSON() : userInstance
+    const payload = JSON.stringify(rawData)
     try {
       localStorage.setItem(STORAGE_KEY_USER, payload)
       sessionStorage.setItem(STORAGE_KEY_USER, payload)

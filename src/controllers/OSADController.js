@@ -581,6 +581,84 @@ class OSADController {
       }))
   }
 
+  // --- Student Password Governance ---
+  resetStudentPassword(studentIdentifier, newPassword = 'NDMU-Student2026!') {
+    const student = this.#users.find(u => 
+      u.role === 'student' && 
+      (u.id === studentIdentifier || u.student_id === studentIdentifier || u.email === studentIdentifier)
+    )
+
+    if (!student) {
+      throw new Error(`Student account [${studentIdentifier}] not found.`)
+    }
+
+    student.password_reset_at = new Date().toISOString()
+    student.must_change_password = true
+
+    this.addAuditLog(
+      'STUDENT_PASSWORD_RESET',
+      `OSAD Admin reset credentials for student [${student.full_name}] (${student.student_id || student.email})`,
+      student.full_name,
+      'WARNING'
+    )
+
+    return {
+      success: true,
+      student_id: student.student_id,
+      full_name: student.full_name,
+      temp_password: newPassword,
+      reset_at: student.password_reset_at
+    }
+  }
+
+  getPasswordResetRequests() {
+    try {
+      const raw = localStorage.getItem('achievenest_password_resets')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch password reset requests:', e)
+    }
+
+    return [
+      {
+        id: 'req_01',
+        user_email: 'student@ndmu.edu.ph',
+        student_name: 'Juan Dela Cruz',
+        student_id: '2023-0142',
+        program: 'BS Information Technology',
+        remarks: 'Locked out of account. Forgot institutional password.',
+        status: 'pending',
+        requested_at: new Date(Date.now() - 3600000).toISOString()
+      }
+    ]
+  }
+
+  approvePasswordResetRequest(requestId, tempPassword = 'NDMU-Student2026!') {
+    const requests = this.getPasswordResetRequests()
+    const targetReq = requests.find(r => r.id === requestId)
+
+    if (targetReq) {
+      targetReq.status = 'approved'
+      targetReq.approved_at = new Date().toISOString()
+      targetReq.temp_password = tempPassword
+      localStorage.setItem('achievenest_password_resets', JSON.stringify(requests))
+
+      // Also reset password on student record and log audit
+      try {
+        this.resetStudentPassword(targetReq.user_email || targetReq.student_id, tempPassword)
+      } catch (e) {
+        console.warn('Student record sync during reset approval:', e)
+      }
+    }
+
+    return targetReq
+  }
+
   // --- Metrics Overview ---
   getMetrics() {
     const totalStudents = this.#users.filter(u => u.role === 'student').length

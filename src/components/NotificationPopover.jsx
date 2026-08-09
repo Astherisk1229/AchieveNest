@@ -40,6 +40,26 @@ export default function NotificationPopover() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
+  React.useEffect(() => {
+    const handleAddResetNotification = () => {
+      setNotifications(prev => [
+        {
+          id: `notif_reset_${Date.now()}`,
+          title: '⚠️ Password Reset Requested',
+          message: 'Student Juan Dela Cruz (2023-0142) submitted a password reset request.',
+          type: 'warning',
+          targetPath: '/osad/dashboard?tab=accounts',
+          navState: {},
+          time: 'Just now',
+          is_read: false
+        },
+        ...prev
+      ])
+    }
+    window.addEventListener('achievenest_reset_request_submitted', handleAddResetNotification)
+    return () => window.removeEventListener('achievenest_reset_request_submitted', handleAddResetNotification)
+  }, [])
+
   const markAllRead = () => {
     setNotifications(notifications.map(n => ({ ...n, is_read: true })))
   }

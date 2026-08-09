@@ -141,6 +141,22 @@ export default function useOSAD() {
     return OSADController.getAccreditationReportDetails(reportId)
   }, [])
 
+  const resetStudentPassword = useCallback((studentId, newPassword) => {
+    const result = OSADController.resetStudentPassword(studentId, newPassword)
+    refreshAuditLogs()
+    return result
+  }, [refreshAuditLogs])
+
+  const getPasswordResetRequests = useCallback(() => {
+    return OSADController.getPasswordResetRequests()
+  }, [])
+
+  const approvePasswordResetRequest = useCallback((requestId, tempPassword) => {
+    const approved = OSADController.approvePasswordResetRequest(requestId, tempPassword)
+    refreshAuditLogs()
+    return approved
+  }, [refreshAuditLogs])
+
   return {
     metrics,
     departments,
@@ -166,6 +182,9 @@ export default function useOSAD() {
     updateAwardCategory,
     generateAwardCandidates,
     confirmAwardee,
+    resetStudentPassword,
+    getPasswordResetRequests,
+    approvePasswordResetRequest,
     refreshAuditLogs
   }
 }

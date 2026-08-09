@@ -106,7 +106,9 @@ export async function authenticateUser(email, password, rememberMe = true) {
   const sessionPayload = {
     ...matchedUser,
     active_role_context: matchedUser.active_role_context || matchedUser.user_type,
-    assigned_roles: matchedUser.assigned_roles.length > 0 ? matchedUser.assigned_roles : ['program_coordinator', 'organization_moderator', 'department_secretary'],
+    assigned_roles: matchedUser.assigned_roles && matchedUser.assigned_roles.length > 0
+      ? matchedUser.assigned_roles
+      : (matchedUser.user_type === 'personnel' ? ['program_coordinator', 'organization_moderator', 'department_secretary'] : []),
     token: `jwt_mock_${Date.now()}_${matchedUser.id}`,
     logged_in_at: new Date().toISOString()
   }
@@ -116,6 +118,8 @@ export async function authenticateUser(email, password, rememberMe = true) {
   } else {
     sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sessionPayload))
   }
+
+  window.dispatchEvent(new Event('storage'))
 
   return sessionPayload
 }
@@ -130,7 +134,7 @@ export function getCurrentUser() {
   else if (session) raw = JSON.parse(session)
   
   if (!raw) {
-    raw = { ...DEMO_USERS.personnel, active_role_context: 'personnel' }
+    return null
   }
 
   // Ensure personnel users always have assigned roles populated

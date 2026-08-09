@@ -15,6 +15,15 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('storage', handleStorage)
   }, [])
 
+  const login = (userData) => {
+    setUser(userData)
+    if (userData) {
+      localStorage.setItem('achievenest_current_user', JSON.stringify(userData))
+      sessionStorage.setItem('achievenest_current_user', JSON.stringify(userData))
+    }
+    window.dispatchEvent(new Event('storage'))
+  }
+
   const switchRole = (newRoleContext) => {
     const updated = updateUserRoleContext(newRoleContext)
     setUser({ ...updated })
@@ -27,9 +36,9 @@ export function AuthProvider({ children }) {
   }
 
   const updateUserProfile = (newFields) => {
-    const current = getCurrentUser()
+    const current = getCurrentUser() || {}
     const updated = { ...current, ...newFields }
-    localStorage.setItem('achievenest_user', JSON.stringify(updated))
+    localStorage.setItem('achievenest_current_user', JSON.stringify(updated))
     setUser(updated)
     return updated
   }
@@ -39,6 +48,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         activeRoleContext: user?.active_role_context || user?.user_type || 'student',
+        login,
         switchRole,
         logout,
         updateUserProfile

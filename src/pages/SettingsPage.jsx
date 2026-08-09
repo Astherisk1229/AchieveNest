@@ -369,6 +369,60 @@ export default function SettingsPage({ currentUser }) {
               </div>
             </div>
 
+            {/* Account Security & Password Update */}
+            <div className="p-6 sm:p-7 bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center shrink-0">
+                  <KeyRound className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">Account Security &amp; Password</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Self-service password update for active sessions</p>
+                </div>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  showToast('Security Update: Your password has been updated successfully!')
+                }}
+                className="space-y-4 text-xs font-medium text-slate-700 dark:text-slate-300"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">New Password</label>
+                    <input
+                      type="password"
+                      placeholder="Enter new password (min. 8 chars)"
+                      minLength={8}
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs outline-none focus:border-[#2d8a4e]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      placeholder="Re-enter new password"
+                      minLength={8}
+                      required
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs outline-none focus:border-[#2d8a4e]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                  >
+                    Update Account Password
+                  </button>
+                </div>
+              </form>
+            </div>
+
           </div>
         )}
 

@@ -69,6 +69,8 @@ class ErrorBoundary extends React.Component {
 import useIdleSession from './hooks/useIdleSession'
 import SessionTimeoutModal from './components/common/SessionTimeoutModal'
 import { ThemeProvider } from './context/ThemeContext'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/common/ProtectedRoute'
 
 export default function App() {
   const handleLogout = () => {
@@ -80,50 +82,54 @@ export default function App() {
   const { showWarning, secondsRemaining, stayLoggedIn } = useIdleSession(handleLogout)
 
   return (
-    <ThemeProvider>
-      <ErrorBoundary>
-        <Routes>
-          {/* Public Login Route */}
-          <Route path="/" element={<Login />} />
+    <AuthProvider>
+      <ThemeProvider>
+        <ErrorBoundary>
+          <Routes>
+            {/* Public Login Route */}
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
 
-          {/* Primary Dashboard Routes */}
-          <Route path="/student/dashboard" element={<StudentDashboard />} />
-          <Route path="/student/achievements" element={<StudentAchievementsPage />} />
-          <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
-          <Route path="/student/account" element={<AccountPage />} />
-          <Route path="/personnel/account" element={<AccountPage />} />
-          <Route path="/personnel/achievements" element={<PersonnelAchievementsPage />} />
-          <Route path="/personnel/portfolio" element={<PersonnelPortfolioPage />} />
-          <Route path="/account" element={<AccountPage />} />
+            {/* Student Dashboard Routes */}
+            <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/student/achievements" element={<ProtectedRoute allowedRoles={['student']}><StudentAchievementsPage /></ProtectedRoute>} />
+            <Route path="/student/portfolio" element={<ProtectedRoute allowedRoles={['student']}><StudentPortfolioPage /></ProtectedRoute>} />
+            <Route path="/student/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/student/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/student/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
-          {/* Dedicated Settings Routes */}
-          <Route path="/student/settings" element={<SettingsPage />} />
-          <Route path="/personnel/settings" element={<SettingsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          
-          {/* Notifications Routes */}
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/student/notifications" element={<NotificationsPage />} />
-          <Route path="/personnel/notifications" element={<NotificationsPage />} />
+            {/* Personnel & Faculty Dashboard Routes */}
+            <Route path="/personnel/dashboard" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><PersonnelDashboard /></ProtectedRoute>} />
+            <Route path="/personnel/achievements" element={<ProtectedRoute><PersonnelAchievementsPage /></ProtectedRoute>} />
+            <Route path="/personnel/portfolio" element={<ProtectedRoute><PersonnelPortfolioPage /></ProtectedRoute>} />
+            <Route path="/personnel/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/personnel/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/personnel/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
-          <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
-          <Route path="/hr/dashboard" element={<HRDashboard />} />
-          <Route path="/osad/dashboard" element={<OSADDashboard />} />
-          <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />
+            {/* Executive Portals */}
+            <Route path="/hr/dashboard" element={<ProtectedRoute allowedRoles={['hr_staff']}><HRDashboard /></ProtectedRoute>} />
+            <Route path="/osad/dashboard" element={<ProtectedRoute allowedRoles={['osad_staff']}><OSADDashboard /></ProtectedRoute>} />
+            <Route path="/scanner/:eventId" element={<ProtectedRoute><OfficerScannerPage /></ProtectedRoute>} />
 
-          {/* Fallback Redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Generic Routes */}
+            <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
-        {/* Global University Terminal Inactivity Session Warning Modal */}
-        <SessionTimeoutModal
-          isOpen={showWarning}
-          secondsRemaining={secondsRemaining}
-          onStayLoggedIn={stayLoggedIn}
-          onLogoutNow={handleLogout}
-        />
-      </ErrorBoundary>
-    </ThemeProvider>
+            {/* Fallback Redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+
+          {/* Global Terminal Inactivity Session Warning Modal */}
+          <SessionTimeoutModal
+            isOpen={showWarning}
+            secondsRemaining={secondsRemaining}
+            onStayLoggedIn={stayLoggedIn}
+            onLogoutNow={handleLogout}
+          />
+        </ErrorBoundary>
+      </ThemeProvider>
+    </AuthProvider>
   )
 }
 

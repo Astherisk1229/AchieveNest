@@ -99,6 +99,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       ]
     }
 
+    if (activeContext === 'department_secretary') {
+      return [
+        { label: 'Evaluator Workbench', icon: ShieldCheck, path: '/personnel/dashboard?tab=workbench', tab: 'workbench' },
+        { label: 'Department Roster', icon: Users, path: '/personnel/dashboard?tab=roster', tab: 'roster' },
+        { label: 'My Personal Portfolio', icon: FolderKanban, path: '/personnel/portfolio' },
+        { label: 'My Achievements', icon: Award, path: '/personnel/achievements' },
+        { label: 'Account', icon: User, path: '/personnel/account' },
+      ]
+    }
+
     if (activeContext === 'personnel') {
       return [
         { label: 'Homepage', icon: Home, path: '/personnel/dashboard' },

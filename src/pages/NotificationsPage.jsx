@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
 import { 
   Bell, 
@@ -9,10 +10,13 @@ import {
   Check, 
   Clock, 
   Filter,
-  CheckCheck
+  CheckCheck,
+  ChevronRight,
+  ExternalLink
 } from 'lucide-react'
 
 export default function NotificationsPage({ currentUser }) {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'unread' | 'read'
 
   // Initial Notifications Data (Role-agnostic notifications)
@@ -25,7 +29,10 @@ export default function NotificationsPage({ currentUser }) {
       type: 'success', // 'success' | 'warning' | 'info'
       isRead: false,
       icon: CheckCircle2,
-      iconBg: 'bg-emerald-50 text-[#2d8a4e] border-emerald-200'
+      iconBg: 'bg-emerald-50 text-[#2d8a4e] border-emerald-200',
+      targetPath: '/student/achievements',
+      navState: { highlightId: 1, filterStatus: 'Verified' },
+      actionLabel: 'View Verified Entry'
     },
     {
       id: 2,
@@ -35,7 +42,10 @@ export default function NotificationsPage({ currentUser }) {
       type: 'warning',
       isRead: false,
       icon: AlertTriangle,
-      iconBg: 'bg-amber-50 text-amber-600 border-amber-200'
+      iconBg: 'bg-amber-50 text-amber-600 border-amber-200',
+      targetPath: '/student/achievements',
+      navState: { highlightId: 5, filterStatus: 'Returned' },
+      actionLabel: 'Update Submission'
     },
     {
       id: 3,
@@ -45,7 +55,10 @@ export default function NotificationsPage({ currentUser }) {
       type: 'info',
       isRead: false,
       icon: Info,
-      iconBg: 'bg-blue-50 text-blue-600 border-blue-200'
+      iconBg: 'bg-blue-50 text-blue-600 border-blue-200',
+      targetPath: '/student/dashboard',
+      navState: { filterCategory: 'Leadership' },
+      actionLabel: 'Open Event Page'
     },
     {
       id: 4,
@@ -55,7 +68,10 @@ export default function NotificationsPage({ currentUser }) {
       type: 'success',
       isRead: true,
       icon: CheckCircle2,
-      iconBg: 'bg-emerald-50 text-[#2d8a4e] border-emerald-200'
+      iconBg: 'bg-emerald-50 text-[#2d8a4e] border-emerald-200',
+      targetPath: '/student/portfolio',
+      navState: { openBookletModal: true },
+      actionLabel: 'Download Certificate'
     }
   ])
 
@@ -69,12 +85,22 @@ export default function NotificationsPage({ currentUser }) {
   }
 
   // Item Actions
-  const handleMarkSingleRead = (id) => {
+  const handleMarkSingleRead = (e, id) => {
+    e.stopPropagation()
     setNotifications(notifications.map(item => item.id === id ? { ...item, isRead: true } : item))
   }
 
-  const handleDeleteSingle = (id) => {
+  const handleDeleteSingle = (e, id) => {
+    e.stopPropagation()
     setNotifications(notifications.filter(item => item.id !== id))
+  }
+
+  // Handle Card Navigation
+  const handleNotificationClick = (item) => {
+    setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n))
+    if (item.targetPath) {
+      navigate(item.targetPath, { state: item.navState })
+    }
   }
 
   // Filtered Items
@@ -184,7 +210,7 @@ export default function NotificationsPage({ currentUser }) {
               </div>
               <h3 className="text-sm font-extrabold text-slate-900">No notifications found</h3>
               <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
-                You have catch up on all alerts for this view filter.
+                You have caught up on all alerts for this view filter.
               </p>
             </div>
           ) : (
@@ -194,11 +220,12 @@ export default function NotificationsPage({ currentUser }) {
                 return (
                   <div
                     key={item.id}
-                    className={`p-5 sm:p-6 transition flex items-start justify-between gap-4 relative group ${
-                      !item.isRead ? 'bg-emerald-50/20 hover:bg-emerald-50/40' : 'bg-white hover:bg-slate-50/60'
+                    onClick={() => handleNotificationClick(item)}
+                    className={`p-5 sm:p-6 transition flex items-start justify-between gap-4 relative group cursor-pointer ${
+                      !item.isRead ? 'bg-emerald-50/20 hover:bg-emerald-50/50' : 'bg-white hover:bg-slate-50/80'
                     }`}
                   >
-                    <div className="flex items-start gap-4 min-w-0">
+                    <div className="flex items-start gap-4 min-w-0 flex-1">
                       
                       {/* Category Icon */}
                       <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 mt-0.5 ${item.iconBg}`}>
@@ -206,27 +233,40 @@ export default function NotificationsPage({ currentUser }) {
                       </div>
 
                       {/* Content Body */}
-                      <div className="space-y-1 min-w-0">
-                        <h3 className="text-sm font-extrabold text-slate-900 leading-tight">
-                          {item.title}
-                        </h3>
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-extrabold text-slate-900 leading-tight group-hover:text-[#2d8a4e] transition">
+                            {item.title}
+                          </h3>
+                          <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#2d8a4e] opacity-0 group-hover:opacity-100 transition" />
+                        </div>
+
                         <p className="text-xs text-slate-600 font-medium leading-relaxed">
                           {item.message}
                         </p>
 
                         {/* Timestamp & Action Links */}
-                        <div className="flex flex-wrap items-center gap-3 text-xs pt-1">
+                        <div className="flex flex-wrap items-center gap-3 text-xs pt-1.5">
                           <span className="text-slate-400 font-semibold flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-slate-400" /> {item.time}
                           </span>
+
+                          {item.actionLabel && (
+                            <>
+                              <span>•</span>
+                              <span className="font-extrabold text-[#2d8a4e] group-hover:underline flex items-center gap-1">
+                                {item.actionLabel} →
+                              </span>
+                            </>
+                          )}
 
                           {!item.isRead && (
                             <>
                               <span>•</span>
                               <button
                                 type="button"
-                                onClick={() => handleMarkSingleRead(item.id)}
-                                className="font-extrabold text-[#2d8a4e] hover:underline cursor-pointer"
+                                onClick={(e) => handleMarkSingleRead(e, item.id)}
+                                className="font-extrabold text-slate-500 hover:text-slate-800 hover:underline cursor-pointer"
                               >
                                 Mark as read
                               </button>
@@ -236,7 +276,7 @@ export default function NotificationsPage({ currentUser }) {
                           <span>•</span>
                           <button
                             type="button"
-                            onClick={() => handleDeleteSingle(item.id)}
+                            onClick={(e) => handleDeleteSingle(e, item.id)}
                             className="font-extrabold text-rose-600 hover:underline cursor-pointer"
                           >
                             Delete
@@ -246,10 +286,13 @@ export default function NotificationsPage({ currentUser }) {
 
                     </div>
 
-                    {/* Right Side Unread Indicator Dot */}
-                    {!item.isRead && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#2d8a4e] shrink-0 mt-2 shadow-xs" title="Unread" />
-                    )}
+                    {/* Right Side Unread Indicator Dot & Chevron Cues */}
+                    <div className="flex items-center gap-2 shrink-0 self-center">
+                      {!item.isRead && (
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#2d8a4e] shrink-0 shadow-xs" title="Unread" />
+                      )}
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#2d8a4e] group-hover:translate-x-0.5 transition" />
+                    </div>
 
                   </div>
                 )

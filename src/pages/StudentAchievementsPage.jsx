@@ -72,7 +72,16 @@ export default function StudentAchievementsPage({ currentUser }) {
     if (location.state?.selectedCategory) {
       setSelectedCategory(location.state.selectedCategory)
     }
-  }, [location.state, setSelectedCategory])
+    if (location.state?.filterStatus) {
+      setSelectedStatus(location.state.filterStatus)
+    }
+    if (location.state?.highlightId) {
+      const targetItem = achievements.find(a => a.id === location.state.highlightId)
+      if (targetItem) {
+        setPreviewItem(targetItem)
+      }
+    }
+  }, [location.state, setSelectedCategory, setSelectedStatus, achievements, setPreviewItem])
 
   // Category definitions & icons mapping
   const categoryDefs = [

@@ -72,7 +72,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   }
 
   return (
-    <header className="bg-white/95 dark:bg-[#0d1520]/95 border-b border-slate-200/80 dark:border-slate-800/80 px-6 py-3 shrink-0 z-30 flex items-center justify-between font-sans transition-colors duration-200 backdrop-blur-md">
+    <header className="bg-white/95 dark:bg-[#0d1520]/95 border-b border-slate-200/80 dark:border-slate-800/80 px-5 py-2 shrink-0 z-30 flex items-center justify-between font-sans transition-colors duration-200 backdrop-blur-md">
       
       {/* Left Side: Sidebar Toggle Menu Icon */}
       <div className="flex items-center gap-3">

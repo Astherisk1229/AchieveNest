@@ -74,7 +74,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     if (activeContext === 'osad_staff' || location.pathname.includes('/osad/')) {
       return [
         { label: 'OSAD Command Center', icon: Home, path: '/osad/dashboard?tab=overview', tab: 'overview' },
-        { label: 'Account Management', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
+        { label: 'Student Governance', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
+        { label: 'Departments & Programs', icon: Building2, path: '/osad/dashboard?tab=departments', tab: 'departments' },
+        { label: 'Student Organizations', icon: Building2, path: '/osad/dashboard?tab=organizations', tab: 'organizations' },
         { label: 'Award Categories', icon: Award, path: '/osad/dashboard?tab=awards', tab: 'awards' },
         { label: 'Identify Awardees', icon: LayoutGrid, path: '/osad/dashboard?tab=awardees', tab: 'awardees' },
         { label: 'Accreditation Reports', icon: FileCheck2, path: '/osad/dashboard?tab=reports', tab: 'reports' },
@@ -128,7 +130,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const isOSADAdmin = activeContext === 'osad_staff' || location.pathname.includes('/osad/')
 
   return (
-    <aside className={`w-64 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 ${
+    <aside className={`w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 ${
       isOSADAdmin
         ? 'bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white'
         : 'bg-[#1b4332] dark:bg-[#07130b] text-white border-r border-[#285d3c] dark:border-emerald-950/80 selection:bg-[#2d8a4e] selection:text-white'
@@ -136,12 +138,12 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       <div>
         
         {/* Brand Header */}
-        <div className={`p-5 flex items-center gap-3 border-b ${
+        <div className={`p-4 flex items-center gap-3 border-b ${
           isOSADAdmin
             ? 'border-slate-100 dark:border-slate-800/80'
             : 'border-[#285d3c] dark:border-emerald-950/80'
         }`}>
-          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0 border border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs shrink-0 border border-slate-100">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
               <circle cx="50" cy="50" r="28" fill="#ffffff" />
@@ -149,29 +151,29 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             </svg>
           </div>
           <div>
-            <h1 className={`font-extrabold text-xl leading-tight tracking-tight ${
+            <h1 className={`font-extrabold text-lg leading-tight tracking-tight ${
               isOSADAdmin ? 'text-slate-900 dark:text-white' : 'text-[#ffffff]'
             }`}>AchieveNest</h1>
-            <p className={`text-xs font-bold tracking-widest uppercase ${
+            <p className={`text-[10px] font-bold tracking-widest uppercase ${
               isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-200/80 dark:text-emerald-400/80'
             }`}>NDMU OSAD</p>
           </div>
         </div>
 
         {/* Sidebar Search Input */}
-        <div className="p-4 pb-2">
+        <div className="p-3 pb-1.5">
           <div className="relative">
-            <div className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none ${
+            <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none ${
               isOSADAdmin ? 'text-slate-400 dark:text-slate-500' : 'text-emerald-200/60 dark:text-emerald-400/60'
             }`}>
-              <Search className="w-4 h-4" />
+              <Search className="w-3.5 h-3.5" />
             </div>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search OSAD Portal..."
-              className={`w-full pl-9.5 pr-3 py-2 rounded-xl text-xs font-medium focus:outline-none focus:border-[#2d8a4e] transition ${
+              className={`w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#2d8a4e] transition ${
                 isOSADAdmin
                   ? 'bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400'
                   : 'bg-[#133626] dark:bg-[#030a05] border border-[#245236] dark:border-emerald-950/80 text-white placeholder-emerald-200/50 dark:placeholder-slate-500'
@@ -181,8 +183,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         </div>
 
         {/* Active Portal / Role Badge */}
-        <div className="px-4 py-2">
-          <div className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs flex items-center justify-between shadow-xs border ${
+        <div className="px-3 py-1.5">
+          <div className={`w-full py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-between shadow-2xs border ${
             isOSADAdmin
               ? 'bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#2d8a4e]/30 dark:border-emerald-800/60 font-bold'
               : activeContext === 'program_coordinator' 
@@ -193,8 +195,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               ? 'bg-emerald-700/80 border-emerald-400/50 text-white font-bold'
               : 'bg-[#2d8a4e] dark:bg-[#184528] border-emerald-400/30 dark:border-emerald-700/50 text-white font-bold'
           }`}>
-            <span className="flex items-center gap-2">
-              <ShieldCheck className={`w-4 h-4 ${isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-300'}`} />
+            <span className="flex items-center gap-1.5 text-[11px]">
+              <ShieldCheck className={`w-3.5 h-3.5 ${isOSADAdmin ? 'text-[#2d8a4e] dark:text-emerald-400' : 'text-emerald-300'}`} />
               {portalInfo.roleTitle || portalInfo.label}
             </span>
           </div>

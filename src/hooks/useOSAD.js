@@ -3,6 +3,9 @@ import OSADController from '../controllers/OSADController'
 
 export default function useOSAD() {
   const [metrics, setMetrics] = useState(() => OSADController.getMetrics())
+  const [departments, setDepartments] = useState(() => OSADController.getDepartments())
+  const [organizations, setOrganizations] = useState(() => OSADController.getOrganizations())
+  const [clubs, setClubs] = useState(() => OSADController.getClubs())
   const [awardCategories, setAwardCategories] = useState(() => OSADController.getAwardCategories())
   const [awardees, setAwardees] = useState(() => OSADController.getAwardees())
   const [accreditationReports, setAccreditationReports] = useState(() => OSADController.getAccreditationReports())
@@ -10,6 +13,18 @@ export default function useOSAD() {
 
   const refreshMetrics = useCallback(() => {
     setMetrics(OSADController.getMetrics())
+  }, [])
+
+  const refreshDepartments = useCallback(() => {
+    setDepartments(OSADController.getDepartments())
+  }, [])
+
+  const refreshOrganizations = useCallback(() => {
+    setOrganizations(OSADController.getOrganizations())
+  }, [])
+
+  const refreshClubs = useCallback(() => {
+    setClubs(OSADController.getClubs())
   }, [])
 
   const refreshCategories = useCallback(() => {
@@ -24,30 +39,72 @@ export default function useOSAD() {
     setAuditLogs(OSADController.getAuditLogs(term, cat))
   }, [])
 
-  const getUsers = useCallback((roleFilter, searchTerm) => {
-    return OSADController.getUsers(roleFilter, searchTerm)
+  const getUsers = useCallback((roleFilter, searchTerm, collegeFilter, sortBy) => {
+    return OSADController.getUsers(roleFilter, searchTerm, collegeFilter, sortBy)
   }, [])
 
-  const assignProgramCoordinator = useCallback((userId, programName) => {
-    const updated = OSADController.assignProgramCoordinator(userId, programName)
-    refreshMetrics()
-    refreshAuditLogs()
-    return updated
-  }, [refreshMetrics, refreshAuditLogs])
+  const getPersonnelList = useCallback((searchQuery) => {
+    return OSADController.getPersonnelList(searchQuery)
+  }, [])
 
-  const assignOrganizationModerator = useCallback((userId, orgName) => {
-    const updated = OSADController.assignOrganizationModerator(userId, orgName)
+  const getStudentPortfolios = useCallback((searchQuery, collegeFilter) => {
+    return OSADController.getStudentPortfolios(searchQuery, collegeFilter)
+  }, [])
+
+  const createDepartment = useCallback((deptData) => {
+    const created = OSADController.createDepartment(deptData)
+    refreshDepartments()
+    refreshAuditLogs()
+    return created
+  }, [refreshDepartments, refreshAuditLogs])
+
+  const createOrganization = useCallback((orgData) => {
+    const created = OSADController.createOrganization(orgData)
+    refreshOrganizations()
+    refreshAuditLogs()
+    return created
+  }, [refreshOrganizations, refreshAuditLogs])
+
+  const createClub = useCallback((clubData) => {
+    const created = OSADController.createClub(clubData)
+    refreshClubs()
+    refreshAuditLogs()
+    return created
+  }, [refreshClubs, refreshAuditLogs])
+
+  const assignCollegeDean = useCallback((userId, collegeName) => {
+    const updated = OSADController.assignCollegeDean(userId, collegeName)
     refreshMetrics()
+    refreshDepartments()
     refreshAuditLogs()
     return updated
-  }, [refreshMetrics, refreshAuditLogs])
+  }, [refreshMetrics, refreshDepartments, refreshAuditLogs])
+
+  const assignProgramCoordinator = useCallback((userId, orgName) => {
+    const updated = OSADController.assignProgramCoordinator(userId, orgName)
+    refreshMetrics()
+    refreshOrganizations()
+    refreshAuditLogs()
+    return updated
+  }, [refreshMetrics, refreshOrganizations, refreshAuditLogs])
+
+  const assignOrganizationModerator = useCallback((userId, clubName) => {
+    const updated = OSADController.assignOrganizationModerator(userId, clubName)
+    refreshMetrics()
+    refreshClubs()
+    refreshAuditLogs()
+    return updated
+  }, [refreshMetrics, refreshClubs, refreshAuditLogs])
 
   const revokeRole = useCallback((userId, roleId) => {
     const updated = OSADController.revokeRole(userId, roleId)
     refreshMetrics()
+    refreshDepartments()
+    refreshOrganizations()
+    refreshClubs()
     refreshAuditLogs()
     return updated
-  }, [refreshMetrics, refreshAuditLogs])
+  }, [refreshMetrics, refreshDepartments, refreshOrganizations, refreshClubs, refreshAuditLogs])
 
   const createAwardCategory = useCallback((categoryData) => {
     const created = OSADController.createAwardCategory(categoryData)
@@ -86,13 +143,22 @@ export default function useOSAD() {
 
   return {
     metrics,
+    departments,
+    organizations,
+    clubs,
     awardCategories,
     awardees,
     accreditationReports,
     auditLogs,
     getUsers,
+    getPersonnelList,
+    getStudentPortfolios,
+    createDepartment,
+    createOrganization,
+    createClub,
     getStudentLeaderboards,
     getAccreditationReportDetails,
+    assignCollegeDean,
     assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,

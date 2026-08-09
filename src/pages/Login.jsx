@@ -15,7 +15,7 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  // Demo Accounts Presets from Screenshot
+  // Demo Accounts Presets
   const demoAccounts = [
     { label: 'Student', desc: 'Student dashboard', email: 'student@ndmu.edu.ph' },
     { label: 'Personnel', desc: 'Faculty / personnel view', email: 'faculty@ndmu.edu.ph' },
@@ -68,17 +68,14 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row font-sans text-slate-900 bg-white selection:bg-[#2d8a4e] selection:text-white">
+    <div className="min-h-screen lg:h-screen w-full flex flex-col lg:flex-row font-sans text-slate-900 bg-[#fbfbfa] selection:bg-[#1b4332] selection:text-white lg:overflow-hidden">
       
-      {/* ================= LEFT SIDE: DEEP GREEN BRAND PANEL (50%) ================= */}
-      <div className="lg:w-1/2 bg-gradient-to-br from-[#12361e] via-[#1b4332] to-[#0d2816] text-white p-8 sm:p-12 lg:p-14 flex flex-col justify-between relative overflow-hidden">
+      {/* ================= LEFT SIDE: EDITORIAL DARK GREEN BRAND PANEL (50%) ================= */}
+      <div className="lg:w-1/2 bg-[#0c2214] text-white p-6 sm:p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden border-r border-[#184227]">
         
-        {/* Subtle Glow Overlay */}
-        <div className="absolute top-0 left-0 w-full h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
         {/* Top Header Logo */}
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12 rounded-2xl bg-white p-1.5 flex items-center justify-center shadow-lg shadow-emerald-950/40 shrink-0">
+        <div className="flex items-center gap-3.5 relative z-10">
+          <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center border border-white/20 shrink-0">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
               <circle cx="50" cy="50" r="28" fill="#ffffff" />
@@ -87,27 +84,26 @@ export default function Login() {
             </svg>
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight text-white leading-tight">AchieveNest</h2>
-            <p className="text-xs text-emerald-200/80 font-medium">Notre Dame of Marbel University</p>
+            <h2 className="text-xl font-bold tracking-tight text-white leading-tight">AchieveNest</h2>
+            <p className="text-[11px] text-emerald-300/80 font-medium">Notre Dame of Marbel University</p>
           </div>
         </div>
 
-        {/* Middle Hero Card */}
-        <div className="my-8 relative z-10">
-          <div className="rounded-3xl overflow-hidden border border-emerald-600/30 bg-[#0d2a17]/90 shadow-2xl relative">
-            
-            <div className="h-56 sm:h-64 w-full relative overflow-hidden flex items-center justify-center">
+        {/* Middle Hero Card - Optimized for crisp vertical density */}
+        <div className="my-4 lg:my-6 relative z-10">
+          <div className="rounded-2xl overflow-hidden border border-[#1b4332] bg-[#091a0f] relative">
+            <div className="h-36 sm:h-44 lg:h-48 xl:h-52 w-full relative overflow-hidden flex items-center justify-center">
               <img 
                 src={campusBanner} 
                 alt="NDMU Campus" 
-                className="w-full h-full object-cover opacity-85 hover:scale-105 transition duration-700"
+                className="w-full h-full object-cover opacity-80"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0e2c18] via-emerald-950/40 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#091a0f] via-[#091a0f]/40 to-transparent"></div>
 
               {/* NDMU Official White Overlay Emblem Banner */}
-              <div className="absolute px-5 py-3.5 rounded-2xl bg-white/95 backdrop-blur-md shadow-2xl border border-emerald-100 max-w-xs sm:max-w-sm text-center transform hover:scale-105 transition">
-                <div className="flex justify-center mb-1">
-                  <div className="w-9 h-9 rounded-full bg-[#1b4332] p-1 flex items-center justify-center">
+              <div className="absolute px-4 py-2.5 rounded-xl bg-white/95 backdrop-blur-sm border border-slate-100 max-w-xs text-center">
+                <div className="flex justify-center mb-0.5">
+                  <div className="w-7 h-7 rounded-full bg-[#1b4332] p-0.5 flex items-center justify-center">
                     <svg viewBox="0 0 100 100" className="w-full h-full">
                       <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#ffffff"/>
                       <circle cx="50" cy="50" r="28" fill="#1b4332" />
@@ -115,97 +111,97 @@ export default function Login() {
                     </svg>
                   </div>
                 </div>
-                <div className="text-[10px] tracking-widest font-bold text-[#1b4332] uppercase">NOTRE DAME OF</div>
-                <div className="text-xl sm:text-2xl font-serif font-black text-[#1b4332] tracking-tight leading-none">
+                <div className="text-[9px] tracking-widest font-bold text-[#1b4332] uppercase">NOTRE DAME OF</div>
+                <div className="text-base sm:text-lg font-serif font-bold text-[#1b4332] tracking-tight leading-none">
                   Marbel University
                 </div>
-                {/* Accreditation Icons Bar */}
-                <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2 pt-2 border-t border-gray-200/80">
-                  <span className="text-[10px] font-bold text-gray-600 uppercase px-2 py-0.5 rounded bg-gray-100">PAASCU Accredited</span>
-                  <span className="text-[10px] font-bold text-emerald-800 uppercase px-2 py-0.5 rounded bg-emerald-50">ISO Certified</span>
-                  <span className="text-[10px] font-bold text-amber-800 uppercase px-2 py-0.5 rounded bg-amber-50">CHED Recognized</span>
+                {/* Accreditation Muted Pastel Badges */}
+                <div className="flex flex-wrap items-center justify-center gap-1 mt-1.5 pt-1.5 border-t border-slate-200/80">
+                  <span className="text-[9px] font-medium text-[#2d6a3f] uppercase px-1.5 py-0.5 rounded bg-[#edf3ec] border border-[#d2e6d5]">PAASCU Accredited</span>
+                  <span className="text-[9px] font-medium text-[#2d6a3f] uppercase px-1.5 py-0.5 rounded bg-[#edf3ec] border border-[#d2e6d5]">ISO Certified</span>
+                  <span className="text-[9px] font-medium text-[#8a5d00] uppercase px-1.5 py-0.5 rounded bg-[#fbf3db] border border-[#f0e2b6]">CHED Recognized</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Bullet Point Features */}
-        <div className="relative z-10 space-y-5">
+        {/* Bottom Bullet Point Features & Stats Bar */}
+        <div className="relative z-10 space-y-4">
           <div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug">
+            <h3 className="text-xl sm:text-2xl font-serif font-bold text-white tracking-tight leading-snug">
               Your journey of excellence starts here.
             </h3>
           </div>
 
-          <ul className="space-y-2.5">
-            <li className="flex items-center gap-3 text-sm leading-relaxed text-emerald-100 font-medium">
-              <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+          <ul className="space-y-2">
+            <li className="flex items-center gap-2.5 text-xs text-emerald-100/90 font-medium">
+              <div className="w-4 h-4 rounded-full bg-[#1b4332] border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-3 h-3" />
               </div>
               <span>Track and showcase your achievements</span>
             </li>
-            <li className="flex items-center gap-3 text-sm leading-relaxed text-emerald-100 font-medium">
-              <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+            <li className="flex items-center gap-2.5 text-xs text-emerald-100/90 font-medium">
+              <div className="w-4 h-4 rounded-full bg-[#1b4332] border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-3 h-3" />
               </div>
               <span>Build your professional portfolio</span>
             </li>
-            <li className="flex items-center gap-3 text-sm leading-relaxed text-emerald-100 font-medium">
-              <div className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+            <li className="flex items-center gap-2.5 text-xs text-emerald-100/90 font-medium">
+              <div className="w-4 h-4 rounded-full bg-[#1b4332] border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-3 h-3" />
               </div>
               <span>Get recognized for your hard work</span>
             </li>
           </ul>
 
-          {/* Stats Bar */}
-          <div className="pt-5 border-t border-emerald-800/60 grid grid-cols-3 gap-4">
+          {/* Clean Editorial Stats Bar */}
+          <div className="pt-3.5 border-t border-[#184227] grid grid-cols-3 gap-3">
             <div>
-              <p className="text-2xl font-black text-white">2,500+</p>
-              <p className="text-xs text-emerald-200/80 font-medium">Active Students</p>
+              <p className="text-lg font-bold text-white">2,500+</p>
+              <p className="text-[11px] text-emerald-200/70">Active Students</p>
             </div>
             <div>
-              <p className="text-2xl font-black text-white">15,000+</p>
-              <p className="text-xs text-emerald-200/80 font-medium">Achievements</p>
+              <p className="text-lg font-bold text-white">15,000+</p>
+              <p className="text-[11px] text-emerald-200/70">Achievements</p>
             </div>
             <div>
-              <p className="text-2xl font-black text-white">98%</p>
-              <p className="text-xs text-emerald-200/80 font-medium">Satisfaction</p>
+              <p className="text-lg font-bold text-white">98%</p>
+              <p className="text-[11px] text-emerald-200/70">Satisfaction</p>
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* ================= RIGHT SIDE: CLEAN WHITE AUTH PANEL (50%) ================= */}
-      <div className="lg:w-1/2 bg-white p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
+      {/* ================= RIGHT SIDE: CLEAN MINIMALIST AUTH PANEL (50%) ================= */}
+      <div className="lg:w-1/2 bg-[#fbfbfa] p-6 sm:p-8 lg:p-10 xl:p-12 flex flex-col justify-center overflow-y-auto">
         
-        <div className="max-w-md mx-auto w-full space-y-6">
+        <div className="max-w-md mx-auto w-full space-y-4 lg:space-y-5">
           
           {/* Welcome Heading */}
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome back</h1>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">Sign in to your AchieveNest account</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#111111] tracking-tight">Welcome back</h1>
+            <p className="text-xs sm:text-sm text-[#787774] mt-0.5">Sign in to your AchieveNest account</p>
           </div>
 
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-[#fdebec] border border-[#f5c6cb] text-[#9f2f2d] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#9f2f2d]" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             
             {/* Email Input */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
                 Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
@@ -213,7 +209,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your.email@ndmu.edu.ph"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 text-[#0f172a] focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e] transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-[#1b4332] focus:ring-1 focus:ring-[#1b4332] transition"
                   required
                 />
               </div>
@@ -221,11 +217,11 @@ export default function Login() {
 
             {/* Password Input */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -233,13 +229,13 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 text-[#0f172a] focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e] transition"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:border-[#1b4332] focus:ring-1 focus:ring-[#1b4332] transition"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -247,13 +243,13 @@ export default function Login() {
             </div>
 
             {/* Checkbox */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer text-sm text-slate-700 font-medium select-none">
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 font-medium select-none">
                 <input
                   type="checkbox"
                   checked={keepSignedIn}
                   onChange={(e) => setKeepSignedIn(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-[#2d8a4e] focus:ring-[#2d8a4e]"
+                  className="w-4 h-4 rounded border-slate-300 text-[#1b4332] focus:ring-[#1b4332]"
                 />
                 <span>Keep me signed in</span>
               </label>
@@ -263,28 +259,28 @@ export default function Login() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 px-6 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-base shadow-md transition-all active:scale-[0.99] disabled:opacity-50"
+              className="w-full py-2.5 px-5 rounded-xl bg-[#1b4332] hover:bg-[#12361e] text-white font-semibold text-sm transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 
-          {/* Demo Accounts Card */}
-          <div className="p-4 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold mb-1">
-              <span className="text-[#1e5831]">Demo Accounts <span className="text-slate-500 font-normal">— password: any</span></span>
+          {/* Demo Accounts Bento Card Grid (Compact 2-Column Grid) */}
+          <div className="p-3.5 rounded-2xl bg-[#edf3ec]/60 border border-[#d2e6d5] space-y-2">
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <span className="text-[#1b4332]">Demo Accounts <span className="text-slate-500 font-normal">— password: any</span></span>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-1.5">
               {demoAccounts.map((demo, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => handleSelectDemo(demo.email)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-100 flex items-center justify-between text-left transition shadow-xs group"
+                  className="px-2.5 py-2 rounded-xl bg-white hover:bg-[#f4f8f5] border border-slate-200/80 hover:border-[#1b4332]/40 flex flex-col text-left transition group cursor-pointer"
                 >
-                  <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e]">{demo.label}</span>
-                  <span className="text-xs text-slate-500 font-medium">{demo.desc}</span>
+                  <span className="text-xs font-semibold text-slate-900 group-hover:text-[#1b4332]">{demo.label}</span>
+                  <span className="text-[10px] text-slate-500 font-medium truncate">{demo.desc}</span>
                 </button>
               ))}
             </div>
@@ -297,3 +293,4 @@ export default function Login() {
     </div>
   )
 }
+

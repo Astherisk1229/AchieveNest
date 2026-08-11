@@ -20,10 +20,15 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [syncUserFromStorage])
 
-  const login = async (email, password, rememberMe = true) => {
+  const login = async (emailOrUser, password, rememberMe = true) => {
     setIsLoading(true)
     try {
-      const loggedUser = await authenticateUser(email, password, rememberMe)
+      let loggedUser
+      if (typeof emailOrUser === 'object' && emailOrUser !== null) {
+        loggedUser = emailOrUser
+      } else {
+        loggedUser = await authenticateUser(emailOrUser, password, rememberMe)
+      }
       setUser(loggedUser)
       setIsLoading(false)
       return loggedUser

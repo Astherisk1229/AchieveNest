@@ -171,6 +171,21 @@ export default class PersonnelPortfolioController {
   }
 
   /**
+   * Updates an existing line item in a portfolio area and saves.
+   */
+  static updateItem(portfolioModel, areaKey, itemId, updatedFields) {
+    const json = portfolioModel.toJSON()
+    const targetArray = areaKey === 'A' ? json.area_a_items : areaKey === 'B' ? json.area_b_items : json.area_c_items
+    const index = targetArray.findIndex(i => i.id === itemId)
+    if (index >= 0) {
+      targetArray[index] = { ...targetArray[index], ...updatedFields }
+    }
+    const updatedModel = new PersonnelPortfolioModel(json)
+    PersonnelPortfolioController.persistPortfolio(updatedModel)
+    return updatedModel
+  }
+
+  /**
    * Updates NDMU Years of Service and saves.
    */
   static updateYearsOfService(portfolioModel, years) {

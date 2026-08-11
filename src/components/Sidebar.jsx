@@ -18,7 +18,8 @@ import {
   FileCheck2,
   LayoutGrid,
   Calendar,
-  QrCode
+  QrCode,
+  Edit3
 } from 'lucide-react'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
@@ -111,7 +112,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     if (activeContext === 'personnel') {
       return [
         { label: 'Homepage', icon: Home, path: '/personnel/dashboard' },
-        { label: 'Achievements', icon: Award, path: '/personnel/achievements' },
+        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
         { label: 'Portfolio', icon: FolderKanban, path: '/personnel/portfolio' },
         { label: 'Account', icon: User, path: '/personnel/account' },
       ]
@@ -152,7 +153,10 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           <div>
             <h1 className="font-extrabold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">AchieveNest</h1>
             <p className="text-[10px] font-extrabold tracking-widest uppercase text-[#2d8a4e] dark:text-emerald-400">
-              {activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? 'NDMU OSAD' : 'Student Portal'}
+              {activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? 'NDMU OSAD' :
+               activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? 'HR PORTAL' :
+               ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeContext) || location.pathname.includes('/personnel/') ? 'PERSONNEL PORTAL' :
+               'STUDENT PORTAL'}
             </p>
           </div>
         </div>

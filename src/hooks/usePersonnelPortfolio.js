@@ -81,12 +81,24 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001') {
     }
   }, [portfolio, personnelId, refreshPortfolio])
 
+  const updateItem = useCallback((areaKey, itemId, updatedFields) => {
+    try {
+      const updated = PersonnelPortfolioController.updateItem(portfolio, areaKey, itemId, updatedFields)
+      refreshPortfolio(updated)
+      return true
+    } catch (err) {
+      setError(err.message)
+      return false
+    }
+  }, [portfolio, refreshPortfolio])
+
   return {
     portfolio,
     totals,
     error,
     addItem,
     removeItem,
+    updateItem,
     updateYearsOfService,
     submitToDepSec,
     autoPopulateFromVault,

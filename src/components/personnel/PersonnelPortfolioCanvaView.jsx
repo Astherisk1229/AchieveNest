@@ -329,22 +329,66 @@ export default function PersonnelPortfolioCanvaView({ isOpen, onClose, portfolio
 
       case 'TOC':
         return (
-          <div className="w-[750px] min-h-[980px] bg-white text-slate-900 p-10 rounded border border-slate-200 flex flex-col justify-between font-sans">
+          <div className="w-[750px] min-h-[980px] bg-white text-slate-900 p-10 rounded border border-slate-200 flex flex-col justify-between font-sans shadow-sm">
             {/* Header */}
             <div className="border-b-2 border-[#1b4332] pb-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <FolderTree className="w-5 h-5 text-[#1b4332]" />
-                <h2 className="text-base font-black text-slate-900 tracking-tight">Table of Contents</h2>
+                <div className="w-8 h-8 rounded-xl bg-[#1b4332] text-amber-300 flex items-center justify-center font-bold">
+                  <FolderTree className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-slate-900 tracking-tight">Table of Contents & Dossier Index</h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase">Official NDMU Ranking Booklet Structure</p>
+                </div>
               </div>
-              <span className="text-xs font-bold text-slate-500">{academicYear}</span>
+              <span className="text-xs font-extrabold text-[#1b4332] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">{academicYear}</span>
             </div>
 
             {/* Body */}
             <div className="my-auto space-y-4 py-2">
-              <p className="text-xs font-medium text-slate-600">Accomplishment records are categorized by NDMU Area Sections. Click any entry to scroll to its page.</p>
+              <p className="text-xs font-medium text-slate-600">
+                This presentation booklet synthesizes faculty accomplishment records categorized under the NDMU Ranking Matrix. Click any entry below to jump directly to its page.
+              </p>
+
+              {/* Table of Contents List */}
               <div className="space-y-3">
+
+                {/* Section 1: Executive Summary */}
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => scrollToPage(1)}
+                    className="w-full px-3.5 py-2 bg-slate-100 hover:bg-slate-200 transition text-left flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded bg-[#1b4332] text-white flex items-center justify-center font-black text-[10px]">1</span>
+                      <span className="text-xs font-extrabold text-slate-900 uppercase">Cover Page & Institutional Metadata</span>
+                    </div>
+                    <span className="text-[11px] font-extrabold text-[#1b4332]">Page 1</span>
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => scrollToPage(2)}
+                    className="w-full px-3.5 py-2 bg-[#1b4332] text-white transition text-left flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded bg-amber-400 text-slate-900 flex items-center justify-center font-black text-[10px]">2</span>
+                      <span className="text-xs font-extrabold text-white uppercase">Table of Contents & Navigation Index</span>
+                    </div>
+                    <span className="text-[11px] font-extrabold text-amber-300">Page 2 (Current)</span>
+                  </button>
+                </div>
+
+                {/* Area Sections A, B, C */}
                 {['A', 'B', 'C'].map(areaKey => {
-                  const areaTitleMap = { A: 'AREA A: PROFESSIONAL DEVELOPMENT', B: 'AREA B: PRODUCTIVITY AND CREATIVE WORK', C: 'AREA C: SERVICE AND LEADERSHIP' }
+                  const areaTitleMap = { 
+                    A: 'AREA A: PROFESSIONAL DEVELOPMENT (Max: 70 Pts)', 
+                    B: 'AREA B: PRODUCTIVITY AND CREATIVE WORK (Max: 50 Pts Cap)', 
+                    C: 'AREA C: SERVICE AND LEADERSHIP (Max: 40 Pts)' 
+                  }
                   const areaItems = items.filter(i => (i.area_key || i.category_code?.charAt(0)) === areaKey)
                   if (areaItems.length === 0) return null
 
@@ -353,8 +397,11 @@ export default function PersonnelPortfolioCanvaView({ isOpen, onClose, portfolio
 
                   return (
                     <div key={areaKey} className="rounded-xl border border-slate-200 overflow-hidden">
-                      <button type="button" onClick={() => scrollToPage(sepPage)}
-                        className="w-full px-3.5 py-2.5 bg-[#1b4332] text-white hover:bg-[#123124] transition text-left flex items-center justify-between cursor-pointer">
+                      <button 
+                        type="button" 
+                        onClick={() => scrollToPage(sepPage)}
+                        className="w-full px-3.5 py-2.5 bg-[#1b4332] text-white hover:bg-[#123124] transition text-left flex items-center justify-between cursor-pointer"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="w-5 h-5 rounded bg-amber-400 text-slate-900 flex items-center justify-center font-black text-[11px]">{areaKey}</span>
                           <h3 className="text-xs font-black tracking-wide text-white uppercase">{areaTitleMap[areaKey]}</h3>
@@ -366,8 +413,12 @@ export default function PersonnelPortfolioCanvaView({ isOpen, onClose, portfolio
                           const itemIdx = slides.findIndex(s => s.type === 'ITEM' && s.item?.id === item.id)
                           const itemPage = itemIdx >= 0 ? itemIdx + 1 : 4
                           return (
-                            <button key={item.id} type="button" onClick={() => scrollToPage(itemPage)}
-                              className="w-full px-2.5 py-1.5 text-left flex items-center justify-between text-xs transition cursor-pointer hover:bg-slate-100 group">
+                            <button 
+                              key={item.id} 
+                              type="button" 
+                              onClick={() => scrollToPage(itemPage)}
+                              className="w-full px-2.5 py-1.5 text-left flex items-center justify-between text-xs transition cursor-pointer hover:bg-slate-100 group"
+                            >
                               <div className="flex items-center gap-2 pr-2">
                                 <span className="text-[10px] font-bold text-[#1b4332] w-7 shrink-0">{item.category_code}</span>
                                 <span className="font-semibold text-slate-800 group-hover:text-[#1b4332] line-clamp-1">{item.title}</span>
@@ -380,6 +431,22 @@ export default function PersonnelPortfolioCanvaView({ isOpen, onClose, portfolio
                     </div>
                   )
                 })}
+
+                {/* Section Sign-off */}
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => scrollToPage(totalPages)}
+                    className="w-full px-3.5 py-2 bg-slate-100 hover:bg-slate-200 transition text-left flex items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded bg-[#1b4332] text-white flex items-center justify-center font-black text-[10px]">{totalPages}</span>
+                      <span className="text-xs font-extrabold text-slate-900 uppercase">Administrative Authentication & Sign-Off Seal</span>
+                    </div>
+                    <span className="text-[11px] font-extrabold text-[#1b4332]">Page {totalPages}</span>
+                  </button>
+                </div>
+
               </div>
             </div>
 

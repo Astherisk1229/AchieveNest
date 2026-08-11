@@ -172,28 +172,28 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     <MainLayout>
       <div className="space-y-6 font-sans">
 
-        {/* ================= 1. PAGE TITLE HEADER ================= */}
+        {/* ================= 1. PAGE TITLE HEADER (DARK MODE COMPATIBLE) ================= */}
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Personnel Portfolio</h1>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Personnel Portfolio</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
             Faculty Profile Showcase • Present your portfolio using Canva-Style Booklet Viewer with 1 Page per Accomplishment.
           </p>
         </div>
 
         {/* Copy Toast Alert */}
         {showCopiedToast && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Portfolio link copied to clipboard!</span>
           </div>
         )}
 
-        {/* ================= 2. HERO PROFILE BANNER (EXACT SPECIFICATION IMPLEMENTATION) ================= */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-6 relative">
+        {/* ================= 2. HERO PROFILE BANNER (COMPACT & SLEEK) ================= */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-6 relative">
 
-          {/* SVG Background Layer: Left-Oriented Green Curvy Banner Shape with Faded Campus Backdrop */}
+          {/* SVG Background Layer */}
           <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
-            <svg viewBox="0 0 1200 240" preserveAspectRatio="none" className="w-full h-full">
+            <svg viewBox="0 0 1200 180" preserveAspectRatio="none" className="w-full h-full">
               <defs>
                 <linearGradient id="heroGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#143d2b" />
@@ -201,20 +201,15 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <stop offset="100%" stopColor="#0d281e" />
                 </linearGradient>
               </defs>
-
-              {/* Left Green Curvy Shape Background */}
-              <path d="M 0,0 L 220,0 C 210,70 170,150 90,240 L 0,240 Z" fill="url(#heroGreenGrad)" />
+              <path d="M 0,0 L 180,0 C 160,50 130,110 45,180 L 0,180 Z" fill="url(#heroGreenGrad)" />
             </svg>
 
-
-
-            {/* Campus Background Image Overlay clipped to Left Green Curvy Shape */}
-            <div className="absolute top-0 left-0 w-[18%] h-full mix-blend-overlay opacity-30 pointer-events-none overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 40% 100%, 0 100%)' }}>
+            <div className="absolute top-0 left-0 w-[14%] h-full mix-blend-overlay opacity-30 pointer-events-none overflow-hidden" style={{ clipPath: 'polygon(0 0, 100% 0, 25% 100%, 0 100%)' }}>
               <img
                 src={campusBanner}
                 alt="NDMU Campus Backdrop"
                 width="1200"
-                height="240"
+                height="180"
                 className="w-full h-full object-cover"
                 decoding="async"
                 loading="eager"
@@ -222,145 +217,142 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             </div>
           </div>
 
-          {/* Banner Header Body: Left Brand Logo & Right University Motto */}
-          <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
-            {/* NDMU Brand Logo & Seal (Left on Green Shape) */}
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-sm shadow-md shrink-0">
-                🔰
+          {/* Banner Body */}
+          <div className="relative z-20 p-5 sm:p-6 space-y-4">
+            
+            {/* Top Brand & Motto Bar */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-xs shadow-md shrink-0">
+                  🔰
+                </div>
+                <div className="leading-tight">
+                  <span className="text-xs font-black tracking-tight text-white block">AchieveNest</span>
+                  <span className="text-[8px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
+                </div>
               </div>
-              <div className="leading-tight">
-                <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
-                <span className="text-[9px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
+
+              <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide font-serif italic hidden sm:block">
+                Character, Competence and Culture in harmony
               </div>
             </div>
 
-            {/* Motto Right (On Reserved White Area) */}
-            <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
-              Character, Competence and Culture in harmony
-            </div>
-          </div>
+            {/* Main Info & Metrics Row */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pt-1">
 
-          {/* White Reserved Content Area with Overlapping Avatar & Details */}
-          <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 relative z-20">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-
-              {/* Left Column: Avatar Overlapping 1/3 Green & 2/3 White + Reserved White Details */}
-              <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-
-                {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
-                <div className="relative shrink-0 z-30 sm:-mb-1">
-                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden aspect-square">
-                    <img
-                      src={personnel.avatar_url}
-                      alt={personnel.full_name}
-                      width="144"
-                      height="144"
-                      className="w-full h-full object-cover rounded-full aspect-square"
-                      fetchpriority="high"
-                      decoding="async"
-                      loading="eager"
-                    />
-                  </div>
+              {/* Avatar + Faculty Info */}
+              <div className="flex items-center gap-5 sm:gap-6">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 border-white dark:border-slate-800 shadow-md bg-white dark:bg-slate-900 overflow-hidden shrink-0 aspect-square">
+                  <img
+                    src={personnel.avatar_url}
+                    alt={personnel.full_name}
+                    width="96"
+                    height="96"
+                    className="w-full h-full object-cover rounded-full aspect-square"
+                    fetchpriority="high"
+                    decoding="async"
+                    loading="eager"
+                  />
                 </div>
 
-
-
-                {/* Faculty Details & Info Chips (In Reserved White Content Space) */}
-                <div className="space-y-1.5 pt-1 sm:pt-0">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">{personnel.full_name}</h2>
-                    <span className="w-5 h-5 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">{personnel.full_name}</h2>
+                    <span className="w-4 h-4 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-[10px] shadow-xs font-bold" title="Verified Account">
                       ✓
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#2d8a4e]">Associate Professor</p>
-                  <p className="text-xs text-slate-600 font-semibold">{personnel.department || 'College of Information Technology'}</p>
-                  <p className="text-xs text-slate-500 font-medium">Notre Dame of Marbel University</p>
+                  <p className="text-xs font-extrabold text-[#2d8a4e] dark:text-emerald-400">Associate Professor • {personnel.department || 'College of IT'}</p>
 
                   {/* Compact Credential Chips Row */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
-                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                      <span>Ph.D. in Information Technology</span>
-                    </div>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
+                    <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-[#2d8a4e] dark:text-emerald-400" />
+                      Ph.D. in IT
+                    </span>
 
-                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                      <Clock className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                      <span>10+ Years of Service</span>
-                    </div>
+                    <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[#2d8a4e] dark:text-emerald-400" />
+                      10+ Yrs Service
+                    </span>
 
-                    <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                      <CreditCard className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                      <span>Faculty ID: 2025-001</span>
-                    </div>
+                    <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
+                      <CreditCard className="w-3 h-3 text-[#2d8a4e] dark:text-emerald-400" />
+                      ID: 2025-001
+                    </span>
                   </div>
                 </div>
-
               </div>
 
-              {/* Far-Right Column: Edit Profile (Top), 4 Stat Cards (Middle), Share & Export Buttons (Bottom) */}
-              <div className="flex flex-col items-start lg:items-end justify-between gap-4 shrink-0 pt-2 lg:pt-0">
-
-                {/* Upper Right Action Button: Edit Profile */}
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-[#1b4332] text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-                >
-                  <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e]" />
-                  <span>Edit Profile</span>
-                </button>
-
-                {/* 4 Summary Stat Cards Row */}
-                <div className="flex items-center gap-2.5">
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">5</span>
-                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Achievements</span>
+              {/* Metrics & Actions Column */}
+              <div className="flex flex-col items-start lg:items-end gap-3 shrink-0">
+                {/* 4 Metric Pills */}
+                <div className="grid grid-cols-4 gap-2 w-full sm:w-auto">
+                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
+                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">5</div>
+                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Achievements</div>
                   </div>
 
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">8</span>
-                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Publications</span>
+                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
+                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">8</div>
+                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Publications</div>
                   </div>
 
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">12</span>
-                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Trainings</span>
+                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
+                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">12</div>
+                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Trainings</div>
                   </div>
 
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">3</span>
-                    <span className="text-[10px] font-bold text-slate-600 mt-1 block">Awards</span>
+                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
+                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">3</div>
+                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Awards</div>
                   </div>
                 </div>
 
-                {/* Lower Right Action Buttons: Share & Booklet View / Export */}
-                <div className="flex items-center gap-2 flex-wrap">
+                {/* Primary Action Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center gap-1 transition border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+                    <span>Edit Profile</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/personnel/portfolio/edit')}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit Portfolio Workspace</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleShareProfile}
-                    className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                   >
-                    <Share2 className="w-3.5 h-3.5 text-slate-500" />
+                    <Share2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>Share</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsCanvaModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                   >
                     <BookOpen className="w-3.5 h-3.5 text-amber-300" />
                     <span>Portfolio Booklet View</span>
                     <Sparkles className="w-3 h-3 text-amber-300" />
                   </button>
                 </div>
-
               </div>
 
             </div>
+
           </div>
 
         </div>
@@ -368,41 +360,41 @@ export default function PersonnelPortfolioPage({ currentUser }) {
         {/* ================= 3. TWO COLUMN MAIN CONTENT GRID ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* LEFT COLUMN (8/12 width): ABOUT ME, TIMELINE & FEATURED ACCOMPLISHMENTS */}
+          {/* LEFT COLUMN: ABOUT ME, TIMELINE & FEATURED ACCOMPLISHMENTS */}
           <div className="lg:col-span-8 space-y-6">
 
             {/* ABOUT ME CARD */}
-            <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-3">
+            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                  <Users className="w-4 h-4 text-[#2d8a4e]" />
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                  <Users className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>About Me</span>
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Edit3 className="w-3 h-3" />
                   <span>Edit</span>
                 </button>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                 {personnel.about_me}
               </p>
             </div>
 
             {/* EXPERIENCE & ACADEMIC INVOLVEMENT TIMELINE CARD */}
-            <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-4">
+            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                  <Building2 className="w-4 h-4 text-[#2d8a4e]" />
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                  <Building2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Experience & Involvement</span>
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Edit3 className="w-3 h-3" />
                   <span>Edit</span>
@@ -413,16 +405,16 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 {experiences.map((exp) => {
                   const Icon = exp.icon
                   return (
-                    <div key={exp.id} className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-3.5 transition hover:bg-slate-50">
+                    <div key={exp.id} className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3.5 transition hover:bg-slate-100 dark:hover:bg-slate-800">
                       <div className="w-9 h-9 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
                         <Icon className="w-4.5 h-4.5" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-900">{exp.role}</h4>
-                          <span className="text-[10px] font-bold text-slate-400">{exp.period}</span>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white">{exp.role}</h4>
+                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{exp.period}</span>
                         </div>
-                        <p className="text-xs text-slate-500 font-medium">{exp.organization}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{exp.organization}</p>
                       </div>
                     </div>
                   )
@@ -433,166 +425,110 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             {/* FEATURED ACCOMPLISHMENTS GRID */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                  <Trophy className="w-4 h-4 text-[#2d8a4e]" />
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                  <Trophy className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Featured Accomplishments</span>
                 </h3>
-                <span className="text-[11px] font-bold text-slate-400">{verifiedAccomplishments.length} verified</span>
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{verifiedAccomplishments.length} verified</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {verifiedAccomplishments.map((item) => {
                   const ItemIcon = item.icon
                   return (
-                    <div key={item.id} className="p-5 bg-white rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
+                    <div key={item.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-[#1b4332] text-[10px] font-bold border border-emerald-100">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
                             {item.category}
                           </span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-extrabold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             <span>Verified</span>
                           </span>
                         </div>
 
-                        <h4 className="text-xs font-extrabold text-slate-900 line-clamp-2">{item.title}</h4>
+                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-2">{item.title}</h4>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400 font-semibold">
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
                         <span>{item.date}</span>
-                        <ItemIcon className="w-4 h-4 text-[#2d8a4e]" />
+                        <ItemIcon className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              {/* CARD BUTTON TO REDIRECT PERSONNEL TO ALL ACHIEVEMENTS SECTION */}
-              <button
-                type="button"
-                onClick={() => navigate('/personnel/achievements')}
-                className="w-full p-4 rounded-3xl bg-emerald-50/70 hover:bg-emerald-100/80 border-2 border-dashed border-[#2d8a4e]/40 hover:border-[#2d8a4e] flex items-center justify-between text-xs font-bold text-slate-800 transition cursor-pointer group shadow-2xs mt-2"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#1b4332] text-amber-300 flex items-center justify-center font-extrabold shadow-sm group-hover:scale-105 transition-transform">
-                    <Trophy className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition">View All Logged Achievements</h4>
-                    <p className="text-xs text-slate-500 font-medium">Browse, search, filter, and manage your complete accomplishment records vault</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-[#2d8a4e] font-extrabold text-xs group-hover:translate-x-1 transition-transform shrink-0 pl-2">
-                  <span>Open Achievements Vault</span>
-                  <ArrowRight className="w-4 h-4" />
-                </div>
-              </button>
             </div>
 
           </div>
 
-          {/* RIGHT COLUMN (4/12 width): CONTACT INFO, SKILLS & ACCOMPLISHMENTS BY CATEGORY */}
+          {/* RIGHT COLUMN: CONTACT INFO, SKILLS & ACCOMPLISHMENTS BY CATEGORY */}
           <div className="lg:col-span-4 space-y-6">
 
             {/* CONTACT INFORMATION CARD */}
-            <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-4">
+            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                  <Mail className="w-4 h-4 text-[#2d8a4e]" />
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                  <Mail className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Contact Information</span>
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline cursor-pointer"
                 >
                   Edit
                 </button>
               </div>
 
-              <div className="space-y-3">
-                <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Email</p>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">{personnel.email}</p>
+              <div className="space-y-3 pt-1">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">EMAIL</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{personnel.email}</span>
                 </div>
-                <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Phone</p>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">{personnel.phone}</p>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">PHONE</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{personnel.phone}</span>
                 </div>
-                <div className="p-3 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Address</p>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">{personnel.location}</p>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">LOCATION</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">{personnel.location}</span>
                 </div>
               </div>
             </div>
 
-            {/* SKILLS & COMPETENCIES CARD */}
-            <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-4">
+            {/* KEY SKILLS & COMPETENCIES CARD */}
+            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                  <Star className="w-4 h-4 text-[#2d8a4e]" />
-                  <span>Skills & Competencies</span>
+                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                  <Star className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <span>Key Competencies</span>
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline cursor-pointer"
                 >
                   Edit
                 </button>
               </div>
 
-              <div className="space-y-2">
-                {skills.map((skill, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50/70 text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                      <span className="flex items-center gap-0.5 text-[9px]">
-                        <span className={skill.level >= 1 ? 'text-[#2d8a4e]' : 'text-slate-300'}>●</span>
-                        <span className={skill.level >= 2 ? 'text-[#2d8a4e]' : 'text-slate-300'}>●</span>
-                        <span className={skill.level >= 3 ? 'text-[#2d8a4e]' : 'text-slate-300'}>●</span>
-                      </span>
-                      <span>{skill.name}</span>
+              <div className="space-y-3 pt-1">
+                {skills.map((skill, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-900 dark:text-white">{skill.name}</span>
+                      <span className="font-extrabold text-[#2d8a4e] dark:text-emerald-400 text-[10px]">{skill.label}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 font-semibold">{skill.label}</span>
+                    <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div className="h-full bg-[#2d8a4e] dark:bg-emerald-500 rounded-full" style={{ width: `${(skill.level / 3) * 100}%` }} />
+                    </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* ACHIEVEMENTS BY CATEGORY CARD */}
-            <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-2xs space-y-4">
-              <h3 className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                <Trophy className="w-4 h-4 text-[#2d8a4e]" />
-                <span>Accomplishments by Category</span>
-              </h3>
-
-              <div className="space-y-2">
-                {[
-                  { name: 'Research & Publications', count: 2, icon: BookOpen },
-                  { name: 'Seminars & Workshops', count: 1, icon: Users },
-                  { name: 'Extension Services', count: 1, icon: Heart },
-                  { name: 'Institutional Awards', count: 1, icon: Award }
-                ].map((cat) => {
-                  const IconC = cat.icon
-                  return (
-                    <button
-                      key={cat.name}
-                      type="button"
-                      onClick={() => handleCategoryClick(cat.name)}
-                      className="w-full p-2.5 rounded-2xl bg-emerald-50/60 hover:bg-[#eef7f0] border border-emerald-100 flex items-center justify-between text-xs font-bold text-slate-800 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <IconC className="w-4 h-4 text-[#2d8a4e]" />
-                        <span className="group-hover:text-[#2d8a4e] transition">{cat.name}</span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-[#2d8a4e] text-[10px] font-extrabold shadow-2xs">
-                        {cat.count}
-                      </span>
-                    </button>
-                  )
-                })}
               </div>
             </div>
 
@@ -600,31 +536,25 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
         </div>
 
-        {/* MODALS */}
+      </div>
+
+      {/* Edit Basic Info Modal */}
+      {isEditModalOpen && (
         <EditBasicInfoModal
+          user={personnel}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          currentInfo={personnel}
           onSave={handleSaveProfile}
         />
+      )}
 
-        <ExportPortfolioPreviewModal
-          isOpen={isExportModalOpen}
-          onClose={() => setIsExportModalOpen(false)}
-          student={personnel}
-          skills={skills}
-          experiences={experiences}
-        />
-
-        {/* CANVA PORTFOLIO BOOKLET VIEWER MODAL (1 PAGE PER ACCOMPLISHMENT) */}
-        <PersonnelPortfolioCanvaView
-          isOpen={isCanvaModalOpen}
-          onClose={() => setIsCanvaModalOpen(false)}
-          portfolio={portfolio}
-          user={personnel}
-        />
-
-      </div>
+      {/* Canva Booklet View Presenter Modal */}
+      <PersonnelPortfolioCanvaView
+        isOpen={isCanvaModalOpen}
+        onClose={() => setIsCanvaModalOpen(false)}
+        portfolio={portfolio}
+        user={personnel}
+      />
     </MainLayout>
   )
 }

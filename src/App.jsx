@@ -10,6 +10,7 @@ import NotificationsPage from './pages/NotificationsPage'
 import PersonnelDashboard from './pages/PersonnelDashboard'
 import PersonnelAchievementsPage from './pages/PersonnelAchievementsPage'
 import PersonnelPortfolioPage from './pages/PersonnelPortfolioPage'
+import PersonnelPortfolioEditPage from './pages/PersonnelPortfolioEditPage'
 import HRDashboard from './pages/HRDashboard'
 import OSADDashboard from './pages/OSADDashboard'
 import OfficerScannerPage from './pages/OfficerScannerPage'
@@ -104,11 +105,12 @@ export default function App() {
             <Route path="/depsec" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/coordinator" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/org-moderator" element={<Navigate to="/personnel/dashboard" replace />} />
-            <Route path="/personnel/achievements" element={<ProtectedRoute><PersonnelAchievementsPage /></ProtectedRoute>} />
-            <Route path="/personnel/portfolio" element={<ProtectedRoute><PersonnelPortfolioPage /></ProtectedRoute>} />
-            <Route path="/personnel/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
-            <Route path="/personnel/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            <Route path="/personnel/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/personnel/achievements" element={<Navigate to="/personnel/portfolio/edit" replace />} />
+            <Route path="/personnel/portfolio/edit" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><PersonnelPortfolioEditPage /></ProtectedRoute>} />
+            <Route path="/personnel/portfolio" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><PersonnelPortfolioPage /></ProtectedRoute>} />
+            <Route path="/personnel/account" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><AccountPage /></ProtectedRoute>} />
+            <Route path="/personnel/settings" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><SettingsPage /></ProtectedRoute>} />
+            <Route path="/personnel/notifications" element={<ProtectedRoute allowedRoles={['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']}><NotificationsPage /></ProtectedRoute>} />
 
             {/* Executive Portals */}
             <Route path="/hr/dashboard" element={<ProtectedRoute allowedRoles={['hr_staff']}><HRDashboard /></ProtectedRoute>} />

@@ -39,14 +39,14 @@ import {
 
 
 
-import useOrganization from '../../hooks/useOrganization'
-import AttendanceController from '../../controllers/AttendanceController'
-import OrganizationController from '../../controllers/OrganizationController'
+import useOrganization from '../../../hooks/useOrganization'
+import AttendanceController from '../../../controllers/AttendanceController'
+import OrganizationController from '../../../controllers/OrganizationController'
 import EventCreationModal from './EventCreationModal'
 import AttendanceScannerModal from './AttendanceScannerModal'
 import DigitalCertificateModal from './DigitalCertificateModal'
 import EventCardOptionsMenu from './EventCardOptionsMenu'
-import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../utils/signatureVault'
+import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
 
 
 

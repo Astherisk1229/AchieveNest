@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Calendar, MapPin, Clock, Layers, Sparkles, Eye, ShieldCheck, CheckCircle2, ChevronRight, ChevronLeft, Building2, User, Upload, Image } from 'lucide-react'
-import OrganizationController from '../../controllers/OrganizationController'
-import SignatureVault, { parseSignatoryInfo } from '../../utils/signatureVault'
+import OrganizationController from '../../../controllers/OrganizationController'
+import SignatureVault, { parseSignatoryInfo } from '../../../utils/signatureVault'
 
 
 export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onUpdateEvent, editingEvent }) {

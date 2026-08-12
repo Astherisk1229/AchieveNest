@@ -3,19 +3,19 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import DigitalBarcodeIDCard from '../student/DigitalBarcodeIDCard'
 import EditBasicInfoModal from './EditBasicInfoModal'
 import PersonnelSubmissionModal from './PersonnelSubmissionModal'
-import CoordinatorDashboardView from '../program-coordinator/CoordinatorDashboardView'
-import OrgModeratorDashboardView from '../organization-moderator/OrgModeratorDashboardView'
-import DepSecDashboardView from '../department-secretary/DepSecDashboardView'
+import CoordinatorDashboardView from './program-coordinator/CoordinatorDashboardView'
+import OrgModeratorDashboardView from './organization-moderator/OrgModeratorDashboardView'
+import DepSecDashboardView from './department-secretary/DepSecDashboardView'
 
-import { 
-  Award, 
-  BookOpen, 
-  CheckCircle2, 
-  FileText, 
-  Plus, 
-  QrCode, 
-  ShieldCheck, 
-  Filter, 
+import {
+  Award,
+  BookOpen,
+  CheckCircle2,
+  FileText,
+  Plus,
+  QrCode,
+  ShieldCheck,
+  Filter,
   FileCheck2,
   Share2,
   ChevronRight,
@@ -195,277 +195,298 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
         <DepSecDashboardView key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
-        
-        {/* ================= HERO SUMMARY BANNER ================= */}
-        <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
-          
-          <div className="flex items-start justify-between mb-8 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
-                <Award className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-extrabold text-white tracking-tight">Personnel Professional Portfolio</h1>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-400/30 uppercase">
-                    CONTEXT: PERSONNEL
-                  </span>
+
+          {/* ================= HERO SUMMARY BANNER ================= */}
+          <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
+
+            <div className="flex items-start justify-between mb-8 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
+                  <Award className="w-6 h-6" />
                 </div>
-                <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
-                  {profile.full_name} • {profile.employee_id} • {profile.department}
-                </p>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-2xl font-extrabold text-white tracking-tight">Personnel Professional Portfolio</h1>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-400/30 uppercase">
+                      CONTEXT: PERSONNEL
+                    </span>
+                  </div>
+                  <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
+                    {profile.full_name} • {profile.employee_id} • {profile.department}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <button
-              type="button"
-              onClick={() => setIsBarcodeOpen(true)}
-              className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white flex items-center gap-2 transition text-xs font-bold shadow-md group shrink-0"
-              title="Click to expand Faculty Digital ID Barcode"
-            >
-              <QrCode className="w-4 h-4 text-amber-300 group-hover:scale-110 transition" />
-              <span className="hidden sm:inline">Digital ID Barcode</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 relative z-10">
-            <Link
-              to="/personnel/portfolio/edit"
-              className="p-4 rounded-2xl border text-left transition bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50 hover:bg-[#257542] cursor-pointer"
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <Award className="w-4 h-4 text-amber-300" />
-                <span>Total Achievements</span>
-              </div>
-              <p className="text-3xl font-black text-white">{accomplishments.length} <span className="text-xs font-normal text-emerald-200">Records</span></p>
-            </Link>
-
-            <Link
-              to="/personnel/portfolio/edit"
-              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                <span>Verified Records</span>
-              </div>
-              <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.status === 'Verified' || a.status === 'HR Verified').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
-            </Link>
-
-            <Link
-              to="/personnel/portfolio/edit"
-              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <BookOpen className="w-4 h-4 text-amber-300" />
-                <span>Pending Review</span>
-              </div>
-              <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.status === 'Pending Review' || a.status === 'Pending').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
-            </Link>
-
-            <Link
-              to="/personnel/portfolio"
-              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-300" />
-                <span>Attached Proofs</span>
-              </div>
-              <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.proof_file || a.attached_file_name).length} <span className="text-xs font-normal text-emerald-300/80">Files</span></p>
-            </Link>
-
-            <Link
-              to="/personnel/portfolio"
-              className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
-            >
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                <ShieldCheck className="w-4 h-4 text-amber-300" />
-                <span>Portfolio Status</span>
-              </div>
-              <p className="text-sm font-extrabold text-amber-300 line-clamp-1">
-                {portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
-                 portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
-                 portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
-              </p>
-            </Link>
-
-          </div>
-        </div>
-
-        {/* ================= QUICK ACTIONS SECTION (DARK MODE FIX) ================= */}
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <h2 className="text-base font-bold text-slate-800 dark:text-white">Quick Actions</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Link
-              to="/personnel/portfolio/edit"
-              state={{ openSubmissionModal: true }}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Award className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
-                Add Achievement
-              </span>
-            </Link>
-
-            <Link
-              to="/personnel/portfolio/edit"
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <FileText className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
-                Edit Portfolio
-              </span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setIsEditInfoOpen(true)}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
-                <Edit3 className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
-                Edit Basic Information
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* ================= ACHIEVEMENTS TIMELINE SECTION (DARK MODE FIX) ================= */}
-        <div id="achievements-timeline" className="scroll-mt-6">
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <span>Accomplishments Timeline</span>
-              {activeFilter !== 'All' && (
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800">
-                  Filtered: {activeFilter}
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <Filter className="w-3.5 h-3.5" />
-              <span>Showing {filteredAccomplishments.length} of {accomplishments.length} records</span>
-            </div>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-3 scrollbar-none">
-            {[
-              'All',
-              'Degrees & Orgs',
-              'Seminars & Trainings',
-              'Lectures & Publications',
-              'Research & Awards',
-              'Instructional Materials',
-              'Service & Community'
-            ].map((cat) => (
               <button
-                key={cat}
                 type="button"
-                onClick={() => setActiveFilter(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${
-                  activeFilter === cat
-                    ? 'bg-[#1b4332] text-white shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
+                onClick={() => setIsBarcodeOpen(true)}
+                className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white flex items-center gap-2 transition text-xs font-bold shadow-md group shrink-0"
+                title="Click to expand Faculty Digital ID Barcode"
               >
-                {cat}
+                <QrCode className="w-4 h-4 text-amber-300 group-hover:scale-110 transition" />
+                <span className="hidden sm:inline">Digital ID Barcode</span>
               </button>
-            ))}
+            </div>            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 relative z-10">
+              {/* Card 1: Total Accomplishments */}
+              <Link
+                to="/personnel/portfolio/edit"
+                className="p-4 rounded-2xl border text-left transition bg-[#2d8a4e] border-amber-400/80 shadow-md hover:bg-[#257542] cursor-pointer"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-100 mb-2">
+                  <Award className="w-4 h-4 text-amber-300" />
+                  <span>Accomplishments</span>
+                </div>
+                <p className="text-2xl font-black text-white">{accomplishments.length} <span className="text-xs font-normal text-emerald-200">Records</span></p>
+              </Link>
+
+              {/* Card 2: Attached Proof Files */}
+              <Link
+                to="/personnel/portfolio/edit"
+                className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-200/90 mb-2">
+                  <FileCheck2 className="w-4 h-4 text-emerald-300" />
+                  <span>Attached Proofs</span>
+                </div>
+                <p className="text-2xl font-black text-white">{accomplishments.filter(a => a.proof_file || a.attached_file_name).length} <span className="text-xs font-normal text-emerald-300/80">Files</span></p>
+              </Link>
+
+              {/* Card 3: Evaluation Period */}
+              <div className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-200/90 mb-2">
+                  <BookOpen className="w-4 h-4 text-emerald-300" />
+                  <span>Evaluation Period</span>
+                </div>
+                <p className="text-xl font-extrabold text-white">AY 2025–2026</p>
+              </div>
+
+              {/* Card 4: Portfolio Status */}
+              <Link
+                to="/personnel/portfolio"
+                className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-200/90 mb-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-300" />
+                  <span>Portfolio Status</span>
+                </div>
+                <p className="text-sm font-extrabold text-amber-300 line-clamp-1">
+                  {portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
+                    portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
+                      portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
+                </p>
+              </Link>
+            </div>
           </div>
 
-          {/* Timeline Card Items */}
-          <div className="space-y-3">
-            {filteredAccomplishments.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500 text-xs">
-                No accomplishment entries found under "{activeFilter}" category filter.
+            {/* ================= QUICK ACTIONS SECTION (DARK MODE FIX) ================= */}
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="text-base font-bold text-slate-800 dark:text-white">Quick Actions</h2>
               </div>
-            ) : (
-              filteredAccomplishments.map((item) => {
-                const IconComponent = item.icon || Award
-                return (
-                  <div
-                    key={item.id}
-                    className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Log Accomplishment */}
+                <button
+                  type="button"
+                  onClick={() => setIsSubmitOpen(true)}
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer relative overflow-hidden"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
+                    <Plus className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
+                      Log Accomplishment
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-snug">
+                      Add new research, award, or seminar proof
+                    </span>
+                  </div>
+                </button>
+
+                {/* 2. Edit Portfolio */}
+                <Link
+                  to="/personnel/portfolio/edit"
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer relative overflow-hidden"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
+                      Edit Portfolio
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-snug">
+                      Manage attached proofs & category points
+                    </span>
+                  </div>
+                </Link>
+
+                {/* 3. Preview Portfolio Booklet */}
+                <Link
+                  to="/personnel/portfolio"
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer relative overflow-hidden"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
+                      Preview Portfolio Booklet
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-snug">
+                      Inspect 16-slide Canva presentation deck
+                    </span>
+                  </div>
+                </Link>
+
+                {/* 4. Submit for NDMU Ranking */}
+                <Link
+                  to="/personnel/portfolio"
+                  state={{ autoOpenSubmitModal: true }}
+                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer relative overflow-hidden"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-extrabold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
+                      Submit for NDMU Ranking
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium leading-snug">
+                      Send dossier for Department & HR review
+                    </span>
+                  </div>
+                </Link>
+              </div>
+            </div>
+
+            {/* ================= ACHIEVEMENTS TIMELINE SECTION (DARK MODE FIX) ================= */}
+            <div id="achievements-timeline" className="scroll-mt-6">
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h2 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <span>Accomplishments Timeline</span>
+                  {activeFilter !== 'All' && (
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800">
+                      Filtered: {activeFilter}
+                    </span>
+                  )}
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>Showing {filteredAccomplishments.length} of {accomplishments.length} records</span>
+                </div>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-3 scrollbar-none">
+                {[
+                  'All',
+                  'Degrees & Orgs',
+                  'Seminars & Trainings',
+                  'Lectures & Publications',
+                  'Research & Awards',
+                  'Instructional Materials',
+                  'Service & Community'
+                ].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveFilter(cat)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${activeFilter === cat
+                      ? 'bg-[#1b4332] text-white shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      }`}
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'}`}>
-                        <IconComponent className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{item.title}</h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{item.description}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">📅 {item.date}</span>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              item.status === 'Verified'
-                                ? 'bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800'
-                                : item.status === 'Endorsed'
-                                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                            }`}
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Timeline Card Items */}
+              <div className="space-y-3">
+                {filteredAccomplishments.length === 0 ? (
+                  <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    No accomplishment entries found under "{activeFilter}" category filter.
+                  </div>
+                ) : (
+                  filteredAccomplishments.map((item) => {
+                    const IconComponent = item.icon || Award
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'}`}>
+                            <IconComponent className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{item.title}</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{item.description}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">📅 {item.date}</span>
+                              <span className="text-slate-300 dark:text-slate-700">•</span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.status === 'Verified'
+                                  ? 'bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800'
+                                  : item.status === 'Endorsed'
+                                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                  }`}
+                              >
+                                {item.statusLabel || item.status}
+                              </span>
+                              <span className="text-slate-300 dark:text-slate-700">•</span>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{item.issuer}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => alert(`Viewing attached proof: ${item.attached_file_name}`)}
+                            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition"
                           >
-                            {item.statusLabel || item.status}
+                            <FileCheck2 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+                            <span>Proof</span>
+                          </button>
+                          <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800 shrink-0">
+                            {item.category}
                           </span>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{item.issuer}</span>
                         </div>
                       </div>
-                    </div>
+                    )
+                  })
+                )}
+              </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => alert(`Viewing attached proof: ${item.attached_file_name}`)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition"
-                      >
-                        <FileCheck2 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
-                        <span>Proof</span>
-                      </button>
-                      <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800 shrink-0">
-                        {item.category}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })
-            )}
+            </div>
+
           </div>
-
-        </div>
-
-      </div>
       )}
 
-      {/* MODALS */}
-      <DigitalBarcodeIDCard
-        user={profile}
-        isOpen={isBarcodeOpen}
-        onClose={() => setIsBarcodeOpen(false)}
-      />
+          {/* MODALS */}
+          <DigitalBarcodeIDCard
+            user={profile}
+            isOpen={isBarcodeOpen}
+            onClose={() => setIsBarcodeOpen(false)}
+          />
 
-      <EditBasicInfoModal
-        isOpen={isEditInfoOpen}
-        onClose={() => setIsEditInfoOpen(false)}
-        currentInfo={profile}
-        onSave={handleSaveBasicInfo}
-      />
+          <EditBasicInfoModal
+            isOpen={isEditInfoOpen}
+            onClose={() => setIsEditInfoOpen(false)}
+            currentInfo={profile}
+            onSave={handleSaveBasicInfo}
+          />
 
-      <PersonnelSubmissionModal
-        isOpen={isSubmitOpen}
-        onClose={() => setIsSubmitOpen(false)}
-        onSubmitAccomplishment={handleAddNewAccomplishment}
-      />
-    </div>
-  )
-}
+          <PersonnelSubmissionModal
+            isOpen={isSubmitOpen}
+            onClose={() => setIsSubmitOpen(false)}
+            onSubmitAccomplishment={handleAddNewAccomplishment}
+          />
+        </div>
+      )
+      }

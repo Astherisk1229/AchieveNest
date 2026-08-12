@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { X, QrCode, CheckCircle2, UserCheck, ShieldCheck, Camera, Lock, Unlock, ShieldAlert, LogOut } from 'lucide-react'
-import AttendanceController from '../../controllers/AttendanceController'
+import AttendanceController from '../../../controllers/AttendanceController'
 
 export default function AttendanceScannerModal({ isOpen, onClose, activeEvent }) {
   const [activeOfficer, setActiveOfficer] = useState(null) // null = Locked Terminal

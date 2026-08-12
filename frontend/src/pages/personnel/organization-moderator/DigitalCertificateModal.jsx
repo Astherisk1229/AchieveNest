@@ -1,6 +1,6 @@
 import React from 'react'
 import { X, Award, Download, CheckCircle2, ShieldCheck, QrCode } from 'lucide-react'
-import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../utils/signatureVault'
+import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
 
 
 

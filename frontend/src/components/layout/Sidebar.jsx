@@ -87,7 +87,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (activeContext === 'program_coordinator') {
       return [
-        { label: 'Homepage', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
         { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
         { label: 'Students', icon: Users, path: '/personnel/dashboard?tab=students', tab: 'students' },
         { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
@@ -99,7 +99,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (activeContext === 'organization_moderator') {
       return [
-        { label: 'Homepage', icon: Home, path: '/personnel/dashboard?tab=dashboard', tab: 'dashboard' },
+        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard?tab=dashboard', tab: 'dashboard' },
         { label: 'Manage Events', icon: Calendar, path: '/personnel/dashboard?tab=events', tab: 'events' },
         { label: 'Attendance Sessions', icon: QrCode, path: '/personnel/dashboard?tab=attendance', tab: 'attendance' },
         { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
@@ -111,7 +111,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (activeContext === 'department_secretary') {
       return [
-        { label: 'Homepage', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
         { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
         { label: 'Personnel Roster', icon: Users, path: '/personnel/dashboard?tab=personnel', tab: 'personnel' },
         { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
@@ -123,7 +123,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (['personnel', 'faculty'].includes(activeContext) || location.pathname.includes('/personnel/')) {
       return [
-        { label: 'Homepage', icon: Home, path: '/personnel/dashboard' },
+        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard' },
         { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
         { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
         { label: 'Account', icon: User, path: '/personnel/account' },
@@ -131,7 +131,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     }
 
     return [
-      { label: 'Homepage', icon: Home, path: portalInfo.path },
+      { label: 'Dashboard', icon: Home, path: portalInfo.path },
       { label: 'Achievements', icon: Award, path: '/student/achievements' },
       { label: 'Portfolio', icon: FolderKanban, path: '/student/portfolio' },
       { label: 'Account', icon: User, path: '/student/account' },

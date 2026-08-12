@@ -17,8 +17,8 @@ import {
   Search
 } from 'lucide-react'
 
-import OrganizationController from '../../controllers/OrganizationController'
-import AttendanceController from '../../controllers/AttendanceController'
+import OrganizationController from '../../../controllers/OrganizationController'
+import AttendanceController from '../../../controllers/AttendanceController'
 
 export default function OfficerScannerPage() {
   const { eventId } = useParams()

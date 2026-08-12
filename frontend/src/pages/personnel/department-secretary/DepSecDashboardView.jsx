@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useDepSecVerification } from '../../hooks/useDepSecVerification'
+import { useDepSecVerification } from '../../../hooks/useDepSecVerification'
 import DepSecPortfolioRoster from './DepSecPortfolioRoster'
 import DepSecEvaluatorWorkbench from './DepSecEvaluatorWorkbench'
 import { 

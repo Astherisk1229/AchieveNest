@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import campusBanner from '../../assets/ndmu_campus_banner.png'
-import { useVerification } from '../../hooks/useVerification'
+import campusBanner from '../../../assets/ndmu_campus_banner.png'
+import { useVerification } from '../../../hooks/useVerification'
 
-import { useStudentRoster } from '../../hooks/useStudentRoster'
+import { useStudentRoster } from '../../../hooks/useStudentRoster'
 import { 
   Shield, 
   ShieldCheck,

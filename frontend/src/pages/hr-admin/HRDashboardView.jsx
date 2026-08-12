@@ -11,14 +11,19 @@ import {
 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 import HRModel from '../../models/HRModel'
+import DepartmentSecretaryAssignmentModal from './DepartmentSecretaryAssignmentModal'
+import CreatePersonnelAccountModal from './CreatePersonnelAccountModal'
 
 export default function HRDashboardView({ currentUser }) {
   const hrUser = currentUser || { full_name: 'Director Evelyn Tan', email: 'hr@ndmu.edu.ph', employee_id: 'HR-2010-001' }
 
   const {
     activeTab, setActiveTab,
+    personnelList,
     filteredPersonnel,
     pendingEndorsements,
+    directHRQueue,
+    endorsedQueue,
     accomplishments,
     auditLogs,
     passwordResets,
@@ -29,13 +34,18 @@ export default function HRDashboardView({ currentUser }) {
     isRankModalOpen, setIsRankModalOpen,
     isProofModalOpen, setIsProofModalOpen,
     stats,
+    handleCreatePersonnelAccount,
     handleUpdateRank,
+    handleAssignDepartmentSecretary,
     handleSealVerification,
     handleReturnAccomplishment,
     handleApprovePasswordReset
   } = useHR()
 
   // Modal Form State & Password Reset Temp Pass Inputs
+  const [isAssignDeptSecModalOpen, setIsAssignDeptSecModalOpen] = useState(false)
+  const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false)
+  const [verificationSubTab, setVerificationSubTab] = useState('direct_hr') // 'direct_hr' | 'endorsed_dept'
   const [newRank, setNewRank] = useState('Assistant Professor I')
   const [newStatus, setNewStatus] = useState('Full-Time Permanent')
   const [returnRemarks, setReturnRemarks] = useState('')
@@ -126,13 +136,14 @@ export default function HRDashboardView({ currentUser }) {
           </div>
         </div>
 
-        {/* Streamlined 4 Core HR Modules Navigation Bar */}
+        {/* Finalized 5 Core HR Portal Navigation Bar */}
         <div className="flex items-center gap-2 mt-6 pt-6 border-t border-emerald-800/60 overflow-x-auto no-scrollbar">
           {[
-            { id: 'overview', label: '1. Executive Command Center', icon: Building2 },
-            { id: 'personnel', label: '2. Personnel Directory & Rank', icon: Users },
-            { id: 'verification', label: `3. Faculty Verification Queue (${stats.pendingEndorsements})`, icon: FileCheck, badge: stats.pendingEndorsements },
-            { id: 'reports', label: '4. Accreditation Reports & Audit Logs', icon: ShieldCheck }
+            { id: 'overview', label: '1. Dashboard', icon: Building2 },
+            { id: 'personnel', label: '2. Personnel Governance', icon: Users },
+            { id: 'verification', label: `3. Verification Queue (${stats.pendingEndorsements})`, icon: FileCheck, badge: stats.pendingEndorsements },
+            { id: 'masterboard', label: '4. Faculty Ranking & Matrix', icon: Sparkles },
+            { id: 'audit', label: '5. Accreditation & Audit Logs', icon: ShieldCheck }
           ].map(tab => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -219,42 +230,68 @@ export default function HRDashboardView({ currentUser }) {
 
           {/* HR Executive Management & Action Hub */}
           <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
-            <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#2d8a4e]" /> HR Executive Action Hub
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-[#2d8a4e]" /> HR Executive Action & Governance Hub
+              </h2>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">4 Workflows</span>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Personnel & Rank Governance */}
               <button
                 onClick={() => setActiveTab('personnel')}
-                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer"
+                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3">
-                  <UserPlus className="w-5 h-5" />
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
+                    <UserPlus className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Personnel & Rank Governance</h3>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Manage Faculty roster, employment status & academic rank promotions.</p>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Manage Personnel Directory & Ranks</h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Inspect faculty profiles, academic ranks & track promotion milestones.</p>
               </button>
 
+              {/* Card 2: Faculty Verification Queue */}
               <button
                 onClick={() => setActiveTab('verification')}
-                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer"
+                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3">
-                  <FileCheck className="w-5 h-5" />
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
+                    <FileCheck className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Review Endorsement Queue</h3>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Inspect supporting proof files & stamp official HR seal on accomplishments.</p>
                 </div>
-                <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Review Endorsement Queue</h3>
-                <p className="text-xs text-slate-500 mt-1 font-medium">Inspect supporting proof files & stamp official HR seal on accomplishments.</p>
               </button>
 
+              {/* Card 3: NDMU Rating Matrix & Reports */}
               <button
                 onClick={handleExportFacultyMatrix}
-                className="p-5 rounded-2xl bg-[#1b4332] text-white hover:bg-[#12361e] text-left transition group cursor-pointer shadow-md"
+                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-emerald-300 mb-3">
-                  <Download className="w-5 h-5" />
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Accreditation & Ranking Matrix</h3>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Export PACUCOA, CHEd & NDMU annual audit faculty reports.</p>
                 </div>
-                <h3 className="text-sm font-bold text-white">Export CHEd Faculty Matrix</h3>
-                <p className="text-xs text-emerald-200 mt-1 font-medium">Download standardized CSV matrix for institutional compliance audit.</p>
+              </button>
+
+              {/* Card 4: System Audit Logs */}
+              <button
+                onClick={() => setActiveTab('reports')}
+                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">System Security Logs</h3>
+                  <p className="text-xs text-slate-500 mt-1 font-medium">Audit file binary hashes, score seals & user rank modification logs.</p>
+                </div>
               </button>
             </div>
           </div>
@@ -366,9 +403,30 @@ export default function HRDashboardView({ currentUser }) {
 
           {/* Personnel Table */}
           <div className="rounded-3xl bg-white border border-slate-200/80 shadow-xs overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-base font-extrabold text-slate-900">University Personnel Directory & Rank Track</h2>
-              <span className="text-xs font-bold text-slate-500">{filteredPersonnel.length} Employees Found</span>
+            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">University Personnel Directory & Role Governance</h2>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">Manage academic ranks and designate Department Secretary governance roles</p>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAccountModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-2 shadow-xs transition cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create Account</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAssignDeptSecModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#12361e] text-white text-xs font-extrabold flex items-center gap-2 shadow-xs transition cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                  <span>Assign Dept Secretary</span>
+                </button>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200">{filteredPersonnel.length} Employees</span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -430,25 +488,64 @@ export default function HRDashboardView({ currentUser }) {
       {/* ================= MODULE 3: FACULTY VERIFICATION QUEUE ================= */}
       {activeTab === 'verification' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-2">
-            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <FileCheck className="w-5 h-5 text-[#2d8a4e]" /> Department Secretary Endorsed Accomplishments Queue
-            </h2>
-            <p className="text-xs text-slate-500">
-              Items listed here have been reviewed and endorsed by Department Secretaries. Inspect supporting proof files and apply the official HR Seal to verify.
-            </p>
+          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-[#2d8a4e]" /> Anti-Bias Verification Queue Engine
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                To prevent department-level bias, HR Admin directly verifies accomplishments of Department Secretaries &amp; Institutional &amp; Higher Education Officials (College Deans, Program Coordinators). Regular faculty submissions endorsed by secretaries are listed in the Department-Endorsed Queue.
+              </p>
+            </div>
+
+            {/* Sub-Tabs: Direct HR Anti-Bias Queue vs Department-Endorsed Queue */}
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setVerificationSubTab('direct_hr')}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                  verificationSubTab === 'direct_hr'
+                    ? 'bg-[#1b4332] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                <span>Direct HR Verification Queue ({directHRQueue.length || accomplishments.length})</span>
+                <span className="text-[10px] bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full font-black">
+                  Secretaries &amp; Institutional Officials
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setVerificationSubTab('endorsed_dept')}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+                  verificationSubTab === 'endorsed_dept'
+                    ? 'bg-[#1b4332] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <FileCheck className="w-4 h-4 text-emerald-300" />
+                <span>Department-Endorsed Queue ({endorsedQueue.length})</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
-            {accomplishments.map(acc => (
+            {(verificationSubTab === 'direct_hr' ? (directHRQueue.length > 0 ? directHRQueue : accomplishments) : endorsedQueue).map(acc => (
               <div key={acc.id} className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:shadow-md transition">
                 <div className="space-y-2 max-w-2xl">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
                       acc.status === 'hr_verified' ? 'bg-emerald-100 text-[#1b4332]' : acc.status === 'returned' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
                     }`}>
                       {acc.status === 'hr_verified' ? 'HR Verification Sealed' : acc.status === 'returned' ? 'Returned' : 'Pending HR Verification'}
                     </span>
+                    {verificationSubTab === 'direct_hr' && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                        Institutional &amp; Higher Education Official / Secretary
+                      </span>
+                    )}
                     <span className="text-xs text-slate-400 font-medium">Endorsed {acc.secretary_endorsement_date}</span>
                   </div>
 
@@ -458,7 +555,7 @@ export default function HRDashboardView({ currentUser }) {
                   </p>
 
                   <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
-                    <strong className="text-slate-800">Department Secretary Endorsement Note:</strong> "{acc.secretary_remarks}"
+                    <strong className="text-slate-800">Verification Note:</strong> "{acc.secretary_remarks}"
                   </div>
                 </div>
 
@@ -467,7 +564,7 @@ export default function HRDashboardView({ currentUser }) {
                     onClick={() => openProofModal(acc)}
                     className="px-4 py-2.5 rounded-2xl bg-[#1b4332] text-white hover:bg-[#12361e] font-bold text-xs transition cursor-pointer shadow-md flex items-center gap-2"
                   >
-                    <Eye className="w-4 h-4" /> Inspect & Verify
+                    <Eye className="w-4 h-4" /> Inspect &amp; Verify
                   </button>
                 </div>
               </div>
@@ -668,6 +765,21 @@ export default function HRDashboardView({ currentUser }) {
           </div>
         </div>
       )}
+
+      {/* DEPARTMENT SECRETARY ROLE ASSIGNMENT MODAL */}
+      <DepartmentSecretaryAssignmentModal
+        isOpen={isAssignDeptSecModalOpen}
+        onClose={() => setIsAssignDeptSecModalOpen(false)}
+        personnelList={personnelList}
+        onAssign={handleAssignDepartmentSecretary}
+      />
+
+      {/* CREATE PERSONNEL ACCOUNT MODAL */}
+      <CreatePersonnelAccountModal
+        isOpen={isCreateAccountModalOpen}
+        onClose={() => setIsCreateAccountModalOpen(false)}
+        onSave={handleCreatePersonnelAccount}
+      />
 
     </div>
   )

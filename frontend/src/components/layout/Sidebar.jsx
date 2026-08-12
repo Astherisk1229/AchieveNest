@@ -65,10 +65,11 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const getNavItems = () => {
     if (activeContext === 'hr_staff' || location.pathname.includes('/hr/')) {
       return [
-        { label: 'Executive Command Center', icon: Home, path: '/hr/dashboard?tab=overview', tab: 'overview' },
-        { label: 'Personnel Directory & Rank', icon: Users, path: '/hr/dashboard?tab=personnel', tab: 'personnel' },
-        { label: 'Faculty Verification Queue', icon: FileCheck2, path: '/hr/dashboard?tab=verification', tab: 'verification' },
-        { label: 'Accreditation & Audit Logs', icon: ShieldCheck, path: '/hr/dashboard?tab=reports', tab: 'reports' },
+        { label: 'Dashboard', icon: Home, path: '/hr/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Personnel Governance', icon: Users, path: '/hr/dashboard?tab=personnel', tab: 'personnel' },
+        { label: 'Verification Queue', icon: FileCheck2, path: '/hr/dashboard?tab=verification', tab: 'verification' },
+        { label: 'Faculty Ranking & Matrix', icon: Award, path: '/hr/dashboard?tab=masterboard', tab: 'masterboard' },
+        { label: 'Accreditation & Audit Logs', icon: ShieldCheck, path: '/hr/dashboard?tab=audit', tab: 'audit' },
       ]
     }
 

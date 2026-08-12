@@ -203,6 +203,15 @@ class HRController {
   }
 
   // --- Personnel Methods ---
+  createPersonnelAccount(data) {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_PERSONNEL) || '[]')
+    const newEntity = new PersonnelEntity(data)
+    raw.unshift(newEntity.toJSON())
+    localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(raw))
+    this.logAudit('PERSONNEL_ACCOUNT_CREATED', newEntity.full_name, `Created personnel account (${newEntity.employee_id}) for ${newEntity.department}.`)
+    return raw.map(item => new PersonnelEntity(item))
+  }
+
   getPersonnelList() {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_PERSONNEL) || '[]')
     return raw.map(item => new PersonnelEntity(item))
@@ -239,6 +248,25 @@ class HRController {
     })
     localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(updated))
     this.logAudit('ROLE_ASSIGNMENT', targetName, `Assigned administrative role: ${roleKey}.`)
+    return updated.map(item => new PersonnelEntity(item))
+  }
+
+  assignDepartmentSecretary(id, departmentName) {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_PERSONNEL) || '[]')
+    let targetName = ''
+    const updated = raw.map(p => {
+      if (p.id === id) {
+        targetName = p.full_name
+        const roles = Array.isArray(p.assigned_roles) ? p.assigned_roles : []
+        if (!roles.includes('department_secretary')) {
+          roles.push('department_secretary')
+        }
+        return { ...p, department: departmentName || p.department, assigned_roles: roles }
+      }
+      return p
+    })
+    localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(updated))
+    this.logAudit('ROLE_ASSIGNMENT', targetName, `Assigned as Department Secretary for ${departmentName}.`)
     return updated.map(item => new PersonnelEntity(item))
   }
 

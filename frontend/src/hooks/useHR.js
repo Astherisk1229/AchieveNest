@@ -65,6 +65,11 @@ export function useHR() {
   }, [selectedAwardId, personnelList])
 
   // --- Business Actions ---
+  const handleCreatePersonnelAccount = (accountData) => {
+    HRController.createPersonnelAccount(accountData)
+    refreshData()
+  }
+
   const handleUpdateRank = (personnelId, newRank, newStatus) => {
     HRController.updatePersonnelRank(personnelId, newRank, newStatus)
     refreshData()
@@ -73,6 +78,11 @@ export function useHR() {
 
   const handleAssignRole = (personnelId, roleKey) => {
     HRController.assignPersonnelRole(personnelId, roleKey)
+    refreshData()
+  }
+
+  const handleAssignDepartmentSecretary = (personnelId, departmentName) => {
+    HRController.assignDepartmentSecretary(personnelId, departmentName)
     refreshData()
   }
 
@@ -110,11 +120,30 @@ export function useHR() {
 
   const pendingEndorsements = accomplishments.filter(a => a.status === 'dept_endorsed')
 
+  // Anti-Bias Verification Queues:
+  // Direct HR Verification: Accomplishments submitted by Department Secretaries & Institutional Officials
+  const directHRQueue = accomplishments.filter(a => {
+    const submitter = personnelList.find(p => p.employee_id === a.faculty_id || p.full_name === a.faculty_name)
+    const isOfficialOrSec = submitter && (
+      (submitter.assigned_roles || []).includes('department_secretary') ||
+      (submitter.assigned_roles || []).includes('program_coordinator') ||
+      submitter.academic_rank.includes('Professor') ||
+      submitter.academic_rank.includes('Dean')
+    )
+    return isOfficialOrSec && a.status === 'dept_endorsed'
+  })
+
+  // Endorsed Queue: Accomplishments from regular personnel endorsed by Department Secretaries
+  const endorsedQueue = accomplishments.filter(a => {
+    return a.status === 'dept_endorsed' && !directHRQueue.some(d => d.id === a.id)
+  })
+
   // Stats computation
   const stats = {
     totalPersonnel: personnelList.length,
     verifiedAccomplishments: accomplishments.filter(a => a.status === 'hr_verified').length,
     pendingEndorsements: pendingEndorsements.length,
+    directHRCount: directHRQueue.length,
     pendingResets: passwordResets.filter(r => r.status === 'pending').length,
     accreditationScore: '98.4%'
   }
@@ -126,6 +155,8 @@ export function useHR() {
     filteredPersonnel,
     accomplishments,
     pendingEndorsements,
+    directHRQueue,
+    endorsedQueue,
     serviceAwards,
     auditLogs,
     passwordResets,
@@ -145,8 +176,10 @@ export function useHR() {
     isProofModalOpen,
     setIsProofModalOpen,
     stats,
+    handleCreatePersonnelAccount,
     handleUpdateRank,
     handleAssignRole,
+    handleAssignDepartmentSecretary,
     handleRevokeRole,
     handleSealVerification,
     handleReturnAccomplishment,

@@ -16,7 +16,8 @@ import {
   Lock,
   KeyRound,
   RefreshCw,
-  Copy
+  Copy,
+  MoreVertical
 } from 'lucide-react'
 
 export default function OSADAccountsTab({
@@ -33,6 +34,7 @@ export default function OSADAccountsTab({
   approvePasswordResetRequest,
   showToast
 }) {
+  const [activeRowMenu, setActiveRowMenu] = useState(null)
   const [isCollegeDropdownOpen, setIsCollegeDropdownOpen] = useState(false)
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false)
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
@@ -298,7 +300,7 @@ export default function OSADAccountsTab({
                   <th className="p-4">College &amp; Program</th>
                   <th className="p-4">Role Context</th>
                   <th className="p-4">Points &amp; Proofs</th>
-                  <th className="p-4 text-right">Actions</th>
+                  <th className="p-4 pr-6 text-right w-16"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200 font-medium">
@@ -335,29 +337,45 @@ export default function OSADAccountsTab({
                         <p className="font-bold text-[#2d8a4e]">{user.total_points || 30} pts</p>
                         <p className="text-[11px] text-slate-500">{user.verified_count || 3} verified proofs</p>
                       </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="p-4 pr-6 text-right relative">
+                        <div className="relative inline-block text-left">
                           <button
                             type="button"
-                            onClick={() => setViewingStudent(user)}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 text-[11px] font-extrabold hover:bg-emerald-100 flex items-center gap-1.5 transition cursor-pointer"
+                            onClick={() => setActiveRowMenu(activeRowMenu === (user.id || user.student_id) ? null : (user.id || user.student_id))}
+                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View Portfolio</span>
+                            <MoreVertical className="w-4 h-4" />
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResetPasswordStudent(user)
-                              const randomNum = Math.floor(1000 + Math.random() * 9000)
-                              setTempPasswordInput(`NDMU-Std${randomNum}!`)
-                            }}
-                            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/50 text-slate-700 dark:text-slate-200 hover:text-amber-700 border border-slate-200 dark:border-slate-700 text-[11px] font-extrabold flex items-center gap-1.5 transition cursor-pointer"
-                          >
-                            <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                            <span>Reset Password</span>
-                          </button>
+                          {activeRowMenu === (user.id || user.student_id) && (
+                            <div className="absolute right-0 mt-1 w-44 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-xl z-30 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setViewingStudent(user)
+                                  setActiveRowMenu(null)
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-[#2d8a4e] flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4 text-[#2d8a4e]" />
+                                <span>View Portfolio</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setResetPasswordStudent(user)
+                                  const randomNum = Math.floor(1000 + Math.random() * 9000)
+                                  setTempPasswordInput(`NDMU-Std${randomNum}!`)
+                                  setActiveRowMenu(null)
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 flex items-center gap-2 transition cursor-pointer"
+                              >
+                                <KeyRound className="w-4 h-4 text-amber-600" />
+                                <span>Reset Password</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -16,14 +16,14 @@ import {
 
 import useOSAD from '../../hooks/useOSAD'
 import PersonnelSelectorModal from './PersonnelSelectorModal'
-import OSADOverviewTab from './tabs/OSADOverviewTab'
-import OSADAccountsTab from './tabs/OSADAccountsTab'
-import OSADDepartmentsTab from './tabs/OSADDepartmentsTab'
-import OSADOrganizationsTab from './tabs/OSADOrganizationsTab'
-import OSADAwardsTab from './tabs/OSADAwardsTab'
-import OSADAwardeesTab from './tabs/OSADAwardeesTab'
-import OSADReportsTab from './tabs/OSADReportsTab'
-import OSADAuditTab from './tabs/OSADAuditTab'
+import OSADOverviewTab from './OSADOverviewTab'
+import OSADAccountsTab from './OSADAccountsTab'
+import OSADDepartmentsTab from './OSADDepartmentsTab'
+import OSADOrganizationsTab from './OSADOrganizationsTab'
+import OSADAwardsTab from './OSADAwardsTab'
+import OSADAwardeesTab from './OSADAwardeesTab'
+import OSADReportsTab from './OSADReportsTab'
+import OSADAuditTab from './OSADAuditTab'
 
 export default function OSADDashboardView({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()

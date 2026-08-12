@@ -265,4 +265,13 @@ export default class HRModel {
     'CED - College of Education',
     'CON - College of Nursing'
   ]
+
+  static ACADEMIC_DEPARTMENTS = [
+    { code: 'CS', name: 'Department of Computer Studies', college: 'CEAC' },
+    { code: 'ENG', name: 'Department of Engineering & Architecture', college: 'CEAC' },
+    { code: 'BUS', name: 'Department of Business Administration & Accountancy', college: 'CBA' },
+    { code: 'LANG', name: 'Department of Languages & Humanities', college: 'CAS' },
+    { code: 'SCI', name: 'Department of Natural Sciences & Mathematics', college: 'CAS' },
+    { code: 'EDUC', name: 'Department of Teacher Education', college: 'CED' }
+  ]
 }

@@ -101,39 +101,39 @@ export default function OSADAccountsTab({
 
   const studentPortfolioItems = viewingStudent && getStudentPortfolios
     ? (getStudentPortfolios(viewingStudent.full_name)[0]?.portfolio_items || [
-        {
-          id: 'p-1',
-          title: `1st Place — National ${viewingStudent.program?.includes('Computer') ? 'Hackathon & AI Challenge' : 'Academic Summit'} 2026`,
-          category: 'National Competition',
-          points: 120,
-          date: '2026-02-14',
-          status: 'OSAD Verified',
-          proof_url: '#'
-        },
-        {
-          id: 'p-2',
-          title: 'NDMU Supreme Student Council Executive Leadership Service',
-          category: 'Student Leadership',
-          points: 100,
-          date: '2026-01-20',
-          status: 'OSAD Verified',
-          proof_url: '#'
-        },
-        {
-          id: 'p-3',
-          title: 'Community Outreach & Extension Volunteer Accreditation',
-          category: 'Community Extension',
-          points: 80,
-          date: '2025-11-18',
-          status: 'OSAD Verified',
-          proof_url: '#'
-        }
-      ])
+      {
+        id: 'p-1',
+        title: `1st Place — National ${viewingStudent.program?.includes('Computer') ? 'Hackathon & AI Challenge' : 'Academic Summit'} 2026`,
+        category: 'National Competition',
+        points: 120,
+        date: '2026-02-14',
+        status: 'OSAD Verified',
+        proof_url: '#'
+      },
+      {
+        id: 'p-2',
+        title: 'NDMU Supreme Student Council Executive Leadership Service',
+        category: 'Student Leadership',
+        points: 100,
+        date: '2026-01-20',
+        status: 'OSAD Verified',
+        proof_url: '#'
+      },
+      {
+        id: 'p-3',
+        title: 'Community Outreach & Extension Volunteer Accreditation',
+        category: 'Community Extension',
+        points: 80,
+        date: '2025-11-18',
+        status: 'OSAD Verified',
+        proof_url: '#'
+      }
+    ])
     : []
 
   return (
     <div className="space-y-6 font-sans">
-      
+
       {/* Header Banner */}
       <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -152,11 +152,10 @@ export default function OSADAccountsTab({
             <button
               type="button"
               onClick={() => setActiveAccountTab('directory')}
-              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${
-                activeAccountTab === 'directory'
+              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${activeAccountTab === 'directory'
                   ? 'bg-[#1b4332] text-white shadow-2xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
+                }`}
             >
               Student Directory
             </button>
@@ -164,11 +163,10 @@ export default function OSADAccountsTab({
             <button
               type="button"
               onClick={() => setActiveAccountTab('requests')}
-              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer ${
-                activeAccountTab === 'requests'
+              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer ${activeAccountTab === 'requests'
                   ? 'bg-[#1b4332] text-white shadow-2xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
+                }`}
             >
               <KeyRound className="w-3.5 h-3.5 text-amber-400" />
               <span>Reset Requests</span>
@@ -296,9 +294,10 @@ export default function OSADAccountsTab({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-extrabold uppercase tracking-wider">
-                  <th className="p-4">Student Details</th>
-                  <th className="p-4">College &amp; Program</th>
-                  <th className="p-4">Role Context</th>
+                  <th className="p-4">Name</th>
+                  <th className="p-4">Student ID</th>
+                  <th className="p-4">College</th>
+                  <th className="p-4">Academic Program</th>
                   <th className="p-4">Points &amp; Proofs</th>
                   <th className="p-4 pr-6 text-right w-16"></th>
                 </tr>
@@ -306,7 +305,7 @@ export default function OSADAccountsTab({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200 font-medium">
                 {usersList.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="p-8 text-center text-slate-400">
+                    <td colSpan="6" className="p-8 text-center text-slate-400">
                       No student accounts found matching the filter criteria.
                     </td>
                   </tr>
@@ -314,24 +313,20 @@ export default function OSADAccountsTab({
                   usersList.map((user) => (
                     <tr key={user.id || user.student_id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                       <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                            {user.full_name?.charAt(0) || 'S'}
-                          </div>
-                          <div>
-                            <p className="font-extrabold text-slate-900 dark:text-white">{user.full_name}</p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">{user.student_id || user.email}</p>
-                          </div>
-                        </div>
+                        <p className="font-extrabold text-slate-900 dark:text-white text-sm">{user.full_name}</p>
                       </td>
                       <td className="p-4">
-                        <p className="font-bold">{user.college || 'CEAC'}</p>
-                        <p className="text-[11px] text-slate-500">{user.program || 'BS Computer Science'}</p>
-                      </td>
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50">
-                          Student
+                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300 text-xs bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                          {user.student_id || user.email || 'STD-2026-001'}
                         </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-200 dark:border-slate-700">
+                          {user.college || 'CEAC'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-bold text-slate-900 dark:text-white">{user.program || 'BS Computer Science'}</p>
                       </td>
                       <td className="p-4">
                         <p className="font-bold text-[#2d8a4e]">{user.total_points || 30} pts</p>
@@ -420,11 +415,10 @@ export default function OSADAccountsTab({
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-extrabold text-xs text-slate-900 dark:text-white">{req.student_name || 'Student Account'}</p>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                          req.status === 'approved' 
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400' 
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${req.status === 'approved'
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400'
                             : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                        }`}>
+                          }`}>
                           {req.status}
                         </span>
                       </div>
@@ -475,7 +469,7 @@ export default function OSADAccountsTab({
       {viewingStudent && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans">
-            
+
             {/* Modal Header */}
             <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -506,7 +500,7 @@ export default function OSADAccountsTab({
 
             {/* Modal Content */}
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              
+
               {/* Portfolio Security Scope Notice */}
               <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 font-medium">
                 <div className="flex items-center gap-2">
@@ -573,7 +567,7 @@ export default function OSADAccountsTab({
       {resetPasswordStudent && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans">
-            
+
             {/* Modal Header */}
             <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -597,7 +591,7 @@ export default function OSADAccountsTab({
 
             {/* Form Content */}
             <form onSubmit={handleConfirmResetPassword} className="p-6 space-y-4">
-              
+
               {/* Target Student Profile Summary */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center font-bold text-sm shrink-0">

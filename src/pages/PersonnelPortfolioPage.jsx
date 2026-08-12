@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
 import ExportPortfolioPreviewModal from '../components/student/ExportPortfolioPreviewModal'
 import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import PersonnelPortfolioCanvaView from '../components/personnel/PersonnelPortfolioCanvaView'
@@ -40,12 +39,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
   const activeUser = currentUser || getCurrentUser()
   const activeRoleContext = activeUser?.active_role_context || 'personnel'
-
-  React.useEffect(() => {
-    if (['organization_moderator', 'program_coordinator', 'department_secretary'].includes(activeRoleContext)) {
-      navigate('/personnel/dashboard', { replace: true })
-    }
-  }, [activeRoleContext, navigate])
 
   const { portfolio } = usePersonnelPortfolio(activeUser?.employee_id || 'EMP-2021-0842')
 
@@ -169,7 +162,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   }
 
   return (
-    <MainLayout>
+    <>
       <div className="space-y-6 font-sans">
 
         {/* ================= 1. PAGE TITLE HEADER (DARK MODE COMPATIBLE) ================= */}
@@ -555,6 +548,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
         portfolio={portfolio}
         user={personnel}
       />
-    </MainLayout>
+    </>
   )
 }

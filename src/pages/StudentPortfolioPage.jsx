@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
 import ExportPortfolioPreviewModal from '../components/student/ExportPortfolioPreviewModal'
 import EditStudentInfoModal from '../components/student/EditStudentInfoModal'
 import campusBanner from '../assets/ndmu_campus_banner.png'
@@ -162,7 +161,7 @@ export default function StudentPortfolioPage({ currentUser }) {
   ]
 
   return (
-    <MainLayout>
+    <>
       <div className="space-y-6 font-sans pb-12">
         
         {/* Toast Alert */}
@@ -658,6 +657,6 @@ export default function StudentPortfolioPage({ currentUser }) {
         onSave={handleSaveStudentProfile}
       />
 
-    </MainLayout>
+    </>
   )
 }

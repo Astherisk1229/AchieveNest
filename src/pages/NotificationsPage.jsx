@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
 import { 
   Bell, 
   CheckCircle2, 
@@ -114,7 +113,7 @@ export default function NotificationsPage({ currentUser }) {
   })
 
   return (
-    <MainLayout>
+    <>
       <div className="max-w-5xl mx-auto space-y-6 font-sans pb-12">
         
         {/* ================= HEADER CARD & BULK TOOLBAR ================= */}
@@ -303,6 +302,6 @@ export default function NotificationsPage({ currentUser }) {
         </div>
 
       </div>
-    </MainLayout>
+    </>
   )
 }

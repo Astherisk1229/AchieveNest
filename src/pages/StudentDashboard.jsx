@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
+import { useNavigate, Link } from 'react-router-dom'
 import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
 import { 
   Trophy, 
@@ -152,7 +151,7 @@ export default function StudentDashboard({ currentUser }) {
   })
 
   return (
-    <MainLayout>
+    <>
       <div className="space-y-6 font-sans pb-12">
         
         {/* ================= HERO SUMMARY BANNER ================= */}
@@ -233,9 +232,9 @@ export default function StudentDashboard({ currentUser }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             
             {/* Card 1: Submit New Achievement */}
-            <button
-              type="button"
-              onClick={() => navigate('/student/achievements', { state: { openSubmissionModal: true } })}
+            <Link
+              to="/student/achievements"
+              state={{ openSubmissionModal: true }}
               className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
             >
               <div className="flex items-center justify-between">
@@ -248,12 +247,11 @@ export default function StudentDashboard({ currentUser }) {
                 <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">Submit New Achievement</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Upload certificates &amp; submit proofs for verification</p>
               </div>
-            </button>
+            </Link>
 
             {/* Card 2: View Portfolio */}
-            <button
-              type="button"
-              onClick={() => navigate('/student/portfolio')}
+            <Link
+              to="/student/portfolio"
               className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
             >
               <div className="flex items-center justify-between">
@@ -266,12 +264,11 @@ export default function StudentDashboard({ currentUser }) {
                 <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">View Portfolio</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Explore your verified academic &amp; extracurricular ledger</p>
               </div>
-            </button>
+            </Link>
 
             {/* Card 3: View Achievements */}
-            <button
-              type="button"
-              onClick={() => navigate('/student/achievements')}
+            <Link
+              to="/student/achievements"
               className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
             >
               <div className="flex items-center justify-between">
@@ -284,7 +281,7 @@ export default function StudentDashboard({ currentUser }) {
                 <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">View Achievements</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Inspect detailed status history &amp; feedback notes</p>
               </div>
-            </button>
+            </Link>
 
           </div>
         </div>
@@ -382,14 +379,13 @@ export default function StudentDashboard({ currentUser }) {
                     {/* Right Side: Proof Pill & Category Badge */}
                     <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
                       {item.hasProof && (
-                        <button
-                          type="button"
-                          onClick={() => navigate('/student/achievements')}
+                        <Link
+                          to="/student/achievements"
                           className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-200 hover:text-[#2d8a4e] dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                         >
                           <FileCheck2 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
                           <span>Proof</span>
-                        </button>
+                        </Link>
                       )}
 
                       <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700 shrink-0">
@@ -413,6 +409,6 @@ export default function StudentDashboard({ currentUser }) {
         isOpen={isBarcodeModalOpen}
         onClose={() => setIsBarcodeModalOpen(false)}
       />
-    </MainLayout>
+    </>
   )
 }

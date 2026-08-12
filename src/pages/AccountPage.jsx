@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import MainLayout from '../layouts/MainLayout'
 import { 
   User, 
   Mail, 
@@ -150,7 +149,7 @@ export default function AccountPage({ currentUser }) {
   }
 
   return (
-    <MainLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-8 font-sans pb-12">
         
         {/* Toast Feedback */}
@@ -801,6 +800,6 @@ export default function AccountPage({ currentUser }) {
         </div>
       )}
 
-    </MainLayout>
+    </>
   )
 }

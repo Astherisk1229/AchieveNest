@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
 import PersonnelPortfolioCanvaView from '../components/personnel/PersonnelPortfolioCanvaView'
 import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import RankingCriteriaModel from '../models/RankingCriteriaModel.js'
@@ -242,7 +241,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const availableCategories = currentHierarchy ? Object.keys(currentHierarchy.categories) : []
 
   return (
-    <MainLayout title="Edit Portfolio Workspace">
+    <>
       <div className="max-w-7xl mx-auto space-y-6 font-sans">
 
         {/* Feedback Alert Toast */}
@@ -782,6 +781,6 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         portfolio={portfolio}
         user={activeUser}
       />
-    </MainLayout>
+    </>
   )
 }

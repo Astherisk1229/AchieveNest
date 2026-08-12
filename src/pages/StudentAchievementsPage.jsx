@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
 import AchievementSubmissionModal from '../components/student/AchievementSubmissionModal'
 import StudentAchievementPopoverMenu from '../components/student/StudentAchievementPopoverMenu'
 import StudentAchievementPreviewModal from '../components/student/StudentAchievementPreviewModal'
@@ -156,7 +155,7 @@ export default function StudentAchievementsPage({ currentUser }) {
   const totalCount = stats.total
 
   return (
-    <MainLayout currentUser={user}>
+    <>
       <div className="space-y-6 pb-12">
         
         {/* ================= 1. PAGE HEADER ================= */}
@@ -564,6 +563,6 @@ export default function StudentAchievementsPage({ currentUser }) {
         onSubmitAchievement={handleSubmitAchievement}
         initialData={editingItem}
       />
-    </MainLayout>
+    </>
   )
 }

@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { getCurrentUser, updateUserRoleContext } from '../services/authService'
+import { useAuth } from '../context/AuthContext'
 import { ArrowUp } from 'lucide-react'
 
 export default function MainLayout({ children, onRoleChange: externalRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [currentUser, setCurrentUser] = useState(getCurrentUser())
+  const { user: authUser, setUser, switchRoleContext } = useAuth()
+  const currentUser = authUser || getCurrentUser()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const mainRef = useRef(null)
@@ -16,14 +18,22 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   useEffect(() => {
     const syncUser = () => {
       const user = getCurrentUser()
-      if (user) {
-        setCurrentUser({ ...user })
+      if (user && setUser) {
+        setUser({ ...user })
       }
     }
     syncUser()
     window.addEventListener('storage', syncUser)
     return () => window.removeEventListener('storage', syncUser)
-  }, [])
+  }, [setUser])
+
+  // Auto-scroll workspace to top on route / query parameter change
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0
+    }
+    window.scrollTo(0, 0)
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     const mainEl = mainRef.current
@@ -56,8 +66,12 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   }
 
   const handleRoleChange = (newRoleContext) => {
-    const updated = updateUserRoleContext(newRoleContext)
-    setCurrentUser({ ...updated })
+    let updated
+    if (switchRoleContext) {
+      updated = switchRoleContext(newRoleContext)
+    } else {
+      updated = updateUserRoleContext(newRoleContext)
+    }
     
     // Auto-navigate to personnel dashboard if role switches to personnel/coordinator mode from another page
     if (['program_coordinator', 'personnel', 'organization_moderator', 'department_secretary'].includes(newRoleContext)) {
@@ -106,12 +120,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#dfebd9] dark:bg-[#0b1320] transition-colors duration-200 relative">
           <div className="container-responsive space-y-6">
-            {React.Children.map(children, child => {
-              if (React.isValidElement(child)) {
-                return React.cloneElement(child, { currentUser, onRoleChange: handleRoleChange })
-              }
-              return child
-            })}
+            {children}
           </div>
         </main>
         

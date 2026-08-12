@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import MainLayout from '../layouts/MainLayout'
 import useTheme from '../hooks/useTheme'
 import { 
   User, 
@@ -101,7 +100,7 @@ export default function SettingsPage({ currentUser }) {
   }
 
   return (
-    <MainLayout>
+    <>
       <div className="max-w-4xl mx-auto space-y-6 font-sans pb-12">
         
         {/* Toast Feedback */}
@@ -427,6 +426,6 @@ export default function SettingsPage({ currentUser }) {
         )}
 
       </div>
-    </MainLayout>
+    </>
   )
 }

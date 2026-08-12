@@ -42,12 +42,6 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
   const activeRoleContext = user?.active_role_context || 'personnel'
 
-  useEffect(() => {
-    if (['organization_moderator', 'program_coordinator', 'department_secretary'].includes(activeRoleContext)) {
-      navigate('/personnel/dashboard', { replace: true })
-    }
-  }, [activeRoleContext, navigate])
-
   const location = useLocation()
 
   // Use custom MVC bridge hook

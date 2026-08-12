@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import MainLayout from '../layouts/MainLayout'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import DigitalBarcodeIDCard from '../components/student/DigitalBarcodeIDCard'
 import EditBasicInfoModal from '../components/personnel/EditBasicInfoModal'
 import PersonnelSubmissionModal from '../components/personnel/PersonnelSubmissionModal'
@@ -28,12 +27,16 @@ import {
 } from 'lucide-react'
 
 import { getCurrentUser } from '../services/authService'
+import { useAuth } from '../context/AuthContext'
 import { usePersonnelPortfolio } from '../hooks/usePersonnelPortfolio'
 
 export default function PersonnelDashboard({ currentUser: propUser, onRoleChange }) {
   const navigate = useNavigate()
-  const currentUser = propUser || getCurrentUser()
-  const activeRoleContext = currentUser?.active_role_context || 'personnel'
+  const [searchParams] = useSearchParams()
+  const activeTabParam = searchParams.get('tab')
+  const { user: authUser, activeRoleContext: authRoleContext } = useAuth() || {}
+  const currentUser = propUser || authUser || getCurrentUser()
+  const activeRoleContext = currentUser?.active_role_context || authRoleContext || 'personnel'
 
   const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || 'EMP-2021-0842')
 
@@ -183,13 +186,13 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
   })
 
   return (
-    <MainLayout onRoleChange={handleRoleChange}>
-      {activeRoleContext === 'program_coordinator' ? (
-        <CoordinatorDashboardView currentUser={currentUser} />
-      ) : activeRoleContext === 'organization_moderator' ? (
-        <OrgModeratorDashboardView currentUser={currentUser} />
-      ) : activeRoleContext === 'department_secretary' ? (
-        <DepSecDashboardView currentUser={currentUser} />
+    <div key={activeRoleContext + '_' + (activeTabParam || 'overview')}>
+      {activeRoleContext === 'program_coordinator' && activeTabParam !== 'faculty_view' ? (
+        <CoordinatorDashboardView key={activeTabParam || 'overview'} currentUser={currentUser} />
+      ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
+        <OrgModeratorDashboardView key={activeTabParam || 'overview'} currentUser={currentUser} />
+      ) : activeRoleContext === 'department_secretary' && activeTabParam !== 'faculty_view' ? (
+        <DepSecDashboardView key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
         
@@ -226,9 +229,8 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 relative z-10">
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/achievements')}
+            <Link
+              to="/personnel/portfolio/edit"
               className="p-4 rounded-2xl border text-left transition bg-[#2d8a4e] border-amber-400 shadow-md ring-2 ring-amber-400/50 hover:bg-[#257542] cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
@@ -236,11 +238,10 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
                 <span>Total Achievements</span>
               </div>
               <p className="text-3xl font-black text-white">{accomplishments.length} <span className="text-xs font-normal text-emerald-200">Records</span></p>
-            </button>
+            </Link>
 
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/achievements')}
+            <Link
+              to="/personnel/portfolio/edit"
               className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
@@ -248,11 +249,10 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
                 <span>Verified Records</span>
               </div>
               <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.status === 'Verified' || a.status === 'HR Verified').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
-            </button>
+            </Link>
 
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/achievements')}
+            <Link
+              to="/personnel/portfolio/edit"
               className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
@@ -260,11 +260,10 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
                 <span>Pending Review</span>
               </div>
               <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.status === 'Pending Review' || a.status === 'Pending').length} <span className="text-xs font-normal text-emerald-300/80">Items</span></p>
-            </button>
+            </Link>
 
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/portfolio')}
+            <Link
+              to="/personnel/portfolio"
               className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
@@ -272,11 +271,10 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
                 <span>Attached Proofs</span>
               </div>
               <p className="text-3xl font-black text-white">{accomplishments.filter(a => a.proof_file || a.attached_file_name).length} <span className="text-xs font-normal text-emerald-300/80">Files</span></p>
-            </button>
+            </Link>
 
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/portfolio')}
+            <Link
+              to="/personnel/portfolio"
               className="p-4 rounded-2xl border text-left transition bg-[#133220]/90 border-emerald-600/30 hover:bg-[#183d28] cursor-pointer"
             >
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
@@ -288,7 +286,7 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
                  portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
                  portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
               </p>
-            </button>
+            </Link>
 
           </div>
         </div>
@@ -300,9 +298,9 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/achievements', { state: { openSubmissionModal: true } })}
+            <Link
+              to="/personnel/portfolio/edit"
+              state={{ openSubmissionModal: true }}
               className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
@@ -311,11 +309,10 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
               <span className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
                 Add Achievement
               </span>
-            </button>
+            </Link>
 
-            <button
-              type="button"
-              onClick={() => navigate('/personnel/portfolio/edit')}
+            <Link
+              to="/personnel/portfolio/edit"
               className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-[#2d8a4e] shadow-2xs hover:shadow-md transition text-center flex flex-col items-center justify-center gap-3 group cursor-pointer"
             >
               <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition">
@@ -324,7 +321,7 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
               <span className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">
                 Edit Portfolio
               </span>
-            </button>
+            </Link>
 
             <button
               type="button"
@@ -469,6 +466,6 @@ export default function PersonnelDashboard({ currentUser: propUser, onRoleChange
         onClose={() => setIsSubmitOpen(false)}
         onSubmitAccomplishment={handleAddNewAccomplishment}
       />
-    </MainLayout>
+    </div>
   )
 }

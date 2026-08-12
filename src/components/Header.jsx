@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { getCurrentUser, logoutUser, updateUserRoleContext } from '../services/authService'
 import NotificationPopover from './NotificationPopover'
 import useTheme from '../hooks/useTheme'
@@ -22,6 +22,7 @@ import {
 
 export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { theme, isDark, toggleTheme, setTheme } = useTheme()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSwitchToOpen, setIsSwitchToOpen] = useState(true)
@@ -149,24 +150,24 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                 <div className="space-y-1 py-1">
                   
                   {/* My Profile */}
-                  <button
-                    type="button"
-                    onClick={() => { navigate('/account'); setIsProfileOpen(false) }}
+                  <Link
+                    to={isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/account' : '/student/account'}
+                    onClick={() => setIsProfileOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left cursor-pointer"
                   >
                     <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>My Profile</span>
-                  </button>
+                  </Link>
 
                   {/* Settings */}
-                  <button
-                    type="button"
-                    onClick={() => { navigate('/settings'); setIsProfileOpen(false) }}
+                  <Link
+                    to={isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
+                    onClick={() => setIsProfileOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left cursor-pointer"
                   >
                     <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>Settings &amp; Preferences</span>
-                  </button>
+                  </Link>
 
                   {/* Switch Workspace Accordion Submenu */}
                   {isPersonnelUser && availableSwitchRoles.length > 0 && (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { getCurrentUser, logoutUser } from '../services/authService'
+import { useAuth } from '../context/AuthContext'
 import useTheme from '../hooks/useTheme'
 import { 
   Home, 
@@ -27,7 +28,8 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const { isDark } = useTheme()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const user = currentUser || getCurrentUser()
+  const { user: authUser, activeRoleContext: authRoleContext } = useAuth() || {}
+  const user = currentUser || authUser || getCurrentUser()
   const [searchTerm, setSearchTerm] = useState('')
 
   const handleLogout = () => {
@@ -35,7 +37,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     navigate('/')
   }
 
-  const activeContext = user?.active_role_context || user?.user_type || 'student'
+  const activeContext = user?.active_role_context || authRoleContext || user?.user_type || 'student'
   const activeTabParam = searchParams.get('tab') || 'overview'
 
   const getPortalInfo = () => {
@@ -85,35 +87,45 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (activeContext === 'program_coordinator') {
       return [
-        { label: 'Overview', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Homepage', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
         { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
         { label: 'Students', icon: Users, path: '/personnel/dashboard?tab=students', tab: 'students' },
+        { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
+        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
+        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
+        { label: 'Account', icon: User, path: '/personnel/account' },
       ]
     }
 
     if (activeContext === 'organization_moderator') {
       return [
-        { label: 'Dashboard', icon: LayoutGrid, path: '/personnel/dashboard?tab=dashboard', tab: 'dashboard' },
+        { label: 'Homepage', icon: Home, path: '/personnel/dashboard?tab=dashboard', tab: 'dashboard' },
         { label: 'Manage Events', icon: Calendar, path: '/personnel/dashboard?tab=events', tab: 'events' },
         { label: 'Attendance Sessions', icon: QrCode, path: '/personnel/dashboard?tab=attendance', tab: 'attendance' },
-        { label: 'Manage Profile', icon: User, path: '/personnel/dashboard?tab=profile', tab: 'profile' },
+        { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
+        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
+        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
+        { label: 'Account', icon: User, path: '/personnel/account' },
       ]
     }
 
     if (activeContext === 'department_secretary') {
       return [
-        { label: 'Overview', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Homepage', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
         { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
         { label: 'Personnel Roster', icon: Users, path: '/personnel/dashboard?tab=personnel', tab: 'personnel' },
+        { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
+        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
+        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
         { label: 'Account', icon: User, path: '/personnel/account' },
       ]
     }
 
-    if (activeContext === 'personnel') {
+    if (['personnel', 'faculty'].includes(activeContext) || location.pathname.includes('/personnel/')) {
       return [
         { label: 'Homepage', icon: Home, path: '/personnel/dashboard' },
         { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
-        { label: 'Portfolio', icon: FolderKanban, path: '/personnel/portfolio' },
+        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
         { label: 'Account', icon: User, path: '/personnel/account' },
       ]
     }
@@ -136,6 +148,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
   const defaultTabForContext = activeContext === 'organization_moderator' ? 'dashboard' : 'overview'
   const currentActiveTab = isDashboardPage ? (activeTabParam || defaultTabForContext) : null
+  const isPersonnel = ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeContext) || location.pathname.includes('/personnel/')
 
   return (
     <aside className="w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white">
@@ -198,12 +211,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             const isPathActive = !item.tab && location.pathname === item.path.split('?')[0]
             const isActive = Boolean(isTabActive || isPathActive)
             return (
-              <button
+              <Link
                 key={item.label}
-                type="button"
-                onClick={() => {
-                  navigate(item.path)
-                }}
+                to={item.path}
                 className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
                   isActive
                     ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
@@ -218,7 +228,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                   <Icon className="w-3.5 h-3.5" />
                 </div>
                 <span>{item.label}</span>
-              </button>
+              </Link>
             )
           })}
         </div>
@@ -231,9 +241,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           Account
         </p>
         
-        <button
-          type="button"
-          onClick={() => navigate('/notifications')}
+        {/* Notifications & Settings Buttons */}
+        <Link
+          to={isPersonnel ? '/personnel/notifications' : '/student/notifications'}
           className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
             isNotificationsActive
               ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
@@ -248,11 +258,10 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             <Bell className="w-3.5 h-3.5" />
           </div>
           <span>Notifications</span>
-        </button>
+        </Link>
 
-        <button
-          type="button"
-          onClick={() => navigate('/student/settings')}
+        <Link
+          to={isPersonnel ? '/personnel/settings' : '/student/settings'}
           className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
             isSettingsActive
               ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
@@ -267,7 +276,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             <Settings className="w-3.5 h-3.5" />
           </div>
           <span>Settings</span>
-        </button>
+        </Link>
 
         <button
           type="button"

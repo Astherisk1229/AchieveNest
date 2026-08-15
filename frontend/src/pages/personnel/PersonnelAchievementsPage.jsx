@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
-import PersonnelSubmissionModal from './PersonnelSubmissionModal'
+import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
 import RichAchievementSearchBar from './RichAchievementSearchBar'
 import AchievementPopoverMenu from './AchievementPopoverMenu'
-import AchievementPreviewModal from './AchievementPreviewModal'
+import AchievementPreviewModal from './modals/AchievementPreviewModal'
 import usePersonnelAchievements from '../../hooks/usePersonnelAchievements'
 import { 
   Trophy, 

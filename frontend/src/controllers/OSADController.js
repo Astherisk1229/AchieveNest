@@ -4,6 +4,8 @@
  * Strictly follows OOP & MVC architecture.
  */
 
+import { parseFullName } from '../utils/nameFormatter.js'
+
 class OSADController {
   #users
   #departments
@@ -685,6 +687,7 @@ class OSADController {
       const term = searchTerm.toLowerCase()
       const matchTerm = !term ? true : (
         u.full_name.toLowerCase().includes(term) ||
+        parseFullName(u.full_name).formatted.toLowerCase().includes(term) ||
         (u.student_id && u.student_id.toLowerCase().includes(term)) ||
         (u.employee_id && u.employee_id.toLowerCase().includes(term)) ||
         (u.email && u.email.toLowerCase().includes(term)) ||
@@ -694,12 +697,17 @@ class OSADController {
       return matchRole && matchCollege && matchTerm
     })
 
-    // Sorting
+    // Sorting (Last Name as basis for name sorting)
     result.sort((a, b) => {
       if (sortBy === 'points') return (b.total_points || 0) - (a.total_points || 0)
       if (sortBy === 'proofs') return (b.verified_count || 0) - (a.verified_count || 0)
       if (sortBy === 'id') return (a.student_id || a.employee_id || '').localeCompare(b.student_id || b.employee_id || '')
-      return a.full_name.localeCompare(b.full_name)
+      
+      const parsedA = parseFullName(a.full_name)
+      const parsedB = parseFullName(b.full_name)
+      const lastCmp = parsedA.lastName.localeCompare(parsedB.lastName)
+      if (lastCmp !== 0) return lastCmp
+      return parsedA.firstMiddle.localeCompare(parsedB.firstMiddle)
     })
 
     return result

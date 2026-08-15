@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import ExportPortfolioPreviewModal from '../student/ExportPortfolioPreviewModal'
-import EditBasicInfoModal from './EditBasicInfoModal'
-import PersonnelPortfolioCanvaView from './PersonnelPortfolioCanvaView'
+import ExportPortfolioPreviewModal from '../student/modals/ExportPortfolioPreviewModal'
+import EditBasicInfoModal from './modals/EditBasicInfoModal'
+import PersonnelPortfolioCanvaPage from './PersonnelPortfolioCanvaPage'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 
 import {
@@ -542,7 +542,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
       )}
 
       {/* Canva Booklet View Presenter Modal */}
-      <PersonnelPortfolioCanvaView
+      <PersonnelPortfolioCanvaPage
         isOpen={isCanvaModalOpen}
         onClose={() => setIsCanvaModalOpen(false)}
         portfolio={portfolio}

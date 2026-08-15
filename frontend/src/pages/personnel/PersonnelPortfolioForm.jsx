@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Trash2, FileText, CheckCircle2, Award, BookOpen, Users, Upload, Paperclip, GraduationCap, Sparkles } from 'lucide-react'
 import PortfolioSummaryCard from './PortfolioSummaryCard'
-import PersonnelPortfolioCanvaView from './PersonnelPortfolioCanvaView'
+import PersonnelPortfolioCanvaPage from './PersonnelPortfolioCanvaPage'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 
 export default function PersonnelPortfolioForm({
@@ -135,7 +135,7 @@ export default function PersonnelPortfolioForm({
 
       {/* RENDER CANVA BOOKLET VIEW IF SELECTED */}
       {displayMode === 'canva' ? (
-        <PersonnelPortfolioCanvaView portfolio={portfolio} user={user} />
+        <PersonnelPortfolioCanvaPage portfolio={portfolio} user={user} />
       ) : (
         /* STANDARD RATING SHEET TABLE VIEW */
         <>

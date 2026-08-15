@@ -65,11 +65,11 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const getNavItems = () => {
     if (activeContext === 'hr_staff' || location.pathname.includes('/hr/')) {
       return [
-        { label: 'Dashboard', icon: Home, path: '/hr/dashboard?tab=overview', tab: 'overview' },
-        { label: 'Personnel Governance', icon: Users, path: '/hr/dashboard?tab=personnel', tab: 'personnel' },
-        { label: 'Verification Queue', icon: FileCheck2, path: '/hr/dashboard?tab=verification', tab: 'verification' },
-        { label: 'Faculty Ranking & Matrix', icon: Award, path: '/hr/dashboard?tab=masterboard', tab: 'masterboard' },
-        { label: 'Accreditation & Audit Logs', icon: ShieldCheck, path: '/hr/dashboard?tab=audit', tab: 'audit' },
+        { label: 'Dashboard', icon: Home, path: '/hr/dashboard', tab: 'overview' },
+        { label: 'Personnel Governance', icon: Users, path: '/hr/personnel-governance', tab: 'personnel' },
+        { label: 'Verification Queue', icon: FileCheck2, path: '/hr/verification-queue', tab: 'verification' },
+        { label: 'Faculty Ranking & Matrix', icon: Award, path: '/hr/faculty-ranking-and-matrix', tab: 'masterboard' },
+        { label: 'Accreditation & Audit Logs', icon: ShieldCheck, path: '/hr/accreditation-and-audit-logs', tab: 'audit' },
       ]
     }
 
@@ -208,9 +208,23 @@ export default function Sidebar({ currentUser, onRoleChange }) {
           </p>
           {navItems.map((item) => {
             const Icon = item.icon
-            const isTabActive = item.tab && isDashboardPage && item.tab === currentActiveTab
-            const isPathActive = !item.tab && location.pathname === item.path.split('?')[0]
-            const isActive = Boolean(isTabActive || isPathActive)
+            const itemCleanPath = item.path.split('?')[0]
+            const currentCleanPath = location.pathname.split('?')[0]
+
+            // Match explicit path for top-level routes (e.g. /hr/personnel-governance)
+            const isExactPathActive = currentCleanPath === itemCleanPath && !isDashboardPage
+
+            // Match tab parameter on dashboard (e.g. /hr/dashboard?tab=personnel)
+            const isTabActive = Boolean(item.tab && isDashboardPage && activeTabParam && currentActiveTab === item.tab)
+
+            // Match default dashboard tab (e.g. /hr/dashboard with no ?tab= parameter)
+            const isDefaultDashboardActive = Boolean(
+              isDashboardPage &&
+              (!activeTabParam || activeTabParam === defaultTabForContext) &&
+              (item.tab === defaultTabForContext || itemCleanPath === currentCleanPath)
+            )
+
+            const isActive = isExactPathActive || isTabActive || isDefaultDashboardActive
             return (
               <Link
                 key={item.label}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import AchievementSubmissionModal from './AchievementSubmissionModal'
+import AchievementSubmissionModal from './modals/AchievementSubmissionModal'
 import StudentAchievementPopoverMenu from './StudentAchievementPopoverMenu'
-import StudentAchievementPreviewModal from './StudentAchievementPreviewModal'
+import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewModal'
 import useStudentAchievements from '../../hooks/useStudentAchievements'
 import { 
   Trophy, 

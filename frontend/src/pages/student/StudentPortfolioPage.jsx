@@ -1,23 +1,23 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import ExportPortfolioPreviewModal from './ExportPortfolioPreviewModal'
-import EditStudentInfoModal from './EditStudentInfoModal'
+import ExportPortfolioPreviewModal from './modals/ExportPortfolioPreviewModal'
+import EditStudentInfoModal from './modals/EditStudentInfoModal'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 
-import { 
-  Trophy, 
-  CheckCircle2, 
-  Award, 
-  MapPin, 
-  Calendar, 
-  GraduationCap, 
-  Mail, 
-  Phone, 
-  Users, 
-  BookOpen, 
-  Heart, 
-  Star, 
-  FileText, 
+import {
+  Trophy,
+  CheckCircle2,
+  Award,
+  MapPin,
+  Calendar,
+  GraduationCap,
+  Mail,
+  Phone,
+  Users,
+  BookOpen,
+  Heart,
+  Star,
+  FileText,
   ArrowRight,
   ExternalLink,
   ShieldCheck,
@@ -163,7 +163,7 @@ export default function StudentPortfolioPage({ currentUser }) {
   return (
     <>
       <div className="space-y-6 font-sans pb-12">
-        
+
         {/* Toast Alert */}
         {showCopiedToast && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
@@ -174,7 +174,7 @@ export default function StudentPortfolioPage({ currentUser }) {
 
         {/* ================= HERO HEADER PROFILE BANNER (EXACT SPECIFICATION IMPLEMENTATION) ================= */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-6 relative">
-          
+
           {/* SVG Background Layer: Left-Oriented Green Curvy Banner Shape with Faded Campus Backdrop */}
           <div className="absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
             <svg viewBox="0 0 1200 240" preserveAspectRatio="none" className="w-full h-full">
@@ -228,10 +228,10 @@ export default function StudentPortfolioPage({ currentUser }) {
           {/* White Reserved Content Area with Overlapping Avatar & Details */}
           <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 relative z-20">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-              
+
               {/* Left Column: Avatar Overlapping 1/3 Green & 2/3 White + Reserved White Details */}
               <div className="flex flex-col sm:flex-row sm:items-end gap-5">
-                
+
                 {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
                 <div className="relative shrink-0 z-30 sm:-mb-1">
                   <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden aspect-square">
@@ -286,7 +286,7 @@ export default function StudentPortfolioPage({ currentUser }) {
 
               {/* Far-Right Column: Edit Profile (Top), 4 Stat Cards (Middle), Share & Export Buttons (Bottom) */}
               <div className="flex flex-col items-start lg:items-end justify-between gap-4 shrink-0 pt-2 lg:pt-0">
-                
+
                 {/* Upper Right Action Button: Edit Profile */}
                 <button
                   type="button"
@@ -351,10 +351,10 @@ export default function StudentPortfolioPage({ currentUser }) {
 
         {/* ================= MAIN 2-COLUMN LAYOUT ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* ================= LEFT 2 COLUMNS: MAIN PORTFOLIO CONTENT ================= */}
           <div className="lg:col-span-2 space-y-8">
-            
+
             {/* ABOUT ME CARD */}
             <div className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
@@ -405,7 +405,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                   const IconComp = exp.icon || Users
                   return (
                     <div key={exp.id} className="relative flex items-start justify-between gap-4 group">
-                      
+
                       {/* Timeline Dot Icon */}
                       <div className="absolute -left-6 top-0.5 w-7 h-7 rounded-full bg-[#2d8a4e] text-white flex items-center justify-center shadow-md ring-4 ring-white shrink-0">
                         <IconComp className="w-3.5 h-3.5" />
@@ -499,7 +499,7 @@ export default function StudentPortfolioPage({ currentUser }) {
 
           {/* ================= RIGHT COLUMN: SIDEBAR WIDGETS ================= */}
           <div className="space-y-6">
-            
+
             {/* CONTACT INFORMATION CARD */}
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
@@ -610,7 +610,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             {/* PORTFOLIO SUMMARY STATS CARD */}
             <div className="p-6 bg-[#1b4332] text-white rounded-3xl shadow-md border border-[#245233] space-y-4">
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-emerald-200">Portfolio Summary</h3>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-2xl bg-[#133220]/90 border border-emerald-600/30 text-center">
                   <p className="text-2xl font-black text-white">5</p>

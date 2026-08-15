@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PersonnelPortfolioCanvaView from './PersonnelPortfolioCanvaView'
-import EditBasicInfoModal from './EditBasicInfoModal'
+import PersonnelPortfolioCanvaPage from './PersonnelPortfolioCanvaPage'
+import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { getCurrentUser } from '../../services/authService'
@@ -775,7 +775,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       )}
 
       {/* Canva Booklet View Presenter Modal */}
-      <PersonnelPortfolioCanvaView
+      <PersonnelPortfolioCanvaPage
         isOpen={isCanvaViewOpen}
         onClose={() => setIsCanvaViewOpen(false)}
         portfolio={portfolio}

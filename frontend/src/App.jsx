@@ -1,17 +1,21 @@
 import React from 'react'
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
-import Login from './pages/common/Login'
-import StudentDashboard from './pages/student/StudentDashboard'
+import LoginPage from './pages/common/LoginPage'
+import StudentDashboardPage from './pages/student/StudentDashboardPage'
 import StudentAchievementsPage from './pages/student/StudentAchievementsPage'
 import StudentPortfolioPage from './pages/student/StudentPortfolioPage'
 import AccountPage from './pages/common/AccountPage'
 import SettingsPage from './pages/common/SettingsPage'
 import NotificationsPage from './pages/common/NotificationsPage'
-import PersonnelDashboard from './pages/personnel/PersonnelDashboard'
+import PersonnelDashboardPage from './pages/personnel/PersonnelDashboardPage'
 import PersonnelPortfolioPage from './pages/personnel/PersonnelPortfolioPage'
 import PersonnelPortfolioEditPage from './pages/personnel/PersonnelPortfolioEditPage'
-import HRDashboard from './pages/hr-admin/HRDashboard'
-import OSADDashboard from './pages/osad-admin/OSADDashboard'
+import HRDashboardPage from './pages/hr-admin/HRDashboardPage'
+import HRPersonnelGovernancePage from './pages/hr-admin/HRPersonnelGovernancePage'
+import HRVerificationQueuePage from './pages/hr-admin/HRVerificationQueuePage'
+import HRFacultyRankingAndMatrixPage from './pages/hr-admin/HRFacultyRankingAndMatrixPage'
+import HRAccreditationAndAuditLogsPage from './pages/hr-admin/HRAccreditationAndAuditLogsPage'
+import OSADDashboardPage from './pages/osad-admin/OSADDashboardPage'
 import OfficerScannerPage from './pages/personnel/organization-moderator/OfficerScannerPage'
 import MainLayout from './components/layout/MainLayout'
 import useIdleSession from './hooks/useIdleSession'
@@ -56,85 +60,51 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const PERSONNEL_ROLES = ['personnel', 'faculty', 'program_coordinator', 'organization_moderator', 'department_secretary']
+const PERSONNEL_ROLES = [
+  'personnel',
+  'program_coordinator',
+  'organization_moderator',
+  'department_secretary'
+]
 
-// AuthGuard — checks auth BEFORE rendering Outlet; does NOT break Outlet context
-function AuthGuard({ allowedRoles = [] }) {
-  const location = useLocation()
-  const { user, isAuthenticated } = useAuth()
-  const currentUser = user || getCurrentUser()
-  const userRole = currentUser?.user_type
-  const activeContext = currentUser?.active_role_context || userRole
+function LayoutShell({ allowedRoles }) {
+  const { user: authUser } = useAuth() || {}
+  const currentUser = authUser || getCurrentUser()
 
-  if (!isAuthenticated && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+  if (!currentUser) {
+    return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles.length > 0) {
-    const isPersonnelRole = PERSONNEL_ROLES.includes(userRole) || PERSONNEL_ROLES.includes(activeContext)
-    const isRouteForPersonnel = allowedRoles.some(r => PERSONNEL_ROLES.includes(r))
-    const isAuthorized = allowedRoles.includes(userRole) || allowedRoles.includes(activeContext) || (isPersonnelRole && isRouteForPersonnel)
-    if (!isAuthorized) {
-      if (userRole === 'osad_staff') return <Navigate to="/osad/dashboard" replace />
-      if (userRole === 'hr_staff') return <Navigate to="/hr/dashboard" replace />
-      if (isPersonnelRole) return <Navigate to="/personnel/dashboard" replace />
-      return <Navigate to="/student/dashboard" replace />
-    }
-  }
+  const role = currentUser.active_role_context || currentUser.primary_role || 'personnel'
 
-  return <Outlet />
-}
-
-// LayoutShell — renders MainLayout once around Outlet
-function LayoutShell({ allowedRoles = [] }) {
-  const location = useLocation()
-  const { user, isAuthenticated } = useAuth()
-  const currentUser = user || getCurrentUser()
-  const userRole = currentUser?.user_type
-  const activeContext = currentUser?.active_role_context || userRole
-
-  if (!isAuthenticated && !currentUser) {
-    return <Navigate to="/login" state={{ from: location }} replace />
-  }
-
-  if (allowedRoles.length > 0) {
-    const isPersonnelRole = PERSONNEL_ROLES.includes(userRole) || PERSONNEL_ROLES.includes(activeContext)
-    const isRouteForPersonnel = allowedRoles.some(r => PERSONNEL_ROLES.includes(r))
-    const isAuthorized = allowedRoles.includes(userRole) || allowedRoles.includes(activeContext) || (isPersonnelRole && isRouteForPersonnel)
-    if (!isAuthorized) {
-      if (userRole === 'osad_staff') return <Navigate to="/osad/dashboard" replace />
-      if (userRole === 'hr_staff') return <Navigate to="/hr/dashboard" replace />
-      if (isPersonnelRole) return <Navigate to="/personnel/dashboard" replace />
-      return <Navigate to="/student/dashboard" replace />
-    }
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    if (role === 'student') return <Navigate to="/student/dashboard" replace />
+    if (role === 'hr_staff') return <Navigate to="/hr/dashboard" replace />
+    if (role === 'osad_staff') return <Navigate to="/osad/dashboard" replace />
+    return <Navigate to="/personnel/dashboard" replace />
   }
 
   return (
-    <MainLayout>
-      <Outlet key={location.pathname + location.search} context={{ currentUser }} />
+    <MainLayout currentUser={currentUser}>
+      <Outlet context={{ currentUser }} />
     </MainLayout>
   )
 }
 
 export default function App() {
-  const handleLogout = () => {
-    localStorage.removeItem('achievenest_current_user')
-    sessionStorage.clear()
-    window.location.href = '/'
-  }
-  const { showWarning, secondsRemaining, stayLoggedIn } = useIdleSession(handleLogout)
+  const { showWarning, secondsRemaining, stayLoggedIn, handleLogout } = useIdleSession(30, 2)
 
   return (
     <AuthProvider>
       <ThemeProvider>
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
             {/* Personnel Portal — LayoutShell mounts once, Outlet swaps page content */}
             <Route element={<LayoutShell allowedRoles={PERSONNEL_ROLES} />}>
-              <Route path="/personnel/dashboard" element={<PersonnelDashboard />} />
+              <Route path="/personnel/dashboard" element={<PersonnelDashboardPage />} />
               <Route path="/personnel/portfolio/edit" element={<PersonnelPortfolioEditPage />} />
               <Route path="/personnel/portfolio" element={<PersonnelPortfolioPage />} />
               <Route path="/personnel/account" element={<AccountPage />} />
@@ -144,7 +114,7 @@ export default function App() {
 
             {/* Student Portal */}
             <Route element={<LayoutShell allowedRoles={['student']} />}>
-              <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/student/dashboard" element={<StudentDashboardPage />} />
               <Route path="/student/achievements" element={<StudentAchievementsPage />} />
               <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
               <Route path="/student/account" element={<AccountPage />} />
@@ -154,12 +124,16 @@ export default function App() {
 
             {/* HR Portal */}
             <Route element={<LayoutShell allowedRoles={['hr_staff']} />}>
-              <Route path="/hr/dashboard" element={<HRDashboard />} />
+              <Route path="/hr/dashboard" element={<HRDashboardPage />} />
+              <Route path="/hr/personnel-governance" element={<HRPersonnelGovernancePage />} />
+              <Route path="/hr/verification-queue" element={<HRVerificationQueuePage />} />
+              <Route path="/hr/faculty-ranking-and-matrix" element={<HRFacultyRankingAndMatrixPage />} />
+              <Route path="/hr/accreditation-and-audit-logs" element={<HRAccreditationAndAuditLogsPage />} />
             </Route>
 
             {/* OSAD Portal */}
             <Route element={<LayoutShell allowedRoles={['osad_staff']} />}>
-              <Route path="/osad/dashboard" element={<OSADDashboard />} />
+              <Route path="/osad/dashboard" element={<OSADDashboardPage />} />
             </Route>
 
             <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />

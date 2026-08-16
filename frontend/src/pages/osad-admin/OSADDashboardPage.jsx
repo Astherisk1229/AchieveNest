@@ -208,6 +208,8 @@ export default function OSADDashboardPage({ currentUser }) {
       {activeTab === 'awardees' && (
         <OSADIdentifyAwardeesPage
           awardCategories={awardCategories}
+          awardees={awardees}
+          getStudentLeaderboards={getStudentLeaderboards}
           generateAwardCandidates={generateAwardCandidates}
           confirmAwardee={confirmAwardee}
           showToast={showToast}

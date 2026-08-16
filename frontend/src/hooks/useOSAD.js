@@ -133,8 +133,8 @@ export default function useOSAD() {
     return confirmed
   }, [refreshAwardees, refreshCategories, refreshAuditLogs])
 
-  const getStudentLeaderboards = useCallback((collegeFilter = 'all') => {
-    return OSADController.getStudentLeaderboards(collegeFilter)
+  const getStudentLeaderboards = useCallback((categoryFilter = 'all', searchTerm = '') => {
+    return OSADController.getStudentLeaderboards(categoryFilter, searchTerm)
   }, [])
 
   const getAccreditationReportDetails = useCallback((reportId) => {

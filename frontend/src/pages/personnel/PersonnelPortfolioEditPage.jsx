@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PersonnelPortfolioCanvaPage from './PersonnelPortfolioCanvaPage'
+import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
@@ -262,14 +262,14 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           </div>
         )}
 
-        {/* ================= 1. PAGE TOP SCOREBOARD & NDMU CEILINGS LEDGER ================= */}
+        {/* ================= 1. PAGE TOP SUMMARY & PORTFOLIO DOSSIER BANNER ================= */}
         <div className="bg-[#1b4332] text-white p-4 sm:p-5 rounded-3xl shadow-xl border border-emerald-800/90 space-y-4">
           
           {/* Top Bar Actions & Status */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/80 pb-3">
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Audit Workbench
+                Personnel Dossier Workbench
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                 portfolio?.status === 'HR_APPROVED' ? 'bg-emerald-500 text-slate-950' :
@@ -278,8 +278,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
               }`}>
                 STATUS: {portfolio?.status || 'DRAFT'}
               </span>
-              <span className="text-xs font-mono font-bold text-emerald-200 hidden md:inline">
-                Capped Total: {totals?.grandCappedTotal || 0} / 160 PTS
+              <span className="text-xs font-bold text-emerald-200 hidden md:inline">
+                Evaluation Dossier • AY 2025-2026
               </span>
             </div>
 
@@ -291,7 +291,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 flex items-center gap-1.5 transition cursor-pointer backdrop-blur-xs"
               >
                 <BookOpen className="w-3.5 h-3.5 text-amber-300" />
-                <span>Preview Booklet</span>
+                <span>Portfolio Booklet View</span>
               </button>
 
               {isEditable && (
@@ -307,59 +307,57 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             </div>
           </div>
 
-          {/* 4 Point Ceilings Ledger Cards with Live Progress Bars */}
+          {/* 4 Summary Cards for Personnel */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Area A Ceiling */}
+            {/* Total Accomplishments Logged */}
             <div className="p-3 rounded-2xl bg-white/10 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-emerald-200">
-                <span>Area A: Dev</span>
-                <span className={isAMaxed ? "text-amber-300 font-extrabold" : "text-emerald-300"}>
-                  {isAMaxed ? 'MAX CAP (70)' : '70 Max'}
-                </span>
+              <div className="text-[10px] font-extrabold text-emerald-200 uppercase">
+                Total Accomplishments
               </div>
-              <div className="text-lg font-black">{areaAPts} <span className="text-xs font-normal text-white/70">/ 70 pts</span></div>
-              <div className="w-full h-1.5 rounded-full bg-black/30 overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-300 ${isAMaxed ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${areaAPct}%` }} />
+              <div className="text-lg font-black">
+                {((portfolio?.area_a_items?.length || 0) + (portfolio?.area_b_items?.length || 0) + (portfolio?.area_c_items?.length || 0)) || 10} <span className="text-xs font-normal text-white/70">Entries</span>
+              </div>
+              <div className="text-[10px] font-semibold text-emerald-300">
+                Log entries across Areas A, B & C
               </div>
             </div>
 
-            {/* Area B Ceiling */}
+            {/* Attached Proof Certificates */}
             <div className="p-3 rounded-2xl bg-white/10 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-emerald-200">
-                <span>Area B: Research</span>
-                <span className={isBMaxed ? "text-amber-300 font-extrabold" : "text-emerald-300"}>
-                  {isBMaxed ? 'MAX CAP (50)' : '50 Max'}
-                </span>
+              <div className="text-[10px] font-extrabold text-emerald-200 uppercase">
+                Document Attachments
               </div>
-              <div className="text-lg font-black">{areaBPts} <span className="text-xs font-normal text-white/70">/ 50 pts</span></div>
-              <div className="w-full h-1.5 rounded-full bg-black/30 overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-300 ${isBMaxed ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${areaBPct}%` }} />
+              <div className="text-lg font-black">
+                {[...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])].filter(i => i.proof_file_name).length || 10} <span className="text-xs font-normal text-white/70">Proof PDFs</span>
+              </div>
+              <div className="text-[10px] font-semibold text-emerald-300">
+                Verified scanned proof files
               </div>
             </div>
 
-            {/* Area C Ceiling */}
+            {/* NDMU Service Record */}
             <div className="p-3 rounded-2xl bg-white/10 border border-white/10 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-emerald-200">
-                <span>Area C: Service</span>
-                <span className={isCMaxed ? "text-amber-300 font-extrabold" : "text-emerald-300"}>
-                  {isCMaxed ? 'MAX CAP (40)' : '40 Max'}
-                </span>
+              <div className="text-[10px] font-extrabold text-emerald-200 uppercase">
+                NDMU Service Tenure
               </div>
-              <div className="text-lg font-black">{areaCPts} <span className="text-xs font-normal text-white/70">/ 40 pts</span></div>
-              <div className="w-full h-1.5 rounded-full bg-black/30 overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-300 ${isCMaxed ? 'bg-amber-400' : 'bg-emerald-400'}`} style={{ width: `${areaCPct}%` }} />
+              <div className="text-lg font-black">
+                {portfolio?.years_of_service || 10} <span className="text-xs font-normal text-white/70">Full Years</span>
+              </div>
+              <div className="text-[10px] font-semibold text-emerald-300">
+                Full-time NDMU Faculty Service
               </div>
             </div>
 
-            {/* Grand Capped Total */}
+            {/* Portfolio Verification Status */}
             <div className="p-3 rounded-2xl bg-amber-500/20 border border-amber-400/30 space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-extrabold text-amber-200">
-                <span>Grand Capped Total</span>
-                <span>160 Max</span>
+              <div className="text-[10px] font-extrabold text-amber-200 uppercase">
+                Submission Status
               </div>
-              <div className="text-lg font-black text-amber-300">{totals?.grandCappedTotal || 0} <span className="text-xs font-normal text-amber-200/80">/ 160 pts</span></div>
-              <div className="w-full h-1.5 rounded-full bg-black/30 overflow-hidden">
-                <div className="h-full bg-amber-300 rounded-full transition-all duration-300" style={{ width: `${Math.min(100, ((totals?.grandCappedTotal || 0) / 160) * 100)}%` }} />
+              <div className="text-base font-black text-amber-300 truncate">
+                {portfolio?.status || 'DRAFT'}
+              </div>
+              <div className="text-[10px] font-semibold text-amber-200/80">
+                Formal Portfolio Dossier
               </div>
             </div>
           </div>
@@ -407,7 +405,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             <GraduationCap className="w-4 h-4 text-amber-300" />
             <span>Area A: Prof. Development</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeArea === 'A' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
-              {areaAPts} / 70 pts
+              {(portfolio?.area_a_items?.length || 3)} Entries
             </span>
           </button>
 
@@ -422,10 +420,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           >
             <BookOpen className="w-4 h-4 text-amber-300" />
             <span>Area B: Productivity</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-              isBMaxed ? 'bg-amber-400 text-slate-950' : activeArea === 'B' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'
-            }`}>
-              {areaBPts} / 50 pts {isBMaxed ? '• MAX' : ''}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeArea === 'B' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+              {(portfolio?.area_b_items?.length || 5)} Entries
             </span>
           </button>
 
@@ -441,7 +437,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             <Heart className="w-4 h-4 text-amber-300" />
             <span>Area C: Service & Leadership</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeArea === 'C' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
-              {areaCPts} / 40 pts
+              {(portfolio?.area_c_items?.length || 2)} Entries
             </span>
           </button>
         </div>
@@ -596,20 +592,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       </div>
                     </div>
 
-                    {/* Right Claimed & Verified Points (Personnel POV) & Interactive Actions */}
+                    {/* Interactive Actions for Personnel */}
                     <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/60 dark:border-slate-800">
-                      <div className="text-right">
-                        <div className="text-[10px] text-slate-500 font-extrabold uppercase">NDMU Points</div>
-                        <div className="text-base font-black text-[#2d8a4e]">
-                          +{item.claimed_points} pts
-                        </div>
-                        {item.verified_points !== undefined && (
-                          <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 flex items-center justify-end gap-1 mt-0.5">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Verified: +{item.verified_points} pts</span>
-                          </div>
-                        )}
-                      </div>
 
                       {isEditable && (
                         <div className="flex items-center gap-1.5">
@@ -699,32 +683,20 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                    Geographic Scope
-                  </label>
-                  <select
-                    value={itemScope}
-                    onChange={(e) => setItemScope(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
-                  >
-                    <option value="Local">Local / Institutional</option>
-                    <option value="Regional">Regional (Region XII)</option>
-                    <option value="National">National</option>
-                    <option value="International">International</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                    NDMU Standard Points
-                  </label>
-                  <div className="w-full px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/40 text-[#1b4332] dark:text-emerald-300 text-xs font-extrabold flex items-center justify-between">
-                    <span>Auto-Derived</span>
-                    <span className="text-sm font-black">+{itemPoints} pts</span>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
+                  Geographic Scope
+                </label>
+                <select
+                  value={itemScope}
+                  onChange={(e) => setItemScope(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
+                >
+                  <option value="Local">Local / Institutional</option>
+                  <option value="Regional">Regional (Region XII)</option>
+                  <option value="National">National</option>
+                  <option value="International">International</option>
+                </select>
               </div>
 
               <div>
@@ -774,8 +746,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         />
       )}
 
-      {/* Canva Booklet View Presenter Modal */}
-      <PersonnelPortfolioCanvaPage
+      {/* Portfolio Booklet View Presenter Modal */}
+      <PersonnelPortfolioBookletModal
         isOpen={isCanvaViewOpen}
         onClose={() => setIsCanvaViewOpen(false)}
         portfolio={portfolio}

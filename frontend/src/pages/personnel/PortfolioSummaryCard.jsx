@@ -82,92 +82,56 @@ export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepS
         </div>
       )}
 
-      {/* Point Summary Grid */}
+      {/* Accomplishments & Portfolio Submission Status Summary Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-        {/* Total Grand Score Card */}
+        {/* Total Portfolio Records Card */}
         <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20">
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2">
-            <span>Official Accepted Score</span>
+            <span>Total Portfolio Dossier</span>
             <Sparkles className="w-4 h-4" />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
-              {claimed.acceptedTotal}
+              {(portfolio.area_a_items?.length || 0) + (portfolio.area_b_items?.length || 0) + (portfolio.area_c_items?.length || 0)}
             </span>
-            <span className="text-sm text-slate-500 font-medium">/ 160 Max</span>
+            <span className="text-sm text-slate-500 font-medium">Logged Entries</span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Raw Earned: <span className="font-semibold">{totalRaw} pts</span>
+            Status: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{portfolio.status || 'DRAFT'}</span>
           </p>
         </div>
 
-        {/* Area A Progress Card */}
+        {/* Area A Records Card */}
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
             <span>Area A: Prof. Dev</span>
-            <span className="text-xs text-emerald-600 font-bold">Max 70</span>
+            <span className="text-xs text-emerald-600 font-bold font-mono">{portfolio.area_a_items?.length || 0} Entries</span>
           </div>
-          <div className="flex items-baseline gap-1.5 mb-2">
-            <span className="text-xl font-bold text-slate-900 dark:text-white">{claimed.acceptedA}</span>
-            <span className="text-xs text-slate-400">/ 70 pts</span>
-            {claimed.overflowA > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium ml-auto">
-                +{claimed.overflowA} capped
-              </span>
-            )}
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (claimed.acceptedA / 70) * 100)}%` }}
-            />
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Degrees, Memberships, Seminars
+          </p>
         </div>
 
-        {/* Area B Progress Card */}
+        {/* Area B Records Card */}
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
             <span>Area B: Productivity</span>
-            <span className="text-xs text-emerald-600 font-bold">Max 50</span>
+            <span className="text-xs text-emerald-600 font-bold font-mono">{portfolio.area_b_items?.length || 0} Entries</span>
           </div>
-          <div className="flex items-baseline gap-1.5 mb-2">
-            <span className="text-xl font-bold text-slate-900 dark:text-white">{claimed.acceptedB}</span>
-            <span className="text-xs text-slate-400">/ 50 pts</span>
-            {claimed.overflowB > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium ml-auto">
-                +{claimed.overflowB} capped
-              </span>
-            )}
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="bg-teal-500 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (claimed.acceptedB / 50) * 100)}%` }}
-            />
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Publications, Lectures, Research
+          </p>
         </div>
 
-        {/* Area C Progress Card */}
+        {/* Area C Records Card */}
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
-            <span>Area C: Service & Leadership</span>
-            <span className="text-xs text-emerald-600 font-bold">Max 40</span>
+            <span>Area C: Service</span>
+            <span className="text-xs text-emerald-600 font-bold font-mono">{portfolio.area_c_items?.length || 0} Entries</span>
           </div>
-          <div className="flex items-baseline gap-1.5 mb-2">
-            <span className="text-xl font-bold text-slate-900 dark:text-white">{claimed.acceptedC}</span>
-            <span className="text-xs text-slate-400">/ 40 pts</span>
-            {claimed.overflowC > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium ml-auto">
-                +{claimed.overflowC} capped
-              </span>
-            )}
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-            <div
-              className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (claimed.acceptedC / 40) * 100)}%` }}
-            />
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Leadership & Community Involvement
+          </p>
         </div>
       </div>
     </div>

@@ -19,7 +19,9 @@ export default function OSADIdentifyAwardeesPage({
   const [selectedAward, setSelectedAward] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
 
-  const leaderboards = getStudentLeaderboards(selectedAward, searchTerm)
+  const leaderboards = typeof getStudentLeaderboards === 'function'
+    ? (getStudentLeaderboards(selectedAward, searchTerm) || [])
+    : []
 
   return (
     <div className="space-y-6 font-sans">

@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react'
-import { ArrowLeft, Save, X, ShieldCheck } from 'lucide-react'
-import FacultyPortfolioPane from './portfolio/FacultyPortfolioPane'
-import NDMURatingPane from './rating/NDMURatingPane'
+import StudioHeader from '../studio/StudioHeader'
+import EvaluationScoreStrip from '../studio/EvaluationScoreStrip'
+import StudioDecisionBar from '../studio/StudioDecisionBar'
+import PortfolioNavigator from '../studio/portfolio/PortfolioNavigator'
+import CriterionEvaluation from '../studio/evaluation/CriterionEvaluation'
 import { calculateNDMUScores } from './rating/NDMURatingEngine'
 
 export default function PortfolioEvaluationStudio({
@@ -23,14 +25,36 @@ export default function PortfolioEvaluationStudio({
     { id: 'ev-6', categoryArea: 'areaC', criterionKey: 'extracurricular', title: 'Department Secretary & Computer Society Moderator', criterionTitle: 'C.1 Extracurricular / Club Moderation', eligiblePoints: 20, awardedPoints: 20, verificationStatus: 'verified', fileName: 'Moderator_Appointment.pdf', submittedDate: 'Aug 14, 2026' },
   ])
 
-  const [selectedEvidence, setSelectedEvidence] = useState(null)
+  const [selectedEvidence, setSelectedEvidence] = useState(evidenceItems[0])
 
-  // Calculate live NDMU scores using engine
+  // Live calculation of scores using NDMURatingEngine
   const scores = useMemo(() => {
     return calculateNDMUScores(evidenceItems, submission.tenure_years || 7)
   }, [evidenceItems, submission.tenure_years])
 
-  const handleVerifyItem = (itemId, awardedPts) => {
+  const reviewedCount = evidenceItems.filter(i => i.verificationStatus && i.verificationStatus !== 'pending').length
+  const totalCount = evidenceItems.length
+
+  // High-Volume Review Accelerator: Verify & Next
+  const handleVerifyAndNext = (itemId, awardedPts) => {
+    setEvidenceItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        return { ...item, verificationStatus: 'verified', awardedPoints: awardedPts }
+      }
+      return item
+    }))
+
+    // Find next unreviewed item
+    const currentIndex = evidenceItems.findIndex(i => i.id === itemId)
+    const nextItem = evidenceItems.slice(currentIndex + 1).find(i => !i.verificationStatus || i.verificationStatus === 'pending') ||
+                     evidenceItems.find(i => (!i.verificationStatus || i.verificationStatus === 'pending') && i.id !== itemId)
+    
+    if (nextItem) {
+      setSelectedEvidence(nextItem)
+    }
+  }
+
+  const handleVerify = (itemId, awardedPts) => {
     setEvidenceItems(prev => prev.map(item => {
       if (item.id === itemId) {
         return { ...item, verificationStatus: 'verified', awardedPoints: awardedPts }
@@ -39,10 +63,10 @@ export default function PortfolioEvaluationStudio({
     }))
   }
 
-  const handleRejectItem = (itemId, reason) => {
+  const handleReject = (itemId) => {
     setEvidenceItems(prev => prev.map(item => {
       if (item.id === itemId) {
-        return { ...item, verificationStatus: 'rejected', awardedPoints: 0, rejectionReason: reason }
+        return { ...item, verificationStatus: 'rejected', awardedPoints: 0 }
       }
       return item
     }))
@@ -50,74 +74,51 @@ export default function PortfolioEvaluationStudio({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col font-sans overflow-hidden">
-      {/* Studio Header Bar */}
-      <div className="px-6 py-3 bg-[#131e2e] border-b border-slate-800 flex items-center justify-between text-white shrink-0">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Queue</span>
-          </button>
+      {/* 1. Slim Studio Header (Single Faculty Identity, No Duplication) */}
+      <StudioHeader
+        submission={submission}
+        onBack={onClose}
+        onSave={onSaveProgress}
+        onClose={onClose}
+      />
 
-          <div className="h-4 w-px bg-slate-700" />
+      {/* 2. Two-Pane Workspace Container */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-[#131e2e]">
+        {/* Sticky Compact Score Strip */}
+        <EvaluationScoreStrip scores={scores} />
 
-          <div>
-            <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>NDMU HR Portfolio Evaluation Studio — {submission.faculty_name}</span>
-            </h2>
-            <p className="text-[10px] text-slate-400 font-medium">
-              <span className="font-mono text-slate-300">{submission.employee_id}</span> · {submission.department} ({submission.college})
-            </p>
+        {/* Resizable Two-Pane Workspace */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 overflow-hidden">
+          {/* Left Pane (5 Columns): Portfolio Navigator */}
+          <div className="md:col-span-5 overflow-hidden border-r border-slate-200 dark:border-slate-800">
+            <PortfolioNavigator
+              submission={submission}
+              evidenceItems={evidenceItems}
+              selectedEvidence={selectedEvidence}
+              onSelectEvidence={setSelectedEvidence}
+            />
+          </div>
+
+          {/* Right Pane (7 Columns): Focused Evaluation Workspace */}
+          <div className="md:col-span-7 overflow-y-auto p-5 bg-white dark:bg-[#131e2e]">
+            <CriterionEvaluation
+              selectedEvidence={selectedEvidence}
+              onVerifyAndNext={handleVerifyAndNext}
+              onVerify={handleVerify}
+              onReject={handleReject}
+              hasNextItem={Boolean(evidenceItems.find(i => (!i.verificationStatus || i.verificationStatus === 'pending') && i.id !== selectedEvidence?.id))}
+            />
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onSaveProgress}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>Save Progress</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition cursor-pointer"
-            title="Exit Studio"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
-      {/* Synchronized 2-Pane Split Windows (Left: 50% Portfolio | Right: 50% Rating Matrix) */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 overflow-hidden">
-        {/* WINDOW 1: FACULTY PORTFOLIO SHOWCASE (LEFT) */}
-        <FacultyPortfolioPane
-          submission={submission}
-          evidenceItems={evidenceItems}
-          selectedEvidence={selectedEvidence}
-          onSelectEvidence={setSelectedEvidence}
-        />
-
-        {/* WINDOW 2: OFFICIAL NDMU RATING SHEET (RIGHT) */}
-        <NDMURatingPane
-          submission={submission}
-          scores={scores}
-          evidenceItems={evidenceItems}
-          selectedEvidence={selectedEvidence}
-          onVerifyItem={handleVerifyItem}
-          onRejectItem={handleRejectItem}
-          onOpenReturnModal={() => onOpenReturnModal(submission)}
-          onOpenFinalizeModal={() => onOpenFinalizeModal(submission, scores)}
-        />
-      </div>
+      {/* 3. Studio Decision Bar */}
+      <StudioDecisionBar
+        reviewedCount={reviewedCount}
+        totalCount={totalCount}
+        onOpenReturnModal={() => onOpenReturnModal(submission)}
+        onOpenFinalizeModal={() => onOpenFinalizeModal(submission, scores)}
+      />
     </div>
   )
 }

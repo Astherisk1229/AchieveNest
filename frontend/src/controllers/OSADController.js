@@ -890,9 +890,22 @@ class OSADController {
     return [...this.#awardees]
   }
 
-  getStudentLeaderboards(collegeFilter = 'all') {
+  getStudentLeaderboards(categoryFilter = 'all', searchTerm = '') {
+    const term = (searchTerm || '').toLowerCase().trim()
+    const category = (categoryFilter || 'all').toLowerCase().trim()
+
     const students = this.#users
-      .filter(u => u.role === 'student' && (collegeFilter === 'all' || u.college === collegeFilter || u.program.toLowerCase().includes(collegeFilter.toLowerCase())))
+      .filter(u => u.role === 'student')
+      .filter(u => {
+        const matchCategory = category === 'all' || 
+          (u.college && u.college.toLowerCase().includes(category)) || 
+          (u.program && u.program.toLowerCase().includes(category))
+        const matchTerm = !term || 
+          (u.full_name && u.full_name.toLowerCase().includes(term)) || 
+          (u.student_id && u.student_id.toLowerCase().includes(term)) || 
+          (u.program && u.program.toLowerCase().includes(term))
+        return matchCategory && matchTerm
+      })
       .map(std => ({
         id: std.id,
         student_name: std.full_name,
@@ -901,7 +914,9 @@ class OSADController {
         college: std.college,
         year_level: std.year_level,
         total_points: std.total_points,
-        verified_count: std.verified_count
+        verified_count: std.verified_count,
+        verified_proofs: std.verified_count,
+        score: Math.round((std.total_points / 500) * 100 * 10) / 10
       }))
       .sort((a, b) => b.total_points - a.total_points)
 

@@ -212,16 +212,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             const currentCleanPath = location.pathname.split('?')[0]
 
             // Match explicit path for top-level routes (e.g. /hr/personnel-governance)
-            const isExactPathActive = currentCleanPath === itemCleanPath && !isDashboardPage
+            const isExactPathActive = Boolean(!item.tab && currentCleanPath === itemCleanPath)
 
-            // Match tab parameter on dashboard (e.g. /hr/dashboard?tab=personnel)
-            const isTabActive = Boolean(item.tab && isDashboardPage && activeTabParam && currentActiveTab === item.tab)
+            // Match tab parameter on dashboard (e.g. /osad/dashboard?tab=accounts)
+            const isTabActive = Boolean(item.tab && isDashboardPage && activeTabParam && activeTabParam === item.tab)
 
-            // Match default dashboard tab (e.g. /hr/dashboard with no ?tab= parameter)
+            // Match default dashboard tab (e.g. /osad/dashboard with no ?tab= parameter or ?tab=overview)
             const isDefaultDashboardActive = Boolean(
               isDashboardPage &&
               (!activeTabParam || activeTabParam === defaultTabForContext) &&
-              (item.tab === defaultTabForContext || itemCleanPath === currentCleanPath)
+              item.tab === defaultTabForContext
             )
 
             const isActive = isExactPathActive || isTabActive || isDefaultDashboardActive

@@ -41,9 +41,6 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees }) {
         </div>
       </div>
 
-      {/* Institutional Setup Flow Stepper */}
-      <InstitutionalWorkflowGuideBar currentStep={6} activeAdmin="osad" />
-
       {/* Executive Quick Action & Governance Hub */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">

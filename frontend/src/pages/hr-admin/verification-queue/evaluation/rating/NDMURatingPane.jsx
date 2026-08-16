@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Award, ShieldCheck, CheckCircle2, AlertCircle, RotateCcw, Check, HelpCircle } from 'lucide-react'
+import { Award, ShieldCheck, CheckCircle2, AlertCircle, RotateCcw, Check, HelpCircle, FileText, X } from 'lucide-react'
+import EvidenceDocumentViewer from '../portfolio/EvidenceDocumentViewer'
 
 export default function NDMURatingPane({
   submission,
@@ -9,7 +10,8 @@ export default function NDMURatingPane({
   onVerifyItem,
   onRejectItem,
   onOpenReturnModal,
-  onOpenFinalizeModal
+  onOpenFinalizeModal,
+  onClearSelectedEvidence
 }) {
   const [remarks, setRemarks] = useState('')
   const [overridePoints, setOverridePoints] = useState('')
@@ -80,56 +82,64 @@ export default function NDMURatingPane({
         </div>
       </div>
 
-      {/* Item Evidence Verification Control Workspace */}
+      {/* Item Evidence Verification & Proof Inspection Workspace */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {selectedEvidence ? (
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
-                Verifying Item: {selectedEvidence.title}
-              </span>
-              <span className="text-[10px] font-bold text-slate-400">
-                Default Eligible: {selectedEvidence.eligiblePoints} pts
-              </span>
-            </div>
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xs">
+            {/* Embedded Proof Document Previewer (Synchronized Right Pane Workspace) */}
+            <EvidenceDocumentViewer
+              item={selectedEvidence}
+              onClose={() => onClearSelectedEvidence && onClearSelectedEvidence()}
+            />
 
-            <div>
-              <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                Awarded Points (Override if necessary)
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                value={overridePoints !== '' ? overridePoints : selectedEvidence.eligiblePoints}
-                onChange={e => setOverridePoints(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold"
-              />
-            </div>
+            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  Verifying Item: {selectedEvidence.title}
+                </span>
+                <span className="text-[10px] font-bold text-slate-400">
+                  Default Eligible: {selectedEvidence.eligiblePoints} pts
+                </span>
+              </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleVerifySelected}
-                className="flex-1 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Verify Item (+{overridePoints || selectedEvidence.eligiblePoints} pts)</span>
-              </button>
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
+                  Awarded Points (Override if necessary)
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={overridePoints !== '' ? overridePoints : selectedEvidence.eligiblePoints}
+                  onChange={e => setOverridePoints(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-extrabold"
+                />
+              </div>
 
-              <button
-                type="button"
-                onClick={handleRejectSelected}
-                className="py-2.5 px-4 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-200 font-extrabold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-              >
-                <AlertCircle className="w-4 h-4" />
-                <span>Reject</span>
-              </button>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleVerifySelected}
+                  className="flex-1 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <span>Verify Item (+{overridePoints || selectedEvidence.eligiblePoints} pts)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRejectSelected}
+                  className="py-2.5 px-4 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-200 font-extrabold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Reject</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : (
           <div className="p-6 text-center text-xs text-slate-400 font-medium rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800">
             <HelpCircle className="w-6 h-6 mx-auto mb-2 text-slate-300" />
-            Click any evidence item from the Left Pane to inspect proof documents, override points, and verify.
+            Click any row from the Left Pane to view its proof document here and verify points.
           </div>
         )}
 

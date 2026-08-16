@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Trash2, FileText, CheckCircle2, Award, BookOpen, Users, Upload, Paperclip, GraduationCap, Sparkles } from 'lucide-react'
 import PortfolioSummaryCard from './PortfolioSummaryCard'
-import PersonnelPortfolioCanvaPage from './PersonnelPortfolioCanvaPage'
+import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 
 export default function PersonnelPortfolioForm({
@@ -128,14 +128,14 @@ export default function PersonnelPortfolioForm({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>🎨 Canva Booklet View</span>
+            <span>📖 Portfolio Booklet View</span>
           </button>
         </div>
       </div>
 
-      {/* RENDER CANVA BOOKLET VIEW IF SELECTED */}
+      {/* RENDER PORTFOLIO BOOKLET VIEW IF SELECTED */}
       {displayMode === 'canva' ? (
-        <PersonnelPortfolioCanvaPage portfolio={portfolio} user={user} />
+        <PersonnelPortfolioBookletModal isOpen={true} onClose={() => setDisplayMode('table')} portfolio={portfolio} user={user} />
       ) : (
         /* STANDARD RATING SHEET TABLE VIEW */
         <>
@@ -180,9 +180,9 @@ export default function PersonnelPortfolioForm({
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-              {activeTab === 'A' && 'Section A: Professional Development (Max 70 Pts)'}
-              {activeTab === 'B' && 'Section B: Productivity & Creative Work (Max 50 Pts)'}
-              {activeTab === 'C' && 'Section C: Service & Leadership (Max 40 Pts)'}
+              {activeTab === 'A' && 'Section A: Professional Development'}
+              {activeTab === 'B' && 'Section B: Productivity & Creative Work'}
+              {activeTab === 'C' && 'Section C: Service & Leadership'}
             </h3>
             <p className="text-xs text-slate-500">
               NDMU Rating Sheet verification entries & supporting proof attachments.
@@ -204,7 +204,7 @@ export default function PersonnelPortfolioForm({
           <div className="mb-6 p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-200">NDMU Service Credit</h4>
-              <p className="text-xs text-indigo-600 dark:text-indigo-400">1 point awarded for every 2 full years of service (Max 10 pts).</p>
+              <p className="text-xs text-indigo-600 dark:text-indigo-400">Recorded tenure at Notre Dame of Marbel University.</p>
             </div>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-slate-600 dark:text-slate-300">Full Years at NDMU:</label>
@@ -218,7 +218,7 @@ export default function PersonnelPortfolioForm({
                 className="w-20 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-center text-slate-900 dark:text-white"
               />
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                = {totals?.serviceYearsPts || 0} Pts
+                Full-Time Service
               </span>
             </div>
           </div>
@@ -254,7 +254,7 @@ export default function PersonnelPortfolioForm({
                     <th className="py-3 px-3">Title & Description</th>
                     <th className="py-3 px-3">Scope / Tier</th>
                     <th className="py-3 px-3">Attached Proof</th>
-                    <th className="py-3 px-3 text-right">Claimed Points</th>
+                    <th className="py-3 px-3 text-right">Verification Status</th>
                     {isEditable && <th className="py-3 px-3 text-center">Action</th>}
                   </tr>
                 </thead>
@@ -278,8 +278,8 @@ export default function PersonnelPortfolioForm({
                           <span className="truncate max-w-[150px]">{item.proof_file_name}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-900 dark:text-white">
-                        {item.claimed_points} pts
+                      <td className="py-3 px-3 text-right font-bold text-[#1b4332] dark:text-emerald-400">
+                        Attached Proof
                       </td>
                       {isEditable && (
                         <td className="py-3 px-3 text-center">
@@ -361,34 +361,20 @@ export default function PersonnelPortfolioForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope / Level</label>
-                  <select
-                    value={itemScope}
-                    onChange={(e) => setItemScope(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  >
-                    <option value="In-house">In-house (NDMU)</option>
-                    <option value="Local">Local</option>
-                    <option value="City/Provincial">City / Provincial</option>
-                    <option value="Regional">Regional</option>
-                    <option value="National">National</option>
-                    <option value="International">International</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Claimed Points</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="40"
-                    value={itemPoints}
-                    onChange={(e) => setItemPoints(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Scope / Level</label>
+                <select
+                  value={itemScope}
+                  onChange={(e) => setItemScope(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  <option value="In-house">In-house (NDMU)</option>
+                  <option value="Local">Local</option>
+                  <option value="City/Provincial">City / Provincial</option>
+                  <option value="Regional">Regional</option>
+                  <option value="National">National</option>
+                  <option value="International">International</option>
+                </select>
               </div>
 
               <div>

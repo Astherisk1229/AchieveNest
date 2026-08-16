@@ -1,14 +1,18 @@
 import React, { useState } from 'react'
-import { FileSpreadsheet, Images, CheckCircle2, AlertCircle } from 'lucide-react'
+import { FileSpreadsheet, Images, LayoutList, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 
-export default function FacultyPortfolioPane({
-  submission,
+export default function PortfolioNavigator({
+  submission = {},
   evidenceItems = [],
   selectedEvidence,
   onSelectEvidence
 }) {
-  // View mode: 'form_matrix' (Formal HR Form Pages 1-2) | 'attached_proofs' (Reverse Chronological Proof Attachments Pages 3+)
-  const [viewMode, setViewMode] = useState('form_matrix')
+  // Tab view: 'hr_form' (Default: Formal HR Word Document template) | 'attached_proofs' (Reverse chronological certificates) | 'list' (Compact list)
+  const [tab, setTab] = useState('hr_form')
+
+  const areaAItems = evidenceItems.filter(i => i.categoryArea === 'areaA')
+  const areaBItems = evidenceItems.filter(i => i.categoryArea === 'areaB')
+  const areaCItems = evidenceItems.filter(i => i.categoryArea === 'areaC')
 
   // Reverse chronological sorting for attached proof certificates
   const sortedProofItems = [...evidenceItems].sort((a, b) => {
@@ -17,37 +21,16 @@ export default function FacultyPortfolioPane({
     return dateB - dateA
   })
 
-  const areaAItems = evidenceItems.filter(i => i.categoryArea === 'areaA')
-  const areaBItems = evidenceItems.filter(i => i.categoryArea === 'areaB')
-  const areaCItems = evidenceItems.filter(i => i.categoryArea === 'areaC')
-
   return (
     <div className="h-full flex flex-col font-sans overflow-hidden bg-slate-100 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800">
-      {/* Top Header & View Mode Switcher */}
-      <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <img
-            src={submission.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
-            alt={submission.faculty_name}
-            className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-          />
-          <div>
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-white">
-              {submission.faculty_name}
-            </h3>
-            <p className="text-[11px] text-slate-500 font-medium">
-              {submission.department} · {submission.employee_id}
-            </p>
-          </div>
-        </div>
-
-        {/* View Mode Toggle */}
+      {/* View Mode Switcher Header */}
+      <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <button
             type="button"
-            onClick={() => setViewMode('form_matrix')}
+            onClick={() => setTab('hr_form')}
             className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-              viewMode === 'form_matrix'
+              tab === 'hr_form'
                 ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
@@ -58,9 +41,9 @@ export default function FacultyPortfolioPane({
 
           <button
             type="button"
-            onClick={() => setViewMode('attached_proofs')}
+            onClick={() => setTab('attached_proofs')}
             className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-              viewMode === 'attached_proofs'
+              tab === 'attached_proofs'
                 ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
@@ -68,13 +51,30 @@ export default function FacultyPortfolioPane({
             <Images className="w-3.5 h-3.5" />
             <span>Attached Proofs ({sortedProofItems.length})</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setTab('list')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+              tab === 'list'
+                ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+            }`}
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span>List</span>
+          </button>
         </div>
+
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider hidden sm:inline-block">
+          FACULTY PORTFOLIO
+        </span>
       </div>
 
-      {/* VIEW MODE 1: FORMAL HR FORM MATRIX (Pages 1-2) - 100% STATIONARY, NO SHIFT */}
-      {viewMode === 'form_matrix' && (
+      {/* TAB 1: FORMAL HR DOCUMENT FORM VIEW (Exact Match to Word Template) */}
+      {tab === 'hr_form' && (
         <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-serif">
-          {/* Formal HR Header */}
+          {/* Formal Header */}
           <div className="text-center space-y-1 mb-6">
             <h2 className="text-xl font-bold tracking-wide uppercase font-serif text-slate-900 dark:text-white">
               FACULTY DEVELOPMENT PROGRAM
@@ -339,13 +339,13 @@ export default function FacultyPortfolioPane({
         </div>
       )}
 
-      {/* VIEW MODE 2: ATTACHED PROOFS IN REVERSE CHRONOLOGICAL ORDER (Pages 3+) */}
-      {viewMode === 'attached_proofs' && (
+      {/* TAB 2: ATTACHED PROOF CERTIFICATES (Pages 3+) */}
+      {tab === 'attached_proofs' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="p-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-extrabold flex items-center justify-between">
             <span>📷 Pages 3+: Attached Proof Certificates (Reverse Chronological Order)</span>
             <span className="text-[10px] bg-[#1b4332] text-white px-2 py-0.5 rounded-full font-black">
-              {sortedProofItems.length} Proof Attachments
+              {sortedProofItems.length} Attachments
             </span>
           </div>
 
@@ -394,6 +394,58 @@ export default function FacultyPortfolioPane({
           })}
         </div>
       )}
+
+      {/* TAB 3: COMPACT EVIDENCE LIST */}
+      {tab === 'list' && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="space-y-2">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area A: Professional Development</h4>
+            {areaAItems.map(item => (
+              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area B: Productivity &amp; Creative Work</h4>
+            {areaBItems.map(item => (
+              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area C: Service &amp; Leadership</h4>
+            {areaCItems.map(item => (
+              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EvidenceListRow({ item, isSelected, onSelect }) {
+  const isVerified = item.verificationStatus === 'verified'
+  const isRejected = item.verificationStatus === 'rejected'
+
+  return (
+    <div
+      onClick={onSelect}
+      className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2 text-xs ${
+        isSelected
+          ? 'bg-[#1b4332]/10 dark:bg-emerald-950/40 border-[#1b4332] dark:border-emerald-600 font-extrabold border-l-4'
+          : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+      }`}
+    >
+      <div className="flex items-center gap-2 overflow-hidden">
+        {isVerified && <CheckCircle2 className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />}
+        {isRejected && <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />}
+        {!isVerified && !isRejected && <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+        <span className="truncate text-slate-900 dark:text-white font-semibold">{item.title}</span>
+      </div>
+      <span className="text-[10px] font-bold text-slate-400 shrink-0">
+        {isVerified ? `${item.awardedPoints} pts` : `${item.eligiblePoints} pts`}
+      </span>
     </div>
   )
 }

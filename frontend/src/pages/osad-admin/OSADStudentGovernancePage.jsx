@@ -373,31 +373,31 @@ export default function OSADStudentGovernancePage({
                   usersList.map((user) => (
                     <tr key={user.id || user.student_id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
                       <td className="p-4">
-                        <p className="font-extrabold text-slate-900 dark:text-white text-sm">{formatLastNameFirst(user.full_name)}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white text-sm">{formatLastNameFirst(user.full_name)}</p>
                       </td>
                       <td className="p-4">
-                        <span className="font-mono font-bold text-slate-700 dark:text-slate-300 text-xs bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                        <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
                           {user.student_id || user.email || 'STD-2026-001'}
                         </span>
                       </td>
                       <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-200 dark:border-slate-700">
+                        <span className="text-xs font-bold text-[#2d8a4e] dark:text-emerald-400 tracking-wider">
                           {user.college || 'CEAC'}
                         </span>
                       </td>
                       <td className="p-4">
-                        <p className="font-bold text-slate-900 dark:text-white">{user.program || 'BS Computer Science'}</p>
+                        <p className="text-xs font-medium text-slate-800 dark:text-slate-200">{user.program || 'BS Computer Science'}</p>
                       </td>
                       <td className="p-4">
-                        <p className="font-bold text-[#2d8a4e]">{user.total_points || 30} pts</p>
-                        <p className="text-[11px] text-slate-500">{user.verified_count || 3} verified proofs</p>
+                        <p className="text-xs font-bold text-[#2d8a4e]">{user.total_points || 30} pts</p>
+                        <p className="text-[11px] text-slate-400 font-normal">{user.verified_count || 3} verified proofs</p>
                       </td>
                       <td className="p-4 pr-6 text-right relative">
                         <div className="relative inline-block text-left">
                           <button
                             type="button"
                             onClick={() => setActiveRowMenu(activeRowMenu === (user.id || user.student_id) ? null : (user.id || user.student_id))}
-                            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>

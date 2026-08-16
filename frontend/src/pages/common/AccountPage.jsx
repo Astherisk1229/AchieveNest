@@ -18,33 +18,66 @@ import {
   CheckCircle2,
   KeyRound,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
+import EditBasicInfoModal from '../personnel/modals/EditBasicInfoModal'
 
 export default function AccountPage({ currentUser }) {
   const { activeRoleContext, switchRoleContext } = useAuth()
   
-  const [user, setUser] = useState(currentUser || getCurrentUser() || {
-    full_name: 'Maria Santos',
-    student_id: '2024-01234',
-    user_type: 'student',
-    department: 'Department of Computer Studies',
-    college: 'College of Information Technology Education (CITE)',
-    program: 'BS Computer Science',
-    email: 'student@ndmu.edu.ph',
-    phone: '+63 912 345 6789',
-    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+  const isPersonnelContext = activeRoleContext === 'personnel' || activeRoleContext === 'department_secretary' || activeRoleContext === 'program_coordinator' || activeRoleContext === 'faculty'
+
+  const defaultUserData = isPersonnelContext
+    ? {
+        full_name: 'Dr. Maria Santos, Ph.D.',
+        employee_id: 'EMP-2021-0842',
+        student_id: 'EMP-2021-0842',
+        designation: 'Associate Professor & Research Head',
+        department: 'College of Information Technology',
+        educational_attainment: 'Ph.D. in Computer Science',
+        years_of_service: '8 Years',
+        email: 'faculty@ndmu.edu.ph',
+        phone: '+63 917 845 2910',
+        location: 'Koronadal City, South Cotabato',
+        user_type: 'personnel',
+        avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
+      }
+    : {
+        full_name: 'Maria Santos',
+        student_id: '2024-01234',
+        employee_id: '2024-01234',
+        designation: 'Student Researcher',
+        user_type: 'student',
+        department: 'Department of Computer Studies',
+        college: 'College of Information Technology Education (CITE)',
+        program: 'BS Computer Science',
+        educational_attainment: 'Undergraduate Candidate',
+        email: 'student@ndmu.edu.ph',
+        phone: '+63 912 345 6789',
+        location: 'Koronadal City, South Cotabato',
+        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+      }
+
+  const [user, setUser] = useState(() => {
+    const curr = currentUser || getCurrentUser()
+    if (curr) {
+      return { ...defaultUserData, ...curr }
+    }
+    return defaultUserData
   })
 
   // Edit Mode Toggle State
   const [isEditing, setIsEditing] = useState(false)
+  const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false)
 
   // Editable Form Inputs State
   const [fullName, setFullName] = useState(user.full_name)
   const [email, setEmail] = useState(user.email)
   const [phone, setPhone] = useState(user.phone)
+  const [location, setLocation] = useState(user.location || 'Koronadal City, South Cotabato')
   const [avatarUrl, setAvatarUrl] = useState(user.avatar_url)
 
   // UI Feedback Toasts / Modals
@@ -65,7 +98,7 @@ export default function AccountPage({ currentUser }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordError, setPasswordError] = useState('')
 
-  const isStudent = user.user_type === 'student'
+  const isStudent = user.user_type === 'student' && !isPersonnelContext
 
   const triggerToast = (msg) => {
     setToastMessage(msg)
@@ -80,16 +113,27 @@ export default function AccountPage({ currentUser }) {
       full_name: fullName,
       email,
       phone,
+      location,
       avatar_url: avatarUrl
     }))
     setIsEditing(false)
     triggerToast('Account information updated successfully!')
   }
 
+  const handleSaveFacultyProfileModal = (updatedData) => {
+    setUser(prev => ({ ...prev, ...updatedData }))
+    if (updatedData.full_name) setFullName(updatedData.full_name)
+    if (updatedData.email) setEmail(updatedData.email)
+    if (updatedData.contact_number || updatedData.phone) setPhone(updatedData.contact_number || updatedData.phone)
+    if (updatedData.location) setLocation(updatedData.location)
+    triggerToast('Faculty profile updated successfully!')
+  }
+
   const handleCancelEdit = () => {
     setFullName(user.full_name)
     setEmail(user.email)
     setPhone(user.phone)
+    setLocation(user.location || 'Koronadal City, South Cotabato')
     setIsEditing(false)
   }
 
@@ -161,11 +205,11 @@ export default function AccountPage({ currentUser }) {
         )}
 
         {/* ================= PROFILE AVATAR HEADER CARD ================= */}
-        <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           
-          <div className="flex items-center gap-6">
-            <div className="relative shrink-0">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-[#2d8a4e] p-1 bg-white overflow-hidden shadow-md aspect-square">
+          <div className="flex items-center gap-5 sm:gap-6">
+            <div className="relative shrink-0 group">
+              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl border-2 border-emerald-600/30 p-1 bg-white overflow-hidden shadow-xs aspect-square">
                 <img
                   src={avatarUrl}
                   alt={fullName}
@@ -179,288 +223,263 @@ export default function AccountPage({ currentUser }) {
               <button
                 type="button"
                 onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}
-                className="absolute -bottom-2 -right-2 p-2 rounded-xl bg-[#2d8a4e] text-white hover:bg-[#236e3e] border-2 border-white transition shadow-md cursor-pointer"
+                className="absolute -bottom-1 -right-1 p-2 rounded-xl bg-[#2d8a4e] text-white hover:bg-[#236e3e] border-2 border-white transition shadow-sm cursor-pointer"
                 title="Change Profile Picture"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">{fullName}</h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-50 text-[#2d8a4e] border-emerald-200">
-                  ● Student Record
-                </span>
+            <div className="space-y-1.5">
+              <div className="space-y-0.5">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{fullName}</h1>
+                <p className="text-xs font-bold text-[#2d8a4e]">
+                  {isStudent ? (user.program || 'BS Computer Science') : (user.designation || 'Associate Professor & Research Head')}
+                </p>
+                <p className="text-xs font-semibold text-slate-500">
+                  {user.department || 'College of Information Technology'}
+                </p>
               </div>
-              <p className="text-xs font-semibold text-slate-500">
-                {isStudent ? 'Student Account' : 'Faculty / Personnel Account'} • {user.department || 'Department of Computer Studies'} • {user.program}
-              </p>
-              
-              <button
-                type="button"
-                onClick={() => { setTempAvatarUrl(avatarUrl); setIsAvatarModalOpen(true); }}
-                className="text-xs font-bold text-[#2d8a4e] hover:underline pt-1 block cursor-pointer"
-              >
-                Change Profile Picture
-              </button>
+
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border bg-emerald-50 text-[#2d8a4e] border-emerald-200">
+                  {isStudent ? '● Student Account' : '● NDMU Faculty Record'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200">
+                  ID: {user.employee_id || user.student_id || 'EMP-2021-0842'}
+                </span>
+                {!isStudent && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200">
+                    {user.years_of_service || '8+ Yrs Service'}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Edit Profile Button Header Quick Action */}
+          {/* Single Header Action */}
           <button
             type="button"
             onClick={() => isEditing ? handleCancelEdit() : setIsEditing(true)}
-            className={`px-4 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition shadow-2xs cursor-pointer self-start sm:self-center ${
+            className={`px-4 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer self-start sm:self-center ${
               isEditing 
                 ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
-                : 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-800'
+                : 'bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white shadow-xs'
             }`}
           >
-            {isEditing ? <X className="w-4 h-4 text-rose-600" /> : <Edit3 className="w-4 h-4 text-[#2d8a4e]" />}
-            <span>{isEditing ? 'Cancel Editing' : 'Edit Information'}</span>
+            {isEditing ? <X className="w-4 h-4 text-rose-600" /> : <Edit3 className="w-4 h-4" />}
+            <span>{isEditing ? 'Cancel Editing' : 'Edit Account Settings'}</span>
           </button>
-
         </div>
 
-        {/* ================= ACCOUNT INFORMATION FORM ================= */}
-        <div id="account-info-form" className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-6">
+        {/* ================= 2-COLUMN MAIN CONTENT GRID ================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          <div className="border-b border-slate-100 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <User className="w-5 h-5 text-[#2d8a4e]" />
-                <span>Account Information</span>
-              </h2>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                {isEditing ? 'Modify editable account details below and click Save Changes' : 'Viewing account credentials (click Edit Information to modify)'}
-              </p>
-            </div>
+          {/* LEFT COLUMN: EDITABLE PERSONAL & CONTACT DETAILS (8 COLS) */}
+          <div className="lg:col-span-8">
+            <div id="account-info-form" className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-6">
+              
+              <div className="border-b border-slate-100 pb-4">
+                <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <User className="w-4 h-4 text-[#2d8a4e]" />
+                  <span>Personal & Contact Information</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mt-1">
+                  {isEditing ? 'Modify editable personal details below and click Save Changes' : 'Viewing account contact details (click Edit Account Settings to modify)'}
+                </p>
+              </div>
 
-            <button
-              type="button"
-              onClick={() => isEditing ? handleCancelEdit() : setIsEditing(true)}
-              className="text-xs font-extrabold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>{isEditing ? 'Cancel' : 'Edit'}</span>
-            </button>
+              <form onSubmit={handleSaveAccountInfo} className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Full Name */}
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700">Full Name with Titles</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <User className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        disabled={!isEditing}
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs font-semibold transition ${
+                          isEditing 
+                            ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                            : 'bg-slate-50/80 border-slate-200/80 text-slate-800 cursor-default'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Address */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">Institutional Email</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Mail className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="email"
+                        required
+                        disabled={!isEditing}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs font-semibold transition ${
+                          isEditing 
+                            ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                            : 'bg-slate-50/80 border-slate-200/80 text-slate-800 cursor-default'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Contact Number */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">Contact Number</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        disabled={!isEditing}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs font-semibold transition ${
+                          isEditing 
+                            ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                            : 'bg-slate-50/80 border-slate-200/80 text-slate-800 cursor-default'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Location / Campus Address */}
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700">Location / Campus Address</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Building2 className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        disabled={!isEditing}
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="e.g. Koronadal City, South Cotabato"
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-xs font-semibold transition ${
+                          isEditing 
+                            ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
+                            : 'bg-slate-50/80 border-slate-200/80 text-slate-800 cursor-default'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save / Cancel Action Buttons (Visible when in Edit Mode) */}
+                {isEditing && (
+                  <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 animate-in fade-in duration-150">
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 font-bold text-xs cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 shadow-xs transition cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Changes ✓</span>
+                    </button>
+                  </div>
+                )}
+              </form>
+
+            </div>
           </div>
 
-          <form onSubmit={handleSaveAccountInfo} className="space-y-5">
-            
-            {/* Full Name */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <User className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  disabled={!isEditing}
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border text-xs font-semibold transition ${
-                    isEditing 
-                      ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
-                      : 'bg-emerald-50/50 border-emerald-100 text-slate-800 cursor-default'
-                  }`}
-                />
-              </div>
-            </div>
+          {/* RIGHT COLUMN: PROTECTED NDMU RECORDS & SECURITY (4 COLS) */}
+          <div className="lg:col-span-4 space-y-6">
 
-            {/* Student Number / Employee ID (READ ONLY / PROTECTED ALWAYS) */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
-                <span>{isStudent ? 'Student Number' : 'Employee ID'}</span>
-                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-[#2d8a4e]" />
-                  Protected Registrar Record
+            {/* PROTECTED NDMU RECORDS CARD */}
+            <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#2d8a4e]" />
+                  <span>Institutional Records</span>
+                </h3>
+                <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5 text-[#2d8a4e]" />
+                  Protected
                 </span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4 text-emerald-700" />
-                </div>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={user.student_id}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs font-bold text-slate-700 cursor-not-allowed select-none"
-                />
               </div>
-              <p className="text-[11px] font-medium text-slate-400 pl-1">
-                This field cannot be edited
-              </p>
-            </div>
 
-            {/* Department / College (READ ONLY / PROTECTED ALWAYS) */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
-                <span>Academic Department & College</span>
-                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-[#2d8a4e]" />
-                  Protected Registrar Record
-                </span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Building2 className="w-4 h-4 text-emerald-700" />
+              <div className="space-y-3 pt-1">
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">{isStudent ? 'STUDENT ID NUMBER' : 'EMPLOYEE ID NUMBER'}</span>
+                  <span className="text-xs font-bold text-slate-900 block mt-0.5">{user.employee_id || user.student_id || 'EMP-2021-0842'}</span>
                 </div>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={user.department || 'Department of Computer Studies (College of Information Technology Education)'}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs font-bold text-slate-700 cursor-not-allowed select-none"
-                />
+
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">{isStudent ? 'ACADEMIC STANDING' : 'ACADEMIC RANK / DESIGNATION'}</span>
+                  <span className="text-xs font-bold text-slate-900 block mt-0.5">{user.designation || 'Associate Professor & Research Head'}</span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">DEPARTMENT / COLLEGE</span>
+                  <span className="text-xs font-bold text-slate-900 block mt-0.5">{user.department || 'College of Information Technology'}</span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase block">EDUCATIONAL ATTAINMENT</span>
+                  <span className="text-xs font-bold text-slate-900 block mt-0.5">{user.educational_attainment || 'Ph.D. in Computer Science'}</span>
+                </div>
               </div>
             </div>
 
-            {/* Degree Program (READ ONLY / PROTECTED ALWAYS - Program is under Department) */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
-                <span>Degree Program</span>
-                <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-[#2d8a4e]" />
-                  Protected Registrar Record
-                </span>
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <GraduationCap className="w-4 h-4 text-emerald-700" />
-                </div>
-                <input
-                  type="text"
-                  readOnly
-                  disabled
-                  value={user.program || 'BS Computer Science'}
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs font-bold text-slate-700 cursor-not-allowed select-none"
-                />
-              </div>
-              <p className="text-[11px] font-medium text-slate-400 pl-1">
-                Program is governed under {user.department || 'Department of Computer Studies'}
-              </p>
-            </div>
+            {/* SECURITY & PASSWORD SETTINGS CARD */}
+            {!['department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeRoleContext) && (
+              <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-4">
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-[#2d8a4e]" />
+                  <span>Security & Password</span>
+                </h3>
 
-            {/* Email Address */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  type="email"
-                  required
-                  disabled={!isEditing}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border text-xs font-semibold transition ${
-                    isEditing 
-                      ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
-                      : 'bg-emerald-50/50 border-emerald-100 text-slate-800 cursor-default'
-                  }`}
-                />
-              </div>
-            </div>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  Manage your account credentials and password security settings.
+                </p>
 
-            {/* Contact Number */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-800">Contact Number</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  disabled={!isEditing}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border text-xs font-semibold transition ${
-                    isEditing 
-                      ? 'bg-white border-[#2d8a4e] text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2d8a4e]/20'
-                      : 'bg-emerald-50/50 border-emerald-100 text-slate-800 cursor-default'
-                  }`}
-                />
-              </div>
-            </div>
+                <div className="pt-1 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSelfServiceModalOpen(true)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Change Password</span>
+                  </button>
 
-            {/* Save / Cancel Action Buttons (Visible when in Edit Mode) */}
-            {isEditing && (
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100 animate-in fade-in duration-150">
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="px-4 py-2.5 rounded-2xl text-slate-600 hover:text-slate-900 font-bold text-xs cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 shadow-md transition cursor-pointer"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save Changes ✓</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowResetModal(true)}
+                    className="w-full px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-[11px] border border-slate-200 transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Request Password Reset</span>
+                  </button>
+                </div>
               </div>
             )}
 
-          </form>
+          </div>
 
         </div>
-
-        {/* ================= SECURITY SETTINGS CARD (ONLY IN PRIMARY USER ACCOUNTS) ================= */}
-        {!['department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeRoleContext) && (
-          <div className="p-6 sm:p-8 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-5">
-            
-            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#2d8a4e]" />
-              <span>Security & Credential Settings</span>
-            </h2>
-
-            <div className="p-5 sm:p-6 bg-[#eef7f0]/70 dark:bg-emerald-950/30 border border-[#d2e8d7] dark:border-emerald-800/50 rounded-3xl space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-2xl bg-white dark:bg-slate-800 text-[#2d8a4e] border border-[#d2e8d7] dark:border-emerald-800/60 shrink-0 shadow-xs">
-                  <KeyRound className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Password Management</h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                    Update your password instantly using our 3-step self-service wizard, or request password reset assistance if you forgot your credentials.
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                {/* Primary Action: Direct Instant Self-Service Change */}
-                <button
-                  type="button"
-                  onClick={() => setIsSelfServiceModalOpen(true)}
-                  className="px-5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center gap-2 transition shadow-md cursor-pointer"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  <span>Change Password (Instant)</span>
-                </button>
-
-                {/* Secondary Fallback Action: Password Reset Request */}
-                <button
-                  type="button"
-                  onClick={() => setShowResetModal(true)}
-                  className="px-4 py-2.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <HelpCircle className="w-4 h-4 text-slate-500" />
-                  <span>Forgot Password? Request Reset</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-        )}
 
       </div>
 
@@ -798,6 +817,16 @@ export default function AccountPage({ currentUser }) {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Shared Personnel Profile Modal */}
+      {isFacultyModalOpen && (
+        <EditBasicInfoModal
+          isOpen={isFacultyModalOpen}
+          onClose={() => setIsFacultyModalOpen(false)}
+          currentInfo={user}
+          onSave={handleSaveFacultyProfileModal}
+        />
       )}
 
     </>

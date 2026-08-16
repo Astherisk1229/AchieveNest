@@ -303,43 +303,44 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   </div>
                 </div>
 
-                {/* Primary Action Buttons */}
-                <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                {/* Hero Actions Hierarchy */}
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {/* Primary CTA */}
                   <button
                     type="button"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center gap-1 transition border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    onClick={() => navigate('/personnel/portfolio/edit')}
+                    className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
-                    <span>Edit Profile</span>
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Manage Portfolio Draft</span>
+                  </button>
+
+                  {/* Secondary Utilities */}
+                  <button
+                    type="button"
+                    onClick={() => setIsCanvaModalOpen(true)}
+                    className="px-3.5 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Booklet View</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => navigate('/personnel/portfolio/edit')}
-                    className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center gap-1.5 transition border border-slate-200 dark:border-slate-700 cursor-pointer"
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit Portfolio Workspace</span>
+                    <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+                    <span>Edit Faculty Profile</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleShareProfile}
-                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Share2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     <span>Share</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsCanvaModalOpen(true)}
-                    className="px-3.5 py-1.5 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1 transition shadow-2xs cursor-pointer"
-                  >
-                    <BookOpen className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Portfolio Booklet View</span>
-                    <Sparkles className="w-3 h-3 text-amber-300" />
                   </button>
                 </div>
               </div>
@@ -363,14 +364,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <Users className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>About Me</span>
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>Edit</span>
-                </button>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
                 {personnel.about_me}
@@ -384,14 +377,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <Building2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Experience & Involvement</span>
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>Edit</span>
-                </button>
               </div>
 
               <div className="space-y-3 pt-1">
@@ -467,13 +452,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <Mail className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Contact Information</span>
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline cursor-pointer"
-                >
-                  Edit
-                </button>
               </div>
 
               <div className="space-y-3 pt-1">
@@ -501,13 +479,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <Star className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
                   <span>Key Competencies</span>
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] dark:text-emerald-400 hover:underline cursor-pointer"
-                >
-                  Edit
-                </button>
               </div>
 
               <div className="space-y-3 pt-1">

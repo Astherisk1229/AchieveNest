@@ -23,7 +23,7 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees }) {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                OSAD Executive Command Center
+                OSAD Executive Administration
               </h1>
               <p className="text-xs text-emerald-200/90 font-medium max-w-2xl leading-relaxed">
                 Director Marcus Vance, Ph.D. • Central oversight suite for university user account governance, administrative role assignment, automated honor roll ranking, and institutional accreditation audit logs.
@@ -40,6 +40,9 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees }) {
           </div>
         </div>
       </div>
+
+      {/* Institutional Setup Stepper (3-Stage Foundational Flow) */}
+      <InstitutionalWorkflowGuideBar currentStep={1} activeAdmin="osad" />
 
       {/* Executive Quick Action & Governance Hub */}
       <div className="space-y-3">

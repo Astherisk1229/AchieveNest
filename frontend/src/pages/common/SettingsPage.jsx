@@ -118,8 +118,8 @@ export default function SettingsPage({ currentUser }) {
               <Settings className="w-5.5 h-5.5" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Settings &amp; Preferences</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manage profile details, notification preferences, and system appearance for <strong>{user.full_name}</strong></p>
+              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Settings</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manage notification preferences and system appearance for <strong>{user.full_name}</strong></p>
             </div>
           </div>
         </div>
@@ -127,72 +127,6 @@ export default function SettingsPage({ currentUser }) {
         {/* ================= PROGRAM COORDINATOR / PERSONNEL SETTINGS VIEW ================= */}
         {isCoordinatorOrPersonnel ? (
           <div className="space-y-6">
-            
-            {/* 1. PROFILE SETTINGS CARD */}
-            <div className="p-6 sm:p-7 bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
-              
-              {/* Card Header */}
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                  <User className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">Profile Settings</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manage your personal and administrative account details</p>
-                </div>
-              </div>
-
-              {/* Form Grid */}
-              <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-white outline-none focus:border-[#2d8a4e] transition bg-white dark:bg-slate-800"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-white outline-none focus:border-[#2d8a4e] transition bg-white dark:bg-slate-800"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Department / College Unit
-                  </label>
-                  <input
-                    type="text"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-white outline-none focus:border-[#2d8a4e] transition bg-white dark:bg-slate-800"
-                  />
-                </div>
-
-                <div className="pt-2 flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
-                  >
-                    Save Profile Changes
-                  </button>
-                </div>
-              </form>
-
-            </div>
 
             {/* 2. NOTIFICATIONS PREFERENCES CARD */}
             <div className="p-6 sm:p-7 bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">

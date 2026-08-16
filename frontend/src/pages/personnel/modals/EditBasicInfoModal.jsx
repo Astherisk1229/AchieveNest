@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { X, UserCheck, Briefcase, GraduationCap, Building2, Phone, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
+import { X, UserCheck, Briefcase, GraduationCap, Building2, Phone, Mail, MapPin, AlignLeft, CheckCircle2, AlertCircle } from 'lucide-react'
 
-export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, onSave }) {
+export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user, onSave }) {
+  const profileData = currentInfo || user || {}
   const [formData, setFormData] = useState({
     full_name: '',
     employee_id: '',
@@ -10,6 +11,8 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, onSav
     educational_attainment: '',
     contact_number: '',
     email: '',
+    location: '',
+    about_me: '',
     specialization: '',
     years_of_service: ''
   })
@@ -17,20 +20,22 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, onSav
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (currentInfo) {
+    if (profileData) {
       setFormData({
-        full_name: currentInfo.full_name || '',
-        employee_id: currentInfo.employee_id || '',
-        designation: currentInfo.designation || '',
-        department: currentInfo.department || '',
-        educational_attainment: currentInfo.educational_attainment || '',
-        contact_number: currentInfo.contact_number || '',
-        email: currentInfo.email || '',
-        specialization: currentInfo.specialization || '',
-        years_of_service: currentInfo.years_of_service || ''
+        full_name: profileData.full_name || '',
+        employee_id: profileData.employee_id || '',
+        designation: profileData.designation || '',
+        department: profileData.department || '',
+        educational_attainment: profileData.educational_attainment || '',
+        contact_number: profileData.contact_number || '',
+        email: profileData.email || '',
+        location: profileData.location || '',
+        about_me: profileData.about_me || '',
+        specialization: profileData.specialization || '',
+        years_of_service: profileData.years_of_service || ''
       })
     }
-  }, [currentInfo, isOpen])
+  }, [profileData.employee_id, profileData.full_name, isOpen])
 
   if (!isOpen) return null
 
@@ -80,7 +85,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, onSav
           </div>
           <div>
             <h3 className="text-xl font-extrabold text-slate-900">Edit Personnel Profile</h3>
-            <p className="text-xs text-slate-500">Update academic credentials, designation, and contact info</p>
+            <p className="text-xs text-slate-500">Update academic credentials, biography, location, and contact info</p>
           </div>
         </div>
 
@@ -241,6 +246,40 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, onSav
             </div>
           </div>
 
+          {/* Location / Address */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Location / Campus Address
+            </label>
+            <div className="relative">
+              <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="e.g. Koronadal City, South Cotabato"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+              />
+            </div>
+          </div>
+
+          {/* About Me / Professional Biography */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+              <AlignLeft className="w-3.5 h-3.5 text-slate-400" />
+              <span>About Me / Professional Biography</span>
+            </label>
+            <textarea
+              name="about_me"
+              value={formData.about_me}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Provide a brief professional biography and introduction..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none"
+            />
+          </div>
+
           {/* Specialization */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -250,7 +289,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, onSav
               name="specialization"
               value={formData.specialization}
               onChange={handleChange}
-              rows={3}
+              rows={2}
               placeholder="e.g. Artificial Intelligence, Data Science, Educational Technology..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none"
             />

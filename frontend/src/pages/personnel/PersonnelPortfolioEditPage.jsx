@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
+import SecurityController from '../../controllers/SecurityController.js'
+import OcrScanController from '../../controllers/OcrScanController.js'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
@@ -26,7 +28,10 @@ import {
   CreditCard,
   AlertTriangle,
   Filter,
-  Search
+  Search,
+  RefreshCw,
+  UploadCloud,
+  Scan
 } from 'lucide-react'
 
 export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
@@ -77,6 +82,71 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const [itemProofName, setItemProofName] = useState('')
   const [modalFormError, setModalFormError] = useState('')
 
+  // Category Tailored Fields State for Portfolio Edit Modal
+  const [degreeLevel, setDegreeLevel] = useState('Ph.D. Degree Holder')
+  const [institution, setInstitution] = useState('')
+  const [orgPosition, setOrgPosition] = useState('Member')
+  const [organizerVenue, setOrganizerVenue] = useState('')
+  const [speakerRole, setSpeakerRole] = useState('Keynote Speaker')
+  const [publisherIssn, setPublisherIssn] = useState('')
+  const [itemDateAchieved, setItemDateAchieved] = useState('2023 - 2024')
+
+  // OCR Scan States for Add/Edit Modal
+  const [isModalScanning, setIsModalScanning] = useState(false)
+  const [modalOcrResult, setModalOcrResult] = useState(null)
+  const [modalOcrBadges, setModalOcrBadges] = useState({})
+  const [modalFileObj, setModalFileObj] = useState(null)
+
+  const handleModalFileScan = async (file) => {
+    if (!file) return
+    setModalFormError('')
+    const validation = await SecurityController.validateFileUpload(file)
+    if (!validation.isValid) {
+      setModalFormError(validation.error)
+      return
+    }
+    const cleanFile = new File([file], SecurityController.sanitizeFilename(file.name), { type: file.type })
+    setModalFileObj(cleanFile)
+    setItemProofName(cleanFile.name)
+
+    setIsModalScanning(true)
+    try {
+      const response = await OcrScanController.processDocumentScan(cleanFile)
+      setIsModalScanning(false)
+      if (response.success && response.result) {
+        const res = response.result
+        setModalOcrResult(res)
+        const fields = res.extractedFields
+
+        const newBadges = {}
+        if (res.detectedCategory) {
+          const targetArea = ['A', 'B', 'C'].includes(activeArea) ? activeArea : 'A'
+          const hierarchy = RankingCriteriaModel.CATEGORIES_HIERARCHY[targetArea]
+          const availableCats = hierarchy ? Object.keys(hierarchy.categories) : []
+          const matched = availableCats.find(c => c.toLowerCase().includes(res.detectedCategory.toLowerCase().substring(0, 3)))
+          if (matched) {
+            setItemCategory(matched)
+            newBadges.category = true
+          }
+        }
+
+        if (fields.title) {
+          setItemTitle(fields.title)
+          newBadges.title = true
+        }
+        if (fields.scopeLevel) {
+          setItemScope(fields.scopeLevel.includes('House') || fields.scopeLevel.includes('Local') ? 'Local' : fields.scopeLevel)
+          newBadges.scope = true
+        }
+
+        setModalOcrBadges(newBadges)
+      }
+    } catch (err) {
+      setIsModalScanning(false)
+      setModalFormError('Failed to scan document with OCR.')
+    }
+  }
+
   const isEditable = portfolio?.status === 'DRAFT' || portfolio?.status === 'RETURNED_TO_PERSONNEL'
 
   const showToast = (msg) => {
@@ -100,6 +170,9 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     setItemPoints(String(firstSub.defaultPoints))
     setItemProofName('')
     setModalFormError('')
+    setModalOcrResult(null)
+    setModalOcrBadges({})
+    setModalFileObj(null)
     setIsAddModalOpen(true)
   }
 
@@ -639,80 +712,433 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       {/* Add / Edit Line-Item Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-6 space-y-5 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-[#2d8a4e]" />
-                {editingItem ? `Edit Item (Area ${activeArea})` : `Add Item to Area ${activeArea}`}
-              </h3>
-              <button type="button" onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl animate-fade-in overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  {editingItem ? 'Edit Accomplishment' : 'Add Accomplishment'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Record an achievement in your personnel portfolio draft.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-sm p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            {modalFormError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-                {modalFormError}
-              </div>
-            )}
+            {/* Modal Scrollable Body */}
+            <form onSubmit={handleSaveItemSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+              {modalFormError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                  {modalFormError}
+                </div>
+              )}
 
-            <form onSubmit={handleSaveItemSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                  Main Category (Area {activeArea})
-                </label>
-                <select
-                  value={itemCategory}
-                  onChange={(e) => handleMainCategoryChange(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
-                >
-                  {availableCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+              {/* 01 UPLOAD DOCUMENT SECTION */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">01</span>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">Upload Document</h4>
+                </div>
+
+                {!modalFileObj && !itemProofName ? (
+                  /* Empty Upload Panel */
+                  <div className="relative border border-dashed border-emerald-300 dark:border-emerald-700/80 hover:border-[#2d8a4e] rounded-xl p-5 text-center transition bg-[#f4fbf6] dark:bg-emerald-950/10 cursor-pointer group">
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={(e) => {
+                        if (e.target.files[0]) handleModalFileScan(e.target.files[0])
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <div className="flex flex-col items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-[#2d8a4e] shadow-2xs">
+                        <UploadCloud className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Upload certificate / document</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Drag & drop or click to browse files (PDF, PNG, JPG)</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Selected File Card */
+                  <div className="p-3.5 rounded-xl bg-[#f4fbf6] dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#2d8a4e] text-white flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
+                          {itemProofName || modalFileObj?.name}
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                          {modalFileObj ? `${(modalFileObj.size / (1024 * 1024)).toFixed(2)} MB` : 'Attached Documentary Proof'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalFileObj(null)
+                        setItemProofName('')
+                        setModalOcrResult(null)
+                        setModalOcrBadges({})
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {/* OCR Processing Indicator */}
+                {isModalScanning && (
+                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-emerald-300 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 text-[#2d8a4e] animate-spin shrink-0" />
+                    <span>Extracting document information...</span>
+                  </div>
+                )}
+
+                {/* OCR Success Message */}
+                {modalOcrResult && !isModalScanning && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-900 dark:text-emerald-300 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Information extracted from document ({modalOcrResult.detectedCategory})</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                  Accomplishment Title
-                </label>
-                <input
-                  type="text"
-                  value={itemTitle}
-                  onChange={(e) => setItemTitle(e.target.value)}
-                  placeholder="e.g. Ph.D. in Computer Science or CHED Regional Workshop"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
-                />
+              {/* 02 ACCOMPLISHMENT DETAILS SECTION */}
+              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">02</span>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">Accomplishment Details</h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Category Field */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                      <span>Main Category (Area {activeArea})</span>
+                      {modalOcrBadges.category && (
+                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                          Auto-filled
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      value={itemCategory}
+                      onChange={(e) => {
+                        handleMainCategoryChange(e.target.value)
+                        setModalOcrBadges(prev => ({ ...prev, category: false }))
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                    >
+                      {availableCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Dates Field */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                      <span>Date(s) / Inclusive Dates</span>
+                      {modalOcrBadges.date && (
+                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                          Auto-filled
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      value={itemDateAchieved}
+                      onChange={(e) => { setItemDateAchieved(e.target.value); setModalOcrBadges(prev => ({ ...prev, date: false })) }}
+                      placeholder="e.g. 2023 - 2024 or Oct 15, 2023"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                      required
+                    />
+                  </div>
+
+                  {/* Geographic Scope */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                      <span>Geographic Scope</span>
+                      {modalOcrBadges.scope && (
+                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                          Auto-filled
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      value={itemScope}
+                      onChange={(e) => {
+                        setItemScope(e.target.value)
+                        setModalOcrBadges(prev => ({ ...prev, scope: false }))
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                    >
+                      <option value="Local">Local / Institutional</option>
+                      <option value="Regional">Regional (Region XII)</option>
+                      <option value="National">National</option>
+                      <option value="International">International</option>
+                    </select>
+                  </div>
+
+                  {/* Subcategory Fields */}
+                  {itemCategory.startsWith('A.1') && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Course / Degree</span>
+                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={itemTitle}
+                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
+                          placeholder="e.g. Ph.D. in Computer Science / MA in Education"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>School / University</span>
+                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={institution}
+                          onChange={(e) => { setInstitution(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
+                          placeholder="e.g. Ateneo de Manila University / NDMU"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {itemCategory.startsWith('A.2') && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Organization</span>
+                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={itemTitle}
+                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
+                          placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Conducted or Organized by</span>
+                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={organizerVenue}
+                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
+                          placeholder="e.g. National Board / Local Chapter"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {itemCategory.startsWith('A.3') && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Title</span>
+                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={itemTitle}
+                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
+                          placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Conducted or Organized by</span>
+                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={organizerVenue}
+                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
+                          placeholder="e.g. CHED Region XII / NDMU Campus"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {itemCategory.startsWith('B.1') && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Activity</span>
+                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={itemTitle}
+                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
+                          placeholder="e.g. Keynote Address on Educational Data Mining"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Conducted or Organized by</span>
+                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={organizerVenue}
+                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
+                          placeholder="e.g. DOST Region XII / MSU"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {(itemCategory.startsWith('B.2') || itemCategory.startsWith('B.3') || itemCategory.startsWith('B.4') || itemCategory.startsWith('B.5') || itemCategory.startsWith('B.6')) && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>
+                            {itemCategory.startsWith('B.2') ? 'Publications' :
+                             itemCategory.startsWith('B.3') ? 'Research' :
+                             itemCategory.startsWith('B.4') ? 'Recognition / Awards' :
+                             itemCategory.startsWith('B.5') ? 'Materials' : 'Creative Work'}
+                          </span>
+                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={itemTitle}
+                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
+                          placeholder="e.g. Title of Work, Research, Award, Material, or Creative Work"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Granted by</span>
+                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={publisherIssn}
+                          onChange={(e) => { setPublisherIssn(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
+                          placeholder="e.g. IEEE Access / NDMU Research Office / Conferring Body"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {itemCategory.startsWith('C') && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>{itemCategory.includes('Moderator') ? 'Clubs / Organizations' : 'Activity'}</span>
+                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={itemTitle}
+                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
+                          placeholder="e.g. Junior Philippine Computer Society / Outreach Activity"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                          <span>Conducted / Organized by</span>
+                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={organizerVenue}
+                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
+                          placeholder="e.g. OSAD / Parish Pastoral Council / Local Government Unit"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          required
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Remarks Field (Full width on 2-col) */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Remarks / Additional Details
+                    </label>
+                    <input
+                      type="text"
+                      value={itemSubCategory}
+                      onChange={(e) => setItemSubCategory(e.target.value)}
+                      placeholder="e.g. Full-time Permanent / Officer / Volume 12 Issue 3"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                    />
+                  </div>
+
+                  {/* Documentary Proof File Attachment */}
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Documentary Proof File Attachment (.pdf / .png)
+                    </label>
+                    <input
+                      type="text"
+                      value={itemProofName}
+                      onChange={(e) => setItemProofName(e.target.value)}
+                      placeholder="e.g. certificate_proof_document.pdf"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                  Geographic Scope
-                </label>
-                <select
-                  value={itemScope}
-                  onChange={(e) => setItemScope(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
-                >
-                  <option value="Local">Local / Institutional</option>
-                  <option value="Regional">Regional (Region XII)</option>
-                  <option value="National">National</option>
-                  <option value="International">International</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                  Documentary Proof File Attachment (.pdf / .png)
-                </label>
-                <input
-                  type="text"
-                  value={itemProofName}
-                  onChange={(e) => setItemProofName(e.target.value)}
-                  placeholder="e.g. certificate_proof_document.pdf"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {/* Sticky Modal Footer */}
+              <div className="sticky bottom-0 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
@@ -723,7 +1149,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
                 >
                   {editingItem ? 'Save Changes' : 'Add to Portfolio Draft'}
                 </button>

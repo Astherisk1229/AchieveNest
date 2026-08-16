@@ -110,6 +110,16 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
         <NotificationPopover />
 
+        {/* System Settings Quick Icon Button */}
+        <Link
+          to={location.pathname.includes('/osad/') ? '/osad/settings' : isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
+          className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#2d8a4e] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
+          title="System Settings"
+          aria-label="Open Settings"
+        >
+          <Settings className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+        </Link>
+
         {/* User Profile Dropdown Container */}
         <div className="relative">
           <button
@@ -166,7 +176,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                   
                   {/* My Profile */}
                   <Link
-                    to={isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/account' : '/student/account'}
+                    to={location.pathname.includes('/osad/') ? '/osad/account' : isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/account' : '/student/account'}
                     onClick={() => setIsProfileOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
                   >
@@ -176,12 +186,12 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
                   {/* Settings */}
                   <Link
-                    to={isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
+                    to={location.pathname.includes('/osad/') ? '/osad/settings' : isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
                     onClick={() => setIsProfileOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
                   >
                     <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <span>Settings &amp; Preferences</span>
+                    <span>Settings</span>
                   </Link>
 
                   {/* Theme Mode Toggle Option */}

@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Bell, CheckCheck, ChevronRight } from 'lucide-react'
 
 export default function NotificationPopover() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState([
     {
@@ -80,12 +81,13 @@ export default function NotificationPopover() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-700 hover:text-slate-900 transition backdrop-blur-md shadow-2xs cursor-pointer"
+        className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#2d8a4e] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
         aria-label="Notifications"
+        title="Notification Center"
       >
-        <Bell className="w-5.5 h-5.5 text-slate-700" />
+        <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#2d8a4e] text-white font-bold text-xs flex items-center justify-center shadow-md animate-pulse border-2 border-white">
+          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#2d8a4e] text-white font-black text-[10px] flex items-center justify-center shadow-xs animate-pulse border border-white dark:border-slate-900">
             {unreadCount}
           </span>
         )}
@@ -94,13 +96,13 @@ export default function NotificationPopover() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)}></div>
-          <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white text-slate-900 shadow-2xl border border-slate-200 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-white dark:bg-[#131e2e] text-slate-900 dark:text-white shadow-2xl border border-slate-200/90 dark:border-slate-800 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-3">
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-sm">Notifications Center</h3>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Notifications Center</h3>
                 {unreadCount > 0 && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#eef7f0] text-[#1e5831]">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
                     {unreadCount} new
                   </span>
                 )}
@@ -109,7 +111,7 @@ export default function NotificationPopover() {
                 <button
                   type="button"
                   onClick={markAllRead}
-                  className="text-xs text-[#2d8a4e] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+                  className="text-xs text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 font-bold cursor-pointer"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   Mark read
@@ -126,29 +128,39 @@ export default function NotificationPopover() {
                     key={notif.id}
                     type="button"
                     onClick={() => handleNotificationClick(notif)}
-                    className={`w-full p-3 rounded-xl border text-left transition cursor-pointer group flex items-start justify-between gap-2 ${
-                      notif.is_read ? 'bg-slate-50 border-slate-100 opacity-75 hover:opacity-100' : 'bg-[#f7faf8] border-[#cbe6d2] hover:border-[#2d8a4e]'
+                    className={`w-full p-3 rounded-2xl border text-left transition cursor-pointer group flex items-start justify-between gap-2 ${
+                      notif.is_read 
+                        ? 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 opacity-75 hover:opacity-100' 
+                        : 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 hover:border-[#2d8a4e]'
                     }`}
                   >
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-900 group-hover:text-[#2d8a4e] transition truncate">{notif.title}</span>
+                        <span className="text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition truncate">{notif.title}</span>
                         <span className="text-[10px] text-slate-400 shrink-0">{notif.time}</span>
                       </div>
-                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{notif.message}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">{notif.message}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] group-hover:translate-x-0.5 transition shrink-0 mt-1" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition shrink-0 mt-1" />
                   </button>
                 ))
               )}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 mt-3 flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-3 flex items-center justify-between text-xs">
               <span className="text-[10px] text-slate-400 font-mono">AchieveNest Gateway</span>
               <button
                 type="button"
-                onClick={() => { setIsOpen(false); navigate('/notifications'); }}
-                className="font-extrabold text-[#2d8a4e] hover:underline cursor-pointer"
+                onClick={() => {
+                  setIsOpen(false)
+                  const targetNotifPath = location.pathname.includes('/osad/')
+                    ? '/osad/notifications'
+                    : location.pathname.includes('/student/')
+                    ? '/student/notifications'
+                    : '/personnel/notifications'
+                  navigate(targetNotifPath)
+                }}
+                className="font-extrabold text-[#2d8a4e] dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 View all →
               </button>

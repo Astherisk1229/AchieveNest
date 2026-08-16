@@ -28,7 +28,9 @@ import {
   BookOpen,
   Star,
   ExternalLink,
-  Briefcase
+  Briefcase,
+  Scan,
+  Sparkles
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 
@@ -198,6 +200,16 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
+              className="px-4 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[#1b4332] text-xs font-extrabold flex items-center gap-2 transition shadow-2xs cursor-pointer"
+              title="Upload certificate file and let AchieveNest OCR automatically detect category and fill details"
+            >
+              <Scan className="w-4 h-4 text-[#2d8a4e]" />
+              <span>Scan Certificate</span>
             </button>
 
             <button

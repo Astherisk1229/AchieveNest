@@ -75,9 +75,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
     if (activeContext === 'osad_staff' || location.pathname.includes('/osad/')) {
       return [
-        { label: 'OSAD Command Center', icon: Home, path: '/osad/dashboard?tab=overview', tab: 'overview' },
+        { label: 'OSAD Administration', icon: Home, path: '/osad/dashboard?tab=overview', tab: 'overview' },
+        { label: 'Colleges & Programs', icon: Building2, path: '/osad/dashboard?tab=departments', tab: 'departments' },
         { label: 'Student Governance', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
-        { label: 'Departments & Programs', icon: Building2, path: '/osad/dashboard?tab=departments', tab: 'departments' },
         { label: 'Student Organizations', icon: Building2, path: '/osad/dashboard?tab=organizations', tab: 'organizations' },
         { label: 'Award Categories', icon: Award, path: '/osad/dashboard?tab=awards', tab: 'awards' },
         { label: 'Identify Awardees', icon: LayoutGrid, path: '/osad/dashboard?tab=awardees', tab: 'awardees' },

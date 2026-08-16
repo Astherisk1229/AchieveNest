@@ -134,6 +134,9 @@ export default function App() {
             {/* OSAD Portal */}
             <Route element={<LayoutShell allowedRoles={['osad_staff']} />}>
               <Route path="/osad/dashboard" element={<OSADDashboardPage />} />
+              <Route path="/osad/account" element={<AccountPage />} />
+              <Route path="/osad/settings" element={<SettingsPage />} />
+              <Route path="/osad/notifications" element={<NotificationsPage />} />
             </Route>
 
             <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />

@@ -250,61 +250,6 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
       </div>
 
-      {/* Sidebar Footer */}
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 space-y-1">
-        <p className="px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 text-slate-400 dark:text-slate-400">
-          Account
-        </p>
-        
-        {/* Notifications & Settings Buttons */}
-        <Link
-          to={isPersonnel ? '/personnel/notifications' : '/student/notifications'}
-          className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
-            isNotificationsActive
-              ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
-            isNotificationsActive
-              ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
-              : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
-          }`}>
-            <Bell className="w-3.5 h-3.5" />
-          </div>
-          <span>Notifications</span>
-        </Link>
-
-        <Link
-          to={isPersonnel ? '/personnel/settings' : '/student/settings'}
-          className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
-            isSettingsActive
-              ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
-            isSettingsActive
-              ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
-              : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
-          }`}>
-            <Settings className="w-3.5 h-3.5" />
-          </div>
-          <span>Settings</span>
-        </Link>
-
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="w-full px-3 py-2 rounded-xl font-extrabold text-xs text-[#9f2f2d] dark:text-rose-400 hover:bg-[#fdebec] dark:hover:bg-rose-950/50 hover:text-[#9f2f2d] flex items-center gap-3 transition cursor-pointer group"
-        >
-          <div className="w-7 h-7 rounded-lg bg-[#fdebec] dark:bg-rose-950/60 text-[#9f2f2d] dark:text-rose-400 border border-[#f5c6cb] dark:border-rose-900/50 flex items-center justify-center shrink-0">
-            <LogOut className="w-3.5 h-3.5" />
-          </div>
-          <span>Logout</span>
-        </button>
-      </div>
-
     </aside>
   )
 }

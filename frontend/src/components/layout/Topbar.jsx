@@ -90,9 +90,24 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
         </button>
       </div>
 
-      {/* Right Side: Notification Icon & User Profile Dropdown */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      {/* Right Side: Notification Icon, Theme Toggle & User Profile Dropdown */}
+      <div className="flex items-center gap-2.5 sm:gap-3.5">
         
+        {/* Dark / Light Mode Quick Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#2d8a4e] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          aria-label="Toggle Dark / Light Theme"
+        >
+          {isDark ? (
+            <Sun className="w-5 h-5 text-amber-400 animate-in spin-in-90 duration-200" />
+          ) : (
+            <Moon className="w-5 h-5 text-slate-600 animate-in spin-in-45 duration-200" />
+          )}
+        </button>
+
         <NotificationPopover />
 
         {/* User Profile Dropdown Container */}
@@ -100,7 +115,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
           <button
             type="button"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition group"
+            className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition active:scale-[0.98] cursor-pointer group"
           >
             <div className="w-9.5 h-9.5 rounded-full border-2 border-[#2d8a4e] p-0.5 overflow-hidden shrink-0 shadow-xs aspect-square">
               <img
@@ -153,7 +168,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                   <Link
                     to={isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/account' : '/student/account'}
                     onClick={() => setIsProfileOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left cursor-pointer"
+                    className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
                   >
                     <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>My Profile</span>
@@ -163,11 +178,30 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                   <Link
                     to={isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
                     onClick={() => setIsProfileOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left cursor-pointer"
+                    className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
                   >
                     <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>Settings &amp; Preferences</span>
                   </Link>
+
+                  {/* Theme Mode Toggle Option */}
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-between transition text-left active:scale-[0.98] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {isDark ? (
+                        <Sun className="w-4 h-4 text-amber-400" />
+                      ) : (
+                        <Moon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                      )}
+                      <span>Appearance Mode</span>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      {isDark ? 'Dark' : 'Light'}
+                    </span>
+                  </button>
 
                   {/* Switch Workspace Accordion Submenu */}
                   {isPersonnelUser && availableSwitchRoles.length > 0 && (
@@ -175,7 +209,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                       <button
                         type="button"
                         onClick={() => setIsSwitchToOpen(!isSwitchToOpen)}
-                        className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-between transition text-left cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-between transition text-left active:scale-[0.98] cursor-pointer"
                       >
                         <div className="flex items-center gap-2.5">
                           <RefreshCw className="w-4 h-4 text-slate-500 dark:text-slate-400" />
@@ -198,7 +232,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                                 key={role.id}
                                 type="button"
                                 onClick={() => { handleSelectRole(role.id); setIsProfileOpen(false) }}
-                                className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition text-left text-slate-600 dark:text-slate-300 hover:bg-[#eef7f0] dark:hover:bg-emerald-950/60 hover:text-[#1e5831] dark:hover:text-emerald-300 cursor-pointer"
+                                className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition text-left text-slate-600 dark:text-slate-300 hover:bg-[#eef7f0] dark:hover:bg-emerald-950/60 hover:text-[#1e5831] dark:hover:text-emerald-300 active:scale-[0.98] cursor-pointer"
                               >
                                 <IconComp className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
                                 <span>{role.label}</span>
@@ -217,7 +251,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="w-full px-3 py-2.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-2 transition text-left cursor-pointer"
+                    className="w-full px-3 py-2.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-2 transition text-left active:scale-[0.98] cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Logout</span>

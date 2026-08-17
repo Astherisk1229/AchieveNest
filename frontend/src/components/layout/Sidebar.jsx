@@ -3,14 +3,14 @@ import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-do
 import { getCurrentUser, logoutUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import useTheme from '../../hooks/useTheme'
-import { 
-  Home, 
-  Award, 
-  FolderKanban, 
-  User, 
-  Bell, 
-  Settings, 
-  LogOut, 
+import {
+  Home,
+  Award,
+  FolderKanban,
+  User,
+  Bell,
+  Settings,
+  LogOut,
   Search,
   ShieldCheck,
   Building2,
@@ -66,10 +66,10 @@ export default function Sidebar({ currentUser, onRoleChange }) {
     if (activeContext === 'hr_staff' || location.pathname.includes('/hr/')) {
       return [
         { label: 'Dashboard', icon: Home, path: '/hr/dashboard', tab: 'overview' },
-        { label: 'Personnel Governance', icon: Users, path: '/hr/personnel-governance', tab: 'personnel' },
-        { label: 'Verification Queue', icon: FileCheck2, path: '/hr/verification-queue', tab: 'verification' },
-        { label: 'Faculty Ranking & Matrix', icon: Award, path: '/hr/faculty-ranking-and-matrix', tab: 'masterboard' },
-        { label: 'Accreditation & Audit Logs', icon: ShieldCheck, path: '/hr/accreditation-and-audit-logs', tab: 'audit' },
+        { label: 'Personnel Directory', icon: Users, path: '/hr/personnel-directory', tab: 'personnel' },
+        { label: 'Evaluation Submissions', icon: FileCheck2, path: '/hr/evaluation-submissions', tab: 'verification' },
+        { label: 'Faculty Evaluation & Ranking', icon: Award, path: '/hr/faculty-evaluation-and-ranking', tab: 'masterboard' },
+        { label: 'Audit Trail', icon: ShieldCheck, path: '/hr/audit-trail', tab: 'audit' },
       ]
     }
 
@@ -154,12 +154,12 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   return (
     <aside className="w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white">
       <div>
-        
+
         {/* Brand Header */}
         <div className="p-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80">
           <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-2xs shrink-0 border border-slate-200/80">
             <svg viewBox="0 0 100 100" className="w-full h-full">
-              <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
+              <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
               <circle cx="50" cy="50" r="28" fill="#ffffff" />
               <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
             </svg>
@@ -168,9 +168,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             <h1 className="font-extrabold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">AchieveNest</h1>
             <p className="text-[10px] font-extrabold tracking-widest uppercase text-[#2d8a4e] dark:text-emerald-400">
               {activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? 'NDMU OSAD' :
-               activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? 'HR PORTAL' :
-               ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeContext) || location.pathname.includes('/personnel/') ? 'PERSONNEL PORTAL' :
-               'STUDENT PORTAL'}
+                activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? 'HR PORTAL' :
+                  ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeContext) || location.pathname.includes('/personnel/') ? 'PERSONNEL PORTAL' :
+                    'STUDENT PORTAL'}
             </p>
           </div>
         </div>
@@ -211,8 +211,11 @@ export default function Sidebar({ currentUser, onRoleChange }) {
             const itemCleanPath = item.path.split('?')[0]
             const currentCleanPath = location.pathname.split('?')[0]
 
-            // Match explicit path for top-level routes (e.g. /hr/personnel-governance)
-            const isExactPathActive = Boolean(!item.tab && currentCleanPath === itemCleanPath)
+            // Match explicit path for top-level routes (e.g. /hr/faculty-ranking-and-matrix, /hr/personnel-governance)
+            const isExactPathActive = Boolean(
+              currentCleanPath === itemCleanPath &&
+              (!isDashboardPage || !item.path.includes('?tab='))
+            )
 
             // Match tab parameter on dashboard (e.g. /osad/dashboard?tab=accounts)
             const isTabActive = Boolean(item.tab && isDashboardPage && activeTabParam && activeTabParam === item.tab)
@@ -229,17 +232,15 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               <Link
                 key={item.label}
                 to={item.path}
-                className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${
-                  isActive
+                className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${isActive
                     ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-                }`}
+                  }`}
               >
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
-                  isActive
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${isActive
                     ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
                     : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
-                }`}>
+                  }`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
                 <span>{item.label}</span>

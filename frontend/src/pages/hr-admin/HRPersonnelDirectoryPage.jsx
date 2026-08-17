@@ -1,16 +1,16 @@
 import React, { useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
-import PersonnelGovernanceHeader from './personnel-governance/PersonnelGovernanceHeader'
-import GovernanceTabs from './personnel-governance/GovernanceTabs'
-import FacultyDirectory from './personnel-governance/FacultyDirectory'
-import FacultyDossierDrawer from './personnel-governance/FacultyDossierDrawer'
-import EditAssignmentModal from './personnel-governance/EditAssignmentModal'
-import DepartmentAssignments from './personnel-governance/DepartmentAssignments'
-import PasswordResetQueue from './personnel-governance/PasswordResetQueue'
-import OnboardPersonnelModal from './personnel-governance/OnboardPersonnelModal'
+import PersonnelDirectoryHeader from './personnel-directory/PersonnelDirectoryHeader'
+import GovernanceTabs from './personnel-directory/GovernanceTabs'
+import FacultyDirectory from './personnel-directory/FacultyDirectory'
+import FacultyDossierDrawer from './personnel-directory/FacultyDossierDrawer'
+import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
+import DepartmentAssignments from './personnel-directory/DepartmentAssignments'
+import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
+import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
 
-export function HRPersonnelGovernancePage(props) {
+export function HRPersonnelDirectoryPage(props) {
   const hrHook = useHR()
 
   const personnelList = props.personnelList || hrHook.personnelList || []
@@ -51,56 +51,37 @@ export function HRPersonnelGovernancePage(props) {
     setEditingAssignmentPersonnel(p)
   }
 
-  const handleSaveAssignment = (personnelId, updateData) => {
-    if (handleUpdateRank) {
-      handleUpdateRank(personnelId, {
-        college: updateData.college,
-        department: updateData.department
-      })
+  const handleSaveAssignment = (updatedData) => {
+    if (handleAssignDepartmentSecretary) {
+      handleAssignDepartmentSecretary(updatedData.id, updatedData.department)
     }
-    showToast(`Successfully updated organizational assignment for ${editingAssignmentPersonnel?.full_name || 'personnel'}.`)
+    showToast(`Updated administrative assignment for ${updatedData.full_name || 'personnel'}.`)
     setEditingAssignmentPersonnel(null)
   }
 
-  const handlePromoteRank = (p) => {
-    const nextRank = p.academic_rank.includes('Instructor') ? 'Assistant Professor I' :
-                     p.academic_rank.includes('Assistant') ? 'Associate Professor I' : 'Full Professor I'
+  const handlePromoteRank = (p, newRank, newStatus) => {
     if (handleUpdateRank) {
-      handleUpdateRank(p.id, { academic_rank: nextRank })
+      handleUpdateRank(p.id, newRank, newStatus)
     }
-    showToast(`Promoted ${p.full_name} to ${nextRank}.`)
+    showToast(`Promoted ${p.full_name} to ${newRank} (${newStatus}).`)
+    setIsDossierOpen(false)
   }
 
   const handleResetPassword = (p) => {
-    showToast(`Issued temporary password for ${p.full_name}.`)
+    showToast(`Issued temporary credentials reset passkey for ${p.full_name}.`)
   }
 
-  const handleManageRole = (p) => {
-    showToast(`Managing account roles for ${p.full_name}.`)
-  }
-
-  const handleAssignSecretary = (departmentName, secretaryPerson, effectiveDate) => {
-    if (handleAssignDepartmentSecretary) {
-      handleAssignDepartmentSecretary(departmentName, secretaryPerson.id)
-    }
-    showToast(`Assigned ${secretaryPerson.full_name} as Department Secretary for ${departmentName}.`)
+  const handleManageRole = (p, roleKey) => {
+    showToast(`Updated administrative role authorization for ${p.full_name}.`)
   }
 
   const handleOnboardSubmit = (formData) => {
     if (handleCreatePersonnelAccount) {
       handleCreatePersonnelAccount(formData)
     }
-    showToast(`Successfully onboarded ${formData.full_name} as ${formData.academic_rank}.`)
+    showToast(`Successfully onboarded ${formData.full_name || 'new personnel account'}. Credentials dispatched via secure mail.`)
+    setIsOnboardingOpen(false)
   }
-
-  const handleApproveReset = (requestId, tempPass) => {
-    if (handleApprovePasswordReset) {
-      handleApprovePasswordReset(requestId, tempPass)
-    }
-    showToast(`Password reset request approved and resolved.`)
-  }
-
-  const pendingResetCount = passwordResets.filter(r => r.status === 'pending').length
 
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100">
@@ -112,39 +93,43 @@ export function HRPersonnelGovernancePage(props) {
         </div>
       )}
 
-      {/* Lightweight Header */}
-      <PersonnelGovernanceHeader onOpenOnboarding={() => setIsOnboardingOpen(true)} />
+      {/* Page Header */}
+      <PersonnelDirectoryHeader
+        totalCount={personnelList.length}
+        pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+      />
 
-      {/* 3 Task Navigation Tabs */}
+      {/* Governance Roster Tabs */}
       <GovernanceTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        pendingResetCount={pendingResetCount}
+        personnelCount={personnelList.length}
+        pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
       />
 
-      {/* Tab Content Views */}
+      {/* Main Tab Views */}
       {activeTab === 'directory' && (
         <FacultyDirectory
           personnelList={personnelList}
-          onSelectFaculty={handleOpenDossier}
-          onEditAssignment={handleOpenEditAssignment}
-          onManageRole={handleManageRole}
-          onResetPassword={handleResetPassword}
-          onPromoteRank={handlePromoteRank}
+          onSelectPersonnel={handleOpenDossier}
         />
       )}
 
       {activeTab === 'departments' && (
         <DepartmentAssignments
           personnelList={personnelList}
-          onAssignSecretary={handleAssignSecretary}
+          onEditAssignment={handleOpenEditAssignment}
         />
       )}
 
       {activeTab === 'resets' && (
         <PasswordResetQueue
-          passwordResets={passwordResets}
-          onApproveReset={handleApproveReset}
+          resets={passwordResets}
+          onApproveReset={(reqId) => {
+            const res = handleApprovePasswordReset(reqId)
+            showToast(`Approved reset request for ${res?.user_name || 'personnel'}. Issued temporary passkey: NDMU-Faculty2026!`)
+          }}
         />
       )}
 
@@ -177,4 +162,5 @@ export function HRPersonnelGovernancePage(props) {
   )
 }
 
-export default HRPersonnelGovernancePage
+export const HRPersonnelDirectory = HRPersonnelDirectoryPage
+export default HRPersonnelDirectoryPage

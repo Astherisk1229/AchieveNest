@@ -14,10 +14,10 @@ import { useHR } from '../../hooks/useHR'
 import HRModel from '../../models/HRModel'
 import DepartmentSecretaryAssignmentModal from './modals/DepartmentSecretaryAssignmentModal'
 import CreatePersonnelAccountModal from './modals/CreatePersonnelAccountModal'
-import HRPersonnelGovernance from './HRPersonnelGovernancePage'
-import HRVerificationQueue from './HRVerificationQueuePage'
-import HRFacultyRankingAndMatrix from './HRFacultyRankingAndMatrixPage'
-import HRAccreditationAndAuditLogs from './HRAccreditationAndAuditLogsPage'
+import HRPersonnelDirectory from './HRPersonnelDirectoryPage'
+import HREvaluationSubmissions from './HREvaluationSubmissionsPage'
+import HRFacultyEvaluationAndRanking from './HRFacultyEvaluationAndRankingPage'
+import HRAuditTrail from './HRAuditTrailPage'
 
 export function HRDashboard({ currentUser }) {
   const hrUser = currentUser || { full_name: 'Director Evelyn Tan', email: 'hr@ndmu.edu.ph', employee_id: 'HR-2010-001' }
@@ -118,178 +118,402 @@ export function HRDashboard({ currentUser }) {
   return (
     <div className="space-y-6 font-sans text-slate-900 selection:bg-[#2d8a4e] selection:text-white pb-12">
       
-      {/* ================= HERO EXECUTIVE BANNER (ONLY ON OVERVIEW TAB) ================= */}
+      {/* ================= DASHBOARD HEADER (ONLY ON OVERVIEW TAB) ================= */}
       {effectiveTab === 'overview' && (
-        <>
-          <div className="bg-gradient-to-r from-[#12361e] via-[#1b4332] to-[#0d2816] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-emerald-900/50 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+              Dashboard
+            </h1>
+            <p className="text-base font-normal text-slate-600 dark:text-slate-400 leading-normal mt-1">
+              Monitor personnel administration and faculty evaluation activities requiring HR attention.
+            </p>
+          </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[11px] font-extrabold tracking-wider uppercase flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5" /> Sole Institutional Account
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-amber-400/20 text-amber-200 border border-amber-400/30 text-[11px] font-extrabold tracking-wider uppercase">
-                    AY 2025 - 2026
-                  </span>
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  Human Resources (HR) Executive Portal
-                </h1>
-                <p className="text-xs sm:text-sm text-emerald-200/90 mt-1 font-medium">
-                  {hrUser.full_name} ({hrUser.employee_id}) • University Personnel Governance &amp; Verification Suite
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-200 font-bold">CHEd / PACUCOA Readiness</p>
-                  <p className="text-lg font-black text-amber-300 flex items-center justify-end gap-1">
-                    <CheckCircle2 className="w-4 h-4" /> {stats.accreditationScore}
-                  </p>
-                </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="bg-white dark:bg-[#131e2e] px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-right shadow-2xs">
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Active Evaluation Cycle</p>
+              <div className="flex items-center justify-end gap-2 mt-1">
+                <span className="text-base font-bold text-slate-900 dark:text-white">AY 2025–2026</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-[#EDF3EC] text-[#346538] dark:bg-emerald-950/60 dark:text-emerald-300 border border-[#D4E3D2] dark:border-emerald-800/60 text-xs font-bold">Active</span>
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Toast Notification Banner */}
       {toastMsg && (
-        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-emerald-900 text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-2xl flex items-center gap-3 border border-slate-700 animate-in fade-in slide-in-from-top duration-200">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* ================= MODULE 1: EXECUTIVE COMMAND CENTER ================= */}
+      {/* ================= MODULE 1: DASHBOARD ================= */}
       {effectiveTab === 'overview' && (
         <div className="space-y-6">
-          {/* KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Personnel</span>
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#2d8a4e]">
-                  <Users className="w-5 h-5" />
-                </div>
-              </div>
-              <p className="text-3xl font-black text-slate-900 mt-2">{stats.totalPersonnel}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">Faculty &amp; Administrative Staff</p>
-            </div>
-
-            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Verified Proofs</span>
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-                  <FileCheck className="w-5 h-5" />
-                </div>
-              </div>
-              <p className="text-3xl font-black text-slate-900 mt-2">{stats.verifiedAccomplishments}</p>
-              <p className="text-xs text-[#2d8a4e] mt-1 font-bold">HR Verification Sealed</p>
-            </div>
-
-            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Queue</span>
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
-                  <Clock className="w-5 h-5" />
-                </div>
-              </div>
-              <p className="text-3xl font-black text-amber-600 mt-2">{stats.pendingEndorsements}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">Dept Secretary Endorsed</p>
-            </div>
-
-            <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:shadow-md transition">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Password Reset Requests</span>
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-                  <Lock className="w-5 h-5" />
-                </div>
-              </div>
-              <p className="text-3xl font-black text-purple-700 mt-2">{stats.pendingResets}</p>
-              <p className="text-xs text-slate-500 mt-1 font-medium">Faculty Reset Queue</p>
-            </div>
-          </div>
-
-          {/* HR Executive Management & Action Hub */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+          {/* Operational Overview Surface */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-[#2d8a4e]" /> HR Executive Action &amp; Governance Hub
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 leading-tight">
+                <ShieldCheck className="w-5.5 h-5.5 text-[#2d8a4e] dark:text-emerald-400" /> Operational Overview
               </h2>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">4 Workflows</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Workload</span>
             </div>
 
+            {/* Metric Priority Bento Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Card 1: Personnel & Rank Governance */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('personnel')}
-                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
-                    <UserPlus className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Personnel &amp; Rank Governance</h3>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Manage Faculty roster, employment status &amp; academic rank promotions.</p>
-                </div>
-              </button>
-
-              {/* Card 2: Faculty Verification Queue */}
+              {/* Priority A: Awaiting HR Review (Spot Pastel Warm Gold) */}
               <button
                 type="button"
                 onClick={() => handleTabChange('verification')}
-                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
+                className="p-5 rounded-xl bg-[#FBF3DB] dark:bg-amber-950/30 hover:bg-[#F8ECBF] dark:hover:bg-amber-950/50 border border-[#F2E5B8] dark:border-amber-900/60 text-left transition group cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-amber-500 flex flex-col justify-between"
               >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
-                    <FileCheck className="w-5 h-5" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#956400] dark:text-amber-300">Awaiting HR Review</span>
+                  <div className="w-9 h-9 rounded-lg bg-[#F5E6B5] dark:bg-amber-900/60 text-[#956400] dark:text-amber-300 flex items-center justify-center font-bold">
+                    <Clock className="w-4.5 h-4.5" />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Review Endorsement Queue</h3>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Inspect supporting proof files &amp; stamp official HR seal on accomplishments.</p>
+                </div>
+                <div className="mt-3.5">
+                  <p className="text-3xl font-bold text-[#634300] dark:text-amber-100 leading-tight">{stats.pendingEndorsements || 2}</p>
+                  <p className="text-sm font-normal text-[#805600] dark:text-amber-300/90 leading-normal mt-1">Department-forwarded evaluations</p>
                 </div>
               </button>
 
-              {/* Card 3: NDMU Rating Matrix & Reports */}
+              {/* Priority A: Current Review (Spot Pastel Pale Green) */}
+              <div className="p-5 rounded-xl bg-[#EDF3EC] dark:bg-emerald-950/30 border border-[#D4E3D2] dark:border-emerald-900/60 text-left transition flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#346538] dark:text-emerald-300">Current Review</span>
+                  <div className="w-9 h-9 rounded-lg bg-[#DBE8DA] dark:bg-emerald-900/60 text-[#346538] dark:text-emerald-300 flex items-center justify-center font-bold">
+                    <FileCheck className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className="mt-3.5 space-y-2">
+                  {stats.activeReview ? (
+                    <>
+                      <div>
+                        <p className="text-base font-bold text-[#1b4332] dark:text-emerald-100 leading-tight">{stats.activeReview.faculty_name || 'Dr. Maria Santos'}</p>
+                        <p className="text-xs font-medium text-[#346538] dark:text-emerald-300/80">{stats.activeReview.department || 'Department of Computer Studies'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold text-[#1b4332] dark:text-emerald-200">
+                          <span>16 of 18 items reviewed</span>
+                          <span>89%</span>
+                        </div>
+                        <div className="w-full bg-[#C6DBC4] dark:bg-emerald-900/70 h-2 rounded-full overflow-hidden">
+                          <div className="bg-[#1b4332] dark:bg-emerald-400 h-full rounded-full w-[89%] transition-all duration-300"></div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openProofModal(stats.activeReview)}
+                        className="w-full mt-1 py-2 px-3 rounded-lg bg-[#1b4332] hover:bg-[#143326] text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                      >
+                        Continue Review →
+                      </button>
+                    </>
+                  ) : (
+                    <div className="py-2 space-y-2">
+                      <p className="text-base font-bold text-slate-800 dark:text-slate-200">No active review</p>
+                      <p className="text-xs font-normal text-slate-600 dark:text-slate-400">Select an evaluation from the waiting queue.</p>
+                      <button
+                        type="button"
+                        onClick={() => handleTabChange('verification')}
+                        className="text-xs font-bold text-[#1b4332] dark:text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        View Queue →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Priority B: Ready for Finalization (Spot Pastel Muted Blue) */}
               <button
                 type="button"
-                onClick={handleExportFacultyMatrix}
-                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
+                onClick={() => handleTabChange('verification')}
+                className="p-5 rounded-xl bg-[#E1F3FE] dark:bg-blue-950/30 hover:bg-[#D2ECFC] dark:hover:bg-blue-950/50 border border-[#C8E7FB] dark:border-blue-900/60 text-left transition group cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500 flex flex-col justify-between"
               >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
-                    <Download className="w-5 h-5" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#1F6C9F] dark:text-blue-300">Ready for Finalization</span>
+                  <div className="w-9 h-9 rounded-lg bg-[#CBE8FA] dark:bg-blue-900/60 text-[#1F6C9F] dark:text-blue-300 flex items-center justify-center font-bold">
+                    <CheckCircle2 className="w-4.5 h-4.5" />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">Accreditation &amp; Ranking Matrix</h3>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Export PACUCOA, CHEd &amp; NDMU annual audit faculty reports.</p>
+                </div>
+                <div className="mt-3.5">
+                  <p className="text-3xl font-bold text-[#13486B] dark:text-blue-100 leading-tight">{stats.readyForFinalizationCount || 1}</p>
+                  <p className="text-sm font-normal text-[#1F6C9F] dark:text-blue-300/90 leading-normal mt-1">Evaluation awaiting confirmation</p>
                 </div>
               </button>
 
-              {/* Card 4: System Audit Logs */}
+              {/* Priority B: Completed Evaluations (Spot Pastel Wash) */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('masterboard')}
+                className="p-5 rounded-xl bg-[#F4F8F5] dark:bg-emerald-950/20 hover:bg-[#E8F1EA] dark:hover:bg-emerald-950/40 border border-[#D9E6DD] dark:border-emerald-800/50 text-left transition group cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-600 flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#1b4332] dark:text-emerald-300">Completed Evaluations</span>
+                  <div className="w-9 h-9 rounded-lg bg-[#D4E4D8] dark:bg-emerald-900/50 text-[#1b4332] dark:text-emerald-300 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-4.5 h-4.5" />
+                  </div>
+                </div>
+                <div className="mt-3.5">
+                  <p className="text-3xl font-bold text-[#1b4332] dark:text-emerald-100 leading-tight">{stats.verifiedAccomplishments || 1}</p>
+                  <p className="text-sm font-normal text-[#2d8a4e] dark:text-emerald-300/90 leading-normal mt-1">AY 2025–2026</p>
+                </div>
+              </button>
+            </div>
+
+            {/* Secondary Context Bar: Total Personnel */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-medium">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-200/70 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold shrink-0">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{stats.totalPersonnel || 52} Total Personnel</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Faculty and administrative personnel directory across university colleges.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTabChange('personnel')}
+                className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
+              >
+                View Directory →
+              </button>
+            </div>
+          </div>
+
+          {/* Pending HR Actions Section */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 leading-tight">
+                <Clock className="w-5.5 h-5.5 text-amber-600 dark:text-amber-400" /> Pending HR Actions
+              </h2>
+              <button
+                type="button"
+                onClick={() => handleTabChange('verification')}
+                className="text-sm font-semibold text-[#1b4332] dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                View All Submissions →
+              </button>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
+              {/* Row 1: Awaiting HR Review */}
+              <div className="p-4 sm:p-5 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#956400] dark:bg-amber-400"></span>
+                    <span>Evaluations awaiting HR review</span>
+                  </p>
+                  <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal">
+                    {stats.pendingEndorsements || 2} faculty evaluation submissions forwarded by departments awaiting initial HR review.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('verification')}
+                  className="px-4 py-2 rounded-lg bg-[#956400] hover:bg-[#7a5200] text-white font-semibold text-sm transition cursor-pointer shrink-0 shadow-xs"
+                >
+                  Review Queue →
+                </button>
+              </div>
+
+              {/* Row 2: Current Evaluation in Progress */}
+              <div className="p-4 sm:p-5 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#346538] dark:bg-emerald-400"></span>
+                    <span>Current evaluation in progress</span>
+                  </p>
+                  <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal">
+                    {stats.activeReview ? `${stats.activeReview.faculty_name} · 16 of 18 items reviewed` : 'No evaluation currently in progress.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (stats.activeReview) openProofModal(stats.activeReview)
+                    else handleTabChange('verification')
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#1b4332] hover:bg-[#143326] text-white font-semibold text-sm transition cursor-pointer shrink-0 shadow-xs"
+                >
+                  {stats.activeReview ? 'Continue Review →' : 'View Queue →'}
+                </button>
+              </div>
+
+              {/* Row 3: Ready for Finalization */}
+              <div className="p-4 sm:p-5 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#1F6C9F] dark:bg-blue-400"></span>
+                    <span>Evaluations ready for finalization</span>
+                  </p>
+                  <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal">
+                    {stats.readyForFinalizationCount || 1} evaluation ready for final HR confirmation and official seal.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('verification')}
+                  className="px-4 py-2 rounded-lg bg-[#1F6C9F] hover:bg-[#18557e] text-white font-semibold text-sm transition cursor-pointer shrink-0 shadow-xs"
+                >
+                  Finalize →
+                </button>
+              </div>
+
+              {/* Row 4: Password Resets */}
+              {stats.pendingResets > 0 && (
+                <div className="p-4 sm:p-5 bg-slate-50/50 dark:bg-slate-900/30 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-slate-600 dark:bg-slate-400"></span>
+                      <span>Personnel password reset requests</span>
+                    </p>
+                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal">
+                      {stats.pendingResets} faculty credential reset request(s) awaiting processing in Personnel Directory.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange('personnel')}
+                    className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm transition cursor-pointer shrink-0 shadow-xs"
+                  >
+                    Process →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Access Bento Grid */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 leading-tight">
+              <Sparkles className="w-5.5 h-5.5 text-[#2d8a4e] dark:text-emerald-400" /> Quick Access
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Personnel Directory */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('personnel')}
+                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
+                    <UserPlus className="w-5.5 h-5.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Personnel Directory</h3>
+                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">Personnel records, assignments, employment details, and academic ranks.</p>
+                  </div>
+                </div>
+                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
+              </button>
+
+              {/* Evaluation Submissions */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('verification')}
+                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
+                    <FileCheck className="w-5.5 h-5.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Evaluation Submissions</h3>
+                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">Process faculty evaluations requiring HR review.</p>
+                  </div>
+                </div>
+                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
+              </button>
+
+              {/* Faculty Evaluation & Ranking */}
+              <button
+                type="button"
+                onClick={() => handleTabChange('masterboard')}
+                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
+                    <Download className="w-5.5 h-5.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Faculty Evaluation &amp; Ranking</h3>
+                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">View finalized scores, rankings, and promotion-review information.</p>
+                  </div>
+                </div>
+                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
+              </button>
+
+              {/* Audit Trail */}
               <button
                 type="button"
                 onClick={() => handleTabChange('audit')}
-                className="p-5 rounded-2xl bg-slate-50 hover:bg-[#eaf4ed] border border-slate-200 hover:border-[#d2e8d7] text-left transition group cursor-pointer flex flex-col justify-between"
+                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
               >
-                <div>
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] mb-3 shadow-2xs">
-                    <ShieldCheck className="w-5 h-5" />
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
+                    <ShieldCheck className="w-5.5 h-5.5" />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#1b4332]">System Audit Trail</h3>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">Review immutable HR administrative action security logs.</p>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Audit Trail</h3>
+                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">Review recorded HR administrative activities and changes.</p>
+                  </div>
                 </div>
+                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
               </button>
+            </div>
+          </div>
+
+          {/* Recent HR Activity Section */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 leading-tight">
+                <FileText className="w-5.5 h-5.5 text-emerald-600 dark:text-emerald-400" /> Recent HR Activity
+              </h2>
+              <button
+                type="button"
+                onClick={() => handleTabChange('audit')}
+                className="text-sm font-semibold text-[#1b4332] dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                View Audit Trail →
+              </button>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(auditLogs && auditLogs.length > 0 ? auditLogs.slice(0, 5) : [
+                { id: '1', action_type: 'HR_SCORE_SEAL_APPLIED', target_personnel: 'Dr. Maria Santos', created_at: 'Today, 10:32 AM', details: 'Finalized evaluation score 124/160' },
+                { id: '2', action_type: 'RANK_PROMOTION_UPDATE', target_personnel: 'Prof. Ricardo Gomez', created_at: 'Yesterday, 3:45 PM', details: 'Promoted from Instructor III to Assistant Professor I' },
+                { id: '3', action_type: 'CREDENTIAL_RESET_ISSUED', target_personnel: 'Dr. Ana Reyes', created_at: 'Aug 16, 2026', details: 'Issued temporary security passkey' },
+              ]).map((log) => (
+                <div key={log.id} className="py-3.5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#2d8a4e] shrink-0"></div>
+                    <div>
+                      <p className="font-semibold text-slate-900 dark:text-white text-base">
+                        {log.action_type === 'HR_SCORE_SEAL_APPLIED' ? 'Faculty Evaluation Finalized' : log.action_type === 'RANK_PROMOTION_UPDATE' ? 'Academic Rank Updated' : log.action_type === 'CREDENTIAL_RESET_ISSUED' ? 'Password Reset Approved' : log.action_type.replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">{log.target_personnel} · {log.details}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500 shrink-0">{log.created_at}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* ================= MODULE 2: PERSONNEL GOVERNANCE & ACCOUNTS DIRECTORY ================= */}
+      {/* ================= MODULE 2: PERSONNEL DIRECTORY ================= */}
       {effectiveTab === 'personnel' && (
-        <HRPersonnelGovernance
+        <HRPersonnelDirectory
           personnelList={personnelList}
           filteredPersonnel={filteredPersonnel}
           passwordResets={passwordResets}
@@ -309,9 +533,9 @@ export function HRDashboard({ currentUser }) {
         />
       )}
 
-      {/* ================= MODULE 3: FACULTY VERIFICATION QUEUE ================= */}
+      {/* ================= MODULE 3: EVALUATION SUBMISSIONS ================= */}
       {effectiveTab === 'verification' && (
-        <HRVerificationQueue
+        <HREvaluationSubmissions
           directHRQueue={directHRQueue}
           endorsedQueue={endorsedQueue}
           accomplishments={accomplishments}
@@ -319,9 +543,9 @@ export function HRDashboard({ currentUser }) {
         />
       )}
 
-      {/* ================= MODULE 4: FACULTY RANKING & MATRIX ================= */}
+      {/* ================= MODULE 4: FACULTY EVALUATION & RANKING ================= */}
       {effectiveTab === 'masterboard' && (
-        <HRFacultyRankingAndMatrix
+        <HRFacultyEvaluationAndRanking
           portfolios={accomplishments}
           searchQuery={masterboardSearch}
           setSearchQuery={setMasterboardSearch}
@@ -333,9 +557,9 @@ export function HRDashboard({ currentUser }) {
         />
       )}
 
-      {/* ================= MODULE 5: ACCREDITATION & AUDIT LOGS ================= */}
+      {/* ================= MODULE 5: AUDIT TRAIL ================= */}
       {(effectiveTab === 'audit' || effectiveTab === 'reports') && (
-        <HRAccreditationAndAuditLogs
+        <HRAuditTrail
           auditLogs={auditLogs}
           filteredPersonnel={filteredPersonnel}
           handleExportFacultyMatrix={handleExportFacultyMatrix}

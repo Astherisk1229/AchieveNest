@@ -3,10 +3,10 @@ import { Clock, ShieldCheck, RotateCcw, CheckCircle2 } from 'lucide-react'
 
 export default function VerificationStatusTabs({ activeTab, setActiveTab, counts = {} }) {
   const tabs = [
-    { id: 'pending', label: 'Pending Review', icon: Clock, count: counts.pending ?? 8 },
-    { id: 'in_review', label: 'In Review', icon: ShieldCheck, count: counts.inReview ?? 2 },
-    { id: 'returned', label: 'Returned', icon: RotateCcw, count: counts.returned ?? 3 },
-    { id: 'completed', label: 'Completed', icon: CheckCircle2, count: counts.completed ?? 24 },
+    { id: 'pending', label: 'Awaiting HR Review', icon: Clock, count: counts.pending ?? 2 },
+    { id: 'ready_finalization', label: 'Ready for Finalization', icon: CheckCircle2, count: counts.ready_finalization ?? 1 },
+    { id: 'returned', label: 'Returned for Revision', icon: RotateCcw, count: counts.returned ?? 1 },
+    { id: 'completed', label: 'Completed', icon: ShieldCheck, count: counts.completed ?? 24 },
   ]
 
   return (

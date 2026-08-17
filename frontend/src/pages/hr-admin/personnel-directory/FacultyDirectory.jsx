@@ -92,7 +92,7 @@ export default function FacultyDirectory({
 
   const simplifyDepartment = (deptStr) => {
     if (!deptStr) return 'Department'
-    return deptStr.replace(/^Department of\s+/i, 'Dept. of ')
+    return deptStr
   }
 
   return (
@@ -109,8 +109,8 @@ export default function FacultyDirectory({
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder='Search faculty by name, employee ID ("EMP-2019-0881"), email...'
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
+              placeholder="Search personnel by name, employee ID, or email..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
             />
           </div>
 
@@ -123,7 +123,7 @@ export default function FacultyDirectory({
                 setCollegeFilter(e.target.value)
                 setDeptFilter('ALL')
               }}
-              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
             >
               <option value="ALL">All Colleges</option>
               <option value="CEAC">CEAC - Engineering &amp; Computing</option>
@@ -135,7 +135,7 @@ export default function FacultyDirectory({
             <select
               value={deptFilter}
               onChange={e => setDeptFilter(e.target.value)}
-              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
             >
               <option value="ALL">All Departments</option>
               {availableDepartments.map(dept => (
@@ -143,13 +143,13 @@ export default function FacultyDirectory({
               ))}
             </select>
 
-            {/* Status Filter */}
+            {/* Employment Status Filter */}
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
             >
-              <option value="ALL">All Statuses</option>
+              <option value="ALL">All Employment Statuses</option>
               <option value="Full-Time Permanent">Full-Time Permanent</option>
               <option value="Full-Time Probationary">Full-Time Probationary</option>
               <option value="Part-Time Lecturer">Part-Time Lecturer</option>
@@ -163,14 +163,14 @@ export default function FacultyDirectory({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-extrabold uppercase tracking-wider select-none">
+              <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-semibold uppercase tracking-[0.04em] text-xs select-none">
                 <th className="p-4">
                   <button
                     type="button"
                     onClick={() => handleSort('full_name')}
                     className="flex items-center gap-1.5 hover:text-[#1b4332] dark:hover:text-emerald-400 transition cursor-pointer group"
                   >
-                    <span>Faculty Member</span>
+                    <span>Personnel Member</span>
                     {sortColumn === 'full_name' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
                     ) : (
@@ -180,15 +180,15 @@ export default function FacultyDirectory({
                 </th>
                 <th className="p-4">Department &amp; College</th>
                 <th className="p-4">Academic Rank</th>
-                <th className="p-4">Employment</th>
+                <th className="p-4">Employment Details</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-xs text-slate-400 font-medium">
-                    No faculty members match your search or filter criteria.
+                  <td colSpan={5} className="p-8 text-center text-sm text-slate-400 font-normal">
+                    No personnel records match your search or filter criteria.
                   </td>
                 </tr>
               ) : (
@@ -198,52 +198,52 @@ export default function FacultyDirectory({
                     onClick={() => onSelectFaculty(p)}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-900/60 transition cursor-pointer group"
                   >
-                    {/* Faculty Member */}
-                    <td className="p-4 flex items-center gap-3">
+                    {/* Personnel Identity */}
+                    <td className="p-4 flex items-center gap-3.5">
                       <img
                         src={p.avatar_url}
                         alt={p.full_name}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                        className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                       />
-                      <div>
-                        <p className="font-extrabold text-slate-900 dark:text-white text-xs group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 transition">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-semibold leading-[1.35] text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 transition">
                           {p.full_name}
                         </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{p.email}</p>
-                        <span className="font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                        <p className="text-xs font-normal leading-[1.4] text-slate-600 dark:text-slate-400">{p.email}</p>
+                        <p className="text-xs font-medium leading-[1.4] text-slate-500 dark:text-slate-500">
                           {p.employee_id}
-                        </span>
+                        </p>
                       </div>
                     </td>
 
-                    {/* Department & College */}
+                    {/* Department & Unit */}
                     <td className="p-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-[#1b4332]/10 text-[#1b4332] dark:text-emerald-400 border border-[#1b4332]/20 font-black text-[10px] tracking-wider uppercase shrink-0">
-                          {getCollegeAcronym(p.college)}
-                        </span>
-                        <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-semibold leading-[1.35] text-slate-900 dark:text-white">
                           {simplifyDepartment(p.department)}
-                        </span>
+                        </p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.03em] text-slate-500 dark:text-slate-400">
+                          {getCollegeAcronym(p.college)}
+                        </p>
                       </div>
                     </td>
 
                     {/* Academic Rank */}
                     <td className="p-4 whitespace-nowrap">
-                      <span className="px-2.5 py-1 rounded-lg bg-[#1b4332]/10 text-[#1b4332] dark:text-emerald-300 border border-[#1b4332]/20 font-extrabold text-[11px] whitespace-nowrap inline-block">
-                        {p.academic_rank}
+                      <span className="text-sm font-medium leading-[1.4] text-slate-800 dark:text-slate-200">
+                        {p.academic_rank || '—'}
                       </span>
                     </td>
 
-                    {/* Employment */}
+                    {/* Employment Details */}
                     <td className="p-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-semibold">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium leading-[1.4] text-slate-800 dark:text-slate-200">
                           {p.employment_status}
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          · {p.tenure_years} Yrs
-                        </span>
+                        </p>
+                        <p className="text-xs font-normal leading-[1.4] text-slate-500 dark:text-slate-400">
+                          {p.tenure_years} {p.tenure_years === 1 ? 'year of service' : 'years of service'}
+                        </p>
                       </div>
                     </td>
 
@@ -253,7 +253,7 @@ export default function FacultyDirectory({
                         <button
                           type="button"
                           onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
-                          className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
+                          className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
                           title="Actions Menu"
                         >
                           <MoreVertical className="w-4 h-4" />
@@ -263,7 +263,7 @@ export default function FacultyDirectory({
                         {activeMenuId === p.id && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
-                            <div className="absolute right-4 top-12 z-50 w-48 rounded-2xl bg-white dark:bg-[#182638] border border-slate-200 dark:border-slate-700 shadow-xl py-1 text-left divide-y divide-slate-100 dark:divide-slate-800">
+                            <div className="absolute right-4 top-12 z-50 w-52 rounded-2xl bg-white dark:bg-[#182638] border border-slate-200 dark:border-slate-700 shadow-xl py-1 text-left divide-y divide-slate-100 dark:divide-slate-800">
                               <div className="py-1">
                                 <button
                                   type="button"
@@ -271,10 +271,10 @@ export default function FacultyDirectory({
                                     onSelectFaculty(p)
                                     setActiveMenuId(null)
                                   }}
-                                  className="w-full px-3.5 py-2 text-left text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
+                                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
                                 >
                                   <Eye className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
-                                  <span>View Dossier</span>
+                                  <span>View Personnel Profile</span>
                                 </button>
                                 <button
                                   type="button"
@@ -282,7 +282,7 @@ export default function FacultyDirectory({
                                     onEditAssignment(p)
                                     setActiveMenuId(null)
                                   }}
-                                  className="w-full px-3.5 py-2 text-left text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
+                                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
                                 >
                                   <Edit3 className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                   <span>Edit Assignment</span>
@@ -296,10 +296,10 @@ export default function FacultyDirectory({
                                     onPromoteRank(p)
                                     setActiveMenuId(null)
                                   }}
-                                  className="w-full px-3.5 py-2 text-left text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
+                                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
                                 >
                                   <Award className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                  <span>Promote Rank</span>
+                                  <span>Record Rank Change</span>
                                 </button>
                                 <button
                                   type="button"
@@ -307,7 +307,7 @@ export default function FacultyDirectory({
                                     onResetPassword(p)
                                     setActiveMenuId(null)
                                   }}
-                                  className="w-full px-3.5 py-2 text-left text-xs font-extrabold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
+                                  className="w-full px-3.5 py-2 text-left text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
                                 >
                                   <KeyRound className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                                   <span>Reset Password</span>

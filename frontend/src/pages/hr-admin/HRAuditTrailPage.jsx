@@ -2,7 +2,7 @@ import React from 'react'
 import { FileText, ShieldCheck, Download, Lock } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 
-export function HRAccreditationAndAuditLogsPage(props) {
+export function HRAuditTrailPage(props) {
   const hrHook = useHR()
 
   const auditLogs = props.auditLogs || hrHook.auditLogs || []
@@ -35,56 +35,68 @@ export function HRAccreditationAndAuditLogsPage(props) {
     exportCSVHandler('NDMU_Faculty_CHEd_PACUCOA_Matrix.csv', [headers, ...dataRows])
   }
 
+  const formatActionType = (type) => {
+    switch (type) {
+      case 'RANK_PROMOTION_UPDATE':
+        return 'Academic Rank Updated'
+      case 'HR_SCORE_SEAL_APPLIED':
+        return 'Faculty Evaluation Finalized'
+      case 'CREDENTIAL_RESET_ISSUED':
+        return 'Personnel Password Reset Approved'
+      case 'EVALUATION_RETURNED':
+        return 'Evaluation Returned for Revision'
+      case 'PERSONNEL_UPDATE':
+        return 'Personnel Record Updated'
+      case 'PERSONNEL_REGISTERED':
+        return 'Personnel Registered'
+      case 'ASSIGNMENT_UPDATED':
+        return 'Department Assignment Updated'
+      default:
+        return (type || '').replace(/_/g, ' ')
+    }
+  }
+
+  const handleExportAuditLogs = () => {
+    const headers = ['Action Type', 'Actor', 'Target Personnel', 'Details', 'Timestamp', 'Reference ID']
+    const dataRows = auditLogs.map(log => [
+      formatActionType(log.action_type),
+      log.admin_name || 'HR Admin',
+      log.target_personnel || 'N/A',
+      log.details || '',
+      log.created_at || '',
+      log.id || ''
+    ])
+    exportCSVHandler('HR_Audit_Trail_History.csv', [headers, ...dataRows])
+  }
+
   return (
     <div className="space-y-6 font-sans">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-3xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-800 flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">CHEd &amp; PACUCOA Faculty Qualification Matrix</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              Export complete university-wide faculty academic ranks, tenure years, degree qualifications, and verified publication numbers in standardized CSV format.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleExportFacultyMatrixHandler}
-            className="w-full py-3 rounded-2xl bg-[#1b4332] text-white hover:bg-[#12361e] font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Download className="w-4 h-4" /> Download Official CSV Matrix
-          </button>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-[#1b4332] dark:text-emerald-400" />
+            <span>Audit Trail</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+            Review recorded HR actions involving personnel administration, faculty evaluation processing, account support, rank changes, and organizational assignments.
+          </p>
         </div>
 
-        <div className="p-6 rounded-3xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Faculty Promotion Board Dossier Compiler</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-              Compile verified accomplishment files and seal records into an aggregated promotion summary for institutional promotion evaluation boards.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => exportCSVHandler('Faculty_Promotion_Board_Summary.csv', [
-              ['Employee ID', 'Name', 'Current Rank', 'Target Promotion Track', 'Verified Points'],
-              ...filteredPersonnel.map(p => [p.employee_id, p.full_name, p.academic_rank, 'Promotion Candidate', p.verified_accomplishments_count])
-            ])}
-            className="w-full py-3 rounded-2xl bg-slate-900 dark:bg-slate-800 text-white hover:bg-slate-800 font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <FileText className="w-4 h-4" /> Compile Promotion Board CSV
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleExportAuditLogs}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs shadow-sm transition cursor-pointer shrink-0"
+        >
+          <Download className="w-4 h-4" />
+          <span>Export Audit History</span>
+        </button>
       </div>
 
       {/* Security Audit Trail Table */}
       <div className="rounded-3xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Lock className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" /> HR Security Audit Trail
+            <Lock className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" /> Administrative Audit Trail
           </h2>
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{auditLogs.length} Transactions Logged</span>
         </div>
@@ -100,7 +112,7 @@ export function HRAccreditationAndAuditLogsPage(props) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-[10px] uppercase border border-slate-200 dark:border-slate-700">
-                      {log.action_type}
+                      {formatActionType(log.action_type)}
                     </span>
                     <span className="text-[11px] text-slate-400">{new Date(log.timestamp).toLocaleString()}</span>
                   </div>
@@ -117,5 +129,5 @@ export function HRAccreditationAndAuditLogsPage(props) {
   )
 }
 
-export const HRAccreditationAndAuditLogs = HRAccreditationAndAuditLogsPage
-export default HRAccreditationAndAuditLogsPage
+export const HRAuditTrail = HRAuditTrailPage
+export default HRAuditTrailPage

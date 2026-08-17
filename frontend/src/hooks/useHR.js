@@ -91,6 +91,18 @@ export function useHR() {
     refreshData()
   }
 
+  const handleStartReview = (accomplishmentId, hrReviewerId = 'HR-2010-001') => {
+    const result = HRController.startReview(accomplishmentId, hrReviewerId)
+    refreshData()
+    return result
+  }
+
+  const handleMarkReadyForFinalization = (accomplishmentId) => {
+    const res = HRController.markReadyForFinalization(accomplishmentId)
+    refreshData()
+    return res
+  }
+
   const handleSealVerification = (accomplishmentId, sealCode) => {
     HRController.sealVerification(accomplishmentId, sealCode)
     refreshData()
@@ -118,7 +130,9 @@ export function useHR() {
     return matchesSearch && matchesCollege
   })
 
-  const pendingEndorsements = accomplishments.filter(a => a.status === 'dept_endorsed')
+  const pendingEndorsements = accomplishments.filter(a => a.status === 'dept_endorsed' || a.status === 'FORWARDED_TO_HR')
+  const activeReview = accomplishments.find(a => a.status === 'in_hr_review' || a.status === 'UNDER_HR_REVIEW') || null
+  const readyForFinalizationQueue = accomplishments.filter(a => a.status === 'ready_for_finalization' || a.status === 'READY_FOR_FINALIZATION')
 
   // Anti-Bias Verification Queues:
   // Direct HR Verification: Accomplishments submitted by Department Secretaries & Institutional Officials
@@ -130,19 +144,22 @@ export function useHR() {
       submitter.academic_rank.includes('Professor') ||
       submitter.academic_rank.includes('Dean')
     )
-    return isOfficialOrSec && a.status === 'dept_endorsed'
+    return isOfficialOrSec && (a.status === 'dept_endorsed' || a.status === 'FORWARDED_TO_HR')
   })
 
   // Endorsed Queue: Accomplishments from regular personnel endorsed by Department Secretaries
   const endorsedQueue = accomplishments.filter(a => {
-    return a.status === 'dept_endorsed' && !directHRQueue.some(d => d.id === a.id)
+    return (a.status === 'dept_endorsed' || a.status === 'FORWARDED_TO_HR') && !directHRQueue.some(d => d.id === a.id)
   })
 
   // Stats computation
   const stats = {
     totalPersonnel: personnelList.length,
-    verifiedAccomplishments: accomplishments.filter(a => a.status === 'hr_verified').length,
+    verifiedAccomplishments: accomplishments.filter(a => a.status === 'hr_verified' || a.status === 'COMPLETED').length,
     pendingEndorsements: pendingEndorsements.length,
+    inReviewCount: activeReview ? 1 : 0,
+    activeReview: activeReview,
+    readyForFinalizationCount: readyForFinalizationQueue.length,
     directHRCount: directHRQueue.length,
     pendingResets: passwordResets.filter(r => r.status === 'pending').length,
     accreditationScore: '98.4%'
@@ -155,6 +172,8 @@ export function useHR() {
     filteredPersonnel,
     accomplishments,
     pendingEndorsements,
+    activeReview,
+    readyForFinalizationQueue,
     directHRQueue,
     endorsedQueue,
     serviceAwards,
@@ -181,6 +200,8 @@ export function useHR() {
     handleAssignRole,
     handleAssignDepartmentSecretary,
     handleRevokeRole,
+    handleStartReview,
+    handleMarkReadyForFinalization,
     handleSealVerification,
     handleReturnAccomplishment,
     handleApprovePasswordReset,

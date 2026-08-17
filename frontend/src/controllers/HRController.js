@@ -292,6 +292,65 @@ class HRController {
     return raw.map(item => new FacultyAccomplishmentEntity(item))
   }
 
+  getActiveReview(hrReviewerId = 'HR-2010-001') {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_VERIFICATION) || '[]')
+    const active = raw.find(acc => (acc.status === 'in_hr_review' || acc.status === 'UNDER_HR_REVIEW') && (acc.hr_reviewer_id === hrReviewerId || !acc.hr_reviewer_id))
+    return active ? new FacultyAccomplishmentEntity(active) : null
+  }
+
+  startReview(accomplishmentId, hrReviewerId = 'HR-2010-001') {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_VERIFICATION) || '[]')
+    const existingActive = raw.find(acc => (acc.status === 'in_hr_review' || acc.status === 'UNDER_HR_REVIEW') && acc.hr_reviewer_id === hrReviewerId && acc.id !== accomplishmentId)
+    if (existingActive) {
+      return { success: false, reason: 'ACTIVE_REVIEW_EXISTS', activeReview: new FacultyAccomplishmentEntity(existingActive) }
+    }
+
+    let targetFaculty = ''
+    let title = ''
+    let updatedAcc = null
+
+    const updated = raw.map(acc => {
+      if (acc.id === accomplishmentId) {
+        targetFaculty = acc.faculty_name
+        title = acc.title
+        updatedAcc = {
+          ...acc,
+          status: 'in_hr_review',
+          hr_reviewer_id: hrReviewerId,
+          review_started_at: acc.review_started_at || new Date().toISOString(),
+          review_last_saved_at: new Date().toISOString()
+        }
+        return updatedAcc
+      }
+      return acc
+    })
+
+    localStorage.setItem(STORAGE_KEY_VERIFICATION, JSON.stringify(updated))
+    this.logAudit('HR_REVIEW_STARTED', targetFaculty, `Started active evaluation review for: "${title}".`)
+    return { success: true, accomplishment: new FacultyAccomplishmentEntity(updatedAcc) }
+  }
+
+  markReadyForFinalization(accomplishmentId) {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_VERIFICATION) || '[]')
+    let targetFaculty = ''
+    let title = ''
+    const updated = raw.map(acc => {
+      if (acc.id === accomplishmentId) {
+        targetFaculty = acc.faculty_name
+        title = acc.title
+        return {
+          ...acc,
+          status: 'ready_for_finalization',
+          review_last_saved_at: new Date().toISOString()
+        }
+      }
+      return acc
+    })
+    localStorage.setItem(STORAGE_KEY_VERIFICATION, JSON.stringify(updated))
+    this.logAudit('HR_REVIEW_READY_FOR_FINALIZATION', targetFaculty, `Marked evaluation ready for finalization: "${title}".`)
+    return updated.map(item => new FacultyAccomplishmentEntity(item))
+  }
+
   sealVerification(accomplishmentId, sealCode = 'HR-SEAL-2026-0099') {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_VERIFICATION) || '[]')
     let targetFaculty = ''

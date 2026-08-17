@@ -11,10 +11,10 @@ import PersonnelDashboardPage from './pages/personnel/PersonnelDashboardPage'
 import PersonnelPortfolioPage from './pages/personnel/PersonnelPortfolioPage'
 import PersonnelPortfolioEditPage from './pages/personnel/PersonnelPortfolioEditPage'
 import HRDashboardPage from './pages/hr-admin/HRDashboardPage'
-import HRPersonnelGovernancePage from './pages/hr-admin/HRPersonnelGovernancePage'
-import HRVerificationQueuePage from './pages/hr-admin/HRVerificationQueuePage'
-import HRFacultyRankingAndMatrixPage from './pages/hr-admin/HRFacultyRankingAndMatrixPage'
-import HRAccreditationAndAuditLogsPage from './pages/hr-admin/HRAccreditationAndAuditLogsPage'
+import HRPersonnelDirectoryPage from './pages/hr-admin/HRPersonnelDirectoryPage'
+import HREvaluationSubmissionsPage from './pages/hr-admin/HREvaluationSubmissionsPage'
+import HRFacultyEvaluationAndRankingPage from './pages/hr-admin/HRFacultyEvaluationAndRankingPage'
+import HRAuditTrailPage from './pages/hr-admin/HRAuditTrailPage'
 import OSADDashboardPage from './pages/osad-admin/OSADDashboardPage'
 import OfficerScannerPage from './pages/personnel/organization-moderator/OfficerScannerPage'
 import MainLayout from './components/layout/MainLayout'
@@ -125,10 +125,16 @@ export default function App() {
             {/* HR Portal */}
             <Route element={<LayoutShell allowedRoles={['hr_staff']} />}>
               <Route path="/hr/dashboard" element={<HRDashboardPage />} />
-              <Route path="/hr/personnel-governance" element={<HRPersonnelGovernancePage />} />
-              <Route path="/hr/verification-queue" element={<HRVerificationQueuePage />} />
-              <Route path="/hr/faculty-ranking-and-matrix" element={<HRFacultyRankingAndMatrixPage />} />
-              <Route path="/hr/accreditation-and-audit-logs" element={<HRAccreditationAndAuditLogsPage />} />
+              <Route path="/hr/personnel-directory" element={<HRPersonnelDirectoryPage />} />
+              <Route path="/hr/evaluation-submissions" element={<HREvaluationSubmissionsPage />} />
+              <Route path="/hr/faculty-evaluation-and-ranking" element={<HRFacultyEvaluationAndRankingPage />} />
+              <Route path="/hr/audit-trail" element={<HRAuditTrailPage />} />
+
+              {/* Legacy Route Redirects */}
+              <Route path="/hr/personnel-governance" element={<Navigate to="/hr/personnel-directory" replace />} />
+              <Route path="/hr/verification-queue" element={<Navigate to="/hr/evaluation-submissions" replace />} />
+              <Route path="/hr/faculty-ranking-and-matrix" element={<Navigate to="/hr/faculty-evaluation-and-ranking" replace />} />
+              <Route path="/hr/accreditation-and-audit-logs" element={<Navigate to="/hr/audit-trail" replace />} />
             </Route>
 
             {/* OSAD Portal */}

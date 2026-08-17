@@ -87,7 +87,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   }
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-[#dfebd9] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#2d8a4e] selection:text-white relative transition-colors duration-200">
+    <div className="h-screen w-screen flex overflow-hidden bg-[#F8FAFC] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#2d8a4e] selection:text-white relative transition-colors duration-200">
       
       {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
       {isSidebarOpen && (
@@ -109,7 +109,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
       </div>
 
       {/* Right Column (Header Fixed Top + Scrollable Content Body) */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 bg-[#dfebd9] dark:bg-[#0b1320] transition-colors duration-200">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 bg-[#F8FAFC] dark:bg-[#0b1320] transition-colors duration-200">
         
         {/* Stationary Fixed Header Bar / Topbar */}
         <Topbar

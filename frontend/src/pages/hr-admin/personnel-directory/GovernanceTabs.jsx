@@ -1,11 +1,12 @@
 import React from 'react'
 import { Users, Building2, Lock } from 'lucide-react'
 
-export default function GovernanceTabs({ activeTab, setActiveTab, pendingResetCount = 0 }) {
+export default function GovernanceTabs({ activeTab, setActiveTab, pendingResetsCount = 0, pendingResetCount = 0 }) {
+  const badgeCount = pendingResetsCount || pendingResetCount
   const tabs = [
-    { id: 'directory', label: 'Faculty Directory', icon: Users },
+    { id: 'directory', label: 'Personnel Records', icon: Users },
     { id: 'departments', label: 'Department Assignments', icon: Building2 },
-    { id: 'resets', label: 'Password Reset Queue', icon: Lock, badge: pendingResetCount },
+    { id: 'resets', label: 'Password Reset Queue', icon: Lock, badge: badgeCount },
   ]
 
   return (
@@ -18,16 +19,16 @@ export default function GovernanceTabs({ activeTab, setActiveTab, pendingResetCo
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold leading-[1.2] flex items-center gap-2 transition cursor-pointer ${
               isActive
                 ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Icon className="w-3.5 h-3.5" />
+            <Icon className="w-4 h-4 shrink-0" />
             <span>{tab.label}</span>
             {tab.badge !== undefined && tab.badge > 0 && (
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                 isActive
                   ? 'bg-white/20 text-white'
                   : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800'

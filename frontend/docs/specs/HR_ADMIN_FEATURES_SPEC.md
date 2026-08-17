@@ -1,6 +1,6 @@
 # AchieveNest — HR Admin Portal Features & System Specification (`HR_ADMIN_FEATURES_SPEC.md`)
 
-**Document Version:** 1.0.0 (Comprehensive HR Executive Portal & NDMU Faculty Ranking Architecture)  
+**Document Version:** 2.0.0 (Comprehensive HR Portal & Faculty Evaluation & Ranking Architecture)  
 **System:** AchieveNest Student & Personnel Achievement Management Platform  
 **Target Role**: Human Resources Administrator / HR Staff (`role_context: 'hr_staff'`, e.g., *Director Evelyn Tan — Director, Human Resources Development Office*)  
 **Reference Specifications:** NDMU Rating Sheet for Ranking, [`OSAD_ADMIN_FEATURES_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/OSAD_ADMIN_FEATURES_SPEC.md), [`PERSONNEL_FEATURES_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PERSONNEL_FEATURES_SPEC.md)
@@ -11,11 +11,11 @@
 
 ### A. Role Definition & Core Mandate
 - **User Role**: HR Administrator / HR Staff (`role_context: 'hr_staff'`).
-- **Primary Mandate**: Central oversight and governance of all **Personnel (Faculty and Staff)** across Notre Dame of Marbel University (NDMU). This includes managing academic ranks, employment status (Full-Time Permanent, Probationary, Part-Time), verifying department-endorsed accomplishment dossiers, enforcing the **NDMU Rating Sheet for Academic Ranking** point ceilings (Area A: 70 pts max, Area B: 50 pts max, Area C: 40 pts max; Total Max: 160 pts), applying official HR digital verification seals (`HR-SEAL-2026-XXXX`), executing automated faculty promotion ranking algorithms, issuing temporary security credentials, and maintaining tamper-evident audit logs.
+- **Primary Mandate**: Central governance and administration of all **Personnel (Faculty and Staff)** across Notre Dame of Marbel University (NDMU). This includes maintaining the Personnel Directory, recording academic rank changes, processing personnel evaluation submissions, reviewing proof evidence, calculating official **NDMU Rating Sheet** scores (Area A: 70 pts max, Area B: 50 pts max, Area C: 40 pts max; Total Max: 160 pts), finalizing evaluations, reviewing promotion candidate rankings, and maintaining a human-readable audit trail.
 - **Workflow Governance Rules & Privacy Boundaries**:
   - **Account Scope**: Governs all **Personnel & Faculty accounts** across all university colleges (*College of Information Technology*, *College of Engineering, Architecture & Computing*, *College of Business & Accountancy*, *College of Arts & Sciences*, *College of Education*).
   - **Portfolio Access Boundaries**: Can view all **Personnel dossiers**, but **cannot** view Student portfolios (strictly preserving privacy boundaries between HR Admin and OSAD Admin).
-  - **Multi-Stage Endorsement Pipeline**: Receives portfolios that have been vetted and endorsed by Department Secretaries (`SUBMITTED_TO_DEP_SEC` $\rightarrow$ `ENDORSED_TO_HR` $\rightarrow$ `HR_APPROVED`).
+  - **Multi-Stage Evaluation Pipeline**: Processes submissions progressing through department review and HR evaluation (`Draft` $\rightarrow$ `Submitted` $\rightarrow$ `Department Review` $\rightarrow$ `Forwarded to HR` $\rightarrow$ `Under HR Review` $\rightarrow$ `Ready for Finalization` $\rightarrow$ `Completed`).
 
 ---
 
@@ -23,154 +23,169 @@
 
 AchieveNest implements a balanced dual-admin governance model:
 
-| Domain Aspect | **OSAD Admin Portal** (Student Governance) | **HR Admin Portal** (Personnel & Ranking Governance) |
+| Domain Aspect | **OSAD Admin Portal** (Student Governance) | **HR Admin Portal** (Personnel Directory & Evaluation) |
 | :--- | :--- | :--- |
 | **Target Scope** | Students, Student Orgs, Student Clubs | Academic Faculty, Department Secretaries, Deans, Staff |
-| **Command Center Header** | `OSAD Executive Command Center` | `HR Executive Command Center` |
-| **Top-Right Readiness Badge** | `97.8% PACUCOA & CHEd Ready` | `98.4% NDMU Evaluation Ready` |
-| **Primary Metric** | Student Honor Roll & Leadership Awards | NDMU Faculty Academic Ranking & Promotions |
+| **Command Banner** | `OSAD Admin Portal` | `Human Resources (HR) Portal` |
+| **Readiness / Overview Badge** | `PACUCOA & CHEd Readiness` | `Evaluation Overview` |
+| **Primary Metric** | Student Honor Roll & Leadership Awards | Faculty Evaluation Scores & Academic Ranks |
 | **Hierarchy Governance** | 3-Tier Student Hierarchy (Deans, Coordinators, Moderators) | Academic Personnel Ranks (Instructor $\rightarrow$ Full Professor) |
-| **Audit Focus** | Student Governance & Event Scans | Faculty Proof Verification & Score Seals |
+| **Audit Focus** | Student Governance & Event Scans | Personnel Actions, Evaluation Finalization & Rank Changes |
 
 ---
 
 ### C. Sidebar Navigation & Tab Routing Structure
 
-The HR Admin Portal utilizes URL search parameters (`/hr/dashboard?tab=<tab_name>`) for direct linkable tab routing:
+The HR Admin Portal utilizes clean top-level routes and URL search parameters (`/hr/dashboard?tab=<tab_name>` or `/hr/<route_name>`):
 
-| Sidebar Navigation Label | Tab Query Parameter | Primary Purpose |
+| Sidebar Navigation Label | Route / Tab Query Parameter | Administrative Purpose |
 | :--- | :--- | :--- |
-| **HR Command Center** | `tab=overview` | Executive metrics, 4-workflow quick action hub, promotion readiness breakdown |
-| **Personnel & Faculty Directory** | `tab=personnel` | Roster management, academic rank promotion modal, employment status filters |
-| **Faculty Verification Queue** | `tab=verification` | Vetting department-endorsed dossiers, document proof viewer, seal approvals |
-| **NDMU Rating Sheet Criteria** | `tab=rating_sheet` | Master evaluation criteria reference (Area A: 70, Area B: 50, Area C: 40) |
-| **Faculty Ranking Masterboard** | `tab=masterboard` | Automated faculty candidate promotion ranking algorithm & official report generation |
-| **Credential Security & Resets** | `tab=password_resets` | Resetting faculty passwords & issuing secure temporary access tokens |
-| **HR System Audit Logs** | `tab=audit` | Real-time security trail tracking rank modifications, score seals, and logins |
+| **Dashboard** | `/hr/dashboard` (`tab=overview`) | Executive overview, key operational metrics, pending HR action hub |
+| **Personnel Directory** | `/hr/personnel-governance` (`tab=personnel`) | Personnel roster, academic rank history, record rank changes, onboarding |
+| **Evaluation Submissions** | `/hr/verification-queue` (`tab=verification`) | Vetting forwarded submissions, split-screen proof evaluation, return for revision |
+| **Faculty Evaluation & Ranking** | `/hr/faculty-ranking-and-matrix` (`tab=masterboard`) | Faculty evaluation scores, Area A/B/C breakdown, finalization, promotion ranking |
+| **Audit Trail** | `/hr/accreditation-and-audit-logs` (`tab=audit`) | System-wide audit log stream of HR actions, score finalizations, and rank changes |
 
 ---
 
-## 2. Section 1: HR Executive Command Center (`tab=overview`)
+## 2. Section 1: Dashboard (`tab=overview`)
 
-The **HR Executive Command Center** serves as the primary governance dashboard, delivering high-level faculty statistics, quick-action navigation workflows, and live promotion readiness metrics.
+### Overview & Purpose
+The **Dashboard** provides HR administrators with a high-level overview of active personnel records, pending evaluation submissions, completed evaluations, and recent administrative activities.
 
 ```
 +-----------------------------------------------------------------------------------------------------------------------+
-| HR Executive Command Center Banner                                                                                    |
-| Central Governance | Director Evelyn Tan | 98.4% NDMU Evaluation Ready                                                 |
+| Human Resources (HR) Portal Banner                                                                                   |
+| Director Evelyn Tan (HR-2010-001) | University Personnel Directory & Evaluation Suite | Evaluation Overview               |
 +-----------------------------------------------------------------------------------------------------------------------+
-| Quick Action Hub: 1. Personnel & Rank Governance | 2. NDMU Rating Sheet | 3. Ranking Masterboard | 4. HR Security Logs  |
+| KPI Summary Cards: Total Personnel | Completed Evaluations | Pending Submissions | Password Reset Requests                 |
 +-----------------------------------------------------------------------------------------------------------------------+
-| Metrics Summary Cards: Total Faculty | Dept Endorsed | HR Approved | Sealed Proofs | Active AY Cycle                  |
-+-----------------------------------------------------------------------------------------------------------------------+
-| Main Grid: Faculty Rank Distribution by Department (Bar Chart) | Recent HR Verification Seals (Audit Stream)          |
+| HR Administrative Action Hub: 1. Personnel Directory | 2. Evaluation Submissions | 3. Faculty Evaluation & Ranking | 4. Audit Trail|
 +-----------------------------------------------------------------------------------------------------------------------+
 ```
 
-### Banner & Quick Action Cards:
-1. **Personnel & Rank Governance**: Jump to `tab=personnel` to view faculty directory and update academic ranks.
-2. **NDMU Rating Sheet Engine**: Jump to `tab=rating_sheet` to inspect official evaluation criteria and point ceilings.
-3. **Faculty Ranking Masterboard**: Jump to `tab=masterboard` to run the automated promotion ranking algorithm.
-4. **HR Security Audit Logs**: Jump to `tab=audit` to inspect tamper logs, digital score seals, and rank modification histories.
+### Detailed HR Capabilities:
+1. **Monitor Operational Metrics**:
+   - **Total Personnel**: Track total registered faculty and administrative staff count across NDMU colleges.
+   - **Completed Evaluations**: View total number of finalized HR evaluations.
+   - **Pending Submissions**: Monitor submissions forwarded from departments awaiting HR review.
+   - **Password Reset Requests**: Track pending faculty credential reset requests.
+2. **Execute Quick Workflow Shortcuts**:
+   - **Personnel Directory**: Direct shortcut to manage faculty roster and record rank changes.
+   - **Evaluation Submissions**: Direct shortcut to open the submission evaluation queue.
+   - **Faculty Evaluation & Ranking**: Direct shortcut to inspect evaluation scores and ranking masterboard.
+   - **Audit Trail**: Direct shortcut to review system audit logs.
 
 ---
 
-## 3. Section 2: Personnel & Faculty Directory (`tab=personnel`)
+## 3. Section 2: Personnel Directory (`tab=personnel`)
 
-### Functional Capabilities:
-- **Search & Filter**: Real-time filtering by Personnel Name, Employee ID (`EMP-2021-0842`), Department (*CIT*, *CEAC*, *CBA*, *CAS*, *CED*), and Employment Status (*Full-Time Permanent*, *Probationary*, *Part-Time*).
-- **Academic Rank Promotion Modal (`openRankModal`)**:
-  - Modal overlay allowing HR Director to promote faculty academic ranks (e.g. *Instructor I* $\rightarrow$ *Assistant Professor I* $\rightarrow$ *Associate Professor III* $\rightarrow$ *Full Professor*).
-  - Updates employment status and automatically logs an audit trail transaction (`RANK_PROMOTION_UPDATE`).
-- **View Full Faculty Dossier**: Clickable trigger navigating to `/personnel/portfolio` (Canva presentation deck view).
+### Overview & Purpose
+The **Personnel Directory** serves as the central directory for viewing, managing, and maintaining all university faculty and personnel records, employment details, department assignments, academic ranks, and rank histories.
 
----
-
-## 4. Section 3: Faculty Verification Queue (`tab=verification`)
-
-### Department Endorsement & HR Sealing Pipeline:
-1. **Queue Inspection**: Displays all accomplishment dossiers endorsed by Department Secretaries (`status: 'ENDORSED_TO_HR'`).
-2. **Split-Screen Proof Verification Modal (`openProofModal`)**:
-   - **Left Pane**: Attached PDF/Image proof file viewer.
-   - **Right Pane**: Extracted accomplishment metadata, NDMU category classification, and point allocation.
-3. **Verification Approval & Digital Sealing**:
-   - HR Officer reviews proof and clicks **Approve & Apply HR Seal**.
-   - System generates a unique verification hash code (`HR-SEAL-2026-XXXX`).
-   - Updates status to `HR_APPROVED` and locks the record against further edits.
-4. **Return for Revision**:
-   - If proof is blurry, invalid, or misclassified, HR clicks **Return to Personnel**.
-   - Requires entering explicit return remarks (e.g., *"Proof image lacks official university seal. Please upload original PDF certificate."*).
-   - Reverts status to `RETURNED_FOR_REVISION`.
+### Detailed HR Capabilities:
+1. **Search & Multi-Filter Roster**:
+   - Search personnel by full name, employee ID (`EMP-2026-XXXX`), email, or department.
+   - Filter roster by **College** (*CEAC*, *CBA*, *CAS*), **Department** (*Computer Studies*, *Engineering*, *Business Management*, etc.), **Employment Status** (*Full-Time Permanent*, *Full-Time Probationary*, *Part-Time Lecturer*), and **Academic Rank**.
+2. **View Personnel Dossier & Profile**:
+   - View detailed personnel profiles, contact details, employment history, tenure years, and accomplishment portfolios.
+3. **Record Rank Change (`openRankModal`)**:
+   - Open the **Record Rank Change** modal to officially record approved changes to a faculty member's academic rank (e.g., *Instructor III* $\rightarrow$ *Assistant Professor I* $\rightarrow$ *Associate Professor I* $\rightarrow$ *Full Professor*).
+   - Select new **Academic Rank Designation** and **Employment Status**.
+   - Record effective date, basis/reference (e.g., *Promotion Memo 2026-014*), and optional remarks.
+   - Automatically generates an immutable audit trail entry (`Academic Rank Updated`).
+4. **Onboard Personnel (`onOpenOnboarding`)**:
+   - Create and register new faculty or administrative staff accounts with designated employee ID, college, department, initial rank, and status.
+5. **Manage Department Assignments (`onEditAssignment`)**:
+   - Edit department secretary, program coordinator, or department assignment roles for personnel members.
 
 ---
 
-## 5. Section 4: NDMU Rating Sheet Criteria (`tab=rating_sheet`)
+## 4. Section 3: Evaluation Submissions (`tab=verification`)
 
-Defines the official Notre Dame of Marbel University evaluation matrix:
+### Overview & Purpose
+**Evaluation Submissions** is the dedicated workspace for reviewing, assessing, confirming supporting evidence, and processing faculty accomplishment submissions forwarded through the department review pipeline.
 
-```
-+-------------------------------------------------------------------------------------------------------+
-| NDMU FACULTY ACADEMIC RATING MATRIX                                                                   |
-+-------------------------------------------------------------------------------------------------------+
-| AREA A: PROFESSIONAL DEVELOPMENT (POINT CEILING: 70 PTS MAX)                                         |
-|  - A.1 Higher Educational Attainment (Ph.D.: 30 pts, M.S.: 20 pts)                                    |
-|  - A.2 Professional Licenses & Board Certifications (PRC/IEEE: 10 pts per license)                     |
-|  - A.3 Seminars, Conferences & Faculty Workshops (0.5 pts per 8-hour training)                         |
-|                                                                                                       |
-| AREA B: PRODUCTIVITY & CREATIVE WORK (POINT CEILING: 50 PTS MAX)                                      |
-|  - B.1 Published Research & Books (Scopus/WoS: 25 pts, CHED-Accredited: 15 pts)                       |
-|  - B.2 Professional Lectures & Keynote Presentations (5 pts per national lecture)                     |
-|  - B.3 Inventions, Patents & Software Copyright Registrations (15 pts per registered patent)           |
-|                                                                                                       |
-| AREA C: SERVICE & LEADERSHIP (POINT CEILING: 40 PTS MAX)                                              |
-|  - C.1 Extension Services & Community Outreach (5 pts per major project)                               |
-|  - C.2 Institutional Governance & Administrative Roles (Coordinator/Moderator: 10 pts per AY)         |
-+-------------------------------------------------------------------------------------------------------+
-| OVERALL MAXIMUM COMBINED RATING: 160 POINTS                                                           |
-+-------------------------------------------------------------------------------------------------------+
-```
-
----
-
-## 6. Section 5: Faculty Ranking Masterboard (`tab=masterboard`)
-
-### Automated Faculty Promotion Ranking Algorithm:
-1. **Data Aggregation**: Aggregates all `HR_APPROVED` point scores across Area A, Area B, and Area C for all active faculty members.
-2. **Point Ceiling Normalization**: Applies official point caps (Area A capped at 70, Area B capped at 50, Area C capped at 40).
-3. **Rank Sorting & Candidate List Generation**: Sorts faculty in descending order by Total NDMU Points.
-4. **Promotion Eligibility Classification**:
-   - $\ge 140$ pts: Eligible for *Full Professor Promotion*.
-   - $110 - 139$ pts: Eligible for *Associate Professor Promotion*.
-   - $80 - 109$ pts: Eligible for *Assistant Professor Promotion*.
-5. **Export Official Audit Report**: Generates downloadable CSV / PDF masterboards for Board of Trustees review.
+### Detailed HR Capabilities:
+1. **Filter & Track Workload Submissions**:
+   - View submissions categorized by workflow status (**Submitted**, **Department Review**, **Forwarded to HR**, **Under HR Review**, **Returned for Revision**, **Ready for Finalization**, **Completed**).
+   - Filter submissions by Evaluation Period (e.g., `AY 2026–2027`), College, Department, and Submission Type (*Ranking & Promotion*, *Tenure Evaluation*, *Accreditation Audit*).
+2. **Launch Portfolio Evaluation Studio (`openProofModal`)**:
+   - Opens a specialized split-screen evaluation studio for in-depth document examination:
+     - **Left Pane (Supporting Evidence)**: Inspect uploaded evidence items, PDF certificates, image proofs, and portfolio files.
+     - **Right Pane (Accomplishment Details & Criterion Evaluation)**: View extracted title, category, date, NDMU criterion classification (e.g., *A.1 Educational Degrees*, *B.2 Publications*), and suggested point allocation.
+3. **Item-Level Evidence Confirmation**:
+   - Click **Confirm Item** or **Confirm Item & Next** to confirm evidence validity and award calculated NDMU evaluation points.
+   - Add optional item-level verification remarks for institutional records.
+4. **Return Submission for Revision**:
+   - If evidence is blurry, incomplete, or incorrectly documented, HR clicks **Return for Revision**.
+   - Input mandatory return reason and remarks instructing the faculty member on required resubmission details.
+   - Reverts submission status to `Returned for Revision` and logs audit record (`Evaluation Returned for Revision`).
+5. **Finalize Evaluation**:
+   - When all portfolio items are reviewed, HR clicks **Finalize Evaluation**.
+   - Displays final confirmation dialog showing total calculated score and Area A/B/C point breakdown.
+   - Seals evaluation, locks scores against further modification, records timestamp, creates audit entry (`Faculty Evaluation Finalized`), and updates status to `Completed`.
 
 ---
 
-## 7. Section 6: Credential Security & Password Resets (`tab=password_resets`)
+## 5. Section 4: Faculty Evaluation & Ranking (`tab=masterboard`)
 
-- Displays pending password reset requests submitted by faculty members who forgot credentials.
-- HR Staff clicks **Approve Password Reset**, issuing a temporary secure passkey (e.g. `NDMU-Faculty2026!`).
-- System automatically logs the credential issuance transaction in audit history.
+### Overview & Purpose
+**Faculty Evaluation & Ranking** consolidates all completed and active faculty evaluation results, Area A/B/C score breakdowns, evaluation completion statuses, and ranking statistics into a unified masterboard.
+
+### NDMU Rating Sheet Point Structure:
+- **Area A — Professional Development**: Max 70 pts (Degrees, Board Licenses, Seminars & Workshops).
+- **Area B — Productivity & Creative Work**: Max 50 pts (Published Books/Papers, Patents, Research Grants, Keynote Lectures).
+- **Area C — Service & Leadership**: Max 40 pts (Community Extension Services, Club Moderation, Administrative Roles).
+- **Total Combined Ceiling**: 160 Points Max.
+
+### Detailed HR Capabilities:
+1. **Inspect Evaluation Scores & Area Breakdowns**:
+   - View **Evaluation Score** (e.g., `124 / 160 pts`) and compact area point badges (`A: 65`, `B: 40`, `C: 19`) with hover tooltips detailing area descriptions.
+   - View assigned **Department Reviewer** and current **Evaluation Status** (**Completed**, **Forwarded to HR**, **Department Review**, **Returned for Revision**, **Under Evaluation**).
+2. **Execute Contextual Evaluation Actions**:
+   - Click **Review Evaluation** to launch the evaluation studio for submissions in progress.
+   - Click **Finalize Evaluation** for submissions ready for final score locking.
+   - Click **View Evaluation** for completed evaluations to inspect locked score sheets.
+3. **Ranking & Promotion Analysis**:
+   - Filter by completed evaluations to sort faculty in descending order by total NDMU evaluation points.
+   - Evaluate faculty points against official NDMU promotion benchmarks ($\ge 140$ pts Full Professor, $110-139$ pts Associate Professor, $80-109$ pts Assistant Professor).
+   - Track promotion review statuses (*Not for Promotion*, *For Review*, *Recommended*, *Approved*, *Recorded*).
+4. **Export Official Reports**:
+   - Download university-wide faculty matrix reports in CSV format (*CHEd & PACUCOA Faculty Qualification Matrix*, *Faculty Promotion Board Dossier Summary*).
 
 ---
 
-## 8. Section 7: HR System Audit Logs (`tab=audit`)
+## 6. Section 5: Audit Trail (`tab=audit`)
 
-- Real-time audit log stream tracking:
-  - `RANK_PROMOTION_UPDATE`: Timestamp, Target Faculty, Old Rank $\rightarrow$ New Rank, Executor HR ID.
-  - `HR_SCORE_SEAL_APPLIED`: Timestamp, Accomplishment ID, Seal Hash, Approved Points.
-  - `CREDENTIAL_RESET_ISSUED`: Timestamp, Faculty Email, Issued Token ID.
-- Filterable by Transaction Type and Search Term with single-click CSV log export.
+### Overview & Purpose
+The **Audit Trail** provides complete system accountability and security by logging every sensitive HR administrative action, rank update, score finalization, credential issuance, and status change in a tamper-evident audit log stream.
+
+### Detailed HR Capabilities:
+1. **Inspect Administrative Audit Log Stream**:
+   - View detailed audit entries featuring human-readable action types:
+     - **Academic Rank Updated**: Logged when HR records a faculty rank change or employment status update.
+     - **Faculty Evaluation Finalized**: Logged when an evaluation is finalized and score locked.
+     - **Evaluation Returned for Revision**: Logged when a submission is returned to a faculty member with remarks.
+     - **Personnel Record Updated**: Logged when personnel profiles, onboarding data, or department assignments change.
+     - **Credential Reset Issued**: Logged when temporary password tokens are issued.
+2. **Audit Search & Verification**:
+   - Track exact Date & Time timestamp, HR Administrator (`admin_name`), Target Personnel (`target_personnel`), and detailed transaction description.
+   - Search audit logs by keyword, employee ID, or action type.
+3. **Export Audit History**:
+   - Export official audit log data into CSV format for university accreditation or Board of Trustees review.
 
 ---
 
-## 9. Data Model & Architecture Component Summary
+## 7. Data Model & Architecture Component Summary
 
-| Layer | Component Name | Responsibility |
+| Layer | Component Name | Primary Responsibility |
 | :--- | :--- | :--- |
-| **Model** | [HRModel.js](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/models/HRModel.js) | Defines HR data schema, point ceiling caps, and score seal hash generators. |
-| **Controller** | `HRController.js` | Manages faculty directory, ranking masterboard algorithms, seal verification, and password reset workflows. |
-| **Hook** | [useHR.js](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/hooks/useHR.js) | React bridge hook binding View state to `HRController.js`. |
-| **View (Dashboard)** | [HRDashboardView.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRDashboardView.jsx) | Main Executive Portal component rendering command center, verification queue, masterboard, and audit logs. |
-| **View (Masterboard)** | [HRRankingMasterboard.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRRankingMasterboard.jsx) | Dedicated sub-component rendering automated faculty promotion ranking matrix. |
-| **View (Modal)** | [HRScoreAuditModal.jsx](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRScoreAuditModal.jsx) | Modal dialog for applying digital score seals and returning proof for revision. |
+| **Model** | [`HRModel.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/models/HRModel.js) | Defines HR data schemas, academic ranks, employment statuses, and point ceiling caps. |
+| **Controller** | `HRController.js` | Manages personnel directory state, ranking algorithms, finalization logic, and audit log generation. |
+| **Hook** | [`useHR.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/hooks/useHR.js) | React custom hook providing HR data and action methods to views. |
+| **View (Dashboard)** | [`HRDashboardPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRDashboardPage.jsx) | Renders main HR portal shell, header banner, overview cards, and tab routing. |
+| **View (Directory)** | [`HRPersonnelGovernancePage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRPersonnelGovernancePage.jsx) | Renders Personnel Directory, roster table, filters, and Record Rank Change trigger. |
+| **View (Submissions)** | [`HRVerificationQueuePage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRVerificationQueuePage.jsx) | Renders Evaluation Submissions queue and connects to split-screen Evaluation Studio. |
+| **View (Masterboard)** | [`HRRankingMasterboardPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRRankingMasterboardPage.jsx) | Renders Faculty Evaluation & Ranking table, Area A/B/C breakdown badges, and contextual buttons. |
+| **View (Audit Trail)** | [`HRAccreditationAndAuditLogsPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRAccreditationAndAuditLogsPage.jsx) | Renders Audit Trail table, human-readable action labels, and CSV export tools. |

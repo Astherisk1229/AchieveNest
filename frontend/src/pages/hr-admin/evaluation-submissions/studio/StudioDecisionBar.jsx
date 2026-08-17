@@ -34,7 +34,7 @@ export default function StudioDecisionBar({
           className="px-5 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
         >
           <ShieldCheck className="w-4 h-4" />
-          <span>Finalize Verification</span>
+          <span>Finalize Evaluation</span>
         </button>
       </div>
     </div>

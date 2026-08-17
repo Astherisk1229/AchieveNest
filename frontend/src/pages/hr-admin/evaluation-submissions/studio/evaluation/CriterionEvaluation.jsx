@@ -148,7 +148,7 @@ export default function CriterionEvaluation({
               className="flex-1 py-2.5 px-4 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-              <span>Verify &amp; Next</span>
+              <span>Confirm Item &amp; Next</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
@@ -158,7 +158,7 @@ export default function CriterionEvaluation({
               className="flex-1 py-2.5 px-4 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-              <span>Verify Evidence (+{currentAwardedPts} pts)</span>
+              <span>Confirm Item (+{currentAwardedPts} pts)</span>
             </button>
           )}
 

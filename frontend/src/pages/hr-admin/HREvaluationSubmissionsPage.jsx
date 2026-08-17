@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
-import VerificationQueueHeader from './verification-queue/queue/VerificationQueueHeader'
-import VerificationStatusTabs from './verification-queue/queue/VerificationStatusTabs'
-import VerificationQueueToolbar from './verification-queue/queue/VerificationQueueToolbar'
-import PortfolioSubmissionRow from './verification-queue/queue/PortfolioSubmissionRow'
-import PortfolioEvaluationStudio from './verification-queue/evaluation/PortfolioEvaluationStudio'
-import ReturnForRevisionModal from './verification-queue/evaluation/actions/ReturnForRevisionModal'
-import FinalizeVerificationModal from './verification-queue/evaluation/actions/FinalizeVerificationModal'
+import VerificationQueueHeader from './evaluation-submissions/queue/VerificationQueueHeader'
+import VerificationStatusTabs from './evaluation-submissions/queue/VerificationStatusTabs'
+import VerificationQueueToolbar from './evaluation-submissions/queue/VerificationQueueToolbar'
+import PortfolioSubmissionRow from './evaluation-submissions/queue/PortfolioSubmissionRow'
+import PortfolioEvaluationStudio from './evaluation-submissions/evaluation/PortfolioEvaluationStudio'
+import ReturnForRevisionModal from './evaluation-submissions/evaluation/actions/ReturnForRevisionModal'
+import FinalizeVerificationModal from './evaluation-submissions/evaluation/actions/FinalizeVerificationModal'
 
-export function HRVerificationQueuePage(props) {
+export function HREvaluationSubmissionsPage(props) {
   const hrHook = useHR()
 
   const directHRQueue = props.directHRQueue || hrHook.directHRQueue || []
@@ -118,8 +118,16 @@ export function HRVerificationQueuePage(props) {
     completed: mockSubmissions.filter(s => s.status === 'completed').length,
   }), [mockSubmissions])
 
-  // Action Handlers
+  // Active Review Conflict Check
+  const [conflictModalActive, setConflictModalActive] = useState(false)
+  const activeReview = hrHook.activeReview
+
   const handleInspect = (sub) => {
+    // If starting a new review while another is active, trigger conflict modal
+    if ((sub.status === 'pending' || sub.status === 'FORWARDED_TO_HR') && activeReview && activeReview.id !== sub.id) {
+      setConflictModalActive(true)
+      return
+    }
     setEvaluatingSubmission(sub)
   }
 
@@ -157,6 +165,33 @@ export function HRVerificationQueuePage(props) {
 
       {/* Header & Workload Counters */}
       <VerificationQueueHeader stats={counts} />
+
+      {/* Persistent Current Review Banner */}
+      {activeReview && (
+        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-[#1b4332] dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-md bg-[#1b4332] text-white text-[10px] font-extrabold uppercase">My Current Review</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{activeReview.faculty_name || 'Dr. Maria Santos'}</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
+                {activeReview.department || 'Department of Computer Studies'} · 16 of 18 evidence items reviewed (89%)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleInspect(activeReview)}
+            className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs transition cursor-pointer shrink-0 shadow-2xs"
+          >
+            Continue Review →
+          </button>
+        </div>
+      )}
 
       {/* Status Tabs */}
       <VerificationStatusTabs
@@ -224,9 +259,43 @@ export function HRVerificationQueuePage(props) {
         onClose={() => setFinalizingSubmission(null)}
         onConfirmFinalize={handleConfirmFinalize}
       />
+
+      {/* Active Review Conflict Warning Modal */}
+      {conflictModalActive && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100 dark:border-slate-800">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 flex items-center justify-center font-bold">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">Active Review Already in Progress</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-normal">
+              You already have an evaluation in progress for <strong className="text-slate-900 dark:text-white">{activeReview?.faculty_name || 'Dr. Maria Santos'}</strong>. Each HR staff account can actively review one portfolio at a time.
+            </p>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConflictModalActive(false)}
+                className="w-1/2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConflictModalActive(false)
+                  if (activeReview) handleInspect(activeReview)
+                }}
+                className="w-1/2 py-2.5 rounded-xl bg-[#1b4332] text-white text-xs font-extrabold hover:bg-[#143326] cursor-pointer shadow-2xs"
+              >
+                Continue Review →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export const HRVerificationQueue = HRVerificationQueuePage
-export default HRVerificationQueuePage
+export const HREvaluationSubmissions = HREvaluationSubmissionsPage
+export default HREvaluationSubmissionsPage

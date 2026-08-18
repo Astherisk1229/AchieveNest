@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Search, Building2, UserCheck, UserPlus, Check, X, ShieldAlert } from 'lucide-react'
+import { Search, Building2, UserCheck, UserPlus, Check, X, ShieldAlert, Info } from 'lucide-react'
 
 export default function DepartmentAssignments({
   personnelList = [],
@@ -63,7 +63,15 @@ export default function DepartmentAssignments({
   const selectedNewSecretaryObj = personnelList.find(p => p.id === selectedSecretaryId)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-sans">
+      {/* Governance Notice Banner */}
+      <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+        <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <p className="leading-relaxed">
+          <strong>Governance Notice:</strong> HR manages administrative department placement. College Dean governance appointments are appointed separately by <strong>OSAD</strong>.
+        </p>
+      </div>
+
       {/* Header & Filter Toolbar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">

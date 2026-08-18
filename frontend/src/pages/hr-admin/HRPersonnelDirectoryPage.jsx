@@ -3,7 +3,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 import PersonnelDirectoryHeader from './personnel-directory/PersonnelDirectoryHeader'
 import GovernanceTabs from './personnel-directory/GovernanceTabs'
-import FacultyDirectory from './personnel-directory/FacultyDirectory'
+import PersonnelDirectoryTable from './personnel-directory/PersonnelDirectoryTable'
 import FacultyDossierDrawer from './personnel-directory/FacultyDossierDrawer'
 import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
 import DepartmentAssignments from './personnel-directory/DepartmentAssignments'
@@ -79,7 +79,7 @@ export function HRPersonnelDirectoryPage(props) {
     if (handleCreatePersonnelAccount) {
       handleCreatePersonnelAccount(formData)
     }
-    showToast(`Successfully onboarded ${formData.full_name || 'new personnel account'}. Credentials dispatched via secure mail.`)
+    showToast(`Personnel account created for ${formData.full_name || 'personnel'} and activation invitation sent.`)
     setIsOnboardingOpen(false)
   }
 
@@ -110,9 +110,14 @@ export function HRPersonnelDirectoryPage(props) {
 
       {/* Main Tab Views */}
       {activeTab === 'directory' && (
-        <FacultyDirectory
+        <PersonnelDirectoryTable
           personnelList={personnelList}
           onSelectPersonnel={handleOpenDossier}
+          onEditAssignment={handleOpenEditAssignment}
+          onPromoteRank={handleOpenDossier}
+          onResetPassword={handleResetPassword}
+          onManageRole={handleManageRole}
+          showToast={showToast}
         />
       )}
 

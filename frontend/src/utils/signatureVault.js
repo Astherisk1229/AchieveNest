@@ -18,23 +18,23 @@ export const parseSignatoryInfo = (str, fallbackName = 'Signatory Name', fallbac
   if (!str || typeof str !== 'string') return { name: fallbackName, title: fallbackTitle }
 
   const parenMatch = str.match(/^(.*?)\((.*?)\)$/)
-  if (parenMatch) {
+  if (parenMatch && parenMatch[1] && parenMatch[2]) {
     return {
-      name: parenMatch[1].trim(),
-      title: parenMatch[2].trim()
+      name: parenMatch[1].trim() || fallbackName,
+      title: parenMatch[2].trim() || fallbackTitle
     }
   }
 
   if (str.includes(' - ')) {
     const parts = str.split(' - ')
     return {
-      name: parts[0].trim(),
-      title: parts[1].trim()
+      name: parts[0]?.trim() || fallbackName,
+      title: parts[1]?.trim() || fallbackTitle
     }
   }
 
   return {
-    name: str.trim(),
+    name: str.trim() || fallbackName,
     title: fallbackTitle
   }
 }

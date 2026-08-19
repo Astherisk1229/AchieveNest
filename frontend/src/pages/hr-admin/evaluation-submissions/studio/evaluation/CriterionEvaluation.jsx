@@ -6,7 +6,9 @@ export default function CriterionEvaluation({
   onVerifyAndNext,
   onVerify,
   onReject,
-  hasNextItem = false
+  hasNextItem = false,
+  workspaceMode = 'split',
+  onWorkspaceModeChange
 }) {
   const [classification, setClassification] = useState('')
   const [remarks, setRemarks] = useState('')
@@ -57,7 +59,7 @@ export default function CriterionEvaluation({
 
   if (!selectedEvidence) {
     return (
-      <div className="p-8 text-center text-xs text-slate-400 font-medium rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+      <div className="p-8 text-center text-xs text-slate-400 font-medium rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
         <HelpCircle className="w-6 h-6 mx-auto text-slate-300" />
         <p className="font-extrabold text-slate-700 dark:text-slate-300">No Evidence Selected</p>
         <p>Click any evidence item from the Left Portfolio Navigator to inspect documents and verify criteria.</p>
@@ -79,13 +81,25 @@ export default function CriterionEvaluation({
   return (
     <div className="space-y-4 font-sans">
       {/* Evidence Title & Criterion Header */}
-      <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-1">
-        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-          NDMU CRITERION: {selectedEvidence.criterionTitle || 'A.1 Educational Degrees'}
-        </span>
-        <h3 className="text-sm font-black text-slate-900 dark:text-white">
-          {selectedEvidence.title}
-        </h3>
+      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            NDMU CRITERION: {selectedEvidence.criterionTitle || 'A.1 Educational Degrees'}
+          </span>
+          <h3 className="text-sm font-black text-slate-900 dark:text-white">
+            {selectedEvidence.title}
+          </h3>
+        </div>
+
+        {workspaceMode === 'scoring' && onWorkspaceModeChange && (
+          <button
+            type="button"
+            onClick={() => onWorkspaceModeChange('split')}
+            className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-300 text-[11px] font-extrabold shrink-0 transition cursor-pointer"
+          >
+            Show Preview
+          </button>
+        )}
       </div>
 
       {/* Neutral Responsive Document Preview Canvas */}

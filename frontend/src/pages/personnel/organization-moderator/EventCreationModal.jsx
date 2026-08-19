@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Calendar, MapPin, Clock, Layers, Sparkles, Eye, ShieldCheck, CheckCircle2, ChevronRight, ChevronLeft, Building2, User, Upload, Image } from 'lucide-react'
 import OrganizationController from '../../../controllers/OrganizationController'
+import CertificateTemplateController from '../../../controllers/CertificateTemplateController'
 import SignatureVault, { parseSignatoryInfo } from '../../../utils/signatureVault'
 
 
@@ -431,11 +432,11 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     onChange={(e) => setFormData({ ...formData, osad_template_id: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#2d8a4e] font-medium"
                   >
-                    <option value="OSAD-TPL-01">[OSAD-TPL-01] Official NDMU Certificate of Participation</option>
-                    <option value="OSAD-TPL-02">[OSAD-TPL-02] Certificate of Leadership & Merit</option>
-                    <option value="OSAD-TPL-03">[OSAD-TPL-03] Certificate of Workshop Completion</option>
-                    <option value="OSAD-TPL-04">[OSAD-TPL-04] Excellence & Special Distinction Award</option>
-                    <option value="OSAD-TPL-05">[OSAD-TPL-05] NDMU Sports & Athletics Accreditation</option>
+                    {CertificateTemplateController.getPublishedTemplates('event').map(tpl => (
+                      <option key={tpl.code} value={tpl.code}>
+                        [{tpl.code}] {tpl.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

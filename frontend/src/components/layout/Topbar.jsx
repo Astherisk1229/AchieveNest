@@ -20,6 +20,8 @@ import {
   Moon
 } from 'lucide-react'
 
+import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
+
 export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,6 +38,9 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const userType = user?.user_type || 'student'
   const activeRoleContext = user?.active_role_context || userType
   
+  const targetAccountPath = getAccountRoute(user)
+  const targetSettingsPath = getSettingsRoute(user)
+
   const isPersonnelUser = userType !== 'student' && userType !== 'osad_staff' && userType !== 'hr_staff'
 
   const handleLogout = () => {
@@ -112,7 +117,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
         {/* System Settings Quick Icon Button */}
         <Link
-          to={location.pathname.includes('/osad/') ? '/osad/settings' : isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
+          to={targetSettingsPath}
           className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#2d8a4e] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
           title="System Settings"
           aria-label="Open Settings"
@@ -176,7 +181,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                   
                   {/* My Profile */}
                   <Link
-                    to={location.pathname.includes('/osad/') ? '/osad/account' : isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/account' : '/student/account'}
+                    to={targetAccountPath}
                     onClick={() => setIsProfileOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
                   >
@@ -186,7 +191,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
                   {/* Settings */}
                   <Link
-                    to={location.pathname.includes('/osad/') ? '/osad/settings' : isPersonnelUser || location.pathname.includes('/personnel/') ? '/personnel/settings' : '/student/settings'}
+                    to={targetSettingsPath}
                     onClick={() => setIsProfileOpen(false)}
                     className="w-full px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
                   >

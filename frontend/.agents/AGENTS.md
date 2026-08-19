@@ -1,7 +1,7 @@
 # AchieveNest Project Architectural Guidelines & Rules
 
 ## 1. OOP & MVC Architectural Standard
-- **Mandatory Paradigm**: Always adhere strictly to the **OOP (Object-Oriented Programming)** and **MVC (Model-View-Controller)** architecture established in [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md).
+- **Mandatory Paradigm**: Always adhere strictly to the **OOP (Object-Oriented Programming)** and **MVC (Model-View-Controller)** architecture established in [`frontend-architecture-and-readiness.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/architecture/frontend-architecture-and-readiness.md).
 - **Domain Models (`src/models/`)**: Encapsulate all entity schemas, validations, and domain logic inside ES6 classes (`UserModel`, `StudentModel`, `AchievementModel`, `VerificationQueueModel`). Avoid raw inline unencapsulated object state mutations.
 - **Controllers (`src/controllers/`)**: Place all business logic, data filtering, sorting, report compilation, and storage operations in dedicated Controller classes (`AuthController`, `VerificationController`, `RosterController`).
 - **Bridge Hooks (`src/hooks/`)**: Connect View components to Controllers using custom React hooks e.g. `useVerification`, `useStudentRoster`.

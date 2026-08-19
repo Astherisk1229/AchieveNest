@@ -5,50 +5,83 @@
  */
 
 import { parseFullName } from '../utils/nameFormatter.js'
+import CollegeModel from '../models/CollegeModel.js'
+import DepartmentModel from '../models/DepartmentModel.js'
+import DegreeProgramModel from '../models/DegreeProgramModel.js'
+import StudentOrganizationModel from '../models/StudentOrganizationModel.js'
+import ProgramCoordinatorAssignmentModel from '../models/ProgramCoordinatorAssignmentModel.js'
+import OrganizationModeratorAssignmentModel from '../models/OrganizationModeratorAssignmentModel.js'
 
 class OSADController {
   #users
+  #colleges
   #departments
+  #degreePrograms
   #organizations
   #clubs
+  #programCoordinatorAssignments
+  #organizationModeratorAssignments
   #awardCategories
   #awardees
   #auditLogs
   #accreditationReports
 
   constructor() {
-    // 3-Tier Hierarchy: College Department (Dean) > Organization (Program Coordinator) > Club (Organization Moderator)
+    this.#colleges = [
+      new CollegeModel({ id: 'col-ceac', code: 'CEAC', name: 'College of Engineering, Architecture & Computing' }),
+      new CollegeModel({ id: 'col-cba', code: 'CBA', name: 'College of Business & Accountancy' }),
+      new CollegeModel({ id: 'col-cas', code: 'CAS', name: 'College of Arts & Sciences' })
+    ]
     this.#departments = [
       {
         id: 'dept-01',
-        name: 'College of Engineering, Architecture & Computing (CEAC)',
-        code: 'CEAC',
-        programs: ['BS Computer Science', 'BS Information Technology', 'BS Civil Engineering'],
+        collegeId: 'col-ceac',
+        name: 'Department of Computer Studies (CEAC)',
+        code: 'DEPT-CS',
+        programs: ['BS Computer Science', 'BS Information Technology'],
         dean_name: 'Dr. Ana Reyes',
         dean_id: 'usr-[#2d8a4e]-201',
         student_count: 320,
-        status: 'Active'
+        status: 'active'
       },
       {
         id: 'dept-02',
-        name: 'College of Business & Accountancy (CBA)',
-        code: 'CBA',
+        collegeId: 'col-cba',
+        name: 'Department of Business Administration (CBA)',
+        code: 'DEPT-BUS',
         programs: ['BS Business Administration', 'BS Accountancy'],
         dean_name: 'Prof. Grace Tan',
         dean_id: 'usr-[#2d8a4e]-203',
         student_count: 245,
-        status: 'Active'
+        status: 'active'
       },
       {
         id: 'dept-03',
-        name: 'College of Arts & Sciences (CAS)',
-        code: 'CAS',
+        collegeId: 'col-cas',
+        name: 'Department of Communication & Social Sciences (CAS)',
+        code: 'DEPT-COM',
         programs: ['BA Communication', 'BS Psychology'],
         dean_name: 'Dr. Fernando Alonzo',
         dean_id: 'usr-[#2d8a4e]-204',
         student_count: 190,
-        status: 'Active'
+        status: 'active'
       }
+    ]
+
+    this.#degreePrograms = [
+      new DegreeProgramModel({ id: 'prog-01', departmentId: 'dept-01', code: 'BSCS', name: 'BS Computer Science', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-02', departmentId: 'dept-01', code: 'BSIT', name: 'BS Information Technology', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-03', departmentId: 'dept-02', code: 'BSBA', name: 'BS Business Administration', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-04', departmentId: 'dept-03', code: 'BACOM', name: 'BA Communication', degreeLevel: 'Bachelor', status: 'active' })
+    ]
+
+    this.#programCoordinatorAssignments = [
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', departmentId: 'dept-01', personnelId: 'usr-[#2d8a4e]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', departmentId: 'dept-02', personnelId: 'usr-[#2d8a4e]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
+    ]
+
+    this.#organizationModeratorAssignments = [
+      new OrganizationModeratorAssignmentModel({ id: 'oma-01', organizationId: 'org-01', personnelId: 'usr-[#2d8a4e]-205', personnelName: 'Prof. Elena Rostova', status: 'active' })
     ]
 
     this.#organizations = [
@@ -414,9 +447,123 @@ class OSADController {
         total_student_achievements: 520,
         total_faculty_accomplishments: 210,
         accreditation_status: 'Approved for Parangal',
-        generated_date: '2026-07-27'
       }
     ]
+  }
+
+  // --- Academic Structure Hierarchy Queries & Mutators ---
+  getColleges() {
+    return this.#colleges
+  }
+
+  getDepartments(collegeId = null) {
+    if (!collegeId || collegeId === 'all') return this.#departments
+    return this.#departments.filter(d => d.collegeId === collegeId)
+  }
+
+  getDegreePrograms(departmentId = null) {
+    if (!departmentId || departmentId === 'all') return this.#degreePrograms
+    return this.#degreePrograms.filter(p => p.departmentId === departmentId)
+  }
+
+  getStudentOrganizations(scopeFilter = 'all') {
+    if (!scopeFilter || scopeFilter === 'all') return this.#organizations
+    return this.#organizations.filter(o => o.scopeType === scopeFilter)
+  }
+
+  getProgramCoordinatorAssignments() {
+    return this.#programCoordinatorAssignments
+  }
+
+  getOrganizationModeratorAssignments() {
+    return this.#organizationModeratorAssignments
+  }
+
+  createCollege(payload) {
+    const val = CollegeModel.validate(payload, this.#colleges)
+    if (!val.isValid) throw new Error(val.errors.join(' '))
+
+    const college = new CollegeModel(payload)
+    this.#colleges.push(college)
+    this.addAuditLog('COLLEGE_CREATED', `Created College [${college.name}] (${college.code})`, college.code, 'SUCCESS')
+    return college
+  }
+
+  createDepartment(payload) {
+    const val = DepartmentModel.validate(payload, this.#colleges, this.#departments)
+    if (!val.isValid) throw new Error(val.errors.join(' '))
+
+    const dept = new DepartmentModel(payload)
+    this.#departments.push(dept)
+    this.addAuditLog('DEPARTMENT_CREATED', `Created Department [${dept.name}] under College [${dept.collegeId}]`, dept.code, 'SUCCESS')
+    return dept
+  }
+
+  createDegreeProgram(payload) {
+    const val = DegreeProgramModel.validate(payload, this.#departments, this.#degreePrograms)
+    if (!val.isValid) throw new Error(val.errors.join(' '))
+
+    const prog = new DegreeProgramModel(payload)
+    this.#degreePrograms.push(prog)
+    this.addAuditLog('DEGREE_PROGRAM_CREATED', `Created Degree Program [${prog.name}] (${prog.code}) under Department [${prog.departmentId}]`, prog.code, 'SUCCESS')
+    return prog
+  }
+
+  createStudentOrganizationWithScope(payload) {
+    const val = StudentOrganizationModel.validate(payload, this.#colleges, this.#departments, this.#degreePrograms, this.#organizations)
+    if (!val.isValid) throw new Error(val.errors.join(' '))
+
+    const org = new StudentOrganizationModel(payload)
+    this.#organizations.push(org)
+    this.addAuditLog('ORGANIZATION_CREATED', `Created Student Organization [${org.name}] with scope [${org.scopeType}]`, org.code, 'SUCCESS')
+    return org
+  }
+
+  assignProgramCoordinatorToDepartment(departmentId, personnelId, personnelName) {
+    const val = ProgramCoordinatorAssignmentModel.validate({ departmentId, personnelId }, this.#departments, this.getPersonnelList())
+    if (!val.isValid) throw new Error(val.errors.join(' '))
+
+    // End previous active assignment for this department
+    const previous = this.#programCoordinatorAssignments.find(a => a.departmentId === departmentId && a.status === 'active')
+    if (previous) {
+      previous.status = 'ended'
+      previous.effectiveTo = new Date().toISOString()
+      previous.endReason = 'Replaced by OSAD Staff'
+    }
+
+    const newAssignment = new ProgramCoordinatorAssignmentModel({
+      departmentId,
+      personnelId,
+      personnelName,
+      status: 'active'
+    })
+
+    this.#programCoordinatorAssignments.push(newAssignment)
+    this.addAuditLog('PROGRAM_COORDINATOR_ASSIGNED', `Assigned Program Coordinator [${personnelName}] to Department [${departmentId}]`, departmentId, 'SUCCESS')
+    return newAssignment
+  }
+
+  assignOrganizationModeratorToOrg(organizationId, personnelId, personnelName) {
+    const val = OrganizationModeratorAssignmentModel.validate({ organizationId, personnelId }, this.#organizations, this.getPersonnelList())
+    if (!val.isValid) throw new Error(val.errors.join(' '))
+
+    const previous = this.#organizationModeratorAssignments.find(a => a.organizationId === organizationId && a.status === 'active')
+    if (previous) {
+      previous.status = 'ended'
+      previous.effectiveTo = new Date().toISOString()
+      previous.endReason = 'Replaced by OSAD Staff'
+    }
+
+    const newAssignment = new OrganizationModeratorAssignmentModel({
+      organizationId,
+      personnelId,
+      personnelName,
+      status: 'active'
+    })
+
+    this.#organizationModeratorAssignments.push(newAssignment)
+    this.addAuditLog('ORGANIZATION_MODERATOR_ASSIGNED', `Assigned Organization Moderator [${personnelName}] to Student Organization [${organizationId}]`, organizationId, 'SUCCESS')
+    return newAssignment
   }
 
   // --- Pre-Imported Student Soft-Mapping & Auto-Reconciliation Engine ---
@@ -468,7 +615,11 @@ class OSADController {
     }
 
     if (deptData.dean_id) {
-      this.assignCollegeDean(deptData.dean_id, newDept.code)
+      const usr = this.#users.find(u => u.id === deptData.dean_id)
+      if (usr) {
+        newDept.dean_name = usr.full_name
+        newDept.dean_id = usr.id
+      }
     }
 
     // Auto-reconcile pre-imported students with this newly created department
@@ -670,12 +821,32 @@ class OSADController {
     const totalVerifiedAchievements = 1254
     const pendingAuditAlerts = this.#auditLogs.filter(l => l.severity === 'WARNING' || l.severity === 'HIGH').length
 
+    // Compute derived operational metrics
+    const departmentsWithCoord = this.#departments.filter(d => Boolean(d.assigned_coordinator_id || d.coordinator_name || d.dean_id)).length
+    const orgsWithMod = this.#clubs.filter(c => Boolean(c.moderator_id || c.moderator_name)).length
+    const totalRequired = this.#departments.length + this.#clubs.length
+    const configured = departmentsWithCoord + orgsWithMod
+    const setupCoveragePercent = totalRequired > 0 ? Math.round((configured / totalRequired) * 100) : 100
+
     return {
       total_students: totalStudents,
       total_personnel: totalPersonnel,
       active_awards: activeAwards,
       total_verified_achievements: totalVerifiedAchievements,
-      pending_audit_alerts: pendingAuditAlerts
+      pending_audit_alerts: pendingAuditAlerts,
+
+      // Derived Operational Setup Coverage Metrics
+      collegesCount: 5,
+      departmentsCount: this.#departments.length,
+      programsCount: 12,
+      activeStudentsCount: totalStudents || 3840,
+      activeOrganizationsCount: this.#clubs.length,
+      departmentsWithCoordinatorCount: departmentsWithCoord,
+      organizationsWithModeratorCount: orgsWithMod,
+      totalRequiredAssignments: totalRequired,
+      configuredAssignments: configured,
+      pendingAssignmentsCount: Math.max(0, totalRequired - configured),
+      setupCoveragePercent
     }
   }
 
@@ -739,25 +910,26 @@ class OSADController {
     return { ...usr }
   }
 
-  assignProgramCoordinator(userId, orgName) {
+  assignProgramCoordinator(userId, deptName) {
     const usr = this.#users.find(u => u.id === userId)
     if (!usr) return null
     if (!usr.assigned_roles) usr.assigned_roles = []
     if (!usr.assigned_roles.includes('program_coordinator')) {
       usr.assigned_roles.push('program_coordinator')
     }
-    usr.coordinator_program = orgName
+    usr.coordinator_department = deptName
+    usr.coordinator_program = deptName
 
-    // Update organization record
-    const org = this.#organizations.find(o => o.name === orgName)
-    if (org) {
-      org.coordinator_name = usr.full_name
-      org.coordinator_id = usr.id
+    // Update department record
+    const dept = this.#departments.find(d => d.name === deptName || d.code === deptName || d.name.includes(deptName))
+    if (dept) {
+      dept.coordinator_name = usr.full_name
+      dept.assigned_coordinator_id = usr.id
     }
 
     this.addAuditLog(
       'ROLE_ASSIGNMENT',
-      `Assigned role [Program Coordinator] for ${orgName}`,
+      `Assigned Department Program Coordinator for [${deptName}]`,
       usr.full_name,
       'INFO'
     )
@@ -956,33 +1128,73 @@ class OSADController {
     return candidates
   }
 
-  confirmAwardee(candidateData) {
+  confirmAwardee(candidateDataOrId) {
+    const candidateId = typeof candidateDataOrId === 'string' ? candidateDataOrId : candidateDataOrId?.id
+    const usr = this.#users.find(u => u.id === candidateId || u.student_id === candidateId) || {
+      full_name: candidateDataOrId?.student_name || candidateDataOrId?.name || 'Student Candidate',
+      student_id: candidateDataOrId?.student_id || '2024-01234',
+      program: candidateDataOrId?.program || 'BS Computer Science',
+      college: candidateDataOrId?.college || 'CEAC'
+    }
+
+    const awardTitle = candidateDataOrId?.award_title || "Dean's Honor Roll"
+
+    // Enforce Rule: Only 1 student can be confirmed per award category.
+    // Unconfirm any previously confirmed student for this same category.
+    this.#awardees = this.#awardees.filter(a => a.award_title !== awardTitle)
+
     const newAwardee = {
-      id: `awd-rec-${Date.now()}`,
-      student_name: candidateData.student_name,
-      student_id: candidateData.student_id,
-      program: candidateData.program,
-      award_title: candidateData.award_title,
-      rank: candidateData.rank,
-      total_score: candidateData.weighted_score || candidateData.total_points,
+      id: candidateId || `awd-rec-${Date.now()}`,
+      student_name: usr.full_name || usr.student_name,
+      student_id: usr.student_id,
+      program: usr.program,
+      award_title: awardTitle,
+      rank: candidateDataOrId?.rank || 1,
+      total_score: candidateDataOrId?.weighted_score || candidateDataOrId?.score || 90,
       status: 'Confirmed',
       confirmed_at: new Date().toISOString().split('T')[0]
     }
 
     this.#awardees.unshift(newAwardee)
 
-    // Update confirmed count in category
-    const cat = this.#awardCategories.find(a => a.title === candidateData.award_title)
-    if (cat) cat.confirmed_awardees += 1
-
     this.addAuditLog(
       'AWARDEE_CONFIRMATION',
-      `Confirmed awardee [${newAwardee.student_name}] for [${newAwardee.award_title}] (Rank #${newAwardee.rank})`,
+      `Confirmed [${newAwardee.student_name}] as the sole awardee for [${newAwardee.award_title}] (Max 1 per category)`,
       newAwardee.student_name,
       'SUCCESS'
     )
 
     return newAwardee
+  }
+
+  batchConfirmAwardees(candidateIds = []) {
+    const results = { confirmed: 0, skipped: 0, details: [] }
+    candidateIds.forEach(id => {
+      const confirmed = this.confirmAwardee(id)
+      if (confirmed) {
+        results.confirmed++
+        results.details.push({ id, status: 'confirmed' })
+      } else {
+        results.skipped++
+        results.details.push({ id, status: 'skipped' })
+      }
+    })
+    return results
+  }
+
+  undoAwardeeConfirmation(candidateId, reason) {
+    const index = this.#awardees.findIndex(a => a.id === candidateId || a.student_id === candidateId)
+    if (index !== -1) {
+      const removed = this.#awardees.splice(index, 1)[0]
+      this.addAuditLog(
+        'AWARDEE_CORRECTION',
+        `Undid confirmation for candidate [${removed.student_name}]. Reason: ${reason || 'Administrative correction'}`,
+        removed.student_name,
+        'WARNING'
+      )
+      return true
+    }
+    return false
   }
 
   // --- Reports & Accreditation ---

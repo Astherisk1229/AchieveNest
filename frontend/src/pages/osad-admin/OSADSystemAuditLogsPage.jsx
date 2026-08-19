@@ -21,10 +21,10 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
         <div>
           <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
-            System Security &amp; Administrative Audit Logs
+            OSAD Activity Log
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-            Immutable log trail of role assignments, points verification, and executive accreditation actions.
+            Review recorded OSAD actions, including role assignments, award confirmations, and report generation.
           </p>
         </div>
 
@@ -34,7 +34,7 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
           className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-700 dark:text-slate-200 hover:text-[#2d8a4e] border border-slate-200 dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh Logs</span>
+          <span>Refresh Activity Log</span>
         </button>
       </div>
 

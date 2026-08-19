@@ -2,16 +2,13 @@ import React from 'react'
 import {
   FileSpreadsheet,
   Download,
-  CheckCircle2,
-  Clock,
-  ShieldCheck,
-  ChevronRight
+  ShieldCheck
 } from 'lucide-react'
 
-export default function OSADAccreditationReportsPage({ accreditationReports, getAccreditationReportDetails }) {
+export default function OSADAccreditationReportsPage({ accreditationReports, _getAccreditationReportDetails }) {
   const reportsList = accreditationReports || [
-    { id: 1, title: 'PACUCOA Annual Institutional Accreditation Ledger', date: 'AY 2025-2026', status: 'Ready', count: 142 },
-    { id: 2, title: 'CHEd Regional Office XII CoE / COD Compliance Dossier', date: 'AY 2025-2026', status: 'Ready', count: 88 },
+    { id: 1, title: 'PACUCOA Annual Institutional Accreditation Summary', date: 'AY 2025-2026', status: 'Ready', count: 142 },
+    { id: 2, title: 'CHED Regional Office XII CoE / COD Compliance Report', date: 'AY 2025-2026', status: 'Ready', count: 88 },
     { id: 3, title: 'NDMU OSAD Student Extracurricular Audit Summary', date: 'First Semester 2025', status: 'Ready', count: 215 }
   ]
 
@@ -22,10 +19,10 @@ export default function OSADAccreditationReportsPage({ accreditationReports, get
       <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-2 shadow-2xs">
         <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
           <FileSpreadsheet className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
-          Institutional Accreditation Reports &amp; Compliance Exporter
+          Accreditation and Compliance Reports
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-          Export pre-formatted PACUCOA, CHEd Region XII, and OSAD annual compliance dossiers in PDF or CSV format.
+          Generate reports from verified Student achievement and organization records.
         </p>
       </div>
 
@@ -41,7 +38,7 @@ export default function OSADAccreditationReportsPage({ accreditationReports, get
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h3 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">{report.title}</h3>
-              <p className="text-xs text-slate-500 font-medium">{report.date} • {report.count} Verified Entries</p>
+              <p className="text-xs text-slate-500 font-medium">{report.date} • {report.count} Verified Records</p>
             </div>
 
             <button
@@ -50,7 +47,7 @@ export default function OSADAccreditationReportsPage({ accreditationReports, get
               className="w-full py-2 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <Download className="w-4 h-4 text-emerald-300" />
-              <span>Export Official PDF Report</span>
+              <span>Print or Save as PDF</span>
             </button>
           </div>
         ))}

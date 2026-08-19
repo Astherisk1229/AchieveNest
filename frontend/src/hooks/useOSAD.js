@@ -72,14 +72,6 @@ export default function useOSAD() {
     return created
   }, [refreshClubs, refreshAuditLogs])
 
-  const assignCollegeDean = useCallback((userId, collegeName) => {
-    const updated = OSADController.assignCollegeDean(userId, collegeName)
-    refreshMetrics()
-    refreshDepartments()
-    refreshAuditLogs()
-    return updated
-  }, [refreshMetrics, refreshDepartments, refreshAuditLogs])
-
   const assignProgramCoordinator = useCallback((userId, orgName) => {
     const updated = OSADController.assignProgramCoordinator(userId, orgName)
     refreshMetrics()
@@ -133,6 +125,22 @@ export default function useOSAD() {
     return confirmed
   }, [refreshAwardees, refreshCategories, refreshAuditLogs])
 
+  const batchConfirmAwardees = useCallback((candidateIds) => {
+    const results = OSADController.batchConfirmAwardees(candidateIds)
+    refreshAwardees()
+    refreshCategories()
+    refreshAuditLogs()
+    return results
+  }, [refreshAwardees, refreshCategories, refreshAuditLogs])
+
+  const undoAwardeeConfirmation = useCallback((candidateId, reason) => {
+    const undone = OSADController.undoAwardeeConfirmation(candidateId, reason)
+    refreshAwardees()
+    refreshCategories()
+    refreshAuditLogs()
+    return undone
+  }, [refreshAwardees, refreshCategories, refreshAuditLogs])
+
   const getStudentLeaderboards = useCallback((categoryFilter = 'all', searchTerm = '') => {
     return OSADController.getStudentLeaderboards(categoryFilter, searchTerm)
   }, [])
@@ -157,9 +165,43 @@ export default function useOSAD() {
     return approved
   }, [refreshAuditLogs])
 
+  const [colleges, setColleges] = useState(() => OSADController.getColleges())
+  const [degreePrograms, setDegreePrograms] = useState(() => OSADController.getDegreePrograms())
+
+  const refreshColleges = useCallback(() => {
+    setColleges(OSADController.getColleges())
+  }, [])
+
+  const refreshDegreePrograms = useCallback(() => {
+    setDegreePrograms(OSADController.getDegreePrograms())
+  }, [])
+
+  const createCollege = useCallback((payload) => {
+    const created = OSADController.createCollege(payload)
+    refreshColleges()
+    refreshAuditLogs()
+    return created
+  }, [refreshColleges, refreshAuditLogs])
+
+  const createDegreeProgram = useCallback((payload) => {
+    const created = OSADController.createDegreeProgram(payload)
+    refreshDegreePrograms()
+    refreshAuditLogs()
+    return created
+  }, [refreshDegreePrograms, refreshAuditLogs])
+
+  const createStudentOrganizationWithScope = useCallback((payload) => {
+    const created = OSADController.createStudentOrganizationWithScope(payload)
+    refreshOrganizations()
+    refreshAuditLogs()
+    return created
+  }, [refreshOrganizations, refreshAuditLogs])
+
   return {
     metrics,
+    colleges,
     departments,
+    degreePrograms,
     organizations,
     clubs,
     awardCategories,
@@ -169,19 +211,35 @@ export default function useOSAD() {
     getUsers,
     getPersonnelList,
     getStudentPortfolios,
+    createCollege,
     createDepartment,
+    createDegreeProgram,
     createOrganization,
+    createStudentOrganizationWithScope,
     createClub,
     getStudentLeaderboards,
     getAccreditationReportDetails,
-    assignCollegeDean,
     assignProgramCoordinator,
     assignOrganizationModerator,
+    assignProgramCoordinatorToDepartment: useCallback((deptId, persId, persName) => {
+      const res = OSADController.assignProgramCoordinatorToDepartment(deptId, persId, persName)
+      refreshDepartments()
+      refreshAuditLogs()
+      return res
+    }, [refreshDepartments, refreshAuditLogs]),
+    assignOrganizationModeratorToOrg: useCallback((orgId, persId, persName) => {
+      const res = OSADController.assignOrganizationModeratorToOrg(orgId, persId, persName)
+      refreshOrganizations()
+      refreshAuditLogs()
+      return res
+    }, [refreshOrganizations, refreshAuditLogs]),
     revokeRole,
     createAwardCategory,
     updateAwardCategory,
     generateAwardCandidates,
     confirmAwardee,
+    batchConfirmAwardees,
+    undoAwardeeConfirmation,
     resetStudentPassword,
     getPasswordResetRequests,
     approvePasswordResetRequest,

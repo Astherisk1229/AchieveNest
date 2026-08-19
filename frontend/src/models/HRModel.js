@@ -17,6 +17,7 @@ export class PersonnelEntity {
   #verified_accomplishments_count
   #assigned_roles
   #avatar_url
+  #created_at
 
   constructor(data = {}) {
     this.#id = data.id || `emp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`
@@ -31,6 +32,7 @@ export class PersonnelEntity {
     this.#verified_accomplishments_count = typeof data.verified_accomplishments_count === 'number' ? data.verified_accomplishments_count : 0
     this.#assigned_roles = Array.isArray(data.assigned_roles) ? data.assigned_roles : []
     this.#avatar_url = data.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150'
+    this.#created_at = data.created_at || null
   }
 
   get id() { return this.#id }
@@ -45,6 +47,7 @@ export class PersonnelEntity {
   get verified_accomplishments_count() { return this.#verified_accomplishments_count }
   get assigned_roles() { return [...this.#assigned_roles] }
   get avatar_url() { return this.#avatar_url }
+  get created_at() { return this.#created_at }
 
   set academic_rank(newRank) {
     if (newRank && typeof newRank === 'string') {
@@ -81,7 +84,8 @@ export class PersonnelEntity {
       tenure_years: this.#tenure_years,
       verified_accomplishments_count: this.#verified_accomplishments_count,
       assigned_roles: [...this.#assigned_roles],
-      avatar_url: this.#avatar_url
+      avatar_url: this.#avatar_url,
+      created_at: this.#created_at
     }
   }
 }
@@ -206,37 +210,85 @@ export class ServiceAwardCategoryEntity {
 }
 
 export class HRAuditLogEntity {
+  #schema_version
   #id
   #timestamp
-  #admin_name
-  #action_type
-  #target_personnel
+  #event_code
+  #category
+  #actor_id
+  #actor_name
+  #actor_role
+  #target_type
+  #target_id
+  #target_label
   #details
+  #reference_id
+  #metadata
 
   constructor(data = {}) {
+    this.#schema_version = data.schema_version || '1.0'
     this.#id = data.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`
-    this.#timestamp = data.timestamp || new Date().toISOString()
-    this.#admin_name = data.admin_name || 'Director Evelyn Tan (HR Director)'
-    this.#action_type = data.action_type || 'ROLE_ASSIGNMENT'
-    this.#target_personnel = data.target_personnel || 'N/A'
+    
+    // Canonical timestamp field (accepts legacy timestamp or created_at)
+    this.#timestamp = data.timestamp || data.created_at || new Date().toISOString()
+    
+    // Canonical event code (accepts legacy action_type)
+    this.#event_code = data.event_code || data.action_type || 'ROLE_ASSIGNMENT'
+    this.#category = data.category || null
+    
+    // Actor credentials (accepts legacy admin_name)
+    this.#actor_id = data.actor_id || 'HR-DIR-001'
+    this.#actor_name = data.actor_name || data.admin_name || 'Director Evelyn Tan'
+    this.#actor_role = data.actor_role || (data.admin_name?.includes('HR Director') ? 'HR Director' : 'HR Staff')
+    
+    // Target entity context (accepts legacy target_personnel)
+    this.#target_type = data.target_type || 'personnel'
+    this.#target_id = data.target_id || null
+    this.#target_label = data.target_label || data.target_personnel || 'N/A'
+    
     this.#details = data.details || 'Administrative transaction executed.'
+    this.#reference_id = data.reference_id || null
+    this.#metadata = data.metadata && typeof data.metadata === 'object' ? data.metadata : {}
   }
 
+  get schema_version() { return this.#schema_version }
   get id() { return this.#id }
   get timestamp() { return this.#timestamp }
-  get admin_name() { return this.#admin_name }
-  get action_type() { return this.#action_type }
-  get target_personnel() { return this.#target_personnel }
+  get created_at() { return this.#timestamp } // Legacy alias for CSV compatibility
+  get event_code() { return this.#event_code }
+  get action_type() { return this.#event_code } // Legacy alias
+  get category() { return this.#category }
+  get actor_id() { return this.#actor_id }
+  get actor_name() { return this.#actor_name }
+  get admin_name() { return this.#actor_name } // Legacy alias
+  get actor_role() { return this.#actor_role }
+  get target_type() { return this.#target_type }
+  get target_id() { return this.#target_id }
+  get target_label() { return this.#target_label }
+  get target_personnel() { return this.#target_label } // Legacy alias
   get details() { return this.#details }
+  get reference_id() { return this.#reference_id }
+  get metadata() { return { ...this.#metadata } }
 
   toJSON() {
     return {
+      schema_version: this.#schema_version,
       id: this.#id,
       timestamp: this.#timestamp,
-      admin_name: this.#admin_name,
-      action_type: this.#action_type,
-      target_personnel: this.#target_personnel,
-      details: this.#details
+      event_code: this.#event_code,
+      action_type: this.#event_code,
+      category: this.#category,
+      actor_id: this.#actor_id,
+      actor_name: this.#actor_name,
+      admin_name: this.#actor_name,
+      actor_role: this.#actor_role,
+      target_type: this.#target_type,
+      target_id: this.#target_id,
+      target_label: this.#target_label,
+      target_personnel: this.#target_label,
+      details: this.#details,
+      reference_id: this.#reference_id,
+      metadata: { ...this.#metadata }
     }
   }
 }

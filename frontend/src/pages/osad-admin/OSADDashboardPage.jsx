@@ -16,11 +16,15 @@ import {
 
 import useOSAD from '../../hooks/useOSAD'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
+import CreateCollegeModal from './modals/CreateCollegeModal'
+import CreateDepartmentModal from './modals/CreateDepartmentModal'
+import CreateProgramModal from './modals/CreateProgramModal'
 import OSADCommandCenterPage from './OSADCommandCenterPage'
-import OSADStudentGovernancePage from './OSADStudentGovernancePage'
+import OSADStudentAccountsPage from './OSADStudentAccountsPage'
 import OSADDepartmentsProgramsPage from './OSADDepartmentsProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
 import OSADAwardCategoriesPage from './OSADAwardCategoriesPage'
+import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
 import OSADIdentifyAwardeesPage from './OSADIdentifyAwardeesPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
@@ -31,7 +35,9 @@ export default function OSADDashboardPage({ currentUser }) {
 
   const {
     metrics,
+    colleges,
     departments,
+    degreePrograms,
     organizations,
     clubs,
     awardCategories,
@@ -46,13 +52,14 @@ export default function OSADDashboardPage({ currentUser }) {
     createClub,
     getStudentLeaderboards,
     getAccreditationReportDetails,
-    assignCollegeDean,
     assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,
     createAwardCategory,
     generateAwardCandidates,
     confirmAwardee,
+    batchConfirmAwardees,
+    undoAwardeeConfirmation,
     resetStudentPassword,
     getPasswordResetRequests,
     approvePasswordResetRequest,
@@ -67,8 +74,9 @@ export default function OSADDashboardPage({ currentUser }) {
   const [personnelSelectorTarget, setPersonnelSelectorTarget] = useState(null)
 
   // Modal States
+  const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false)
-  const [newDeptData, setNewDeptData] = useState({ name: '', code: '', programs: 'BS Computer Science, BS Information Technology' })
+  const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
   const [newOrgData, setNewOrgData] = useState({ name: '', category: 'CEAC — Department Organization' })
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
@@ -92,18 +100,18 @@ export default function OSADDashboardPage({ currentUser }) {
     setTimeout(() => setToastMessage(null), 3000)
   }
 
-  // Handle Create Department
-  const handleCreateDepartmentSubmit = (e) => {
-    e.preventDefault()
-    if (!newDeptData.name) return
-    const progs = newDeptData.programs.split(',').map(p => p.trim()).filter(Boolean)
-    const result = createDepartment({ name: newDeptData.name, code: newDeptData.code, programs: progs })
-    setIsAddDeptOpen(false)
-    setNewDeptData({ name: '', code: '', programs: 'BS Computer Science, BS Information Technology' })
-    const reconciledMsg = (result?.reconciledCount || 0) > 0 
-      ? ` & auto-reconciled ${result.reconciledCount} pre-imported student accounts!`
-      : '!'
-    showToast(`Created Academic Department: [${newDeptData.name}]${reconciledMsg}`)
+  // Hierarchy Creation Handlers
+  const handleCreateCollegeSubmit = async (collegeData) => {
+    showToast(`Created Academic College: [${collegeData.code}] ${collegeData.name}`)
+  }
+
+  const handleCreateDepartmentSubmit = async (deptData) => {
+    const result = createDepartment({ name: deptData.name, code: deptData.code, college_id: deptData.college_id })
+    showToast(`Created Department: [${deptData.code}] ${deptData.name}`)
+  }
+
+  const handleCreateProgramSubmit = async (progData) => {
+    showToast(`Created Degree Program: [${progData.code}] ${progData.name}`)
   }
 
   // Handle Create Organization
@@ -149,7 +157,7 @@ export default function OSADDashboardPage({ currentUser }) {
     <div className="space-y-6 font-sans">
       {/* Toast Banner */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-emerald-900 text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top duration-200">
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-[#1b4332] text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top duration-200">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
@@ -160,11 +168,13 @@ export default function OSADDashboardPage({ currentUser }) {
         <OSADCommandCenterPage 
           setSearchParams={setSearchParams} 
           awardees={awardees} 
+          currentUser={currentUser}
+          metrics={metrics}
         />
       )}
 
       {activeTab === 'accounts' && (
-        <OSADStudentGovernancePage
+        <OSADStudentAccountsPage
           userSearchTerm={userSearchTerm}
           setUserSearchTerm={setUserSearchTerm}
           selectedCollege={selectedCollege}
@@ -182,8 +192,12 @@ export default function OSADDashboardPage({ currentUser }) {
 
       {activeTab === 'departments' && (
         <OSADDepartmentsProgramsPage
+          colleges={colleges}
           departments={departments}
+          degreePrograms={degreePrograms}
+          setIsAddCollegeOpen={setIsAddCollegeOpen}
           setIsAddDeptOpen={setIsAddDeptOpen}
+          setIsAddProgramOpen={setIsAddProgramOpen}
           setPersonnelSelectorTarget={setPersonnelSelectorTarget}
         />
       )}
@@ -205,13 +219,20 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
+      {activeTab === 'certificate-templates' && (
+        <OSADCertificateTemplatesPage />
+      )}
+
       {activeTab === 'awardees' && (
         <OSADIdentifyAwardeesPage
           awardCategories={awardCategories}
           awardees={awardees}
+          getUsers={getUsers}
           getStudentLeaderboards={getStudentLeaderboards}
           generateAwardCandidates={generateAwardCandidates}
           confirmAwardee={confirmAwardee}
+          batchConfirmAwardees={batchConfirmAwardees}
+          undoAwardeeConfirmation={undoAwardeeConfirmation}
           showToast={showToast}
         />
       )}
@@ -234,21 +255,18 @@ export default function OSADDashboardPage({ currentUser }) {
       {/* Personnel Selector Modal */}
       {personnelSelectorTarget && (
         <PersonnelSelectorModal
+          isOpen={Boolean(personnelSelectorTarget)}
           title={personnelSelectorTarget.title}
           targetName={personnelSelectorTarget.targetName}
           roleType={personnelSelectorTarget.roleType}
           personnelList={getPersonnelList()}
           onClose={() => setPersonnelSelectorTarget(null)}
-          onSelect={(personnelId) => {
-            const personnel = getPersonnelList().find(p => p.id === personnelId)
-            if (personnelSelectorTarget.roleType === 'dean') {
-              assignCollegeDean(personnelId, personnelSelectorTarget.targetName)
-              showToast(`Assigned ${personnel.full_name} as College Dean for [${personnelSelectorTarget.targetName}]`)
-            } else if (personnelSelectorTarget.roleType === 'coordinator') {
-              assignProgramCoordinator(personnelId, personnelSelectorTarget.targetName)
-              showToast(`Assigned ${personnel.full_name} as Program Coordinator for [${personnelSelectorTarget.targetName}]`)
+          onSelectPersonnel={(personnel) => {
+            if (personnelSelectorTarget.roleType === 'coordinator') {
+              assignProgramCoordinator(personnel.id, personnelSelectorTarget.targetName)
+              showToast(`Assigned ${personnel.full_name} as Department Coordinator for [${personnelSelectorTarget.targetName}]`)
             } else if (personnelSelectorTarget.roleType === 'moderator') {
-              assignOrganizationModerator(personnelId, personnelSelectorTarget.targetName)
+              assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
               showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
             }
             setPersonnelSelectorTarget(null)
@@ -256,123 +274,75 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {/* Create Department Modal */}
-      {isAddDeptOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-[#2d8a4e]" /> Create Academic Department
-              </h3>
-              <button onClick={() => setIsAddDeptOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Hierarchy Modals */}
+      <CreateCollegeModal
+        isOpen={isAddCollegeOpen}
+        onClose={() => setIsAddCollegeOpen(false)}
+        onSubmit={handleCreateCollegeSubmit}
+      />
 
-            <form onSubmit={handleCreateDepartmentSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Department Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. CEAC"
-                  value={newDeptData.code}
-                  onChange={(e) => setNewDeptData({ ...newDeptData, code: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
+      <CreateDepartmentModal
+        isOpen={isAddDeptOpen}
+        onClose={() => setIsAddDeptOpen(false)}
+        onSubmit={handleCreateDepartmentSubmit}
+        colleges={[{ id: 'col_ceac', code: 'CEAC', name: 'College of Engineering, Architecture, and Computing' }]}
+      />
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Department Full Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. College of Engineering, Architecture & Computing"
-                  value={newDeptData.name}
-                  onChange={(e) => setNewDeptData({ ...newDeptData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Programs (comma separated)</label>
-                <input
-                  type="text"
-                  value={newDeptData.programs}
-                  onChange={(e) => setNewDeptData({ ...newDeptData, programs: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddDeptOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2d8a4e] hover:bg-[#236e3e] shadow"
-                >
-                  Create Department
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateProgramModal
+        isOpen={isAddProgramOpen}
+        onClose={() => setIsAddProgramOpen(false)}
+        onSubmit={handleCreateProgramSubmit}
+        departments={departments}
+      />
 
       {/* Create Organization Modal */}
       {isAddOrgOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#2d8a4e]" /> Create Student Organization
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#2d8a4e]" /> Create Student Organization
               </h3>
-              <button onClick={() => setIsAddOrgOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+              <button onClick={() => setIsAddOrgOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateOrganizationSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Organization Name</label>
+            <form onSubmit={handleCreateOrganizationSubmit} className="space-y-3 text-xs font-medium">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Organization Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Computer Society NDMU"
                   value={newOrgData.name}
                   onChange={(e) => setNewOrgData({ ...newOrgData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category Classification</label>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category Classification</label>
                 <input
                   type="text"
                   value={newOrgData.category}
                   onChange={(e) => setNewOrgData({ ...newOrgData, category: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                   required
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddOrgOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2d8a4e] hover:bg-[#236e3e] shadow"
+                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#1b4332] hover:bg-[#143326] shadow-2xs cursor-pointer"
                 >
                   Create Organization
                 </button>
@@ -384,36 +354,36 @@ export default function OSADDashboardPage({ currentUser }) {
 
       {/* Create Award Category Modal */}
       {isAddAwardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Award className="w-5 h-5 text-[#2d8a4e]" /> Create Award Category
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <Award className="w-4 h-4 text-[#2d8a4e]" /> Create Award Category
               </h3>
-              <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
+              <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateAwardSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Award Title</label>
+            <form onSubmit={handleCreateAwardSubmit} className="space-y-3 text-xs font-medium">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Award Title</label>
                 <input
                   type="text"
                   placeholder="e.g. Most Outstanding Student Researcher"
                   value={newAwardData.title}
                   onChange={(e) => setNewAwardData({ ...newAwardData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Category Type</label>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category Type</label>
                 <select
                   value={newAwardData.category_type}
                   onChange={(e) => setNewAwardData({ ...newAwardData, category_type: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                 >
                   <option value="Academic Excellence">Academic Excellence</option>
                   <option value="Student Leadership">Student Leadership</option>
@@ -423,49 +393,49 @@ export default function OSADDashboardPage({ currentUser }) {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Description</label>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Description</label>
                 <textarea
                   rows="2"
                   value={newAwardData.description}
                   onChange={(e) => setNewAwardData({ ...newAwardData, description: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Min. Points</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Min. Points</label>
                   <input
                     type="number"
                     value={newAwardData.min_points}
                     onChange={(e) => setNewAwardData({ ...newAwardData, min_points: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Weight Multiplier</label>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Weight Multiplier</label>
                   <input
                     type="number"
                     step="0.1"
                     value={newAwardData.weight_multiplier}
                     onChange={(e) => setNewAwardData({ ...newAwardData, weight_multiplier: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsAddAwardOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2d8a4e] hover:bg-[#236e3e] shadow"
+                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#1b4332] hover:bg-[#143326] shadow-2xs cursor-pointer"
                 >
                   Create Category
                 </button>

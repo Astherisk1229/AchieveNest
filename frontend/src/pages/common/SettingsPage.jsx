@@ -1,365 +1,182 @@
-import React, { useState } from 'react'
-import useTheme from '../../hooks/useTheme'
+import React from 'react'
 import { 
-  User, 
-  Mail, 
-  Shield, 
-  Check, 
-  Globe,
-  Share2,
-  Copy,
-  ExternalLink,
-  Bell,
-  Download,
-  CheckSquare,
-  Square,
-  Power,
-  ShieldAlert,
-  KeyRound,
-  FileText,
-  Settings,
-  Building2,
-  Sun,
-  Moon
+  Settings, 
+  Bell, 
+  Sun, 
+  Moon, 
+  ShieldCheck, 
+  CheckCircle2, 
+  RotateCcw,
+  Sliders,
+  Mail,
+  AlertCircle
 } from 'lucide-react'
-import { getCurrentUser } from '../../services/authService'
+import { useAuth } from '../../context/AuthContext'
+import useTheme from '../../hooks/useTheme'
+import useUserSettings from '../../hooks/useUserSettings'
 
 export default function SettingsPage({ currentUser }) {
-  const { theme, isDark, setTheme } = useTheme()
-  const [user, setUser] = useState(() => {
-    const active = currentUser || getCurrentUser()
-    if (active) return active
-    return {
-      full_name: 'Dr. Ana Reyes',
-      student_id: 'PRG-2024-001',
-      user_type: 'program_coordinator',
-      program: 'BS Computer Science',
-      department: 'CEAC - College of Engineering, Architecture, and Computing',
-      email: 'personnel@ndmu.edu.ph',
-      phone: '+63 912 345 6789',
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+  const { user: authUser } = useAuth()
+  const activeUser = currentUser || authUser
+  const { isDark, toggleTheme } = useTheme()
+
+  const {
+    notifications,
+    saveSuccess,
+    saveError,
+    handleToggleNotification,
+    handleResetDefaults
+  } = useUserSettings(activeUser)
+
+  const notificationOptions = [
+    {
+      key: 'faculty_submission_received',
+      title: 'Faculty Portfolio Submissions',
+      description: 'Receive notification preferences for new faculty portfolio submissions awaiting HR review.'
+    },
+    {
+      key: 'personnel_password_reset_requested',
+      title: 'Personnel Password Reset Requests',
+      description: 'Receive notifications when a personnel account submits a password reset request.'
+    },
+    {
+      key: 'weekly_evaluation_audit_digest',
+      title: 'Weekly Evaluation Audit Digest',
+      description: 'Receive a weekly summary digest of finalized faculty evaluations and sealed ranks.'
+    },
+    {
+      key: 'evaluation_return_or_finalization_updates',
+      title: 'Evaluation Status Updates',
+      description: 'Receive alerts when an evaluation is returned for revision or sealed by HR.'
     }
-  })
-
-  const isCoordinatorOrPersonnel = user.user_type === 'personnel' || user.user_type === 'program_coordinator'
-
-  // Coordinator Profile Form State
-  const [fullName, setFullName] = useState(user.full_name || 'Dr. Ana Reyes')
-  const [email, setEmail] = useState(user.email || 'personnel@ndmu.edu.ph')
-  const [department, setDepartment] = useState(user.department || 'CEAC - College of Engineering, Architecture, and Computing')
-
-  // Notification Preferences State
-  const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    pushNotifications: true,
-    achievementAlerts: true,
-    weeklyDigest: false
-  })
-
-  // Student Settings Specific State
-  const [isPublicPortfolio, setIsPublicPortfolio] = useState(true)
-  const [copiedLink, setCopiedLink] = useState(false)
-  const [pdfVisibility, setPdfVisibility] = useState({
-    includeStudentId: true,
-    includePhone: false
-  })
-
-  // Toast Feedback
-  const [showSavedToast, setShowSavedToast] = useState(false)
-  const [toastMessage, setToastMessage] = useState('Settings updated successfully!')
-  const [showResetModal, setShowResetModal] = useState(false)
-  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
-
-  const shareableSlug = (fullName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '-')
-  const shareableUrl = `achievenest.ndmu.edu/p/${shareableSlug}`
-
-  const showToast = (msg) => {
-    setToastMessage(msg)
-    setShowSavedToast(true)
-    setTimeout(() => setShowSavedToast(false), 3000)
-  }
-
-  const handleToggleNotification = (key) => {
-    setNotifications(prev => {
-      const updated = { ...prev, [key]: !prev[key] }
-      showToast('Notification preference saved!')
-      return updated
-    })
-  }
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://${shareableUrl}`)
-    setCopiedLink(true)
-    showToast('Custom portfolio URL copied to clipboard!')
-    setTimeout(() => setCopiedLink(false), 2500)
-  }
-
-  const handleSaveProfile = (e) => {
-    e.preventDefault()
-    showToast('Profile information updated successfully!')
-  }
+  ]
 
   return (
-    <>
-      <div className="max-w-4xl mx-auto space-y-6 font-sans pb-12">
-        
-        {/* Toast Feedback */}
-        {showSavedToast && (
-          <div className="fixed top-20 right-6 z-50 px-4 py-3 rounded-2xl bg-[#2d8a4e] text-white text-xs font-bold shadow-xl border border-emerald-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
-            <Check className="w-4 h-4 text-emerald-200" />
-            <span>{toastMessage}</span>
-          </div>
-        )}
-
-        {/* Unified Top Header Banner */}
-        <div className="bg-white dark:bg-[#131e2e] p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-              <Settings className="w-5.5 h-5.5" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">Settings</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manage notification preferences and system appearance for <strong>{user.full_name}</strong></p>
-            </div>
-          </div>
+    <div className="max-w-4xl mx-auto space-y-6 font-sans text-slate-900 dark:text-slate-100">
+      
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <Settings className="w-6 h-6 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+            <span>Portal & Notification Settings</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+            Configure notification preferences, system appearance, and governance display options.
+          </p>
         </div>
 
-        {/* ================= PROGRAM COORDINATOR / PERSONNEL SETTINGS VIEW ================= */}
-        {isCoordinatorOrPersonnel ? (
-          <div className="space-y-6">
-
-            {/* 2. NOTIFICATIONS PREFERENCES CARD */}
-            <div className="p-6 sm:p-7 bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                  <Bell className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">Notification Preferences</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Control system email and push notification alerts</p>
-                </div>
-              </div>
-
-              <div className="space-y-3 pt-1 divide-y divide-slate-100 dark:divide-slate-800/60">
-                <div className="pt-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">Email Notification Alerts</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Receive email alerts for pending achievement submissions and verification updates</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleNotification('emailNotifications')}
-                    className={`w-11 h-6 rounded-full transition-colors duration-200 p-0.5 cursor-pointer ${
-                      notifications.emailNotifications ? 'bg-[#2d8a4e]' : 'bg-slate-300 dark:bg-slate-700'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 shadow-xs ${
-                      notifications.emailNotifications ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-
-                <div className="pt-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">Achievement Approval Digest</p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Receive summary reports when student achievements are confirmed</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleNotification('achievementAlerts')}
-                    className={`w-11 h-6 rounded-full transition-colors duration-200 p-0.5 cursor-pointer ${
-                      notifications.achievementAlerts ? 'bg-[#2d8a4e]' : 'bg-slate-300 dark:bg-slate-700'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 shadow-xs ${
-                      notifications.achievementAlerts ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. COMPACT APPEARANCE & THEME PREFERENCES ROW */}
-            <div className="p-5 bg-white dark:bg-[#131e2e] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center shrink-0">
-                  <Sun className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">Appearance &amp; Theme Mode</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Switch between Day (Light) and Night (Dark) mode</p>
-                </div>
-              </div>
-
-              <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shrink-0 self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTheme('light')
-                    showToast('Switched to Day Mode (Light)!')
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                    !isDark
-                      ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/80'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Sun className={`w-3.5 h-3.5 ${!isDark ? 'text-amber-600' : 'text-slate-400'}`} />
-                  <span>☀️ Day</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTheme('dark')
-                    showToast('Switched to Night Mode (Dark)!')
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                    isDark
-                      ? 'bg-slate-950 text-amber-400 border border-slate-800'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Moon className={`w-3.5 h-3.5 ${isDark ? 'text-amber-400' : 'text-slate-400'}`} />
-                  <span>🌙 Night</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-        ) : (
-          /* ================= STUDENT SETTINGS VIEW ================= */
-          <div className="space-y-6">
-            
-            {/* Compact Appearance Card for Students */}
-            <div className="p-5 bg-white dark:bg-[#131e2e] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center shrink-0">
-                  <Sun className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">Appearance &amp; Theme Mode</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Switch between Day (Light) and Night (Dark) mode</p>
-                </div>
-              </div>
-
-              <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shrink-0 self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTheme('light')
-                    showToast('Switched to Day Mode (Light)!')
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                    !isDark
-                      ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/80'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Sun className={`w-3.5 h-3.5 ${!isDark ? 'text-amber-600' : 'text-slate-400'}`} />
-                  <span>☀️ Day</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTheme('dark')
-                    showToast('Switched to Night Mode (Dark)!')
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                    isDark
-                      ? 'bg-slate-950 text-amber-400 border border-slate-800'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Moon className={`w-3.5 h-3.5 ${isDark ? 'text-amber-400' : 'text-slate-400'}`} />
-                  <span>🌙 Night</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Portfolio Privacy */}
-            <div className="p-6 sm:p-7 bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-                  <Globe className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">Portfolio Privacy &amp; Sharing</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manage custom public link and portfolio visibility</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 text-xs font-medium text-slate-600 dark:text-slate-400">
-                <p>Public Portfolio link: <code className="bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg font-mono text-[#2d8a4e] dark:text-emerald-400 text-xs font-semibold border border-slate-200 dark:border-slate-700">{shareableUrl}</code></p>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
-                >
-                  {copiedLink ? 'Copied Link! ✓' : 'Copy Portfolio Link'}
-                </button>
-              </div>
-            </div>
-
-            {/* Account Security & Password Update */}
-            <div className="p-6 sm:p-7 bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-                <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center shrink-0">
-                  <KeyRound className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">Account Security &amp; Password</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Self-service password update for active sessions</p>
-                </div>
-              </div>
-
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  showToast('Security Update: Your password has been updated successfully!')
-                }}
-                className="space-y-4 text-xs font-medium text-slate-700 dark:text-slate-300"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">New Password</label>
-                    <input
-                      type="password"
-                      placeholder="Enter new password (min. 8 chars)"
-                      minLength={8}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs outline-none focus:border-[#2d8a4e]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
-                    <input
-                      type="password"
-                      placeholder="Re-enter new password"
-                      minLength={8}
-                      required
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs outline-none focus:border-[#2d8a4e]"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
-                  >
-                    Update Account Password
-                  </button>
-                </div>
-              </form>
-            </div>
-
-          </div>
-        )}
-
+        <button
+          type="button"
+          onClick={handleResetDefaults}
+          className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Reset Defaults</span>
+        </button>
       </div>
-    </>
+
+      {/* Save Toast Feedback */}
+      {saveSuccess && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>Settings preference saved successfully!</span>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      {/* Appearance & Theme Card */}
+      <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 p-6 space-y-4 shadow-2xs">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            {isDark ? <Moon className="w-4 h-4 text-amber-400" /> : <Sun className="w-4 h-4 text-slate-600" />}
+            <span>System Appearance & Theme</span>
+          </h2>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+            {isDark ? 'Dark Mode Active' : 'Light Mode Active'}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold text-slate-900 dark:text-white">Theme Display Mode</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Toggle between high-contrast dark theme and warm light editorial theme.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+              isDark
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                : 'bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200'
+            }`}
+          >
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            <span>{isDark ? 'Switch to Light' : 'Switch to Dark'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Notification Preferences Card */}
+      <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 p-6 space-y-4 shadow-2xs">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <Bell className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+            <span>Governance Notification Preferences</span>
+          </h2>
+          <span className="text-[10px] font-bold text-slate-400">User-Scoped Settings</span>
+        </div>
+
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+          {notificationOptions.map(option => {
+            const isEnabled = Boolean(notifications[option.key])
+            return (
+              <div key={option.key} className="py-3.5 flex items-center justify-between gap-4">
+                <div className="space-y-0.5 min-w-0 pr-4">
+                  <p className="font-extrabold text-slate-900 dark:text-white leading-snug">{option.title}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{option.description}</p>
+                </div>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isEnabled}
+                  onClick={() => handleToggleNotification(option.key)}
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 focus:outline-none ${
+                    isEnabled ? 'bg-[#1b4332] dark:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`block w-4 h-4 rounded-full bg-white transition-transform absolute top-1 left-1 ${
+                      isEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Institutional Compliance Notice */}
+      <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+        <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold">
+          <ShieldCheck className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+          <span>Governance Preference Policy</span>
+        </div>
+        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+          Settings are saved to your local browser profile. Mandatory institutional audit alerts and compliance logging cannot be disabled per NDMU Governance Guidelines.
+        </p>
+      </div>
+    </div>
   )
 }

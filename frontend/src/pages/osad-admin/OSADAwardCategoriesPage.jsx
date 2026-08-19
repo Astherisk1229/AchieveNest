@@ -1,5 +1,5 @@
 import React from 'react'
-import { Award, Plus, Lock } from 'lucide-react'
+import { Award, Plus } from 'lucide-react'
 
 export default function OSADAwardCategoriesPage({ awardCategories, setIsAddAwardOpen }) {
   return (
@@ -11,10 +11,10 @@ export default function OSADAwardCategoriesPage({ awardCategories, setIsAddAward
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Institutional Award Categories &amp; Honor Criteria
+              Award Categories and Criteria
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Manage Honor Roll Criteria, Weight Multipliers &amp; Certificate Templates
+              Define eligibility criteria, score weights, minimum qualifying points, and certificate templates.
             </p>
           </div>
         </div>
@@ -37,7 +37,7 @@ export default function OSADAwardCategoriesPage({ awardCategories, setIsAddAward
                 <span className="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 text-[10px] font-extrabold">
                   {cat.category_type}
                 </span>
-                <span className="text-[10px] text-[#2d8a4e] dark:text-emerald-400 font-extrabold">{cat.weight_multiplier}x Multiplier</span>
+                <span className="text-[10px] text-[#2d8a4e] dark:text-emerald-400 font-extrabold">{cat.weight_multiplier} Score Weight</span>
               </div>
 
               <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-snug">{cat.title}</h3>
@@ -46,11 +46,11 @@ export default function OSADAwardCategoriesPage({ awardCategories, setIsAddAward
 
             <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                <span>Minimum Threshold:</span>
+                <span>Minimum Qualifying Points:</span>
                 <span className="text-[#2d8a4e] dark:text-emerald-400 font-extrabold">{cat.min_points} Verified Points</span>
               </div>
               <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                <span>Attached Template:</span>
+                <span>Certificate Template:</span>
                 <span className="text-slate-900 dark:text-white truncate max-w-[150px]">{cat.attached_template_name}</span>
               </div>
             </div>

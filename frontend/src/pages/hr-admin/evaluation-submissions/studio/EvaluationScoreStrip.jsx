@@ -1,11 +1,11 @@
 import React from 'react'
 
 export default function EvaluationScoreStrip({ scores = {} }) {
-  const areaA = scores.areaA?.total || 55
-  const areaBAwarded = scores.areaB?.awardedTotal || 18
-  const areaBRaw = scores.areaB?.rawTotal || 18
-  const areaC = scores.areaC?.total || 23
-  const grandTotal = scores.grandTotalAwarded || 96
+  const areaA = scores.areaA?.total || 0
+  const areaBAwarded = scores.areaB?.awardedTotal || 0
+  const areaBRaw = scores.areaB?.rawTotal || 0
+  const areaC = scores.areaC?.total || 0
+  const grandTotal = scores.grandTotalAwarded || 0
 
   return (
     <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between font-sans shrink-0">
@@ -32,7 +32,7 @@ export default function EvaluationScoreStrip({ scores = {} }) {
 
       <div className="px-3 py-1 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs">
         <span className="text-[10px] text-emerald-300 uppercase tracking-wider">TOTAL</span>
-        <span className="text-sm font-black">{grandTotal} / 160 pts Max</span>
+        <span className="text-xs font-black">{grandTotal} / 160 pts Max</span>
       </div>
     </div>
   )

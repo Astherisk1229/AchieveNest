@@ -5,7 +5,9 @@ export default function PortfolioNavigator({
   submission = {},
   evidenceItems = [],
   selectedEvidence,
-  onSelectEvidence
+  onSelectEvidence,
+  workspaceMode = 'split',
+  onWorkspaceModeChange
 }) {
   // Tab view: 'hr_form' (Default: Formal HR Word Document template) | 'attached_proofs' (Reverse chronological certificates) | 'list' (Compact list)
   const [tab, setTab] = useState('hr_form')
@@ -22,14 +24,14 @@ export default function PortfolioNavigator({
   })
 
   return (
-    <div className="h-full flex flex-col font-sans overflow-hidden bg-slate-100 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800">
+    <div className="h-full flex flex-col font-sans overflow-hidden bg-slate-50 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800">
       {/* View Mode Switcher Header */}
-      <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] flex items-center justify-between shrink-0">
+      <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <button
             type="button"
             onClick={() => setTab('hr_form')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               tab === 'hr_form'
                 ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
@@ -42,7 +44,7 @@ export default function PortfolioNavigator({
           <button
             type="button"
             onClick={() => setTab('attached_proofs')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               tab === 'attached_proofs'
                 ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
@@ -55,7 +57,7 @@ export default function PortfolioNavigator({
           <button
             type="button"
             onClick={() => setTab('list')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               tab === 'list'
                 ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
@@ -66,9 +68,15 @@ export default function PortfolioNavigator({
           </button>
         </div>
 
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider hidden sm:inline-block">
-          FACULTY PORTFOLIO
-        </span>
+        {workspaceMode === 'preview' && onWorkspaceModeChange && (
+          <button
+            type="button"
+            onClick={() => onWorkspaceModeChange('split')}
+            className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer"
+          >
+            Back to Split View
+          </button>
+        )}
       </div>
 
       {/* TAB 1: FORMAL HR DOCUMENT FORM VIEW (Exact Match to Word Template) */}
@@ -128,7 +136,7 @@ export default function PortfolioNavigator({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || '2018–2022'}</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 10, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">NDMU / Accredited Institution</td>
                       <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
@@ -164,7 +172,7 @@ export default function PortfolioNavigator({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || '2023–Present'}</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 11, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">International Chapter</td>
                       <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
@@ -200,7 +208,7 @@ export default function PortfolioNavigator({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 2023'}</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 12, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">CHED / DLSU</td>
                       <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
@@ -241,7 +249,7 @@ export default function PortfolioNavigator({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Nov 2023'}</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 13, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">DepEd Region XII</td>
                       <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
@@ -277,7 +285,7 @@ export default function PortfolioNavigator({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Jan 2024'}</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 13, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">IEEE Society</td>
                       <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
@@ -318,7 +326,7 @@ export default function PortfolioNavigator({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'SY 2023-2024'}</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 14, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">NDMU OSAD</td>
                       <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>

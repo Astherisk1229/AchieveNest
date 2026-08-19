@@ -4,8 +4,8 @@ import DigitalBarcodeIDCardModal from '../student/modals/DigitalBarcodeIDCardMod
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
-import OrgModeratorDashboardPage from './organization-moderator/OrgModeratorDashboardPage'
-import DepSecDashboardPage from './department-secretary/DepSecDashboardPage'
+import OrganizationModeratorDashboardPage from './organization-moderator/OrganizationModeratorDashboardPage'
+import DepartmentSecretaryDashboardPage from './department-secretary/DepartmentSecretaryDashboardPage'
 
 import {
   Award,
@@ -190,9 +190,9 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       {activeRoleContext === 'program_coordinator' && activeTabParam !== 'faculty_view' ? (
         <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
-        <OrgModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
+        <OrganizationModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'department_secretary' && activeTabParam !== 'faculty_view' ? (
-        <DepSecDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
+        <DepartmentSecretaryDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
 

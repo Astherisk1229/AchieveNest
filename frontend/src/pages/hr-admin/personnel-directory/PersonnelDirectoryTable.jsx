@@ -4,6 +4,7 @@ import {
   Eye, Edit3, KeyRound, Award, Copy, Check, Download, X,
   ChevronLeft, ChevronRight, User, AlertCircle, RefreshCw
 } from 'lucide-react'
+import PersonnelActionsMenu from './PersonnelActionsMenu'
 
 // Rank weight calculation for stable sorting
 const getRankWeight = (rankStr = '') => {
@@ -31,6 +32,10 @@ const getRankWeight = (rankStr = '') => {
  */
 export default function PersonnelDirectoryTable({
   personnelList = [],
+  sortConfig,
+  onSortChange,
+  newlyCreatedId,
+  revealRequestKey,
   onSelectPersonnel,
   onSelectFaculty,
   onEditAssignment,
@@ -47,9 +52,9 @@ export default function PersonnelDirectoryTable({
   const [deptFilter, setDeptFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
 
-  // Sorting State
-  const [sortColumn, setSortColumn] = useState('full_name')
-  const [sortDirection, setSortDirection] = useState('asc')
+  // Controlled Sorting State
+  const sortColumn = sortConfig?.column || 'full_name'
+  const sortDirection = sortConfig?.direction || 'asc'
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
@@ -60,11 +65,17 @@ export default function PersonnelDirectoryTable({
   const [activeMenuId, setActiveMenuId] = useState(null)
   const [copiedEmailId, setCopiedEmailId] = useState(null)
 
-  const menuRef = useRef(null)
+  const triggerRefs = useRef({})
 
-  // Reset to page 1 on filter, search, sort, or rowsPerPage changes
+  const activePersonnel = useMemo(() => {
+    if (!activeMenuId) return null
+    return personnelList.find(p => p.id === activeMenuId) || null
+  }, [personnelList, activeMenuId])
+
+  // Reset to page 1 & close active menu on filter, search, sort, or rowsPerPage changes
   useEffect(() => {
     setCurrentPage(1)
+    setActiveMenuId(null)
   }, [search, collegeFilter, deptFilter, statusFilter, sortColumn, sortDirection, rowsPerPage])
 
   // Reset department filter when college changes
@@ -72,21 +83,25 @@ export default function PersonnelDirectoryTable({
     setDeptFilter('ALL')
   }, [collegeFilter])
 
+  // Reveal Request Effect: Clear search, filters, and reset to Page 1
+  useEffect(() => {
+    if (revealRequestKey) {
+      setSearch('')
+      setCollegeFilter('ALL')
+      setDeptFilter('ALL')
+      setStatusFilter('ALL')
+      setCurrentPage(1)
+    }
+  }, [revealRequestKey])
+
   // Close action menu on Escape key press or outside click
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') setActiveMenuId(null)
     }
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setActiveMenuId(null)
-      }
-    }
     document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
@@ -102,6 +117,12 @@ export default function PersonnelDirectoryTable({
     })
     return Array.from(depts).sort()
   }, [collegeFilter, personnelList])
+
+  // Safe timestamp parser for Recently Added sorting
+  const getCreatedTime = (value) => {
+    const time = Date.parse(value || '')
+    return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
+  }
 
   // Filter & Sort Pipeline
   const filteredSortedList = useMemo(() => {
@@ -132,7 +153,9 @@ export default function PersonnelDirectoryTable({
     // 3. Stable Single-Column Sort
     list.sort((a, b) => {
       let comparison = 0
-      if (sortColumn === 'full_name') {
+      if (sortColumn === 'created_at') {
+        comparison = getCreatedTime(a.created_at) - getCreatedTime(b.created_at)
+      } else if (sortColumn === 'full_name') {
         const valA = a.full_name || ''
         const valB = b.full_name || ''
         comparison = valA.localeCompare(valB)
@@ -187,13 +210,24 @@ export default function PersonnelDirectoryTable({
   const isAllPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.has(id))
   const isSomePageSelected = currentPageIds.some(id => selectedIds.has(id)) && !isAllPageSelected
 
-  // Handle Sort Header Toggle
+  // Handle Header Column Sort Toggle
   const handleSort = (col) => {
+    if (!onSortChange) return
+    let newDir = 'asc'
     if (sortColumn === col) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+      newDir = sortDirection === 'asc' ? 'desc' : 'asc'
     } else {
-      setSortColumn(col)
-      setSortDirection('asc')
+      if (col === 'academic_rank' || col === 'created_at') newDir = 'desc'
+      else newDir = 'asc'
+    }
+    onSortChange({ column: col, direction: newDir })
+  }
+
+  // Handle Quick Sort Selector Change
+  const handleQuickSortChange = (e) => {
+    const [col, dir] = e.target.value.split(':')
+    if (onSortChange) {
+      onSortChange({ column: col, direction: dir })
     }
   }
 
@@ -346,10 +380,11 @@ export default function PersonnelDirectoryTable({
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
       {/* Search & Filter Toolbar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+      <div className="p-4 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-none space-y-4">
+        {/* Row 1: Search Input (Left) & Quick Sort Selector (Right) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Search Input */}
-          <div className="relative flex-1 w-full">
+          <div className="relative flex-1 w-full min-w-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
               <Search className="w-4 h-4" />
             </div>
@@ -373,47 +408,66 @@ export default function PersonnelDirectoryTable({
             )}
           </div>
 
-          {/* Dropdown Filters */}
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
-            {/* College Filter */}
+          {/* Quick Sort Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto lg:shrink-0">
+            <label htmlFor="quick-sort-select" className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Sort by:</label>
             <select
-              value={collegeFilter}
-              onChange={e => setCollegeFilter(e.target.value)}
-              aria-label="Filter by college"
-              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+              id="quick-sort-select"
+              value={`${sortColumn}:${sortDirection}`}
+              onChange={handleQuickSortChange}
+              aria-label="Sort personnel directory"
+              className="w-full sm:w-[300px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-[#1b4332] dark:text-emerald-400 focus:outline-none focus:border-[#1b4332]"
             >
-              <option value="ALL">All Colleges</option>
-              <option value="CEAC">CEAC - Engineering &amp; Computing</option>
-              <option value="CBA">CBA - Business Administration</option>
-              <option value="CAS">CAS - Arts &amp; Sciences</option>
-            </select>
-
-            {/* Department Filter */}
-            <select
-              value={deptFilter}
-              onChange={e => setDeptFilter(e.target.value)}
-              aria-label="Filter by department"
-              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
-            >
-              <option value="ALL">All Departments</option>
-              {availableDepartments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-
-            {/* Employment Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              aria-label="Filter by employment status"
-              className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
-            >
-              <option value="ALL">All Employment Statuses</option>
-              <option value="Full-Time Permanent">Full-Time Permanent</option>
-              <option value="Full-Time Probationary">Full-Time Probationary</option>
-              <option value="Part-Time Lecturer">Part-Time Lecturer</option>
+              <option value="created_at:desc">Recently Added (Newest First)</option>
+              <option value="full_name:asc">Name (A to Z)</option>
+              <option value="full_name:desc">Name (Z to A)</option>
+              <option value="academic_rank:desc">Academic Rank (Highest First)</option>
+              <option value="department:asc">Department and College (A to Z)</option>
             </select>
           </div>
+        </div>
+
+        {/* Row 2: Category Filter Bar */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+          {/* College Filter */}
+          <select
+            value={collegeFilter}
+            onChange={e => setCollegeFilter(e.target.value)}
+            aria-label="Filter by college"
+            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+          >
+            <option value="ALL">All Colleges</option>
+            <option value="CEAC">CEAC - Engineering &amp; Computing</option>
+            <option value="CBA">CBA - Business Administration</option>
+            <option value="CAS">CAS - Arts &amp; Sciences</option>
+          </select>
+
+          {/* Department Filter */}
+          <select
+            value={deptFilter}
+            onChange={e => setDeptFilter(e.target.value)}
+            aria-label="Filter by department"
+            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+          >
+            <option value="ALL">All Departments</option>
+            {availableDepartments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+
+          {/* Employment Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            aria-label="Filter by employment status"
+            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+          >
+            <option value="ALL">All Employment Statuses</option>
+            <option value="Full-Time Permanent">Full-Time Permanent</option>
+            <option value="Full-Time Probationary">Full-Time Probationary</option>
+            <option value="Part-Time Lecturer">Part-Time Lecturer</option>
+            <option value="Contractual">Contractual</option>
+          </select>
         </div>
 
         {/* Active Filter Chips Bar */}
@@ -492,14 +546,22 @@ export default function PersonnelDirectoryTable({
         </div>
       )}
 
-      {/* 5-Column Directory Table */}
-      <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+      {/* 5-Column Directory Table Shell */}
+      <section className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
+        <div className="overflow-x-auto min-w-full">
+          <table className="w-full min-w-[900px] table-fixed text-left text-xs border-collapse">
+            <colgroup>
+              <col className="w-[52px]" />
+              <col className="w-[280px]" />
+              <col className="w-[240px]" />
+              <col className="w-[180px]" />
+              <col className="w-[210px]" />
+              <col className="w-[72px]" />
+            </colgroup>
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-semibold text-xs select-none">
                 {/* Header Checkbox */}
-                <th className="p-4 w-10">
+                <th className="p-4 text-center">
                   <input
                     type="checkbox"
                     checked={isAllPageSelected}
@@ -511,7 +573,7 @@ export default function PersonnelDirectoryTable({
                 </th>
 
                 {/* Personnel Member Header */}
-                <th className="p-4" aria-sort={sortColumn === 'full_name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <th className="p-4 text-left" aria-sort={sortColumn === 'full_name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button
                     type="button"
                     onClick={() => handleSort('full_name')}
@@ -520,15 +582,15 @@ export default function PersonnelDirectoryTable({
                   >
                     <span>Personnel member</span>
                     {sortColumn === 'full_name' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
                   </button>
                 </th>
 
                 {/* Department and College Header */}
-                <th className="p-4" aria-sort={sortColumn === 'department' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <th className="p-4 text-left" aria-sort={sortColumn === 'department' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button
                     type="button"
                     onClick={() => handleSort('department')}
@@ -537,15 +599,15 @@ export default function PersonnelDirectoryTable({
                   >
                     <span>Department and college</span>
                     {sortColumn === 'department' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
                   </button>
                 </th>
 
                 {/* Academic Rank Header */}
-                <th className="p-4" aria-sort={sortColumn === 'academic_rank' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <th className="p-4 text-left" aria-sort={sortColumn === 'academic_rank' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button
                     type="button"
                     onClick={() => handleSort('academic_rank')}
@@ -554,15 +616,15 @@ export default function PersonnelDirectoryTable({
                   >
                     <span>Academic rank</span>
                     {sortColumn === 'academic_rank' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
                   </button>
                 </th>
 
                 {/* Employment Details Header */}
-                <th className="p-4" aria-sort={sortColumn === 'employment_status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <th className="p-4 text-left" aria-sort={sortColumn === 'employment_status' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button
                     type="button"
                     onClick={() => handleSort('employment_status')}
@@ -571,9 +633,9 @@ export default function PersonnelDirectoryTable({
                   >
                     <span>Employment details</span>
                     {sortColumn === 'employment_status' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
                     ) : (
-                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
+                      <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
                   </button>
                 </th>
@@ -617,18 +679,22 @@ export default function PersonnelDirectoryTable({
               ) : (
                 paginatedList.map(p => {
                   const isSelected = selectedIds.has(p.id)
+                  const isNewlyCreated = p.id === newlyCreatedId
+
                   return (
                     <tr
                       key={p.id}
                       onClick={() => typeof handleSelect === 'function' && handleSelect(p)}
-                      className={`transition cursor-pointer group ${
-                        isSelected
+                      className={`transition-colors duration-500 cursor-pointer group ${
+                        isNewlyCreated
+                          ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-l-4 border-l-emerald-500 shadow-xs'
+                          : isSelected
                           ? 'bg-emerald-50/60 dark:bg-emerald-950/20 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
                           : 'hover:bg-slate-50/80 dark:hover:bg-slate-900/60'
                       }`}
                     >
                       {/* Row Checkbox */}
-                      <td className="p-4 w-10" onClick={e => e.stopPropagation()}>
+                      <td className="p-4 text-center" onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -640,32 +706,43 @@ export default function PersonnelDirectoryTable({
 
                       {/* Personnel Identity & Email */}
                       <td className="p-4">
-                        <div className="flex items-center gap-3.5">
+                        <div className="flex items-center gap-3">
                           {p.avatar_url ? (
                             <img
                               src={p.avatar_url}
                               alt={p.full_name || 'Personnel Avatar'}
                               onError={(e) => { e.currentTarget.style.display = 'none' }}
-                              className="w-11 h-11 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                              className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                             />
                           ) : (
-                            <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 font-bold text-sm">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 font-bold text-sm">
                               {p.full_name ? p.full_name.charAt(0) : 'U'}
                             </div>
                           )}
 
-                          <div className="space-y-0.5 min-w-0">
-                            <p className="text-sm font-semibold leading-snug text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 transition truncate">
-                              {p.full_name || 'Unnamed Personnel'}
-                            </p>
+                          <div className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p
+                                title={p.full_name}
+                                className="text-sm font-semibold leading-snug text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 transition truncate"
+                              >
+                                {p.full_name || 'Unnamed Personnel'}
+                              </p>
+                              {isNewlyCreated && (
+                                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white uppercase tracking-wider animate-in fade-in shrink-0">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
 
                             {/* Interactive Email with Mailto & Copy */}
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 group/email" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 group/email min-w-0" onClick={e => e.stopPropagation()}>
                               {p.email ? (
                                 <>
                                   <a
                                     href={`mailto:${p.email}`}
                                     aria-label={`Email ${p.full_name}`}
+                                    title={p.email}
                                     className="hover:text-[#1b4332] dark:hover:text-emerald-400 hover:underline truncate"
                                   >
                                     {p.email}
@@ -689,7 +766,7 @@ export default function PersonnelDirectoryTable({
                               )}
                             </div>
 
-                            <p className="text-xs font-mono text-slate-400 dark:text-slate-500">
+                            <p className="text-xs font-mono text-slate-400 dark:text-slate-500 truncate" title={p.employee_id}>
                               {p.employee_id || 'ID Pending'}
                             </p>
                           </div>
@@ -697,9 +774,9 @@ export default function PersonnelDirectoryTable({
                       </td>
 
                       {/* Department and College */}
-                      <td className="p-4 whitespace-nowrap">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <td className="p-4 min-w-0 overflow-hidden">
+                        <div className="space-y-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={p.department}>
                             {p.department || 'Unassigned Department'}
                           </p>
                           <div>
@@ -709,110 +786,38 @@ export default function PersonnelDirectoryTable({
                       </td>
 
                       {/* Academic Rank */}
-                      <td className="p-4 whitespace-nowrap">
-                        <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold">
+                      <td className="p-4 min-w-0">
+                        <span className="inline-block max-w-full truncate px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold" title={p.academic_rank}>
                           {p.academic_rank || 'Unassigned Rank'}
                         </span>
                       </td>
 
                       {/* Employment Details */}
-                      <td className="p-4 whitespace-nowrap">
-                        <div className="space-y-1">
-                          <div>
+                      <td className="p-4 min-w-0">
+                        <div className="space-y-1 min-w-0">
+                          <div className="truncate">
                             {renderStatusBadge(p.employment_status)}
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                             {p.tenure_years != null ? `${p.tenure_years} ${p.tenure_years === 1 ? 'year' : 'years'} of service` : 'Service length pending'}
                           </p>
                         </div>
                       </td>
 
-                      {/* Actions Menu Kebab */}
-                      <td className="p-4 text-right relative" onClick={e => e.stopPropagation()}>
+                      {/* Actions Menu Kebab Trigger */}
+                      <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end">
                           <button
+                            ref={el => { triggerRefs.current[p.id] = el }}
                             type="button"
                             onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
                             aria-haspopup="menu"
                             aria-expanded={activeMenuId === p.id}
-                            aria-label={`Actions for ${p.full_name || 'personnel'}`}
+                            aria-label={`Open actions for ${p.full_name || 'personnel'}`}
                             className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
-
-                          {/* Floating Kebab Dropdown Menu */}
-                          {activeMenuId === p.id && (
-                            <div
-                              ref={menuRef}
-                              role="menu"
-                              className="absolute right-4 top-12 z-50 w-52 rounded-2xl bg-white dark:bg-[#182638] border border-slate-200 dark:border-slate-700 shadow-xl py-1 text-left divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in zoom-in-95 duration-150"
-                            >
-                              <div className="py-1">
-                                {typeof handleSelect === 'function' && (
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      handleSelect(p)
-                                      setActiveMenuId(null)
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
-                                  >
-                                    <Eye className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
-                                    <span>View personnel profile</span>
-                                  </button>
-                                )}
-
-                                {typeof onEditAssignment === 'function' && (
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      onEditAssignment(p)
-                                      setActiveMenuId(null)
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
-                                  >
-                                    <Edit3 className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    <span>Edit assignment</span>
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="py-1">
-                                {typeof onPromoteRank === 'function' && (
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      onPromoteRank(p)
-                                      setActiveMenuId(null)
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
-                                  >
-                                    <Award className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    <span>Record rank change</span>
-                                  </button>
-                                )}
-
-                                {typeof onResetPassword === 'function' && (
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      onResetPassword(p)
-                                      setActiveMenuId(null)
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
-                                  >
-                                    <KeyRound className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-                                    <span>Reset password</span>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -882,7 +887,19 @@ export default function PersonnelDirectoryTable({
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Portal Action Menu */}
+        <PersonnelActionsMenu
+          isOpen={Boolean(activeMenuId && activePersonnel)}
+          onClose={() => setActiveMenuId(null)}
+          triggerRef={{ current: activeMenuId ? triggerRefs.current[activeMenuId] : null }}
+          personnel={activePersonnel}
+          handleSelect={handleSelect}
+          onEditAssignment={onEditAssignment}
+          onPromoteRank={onPromoteRank}
+          onResetPassword={onResetPassword}
+        />
+      </section>
     </div>
   )
 }

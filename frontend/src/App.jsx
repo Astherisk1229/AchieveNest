@@ -1,29 +1,37 @@
-import React from 'react'
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import React, { Suspense, lazy } from 'react'
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import LoginPage from './pages/common/LoginPage'
-import StudentDashboardPage from './pages/student/StudentDashboardPage'
-import StudentAchievementsPage from './pages/student/StudentAchievementsPage'
-import StudentPortfolioPage from './pages/student/StudentPortfolioPage'
-import AccountPage from './pages/common/AccountPage'
-import SettingsPage from './pages/common/SettingsPage'
-import NotificationsPage from './pages/common/NotificationsPage'
-import PersonnelDashboardPage from './pages/personnel/PersonnelDashboardPage'
-import PersonnelPortfolioPage from './pages/personnel/PersonnelPortfolioPage'
-import PersonnelPortfolioEditPage from './pages/personnel/PersonnelPortfolioEditPage'
-import HRDashboardPage from './pages/hr-admin/HRDashboardPage'
-import HRPersonnelDirectoryPage from './pages/hr-admin/HRPersonnelDirectoryPage'
-import HREvaluationSubmissionsPage from './pages/hr-admin/HREvaluationSubmissionsPage'
-import HRFacultyEvaluationAndRankingPage from './pages/hr-admin/HRFacultyEvaluationAndRankingPage'
-import HRAuditTrailPage from './pages/hr-admin/HRAuditTrailPage'
-import OSADDashboardPage from './pages/osad-admin/OSADDashboardPage'
-import OfficerScannerPage from './pages/personnel/organization-moderator/OfficerScannerPage'
 import MainLayout from './components/layout/MainLayout'
+import RouteLoadingFallback from './components/common/RouteLoadingFallback'
 import useIdleSession from './hooks/useIdleSession'
 import SessionTimeoutModal from './components/common/SessionTimeoutModal'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContext'
 import { getCurrentUser } from './services/authService'
+
+// Lazy-loaded route pages for bundle code-splitting
+const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage'))
+const StudentAchievementsPage = lazy(() => import('./pages/student/StudentAchievementsPage'))
+const StudentPortfolioPage = lazy(() => import('./pages/student/StudentPortfolioPage'))
+
+const AccountPage = lazy(() => import('./pages/common/AccountPage'))
+const SettingsPage = lazy(() => import('./pages/common/SettingsPage'))
+const NotificationsPage = lazy(() => import('./pages/common/NotificationsPage'))
+
+const PersonnelDashboardPage = lazy(() => import('./pages/personnel/PersonnelDashboardPage'))
+const PersonnelPortfolioPage = lazy(() => import('./pages/personnel/PersonnelPortfolioPage'))
+const PersonnelPortfolioEditPage = lazy(() => import('./pages/personnel/PersonnelPortfolioEditPage'))
+
+const HRDashboardPage = lazy(() => import('./pages/hr-admin/HRDashboardPage'))
+const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnelDirectoryPage'))
+const HREvaluationSubmissionsPage = lazy(() => import('./pages/hr-admin/HREvaluationSubmissionsPage'))
+const HRFacultyEvaluationAndRankingPage = lazy(() => import('./pages/hr-admin/HRFacultyEvaluationAndRankingPage'))
+const HRAuditTrailPage = lazy(() => import('./pages/hr-admin/HRAuditTrailPage'))
+const HRRankAssignmentLogsPage = lazy(() => import('./pages/hr-admin/HRRankAssignmentLogsPage'))
+
+const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
+const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -86,7 +94,9 @@ function LayoutShell({ allowedRoles }) {
 
   return (
     <MainLayout currentUser={currentUser}>
-      <Outlet context={{ currentUser }} />
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Outlet context={{ currentUser }} />
+      </Suspense>
     </MainLayout>
   )
 }
@@ -129,8 +139,12 @@ export default function App() {
               <Route path="/hr/evaluation-submissions" element={<HREvaluationSubmissionsPage />} />
               <Route path="/hr/faculty-evaluation-and-ranking" element={<HRFacultyEvaluationAndRankingPage />} />
               <Route path="/hr/audit-trail" element={<HRAuditTrailPage />} />
+              <Route path="/hr/rank-assignment-logs" element={<HRRankAssignmentLogsPage />} />
+              <Route path="/hr/account" element={<AccountPage />} />
+              <Route path="/hr/settings" element={<SettingsPage />} />
 
               {/* Legacy Route Redirects */}
+              <Route path="/hr/profile" element={<Navigate to="/hr/account" replace />} />
               <Route path="/hr/personnel-governance" element={<Navigate to="/hr/personnel-directory" replace />} />
               <Route path="/hr/verification-queue" element={<Navigate to="/hr/evaluation-submissions" replace />} />
               <Route path="/hr/faculty-ranking-and-matrix" element={<Navigate to="/hr/faculty-evaluation-and-ranking" replace />} />
@@ -145,7 +159,7 @@ export default function App() {
               <Route path="/osad/notifications" element={<NotificationsPage />} />
             </Route>
 
-            <Route path="/scanner/:eventId" element={<OfficerScannerPage />} />
+            <Route path="/scanner/:eventId" element={<Suspense fallback={<RouteLoadingFallback />}><OfficerScannerPage /></Suspense>} />
             <Route path="/personnel/achievements" element={<Navigate to="/personnel/portfolio/edit" replace />} />
             <Route path="/personnel" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/depsec" element={<Navigate to="/personnel/dashboard" replace />} />

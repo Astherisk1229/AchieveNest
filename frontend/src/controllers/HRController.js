@@ -205,11 +205,16 @@ class HRController {
   // --- Personnel Methods ---
   createPersonnelAccount(data) {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_PERSONNEL) || '[]')
-    const newEntity = new PersonnelEntity(data)
-    raw.unshift(newEntity.toJSON())
+    const createdAt = data.created_at || new Date().toISOString()
+    const newEntity = new PersonnelEntity({
+      ...data,
+      created_at: createdAt
+    })
+    const jsonDTO = newEntity.toJSON()
+    raw.unshift(jsonDTO)
     localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(raw))
     this.logAudit('PERSONNEL_ACCOUNT_CREATED', newEntity.full_name, `Created personnel account (${newEntity.employee_id}) for ${newEntity.department}.`)
-    return raw.map(item => new PersonnelEntity(item))
+    return jsonDTO
   }
 
   getPersonnelList() {
@@ -416,16 +421,51 @@ class HRController {
     return raw.map(item => new HRAuditLogEntity(item))
   }
 
-  logAudit(actionType, targetPersonnel, details) {
+  logAudit(actionTypeOrContext, targetPersonnel, details, extraContext = {}) {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_AUDIT) || '[]')
-    const newLog = new HRAuditLogEntity({
-      admin_name: 'Director Evelyn Tan (HR Director)',
-      action_type: actionType,
-      target_personnel: targetPersonnel || 'N/A',
-      details: details
-    })
+    const currentUser = SecurityController.getCurrentUser ? SecurityController.getCurrentUser() : null
+
+    let logData = {}
+
+    if (actionTypeOrContext && typeof actionTypeOrContext === 'object') {
+      const ctx = actionTypeOrContext
+      logData = {
+        schema_version: '1.0',
+        id: ctx.id || `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        timestamp: ctx.timestamp || new Date().toISOString(),
+        event_code: ctx.event_code || ctx.eventCode || ctx.action_type || 'SYSTEM_ACTION',
+        actor_id: ctx.actor_id || ctx.actor?.id || currentUser?.id || 'HR-DIR-001',
+        actor_name: ctx.actor_name || ctx.actor?.name || currentUser?.full_name || 'Director Evelyn Tan',
+        actor_role: ctx.actor_role || ctx.actor?.role || (currentUser?.role === 'hr_staff' ? 'HR Staff' : 'HR Director'),
+        target_type: ctx.target_type || ctx.targetType || 'personnel',
+        target_id: ctx.target_id || ctx.targetId || null,
+        target_label: ctx.target_label || ctx.targetLabel || ctx.target || ctx.target_personnel || 'N/A',
+        details: ctx.details || 'Administrative transaction executed.',
+        reference_id: ctx.reference_id || ctx.referenceId || null,
+        metadata: ctx.metadata || {}
+      }
+    } else {
+      const actionType = actionTypeOrContext || 'ROLE_ASSIGNMENT'
+      logData = {
+        schema_version: '1.0',
+        id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        timestamp: new Date().toISOString(),
+        event_code: actionType,
+        actor_id: currentUser?.id || 'HR-DIR-001',
+        actor_name: currentUser?.full_name || 'Director Evelyn Tan',
+        actor_role: currentUser?.role === 'hr_staff' ? 'HR Staff' : 'HR Director',
+        target_type: 'personnel',
+        target_label: targetPersonnel || 'N/A',
+        details: details || 'Administrative transaction executed.',
+        reference_id: extraContext.reference_id || null,
+        metadata: extraContext.metadata || {}
+      }
+    }
+
+    const newLog = new HRAuditLogEntity(logData)
     raw.unshift(newLog.toJSON())
     localStorage.setItem(STORAGE_KEY_AUDIT, JSON.stringify(raw))
+    return newLog
   }
 
   /**
@@ -437,7 +477,7 @@ class HRController {
       const raw = localStorage.getItem(STORAGE_KEY_RESETS)
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const hrRequests = parsed.filter(r => r.target_office === 'hr' || r.user_type === 'personnel')
           if (hrRequests.length > 0) return hrRequests
         }
@@ -446,18 +486,64 @@ class HRController {
       console.warn('Failed to fetch HR password reset requests:', e)
     }
 
-    return [
+    const defaultRequests = [
       {
         id: 'req_hr_01',
-        user_email: 'faculty@ndmu.edu.ph',
-        user_name: 'Dr. Maria Santos',
+        user_email: 'areyes@ndmu.edu.ph',
+        user_name: 'Dr. Ana Reyes',
+        employee_id: 'EMP-2026-1042',
         user_type: 'personnel',
         target_office: 'hr',
-        remarks: 'Locked out of personnel portal after password change attempt.',
+        department: 'Department of Computer Studies',
+        college: 'CEAC',
+        remarks: 'Forgot portal passkey after institutional 2FA update.',
         status: 'pending',
-        requested_at: new Date(Date.now() - 1800000).toISOString()
+        requested_at: new Date(Date.now() - 1500000).toISOString()
+      },
+      {
+        id: 'req_hr_02',
+        user_email: 'cmendoza@ndmu.edu.ph',
+        user_name: 'Prof. Carlos Mendoza',
+        employee_id: 'EMP-2026-2189',
+        user_type: 'personnel',
+        target_office: 'hr',
+        department: 'Department of Engineering',
+        college: 'CEAC',
+        remarks: 'Locked out of account after 3 consecutive wrong password attempts.',
+        status: 'pending',
+        requested_at: new Date(Date.now() - 7200000).toISOString()
+      },
+      {
+        id: 'req_hr_03',
+        user_email: 'faculty@ndmu.edu.ph',
+        user_name: 'Dr. Maria Santos',
+        employee_id: 'EMP-2021-0842',
+        user_type: 'personnel',
+        target_office: 'hr',
+        department: 'Department of Computer Studies',
+        college: 'CEAC',
+        remarks: 'Requested temporary passkey for new device authentication.',
+        status: 'approved',
+        temp_password: 'NDMU-Faculty2026!',
+        requested_at: new Date(Date.now() - 86400000).toISOString(),
+        approved_at: new Date(Date.now() - 82000000).toISOString()
       }
     ]
+
+    try {
+      const existingAll = JSON.parse(localStorage.getItem(STORAGE_KEY_RESETS) || '[]')
+      const merged = Array.isArray(existingAll) ? existingAll : []
+      defaultRequests.forEach(req => {
+        if (!merged.some(r => r.id === req.id)) {
+          merged.push(req)
+        }
+      })
+      localStorage.setItem(STORAGE_KEY_RESETS, JSON.stringify(merged))
+    } catch (e) {
+      console.warn('Failed to seed default HR password resets:', e)
+    }
+
+    return defaultRequests
   }
 
   /**

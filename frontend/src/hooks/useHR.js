@@ -66,8 +66,9 @@ export function useHR() {
 
   // --- Business Actions ---
   const handleCreatePersonnelAccount = (accountData) => {
-    HRController.createPersonnelAccount(accountData)
+    const createdRecord = HRController.createPersonnelAccount(accountData)
     refreshData()
+    return createdRecord
   }
 
   const handleUpdateRank = (personnelId, newRank, newStatus) => {

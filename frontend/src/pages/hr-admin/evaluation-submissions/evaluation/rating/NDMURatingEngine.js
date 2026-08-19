@@ -48,7 +48,9 @@ export function calculateNDMUScores(verifiedItems = [], tenureYears = 7) {
   // Tenure calculation: 1 pt per 2 years (Max 10 pts)
   areaCRaw.tenure = Math.min(10, Math.floor((tenureYears || 0) / 2))
 
-  verifiedItems.forEach(item => {
+  const itemsList = Array.isArray(verifiedItems) ? verifiedItems : []
+
+  itemsList.forEach(item => {
     if (item.verificationStatus !== 'verified') return
 
     const pts = parseFloat(item.awardedPoints) || parseFloat(item.eligiblePoints) || 0
@@ -102,12 +104,15 @@ export function calculateNDMUScores(verifiedItems = [], tenureYears = 7) {
   return {
     areaA,
     areaB: {
+      ...areaBRaw,
       rawTotal: areaBRaw.total,
       awardedTotal: areaBAwarded,
+      total: areaBAwarded,
       details: areaBRaw
     },
     areaC: areaCRaw,
     rawGrandTotal,
-    grandTotalAwarded
+    grandTotalAwarded,
+    grandTotal: grandTotalAwarded
   }
 }

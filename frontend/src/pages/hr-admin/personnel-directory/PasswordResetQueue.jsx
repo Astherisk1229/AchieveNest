@@ -3,8 +3,10 @@ import { Search, Lock, CheckCircle2, Copy, RefreshCw, KeyRound } from 'lucide-re
 
 export default function PasswordResetQueue({
   passwordResets = [],
+  resets = [],
   onApproveReset
 }) {
+  const activeResets = passwordResets.length > 0 ? passwordResets : resets
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('pending') // 'pending' | 'approved' | 'all'
   const [tempPassMap, setTempPassMap] = useState({})
@@ -26,7 +28,7 @@ export default function PasswordResetQueue({
   }
 
   const filteredResets = useMemo(() => {
-    return passwordResets.filter(req => {
+    return activeResets.filter(req => {
       const q = search.toLowerCase().trim()
       const matchesSearch = !q ||
         (req.user_name && req.user_name.toLowerCase().includes(q)) ||
@@ -36,7 +38,7 @@ export default function PasswordResetQueue({
       const matchesStatus = statusFilter === 'all' || req.status === statusFilter
       return matchesSearch && matchesStatus
     })
-  }, [passwordResets, search, statusFilter])
+  }, [activeResets, search, statusFilter])
 
   return (
     <div className="space-y-4">
@@ -66,7 +68,7 @@ export default function PasswordResetQueue({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
-              Pending ({passwordResets.filter(r => r.status === 'pending').length})
+              Pending ({activeResets.filter(r => r.status === 'pending').length})
             </button>
 
             <button
@@ -78,7 +80,7 @@ export default function PasswordResetQueue({
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
-              Resolved ({passwordResets.filter(r => r.status === 'approved').length})
+              Resolved ({activeResets.filter(r => r.status === 'approved').length})
             </button>
 
             <button

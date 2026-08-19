@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 import PersonnelDirectoryHeader from './personnel-directory/PersonnelDirectoryHeader'
@@ -9,9 +10,11 @@ import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
 import DepartmentAssignments from './personnel-directory/DepartmentAssignments'
 import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
 import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
+import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
 
 export function HRPersonnelDirectoryPage(props) {
   const hrHook = useHR()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const personnelList = props.personnelList || hrHook.personnelList || []
   const passwordResets = props.passwordResets || hrHook.passwordResets || []
@@ -21,14 +24,27 @@ export function HRPersonnelDirectoryPage(props) {
   const handleUpdateRank = props.handleUpdateRank || hrHook.handleUpdateRank
 
   // Tab State: 'directory' | 'departments' | 'resets'
-  const [activeTab, setActiveTab] = useState('directory')
+  const tabQuery = searchParams.get('tab')
+  const [activeTab, setActiveTabState] = useState(tabQuery || 'directory')
+
+  useEffect(() => {
+    if (tabQuery && tabQuery !== activeTab) {
+      setActiveTabState(tabQuery)
+    }
+  }, [tabQuery])
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab)
+    setSearchParams({ tab })
+  }
 
   // Selected Personnel for Drawer & Modals
   const [selectedFaculty, setSelectedFaculty] = useState(null)
   const [isDossierOpen, setIsDossierOpen] = useState(false)
   const [editingAssignmentPersonnel, setEditingAssignmentPersonnel] = useState(null)
+  const [resetPasswordPersonnel, setResetPasswordPersonnel] = useState(null)
 
-  // Modals
+  // Modals & Toast State
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
@@ -40,6 +56,27 @@ export function HRPersonnelDirectoryPage(props) {
       setTimeout(() => setToastMsg(null), 3500)
     }
   }
+
+  // Controlled Directory Sorting State
+  const [directorySort, setDirectorySort] = useState({
+    column: 'full_name',
+    direction: 'asc'
+  })
+
+  // Onboarding Reveal & Highlight State
+  const [newlyCreatedId, setNewlyCreatedId] = useState(null)
+  const [revealRequestKey, setRevealRequestKey] = useState(0)
+
+  // 8-second highlight cleanup timer
+  useEffect(() => {
+    if (!newlyCreatedId) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      setNewlyCreatedId(null)
+    }, 8000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [newlyCreatedId])
 
   // Handlers
   const handleOpenDossier = (p) => {
@@ -68,19 +105,41 @@ export function HRPersonnelDirectoryPage(props) {
   }
 
   const handleResetPassword = (p) => {
-    showToast(`Issued temporary credentials reset passkey for ${p.full_name}.`)
+    setResetPasswordPersonnel(p)
+  }
+
+  const handleConfirmResetPassword = (p, tempPassword) => {
+    showToast(`Issued temporary credentials reset passkey (${tempPassword}) for ${p.full_name || 'personnel'}.`)
+    setResetPasswordPersonnel(null)
   }
 
   const handleManageRole = (p, roleKey) => {
     showToast(`Updated administrative role authorization for ${p.full_name}.`)
   }
 
-  const handleOnboardSubmit = (formData) => {
-    if (handleCreatePersonnelAccount) {
-      handleCreatePersonnelAccount(formData)
+  const handleOnboardSubmit = async (formData) => {
+    try {
+      const createdRecord = await Promise.resolve(
+        handleCreatePersonnelAccount?.(formData)
+      )
+
+      setActiveTab('directory')
+      setDirectorySort({ column: 'created_at', direction: 'desc' })
+      setRevealRequestKey(prev => prev + 1)
+      if (createdRecord && createdRecord.id) {
+        setNewlyCreatedId(createdRecord.id)
+      }
+
+      if (formData.action === 'save_pending' || formData.is_pending_placement) {
+        showToast(`Personnel record saved as Pending Placement. Complete placement before sending an invitation.`)
+      } else {
+        showToast(`Personnel account created for ${formData.full_name || 'personnel'} and activation invitation sent.`)
+      }
+      setIsOnboardingOpen(false)
+    } catch (err) {
+      console.error('Onboarding failed:', err)
+      showToast(`Failed to onboard personnel account. Please try again.`)
     }
-    showToast(`Personnel account created for ${formData.full_name || 'personnel'} and activation invitation sent.`)
-    setIsOnboardingOpen(false)
   }
 
   return (
@@ -112,6 +171,10 @@ export function HRPersonnelDirectoryPage(props) {
       {activeTab === 'directory' && (
         <PersonnelDirectoryTable
           personnelList={personnelList}
+          sortConfig={directorySort}
+          onSortChange={setDirectorySort}
+          newlyCreatedId={newlyCreatedId}
+          revealRequestKey={revealRequestKey}
           onSelectPersonnel={handleOpenDossier}
           onEditAssignment={handleOpenEditAssignment}
           onPromoteRank={handleOpenDossier}
@@ -130,6 +193,7 @@ export function HRPersonnelDirectoryPage(props) {
 
       {activeTab === 'resets' && (
         <PasswordResetQueue
+          passwordResets={passwordResets}
           resets={passwordResets}
           onApproveReset={(reqId) => {
             const res = handleApprovePasswordReset(reqId)
@@ -157,9 +221,18 @@ export function HRPersonnelDirectoryPage(props) {
         onSave={handleSaveAssignment}
       />
 
+      {/* Reset Personnel Password Modal */}
+      <ResetPersonnelPasswordModal
+        personnel={resetPasswordPersonnel}
+        isOpen={Boolean(resetPasswordPersonnel)}
+        onClose={() => setResetPasswordPersonnel(null)}
+        onConfirmReset={handleConfirmResetPassword}
+      />
+
       {/* Onboard Personnel Multi-Step Modal */}
       <OnboardPersonnelModal
         isOpen={isOnboardingOpen}
+        evaluatorContext={{ evaluatorId: 'HR-2010-001', role: 'hr_staff' }}
         onClose={() => setIsOnboardingOpen(false)}
         onSubmit={handleOnboardSubmit}
       />

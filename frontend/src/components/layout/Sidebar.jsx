@@ -20,8 +20,10 @@ import {
   LayoutGrid,
   Calendar,
   QrCode,
-  Edit3
+  Edit3,
+  Sparkles
 } from 'lucide-react'
+import AdminOnboardingGuideWidget from '../common/AdminOnboardingGuideWidget'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
   const navigate = useNavigate()
@@ -53,130 +55,70 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       case 'hr_staff':
         return { label: 'HR Office Portal', path: '/hr/dashboard', roleTitle: 'HR Staff' }
       case 'osad_staff':
-        return { label: 'OSAD Admin Portal', path: '/osad/dashboard', roleTitle: 'OSAD Admin' }
+        return { label: 'OSAD Portal', path: '/osad/dashboard', roleTitle: 'OSAD Staff' }
       default:
         return { label: 'Personnel Portal', path: '/personnel/dashboard', roleTitle: 'Personnel Portal' }
     }
   }
 
   const portalInfo = getPortalInfo()
-
-  // Navigation Items according to active role context
-  const getNavItems = () => {
-    if (activeContext === 'hr_staff' || location.pathname.includes('/hr/')) {
-      return [
-        { label: 'Dashboard', icon: Home, path: '/hr/dashboard', tab: 'overview' },
-        { label: 'Personnel Directory', icon: Users, path: '/hr/personnel-directory', tab: 'personnel' },
-        { label: 'Evaluation Submissions', icon: FileCheck2, path: '/hr/evaluation-submissions', tab: 'verification' },
-        { label: 'Faculty Evaluation & Ranking', icon: Award, path: '/hr/faculty-evaluation-and-ranking', tab: 'masterboard' },
-        { label: 'Audit Trail', icon: ShieldCheck, path: '/hr/audit-trail', tab: 'audit' },
-      ]
-    }
-
-    if (activeContext === 'osad_staff' || location.pathname.includes('/osad/')) {
-      return [
-        { label: 'OSAD Administration', icon: Home, path: '/osad/dashboard?tab=overview', tab: 'overview' },
-        { label: 'Colleges & Programs', icon: Building2, path: '/osad/dashboard?tab=departments', tab: 'departments' },
-        { label: 'Student Governance', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
-        { label: 'Student Organizations', icon: Building2, path: '/osad/dashboard?tab=organizations', tab: 'organizations' },
-        { label: 'Award Categories', icon: Award, path: '/osad/dashboard?tab=awards', tab: 'awards' },
-        { label: 'Identify Awardees', icon: LayoutGrid, path: '/osad/dashboard?tab=awardees', tab: 'awardees' },
-        { label: 'Accreditation Reports', icon: FileCheck2, path: '/osad/dashboard?tab=reports', tab: 'reports' },
-        { label: 'System Audit Logs', icon: ShieldCheck, path: '/osad/dashboard?tab=audit', tab: 'audit' },
-      ]
-    }
-
-    if (activeContext === 'program_coordinator') {
-      return [
-        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
-        { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
-        { label: 'Students', icon: Users, path: '/personnel/dashboard?tab=students', tab: 'students' },
-        { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
-        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
-        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
-        { label: 'Account', icon: User, path: '/personnel/account' },
-      ]
-    }
-
-    if (activeContext === 'organization_moderator') {
-      return [
-        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard?tab=dashboard', tab: 'dashboard' },
-        { label: 'Manage Events', icon: Calendar, path: '/personnel/dashboard?tab=events', tab: 'events' },
-        { label: 'Attendance Sessions', icon: QrCode, path: '/personnel/dashboard?tab=attendance', tab: 'attendance' },
-        { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
-        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
-        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
-        { label: 'Account', icon: User, path: '/personnel/account' },
-      ]
-    }
-
-    if (activeContext === 'department_secretary') {
-      return [
-        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard?tab=overview', tab: 'overview' },
-        { label: 'Verification Workspace', icon: ShieldCheck, path: '/personnel/dashboard?tab=workspace', tab: 'workspace' },
-        { label: 'Personnel Roster', icon: Users, path: '/personnel/dashboard?tab=personnel', tab: 'personnel' },
-        { label: 'My Faculty Portfolio', icon: UserCheck, path: '/personnel/dashboard?tab=faculty_view', tab: 'faculty_view' },
-        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
-        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
-        { label: 'Account', icon: User, path: '/personnel/account' },
-      ]
-    }
-
-    if (['personnel', 'faculty'].includes(activeContext) || location.pathname.includes('/personnel/')) {
-      return [
-        { label: 'Dashboard', icon: Home, path: '/personnel/dashboard' },
-        { label: 'Edit Portfolio', icon: Edit3, path: '/personnel/portfolio/edit' },
-        { label: 'Portfolio Showcase', icon: FolderKanban, path: '/personnel/portfolio' },
-        { label: 'Account', icon: User, path: '/personnel/account' },
-      ]
-    }
-
-    return [
-      { label: 'Dashboard', icon: Home, path: portalInfo.path },
-      { label: 'Achievements', icon: Award, path: '/student/achievements' },
-      { label: 'Portfolio', icon: FolderKanban, path: '/student/portfolio' },
-      { label: 'Account', icon: User, path: '/student/account' },
-    ]
-  }
-
-  const navItems = getNavItems()
-
-  // Active state indicators
+  const defaultTabForContext = 'overview'
   const isDashboardPage = location.pathname.includes('dashboard')
-  const isNotificationsActive = location.pathname.includes('notifications')
-  const isAccountActive = location.pathname.includes('account')
-  const isSettingsActive = location.pathname.includes('settings')
 
-  const defaultTabForContext = activeContext === 'organization_moderator' ? 'dashboard' : 'overview'
-  const currentActiveTab = isDashboardPage ? (activeTabParam || defaultTabForContext) : null
-  const isPersonnel = ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeContext) || location.pathname.includes('/personnel/')
+  const navItems = activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? [
+    { label: 'OSAD Dashboard', icon: Home, path: '/osad/dashboard', tab: 'overview' },
+    { label: 'Academic Structure', icon: Building2, path: '/osad/dashboard?tab=departments', tab: 'departments' },
+    { label: 'Student Accounts', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
+    { label: 'Student Organizations', icon: Users, path: '/osad/dashboard?tab=organizations', tab: 'organizations' },
+    { label: 'Award Categories', icon: Award, path: '/osad/dashboard?tab=awards', tab: 'awards' },
+    { label: 'Certificate Templates', icon: Sparkles, path: '/osad/dashboard?tab=certificate-templates', tab: 'certificate-templates' },
+    { label: 'Identify Awardees', icon: LayoutGrid, path: '/osad/dashboard?tab=awardees', tab: 'awardees' },
+    { label: 'Accreditation Reports', icon: FileCheck2, path: '/osad/dashboard?tab=reports', tab: 'reports' },
+    { label: 'OSAD Activity Log', icon: ShieldCheck, path: '/osad/dashboard?tab=audit', tab: 'audit' }
+  ] : activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? [
+    { label: 'HR Dashboard', icon: Home, path: '/hr/dashboard', tab: 'overview' },
+    { label: 'Personnel Directory', icon: UserCheck, path: '/hr/personnel-directory' },
+    { label: 'Evaluation Submissions', icon: FolderKanban, path: '/hr/evaluation-submissions' },
+    { label: 'HR Audit Trail', icon: ShieldCheck, path: '/hr/audit-trail' },
+    { label: 'Rank Assignment Logs', icon: FileCheck2, path: '/hr/rank-assignment-logs' }
+  ] : [
+    { label: 'Dashboard Overview', icon: Home, path: '/personnel/dashboard' },
+    { label: 'My Portfolio Dossier', icon: FolderKanban, path: '/personnel/portfolio/edit' },
+    { label: 'Evaluations & Scorecard', icon: Award, path: '/personnel/evaluations' }
+  ]
+
+  const filteredNavItems = navItems.filter(item => {
+    if (!searchTerm.trim()) return true
+    return item.label.toLowerCase().includes(searchTerm.toLowerCase().trim())
+  })
+
+  const effectiveAdminContext = location.pathname.includes('/hr/')
+    ? 'hr_staff'
+    : location.pathname.includes('/osad/')
+      ? 'osad_staff'
+      : activeContext
 
   return (
-    <aside className="w-60 flex flex-col justify-between shrink-0 h-screen sticky top-0 font-sans overflow-y-auto no-scrollbar transition-colors duration-200 bg-white dark:bg-[#0d1520] text-slate-900 dark:text-slate-100 border-r border-slate-200/80 dark:border-slate-800/80 selection:bg-[#2d8a4e] selection:text-white">
-      <div>
-
+    <aside className="w-64 bg-white dark:bg-[#131e2e] border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between h-screen sticky top-0 font-sans z-30 shadow-2xs">
+      
+      {/* Scrollable Navigation Region */}
+      <div className="flex-1 overflow-y-auto space-y-4 py-4">
+        
         {/* Brand Header */}
-        <div className="p-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/80">
-          <div className="w-9 h-9 rounded-xl bg-white p-1 flex items-center justify-center shadow-2xs shrink-0 border border-slate-200/80">
-            <svg viewBox="0 0 100 100" className="w-full h-full">
-              <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
-              <circle cx="50" cy="50" r="28" fill="#ffffff" />
-              <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="font-extrabold text-lg leading-tight tracking-tight text-slate-900 dark:text-white">AchieveNest</h1>
-            <p className="text-[10px] font-extrabold tracking-widest uppercase text-[#2d8a4e] dark:text-emerald-400">
-              {activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? 'NDMU OSAD' :
-                activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? 'HR PORTAL' :
-                  ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(activeContext) || location.pathname.includes('/personnel/') ? 'PERSONNEL PORTAL' :
-                    'STUDENT PORTAL'}
-            </p>
-          </div>
+        <div className="px-5 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#1b4332] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              AN
+            </div>
+            <div>
+              <span className="font-black text-sm text-slate-900 dark:text-white tracking-tight block">AchieveNest</span>
+              <span className="text-[10px] font-extrabold text-[#2d8a4e] dark:text-emerald-400 uppercase tracking-wider block">NDMU Portal</span>
+            </div>
+          </Link>
         </div>
 
-        {/* Sidebar Search Input */}
-        <div className="p-3 pb-1.5">
+        {/* Quick Search Bar */}
+        <div className="px-3">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
               <Search className="w-3.5 h-3.5" />
@@ -185,15 +127,15 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? "Search OSAD Portal..." : "Search Portal..."}
-              className="w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#2d8a4e] transition bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400"
+              placeholder="Search Portal..."
+              className="w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#1b4332] transition bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400"
             />
           </div>
         </div>
 
         {/* Active Portal / Role Badge */}
-        <div className="px-3 py-1.5">
-          <div className="w-full py-2 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between shadow-2xs border bg-[#edf3ec] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#d2e6d5] dark:border-emerald-800/60">
+        <div className="px-3">
+          <div className="w-full py-1.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between border bg-[#edf3ec] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#d2e6d5] dark:border-emerald-800/60">
             <span className="flex items-center gap-1.5 text-[11px]">
               <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
               {portalInfo.roleTitle || portalInfo.label}
@@ -202,32 +144,27 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         </div>
 
         {/* Navigation Items */}
-        <div className="px-3 pt-3 space-y-1">
+        <div className="px-3 space-y-1">
           <p className="px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 text-slate-400 dark:text-slate-400">
             Navigation
           </p>
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const Icon = item.icon
             const itemCleanPath = item.path.split('?')[0]
             const currentCleanPath = location.pathname.split('?')[0]
 
-            // Match explicit path for top-level routes (e.g. /hr/faculty-ranking-and-matrix, /hr/personnel-governance)
-            const isExactPathActive = Boolean(
-              currentCleanPath === itemCleanPath &&
-              (!isDashboardPage || !item.path.includes('?tab='))
-            )
+            let isActive = false
+            if (item.tab) {
+              if (isDashboardPage) {
+                const activeTab = activeTabParam || defaultTabForContext
+                isActive = (activeTab === item.tab)
+              } else {
+                isActive = (currentCleanPath === itemCleanPath)
+              }
+            } else {
+              isActive = (currentCleanPath === itemCleanPath)
+            }
 
-            // Match tab parameter on dashboard (e.g. /osad/dashboard?tab=accounts)
-            const isTabActive = Boolean(item.tab && isDashboardPage && activeTabParam && activeTabParam === item.tab)
-
-            // Match default dashboard tab (e.g. /osad/dashboard with no ?tab= parameter or ?tab=overview)
-            const isDefaultDashboardActive = Boolean(
-              isDashboardPage &&
-              (!activeTabParam || activeTabParam === defaultTabForContext) &&
-              item.tab === defaultTabForContext
-            )
-
-            const isActive = isExactPathActive || isTabActive || isDefaultDashboardActive
             return (
               <Link
                 key={item.label}
@@ -238,7 +175,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                   }`}
               >
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${isActive
-                    ? 'bg-[#2d8a4e] dark:bg-emerald-500 text-white dark:text-slate-950'
+                    ? 'bg-[#1b4332] dark:bg-emerald-500 text-white dark:text-slate-950'
                     : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
                   }`}>
                   <Icon className="w-3.5 h-3.5" />
@@ -251,7 +188,12 @@ export default function Sidebar({ currentUser, onRoleChange }) {
 
       </div>
 
+      {/* Docked Admin Onboarding Guide Widget (For OSAD & HR Staff Admins) */}
+      {(effectiveAdminContext === 'hr_staff' || effectiveAdminContext === 'osad_staff') && (
+        <div className="shrink-0 px-3 pb-3 pt-2">
+          <AdminOnboardingGuideWidget currentUser={user} activeRoleContext={effectiveAdminContext} />
+        </div>
+      )}
     </aside>
   )
 }
-

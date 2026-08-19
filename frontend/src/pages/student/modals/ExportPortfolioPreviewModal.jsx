@@ -15,17 +15,85 @@ import {
   Square,
   BookOpen,
   GraduationCap,
-  Users,
-  Heart,
-  Calendar,
-  MapPin,
-  Sparkles,
   Layers,
   Layout
 } from 'lucide-react'
 import { generatePortfolioPdf } from '../../../services/portfolioPdfGenerator'
 
-export default function ExportPortfolioPreviewModal({ isOpen, onClose, student }) {
+const DEFAULT_PORTFOLIO_ACHIEVEMENTS = Object.freeze([
+  {
+    id: 1,
+    title: "Dean's Lister - First Semester AY 2025-2026",
+    event_name: '12th SOCCSKSARGEN IT Summit',
+    issuer: 'NDMU CITE / DOST Region XII',
+    category: 'Academic',
+    scope_level: 'Regional (Region XII)',
+    rank_conferred: "Dean's Lister",
+    academic_year: 'AY 2025-2026',
+    semester: '1st Semester',
+    date: 'Dec 15, 2025',
+    status: 'Verified',
+    verifier: 'Dr. Maria Santos • Program Coordinator',
+    description: 'Awarded for achieving a Grade Point Average of 1.25 and demonstrating academic excellence across all CS subjects.',
+    image_url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
+    points: 10
+  },
+  {
+    id: 2,
+    title: 'Student Council President',
+    event_name: 'NDMU Supreme Student Council Election',
+    issuer: 'NDMU OSAD / COMELEC',
+    category: 'Leadership',
+    scope_level: 'Institutional / Campus-Wide',
+    rank_conferred: 'Leadership Officer / Lead',
+    academic_year: 'AY 2025-2026',
+    semester: '1st Semester',
+    date: 'Jan 10, 2026',
+    status: 'Verified',
+    verifier: 'Prof. Juan Dela Cruz • OSAD Moderator',
+    description: 'Elected as Supreme Student Council President representing 5,000+ NDMU undergraduate students.',
+    image_url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80',
+    points: 10
+  },
+  {
+    id: 3,
+    title: 'Basketball Intramurals Champion',
+    event_name: 'NDMU Palaro Intramurals 2026',
+    issuer: 'NDMU Athletics Office',
+    category: 'Sports',
+    scope_level: 'Institutional / Campus-Wide',
+    rank_conferred: 'Champion / 1st Place',
+    academic_year: 'AY 2025-2026',
+    semester: '2nd Semester',
+    date: 'Feb 14, 2026',
+    status: 'Verified',
+    verifier: 'Coach Robert Tan • Sports Director',
+    description: 'Led CITE Wildcats Men Basketball Team to victory in NDMU University Intramurals.',
+    image_url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&auto=format&fit=crop&q=80',
+    points: 10
+  },
+  {
+    id: 4,
+    title: 'Community Extension Volunteer Lead',
+    event_name: 'Koronadal City Barangay Outreach',
+    issuer: 'Koronadal City LGU / NDMU CES',
+    category: 'Community',
+    scope_level: 'Local / City Level',
+    rank_conferred: 'Participant / Special Award',
+    academic_year: 'AY 2024-2025',
+    semester: '2nd Semester',
+    date: 'Mar 20, 2025',
+    status: 'Verified',
+    verifier: 'Mrs. Elena Ramos • CES Head',
+    description: 'Spearheaded IT literacy workshops for 120+ high school students in Barangay Zone III.',
+    image_url: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=600&auto=format&fit=crop&q=80',
+    points: 5
+  }
+])
+
+export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, achievements }) {
+  const initialAchievements = achievements || DEFAULT_PORTFOLIO_ACHIEVEMENTS
+
   // Structure Toggles
   const [template, setTemplate] = useState('ndmu_dossier') // 'ndmu_dossier' | 'modern_clean' | 'executive_1page'
   const [includeCoverPage, setIncludeCoverPage] = useState(true)
@@ -33,90 +101,12 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student }
   const [includeCategorySeparators, setIncludeCategorySeparators] = useState(true)
   const [sortNewestFirst, setSortNewestFirst] = useState(true)
 
-  // Default Achievement Items State
-  const initialAchievements = [
-    {
-      id: 1,
-      title: "Dean's Lister - First Semester AY 2025-2026",
-      event_name: '12th SOCCSKSARGEN IT Summit',
-      issuer: 'NDMU CITE / DOST Region XII',
-      category: 'Academic',
-      scope_level: 'Regional (Region XII)',
-      rank_conferred: "Dean's Lister",
-      academic_year: 'AY 2025-2026',
-      semester: '1st Semester',
-      date: 'Dec 15, 2025',
-      status: 'Verified',
-      verifier: 'Dr. Maria Santos • Program Coordinator',
-      description: 'Awarded for achieving a Grade Point Average of 1.25 and demonstrating academic excellence across all CS subjects.',
-      image_url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
-      points: 10
-    },
-    {
-      id: 2,
-      title: 'Student Council President',
-      event_name: 'NDMU Supreme Student Council Election',
-      issuer: 'NDMU OSAD / COMELEC',
-      category: 'Leadership',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Leadership Officer / Lead',
-      academic_year: 'AY 2025-2026',
-      semester: '1st Semester',
-      date: 'Jan 10, 2026',
-      status: 'Verified',
-      verifier: 'Prof. Juan Dela Cruz • OSAD Moderator',
-      description: 'Elected as Supreme Student Council President representing 5,000+ NDMU undergraduate students.',
-      image_url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80',
-      points: 10
-    },
-    {
-      id: 3,
-      title: 'Basketball Intramurals Champion',
-      event_name: 'NDMU Palaro Intramurals 2026',
-      issuer: 'NDMU Athletics Office',
-      category: 'Sports',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Champion / 1st Place',
-      academic_year: 'AY 2025-2026',
-      semester: '2nd Semester',
-      date: 'Feb 14, 2026',
-      status: 'Verified',
-      verifier: 'Coach Robert Tan • Sports Director',
-      description: 'Led CITE Wildcats Men Basketball Team to victory in NDMU University Intramurals.',
-      image_url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&auto=format&fit=crop&q=80',
-      points: 10
-    },
-    {
-      id: 4,
-      title: 'Community Extension Volunteer Lead',
-      event_name: 'Koronadal City Barangay Outreach',
-      issuer: 'Koronadal City LGU / NDMU CES',
-      category: 'Community',
-      scope_level: 'Local / City Level',
-      rank_conferred: 'Participant / Special Award',
-      academic_year: 'AY 2024-2025',
-      semester: '2nd Semester',
-      date: 'Mar 20, 2025',
-      status: 'Verified',
-      verifier: 'Mrs. Elena Ramos • CES Head',
-      description: 'Spearheaded IT literacy workshops for 120+ high school students in Barangay Zone III.',
-      image_url: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=600&auto=format&fit=crop&q=80',
-      points: 5
-    }
-  ]
-
   // Track checked state per achievement ID
   const [selectedIds, setSelectedIds] = useState([1, 2, 3, 4])
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
 
-  if (!isOpen) return null
-
   const toggleItemSelection = (id) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(item => item !== id))
-    } else {
-      setSelectedIds([...selectedIds, id])
-    }
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id])
   }
 
   // Filter & sort achievements based on user checklist selection
@@ -128,7 +118,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student }
       filtered.sort((a, b) => new Date(a.date) - new Date(b.date))
     }
     return filtered
-  }, [selectedIds, sortNewestFirst])
+  }, [initialAchievements, selectedIds, sortNewestFirst])
 
   // Group active achievements by category
   const achievementsByCategory = useMemo(() => {
@@ -200,6 +190,8 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student }
   const handlePrintPDF = () => {
     generatePortfolioPdf(`NDMU_Portfolio_${student?.student_id || '2024-01234'}`)
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200 font-sans">

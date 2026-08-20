@@ -1,29 +1,11 @@
 import React, { useState } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
-import { getCurrentUser, logoutUser } from '../../services/authService'
+import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import useTheme from '../../hooks/useTheme'
-import {
-  Home,
-  Award,
-  FolderKanban,
-  User,
-  Bell,
-  Settings,
-  LogOut,
-  Search,
-  ShieldCheck,
-  Building2,
-  Users,
-  UserCheck,
-  FileCheck2,
-  LayoutGrid,
-  Calendar,
-  QrCode,
-  Edit3,
-  Sparkles
-} from 'lucide-react'
+import { Search, ShieldCheck } from 'lucide-react'
 import AdminOnboardingGuideWidget from '../common/AdminOnboardingGuideWidget'
+import { getPersonnelNavigation } from '../../config/personnelRoleNavigation'
 
 export default function Sidebar({ currentUser, onRoleChange }) {
   const navigate = useNavigate()
@@ -31,15 +13,10 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { user: authUser, activeRoleContext: authRoleContext } = useAuth() || {}
-  const user = currentUser || authUser || getCurrentUser()
+  const user = authUser || currentUser || getCurrentUser()
   const [searchTerm, setSearchTerm] = useState('')
 
-  const handleLogout = () => {
-    logoutUser()
-    navigate('/')
-  }
-
-  const activeContext = user?.active_role_context || authRoleContext || user?.user_type || 'student'
+  const activeContext = authRoleContext || user?.active_role_context || user?.user_type || 'student'
   const activeTabParam = searchParams.get('tab') || 'overview'
 
   const getPortalInfo = () => {
@@ -49,15 +26,15 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       case 'program_coordinator':
         return { label: 'Program Coordinator', path: '/personnel/dashboard?tab=overview', roleTitle: 'Program Coordinator' }
       case 'organization_moderator':
-        return { label: 'Org Moderator Portal', path: '/personnel/dashboard', roleTitle: 'Organization Account' }
+        return { label: 'Org Moderator Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Organization Account' }
       case 'department_secretary':
-        return { label: 'Dept Secretary Portal', path: '/personnel/dashboard', roleTitle: 'Department Secretary' }
+        return { label: 'Dept Secretary Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Department Secretary' }
       case 'hr_staff':
         return { label: 'HR Office Portal', path: '/hr/dashboard', roleTitle: 'HR Staff' }
       case 'osad_staff':
         return { label: 'OSAD Portal', path: '/osad/dashboard', roleTitle: 'OSAD Staff' }
       default:
-        return { label: 'Personnel Portal', path: '/personnel/dashboard', roleTitle: 'Personnel Portal' }
+        return { label: 'Personnel Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Personnel Portal' }
     }
   }
 
@@ -65,27 +42,14 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const defaultTabForContext = 'overview'
   const isDashboardPage = location.pathname.includes('dashboard')
 
-  const navItems = activeContext === 'osad_staff' || location.pathname.includes('/osad/') ? [
-    { label: 'OSAD Dashboard', icon: Home, path: '/osad/dashboard', tab: 'overview' },
-    { label: 'Academic Structure', icon: Building2, path: '/osad/dashboard?tab=departments', tab: 'departments' },
-    { label: 'Student Accounts', icon: Users, path: '/osad/dashboard?tab=accounts', tab: 'accounts' },
-    { label: 'Student Organizations', icon: Users, path: '/osad/dashboard?tab=organizations', tab: 'organizations' },
-    { label: 'Award Categories', icon: Award, path: '/osad/dashboard?tab=awards', tab: 'awards' },
-    { label: 'Certificate Templates', icon: Sparkles, path: '/osad/dashboard?tab=certificate-templates', tab: 'certificate-templates' },
-    { label: 'Identify Awardees', icon: LayoutGrid, path: '/osad/dashboard?tab=awardees', tab: 'awardees' },
-    { label: 'Accreditation Reports', icon: FileCheck2, path: '/osad/dashboard?tab=reports', tab: 'reports' },
-    { label: 'OSAD Activity Log', icon: ShieldCheck, path: '/osad/dashboard?tab=audit', tab: 'audit' }
-  ] : activeContext === 'hr_staff' || location.pathname.includes('/hr/') ? [
-    { label: 'HR Dashboard', icon: Home, path: '/hr/dashboard', tab: 'overview' },
-    { label: 'Personnel Directory', icon: UserCheck, path: '/hr/personnel-directory' },
-    { label: 'Evaluation Submissions', icon: FolderKanban, path: '/hr/evaluation-submissions' },
-    { label: 'HR Audit Trail', icon: ShieldCheck, path: '/hr/audit-trail' },
-    { label: 'Rank Assignment Logs', icon: FileCheck2, path: '/hr/rank-assignment-logs' }
-  ] : [
-    { label: 'Dashboard Overview', icon: Home, path: '/personnel/dashboard' },
-    { label: 'My Portfolio Dossier', icon: FolderKanban, path: '/personnel/portfolio/edit' },
-    { label: 'Evaluations & Scorecard', icon: Award, path: '/personnel/evaluations' }
-  ]
+  // Pre-render authorization filtering: Exclude unauthorized items BEFORE JSX mapping
+  const userSession = {
+    ...user,
+    active_role_context: activeContext,
+    assigned_roles: user?.assigned_roles || [activeContext]
+  }
+
+  const navItems = getPersonnelNavigation(userSession)
 
   const filteredNavItems = navItems.filter(item => {
     if (!searchTerm.trim()) return true

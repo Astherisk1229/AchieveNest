@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { getCurrentUser, authenticateUser, updateUserRoleContext, logoutUser } from '../services/authService'
+import { normalizeRoleContext, normalizeAssignedRoles } from '../utils/roleContext'
 
 const AuthContext = createContext(null)
 
@@ -74,7 +75,18 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    const fallbackUser = getCurrentUser()
+    return {
+      user: fallbackUser,
+      setUser: () => {},
+      activeRoleContext: fallbackUser?.active_role_context || fallbackUser?.user_type || 'personnel',
+      isAuthenticated: !!fallbackUser,
+      isLoading: false,
+      login: async () => {},
+      logout: () => {},
+      switchRoleContext: (role) => updateUserRoleContext(role),
+      syncUserFromStorage: () => {}
+    }
   }
   return context
 }

@@ -78,7 +78,7 @@ export class CertificateTemplateVersionModel {
   extractPlaceholders() {
     const text = `${this.#contentSchema.heading} ${this.#contentSchema.recipientLeadIn} ${this.#contentSchema.body} ${this.#contentSchema.footerNote}`
     const matches = text.match(/\{\{([a-zA-Z0-9_]+)\}\}/g) || []
-    return Array.from(new Set(matches.map(m => m.replace(/[\{\}]/g, ''))))
+    return Array.from(new Set(matches.map(m => m.replace(/[{}]/g, ''))))
   }
 
   validatePlaceholders() {

@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import campusBanner from '../../../assets/ndmu_campus_banner.png'
 import { useVerification } from '../../../hooks/useVerification'
-
 import { useStudentRoster } from '../../../hooks/useStudentRoster'
+import CoordinatorMetricsSidebar from './CoordinatorMetricsSidebar'
+import { calculateAverageReviewTime } from '../../../utils/verificationMetrics'
 import { 
   Shield, 
   ShieldCheck,
@@ -318,7 +319,14 @@ export default function CoordinatorDashboardPage({ currentUser }) {
     triggerToast('BS Computer Science verification CSV report downloaded!')
   }
 
-  // (Filtered submissions and students are provided by useVerification & useStudentRoster hooks)
+  const averageReviewTime = calculateAverageReviewTime(allSubmissions)
+
+  const handleMetricStatusSelect = (status) => {
+    const validStatus = ['Pending', 'Verified', 'Returned'].includes(status) ? status : 'All'
+    setStatusFilter(validStatus)
+    setSelectedWorkspaceItem(null)
+    setSearchParams({ tab: 'workspace', status: validStatus })
+  }
 
 
   return (
@@ -364,45 +372,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   <path d="M50 30 L56 42 L69 42 L58 51 L62 64 L50 55 L38 64 L42 51 L31 42 L44 42 Z" fill="#f59e0b" />
                 </svg>
               </div>
-            </div>
-
-
-
-            {/* 4 Stat Counter Cards Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 relative z-10">
-              
-              <div className="p-4 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                  <Clock className="w-4 h-4 text-amber-300" />
-                  <span>Pending Reviews</span>
-                </div>
-                <p className="text-3xl font-black text-white">{pendingCount}</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>Verified</span>
-                </div>
-                <p className="text-3xl font-black text-white">{verifiedCount}</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                  <RotateCcw className="w-4 h-4 text-emerald-300" />
-                  <span>Returned</span>
-                </div>
-                <p className="text-3xl font-black text-white">{returnedCount}</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#133220]/90 border border-emerald-600/30">
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200/90 mb-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-300" />
-                  <span>Avg Review Time</span>
-                </div>
-                <p className="text-3xl font-black text-white">2.5 hrs</p>
-              </div>
-
             </div>
 
           </div>
@@ -517,8 +486,18 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
             </div>
 
-            {/* RIGHT SIDEBAR COLUMN: Coordinator Verification Guidelines (span-1) */}
+            {/* RIGHT SIDEBAR COLUMN: Verification Metrics Summary & Coordinator Guidelines (span-1) */}
             <div className="space-y-6">
+              
+              {/* Verification Metrics Summary Sidebar Card */}
+              <CoordinatorMetricsSidebar
+                pendingCount={pendingCount}
+                verifiedCount={verifiedCount}
+                returnedCount={returnedCount}
+                averageReviewTime={averageReviewTime}
+                activeStatus={statusFilter}
+                onStatusSelect={handleMetricStatusSelect}
+              />
               
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">

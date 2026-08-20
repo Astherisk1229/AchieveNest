@@ -40,7 +40,7 @@ function capitalizeSegment(segment, index) {
   return lower.charAt(0).toLocaleUpperCase() + lower.slice(1)
 }
 
-export function smartCapitalize(value) {
+function smartCapitalize(value) {
   if (!value || typeof value !== 'string') return ''
   const normalized = value.normalize('NFC').trim().replace(/\s+/g, ' ')
   return normalized

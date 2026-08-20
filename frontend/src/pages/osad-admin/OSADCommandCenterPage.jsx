@@ -1,7 +1,6 @@
 import React from 'react'
 import { TrendingUp, Award, ChevronRight } from 'lucide-react'
 import OSADOperationalSummary from '../../components/osad/OSADOperationalSummary'
-import OSADQuickActions from '../../components/osad/OSADQuickActions'
 
 export default function OSADCommandCenterPage({ setSearchParams, awardees = [], currentUser, metrics }) {
   const handleSelectTab = (tabId) => {
@@ -12,9 +11,6 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees = [], 
     <div className="space-y-6 animate-in fade-in duration-200 font-sans">
       {/* Derived Operational Header & Summary KPIs */}
       <OSADOperationalSummary currentUser={currentUser} metrics={metrics} />
-
-      {/* Primary & Secondary Quick Actions Bento Grid */}
-      <OSADQuickActions onSelectTab={handleSelectTab} />
 
       {/* Analytics Bento Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">

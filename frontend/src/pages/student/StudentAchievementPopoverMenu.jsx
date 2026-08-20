@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
   ExternalLink, 
   Info, 
@@ -11,11 +11,9 @@ import {
   Check, 
   Star 
 } from 'lucide-react'
+import { DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '../../components/ui/dropdown-menu'
+import { Badge } from '../../components/ui/badge'
 
-/**
- * StudentAchievementPopoverMenu.jsx
- * Popover dropdown menu for student achievement cards strictly adapted to student logic.
- */
 export default function StudentAchievementPopoverMenu({
   achievement,
   targetElement = null,
@@ -50,14 +48,13 @@ export default function StudentAchievementPopoverMenu({
     }
   }, [position.x, position.y, targetElement])
 
-  // Responsive Scroll & Resize listener (Hides when scrolled out of view, re-appears when scrolled back into view)
+  // Responsive Scroll & Resize listener
   useEffect(() => {
     if (!achievement) return
 
     function handleScrollOrResize() {
       if (targetElement) {
         const rect = targetElement.getBoundingClientRect()
-        // Update current position without closing popover state so it re-appears on scroll back
         setCurrentPos({
           x: rect.left,
           y: rect.top,
@@ -116,9 +113,9 @@ export default function StudentAchievementPopoverMenu({
   }
 
   // Calculate position on the RIGHT side of the option button
-  const popoverWidth = 288 // w-72 = 288px
+  const popoverWidth = 288
   const popoverHeight = 390
-  const HEADER_HEIGHT = 72 // Height of stationary top white header bar + padding
+  const HEADER_HEIGHT = 72
 
   let leftPos = 0
   let topPos = 0
@@ -126,16 +123,13 @@ export default function StudentAchievementPopoverMenu({
 
   if (targetElement) {
     const rect = targetElement.getBoundingClientRect()
-    // Position to the RIGHT side of the option button
     leftPos = rect.right + 10
     topPos = rect.top - 4
 
-    // If placing to the right overflows the screen right edge, place on the LEFT side of the button
     if (leftPos + popoverWidth > window.innerWidth - 16) {
       leftPos = rect.left - popoverWidth - 10
     }
 
-    // Check if targetElement is currently overlapped by top header or scrolled out of viewport bounds
     if (
       rect.top < HEADER_HEIGHT || 
       rect.bottom < 0 || 
@@ -150,7 +144,6 @@ export default function StudentAchievementPopoverMenu({
     topPos = position.y || 100
   }
 
-  // Viewport & Top Header Boundary Clamping (Never overlap top white header bar)
   leftPos = Math.max(16, Math.min(leftPos, window.innerWidth - popoverWidth - 16))
   topPos = Math.max(HEADER_HEIGHT + 4, Math.min(topPos, window.innerHeight - popoverHeight - 16))
 
@@ -164,136 +157,122 @@ export default function StudentAchievementPopoverMenu({
   }
 
   return (
-    <div
-      ref={popoverRef}
-      style={style}
-      className="fixed z-50 w-72 bg-white rounded-3xl shadow-2xl border border-slate-200/90 py-2.5 px-1 font-sans text-slate-800 animate-in fade-in zoom-in-95 duration-150"
-    >
-      {/* Header section matching design system */}
-      <div className="px-3 py-2 border-b border-slate-100 mb-1">
-        <div className="flex items-center justify-between gap-2">
-          <h4 className="text-xs font-black text-slate-900 truncate leading-snug" title={achievement.title}>
-            {achievement.title}
-          </h4>
-          {isEditable && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
-              className="p-1 rounded-full text-slate-400 hover:text-[#2d8a4e] hover:bg-[#eef7f0] transition cursor-pointer"
-              title="Edit Submission"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-        <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
-          {achievement.category} • <span className="text-[#2d8a4e] font-semibold">{achievement.status}</span>
-        </p>
-      </div>
-
-      {/* Menu Actions List */}
-      <div className="space-y-0.5 text-xs">
+    <div ref={popoverRef} style={style} className="fixed z-50">
+      <DropdownMenuContent className="w-72 shadow-2xl">
         
-        {/* Action 1: Open Preview */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#eef7f0] hover:text-[#2d8a4e] font-semibold transition cursor-pointer"
-        >
-          <ExternalLink className="w-4 h-4 text-[#2d8a4e]" />
-          <span>Open in Preview Viewer</span>
-        </button>
+        {/* Dropdown Header Label */}
+        <DropdownMenuLabel>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-xs font-black text-slate-900 dark:text-white truncate leading-snug" title={achievement.title}>
+              {achievement.title}
+            </h4>
+            {isEditable && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
+                className="p-1 rounded-full text-slate-400 hover:text-[#1b4332] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
+                title="Edit Submission"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[10px] text-slate-400 font-semibold">{achievement.category}</span>
+            <span className="text-slate-300">•</span>
+            <Badge variant={achievement.status === 'Verified' ? 'success' : (achievement.status === 'Pending Review' || achievement.status === 'Pending') ? 'warning' : 'destructive'} className="text-[9px] px-1.5 py-0">
+              {achievement.status}
+            </Badge>
+          </div>
+        </DropdownMenuLabel>
 
-        {/* Action 2: View Full Details & Remarks (NO Points) */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
-        >
-          <Info className="w-4 h-4 text-slate-400" />
-          <span>View Full Details & Remarks</span>
-        </button>
-
-        {/* Action 3: Add/View in Student Portfolio */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onAttachPortfolio(achievement.id); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#eef7f0] hover:text-[#1e5831] font-semibold transition cursor-pointer"
-        >
-          <PlusCircle className={`w-4 h-4 ${isInPortfolio ? 'text-emerald-700 fill-emerald-100' : 'text-emerald-600'}`} />
-          <span>{isInPortfolio ? 'Remove from Student Portfolio' : 'Attach to Student Portfolio'}</span>
-        </button>
-
-        {/* Action 4: Toggle Favorite Highlights */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(achievement.id); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-amber-50 hover:text-amber-800 font-semibold transition cursor-pointer"
-        >
-          <Star className={`w-4 h-4 ${achievement.is_favorited ? 'text-amber-500 fill-amber-400' : 'text-slate-400'}`} />
-          <span>{achievement.is_favorited ? 'Remove from Highlights' : 'Add to Highlights'}</span>
-        </button>
-
-        {/* Action 5: Edit Accomplishment (If non-verified) */}
-        {isEditable && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
-            className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
+        {/* Menu Actions List */}
+        <div className="space-y-0.5">
+          
+          {/* Action 1: Open Preview */}
+          <DropdownMenuItem
+            variant="emerald"
+            onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
           >
-            <Edit3 className="w-4 h-4 text-slate-500" />
-            <span>Edit Submission</span>
-          </button>
-        )}
+            <ExternalLink className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
+            <span>Open in Preview Viewer</span>
+          </DropdownMenuItem>
 
-        {/* Action 6: Download Attached Proof */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onDownload(achievement); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
-        >
-          <Download className="w-4 h-4 text-slate-500" />
-          <span>Download Proof Document</span>
-        </button>
-
-        {/* Action 7: Re-submit with Corrections (If returned) */}
-        {isReturned && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onResubmit(achievement); onClose() }}
-            className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-700 bg-rose-50/70 hover:bg-rose-100 font-bold transition cursor-pointer"
+          {/* Action 2: View Full Details & Remarks */}
+          <DropdownMenuItem
+            onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
           >
-            <RotateCcw className="w-4 h-4 text-rose-600" />
-            <span>Re-submit with Corrections</span>
-          </button>
-        )}
+            <Info className="w-4 h-4 text-slate-400" />
+            <span>View Full Details & Remarks</span>
+          </DropdownMenuItem>
 
-        {/* Action 8: Copy Submission Reference Code */}
-        <button
-          type="button"
-          onClick={handleCopyRefCode}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
-        >
-          {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-400" />}
-          <span>{copied ? 'Reference Code Copied!' : 'Copy Submission Reference ID'}</span>
-        </button>
+          {/* Action 3: Add/View in Student Portfolio */}
+          <DropdownMenuItem
+            onClick={(e) => { e.stopPropagation(); onAttachPortfolio(achievement.id); onClose() }}
+          >
+            <PlusCircle className={`w-4 h-4 ${isInPortfolio ? 'text-emerald-600 fill-emerald-100' : 'text-slate-400'}`} />
+            <span>{isInPortfolio ? 'Remove from Student Portfolio' : 'Attach to Student Portfolio'}</span>
+          </DropdownMenuItem>
 
-        {/* Action 9: Delete Submission */}
-        {isDeletable && (
-          <>
-            <div className="my-1 border-t border-slate-100" />
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onDelete(achievement.id); onClose() }}
-              className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 font-bold transition cursor-pointer"
+          {/* Action 4: Toggle Favorite Highlights */}
+          <DropdownMenuItem
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite(achievement.id); onClose() }}
+          >
+            <Star className={`w-4 h-4 ${achievement.is_favorited ? 'text-amber-500 fill-amber-400' : 'text-slate-400'}`} />
+            <span>{achievement.is_favorited ? 'Remove from Highlights' : 'Add to Highlights'}</span>
+          </DropdownMenuItem>
+
+          {/* Action 5: Edit Accomplishment */}
+          {isEditable && (
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
             >
-              <Trash2 className="w-4 h-4 text-rose-500" />
-              <span>Delete Submission</span>
-            </button>
-          </>
-        )}
+              <Edit3 className="w-4 h-4 text-slate-400" />
+              <span>Edit Submission</span>
+            </DropdownMenuItem>
+          )}
 
-      </div>
+          {/* Action 6: Download Attached Proof */}
+          <DropdownMenuItem
+            onClick={(e) => { e.stopPropagation(); onDownload(achievement); onClose() }}
+          >
+            <Download className="w-4 h-4 text-slate-400" />
+            <span>Download Proof Document</span>
+          </DropdownMenuItem>
+
+          {/* Action 7: Re-submit with Corrections */}
+          {isReturned && (
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={(e) => { e.stopPropagation(); onResubmit(achievement); onClose() }}
+            >
+              <RotateCcw className="w-4 h-4 text-rose-500" />
+              <span>Re-submit with Corrections</span>
+            </DropdownMenuItem>
+          )}
+
+          {/* Action 8: Copy Submission Reference Code */}
+          <DropdownMenuItem onClick={handleCopyRefCode}>
+            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-slate-400" />}
+            <span>{copied ? 'Reference Code Copied!' : 'Copy Submission Reference ID'}</span>
+          </DropdownMenuItem>
+
+          {/* Action 9: Delete Submission */}
+          {isDeletable && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={(e) => { e.stopPropagation(); onDelete(achievement.id); onClose() }}
+              >
+                <Trash2 className="w-4 h-4 text-rose-500" />
+                <span>Delete Submission</span>
+              </DropdownMenuItem>
+            </>
+          )}
+
+        </div>
+      </DropdownMenuContent>
     </div>
   )
 }

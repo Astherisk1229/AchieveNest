@@ -43,6 +43,7 @@ import AttendanceScannerModal from './AttendanceScannerModal'
 import DigitalCertificateModal from './DigitalCertificateModal'
 import EventCardOptionsMenu from './EventCardOptionsMenu'
 import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
+import DigitalCertificatesWorkspace from './certificates/DigitalCertificatesWorkspace'
 
 
 
@@ -1460,6 +1461,13 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
         </div>
       </div>
   )}
+
+      {/* ========================================================================= */}
+      {/* 3.5. DIGITAL CERTIFICATES & SIGNATORY VAULT WORKSPACE VIEW               */}
+      {/* ========================================================================= */}
+      {activeTab === 'certificates' && (
+        <DigitalCertificatesWorkspace events={events} />
+      )}
 
       {/* ========================================================================= */}
       {/* 4. DEFAULT DASHBOARD / OVERVIEW VIEW                                      */}

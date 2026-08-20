@@ -143,6 +143,7 @@ export async function authenticateUser(email, password, rememberMe = true) {
 }
 
 import AuthController from '../controllers/AuthController'
+import { normalizeRoleContext, normalizeAssignedRoles } from '../utils/roleContext'
 
 export function getCurrentUser() {
   const local = localStorage.getItem(STORAGE_KEY_USER)
@@ -155,21 +156,17 @@ export function getCurrentUser() {
     return null
   }
 
-  // Ensure personnel users always have assigned roles populated
-  const isPersonnel = ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(raw.user_type) ||
-                      ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(raw.active_role_context)
-
-  if (isPersonnel) {
-    if (!raw.assigned_roles || raw.assigned_roles.length === 0) {
-      raw.assigned_roles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
-    }
+  raw.user_type = normalizeRoleContext(raw.user_type)
+  if (raw.active_role_context) {
+    raw.active_role_context = normalizeRoleContext(raw.active_role_context)
   }
+  raw.assigned_roles = normalizeAssignedRoles(raw.assigned_roles || raw.roles, raw.user_type)
 
   return raw
 }
 
 export function updateUserRoleContext(newRoleContext) {
-  const userModel = AuthController.updateUserRoleContext(newRoleContext)
+  const normNewRole = normalizeRoleContext(newRoleContext)
   const local = localStorage.getItem(STORAGE_KEY_USER)
   const session = sessionStorage.getItem(STORAGE_KEY_USER)
   let raw = null
@@ -177,15 +174,22 @@ export function updateUserRoleContext(newRoleContext) {
   else if (session) raw = JSON.parse(session)
   if (!raw) raw = { ...DEMO_USERS.personnel }
 
-  raw.active_role_context = newRoleContext
-  if (!raw.assigned_roles || raw.assigned_roles.length === 0) {
-    raw.assigned_roles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
+  raw.assigned_roles = normalizeAssignedRoles(raw.assigned_roles || raw.roles, raw.user_type)
+  
+  // Validate that the requested role context is in assigned_roles
+  if (!raw.assigned_roles.includes(normNewRole)) {
+    console.warn(`Role switch rejected: ${normNewRole} is not in assigned_roles [${raw.assigned_roles.join(', ')}]`)
+    return raw
   }
 
-  localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
-  sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+  raw.active_role_context = normNewRole
+  AuthController.updateUserRoleContext(normNewRole)
 
-  // Dispatch custom storage event so other components sync instantly in real-time
+  if (local) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+  if (session) sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+  if (!local && !session) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
+
+  // Dispatch storage event for real-time synchronization
   window.dispatchEvent(new Event('storage'))
   return raw
 }

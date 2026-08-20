@@ -4,7 +4,7 @@
  */
 import RankingCriteriaModel from '../src/models/RankingCriteriaModel.js'
 
-console.log('=== TEST: CATEGORY-TAILORED DYNAMIC FIELDS MAPPING ===')
+console.log('=== TEST: CATEGORY-TAILORED DYNAMIC FIELDS MAPPING ===', !!RankingCriteriaModel)
 
 // 1. Test A.1 Degree mapping
 const degreeObj = {

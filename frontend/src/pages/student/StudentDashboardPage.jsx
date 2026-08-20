@@ -1,6 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import DigitalBarcodeIDCardModal from './modals/DigitalBarcodeIDCardModal'
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
 import {
   Trophy,
   CheckCircle2,
@@ -160,9 +164,15 @@ export default function StudentDashboardPage({ currentUser }) {
           {/* Top Banner Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-xs shrink-0">
-                <Award className="w-6 h-6 text-emerald-200" />
-              </div>
+              <Avatar size="lg" className="border-2 border-emerald-400/40 shadow-md">
+                <AvatarImage src={student.avatar_url} alt={student.full_name} />
+                <AvatarFallback className="bg-[#2d8a4e] text-white">
+                  {student.full_name ? student.full_name.split(' ').map(n => n[0]).join('') : 'MS'}
+                </AvatarFallback>
+                <AvatarBadge className="bg-emerald-400 border border-[#1b4332] text-[#1b4332]">
+                  ✓
+                </AvatarBadge>
+              </Avatar>
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
@@ -190,7 +200,7 @@ export default function StudentDashboardPage({ currentUser }) {
             </button>
           </div>
 
-          {/* 5 CLICKABLE INTERACTIVE BENTO STAT CARDS */}
+          {/* 5 CLICKABLE INTERACTIVE BENTO STAT CARDS (shadcn UI style) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 relative z-10">
             {stats.map((stat) => {
               const IconComponent = stat.icon
@@ -201,17 +211,20 @@ export default function StudentDashboardPage({ currentUser }) {
                   key={stat.key}
                   type="button"
                   onClick={() => setActiveStatFilter(stat.key)}
-                  className={`p-3.5 sm:p-4 rounded-xl border text-left transition cursor-pointer ${isSelected
-                      ? 'bg-[#2d8a4e] border-emerald-400 text-white shadow-2xs'
-                      : 'bg-[#0c2416] border-[#1e4a30] hover:border-[#2d8a4e] text-white'
-                    }`}
+                  className="text-left cursor-pointer transition-all duration-150"
                   title={`Filter by ${stat.label}`}
                 >
-                  <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-200/90 mb-1.5 whitespace-nowrap">
-                    <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-emerald-400'}`} />
-                    <span>{stat.label}</span>
-                  </div>
-                  <p className="text-2xl font-extrabold text-white tracking-tight">{stat.value}</p>
+                  <Card className={`p-3.5 sm:p-4 border transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-[#2d8a4e] text-white border-emerald-300 shadow-md ring-2 ring-emerald-300/40'
+                      : 'bg-[#0c2416]/90 text-white border-[#1e4a30] hover:border-emerald-400/60 hover:bg-[#112f1d]'
+                  }`}>
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold mb-1.5 whitespace-nowrap">
+                      <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-emerald-400'}`} />
+                      <span className="text-emerald-100">{stat.label}</span>
+                    </div>
+                    <p className="text-2xl font-extrabold tracking-tight text-white">{stat.value}</p>
+                  </Card>
                 </button>
               )
             })}
@@ -231,55 +244,51 @@ export default function StudentDashboardPage({ currentUser }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
             {/* Card 1: Submit New Achievement */}
-            <Link
-              to="/student/achievements"
-              state={{ openSubmissionModal: true }}
-              className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
-                  <Award className="w-5 h-5" />
+            <Link to="/student/achievements" state={{ openSubmissionModal: true }} className="group">
+              <Card className="p-5 hover:border-[#2d8a4e] dark:hover:border-emerald-500 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">Submit New Achievement</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Upload certificates &amp; submit proofs for verification</p>
-              </div>
+                <div>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">Submit New Achievement</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Upload certificates &amp; submit proofs for verification</p>
+                </div>
+              </Card>
             </Link>
 
             {/* Card 2: View Portfolio */}
-            <Link
-              to="/student/portfolio"
-              className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
-                  <Eye className="w-5 h-5" />
+            <Link to="/student/portfolio" className="group">
+              <Card className="p-5 hover:border-[#2d8a4e] dark:hover:border-emerald-500 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">View Portfolio</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Explore your verified academic &amp; extracurricular ledger</p>
-              </div>
+                <div>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">View Portfolio</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Explore your verified academic &amp; extracurricular ledger</p>
+                </div>
+              </Card>
             </Link>
 
             {/* Card 3: View Achievements */}
-            <Link
-              to="/student/achievements"
-              className="p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#2d8a4e] dark:hover:border-emerald-500 transition duration-200 text-left flex flex-col justify-between space-y-4 group cursor-pointer shadow-2xs dark:shadow-none"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
-                  <Star className="w-5 h-5" />
+            <Link to="/student/achievements" className="group">
+              <Card className="p-5 hover:border-[#2d8a4e] dark:hover:border-emerald-500 flex flex-col justify-between space-y-4 shadow-xs hover:shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
+                    <Star className="w-5 h-5" />
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">View Achievements</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Inspect detailed status history &amp; feedback notes</p>
-              </div>
+                <div>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition">View Achievements</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-snug">Inspect detailed status history &amp; feedback notes</p>
+                </div>
+              </Card>
             </Link>
 
           </div>
@@ -295,9 +304,9 @@ export default function StudentDashboardPage({ currentUser }) {
                 Accomplishments Timeline
               </h2>
               {activeStatFilter !== 'all' && (
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/50">
+                <Badge variant="success">
                   Filtered: {stats.find(s => s.key === activeStatFilter)?.label}
-                </span>
+                </Badge>
               )}
             </div>
 
@@ -329,7 +338,7 @@ export default function StudentDashboardPage({ currentUser }) {
 
           {/* Timeline Card Items */}
           {filteredTimeline.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 text-center text-slate-500 text-xs space-y-2">
+            <Card className="p-8 text-center text-slate-500 text-xs space-y-2">
               <p className="font-medium">No accomplishment entries found under the selected category filter.</p>
               <button
                 onClick={() => { setActiveStatFilter('all'); setSelectedCategoryFilter('All'); }}
@@ -337,15 +346,15 @@ export default function StudentDashboardPage({ currentUser }) {
               >
                 Reset All Filters
               </button>
-            </div>
+            </Card>
           ) : (
             <div className="space-y-3">
               {filteredTimeline.map((item) => {
                 const IconComp = item.icon
                 return (
-                  <div
+                  <Card
                     key={item.id}
-                    className="p-4 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs dark:shadow-none"
+                    className="p-4 hover:border-slate-300 dark:hover:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
@@ -359,14 +368,11 @@ export default function StudentDashboardPage({ currentUser }) {
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className="text-[11px] text-slate-500 font-semibold">📅 {item.date}</span>
                           <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${item.statusType === 'verified'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/50'
-                              : item.statusType === 'pending'
-                                ? 'bg-[#fbf3db] dark:bg-amber-950/50 text-[#8a5d00] dark:text-amber-300 border border-[#f0e2b6] dark:border-amber-800/50'
-                                : 'bg-[#fdebec] dark:bg-rose-950/50 text-[#9f2f2d] dark:text-rose-300 border border-[#f5c6cb] dark:border-rose-800/50'
-                            }`}>
-                            {item.status} ✓
-                          </span>
+                          <Badge variant={
+                            item.statusType === 'verified' ? 'success' : item.statusType === 'pending' ? 'warning' : 'destructive'
+                          }>
+                            {item.status}
+                          </Badge>
                           <span className="text-slate-300 dark:text-slate-700">•</span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{item.issuer}</span>
                         </div>
@@ -385,12 +391,12 @@ export default function StudentDashboardPage({ currentUser }) {
                         </Link>
                       )}
 
-                      <span className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700 shrink-0">
+                      <Badge variant="outline" className="normal-case font-bold">
                         {item.category}
-                      </span>
+                      </Badge>
                     </div>
 
-                  </div>
+                  </Card>
                 )
               })}
             </div>

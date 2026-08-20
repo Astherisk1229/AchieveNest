@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import ExportPortfolioPreviewModal from './modals/ExportPortfolioPreviewModal'
 import EditStudentInfoModal from './modals/EditStudentInfoModal'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { Separator } from '../../components/ui/separator'
 
 import {
   Trophy,
@@ -232,20 +237,17 @@ export default function StudentPortfolioPage({ currentUser }) {
               {/* Left Column: Avatar Overlapping 1/3 Green & 2/3 White + Reserved White Details */}
               <div className="flex flex-col sm:flex-row sm:items-end gap-5">
 
-                {/* Circular Profile Avatar (1/3 overlaps green curvy shape on left, 2/3 on white) */}
+                {/* Circular Profile Avatar using Avatar component system */}
                 <div className="relative shrink-0 z-30 sm:-mb-1">
-                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl bg-white overflow-hidden aspect-square">
-                    <img
-                      src={student.avatar_url}
-                      alt={student.full_name}
-                      width="144"
-                      height="144"
-                      className="w-full h-full object-cover rounded-full aspect-square"
-                      fetchpriority="high"
-                      decoding="async"
-                      loading="eager"
-                    />
-                  </div>
+                  <Avatar size="xl" className="w-28 h-28 sm:w-36 sm:h-36 border-4 border-white shadow-xl aspect-square bg-white">
+                    <AvatarImage src={student.avatar_url} alt={student.full_name} fetchpriority="high" decoding="async" loading="eager" />
+                    <AvatarFallback className="text-2xl font-black bg-gradient-to-br from-emerald-600 to-[#1b4332]">
+                      {student.full_name ? student.full_name.split(' ').map(n => n[0]).join('') : 'MS'}
+                    </AvatarFallback>
+                    <AvatarBadge className="w-5 h-5 bg-emerald-600 border-2 border-white dark:border-slate-900 text-[10px]">
+                      ✓
+                    </AvatarBadge>
+                  </Avatar>
                 </div>
 
 

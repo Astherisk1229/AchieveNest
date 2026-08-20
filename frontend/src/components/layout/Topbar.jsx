@@ -20,28 +20,32 @@ import {
   Moon
 } from 'lucide-react'
 
+import { useAuth } from '../../context/AuthContext'
+import { normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
 import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
 
 export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { theme, isDark, toggleTheme, setTheme } = useTheme()
+  const { isDark, toggleTheme } = useTheme()
+  const { user: authUser, switchRoleContext: authSwitchRole } = useAuth() || {}
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSwitchToOpen, setIsSwitchToOpen] = useState(true)
 
-  const user = currentUser || getCurrentUser() || {
+  const user = currentUser || authUser || getCurrentUser() || {
     full_name: 'Juan A. Dela Cruz',
     user_type: 'student',
     active_role_context: 'student'
   }
 
-  const userType = user?.user_type || 'student'
-  const activeRoleContext = user?.active_role_context || userType
+  const userType = normalizeRoleContext(user?.user_type || 'student')
+  const activeRoleContext = normalizeRoleContext(user?.active_role_context || userType)
+  const assignedRoles = normalizeAssignedRoles(user?.assigned_roles || user?.roles, userType)
+  const isPersonnelUser = userType !== 'student' && userType !== 'osad_staff' && userType !== 'hr_staff'
   
   const targetAccountPath = getAccountRoute(user)
   const targetSettingsPath = getSettingsRoute(user)
-
-  const isPersonnelUser = userType !== 'student' && userType !== 'osad_staff' && userType !== 'hr_staff'
 
   const handleLogout = () => {
     logoutUser()
@@ -49,12 +53,16 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   }
 
   const handleSelectRole = (roleId) => {
-    const updated = updateUserRoleContext(roleId)
-    if (onRoleChange) {
-      onRoleChange(roleId, updated)
+    const normId = normalizeRoleContext(roleId)
+    if (authSwitchRole) {
+      authSwitchRole(normId)
+    } else {
+      updateUserRoleContext(normId)
     }
-    // Personnel Dashboard handles all personnel sub-role views dynamically
-    navigate('/personnel/dashboard')
+    if (onRoleChange) {
+      onRoleChange(normId)
+    }
+    navigate('/personnel/dashboard?tab=overview')
   }
 
   // Personnel role options for role switcher
@@ -65,8 +73,10 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     { id: 'organization_moderator', label: 'Organization Account View', icon: Users }
   ]
 
-  // Filter out active role context for personnel users
-  const availableSwitchRoles = allPersonnelRoles.filter(role => role.id !== activeRoleContext)
+  // Filter switch roles strictly by normalized assigned_roles
+  const availableSwitchRoles = allPersonnelRoles.filter(role => 
+    role.id !== activeRoleContext && assignedRoles.includes(role.id)
+  )
 
   // Label display helper for user type & active role context
   const getUserTypeLabel = () => {
@@ -132,18 +142,28 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition active:scale-[0.98] cursor-pointer group"
           >
-            <div className="w-9.5 h-9.5 rounded-full border-2 border-[#2d8a4e] p-0.5 overflow-hidden shrink-0 shadow-xs aspect-square">
-              <img
-                src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                alt="User Avatar"
-                width="38"
-                height="38"
-                className="w-full h-full object-cover rounded-full aspect-square"
-                fetchpriority="high"
-                decoding="async"
-                loading="eager"
-              />
-            </div>
+            {userType === 'student' ? (
+              <Avatar size="sm" className="w-9 h-9 border-2 border-[#2d8a4e] shadow-xs">
+                <AvatarImage src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={user?.full_name || 'Student Avatar'} />
+                <AvatarFallback>
+                  {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('') : 'ST'}
+                </AvatarFallback>
+                <AvatarBadge className="bg-emerald-500 border border-white dark:border-slate-900" />
+              </Avatar>
+            ) : (
+              <div className="w-9.5 h-9.5 rounded-full border-2 border-[#2d8a4e] p-0.5 overflow-hidden shrink-0 shadow-xs aspect-square">
+                <img
+                  src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                  alt="User Avatar"
+                  width="38"
+                  height="38"
+                  className="w-full h-full object-cover rounded-full aspect-square"
+                  fetchpriority="high"
+                  decoding="async"
+                  loading="eager"
+                />
+              </div>
+            )}
 
             <div className="text-left hidden sm:block">
               <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{user?.full_name || 'Juan A. Dela Cruz'}</p>

@@ -10,6 +10,10 @@ import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContext'
 import { getCurrentUser } from './services/authService'
 
+import ActiveRoleGuard from './components/common/ActiveRoleGuard'
+import PermissionRoute from './components/security/PermissionRoute'
+import ForbiddenPage from './pages/common/ForbiddenPage'
+
 // Lazy-loaded route pages for bundle code-splitting
 const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage'))
 const StudentAchievementsPage = lazy(() => import('./pages/student/StudentAchievementsPage'))
@@ -22,6 +26,7 @@ const NotificationsPage = lazy(() => import('./pages/common/NotificationsPage'))
 const PersonnelDashboardPage = lazy(() => import('./pages/personnel/PersonnelDashboardPage'))
 const PersonnelPortfolioPage = lazy(() => import('./pages/personnel/PersonnelPortfolioPage'))
 const PersonnelPortfolioEditPage = lazy(() => import('./pages/personnel/PersonnelPortfolioEditPage'))
+const PersonnelAchievementsPage = lazy(() => import('./pages/personnel/PersonnelAchievementsPage'))
 
 const HRDashboardPage = lazy(() => import('./pages/hr-admin/HRDashboardPage'))
 const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnelDirectoryPage'))
@@ -32,6 +37,7 @@ const HRRankAssignmentLogsPage = lazy(() => import('./pages/hr-admin/HRRankAssig
 
 const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
 const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
+const PublicCertificateVerificationPage = lazy(() => import('./pages/common/PublicCertificateVerificationPage'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -111,12 +117,15 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/403" element={<ForbiddenPage />} />
+            <Route path="/verify/certificate/:publicId" element={<Suspense fallback={<RouteLoadingFallback />}><PublicCertificateVerificationPage /></Suspense>} />
 
             {/* Personnel Portal — LayoutShell mounts once, Outlet swaps page content */}
             <Route element={<LayoutShell allowedRoles={PERSONNEL_ROLES} />}>
               <Route path="/personnel/dashboard" element={<PersonnelDashboardPage />} />
-              <Route path="/personnel/portfolio/edit" element={<PersonnelPortfolioEditPage />} />
-              <Route path="/personnel/portfolio" element={<PersonnelPortfolioPage />} />
+              <Route path="/personnel/portfolio/edit" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelPortfolioEditPage /></ActiveRoleGuard>} />
+              <Route path="/personnel/portfolio" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelPortfolioPage /></ActiveRoleGuard>} />
+              <Route path="/personnel/achievements" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelAchievementsPage /></ActiveRoleGuard>} />
               <Route path="/personnel/account" element={<AccountPage />} />
               <Route path="/personnel/settings" element={<SettingsPage />} />
               <Route path="/personnel/notifications" element={<NotificationsPage />} />

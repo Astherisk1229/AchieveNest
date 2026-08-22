@@ -53,7 +53,7 @@ export default function SessionTimeoutModal({
           <button
             type="button"
             onClick={onStayLoggedIn}
-            className="flex-1 py-3 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md cursor-pointer"
+            className="flex-1 py-3 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Stay Logged In</span>

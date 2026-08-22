@@ -116,7 +116,7 @@ export function HRDashboard({ currentUser }) {
   }
 
   return (
-    <div className="space-y-6 font-sans text-slate-900 selection:bg-[#2d8a4e] selection:text-white pb-12">
+    <div className="space-y-6 font-sans text-slate-900 selection:bg-[#16834a] selection:text-white pb-12">
       
       {/* ================= DASHBOARD HEADER (ONLY ON OVERVIEW TAB) ================= */}
       {effectiveTab === 'overview' && (
@@ -135,7 +135,7 @@ export function HRDashboard({ currentUser }) {
               <p className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Active Evaluation Cycle</p>
               <div className="flex items-center justify-end gap-2 mt-1">
                 <span className="text-base font-bold text-slate-900 dark:text-white">AY 2025–2026</span>
-                <span className="px-2.5 py-0.5 rounded-md bg-[#EDF3EC] text-[#346538] dark:bg-emerald-950/60 dark:text-emerald-300 border border-[#D4E3D2] dark:border-emerald-800/60 text-xs font-bold">Active</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-[#dde8d8] text-[#346538] dark:bg-emerald-950/60 dark:text-[#245F42] border border-[#D4E3D2] dark:border-emerald-800/60 text-xs font-bold">Active</span>
               </div>
             </div>
           </div>
@@ -157,7 +157,7 @@ export function HRDashboard({ currentUser }) {
           <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 leading-tight">
-                <ShieldCheck className="w-5.5 h-5.5 text-[#2d8a4e] dark:text-emerald-400" /> Operational Overview
+                <ShieldCheck className="w-5.5 h-5.5 text-[#16834a] dark:text-emerald-400" /> Operational Overview
               </h2>
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Current Workload</span>
             </div>
@@ -183,10 +183,10 @@ export function HRDashboard({ currentUser }) {
               </button>
 
               {/* Priority A: Current Review (Spot Pastel Pale Green) */}
-              <div className="p-5 rounded-xl bg-[#EDF3EC] dark:bg-emerald-950/30 border border-[#D4E3D2] dark:border-emerald-900/60 text-left transition flex flex-col justify-between">
+              <div className="p-5 rounded-xl bg-[#dde8d8] dark:bg-emerald-950/30 border border-[#D4E3D2] dark:border-emerald-900/60 text-left transition flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#346538] dark:text-emerald-300">Current Review</span>
-                  <div className="w-9 h-9 rounded-lg bg-[#DBE8DA] dark:bg-emerald-900/60 text-[#346538] dark:text-emerald-300 flex items-center justify-center font-bold">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#346538] dark:text-[#245F42]">Current Review</span>
+                  <div className="w-9 h-9 rounded-lg bg-[#DBE8DA] dark:bg-emerald-900/60 text-[#346538] dark:text-[#245F42] flex items-center justify-center font-bold">
                     <FileCheck className="w-4.5 h-4.5" />
                   </div>
                 </div>
@@ -194,22 +194,22 @@ export function HRDashboard({ currentUser }) {
                   {stats.activeReview ? (
                     <>
                       <div>
-                        <p className="text-base font-bold text-[#1b4332] dark:text-emerald-100 leading-tight">{stats.activeReview.faculty_name || 'Dr. Maria Santos'}</p>
-                        <p className="text-xs font-medium text-[#346538] dark:text-emerald-300/80">{stats.activeReview.department || 'Department of Computer Studies'}</p>
+                        <p className="text-base font-bold text-[#064e2b] dark:text-[#245F42] leading-tight">{stats.activeReview.faculty_name || 'Dr. Maria Santos'}</p>
+                        <p className="text-xs font-medium text-[#346538] dark:text-[#245F42]/80">{stats.activeReview.department || 'Department of Computer Studies'}</p>
                       </div>
                       <div className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold text-[#1b4332] dark:text-emerald-200">
+                        <div className="flex justify-between text-xs font-semibold text-[#064e2b] dark:text-[#245F42]">
                           <span>16 of 18 items reviewed</span>
                           <span>89%</span>
                         </div>
                         <div className="w-full bg-[#C6DBC4] dark:bg-emerald-900/70 h-2 rounded-full overflow-hidden">
-                          <div className="bg-[#1b4332] dark:bg-emerald-400 h-full rounded-full w-[89%] transition-all duration-300"></div>
+                          <div className="bg-[#EFF7F0] dark:bg-emerald-400 h-full rounded-full w-[89%] transition-all duration-300"></div>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => openProofModal(stats.activeReview)}
-                        className="w-full mt-1 py-2 px-3 rounded-lg bg-[#1b4332] hover:bg-[#143326] text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                        className="w-full mt-1 py-2 px-3 rounded-lg bg-[#EFF7F0] hover:bg-[#143326] text-white text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
                       >
                         Continue Review →
                       </button>
@@ -221,7 +221,7 @@ export function HRDashboard({ currentUser }) {
                       <button
                         type="button"
                         onClick={() => handleTabChange('verification')}
-                        className="text-xs font-bold text-[#1b4332] dark:text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-bold text-[#064e2b] dark:text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                       >
                         View Queue →
                       </button>
@@ -255,14 +255,14 @@ export function HRDashboard({ currentUser }) {
                 className="p-5 rounded-xl bg-[#F4F8F5] dark:bg-emerald-950/20 hover:bg-[#E8F1EA] dark:hover:bg-emerald-950/40 border border-[#D9E6DD] dark:border-emerald-800/50 text-left transition group cursor-pointer active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-emerald-600 flex flex-col justify-between"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#1b4332] dark:text-emerald-300">Completed Evaluations</span>
-                  <div className="w-9 h-9 rounded-lg bg-[#D4E4D8] dark:bg-emerald-900/50 text-[#1b4332] dark:text-emerald-300 flex items-center justify-center font-bold">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#064e2b] dark:text-[#245F42]">Completed Evaluations</span>
+                  <div className="w-9 h-9 rounded-lg bg-[#D4E4D8] dark:bg-emerald-900/50 text-[#064e2b] dark:text-[#245F42] flex items-center justify-center font-bold">
                     <ShieldCheck className="w-4.5 h-4.5" />
                   </div>
                 </div>
                 <div className="mt-3.5">
-                  <p className="text-3xl font-bold text-[#1b4332] dark:text-emerald-100 leading-tight">{stats.verifiedAccomplishments || 1}</p>
-                  <p className="text-sm font-normal text-[#2d8a4e] dark:text-emerald-300/90 leading-normal mt-1">AY 2025–2026</p>
+                  <p className="text-3xl font-bold text-[#064e2b] dark:text-[#245F42] leading-tight">{stats.verifiedAccomplishments || 1}</p>
+                  <p className="text-sm font-normal text-[#16834a] dark:text-[#245F42]/90 leading-normal mt-1">AY 2025–2026</p>
                 </div>
               </button>
             </div>
@@ -297,7 +297,7 @@ export function HRDashboard({ currentUser }) {
               <button
                 type="button"
                 onClick={() => handleTabChange('verification')}
-                className="text-sm font-semibold text-[#1b4332] dark:text-emerald-400 hover:underline cursor-pointer"
+                className="text-sm font-semibold text-[#064e2b] dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 View All Submissions →
               </button>
@@ -341,7 +341,7 @@ export function HRDashboard({ currentUser }) {
                     if (stats.activeReview) openProofModal(stats.activeReview)
                     else handleTabChange('verification')
                   }}
-                  className="px-4 py-2 rounded-lg bg-[#1b4332] hover:bg-[#143326] text-white font-semibold text-sm transition cursor-pointer shrink-0 shadow-xs"
+                  className="px-4 py-2 rounded-lg bg-[#EFF7F0] hover:bg-[#143326] text-white font-semibold text-sm transition cursor-pointer shrink-0 shadow-xs"
                 >
                   {stats.activeReview ? 'Continue Review →' : 'View Queue →'}
                 </button>
@@ -391,86 +391,7 @@ export function HRDashboard({ currentUser }) {
             </div>
           </div>
 
-          {/* Quick Access Bento Grid */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 leading-tight">
-              <Sparkles className="w-5.5 h-5.5 text-[#2d8a4e] dark:text-emerald-400" /> Quick Access
-            </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Personnel Directory */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('personnel')}
-                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
-                    <UserPlus className="w-5.5 h-5.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Personnel Directory</h3>
-                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">Personnel records, assignments, employment details, and academic ranks.</p>
-                  </div>
-                </div>
-                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
-              </button>
-
-              {/* Evaluation Submissions */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('verification')}
-                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
-                    <FileCheck className="w-5.5 h-5.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Evaluation Submissions</h3>
-                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">Process faculty evaluations requiring HR review.</p>
-                  </div>
-                </div>
-                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
-              </button>
-
-              {/* Faculty Evaluation & Ranking */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('masterboard')}
-                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
-                    <Download className="w-5.5 h-5.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Faculty Evaluation &amp; Ranking</h3>
-                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">View finalized scores, rankings, and promotion-review information.</p>
-                  </div>
-                </div>
-                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
-              </button>
-
-              {/* Audit Trail */}
-              <button
-                type="button"
-                onClick={() => handleTabChange('audit')}
-                className="p-5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 hover:bg-[#EDF3EC] dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-[#D4E3D2] dark:hover:border-emerald-800 text-left transition group cursor-pointer flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:border-[#2d8a4e] flex items-center justify-center text-[#2d8a4e] dark:text-emerald-400 shrink-0 shadow-2xs">
-                    <ShieldCheck className="w-5.5 h-5.5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400">Audit Trail</h3>
-                    <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal mt-0.5">Review recorded HR administrative activities and changes.</p>
-                  </div>
-                </div>
-                <span className="text-base font-semibold text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 ml-2">→</span>
-              </button>
-            </div>
-          </div>
 
           {/* Recent HR Activity Section */}
           <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4">
@@ -481,7 +402,7 @@ export function HRDashboard({ currentUser }) {
               <button
                 type="button"
                 onClick={() => handleTabChange('audit')}
-                className="text-sm font-semibold text-[#1b4332] dark:text-emerald-400 hover:underline cursor-pointer"
+                className="text-sm font-semibold text-[#064e2b] dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 View Audit Trail →
               </button>
@@ -495,7 +416,7 @@ export function HRDashboard({ currentUser }) {
               ]).map((log) => (
                 <div key={log.id} className="py-3.5 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#2d8a4e] shrink-0"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#16834a] shrink-0"></div>
                     <div>
                       <p className="font-semibold text-slate-900 dark:text-white text-base">
                         {log.action_type === 'HR_SCORE_SEAL_APPLIED' ? 'Faculty Evaluation Finalized' : log.action_type === 'RANK_PROMOTION_UPDATE' ? 'Academic Rank Updated' : log.action_type === 'CREDENTIAL_RESET_ISSUED' ? 'Password Reset Approved' : log.action_type.replace(/_/g, ' ')}
@@ -623,7 +544,7 @@ export function HRDashboard({ currentUser }) {
                   handleUpdateRank(selectedPersonnel.id, newRank, newStatus)
                   showToast(`Updated academic rank for ${selectedPersonnel.full_name}`)
                 }}
-                className="w-1/2 py-3 rounded-xl bg-[#1b4332] text-white hover:bg-[#12361e] font-bold text-xs shadow-md cursor-pointer"
+                className="w-1/2 py-3 rounded-xl bg-[#176B43] text-white hover:bg-[#12361e] font-bold text-xs shadow-md cursor-pointer"
               >
                 Save Changes
               </button>
@@ -643,7 +564,7 @@ export function HRDashboard({ currentUser }) {
 
             <div className="space-y-4 text-xs">
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 space-y-1">
-                <h4 className="font-bold text-[#1b4332] text-sm">{selectedAccomplishment.title}</h4>
+                <h4 className="font-bold text-[#064e2b] text-sm">{selectedAccomplishment.title}</h4>
                 <p className="text-slate-600">{selectedAccomplishment.faculty_name} • {selectedAccomplishment.college}</p>
                 <p className="text-slate-500 font-mono text-[11px] mt-1">Publisher/Issuer: {selectedAccomplishment.publisher_or_issuer}</p>
               </div>
@@ -696,7 +617,7 @@ export function HRDashboard({ currentUser }) {
                   handleSealVerification(selectedAccomplishment.id, sealCode)
                   showToast('HR Official Seal stamped & verified!')
                 }}
-                className="w-1/2 py-3 rounded-xl bg-[#1b4332] text-white hover:bg-[#12361e] font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-1/2 py-3 rounded-xl bg-[#176B43] text-white hover:bg-[#12361e] font-bold text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" /> Stamp HR Seal &amp; Verify
               </button>

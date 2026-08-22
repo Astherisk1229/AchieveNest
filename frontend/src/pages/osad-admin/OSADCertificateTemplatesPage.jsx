@@ -26,7 +26,7 @@ export default function OSADCertificateTemplatesPage() {
       {/* Header Banner */}
       <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#1b4332] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
@@ -42,7 +42,7 @@ export default function OSADCertificateTemplatesPage() {
         <button
           type="button"
           onClick={() => setIsEditorOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
+          className="px-4 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Create Certificate Template</span>
@@ -56,12 +56,12 @@ export default function OSADCertificateTemplatesPage() {
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Template Families</span>
             <span className="text-xl font-black text-slate-900 dark:text-white">{templateFamilies.length}</span>
           </div>
-          <Tag className="w-6 h-6 text-[#1b4332] dark:text-emerald-400" />
+          <Tag className="w-6 h-6 text-[#064e2b] dark:text-emerald-400" />
         </div>
         <div className="p-4 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Active Published Templates</span>
-            <span className="text-xl font-black text-[#1b4332] dark:text-emerald-400">{templateFamilies.filter(f => f.status === 'active').length}</span>
+            <span className="text-xl font-black text-[#064e2b] dark:text-emerald-400">{templateFamilies.filter(f => f.status === 'active').length}</span>
           </div>
           <CheckCircle2 className="w-6 h-6 text-emerald-600" />
         </div>
@@ -87,14 +87,14 @@ export default function OSADCertificateTemplatesPage() {
           <button
             type="button"
             onClick={() => setContextFilter('event')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${contextFilter === 'event' ? 'bg-white dark:bg-slate-800 text-[#1b4332] dark:text-emerald-400 shadow-2xs' : 'text-slate-500'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${contextFilter === 'event' ? 'bg-white dark:bg-slate-800 text-[#064e2b] dark:text-emerald-400 shadow-2xs' : 'text-slate-500'}`}
           >
             Organization Events
           </button>
           <button
             type="button"
             onClick={() => setContextFilter('award')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${contextFilter === 'award' ? 'bg-white dark:bg-slate-800 text-[#1b4332] dark:text-emerald-400 shadow-2xs' : 'text-slate-500'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition ${contextFilter === 'award' ? 'bg-white dark:bg-slate-800 text-[#064e2b] dark:text-emerald-400 shadow-2xs' : 'text-slate-500'}`}
           >
             Award Categories
           </button>
@@ -107,7 +107,7 @@ export default function OSADCertificateTemplatesPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search templates..."
-            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#1b4332]"
+            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#69A97C]"
           />
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function OSADCertificateTemplatesPage() {
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-[10px] font-black">
+                  <span className="px-2.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] border border-emerald-200 dark:border-emerald-800/60 text-[10px] font-black">
                     {fam.code}
                   </span>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${fam.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>

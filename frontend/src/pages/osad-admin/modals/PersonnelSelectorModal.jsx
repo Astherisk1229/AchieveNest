@@ -64,7 +64,7 @@ export default function PersonnelSelectorModal({
               placeholder="Search eligible personnel by name, Employee ID (e.g. EMP7491), or department..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e] placeholder:text-slate-400"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#16834a] placeholder:text-slate-400"
             />
           </div>
 
@@ -84,7 +84,7 @@ export default function PersonnelSelectorModal({
                 return (
                   <div
                     key={person.id}
-                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#2d8a4e] transition"
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#16834a] transition"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -101,7 +101,7 @@ export default function PersonnelSelectorModal({
                       {person.assigned_roles && person.assigned_roles.length > 0 && (
                         <div className="flex items-center gap-1.5 pt-1 flex-wrap">
                           {person.assigned_roles.map(r => (
-                            <span key={r} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/60">
+                            <span key={r} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/60">
                               {r === 'college_dean' ? `College Dean (${person.dean_college})` :
                                r === 'program_coordinator' ? `Program Coordinator (${person.coordinator_department || person.coordinator_program})` :
                                r === 'organization_moderator' ? `Organization Moderator (${person.moderator_org})` : r}
@@ -121,7 +121,7 @@ export default function PersonnelSelectorModal({
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shrink-0 shadow-2xs flex items-center gap-1.5 ${
                         isCurrentlyAssigned
                           ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-                          : 'bg-[#1b4332] hover:bg-[#143326] text-white'
+                          : 'bg-[#EFF7F0] hover:bg-[#143326] text-white'
                       }`}
                     >
                       {isCurrentlyAssigned ? (

@@ -35,13 +35,13 @@ export function HRAuditTrailPage(props) {
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#DDE7DF] dark:border-[#374B3F]">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#102A43] dark:text-[#E6EFE9] tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-[#176B43] dark:text-[#59AD7C] shrink-0" />
             <span>Audit Trail</span>
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 max-w-3xl">
+          <p className="text-xs text-[#4F6475] dark:text-[#B1C0B6] font-medium mt-0.5 max-w-3xl">
             Review recorded HR actions involving personnel administration, faculty evaluation processing, account support, rank changes, and organizational assignments.
           </p>
         </div>
@@ -50,10 +50,10 @@ export function HRAuditTrailPage(props) {
           type="button"
           onClick={handleExportFilteredCsv}
           disabled={filteredCount === 0}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs shadow-2xs transition cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#159552] hover:bg-[#117A43] text-white font-extrabold text-xs shadow-xs border border-[#159552] transition cursor-pointer shrink-0 disabled:bg-[#E6ECE8] disabled:text-[#87958C] disabled:border-[#D4DED7] disabled:cursor-not-allowed"
           title={`Export ${filteredCount} matching logs to CSV`}
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-4 h-4 text-white" />
           <span>Export Audit History ({filteredCount})</span>
         </button>
       </div>
@@ -76,7 +76,7 @@ export function HRAuditTrailPage(props) {
       <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Lock className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+            <Lock className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
             <span>Administrative Governance Log</span>
           </h2>
           <span className="text-xs font-bold text-slate-500 dark:text-slate-400">

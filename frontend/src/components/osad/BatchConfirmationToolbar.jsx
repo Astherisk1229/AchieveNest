@@ -32,7 +32,7 @@ export function BatchConfirmationToolbar({
       <button
         type="button"
         onClick={onOpenBatchConfirmModal}
-        className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-sm flex items-center gap-1.5"
+        className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-sm flex items-center gap-1.5"
       >
         <ShieldCheck className="w-3.5 h-3.5" />
         <span>Batch Confirm ({selectedCount})</span>

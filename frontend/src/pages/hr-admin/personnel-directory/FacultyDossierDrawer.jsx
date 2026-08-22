@@ -24,7 +24,7 @@ export default function FacultyDossierDrawer({
       <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#131e2e] border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col font-sans overflow-hidden">
         {/* Drawer Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-2 text-xs font-black text-[#1b4332] dark:text-emerald-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-xs font-black text-[#064e2b] dark:text-emerald-400 uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4" />
             <span>Faculty Profile Dossier</span>
           </div>
@@ -55,7 +55,7 @@ export default function FacultyDossierDrawer({
                 <span className="font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                   {personnel.employee_id}
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-[#1b4332]/10 text-[#1b4332] dark:text-emerald-400 font-extrabold text-[10px]">
+                <span className="px-2 py-0.5 rounded-md bg-[#EFF7F0]/10 text-[#064e2b] dark:text-emerald-400 font-extrabold text-[10px]">
                   {personnel.employment_status}
                 </span>
               </div>
@@ -72,7 +72,7 @@ export default function FacultyDossierDrawer({
               <button
                 type="button"
                 onClick={() => onEditAssignment(personnel)}
-                className="text-xs font-extrabold text-[#1b4332] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-extrabold text-[#064e2b] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Edit3 className="w-3 h-3" />
                 <span>Edit Assignment</span>
@@ -101,7 +101,7 @@ export default function FacultyDossierDrawer({
               <button
                 type="button"
                 onClick={() => onPromoteRank(personnel)}
-                className="text-xs font-extrabold text-[#1b4332] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-extrabold text-[#064e2b] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Award className="w-3 h-3" />
                 <span>Promote Rank</span>
@@ -121,7 +121,7 @@ export default function FacultyDossierDrawer({
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-extrabold text-slate-400">Verified Proofs</p>
-                  <p className="font-extrabold text-[#1b4332] dark:text-emerald-400 flex items-center gap-1">
+                  <p className="font-extrabold text-[#064e2b] dark:text-emerald-400 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{personnel.verified_accomplishments_count} Credentials</span>
                   </p>

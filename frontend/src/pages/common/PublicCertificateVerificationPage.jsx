@@ -19,12 +19,12 @@ export default function PublicCertificateVerificationPage() {
       {/* Header Bar */}
       <header className="max-w-4xl w-full mx-auto flex items-center justify-between py-4">
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#1b4332] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+          <div className="w-8 h-8 rounded-xl bg-[#EFF7F0] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
             AN
           </div>
           <div>
             <span className="font-black text-sm text-slate-900 dark:text-white tracking-tight block">AchieveNest</span>
-            <span className="text-[10px] font-extrabold text-[#2d8a4e] dark:text-emerald-400 uppercase tracking-wider block">Public Verification Portal</span>
+            <span className="text-[10px] font-extrabold text-[#16834a] dark:text-emerald-400 uppercase tracking-wider block">Public Verification Portal</span>
           </div>
         </Link>
 
@@ -49,7 +49,7 @@ export default function PublicCertificateVerificationPage() {
                 <ShieldCheck className="w-9 h-9" />
               </div>
 
-              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] text-xs font-extrabold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 <span>OFFICIAL VERIFIED CREDENTIAL • {cert.status}</span>
               </div>
@@ -74,7 +74,7 @@ export default function PublicCertificateVerificationPage() {
               </div>
               <div className="flex justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                 <span className="text-slate-500 font-bold">Event Title</span>
-                <span className="font-bold text-emerald-800 dark:text-emerald-300">{cert.eventTitle}</span>
+                <span className="font-bold text-emerald-800 dark:text-[#245F42]">{cert.eventTitle}</span>
               </div>
               <div className="flex justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
                 <span className="text-slate-500 font-bold">Issuing Organization</span>

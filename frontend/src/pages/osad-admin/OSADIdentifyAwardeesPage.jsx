@@ -179,7 +179,7 @@ export default function OSADIdentifyAwardeesPage({
       {/* Header Banner */}
       <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
             <Trophy className="w-5.5 h-5.5" />
           </div>
           <div>
@@ -187,7 +187,7 @@ export default function OSADIdentifyAwardeesPage({
               <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
                 Award Candidates & Category Evaluation
               </h1>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400 text-[10px] font-black uppercase">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 text-[10px] font-black uppercase">
                 Independent Category Leaderboards
               </span>
             </div>
@@ -216,7 +216,7 @@ export default function OSADIdentifyAwardeesPage({
             onClick={() => setSelectedAward('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
               selectedAward === 'all'
-                ? 'bg-[#2d8a4e] text-white shadow-2xs'
+                ? 'bg-[#16834a] text-white shadow-2xs'
                 : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
             }`}
           >
@@ -230,7 +230,7 @@ export default function OSADIdentifyAwardeesPage({
               onClick={() => setSelectedAward(cat)}
               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
                 selectedAward === cat
-                  ? 'bg-[#2d8a4e] text-white shadow-2xs'
+                  ? 'bg-[#16834a] text-white shadow-2xs'
                   : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
               }`}
             >
@@ -249,7 +249,7 @@ export default function OSADIdentifyAwardeesPage({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search candidates..."
-                className="w-full pl-9 pr-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#2d8a4e] transition"
+                className="w-full pl-9 pr-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
               />
             </div>
 
@@ -318,7 +318,7 @@ export default function OSADIdentifyAwardeesPage({
                           onClick={() => setSelectedCandidateForAudit(candidate)}
                           className="cursor-pointer group"
                         >
-                          <h4 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-[#2d8a4e] transition">
+                          <h4 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-[#16834a] transition">
                             {candidate.student_name}
                           </h4>
                           <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-0.5">
@@ -331,7 +331,7 @@ export default function OSADIdentifyAwardeesPage({
                         <button
                           type="button"
                           onClick={() => setSelectedCandidateForAudit(candidate)}
-                          className="text-[11px] text-slate-500 hover:text-[#2d8a4e] font-semibold transition cursor-pointer"
+                          className="text-[11px] text-slate-500 hover:text-[#16834a] font-semibold transition cursor-pointer"
                         >
                           Audit Score &rarr;
                         </button>
@@ -344,7 +344,7 @@ export default function OSADIdentifyAwardeesPage({
                           <button
                             type="button"
                             onClick={() => handleConfirmSingleAwardee(candidate.candidacyId || candidate.id)}
-                            className="px-3 py-1 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
+                            className="px-3 py-1 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
                           >
                             Confirm as Awardee
                           </button>
@@ -362,7 +362,7 @@ export default function OSADIdentifyAwardeesPage({
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-[#2d8a4e]" />
+                  <BarChart3 className="w-4 h-4 text-[#16834a]" />
                   <span>{selectedAward} Leaderboard Ranks</span>
                 </h3>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -397,10 +397,10 @@ export default function OSADIdentifyAwardeesPage({
                         <button
                           type="button"
                           onClick={() => toggleCandidateSelection(candId)}
-                          className="text-slate-400 hover:text-[#2d8a4e] transition cursor-pointer shrink-0"
+                          className="text-slate-400 hover:text-[#16834a] transition cursor-pointer shrink-0"
                         >
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-[#2d8a4e]" />
+                            <CheckSquare className="w-4 h-4 text-[#16834a]" />
                           ) : (
                             <Square className="w-4 h-4" />
                           )}
@@ -414,7 +414,7 @@ export default function OSADIdentifyAwardeesPage({
                           <div className="flex items-center gap-2">
                             <h4
                               onClick={() => setSelectedCandidateForAudit(candidate)}
-                              className="font-extrabold text-sm text-slate-900 dark:text-white truncate cursor-pointer hover:text-[#2d8a4e] transition"
+                              className="font-extrabold text-sm text-slate-900 dark:text-white truncate cursor-pointer hover:text-[#16834a] transition"
                             >
                               {candidate.student_name}
                             </h4>
@@ -429,11 +429,11 @@ export default function OSADIdentifyAwardeesPage({
                       <div className="flex-1 space-y-1 md:px-4">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="font-semibold text-slate-400">{selectedAward}</span>
-                          <span className="font-extrabold text-[#2d8a4e] dark:text-emerald-400">{score} / 100</span>
+                          <span className="font-extrabold text-[#16834a] dark:text-emerald-400">{score} / 100</span>
                         </div>
                         <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-[#2d8a4e] transition-all duration-500"
+                            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-[#16834a] transition-all duration-500"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
@@ -443,7 +443,7 @@ export default function OSADIdentifyAwardeesPage({
                         <button
                           type="button"
                           onClick={() => setSelectedCandidateForAudit(candidate)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-300 hover:text-[#2d8a4e] text-xs font-extrabold transition cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-300 hover:text-[#16834a] text-xs font-extrabold transition cursor-pointer"
                         >
                           Audit Score
                         </button>
@@ -464,7 +464,7 @@ export default function OSADIdentifyAwardeesPage({
                             type="button"
                             onClick={() => handleConfirmSingleAwardee(candId)}
                             disabled={candidate.eligibilityStatus === 'below_threshold'}
-                            className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs transition cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs transition cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             Confirm as Awardee
                           </button>

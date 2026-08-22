@@ -71,12 +71,12 @@ export default function Sidebar({ currentUser, onRoleChange }) {
         {/* Brand Header */}
         <div className="px-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#1b4332] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-[#176B43] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               AN
             </div>
             <div>
-              <span className="font-black text-sm text-slate-900 dark:text-white tracking-tight block">AchieveNest</span>
-              <span className="text-[10px] font-extrabold text-[#2d8a4e] dark:text-emerald-400 uppercase tracking-wider block">NDMU Portal</span>
+              <span className="font-black text-sm text-[#123D2A] dark:text-white tracking-tight block">AchieveNest</span>
+              <span className="text-[10px] font-extrabold text-[#176B43] dark:text-emerald-400 uppercase tracking-wider block">NDMU Portal</span>
             </div>
           </Link>
         </div>
@@ -92,16 +92,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search Portal..."
-              className="w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#1b4332] transition bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-white placeholder:text-slate-400"
+              className="w-full pl-8.5 pr-2.5 py-1.5 rounded-xl text-xs font-medium focus:outline-none focus:border-[#176B43] transition bg-[#f8faf7] dark:bg-slate-900 border border-[#dde6dd] dark:border-slate-800 text-[#123D2A] dark:text-white placeholder:text-slate-400"
             />
           </div>
         </div>
 
         {/* Active Portal / Role Badge */}
         <div className="px-3">
-          <div className="w-full py-1.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between border bg-[#edf3ec] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border-[#d2e6d5] dark:border-emerald-800/60">
+          <div className="w-full py-1.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between border bg-[#dcebdd] dark:bg-emerald-950/60 text-[#123D2A] dark:text-emerald-300 border-[#dde6dd] dark:border-emerald-800/60">
             <span className="flex items-center gap-1.5 text-[11px]">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#176B43] dark:text-emerald-400" />
               {portalInfo.roleTitle || portalInfo.label}
             </span>
           </div>
@@ -134,13 +134,13 @@ export default function Sidebar({ currentUser, onRoleChange }) {
                 key={item.label}
                 to={item.path}
                 className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${isActive
-                    ? 'bg-[#edf3ec] dark:bg-emerald-950/70 text-[#1e5831] dark:text-emerald-300 border border-[#d2e6d5] dark:border-emerald-700/50 shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#dcebdd] dark:bg-emerald-950/70 text-[#123D2A] dark:text-emerald-300 border border-[#dde6dd] dark:border-emerald-700/50 shadow-2xs'
+                    : 'text-[#3F6B52] dark:text-slate-300 hover:bg-[#f8faf7] dark:hover:bg-slate-800/60 hover:text-[#123D2A] dark:hover:text-white'
                   }`}
               >
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${isActive
-                    ? 'bg-[#1b4332] dark:bg-emerald-500 text-white dark:text-slate-950'
-                    : 'bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50'
+                    ? 'bg-[#176B43] dark:bg-emerald-500 text-white dark:text-slate-950'
+                    : 'bg-[#f8faf7] dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 border border-[#dde6dd] dark:border-emerald-800/50'
                   }`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>

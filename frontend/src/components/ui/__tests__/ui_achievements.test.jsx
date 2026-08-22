@@ -12,8 +12,8 @@ import { Input } from '../input'
 
 describe('shadcn UI Components for Student Achievements', () => {
   it('renders Card with custom background without white override', () => {
-    const element = <Card className="bg-[#1b4332] text-white">Hero Content</Card>
-    expect(element.props.className).toContain('bg-[#1b4332]')
+    const element = <Card className="bg-[#064e2b] text-white">Hero Content</Card>
+    expect(element.props.className).toContain('bg-[#064e2b]')
   })
 
   it('renders Badge with success, warning, and destructive variants', () => {

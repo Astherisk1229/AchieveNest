@@ -77,7 +77,7 @@ export default function AccountPage({ currentUser }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <User className="w-6 h-6 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+            <User className="w-6 h-6 text-[#064e2b] dark:text-emerald-400 shrink-0" />
             <span>{presentation.pageTitle}</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -92,7 +92,7 @@ export default function AccountPage({ currentUser }) {
 
       {/* Persistence Feedback Toast */}
       {saveSuccess && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-[#245F42] text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>Profile contact preferences updated successfully!</span>
         </div>
@@ -119,10 +119,10 @@ export default function AccountPage({ currentUser }) {
             <button
               type="button"
               onClick={() => setIsAvatarModalOpen(true)}
-              className="absolute -bottom-1 -right-1 p-1.5 rounded-lg bg-[#1b4332] text-white hover:bg-[#143326] transition shadow-2xs cursor-pointer"
+              className="absolute -bottom-1 -right-1 p-1.5 rounded-lg bg-[#176B43] hover:bg-[#125536] text-white transition shadow-xs cursor-pointer"
               title="Change Profile Picture"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5 text-white" />
             </button>
           </div>
 
@@ -130,7 +130,7 @@ export default function AccountPage({ currentUser }) {
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug truncate">
               {user.full_name}
             </h2>
-            <p className="text-xs font-bold text-[#2d8a4e] dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-1">
+            <p className="text-xs font-bold text-[#16834a] dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-1">
               <Building2 className="w-3.5 h-3.5" />
               <span>{user.designation || 'HR Staff Officer'}</span>
             </p>
@@ -144,35 +144,37 @@ export default function AccountPage({ currentUser }) {
             </div>
           </div>
 
-          {!isEditing ? (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Contact Info</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            {!isEditing ? (
               <button
                 type="button"
-                onClick={handleCancelForm}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 cursor-pointer"
+                onClick={() => setIsEditing(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#1D2A23] border border-[#B8CDBD] dark:border-[#374B3F] text-[#174E31] dark:text-slate-200 hover:bg-[#F1F7F2] font-extrabold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-xs"
               >
-                Cancel
+                <Edit3 className="w-3.5 h-3.5 text-[#174E31]" />
+                <span>Edit Profile</span>
               </button>
-              <button
-                type="button"
-                onClick={handleSaveForm}
-                disabled={isSaving}
-                className="px-3.5 py-1.5 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs hover:bg-[#143326] flex items-center gap-1 cursor-pointer"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Edits</span>
-              </button>
-            </div>
-          )}
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelForm}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveForm}
+                  disabled={isSaving}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs flex items-center gap-1 cursor-pointer disabled:bg-[#E5ECE7] disabled:text-[#7A8B80] disabled:cursor-not-allowed transition-all shadow-xs"
+                >
+                  <Save className="w-3.5 h-3.5 text-white" />
+                  <span>Save Edits</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Section 1: Authoritative Read-Only Identity Fields */}
@@ -223,7 +225,7 @@ export default function AccountPage({ currentUser }) {
         {/* Section 2: Self-Service Editable Contact Information */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+            <User className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" />
             <span>Self-Service Contact Details</span>
           </h3>
 
@@ -239,7 +241,7 @@ export default function AccountPage({ currentUser }) {
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="+63 917 000 0000"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                 />
               ) : (
                 <p className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 font-bold text-slate-800 dark:text-slate-200">
@@ -259,7 +261,7 @@ export default function AccountPage({ currentUser }) {
                   value={location}
                   onChange={e => setLocation(e.target.value)}
                   placeholder="Koronadal City, South Cotabato"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                 />
               ) : (
                 <p className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 font-bold text-slate-800 dark:text-slate-200">
@@ -274,10 +276,10 @@ export default function AccountPage({ currentUser }) {
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
               <span className="text-xs font-extrabold text-slate-900 dark:text-white">Account Security & Credentials</span>
             </div>
-            <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+            <span className="text-[10px] font-bold text-emerald-800 dark:text-[#245F42] bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
               Institutional Passkey Active
             </span>
           </div>
@@ -303,7 +305,7 @@ export default function AccountPage({ currentUser }) {
           <div className="w-full max-w-md bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xl font-sans">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#2d8a4e]" />
+                <Camera className="w-4 h-4 text-[#16834a]" />
                 <span>Update Profile Picture URL</span>
               </h3>
               <button onClick={() => setIsAvatarModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -319,7 +321,7 @@ export default function AccountPage({ currentUser }) {
                   value={tempAvatarUrl}
                   onChange={e => setTempAvatarUrl(e.target.value)}
                   placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                 />
               </div>
 
@@ -333,7 +335,7 @@ export default function AccountPage({ currentUser }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs"
+                  className="px-4 py-1.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer"
                 >
                   Update Picture
                 </button>
@@ -365,7 +367,7 @@ export default function AccountPage({ currentUser }) {
               <button
                 type="button"
                 onClick={() => setShowPasswordNoticeModal(false)}
-                className="px-4 py-1.5 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs cursor-pointer transition-all shadow-xs"
               >
                 Acknowledge
               </button>

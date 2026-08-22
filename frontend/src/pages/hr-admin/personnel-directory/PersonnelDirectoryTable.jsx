@@ -335,7 +335,7 @@ export default function PersonnelDirectoryTable({
     let dotStyle = 'bg-slate-400'
 
     if (statusStr.includes('Permanent')) {
-      badgeStyle = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+      badgeStyle = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#245F42] border-emerald-200 dark:border-emerald-800'
       dotStyle = 'bg-emerald-500'
     } else if (statusStr.includes('Probationary')) {
       badgeStyle = 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
@@ -394,7 +394,7 @@ export default function PersonnelDirectoryTable({
               onChange={e => setSearch(e.target.value)}
               placeholder="Search personnel by name, employee ID, or email..."
               aria-label="Search personnel by name, employee ID, or email"
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white focus:outline-none focus:border-[#69A97C]"
             />
             {search && (
               <button
@@ -416,7 +416,7 @@ export default function PersonnelDirectoryTable({
               value={`${sortColumn}:${sortDirection}`}
               onChange={handleQuickSortChange}
               aria-label="Sort personnel directory"
-              className="w-full sm:w-[300px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-[#1b4332] dark:text-emerald-400 focus:outline-none focus:border-[#1b4332]"
+              className="w-full sm:w-[300px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-[#064e2b] dark:text-emerald-400 focus:outline-none focus:border-[#69A97C]"
             >
               <option value="created_at:desc">Recently Added (Newest First)</option>
               <option value="full_name:asc">Name (A to Z)</option>
@@ -434,7 +434,7 @@ export default function PersonnelDirectoryTable({
             value={collegeFilter}
             onChange={e => setCollegeFilter(e.target.value)}
             aria-label="Filter by college"
-            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Colleges</option>
             <option value="CEAC">CEAC - Engineering &amp; Computing</option>
@@ -447,7 +447,7 @@ export default function PersonnelDirectoryTable({
             value={deptFilter}
             onChange={e => setDeptFilter(e.target.value)}
             aria-label="Filter by department"
-            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Departments</option>
             {availableDepartments.map(dept => (
@@ -460,7 +460,7 @@ export default function PersonnelDirectoryTable({
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
             aria-label="Filter by employment status"
-            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Employment Statuses</option>
             <option value="Full-Time Permanent">Full-Time Permanent</option>
@@ -499,7 +499,7 @@ export default function PersonnelDirectoryTable({
               </span>
             )}
             {statusFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-medium">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-[#245F42] font-medium">
                 Status: {statusFilter}
                 <button type="button" onClick={() => setStatusFilter('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear employment status filter">
                   <X className="w-3.5 h-3.5" />
@@ -509,7 +509,7 @@ export default function PersonnelDirectoryTable({
             <button
               type="button"
               onClick={handleResetFilters}
-              className="text-xs font-semibold text-[#1b4332] dark:text-emerald-400 hover:underline ml-1 cursor-pointer"
+              className="text-xs font-semibold text-[#064e2b] dark:text-emerald-400 hover:underline ml-1 cursor-pointer"
             >
               Clear all
             </button>
@@ -519,9 +519,9 @@ export default function PersonnelDirectoryTable({
 
       {/* Sticky Bulk Action Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="p-3 px-4 rounded-xl bg-[#1b4332] text-white flex items-center justify-between shadow-lg animate-in fade-in duration-200">
+        <div className="p-3 px-4 rounded-xl bg-[#176B43] text-white flex items-center justify-between shadow-lg animate-in fade-in duration-200">
           <div className="flex items-center gap-2 text-xs font-semibold">
-            <span className="px-2 py-0.5 rounded-full bg-emerald-800 text-emerald-200 font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-800 text-[#245F42] font-bold">
               {selectedIds.size}
             </span>
             <span>personnel member(s) selected</span>
@@ -538,7 +538,7 @@ export default function PersonnelDirectoryTable({
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="text-xs font-medium text-emerald-200 hover:text-white transition cursor-pointer"
+              className="text-xs font-medium text-[#245F42] hover:text-white transition cursor-pointer"
             >
               Clear selection
             </button>
@@ -568,7 +568,7 @@ export default function PersonnelDirectoryTable({
                     ref={el => { if (el) el.indeterminate = isSomePageSelected }}
                     onChange={handleToggleSelectAllPage}
                     aria-label="Select all personnel on current page"
-                    className="w-4 h-4 rounded border-slate-300 text-[#1b4332] focus:ring-[#1b4332] cursor-pointer"
+                    className="w-4 h-4 rounded border-slate-300 text-[#064e2b] focus:ring-[#064e2b] cursor-pointer"
                   />
                 </th>
 
@@ -578,11 +578,11 @@ export default function PersonnelDirectoryTable({
                     type="button"
                     onClick={() => handleSort('full_name')}
                     aria-label="Sort by personnel member full name"
-                    className="flex items-center gap-1.5 hover:text-[#1b4332] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
+                    className="flex items-center gap-1.5 hover:text-[#064e2b] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
                   >
                     <span>Personnel member</span>
                     {sortColumn === 'full_name' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" />
                     ) : (
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
@@ -595,11 +595,11 @@ export default function PersonnelDirectoryTable({
                     type="button"
                     onClick={() => handleSort('department')}
                     aria-label="Sort by department and college"
-                    className="flex items-center gap-1.5 hover:text-[#1b4332] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
+                    className="flex items-center gap-1.5 hover:text-[#064e2b] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
                   >
                     <span>Department and college</span>
                     {sortColumn === 'department' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" />
                     ) : (
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
@@ -612,11 +612,11 @@ export default function PersonnelDirectoryTable({
                     type="button"
                     onClick={() => handleSort('academic_rank')}
                     aria-label="Sort by academic rank"
-                    className="flex items-center gap-1.5 hover:text-[#1b4332] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
+                    className="flex items-center gap-1.5 hover:text-[#064e2b] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
                   >
                     <span>Academic rank</span>
                     {sortColumn === 'academic_rank' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" />
                     ) : (
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
@@ -629,11 +629,11 @@ export default function PersonnelDirectoryTable({
                     type="button"
                     onClick={() => handleSort('employment_status')}
                     aria-label="Sort by employment details"
-                    className="flex items-center gap-1.5 hover:text-[#1b4332] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
+                    className="flex items-center gap-1.5 hover:text-[#064e2b] dark:hover:text-emerald-400 transition cursor-pointer group font-semibold text-xs text-slate-600 dark:text-slate-300"
                   >
                     <span>Employment details</span>
                     {sortColumn === 'employment_status' ? (
-                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+                      sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" /> : <ArrowDown className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" />
                     ) : (
                       <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 shrink-0" />
                     )}
@@ -700,7 +700,7 @@ export default function PersonnelDirectoryTable({
                           checked={isSelected}
                           onChange={(e) => handleToggleSelectRow(p.id, e)}
                           aria-label={`Select ${p.full_name || 'personnel member'}`}
-                          className="w-4 h-4 rounded border-slate-300 text-[#1b4332] focus:ring-[#1b4332] cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 text-[#064e2b] focus:ring-[#064e2b] cursor-pointer"
                         />
                       </td>
 
@@ -724,7 +724,7 @@ export default function PersonnelDirectoryTable({
                             <div className="flex items-center gap-1.5 min-w-0">
                               <p
                                 title={p.full_name}
-                                className="text-sm font-semibold leading-snug text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 transition truncate"
+                                className="text-sm font-semibold leading-snug text-slate-900 dark:text-white group-hover:text-[#064e2b] dark:group-hover:text-emerald-400 transition truncate"
                               >
                                 {p.full_name || 'Unnamed Personnel'}
                               </p>
@@ -743,7 +743,7 @@ export default function PersonnelDirectoryTable({
                                     href={`mailto:${p.email}`}
                                     aria-label={`Email ${p.full_name}`}
                                     title={p.email}
-                                    className="hover:text-[#1b4332] dark:hover:text-emerald-400 hover:underline truncate"
+                                    className="hover:text-[#064e2b] dark:hover:text-emerald-400 hover:underline truncate"
                                   >
                                     {p.email}
                                   </a>
@@ -851,7 +851,7 @@ export default function PersonnelDirectoryTable({
                 value={rowsPerPage}
                 onChange={e => setRowsPerPage(Number(e.target.value))}
                 aria-label="Select rows per page"
-                className="py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+                className="py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>

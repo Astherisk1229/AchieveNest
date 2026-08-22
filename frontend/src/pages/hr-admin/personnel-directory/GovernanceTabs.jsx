@@ -10,7 +10,7 @@ export default function GovernanceTabs({ activeTab, setActiveTab, pendingResetsC
   ]
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 w-fit">
+    <div className="flex items-center gap-1 sm:gap-2 p-1.5 rounded-2xl bg-white dark:bg-[#1D2A23] border border-[#D9E5DC] dark:border-[#374B3F] w-fit shadow-xs">
       {tabs.map((tab) => {
         const Icon = tab.icon
         const isActive = activeTab === tab.id
@@ -18,20 +18,22 @@ export default function GovernanceTabs({ activeTab, setActiveTab, pendingResetsC
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={isActive}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold leading-[1.2] flex items-center gap-2 transition cursor-pointer ${
               isActive
-                ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
+                ? 'bg-[#176B43] text-white shadow-xs'
+                : 'bg-[#F4F7F5] dark:bg-[#121A16] text-[#344A5E] dark:text-[#E6EFE9] hover:bg-[#EAF4EC] hover:text-[#145C39] border border-transparent'
             }`}
           >
-            <Icon className="w-4 h-4 shrink-0" />
+            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-[#4F6475] dark:text-[#B1C0B6]'}`} />
             <span>{tab.label}</span>
             {tab.badge !== undefined && tab.badge > 0 && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                 isActive
-                  ? 'bg-white/20 text-white'
-                  : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800'
+                  ? 'bg-[#DDF3E5] text-[#145C39]'
+                  : 'bg-[#FFF4D6] text-[#9A5A00] border border-[#FFE3B3]'
               }`}>
                 {tab.badge}
               </span>

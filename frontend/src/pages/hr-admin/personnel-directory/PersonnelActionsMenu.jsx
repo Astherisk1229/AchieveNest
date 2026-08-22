@@ -117,7 +117,7 @@ export default function PersonnelActionsMenu({
             }}
             className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
           >
-            <Eye className="w-4 h-4 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+            <Eye className="w-4 h-4 text-[#064e2b] dark:text-emerald-400 shrink-0" />
             <span>View personnel profile</span>
           </button>
         )}

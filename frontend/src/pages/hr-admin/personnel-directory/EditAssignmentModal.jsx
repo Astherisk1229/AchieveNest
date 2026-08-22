@@ -58,7 +58,7 @@ export default function EditAssignmentModal({
         <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2 text-xs font-black text-[#1b4332] dark:text-emerald-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs font-black text-[#064e2b] dark:text-emerald-400 uppercase tracking-wider">
               <Building2 className="w-4 h-4" />
               <span>Edit Organizational Assignment</span>
             </div>
@@ -89,7 +89,7 @@ export default function EditAssignmentModal({
               <select
                 value={selectedCollege}
                 onChange={(e) => handleCollegeChange(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#1b4332]"
+                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#69A97C]"
               >
                 <option value="CEAC">CEAC - Engineering &amp; Computing</option>
                 <option value="CBA">CBA - Business Administration</option>
@@ -105,7 +105,7 @@ export default function EditAssignmentModal({
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#1b4332]"
+                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#69A97C]"
               >
                 {(collegeDeptMap[selectedCollege] || []).map((dept) => (
                   <option key={dept} value={dept}>{dept}</option>
@@ -123,7 +123,7 @@ export default function EditAssignmentModal({
                 type="date"
                 value={effectiveDate}
                 onChange={(e) => setEffectiveDate(e.target.value)}
-                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#1b4332]"
+                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#69A97C]"
               />
             </div>
 
@@ -138,7 +138,7 @@ export default function EditAssignmentModal({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>Save Assignment</span>

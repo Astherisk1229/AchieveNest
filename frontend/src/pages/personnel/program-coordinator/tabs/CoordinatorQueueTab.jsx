@@ -30,7 +30,7 @@ export default function CoordinatorQueueTab({ pendingSubmissions, onVerify, onRe
       {/* Header */}
       <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-2 shadow-2xs">
         <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
+          <ShieldCheck className="w-5 h-5 text-[#16834a] dark:text-emerald-400" />
           Program Coordinator Verification Queue
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -47,7 +47,7 @@ export default function CoordinatorQueueTab({ pendingSubmissions, onVerify, onRe
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search student or submission title..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#16834a]"
           />
         </div>
 
@@ -59,7 +59,7 @@ export default function CoordinatorQueueTab({ pendingSubmissions, onVerify, onRe
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-[#1b4332] text-white shadow-2xs'
+                  ? 'bg-[#176B43] text-white shadow-2xs'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
               }`}
             >
@@ -96,9 +96,9 @@ export default function CoordinatorQueueTab({ pendingSubmissions, onVerify, onRe
                       <p>{item.student_name}</p>
                       <p className="text-[11px] text-slate-400 font-normal">{item.student_id}</p>
                     </td>
-                    <td className="p-4 font-extrabold text-[#2d8a4e]">{item.title}</td>
+                    <td className="p-4 font-extrabold text-[#16834a]">{item.title}</td>
                     <td className="p-4">
-                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50">
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50">
                         {item.category}
                       </span>
                     </td>
@@ -108,7 +108,7 @@ export default function CoordinatorQueueTab({ pendingSubmissions, onVerify, onRe
                         <button
                           type="button"
                           onClick={() => onVerify && onVerify(item.id)}
-                          className="px-3 py-1.5 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white text-[11px] font-extrabold transition cursor-pointer flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white text-[11px] font-extrabold transition cursor-pointer flex items-center gap-1"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Verify</span>

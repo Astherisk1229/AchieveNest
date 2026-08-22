@@ -27,7 +27,7 @@ export default function AuditTrailFilterBar({
             value={searchTerm}
             onChange={e => onSearchChange(e.target.value)}
             placeholder="Search logs by actor, target personnel, employee ID, event, or details..."
-            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
           />
           {searchTerm && (
             <button
@@ -90,7 +90,7 @@ export default function AuditTrailFilterBar({
             type="button"
             onClick={onExportCsv}
             disabled={filteredCount === 0}
-            className="px-3.5 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
             title={`Export ${filteredCount} matching logs to CSV`}
           >
             <Download className="w-3.5 h-3.5" />

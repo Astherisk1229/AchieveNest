@@ -41,7 +41,7 @@ export function TabsTrigger({ value, className = '', children, ...props }) {
       onClick={() => onTabChange(value)}
       className={`inline-flex items-center justify-center whitespace-nowrap rounded-xl px-4 py-2 text-xs font-extrabold transition-all duration-150 cursor-pointer ${
         isSelected
-          ? 'bg-white dark:bg-[#131e2e] text-[#1b4332] dark:text-emerald-400 shadow-xs'
+          ? 'bg-white dark:bg-[#131e2e] text-[#064e2b] dark:text-emerald-400 shadow-xs'
           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
       } ${className}`}
       {...props}

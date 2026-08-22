@@ -73,12 +73,12 @@ export default function AuditLogTimelineItem({ log }) {
 
         {/* Actor Badge Card */}
         <div className="shrink-0 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-          <div className="w-6 h-6 rounded-full bg-[#1b4332] dark:bg-emerald-600 text-white font-extrabold text-[10px] flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-[#EFF7F0] dark:bg-emerald-600 text-white font-extrabold text-[10px] flex items-center justify-center">
             {actorName.charAt(0)}
           </div>
           <div className="text-[11px]">
             <p className="font-extrabold text-slate-800 dark:text-slate-200 leading-none">{actorName}</p>
-            <p className="text-[9px] text-[#2d8a4e] dark:text-emerald-400 font-semibold leading-none mt-0.5">{actorRole}</p>
+            <p className="text-[9px] text-[#16834a] dark:text-emerald-400 font-semibold leading-none mt-0.5">{actorRole}</p>
           </div>
         </div>
       </div>

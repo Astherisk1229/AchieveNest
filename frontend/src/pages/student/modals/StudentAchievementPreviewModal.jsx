@@ -54,7 +54,7 @@ export default function StudentAchievementPreviewModal({
       <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
         
         {/* Banner Top Graphic */}
-        <div className="bg-gradient-to-r from-[#2d8a4e] to-[#1e5831] p-6 text-white relative">
+        <div className="bg-gradient-to-r from-[#16834a] to-[#064e2b] p-6 text-white relative">
           <button
             type="button"
             onClick={onClose}
@@ -143,7 +143,7 @@ export default function StudentAchievementPreviewModal({
                 <MapPin className="w-3.5 h-3.5 text-slate-400" /> Location / Scope
               </span>
               <p className="font-bold text-slate-800 text-xs">
-                {achievement.location} • <span className="text-[#2d8a4e]">{achievement.scope_level || 'Institutional'}</span>
+                {achievement.location} • <span className="text-[#16834a]">{achievement.scope_level || 'Institutional'}</span>
               </p>
             </div>
 
@@ -177,7 +177,7 @@ export default function StudentAchievementPreviewModal({
           {/* Attached Document Proof Card */}
           <div className="p-4 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white text-[#2d8a4e] border border-[#cbe6d2] flex items-center justify-center shrink-0 font-bold">
+              <div className="w-10 h-10 rounded-xl bg-white text-[#16834a] border border-[#cbe6d2] flex items-center justify-center shrink-0 font-bold">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
@@ -191,7 +191,7 @@ export default function StudentAchievementPreviewModal({
             <button
               type="button"
               onClick={() => onDownload(achievement)}
-              className="px-3.5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <Download className="w-4 h-4" /> Download Proof
             </button>

@@ -146,25 +146,25 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
       <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Modal Header */}
-        <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between shrink-0">
+        <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
-              <Calendar className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F5EA] border border-[#B7DDC4] flex items-center justify-center text-[#17663B]">
+              <Calendar className="w-5 h-5 text-[#17663B]" />
             </div>
             <div>
-              <h3 className="font-extrabold text-lg">
-                {editingEvent ? 'Edit Organization Event' : 'Create Organization Event'}
+              <h3 className="font-extrabold text-lg text-[#17663B]">
+                {editingEvent ? 'Edit Organization Event' : 'Create New Organization Event'}
               </h3>
-              <p className="text-xs text-emerald-200/80">
-                Configure parameters, officer scanner windows, and OSAD certificate templates
+              <p className="text-xs text-[#356148] font-medium">
+                Set up event details, venue, dates, and certificate parameters for student verification.
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            className="p-2 rounded-xl text-[#356148] hover:bg-[#EAF4EC] hover:text-[#17663B] transition cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -173,11 +173,11 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
           <button
             onClick={() => setActiveStep(1)}
             className={`flex items-center gap-2 text-xs font-bold transition cursor-pointer ${
-              activeStep === 1 ? 'text-[#2d8a4e]' : 'text-slate-400 hover:text-slate-600'
+              activeStep === 1 ? 'text-[#16834a]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              activeStep === 1 ? 'bg-[#2d8a4e] text-white' : 'bg-slate-200 text-slate-600'
+              activeStep === 1 ? 'bg-[#16834a] text-white' : 'bg-slate-200 text-slate-600'
             }`}>1</span>
             <span>1. Essentials</span>
           </button>
@@ -187,11 +187,11 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
           <button
             onClick={() => setActiveStep(2)}
             className={`flex items-center gap-2 text-xs font-bold transition cursor-pointer ${
-              activeStep === 2 ? 'text-[#2d8a4e]' : 'text-slate-400 hover:text-slate-600'
+              activeStep === 2 ? 'text-[#16834a]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              activeStep === 2 ? 'bg-[#2d8a4e] text-white' : 'bg-slate-200 text-slate-600'
+              activeStep === 2 ? 'bg-[#16834a] text-white' : 'bg-slate-200 text-slate-600'
             }`}>2</span>
             <span>2. Attendance Schedule</span>
           </button>
@@ -201,11 +201,11 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
           <button
             onClick={() => setActiveStep(3)}
             className={`flex items-center gap-2 text-xs font-bold transition cursor-pointer ${
-              activeStep === 3 ? 'text-[#2d8a4e]' : 'text-slate-400 hover:text-slate-600'
+              activeStep === 3 ? 'text-[#16834a]' : 'text-slate-400 hover:text-slate-600'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-              activeStep === 3 ? 'bg-[#2d8a4e] text-white' : 'bg-slate-200 text-slate-600'
+              activeStep === 3 ? 'bg-[#16834a] text-white' : 'bg-slate-200 text-slate-600'
             }`}>3</span>
             <span>3. OSAD Certificate & Live Side Preview</span>
           </button>
@@ -228,7 +228,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                   placeholder="e.g. Computer Society Tech Summit 2026"
                   value={formData.title}
                   onChange={handleTitleChange}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                 />
               </div>
 
@@ -240,7 +240,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                   <select
                     value={formData.category}
                     onChange={handleCategoryChange}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                   >
                     <option value="Summit">Summit / Conference</option>
                     <option value="Workshop">Workshop / Skills Training</option>
@@ -258,7 +258,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                   <select
                     value={formData.banner_type}
                     onChange={(e) => setFormData({ ...formData, banner_type: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                   >
                     <option value="laptop">💻 Tech Laptop</option>
                     <option value="target">🎯 Target Bullseye</option>
@@ -278,7 +278,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     required
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                   />
                 </div>
 
@@ -291,7 +291,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     placeholder="9:00 AM - 5:00 PM"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                   />
                 </div>
               </div>
@@ -307,7 +307,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     placeholder="e.g. NDMU Convention Center"
                     value={formData.venue}
                     onChange={(e) => setFormData({ ...formData, venue: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                   />
                 </div>
 
@@ -320,7 +320,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     placeholder="e.g. All NDMU Students & Faculty"
                     value={formData.target_audience}
                     onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#16834a] font-medium"
                   />
                 </div>
               </div>
@@ -334,7 +334,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                   placeholder="Describe event objectives, key topics, and participant takeaways..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#2d8a4e] font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#16834a] font-medium"
                 />
               </div>
 
@@ -346,7 +346,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
             <div className="space-y-4 animate-in fade-in duration-200">
               
               <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-extrabold text-[#2d8a4e]">
+                <div className="flex items-center gap-2 text-xs font-extrabold text-[#16834a]">
                   <Clock className="w-4 h-4" />
                   <span>Student Officer Scanner Window Locks</span>
                 </div>
@@ -365,7 +365,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     required
                     value={formData.attendance_start_time}
                     onChange={(e) => setFormData({ ...formData, attendance_start_time: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
                   />
                 </div>
 
@@ -378,7 +378,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                     required
                     value={formData.attendance_end_time}
                     onChange={(e) => setFormData({ ...formData, attendance_end_time: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
                   />
                 </div>
               </div>
@@ -404,9 +404,9 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
               <div className="lg:col-span-5 space-y-4">
                 
                 {/* Smart Auto-Matching Template Box */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#1b4332] to-slate-900 text-white space-y-2.5 shadow-md">
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-[#064e2b] to-slate-900 text-white space-y-2.5 shadow-md">
                   <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-[#245F42] border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-emerald-400" />
                       ⚡ Smart Auto-Matched OSAD Template
                     </span>
@@ -414,10 +414,10 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
 
                   <div>
                     <h4 className="text-sm font-extrabold text-white">{autoMatch.name}</h4>
-                    <p className="text-[11px] text-emerald-200/80 mt-0.5">{autoMatch.description}</p>
+                    <p className="text-[11px] text-[#245F42]/80 mt-0.5">{autoMatch.description}</p>
                   </div>
 
-                  <div className="text-[10px] text-emerald-300/90 font-mono bg-emerald-950/60 p-2 rounded-xl border border-emerald-800/40">
+                  <div className="text-[10px] text-[#245F42]/90 font-mono bg-emerald-950/60 p-2 rounded-xl border border-emerald-800/40">
                     {autoMatch.reason}
                   </div>
                 </div>
@@ -430,7 +430,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                   <select
                     value={formData.osad_template_id}
                     onChange={(e) => setFormData({ ...formData, osad_template_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#2d8a4e] font-medium"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-[#16834a] font-medium"
                   >
                     {CertificateTemplateController.getPublishedTemplates('event').map(tpl => (
                       <option key={tpl.code} value={tpl.code}>
@@ -453,7 +453,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-[#2d8a4e] border border-slate-200 text-[11px] font-bold cursor-pointer transition flex items-center gap-1.5">
+                      <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-[#16834a] border border-slate-200 text-[11px] font-bold cursor-pointer transition flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
                         <span>Upload Signature PNG</span>
                         <input
@@ -478,7 +478,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-[#2d8a4e] border border-slate-200 text-[11px] font-bold cursor-pointer transition flex items-center gap-1.5">
+                      <label className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-[#16834a] border border-slate-200 text-[11px] font-bold cursor-pointer transition flex items-center gap-1.5">
                         <Upload className="w-3.5 h-3.5" />
                         <span>Upload Signature PNG</span>
                         <input
@@ -499,7 +499,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
               <div className="lg:col-span-7 space-y-2 sticky top-0">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#2d8a4e]" />
+                    <ShieldCheck className="w-4 h-4 text-[#16834a]" />
                     Instant Real-Time Certificate Preview
                   </span>
                   <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -533,7 +533,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
 
                   <div className="space-y-1 relative z-10">
                     <p className="text-[10px] text-slate-500 italic">This official digital certificate is proudly presented to</p>
-                    <h3 className="text-base font-extrabold text-[#2d8a4e] underline decoration-amber-500 decoration-2 underline-offset-4">
+                    <h3 className="text-base font-extrabold text-[#16834a] underline decoration-amber-500 decoration-2 underline-offset-4">
                       [STUDENT PARTICIPANT FULL NAME]
                     </h3>
                   </div>
@@ -642,7 +642,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
               <button
                 type="button"
                 onClick={() => setActiveStep(prev => prev + 1)}
-                className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
               >
                 <span>Next Step</span>
                 <ChevronRight className="w-4 h-4" />
@@ -650,7 +650,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
             ) : (
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>{editingEvent ? 'Save Changes' : 'Publish & Create Event'}</span>

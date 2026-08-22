@@ -14,7 +14,7 @@ export function Progress({ value = 0, max = 100, className = '', indicatorClassN
       {...props}
     >
       <div
-        className={`h-full w-full flex-1 bg-[#1b4332] dark:bg-emerald-500 transition-all duration-300 rounded-full ${indicatorClassName}`}
+        className={`h-full w-full flex-1 bg-[#064e2b] dark:bg-emerald-500 transition-all duration-300 rounded-full ${indicatorClassName}`}
         style={{ width: `${percentage}%` }}
       />
     </div>

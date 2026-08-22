@@ -11,7 +11,7 @@ export function Card({ className = '', children, ...props }) {
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200/80 dark:border-slate-800 text-slate-900 dark:text-slate-100 shadow-sm transition-all duration-200 ${defaultBg} ${className}`}
+      className={`rounded-2xl border border-[#dde6dd] dark:border-slate-800 text-[#123D2A] dark:text-slate-100 shadow-xs transition-all duration-200 ${defaultBg} ${className}`}
       {...props}
     >
       {children}
@@ -30,7 +30,7 @@ export function CardHeader({ className = '', children, ...props }) {
 export function CardTitle({ className = '', children, ...props }) {
   return (
     <h3
-      className={`text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white ${className}`}
+      className={`text-lg font-extrabold leading-none tracking-tight text-[#123D2A] dark:text-white ${className}`}
       {...props}
     >
       {children}
@@ -41,7 +41,7 @@ export function CardTitle({ className = '', children, ...props }) {
 export function CardDescription({ className = '', children, ...props }) {
   return (
     <p
-      className={`text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed ${className}`}
+      className={`text-xs font-medium text-[#3F6B52] dark:text-slate-400 leading-relaxed ${className}`}
       {...props}
     >
       {children}
@@ -59,7 +59,7 @@ export function CardContent({ className = '', children, ...props }) {
 
 export function CardFooter({ className = '', children, ...props }) {
   return (
-    <div className={`flex items-center p-6 pt-0 border-t border-slate-100 dark:border-slate-800/80 ${className}`} {...props}>
+    <div className={`flex items-center p-6 pt-0 border-t border-[#dde6dd] dark:border-slate-800/80 ${className}`} {...props}>
       {children}
     </div>
   )

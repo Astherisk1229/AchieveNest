@@ -54,7 +54,7 @@ export default function PasswordResetQueue({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search reset requests by name, ID, or email..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white focus:outline-none focus:border-[#69A97C]"
             />
           </div>
 
@@ -76,7 +76,7 @@ export default function PasswordResetQueue({
               onClick={() => setStatusFilter('approved')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 statusFilter === 'approved'
-                  ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
+                  ? 'bg-[#176B43] text-white shadow-2xs dark:bg-emerald-600'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
               }`}
             >
@@ -117,7 +117,7 @@ export default function PasswordResetQueue({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
-                      isApproved ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+                      isApproved ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42]' : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
                     }`}>
                       <Lock className="w-4 h-4" />
                     </div>
@@ -129,7 +129,7 @@ export default function PasswordResetQueue({
 
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                     isApproved
-                      ? 'bg-[#EDF3EC] text-[#346538] dark:bg-emerald-950/60 dark:text-emerald-300 border border-[#D4E3D2] dark:border-emerald-800/60'
+                      ? 'bg-[#dde8d8] text-[#346538] dark:bg-emerald-950/60 dark:text-[#245F42] border border-[#D4E3D2] dark:border-emerald-800/60'
                       : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300'
                   }`}>
                     {isApproved ? '✓ Resolved' : '● Pending Review'}
@@ -144,7 +144,7 @@ export default function PasswordResetQueue({
                       <button
                         type="button"
                         onClick={() => generateTempPassword(req.id)}
-                        className="text-xs font-semibold text-[#1b4332] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-semibold text-[#064e2b] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>Randomize</span>
@@ -172,7 +172,7 @@ export default function PasswordResetQueue({
                   <button
                     type="button"
                     onClick={() => onApproveReset(req.id, tempPass)}
-                    className="w-full py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                    className="w-full py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 text-white font-semibold text-sm flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
                   >
                     <KeyRound className="w-4 h-4" />
                     <span>Approve &amp; Issue Temporary Password</span>

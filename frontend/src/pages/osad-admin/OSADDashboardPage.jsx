@@ -157,7 +157,7 @@ export default function OSADDashboardPage({ currentUser }) {
     <div className="space-y-6 font-sans">
       {/* Toast Banner */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-[#1b4332] text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top duration-200">
+        <div className="fixed top-20 right-6 z-50 p-4 rounded-xl bg-[#176B43] text-white text-xs font-bold shadow-2xl flex items-center gap-3 border border-emerald-500 animate-in fade-in slide-in-from-top duration-200">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
@@ -301,7 +301,7 @@ export default function OSADDashboardPage({ currentUser }) {
           <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#2d8a4e]" /> Create Student Organization
+                <Users className="w-4 h-4 text-[#16834a]" /> Create Student Organization
               </h3>
               <button onClick={() => setIsAddOrgOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X className="w-4 h-4" />
@@ -316,7 +316,7 @@ export default function OSADDashboardPage({ currentUser }) {
                   placeholder="e.g. Computer Society NDMU"
                   value={newOrgData.name}
                   onChange={(e) => setNewOrgData({ ...newOrgData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                   required
                 />
               </div>
@@ -327,7 +327,7 @@ export default function OSADDashboardPage({ currentUser }) {
                   type="text"
                   value={newOrgData.category}
                   onChange={(e) => setNewOrgData({ ...newOrgData, category: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                   required
                 />
               </div>
@@ -342,7 +342,7 @@ export default function OSADDashboardPage({ currentUser }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#1b4332] hover:bg-[#143326] shadow-2xs cursor-pointer"
+                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#EFF7F0] hover:bg-[#143326] shadow-2xs cursor-pointer"
                 >
                   Create Organization
                 </button>
@@ -358,7 +358,7 @@ export default function OSADDashboardPage({ currentUser }) {
           <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Award className="w-4 h-4 text-[#2d8a4e]" /> Create Award Category
+                <Award className="w-4 h-4 text-[#16834a]" /> Create Award Category
               </h3>
               <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X className="w-4 h-4" />
@@ -373,7 +373,7 @@ export default function OSADDashboardPage({ currentUser }) {
                   placeholder="e.g. Most Outstanding Student Researcher"
                   value={newAwardData.title}
                   onChange={(e) => setNewAwardData({ ...newAwardData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                   required
                 />
               </div>
@@ -383,7 +383,7 @@ export default function OSADDashboardPage({ currentUser }) {
                 <select
                   value={newAwardData.category_type}
                   onChange={(e) => setNewAwardData({ ...newAwardData, category_type: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                 >
                   <option value="Academic Excellence">Academic Excellence</option>
                   <option value="Student Leadership">Student Leadership</option>
@@ -399,7 +399,7 @@ export default function OSADDashboardPage({ currentUser }) {
                   rows="2"
                   value={newAwardData.description}
                   onChange={(e) => setNewAwardData({ ...newAwardData, description: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                 />
               </div>
 
@@ -410,7 +410,7 @@ export default function OSADDashboardPage({ currentUser }) {
                     type="number"
                     value={newAwardData.min_points}
                     onChange={(e) => setNewAwardData({ ...newAwardData, min_points: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -420,7 +420,7 @@ export default function OSADDashboardPage({ currentUser }) {
                     step="0.1"
                     value={newAwardData.weight_multiplier}
                     onChange={(e) => setNewAwardData({ ...newAwardData, weight_multiplier: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#1b4332]"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
                   />
                 </div>
               </div>
@@ -435,7 +435,7 @@ export default function OSADDashboardPage({ currentUser }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#1b4332] hover:bg-[#143326] shadow-2xs cursor-pointer"
+                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#EFF7F0] hover:bg-[#143326] shadow-2xs cursor-pointer"
                 >
                   Create Category
                 </button>

@@ -194,7 +194,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <button
             type="button"
             onClick={handleExportCSV}
-            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] text-xs font-bold flex items-center gap-2 transition shadow-2xs cursor-pointer"
+            className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] text-xs font-bold flex items-center gap-2 transition shadow-2xs cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
@@ -203,17 +203,17 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <button
             type="button"
             onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
-            className="px-4 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[#1b4332] text-xs font-extrabold flex items-center gap-2 transition shadow-2xs cursor-pointer"
+            className="px-4 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[#064e2b] text-xs font-extrabold flex items-center gap-2 transition shadow-2xs cursor-pointer"
             title="Upload certificate file and let AchieveNest OCR automatically detect category and fill details"
           >
-            <Scan className="w-4 h-4 text-[#2d8a4e]" />
+            <Scan className="w-4 h-4 text-[#16834a]" />
             <span>Scan Certificate</span>
           </button>
 
           <button
             type="button"
             onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
-            className="px-4.5 py-2.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md cursor-pointer"
+            className="px-4.5 py-2.5 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Achievement</span>
@@ -227,11 +227,11 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           type="button"
           onClick={() => { setSelectedCategory('All'); setSelectedStatus('All') }}
           className={`px-4 py-2 rounded-full border text-xs font-bold flex items-center gap-2 transition cursor-pointer ${selectedCategory === 'All' && selectedStatus === 'All'
-              ? 'bg-white border-[#2d8a4e] text-slate-900 ring-2 ring-[#2d8a4e]/20 shadow-xs'
+              ? 'bg-white border-[#16834a] text-slate-900 ring-2 ring-[#16834a]/20 shadow-xs'
               : 'bg-white/80 border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
         >
-          <span className="w-2 h-2 rounded-full bg-[#2d8a4e]"></span>
+          <span className="w-2 h-2 rounded-full bg-[#16834a]"></span>
           <span><strong className="text-slate-900">{stats.total}</strong> Total Logged</span>
         </button>
 
@@ -292,7 +292,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition cursor-pointer"
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#16834a] outline-none transition cursor-pointer"
           >
             <option value="All">Category: All</option>
 
@@ -317,7 +317,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition cursor-pointer"
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#16834a] outline-none transition cursor-pointer"
           >
             <option value="All">Status: All</option>
             <option value="Verified">Verified</option>
@@ -329,7 +329,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#2d8a4e] outline-none transition cursor-pointer"
+            className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-[#16834a] outline-none transition cursor-pointer"
           >
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
@@ -341,7 +341,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg transition cursor-pointer ${viewMode === 'grid' ? 'bg-white text-[#2d8a4e] shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`p-1.5 rounded-lg transition cursor-pointer ${viewMode === 'grid' ? 'bg-white text-[#16834a] shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-900'}`}
               title="Grid View"
             >
               <LayoutGrid className="w-4 h-4" />
@@ -349,7 +349,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-lg transition cursor-pointer ${viewMode === 'list' ? 'bg-white text-[#2d8a4e] shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-900'}`}
+              className={`p-1.5 rounded-lg transition cursor-pointer ${viewMode === 'list' ? 'bg-white text-[#16834a] shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-900'}`}
               title="List View"
             >
               <List className="w-4 h-4" />
@@ -384,7 +384,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                     className="bg-white rounded-3xl border border-slate-200/90 shadow-2xs hover:shadow-md transition overflow-hidden flex flex-col justify-between group cursor-pointer relative"
                   >
                     {/* Green Certificate Banner Top Graphic with Hover Controls */}
-                    <div className="bg-[#2d8a4e] h-32 p-4 flex flex-col items-center justify-center text-white relative">
+                    <div className="bg-[#16834a] h-32 p-4 flex flex-col items-center justify-center text-white relative">
 
                       {/* Hover Quick Action Buttons Top Right (Favorite & 3-Dot Options) */}
                       <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition z-10">
@@ -411,7 +411,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                       </div>
 
                       <CategoryIcon className="w-7 h-7 text-amber-300 mb-1" />
-                      <span className="text-[10px] font-black tracking-widest uppercase text-emerald-100">PROOF CERTIFICATE</span>
+                      <span className="text-[10px] font-black tracking-widest uppercase text-[#245F42]">PROOF CERTIFICATE</span>
                     </div>
 
                     {/* Card Content Body */}
@@ -419,7 +419,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                       <div>
                         {/* Category Tag & Portfolio Link Badge */}
                         <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
-                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] text-[10px] font-bold">
+                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] text-[10px] font-bold">
                             {item.category}
                           </span>
                           <span className="text-[10px] font-semibold text-slate-400 truncate max-w-[140px]">
@@ -427,7 +427,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                           </span>
                         </div>
 
-                        <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition leading-snug">
+                        <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-[#16834a] transition leading-snug">
                           {item.title}
                         </h3>
                         <p className="text-xs text-slate-400 font-medium mt-1">{item.location}</p>
@@ -438,8 +438,8 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                         <span className="text-slate-400 text-[11px] font-medium">{item.date}</span>
 
                         {item.status === 'Verified' && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2] text-[10px] font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-[#2d8a4e]" /> Verified
+                          <span className="px-2.5 py-0.5 rounded-full bg-[#E7F3E9] text-[#064e2b] border border-[#cbe6d2] text-[10px] font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-[#16834a]" /> Verified
                           </span>
                         )}
                         {(item.status === 'Pending Review' || item.status === 'Pending') && (
@@ -467,14 +467,14 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                 <div
                   key={item.id}
                   onClick={() => setPreviewItem(item)}
-                  className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-[#2d8a4e] transition flex items-center justify-between gap-4 cursor-pointer group"
+                  className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-[#16834a] transition flex items-center justify-between gap-4 cursor-pointer group"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="w-10 h-10 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center shrink-0">
                       <BookOpen className="w-5 h-5" />
                     </div>
                     <div className="truncate">
-                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#2d8a4e] transition truncate">{item.title}</h3>
+                      <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#16834a] transition truncate">{item.title}</h3>
                       <p className="text-xs text-slate-400">{item.location} • {item.date}</p>
                     </div>
                   </div>
@@ -504,7 +504,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
               <button disabled className="p-1.5 rounded-lg border border-slate-200 text-slate-300 cursor-not-allowed">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button className="w-7 h-7 rounded-lg bg-[#2d8a4e] text-white font-bold flex items-center justify-center shadow-2xs">
+              <button className="w-7 h-7 rounded-lg bg-[#16834a] text-white font-bold flex items-center justify-center shadow-2xs">
                 1
               </button>
               <button disabled className="p-1.5 rounded-lg border border-slate-200 text-slate-300 cursor-not-allowed">
@@ -521,7 +521,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           {/* Widget 1: "By Category" List */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-4">
             <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-              <Filter className="w-4 h-4 text-[#2d8a4e]" />
+              <Filter className="w-4 h-4 text-[#16834a]" />
               <span>By Category</span>
             </h2>
 
@@ -554,15 +554,15 @@ export default function PersonnelAchievementsPage({ currentUser }) {
                           type="button"
                           onClick={() => setSelectedCategory(isSelected ? 'All' : cat.name)}
                           className={`w-full p-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition cursor-pointer ${isSelected
-                              ? 'bg-[#eef7f0] text-[#1e5831] font-bold border border-[#cbe6d2]'
+                              ? 'bg-[#E7F3E9] text-[#064e2b] font-bold border border-[#cbe6d2]'
                               : 'text-slate-600 hover:bg-slate-50'
                             }`}
                         >
                           <div className="flex items-center gap-2.5">
-                            <CatIcon className="w-4 h-4 text-[#2d8a4e]" />
+                            <CatIcon className="w-4 h-4 text-[#16834a]" />
                             <span>{cat.name}</span>
                           </div>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isSelected ? 'bg-[#2d8a4e] text-white' : 'bg-slate-100 text-slate-600'
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isSelected ? 'bg-[#16834a] text-white' : 'bg-slate-100 text-slate-600'
                             }`}>
                             {count}
                           </span>
@@ -576,9 +576,9 @@ export default function PersonnelAchievementsPage({ currentUser }) {
           </div>
 
           {/* Widget 2: Portfolio Consolidation Tip */}
-          <div className="bg-[#eef7f0]/60 rounded-3xl p-5 border border-[#cbe6d2] space-y-3 text-xs">
-            <div className="flex items-center gap-2 text-[#1e5831] font-extrabold">
-              <Briefcase className="w-4 h-4 text-[#2d8a4e]" />
+          <div className="bg-[#E7F3E9]/60 rounded-3xl p-5 border border-[#cbe6d2] space-y-3 text-xs">
+            <div className="flex items-center gap-2 text-[#064e2b] font-extrabold">
+              <Briefcase className="w-4 h-4 text-[#16834a]" />
               <span>Annual Ranking Tip</span>
             </div>
 

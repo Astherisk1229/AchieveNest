@@ -131,7 +131,7 @@ export default function EventCardOptionsMenu({
               setIsOpen(false)
               if (onViewDetails) onViewDetails(event)
             }}
-            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#2d8a4e] font-bold flex items-center gap-2.5 transition cursor-pointer"
+            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
             <Eye className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Preview Event Details</span>
@@ -144,9 +144,9 @@ export default function EventCardOptionsMenu({
               setIsOpen(false)
               if (onMonitorAttendance) onMonitorAttendance(event?.id)
             }}
-            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#2d8a4e] font-bold flex items-center gap-2.5 transition cursor-pointer"
+            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
-            <QrCode className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+            <QrCode className="w-4 h-4 text-[#16834a] shrink-0" />
             <span>Monitor Live Attendance</span>
           </button>
 
@@ -158,7 +158,7 @@ export default function EventCardOptionsMenu({
                 setIsOpen(false)
                 onLaunchScanner(event)
               }}
-              className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#2d8a4e] font-bold flex items-center gap-2.5 transition cursor-pointer"
+              className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
             >
               <Camera className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Launch QR Scanner</span>
@@ -172,7 +172,7 @@ export default function EventCardOptionsMenu({
               setIsOpen(false)
               if (onEditEvent) onEditEvent(event)
             }}
-            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#2d8a4e] font-bold flex items-center gap-2.5 transition cursor-pointer"
+            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
             <Edit className="w-4 h-4 text-slate-500 shrink-0" />
             <span>Edit Event Details</span>
@@ -185,7 +185,7 @@ export default function EventCardOptionsMenu({
               setIsOpen(false)
               if (onPreviewCertificates) onPreviewCertificates(event)
             }}
-            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#2d8a4e] font-bold flex items-center gap-2.5 transition cursor-pointer"
+            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
             <Award className="w-4 h-4 text-amber-600 shrink-0" />
             <span>Certificate & Auto-Dispatch</span>
@@ -198,7 +198,7 @@ export default function EventCardOptionsMenu({
               setIsOpen(false)
               if (onExportCSV) onExportCSV(event)
             }}
-            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#2d8a4e] font-bold flex items-center gap-2.5 transition cursor-pointer"
+            className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Export Attendance CSV</span>

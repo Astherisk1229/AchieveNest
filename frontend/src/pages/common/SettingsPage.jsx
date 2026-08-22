@@ -58,7 +58,7 @@ export default function SettingsPage({ currentUser }) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
         <div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <Settings className="w-6 h-6 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+            <Settings className="w-6 h-6 text-[#064e2b] dark:text-emerald-400 shrink-0" />
             <span>Portal & Notification Settings</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -78,7 +78,7 @@ export default function SettingsPage({ currentUser }) {
 
       {/* Save Toast Feedback */}
       {saveSuccess && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
+        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-[#245F42] text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>Settings preference saved successfully!</span>
         </div>
@@ -130,7 +130,7 @@ export default function SettingsPage({ currentUser }) {
       <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 p-6 space-y-4 shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <h2 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <Bell className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+            <Bell className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
             <span>Governance Notification Preferences</span>
           </h2>
           <span className="text-[10px] font-bold text-slate-400">User-Scoped Settings</span>
@@ -152,7 +152,7 @@ export default function SettingsPage({ currentUser }) {
                   aria-checked={isEnabled}
                   onClick={() => handleToggleNotification(option.key)}
                   className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 focus:outline-none ${
-                    isEnabled ? 'bg-[#1b4332] dark:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+                    isEnabled ? 'bg-[#EFF7F0] dark:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
                   }`}
                 >
                   <span
@@ -170,7 +170,7 @@ export default function SettingsPage({ currentUser }) {
       {/* Institutional Compliance Notice */}
       <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
         <div className="flex items-center gap-2 text-slate-900 dark:text-white font-extrabold">
-          <ShieldCheck className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+          <ShieldCheck className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
           <span>Governance Preference Policy</span>
         </div>
         <p className="text-slate-600 dark:text-slate-400 leading-relaxed">

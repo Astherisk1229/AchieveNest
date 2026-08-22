@@ -33,7 +33,7 @@ export default function PortfolioNavigator({
             onClick={() => setTab('hr_form')}
             className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               tab === 'hr_form'
-                ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
+                ? 'bg-[#176B43] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -46,7 +46,7 @@ export default function PortfolioNavigator({
             onClick={() => setTab('attached_proofs')}
             className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               tab === 'attached_proofs'
-                ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
+                ? 'bg-[#176B43] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -59,7 +59,7 @@ export default function PortfolioNavigator({
             onClick={() => setTab('list')}
             className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               tab === 'list'
-                ? 'bg-[#1b4332] text-white shadow-2xs dark:bg-emerald-600'
+                ? 'bg-[#176B43] text-white shadow-2xs dark:bg-emerald-600'
                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
             }`}
           >
@@ -132,14 +132,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#1b4332]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#1b4332]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
                       <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 10, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">NDMU / Accredited Institution</td>
-                      <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
                     </tr>
                   )
                 })}
@@ -168,14 +168,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#1b4332]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#1b4332]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
                       <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 11, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">International Chapter</td>
-                      <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
                     </tr>
                   )
                 })}
@@ -204,14 +204,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#1b4332]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#1b4332]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
                       <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 12, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">CHED / DLSU</td>
-                      <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
                     </tr>
                   )
                 })}
@@ -245,14 +245,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#1b4332]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#1b4332]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
                       <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 13, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">DepEd Region XII</td>
-                      <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
                     </tr>
                   )
                 })}
@@ -281,14 +281,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#1b4332]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#1b4332]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
                       <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 13, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">IEEE Society</td>
-                      <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
                     </tr>
                   )
                 })}
@@ -322,14 +322,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#1b4332]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#1b4332]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
                       <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 14, 2026'}</td>
                       <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
                       <td className="p-2 border-r border-slate-900">NDMU OSAD</td>
-                      <td className="p-2 font-bold text-[#1b4332] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
                     </tr>
                   )
                 })}
@@ -352,7 +352,7 @@ export default function PortfolioNavigator({
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="p-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-extrabold flex items-center justify-between">
             <span>📷 Pages 3+: Attached Proof Certificates (Reverse Chronological Order)</span>
-            <span className="text-[10px] bg-[#1b4332] text-white px-2 py-0.5 rounded-full font-black">
+            <span className="text-[10px] bg-[#176B43] text-white px-2 py-0.5 rounded-full font-black">
               {sortedProofItems.length} Attachments
             </span>
           </div>
@@ -365,7 +365,7 @@ export default function PortfolioNavigator({
                 onClick={() => onSelectEvidence(item)}
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-start justify-between gap-3 ${
                   isSelected
-                    ? 'bg-[#1b4332]/10 dark:bg-emerald-950/40 border-[#1b4332] dark:border-emerald-600 shadow-sm border-l-4'
+                    ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 shadow-sm border-l-4'
                     : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
                 }`}
               >
@@ -382,7 +382,7 @@ export default function PortfolioNavigator({
 
                 <div className="shrink-0 flex items-center gap-1 text-[10px] font-extrabold">
                   {item.verificationStatus === 'verified' && (
-                    <span className="px-2 py-0.5 rounded-full bg-[#1b4332]/10 text-[#1b4332] dark:text-emerald-400 border border-[#1b4332]/20 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-[#EFF7F0]/10 text-[#064e2b] dark:text-emerald-400 border border-[#69A97C]/20 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Verified (+{item.awardedPoints} pts)
                     </span>
                   )}
@@ -441,12 +441,12 @@ function EvidenceListRow({ item, isSelected, onSelect }) {
       onClick={onSelect}
       className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2 text-xs ${
         isSelected
-          ? 'bg-[#1b4332]/10 dark:bg-emerald-950/40 border-[#1b4332] dark:border-emerald-600 font-extrabold border-l-4'
+          ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 font-extrabold border-l-4'
           : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
       }`}
     >
       <div className="flex items-center gap-2 overflow-hidden">
-        {isVerified && <CheckCircle2 className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />}
+        {isVerified && <CheckCircle2 className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" />}
         {isRejected && <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />}
         {!isVerified && !isRejected && <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
         <span className="truncate text-slate-900 dark:text-white font-semibold">{item.title}</span>

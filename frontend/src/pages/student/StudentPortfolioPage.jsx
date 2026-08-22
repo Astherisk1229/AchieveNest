@@ -135,7 +135,7 @@ export default function StudentPortfolioPage({ currentUser }) {
       title: "Dean's Lister - First Semester AY 2025-2026",
       date: 'Dec 15, 2025',
       category: 'Academic',
-      bannerBg: 'bg-[#2d8a4e]',
+      bannerBg: 'bg-[#16834a]',
       emoji: '📚'
     },
     {
@@ -143,7 +143,7 @@ export default function StudentPortfolioPage({ currentUser }) {
       title: 'Student Council President',
       date: 'Jan 10, 2026',
       category: 'Leadership',
-      bannerBg: 'bg-[#2d8a4e]',
+      bannerBg: 'bg-[#16834a]',
       emoji: '👑'
     },
     {
@@ -151,7 +151,7 @@ export default function StudentPortfolioPage({ currentUser }) {
       title: 'Basketball Intramurals Champion',
       date: 'Feb 14, 2026',
       category: 'Sports',
-      bannerBg: 'bg-[#2d8a4e]',
+      bannerBg: 'bg-[#16834a]',
       emoji: '🏀'
     }
   ]
@@ -186,7 +186,7 @@ export default function StudentPortfolioPage({ currentUser }) {
               <defs>
                 <linearGradient id="studentHeroGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#143d2b" />
-                  <stop offset="50%" stopColor="#1b4332" />
+                  <stop offset="50%" stopColor="#064e2b" />
                   <stop offset="100%" stopColor="#0d281e" />
                 </linearGradient>
               </defs>
@@ -241,11 +241,11 @@ export default function StudentPortfolioPage({ currentUser }) {
                 <div className="relative shrink-0 z-30 sm:-mb-1">
                   <Avatar size="xl" className="w-28 h-28 sm:w-36 sm:h-36 border-4 border-white shadow-xl aspect-square bg-white">
                     <AvatarImage src={student.avatar_url} alt={student.full_name} fetchpriority="high" decoding="async" loading="eager" />
-                    <AvatarFallback className="text-2xl font-black bg-gradient-to-br from-emerald-600 to-[#1b4332]">
+                    <AvatarFallback className="text-2xl font-black bg-gradient-to-br from-emerald-600 to-[#064e2b]">
                       {student.full_name ? student.full_name.split(' ').map(n => n[0]).join('') : 'MS'}
                     </AvatarFallback>
-                    <AvatarBadge className="w-5 h-5 bg-emerald-600 border-2 border-white dark:border-slate-900 text-[10px]">
-                      ✓
+                    <AvatarBadge className="student-profile-verification-badge" title="Verified Student Profile">
+                      <Check />
                     </AvatarBadge>
                   </Avatar>
                 </div>
@@ -256,29 +256,29 @@ export default function StudentPortfolioPage({ currentUser }) {
                 <div className="space-y-1.5 pt-1 sm:pt-0">
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">{student.full_name}</h2>
-                    <span className="w-5 h-5 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
-                      ✓
+                    <span className="w-5 h-5 rounded-full bg-[#16834a] text-white inline-flex items-center justify-center shrink-0 aspect-square p-0.5 shadow-xs" title="Verified Account">
+                      <Check className="w-3 h-3 stroke-[3]" />
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#2d8a4e]">{student.program || 'BS Computer Science'}</p>
+                  <p className="text-xs font-extrabold text-[#16834a]">{student.program || 'BS Computer Science'}</p>
                   <p className="text-xs text-slate-600 font-semibold">{student.year_level || '3rd Year Student'} • Notre Dame of Marbel University</p>
                   <p className="text-xs text-slate-500 font-medium">{student.location}</p>
 
                   {/* Compact Credential Chips Row */}
                   <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
                     <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                      <GraduationCap className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <GraduationCap className="w-3.5 h-3.5 text-[#16834a]" />
                       <span>{student.program || 'BS Computer Science'}</span>
                     </div>
 
                     <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                      <Clock className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <Clock className="w-3.5 h-3.5 text-[#16834a]" />
                       <span>{student.year_level || '3rd Year'} ({student.age || 21} yrs)</span>
                     </div>
 
                     <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                      <CreditCard className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                      <CreditCard className="w-3.5 h-3.5 text-[#16834a]" />
                       <span>Student ID: {student.student_id || '2024-01234'}</span>
                     </div>
                   </div>
@@ -293,31 +293,31 @@ export default function StudentPortfolioPage({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-[#1b4332] text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-[#064e2b] text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                 >
-                  <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <Edit3 className="w-3.5 h-3.5 text-[#16834a]" />
                   <span>Edit Profile</span>
                 </button>
 
                 {/* 4 Summary Stat Cards Row */}
                 <div className="flex items-center gap-2.5">
                   <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">5</span>
+                    <span className="text-xl font-black text-[#064e2b] block leading-none">5</span>
                     <span className="text-[10px] font-bold text-slate-600 mt-1 block">Achievements</span>
                   </div>
 
                   <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">3</span>
+                    <span className="text-xl font-black text-[#064e2b] block leading-none">3</span>
                     <span className="text-[10px] font-bold text-slate-600 mt-1 block">Verified</span>
                   </div>
 
                   <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">5</span>
+                    <span className="text-xl font-black text-[#064e2b] block leading-none">5</span>
                     <span className="text-[10px] font-bold text-slate-600 mt-1 block">Trainings</span>
                   </div>
 
                   <div className="bg-white border border-slate-200/90 rounded-2xl p-3 text-center min-w-[84px] shadow-2xs">
-                    <span className="text-xl font-black text-[#1b4332] block leading-none">2</span>
+                    <span className="text-xl font-black text-[#064e2b] block leading-none">2</span>
                     <span className="text-[10px] font-bold text-slate-600 mt-1 block">Awards</span>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                   <button
                     type="button"
                     onClick={() => setIsExportModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-[#DCEBDD] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                   >
                     <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
                     <span>Portfolio Booklet View</span>
@@ -361,7 +361,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             <div className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center">
                     👤
                   </span>
                   <span>About Me</span>
@@ -370,7 +370,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-xs font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#16834a] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit</span>
@@ -386,7 +386,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             <div className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-5">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center">
                     🏛️
                   </span>
                   <span>Experience & Involvement</span>
@@ -395,7 +395,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-xs font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#16834a] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit</span>
@@ -409,7 +409,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                     <div key={exp.id} className="relative flex items-start justify-between gap-4 group">
 
                       {/* Timeline Dot Icon */}
-                      <div className="absolute -left-6 top-0.5 w-7 h-7 rounded-full bg-[#2d8a4e] text-white flex items-center justify-center shadow-md ring-4 ring-white shrink-0">
+                      <div className="absolute -left-6 top-0.5 w-7 h-7 rounded-full bg-[#16834a] text-white flex items-center justify-center shadow-md ring-4 ring-white shrink-0">
                         <IconComp className="w-3.5 h-3.5" />
                       </div>
 
@@ -431,7 +431,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center">
                     🏆
                   </span>
                   <span>Featured Achievements</span>
@@ -445,9 +445,9 @@ export default function StudentPortfolioPage({ currentUser }) {
                     key={item.id}
                     className="rounded-3xl bg-white border border-slate-100 shadow-xs overflow-hidden hover:shadow-md transition flex flex-col justify-between"
                   >
-                    <div className="h-32 bg-[#2d8a4e] flex items-center justify-center text-4xl relative">
+                    <div className="h-32 bg-[#16834a] flex items-center justify-center text-4xl relative">
                       <span>{item.emoji}</span>
-                      <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-white/90 text-[#1e5831] text-[10px] font-extrabold border border-white">
+                      <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-white/90 text-[#064e2b] text-[10px] font-extrabold border border-white">
                         Verified
                       </span>
                     </div>
@@ -466,7 +466,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             {/* SUPPORTING EVIDENCE GALLERY */}
             <div className="p-6 sm:p-7 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center">
+                <span className="w-8 h-8 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center">
                   📄
                 </span>
                 <span>Supporting Evidence</span>
@@ -478,7 +478,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                     key={item.id}
                     type="button"
                     onClick={() => handleCategoryClick(item.category)}
-                    className="h-28 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center text-3xl shadow-xs hover:scale-105 transition cursor-pointer"
+                    className="h-28 rounded-2xl bg-[#16834a] text-white flex items-center justify-center text-3xl shadow-xs hover:scale-105 transition cursor-pointer"
                     title={`View ${item.category} Achievements`}
                   >
                     <span>{item.emoji}</span>
@@ -489,7 +489,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => navigate('/student/achievements')}
-                  className="h-28 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#2d8a4e] flex flex-col items-center justify-center gap-1 hover:bg-emerald-100 transition cursor-pointer"
+                  className="h-28 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#16834a] flex flex-col items-center justify-center gap-1 hover:bg-emerald-100 transition cursor-pointer"
                 >
                   <ArrowRight className="w-5 h-5" />
                   <span className="text-[11px] font-bold">View All</span>
@@ -506,14 +506,14 @@ export default function StudentPortfolioPage({ currentUser }) {
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-[#2d8a4e]" />
+                  <Mail className="w-4 h-4 text-[#16834a]" />
                   <span>Contact Information</span>
                 </h3>
 
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline"
+                  className="text-[11px] font-bold text-[#16834a] hover:underline"
                 >
                   Edit
                 </button>
@@ -541,14 +541,14 @@ export default function StudentPortfolioPage({ currentUser }) {
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-[#2d8a4e]" />
+                  <Star className="w-4 h-4 text-[#16834a]" />
                   <span>Skills & Competencies</span>
                 </h3>
 
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(true)}
-                  className="text-[11px] font-bold text-[#2d8a4e] hover:underline"
+                  className="text-[11px] font-bold text-[#16834a] hover:underline"
                 >
                   Edit
                 </button>
@@ -560,9 +560,9 @@ export default function StudentPortfolioPage({ currentUser }) {
                     <div className="flex items-center gap-1.5 font-bold text-slate-800">
                       {/* 3 Dot Level Indicator */}
                       <span className="flex items-center gap-0.5 text-[9px]">
-                        <span className={skill.level >= 1 ? 'text-[#2d8a4e]' : 'text-slate-300'}>●</span>
-                        <span className={skill.level >= 2 ? 'text-[#2d8a4e]' : 'text-slate-300'}>●</span>
-                        <span className={skill.level >= 3 ? 'text-[#2d8a4e]' : 'text-slate-300'}>●</span>
+                        <span className={skill.level >= 1 ? 'text-[#16834a]' : 'text-slate-300'}>●</span>
+                        <span className={skill.level >= 2 ? 'text-[#16834a]' : 'text-slate-300'}>●</span>
+                        <span className={skill.level >= 3 ? 'text-[#16834a]' : 'text-slate-300'}>●</span>
                       </span>
                       <span>{skill.name}</span>
                     </div>
@@ -575,7 +575,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             {/* ACHIEVEMENTS BY CATEGORY CARD (INTERACTIVE REDIRECT) */}
             <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-xs space-y-4">
               <h3 className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-[#2d8a4e]" />
+                <Trophy className="w-4 h-4 text-[#16834a]" />
                 <span>Achievements by Category</span>
               </h3>
 
@@ -595,12 +595,12 @@ export default function StudentPortfolioPage({ currentUser }) {
                       className="w-full p-2.5 rounded-2xl bg-emerald-50/60 hover:bg-[#eef7f0] border border-emerald-100 flex items-center justify-between text-xs font-bold text-slate-800 transition cursor-pointer group"
                     >
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-lg bg-[#2d8a4e] text-white flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-lg bg-[#16834a] text-white flex items-center justify-center">
                           <IconC className="w-3.5 h-3.5" />
                         </div>
-                        <span className="group-hover:text-[#2d8a4e] transition">{cat.name}</span>
+                        <span className="group-hover:text-[#16834a] transition">{cat.name}</span>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full bg-white text-[#2d8a4e] font-black text-[11px] border border-emerald-200">
+                      <span className="px-2 py-0.5 rounded-full bg-white text-[#16834a] font-black text-[11px] border border-emerald-200">
                         {cat.count}
                       </span>
                     </button>
@@ -610,7 +610,7 @@ export default function StudentPortfolioPage({ currentUser }) {
             </div>
 
             {/* PORTFOLIO SUMMARY STATS CARD */}
-            <div className="p-6 bg-[#1b4332] text-white rounded-3xl shadow-md border border-[#245233] space-y-4">
+            <div className="p-6 bg-[#DCEBDD] text-white rounded-3xl shadow-md border border-[#A9C6B1] space-y-4">
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-emerald-200">Portfolio Summary</h3>
 
               <div className="grid grid-cols-2 gap-3">

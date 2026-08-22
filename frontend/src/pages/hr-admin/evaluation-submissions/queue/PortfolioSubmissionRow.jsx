@@ -26,7 +26,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
             <h3 className="text-base font-semibold text-slate-900 dark:text-white">
               {submission.faculty_name}
             </h3>
-            <span className="px-2 py-0.5 rounded-md bg-[#EDF3EC] text-[#346538] dark:bg-emerald-950/60 dark:text-emerald-300 border border-[#D4E3D2] dark:border-emerald-800/60 font-bold text-xs uppercase">
+            <span className="px-2 py-0.5 rounded-md bg-[#dde8d8] text-[#346538] dark:bg-emerald-950/60 dark:text-[#245F42] border border-[#D4E3D2] dark:border-emerald-800/60 font-bold text-xs uppercase">
               {getCollegeAcronym(submission.college)}
             </span>
             <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
@@ -40,7 +40,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
           </p>
 
           <p className="text-xs font-normal text-slate-500 dark:text-slate-400 leading-normal">
-            <span className="text-[#1b4332] dark:text-emerald-400 font-semibold">{submission.submissionType || 'Ranking Portfolio'}</span> · {submission.totalItemsCount || 18} Evidence Items · Submitted {submission.submittedDate || 'Aug 14, 2026'}
+            <span className="text-[#064e2b] dark:text-emerald-400 font-semibold">{submission.submissionType || 'Ranking Portfolio'}</span> · {submission.totalItemsCount || 18} Evidence Items · Submitted {submission.submittedDate || 'Aug 14, 2026'}
           </p>
         </div>
       </div>
@@ -51,7 +51,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
         <div className="text-right">
           <div className="flex items-center justify-end gap-1 text-[11px] font-extrabold">
             {isReady ? (
-              <span className="text-[#1b4332] dark:text-emerald-400 flex items-center gap-1">
+              <span className="text-[#064e2b] dark:text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Ready for Review
               </span>
             ) : (
@@ -69,7 +69,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
         <button
           type="button"
           onClick={() => onInspect(submission)}
-          className="px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer shrink-0"
+          className="px-4 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer shrink-0"
         >
           <span>
             {submission.status === 'in_review' || submission.status === 'UNDER_HR_REVIEW'

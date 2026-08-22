@@ -84,14 +84,14 @@ export default function DepartmentAssignments({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search department by name..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#69A97C]"
             />
           </div>
 
           <select
             value={collegeFilter}
             onChange={e => setCollegeFilter(e.target.value)}
-            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332] w-full sm:w-auto"
+            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C] w-full sm:w-auto"
           >
             <option value="ALL">All Colleges</option>
             <option value="CEAC">CEAC - Engineering &amp; Computing</option>
@@ -140,7 +140,7 @@ export default function DepartmentAssignments({
                 className={`px-3.5 py-2 rounded-xl font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
                   dept.currentSecretary
                     ? 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200'
-                    : 'bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 text-white shadow-xs'
+                    : 'bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 text-white shadow-xs'
                 }`}
               >
                 {dept.currentSecretary ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
@@ -158,7 +158,7 @@ export default function DepartmentAssignments({
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2 text-xs font-black text-[#1b4332] dark:text-emerald-400 uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-xs font-black text-[#064e2b] dark:text-emerald-400 uppercase tracking-wider">
                   <UserCheck className="w-4 h-4" />
                   <span>{step === 'select' ? 'Assign Department Secretary' : 'Confirm Assignment'}</span>
                 </div>
@@ -187,7 +187,7 @@ export default function DepartmentAssignments({
                       value={secretarySearch}
                       onChange={e => setSecretarySearch(e.target.value)}
                       placeholder="Search by name, ID, or email..."
-                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#1b4332] mb-2"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#69A97C] mb-2"
                     />
 
                     <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl">
@@ -197,7 +197,7 @@ export default function DepartmentAssignments({
                           onClick={() => setSelectedSecretaryId(p.id)}
                           className={`p-2.5 flex items-center justify-between transition cursor-pointer ${
                             selectedSecretaryId === p.id
-                              ? 'bg-[#1b4332]/10 dark:bg-emerald-950/40 text-[#1b4332] dark:text-emerald-300'
+                              ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 text-[#064e2b] dark:text-[#245F42]'
                               : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'
                           }`}
                         >
@@ -205,7 +205,7 @@ export default function DepartmentAssignments({
                             <p className="text-xs font-extrabold">{p.full_name}</p>
                             <p className="text-[10px] text-slate-500">{p.email}</p>
                           </div>
-                          {selectedSecretaryId === p.id && <Check className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />}
+                          {selectedSecretaryId === p.id && <Check className="w-4 h-4 text-[#064e2b] dark:text-emerald-400" />}
                         </div>
                       ))}
                     </div>
@@ -223,7 +223,7 @@ export default function DepartmentAssignments({
                       type="button"
                       disabled={!selectedSecretaryId}
                       onClick={() => setStep('confirm')}
-                      className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white text-xs font-extrabold disabled:opacity-40 transition cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white text-xs font-extrabold disabled:opacity-40 transition cursor-pointer"
                     >
                       Continue
                     </button>
@@ -247,7 +247,7 @@ export default function DepartmentAssignments({
 
                     <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
                       <p className="text-[10px] uppercase font-extrabold text-slate-400">New Secretary</p>
-                      <p className="font-extrabold text-[#1b4332] dark:text-emerald-400 text-sm">
+                      <p className="font-extrabold text-[#064e2b] dark:text-emerald-400 text-sm">
                         {selectedNewSecretaryObj?.full_name} ({selectedNewSecretaryObj?.employee_id})
                       </p>
                     </div>
@@ -274,7 +274,7 @@ export default function DepartmentAssignments({
                     <button
                       type="button"
                       onClick={handleConfirmAssignment}
-                      className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                     >
                       <Check className="w-4 h-4" />
                       <span>Confirm Assignment</span>

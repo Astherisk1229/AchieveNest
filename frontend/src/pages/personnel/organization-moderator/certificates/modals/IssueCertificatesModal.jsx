@@ -144,7 +144,7 @@ export default function IssueCertificatesModal({ isOpen, onClose, events = [], o
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2.5 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs transition cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-[#176B43] text-white font-extrabold text-xs transition cursor-pointer"
               >
                 Close & Return to Dashboard
               </button>
@@ -172,7 +172,7 @@ export default function IssueCertificatesModal({ isOpen, onClose, events = [], o
                           <p className="text-xs font-extrabold text-slate-900 dark:text-white">{evt.title}</p>
                           <p className="text-[10px] text-slate-500">{evt.date || 'AY 2025-2026'} • {evt.venue || 'NDMU Campus'}</p>
                         </div>
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px]">
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] font-extrabold text-[10px]">
                           Issuance Eligible
                         </span>
                       </div>
@@ -269,10 +269,10 @@ export default function IssueCertificatesModal({ isOpen, onClose, events = [], o
                 type="button"
                 onClick={handleNext}
                 disabled={selectedRecipients.length === 0}
-                className="px-5 py-2 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs hover:bg-[#143426] transition flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                className="px-5 py-2 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs transition-all flex items-center gap-1 cursor-pointer disabled:bg-[#E5ECE7] disabled:text-[#7A8B80] disabled:cursor-not-allowed shadow-xs"
               >
                 <span>Next Step</span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 text-white" />
               </button>
             ) : (
               <button

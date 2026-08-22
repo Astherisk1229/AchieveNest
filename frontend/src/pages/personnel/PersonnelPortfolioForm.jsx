@@ -111,7 +111,7 @@ export default function PersonnelPortfolioForm({
             onClick={() => setDisplayMode('table')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
               displayMode === 'table'
-                ? 'bg-white text-[#1b4332] shadow-2xs font-black border border-slate-200'
+                ? 'bg-white text-[#064e2b] shadow-2xs font-black border border-slate-200'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -123,7 +123,7 @@ export default function PersonnelPortfolioForm({
             onClick={() => setDisplayMode('canva')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
               displayMode === 'canva'
-                ? 'bg-[#1b4332] text-amber-300 shadow-2xs font-black border border-emerald-900'
+                ? 'bg-[#EFF7F0] text-amber-300 shadow-2xs font-black border border-emerald-900'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -278,7 +278,7 @@ export default function PersonnelPortfolioForm({
                           <span className="truncate max-w-[150px]">{item.proof_file_name}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-right font-bold text-[#1b4332] dark:text-emerald-400">
+                      <td className="py-3 px-3 text-right font-bold text-[#064e2b] dark:text-emerald-400">
                         Attached Proof
                       </td>
                       {isEditable && (
@@ -316,8 +316,8 @@ export default function PersonnelPortfolioForm({
             )}
 
             {/* Required Proof Hint Banner */}
-            <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-300 text-xs flex items-center gap-2">
-              <Paperclip className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-[#245F42] text-xs flex items-center gap-2">
+              <Paperclip className="w-4 h-4 text-[#16834a] shrink-0" />
               <span><strong>Required Proof:</strong> {RankingCriteriaModel.getRequiredProofType(activeTab, itemCategory, itemSubCategory)}</span>
             </div>
 

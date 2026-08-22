@@ -72,7 +72,7 @@ export function AvatarFallback({ children, className = '', ...props }) {
 
   return (
     <div
-      className={`w-full h-full rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-[#1b4332] text-white font-extrabold shadow-inner ${className}`}
+      className={`w-full h-full rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-[#064e2b] text-white font-extrabold shadow-inner ${className}`}
       {...props}
     >
       {children}
@@ -81,9 +81,11 @@ export function AvatarFallback({ children, className = '', ...props }) {
 }
 
 export function AvatarBadge({ children, className = '', ...props }) {
+  const isCustomBadge = className.includes('student-profile-verification-badge')
+  
   return (
     <span
-      className={`absolute bottom-0 right-0 z-10 flex items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-950 text-white text-[10px] font-bold p-0.5 bg-emerald-500 min-w-3 min-h-3 ${className}`}
+      className={isCustomBadge ? className : `absolute bottom-0 right-0 z-10 flex items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-950 text-white text-[10px] font-bold p-0.5 bg-emerald-500 min-w-3 min-h-3 shrink-0 aspect-square ${className}`}
       {...props}
     >
       {children}

@@ -51,7 +51,7 @@ export default function AuditTrailPagination({
           <span>Previous</span>
         </button>
 
-        <span className="px-3 py-1.5 rounded-xl bg-[#1b4332] dark:bg-emerald-600 text-white font-extrabold text-xs shadow-2xs">
+        <span className="px-3 py-1.5 rounded-xl bg-[#EFF7F0] dark:bg-emerald-600 text-white font-extrabold text-xs shadow-2xs">
           Page {currentPage} of {totalPages}
         </span>
 

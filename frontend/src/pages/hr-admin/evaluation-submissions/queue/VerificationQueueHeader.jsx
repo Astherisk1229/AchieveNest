@@ -11,7 +11,7 @@ export default function VerificationQueueHeader({ stats = {} }) {
     <div className="space-y-4">
       <div>
         <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-          <FileCheck className="w-6 h-6 text-[#1b4332] dark:text-emerald-400" />
+          <FileCheck className="w-6 h-6 text-[#064e2b] dark:text-emerald-400" />
           <span>Evaluation Submissions</span>
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -32,7 +32,7 @@ export default function VerificationQueueHeader({ stats = {} }) {
         </div>
 
         <div className="p-3.5 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 flex items-center gap-3 shadow-2xs">
-          <div className="w-9 h-9 rounded-lg bg-[#1b4332]/10 text-[#1b4332] dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-lg bg-[#EFF7F0]/10 text-[#064e2b] dark:text-emerald-400 flex items-center justify-center shrink-0">
             <FileCheck className="w-4 h-4" />
           </div>
           <div>

@@ -27,7 +27,7 @@ export function BatchConfirmationReviewModal({
       <div className="relative w-full max-w-lg bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white">
         
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-[#1b4332] text-white flex items-center justify-between">
+        <div className="px-6 py-4 bg-[#064e2b] text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="w-5 h-5 text-emerald-300" />
             <h3 className="font-extrabold text-base">Batch Award Confirmation</h3>
@@ -45,10 +45,10 @@ export function BatchConfirmationReviewModal({
         <div className="p-6 space-y-4 text-xs">
           {batchResults ? (
             <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-2 text-center">
-              <CheckCircle2 className="w-8 h-8 text-[#2d8a4e] mx-auto" />
-              <h4 className="font-black text-sm text-[#1b4332] dark:text-emerald-300">Batch Processing Complete</h4>
+              <CheckCircle2 className="w-8 h-8 text-[#16834a] mx-auto" />
+              <h4 className="font-black text-sm text-[#064e2b] dark:text-emerald-300">Batch Processing Complete</h4>
               <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                Successfully confirmed <strong className="text-[#2d8a4e]">{batchResults.confirmed || eligibleCandidates.length}</strong> candidates. 
+                Successfully confirmed <strong className="text-[#16834a]">{batchResults.confirmed || eligibleCandidates.length}</strong> candidates. 
                 {batchResults.skipped > 0 && ` ${batchResults.skipped} ineligible candidates were skipped.`}
               </p>
             </div>
@@ -65,7 +65,7 @@ export function BatchConfirmationReviewModal({
                 </div>
                 <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50">
                   <span className="text-[10px] uppercase font-black text-emerald-600 block">Eligible to Confirm</span>
-                  <span className="text-base font-black text-[#2d8a4e] dark:text-emerald-400">{eligibleCandidates.length}</span>
+                  <span className="text-base font-black text-[#16834a] dark:text-emerald-400">{eligibleCandidates.length}</span>
                 </div>
                 <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50">
                   <span className="text-[10px] uppercase font-black text-amber-600 block">Blocked / Skipped</span>
@@ -89,7 +89,7 @@ export function BatchConfirmationReviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#064e2b] text-white font-extrabold text-xs transition cursor-pointer"
             >
               Done
             </button>
@@ -108,7 +108,7 @@ export function BatchConfirmationReviewModal({
                 type="button"
                 onClick={handleExecuteBatch}
                 disabled={isProcessing || eligibleCandidates.length === 0}
-                className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs transition cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs transition cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
               >
                 {isProcessing ? (
                   <>

@@ -157,7 +157,7 @@ export function HREvaluationSubmissionsPage(props) {
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#1b4332] text-white font-extrabold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#176B43] text-white font-extrabold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMsg}</span>
         </div>
@@ -170,12 +170,12 @@ export function HREvaluationSubmissionsPage(props) {
       {activeReview && (
         <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-[#1b4332] dark:text-emerald-300 flex items-center justify-center font-bold shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-[#064e2b] dark:text-[#245F42] flex items-center justify-center font-bold shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-[#1b4332] text-white text-[10px] font-extrabold uppercase">My Current Review</span>
+                <span className="px-2 py-0.5 rounded-md bg-[#176B43] text-white text-[10px] font-extrabold uppercase">My Current Review</span>
                 <span className="text-sm font-bold text-slate-900 dark:text-white">{activeReview.faculty_name || 'Dr. Maria Santos'}</span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
@@ -186,7 +186,7 @@ export function HREvaluationSubmissionsPage(props) {
           <button
             type="button"
             onClick={() => handleInspect(activeReview)}
-            className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs transition cursor-pointer shrink-0 shadow-2xs"
+            className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition cursor-pointer shrink-0 shadow-2xs"
           >
             Continue Review →
           </button>
@@ -285,7 +285,7 @@ export function HREvaluationSubmissionsPage(props) {
                   setConflictModalActive(false)
                   if (activeReview) handleInspect(activeReview)
                 }}
-                className="w-1/2 py-2.5 rounded-xl bg-[#1b4332] text-white text-xs font-extrabold hover:bg-[#143326] cursor-pointer shadow-2xs"
+                className="w-1/2 py-2.5 rounded-xl bg-[#176B43] text-white text-xs font-extrabold hover:bg-[#143326] cursor-pointer shadow-2xs"
               >
                 Continue Review →
               </button>

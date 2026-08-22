@@ -48,7 +48,7 @@ export default function CertificateRecipientReview({ eligibilityData, selectedRe
           }`}
         >
           <div className="space-y-0.5">
-            <span className="text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+            <span className="text-[10px] font-extrabold text-emerald-800 dark:text-[#245F42] uppercase tracking-wider block">
               Eligible Attendees
             </span>
             <p className="text-xl font-extrabold text-slate-900 dark:text-white">
@@ -100,7 +100,7 @@ export default function CertificateRecipientReview({ eligibilityData, selectedRe
           <button
             type="button"
             onClick={selectAllEligible}
-            className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300 text-xs font-extrabold transition shrink-0 cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-900 dark:text-[#245F42] text-xs font-extrabold transition shrink-0 cursor-pointer"
           >
             Select All ({eligibleCount})
           </button>
@@ -145,7 +145,7 @@ export default function CertificateRecipientReview({ eligibilityData, selectedRe
                   </div>
 
                   {student.isEligible ? (
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-[#245F42] font-extrabold text-[10px] flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Verified Attendance
                     </span>

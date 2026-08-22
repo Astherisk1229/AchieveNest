@@ -25,7 +25,7 @@ export function DropdownMenuItem({ className = '', variant = 'default', children
     variant === 'destructive'
       ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 font-semibold'
       : variant === 'emerald'
-      ? 'text-[#1b4332] dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 font-semibold'
+      ? 'text-[#064e2b] dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 font-semibold'
       : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
 
   return (

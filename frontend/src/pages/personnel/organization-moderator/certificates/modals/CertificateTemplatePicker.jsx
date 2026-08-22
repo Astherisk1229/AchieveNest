@@ -37,7 +37,7 @@ export default function CertificateTemplatePicker({ templates = [], selectedTemp
               )}
 
               <div className="space-y-1.5 pr-6">
-                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] text-[10px] font-black uppercase tracking-wider">
                   {tpl.code} • {tpl.version}
                 </span>
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-white pt-1">

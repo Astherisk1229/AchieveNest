@@ -7,12 +7,13 @@ import React from 'react'
 
 export function Button({ variant = 'default', size = 'default', className = '', children, disabled = false, ...props }) {
   const variantStyles = {
-    default: 'bg-[#1b4332] text-white hover:bg-[#143823] dark:bg-emerald-600 dark:hover:bg-emerald-700 shadow-sm',
-    destructive: 'bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-700 dark:hover:bg-rose-800 shadow-sm',
-    outline: 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200',
-    secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700',
-    ghost: 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200',
-    link: 'text-[#2d8a4e] underline-offset-4 hover:underline dark:text-emerald-400 p-0 h-auto font-extrabold'
+    default: 'bg-[#176B43] text-white hover:bg-[#125536] border border-[#176B43] dark:bg-emerald-600 dark:hover:bg-emerald-700 shadow-xs focus-visible:ring-2 focus-visible:ring-[#176B43]/24',
+    destructive: 'bg-[#FFFFFF] text-[#B42318] border border-[#E6A5A5] hover:bg-[#FFF0F0] dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/60 shadow-xs',
+    outline: 'bg-white text-[#145C39] border border-[#69A97C] hover:bg-[#EAF4EC] hover:border-[#16834A] dark:bg-[#131e2e] dark:text-slate-200 dark:border-slate-800 shadow-xs',
+    secondary: 'bg-white text-[#174E31] border border-[#B8CDBD] hover:bg-[#F1F7F2] hover:border-[#6FA580] dark:bg-[#1D2A23] dark:text-slate-100 dark:border-[#374B3F] shadow-xs',
+    ghost: 'hover:bg-[#F5F8F3] dark:hover:bg-slate-800 text-[#145C39] dark:text-slate-200',
+    return: 'button-return',
+    link: 'text-[#16834A] underline-offset-4 hover:underline dark:text-emerald-400 p-0 h-auto font-extrabold'
   }
 
   const sizeStyles = {

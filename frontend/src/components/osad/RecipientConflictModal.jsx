@@ -65,7 +65,7 @@ export function RecipientConflictModal({
             </div>
 
             <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 space-y-1">
-              <span className="text-[10px] uppercase font-black text-[#2d8a4e] block">Proposed Replacement</span>
+              <span className="text-[10px] uppercase font-black text-[#16834a] block">Proposed Replacement</span>
               <h5 className="font-extrabold text-slate-900 dark:text-white">
                 {newCandidate.student_name || newCandidate.name}
               </h5>

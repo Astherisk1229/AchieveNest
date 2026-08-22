@@ -187,13 +187,13 @@ export function HRRankAssignmentLogsPage(props) {
   return (
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#DDE7DF] dark:border-[#374B3F]">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <FileCheck2 className="w-6 h-6 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-extrabold text-[#102A43] dark:text-[#E6EFE9] tracking-tight flex items-center gap-2">
+            <FileCheck2 className="w-6 h-6 text-[#176B43] dark:text-[#59AD7C] shrink-0" />
             <span>Rank Assignment Logs</span>
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 max-w-3xl">
+          <p className="text-xs text-[#4F6475] dark:text-[#B1C0B6] font-medium mt-0.5 max-w-3xl">
             Official institutional register of faculty academic rank assignments, promotions, reclassifications, and Board of Trustees approval resolutions.
           </p>
         </div>
@@ -202,21 +202,21 @@ export function HRRankAssignmentLogsPage(props) {
           type="button"
           onClick={handleExportCSV}
           disabled={filteredLogs.length === 0}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs shadow-2xs transition cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#159552] hover:bg-[#117A43] text-white font-extrabold text-xs shadow-xs border border-[#159552] transition cursor-pointer shrink-0 disabled:bg-[#E6ECE8] disabled:text-[#87958C] disabled:border-[#D4DED7] disabled:cursor-not-allowed"
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-4 h-4 text-white" />
           <span>Export Logs ({filteredLogs.length})</span>
         </button>
       </div>
 
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#1D2A23] border border-[#DCE6DF] dark:border-[#374B3F] shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-[#4F6475] dark:text-[#B1C0B6]">
             <span className="text-xs font-semibold">Total Logs Recorded</span>
-            <FileCheck2 className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
+            <FileCheck2 className="w-4 h-4 text-[#16834A] dark:text-[#59AD7C]" />
           </div>
-          <p className="text-2xl font-black text-slate-900 dark:text-white">{combinedRankLogs.length}</p>
+          <p className="text-2xl font-extrabold text-[#123D2A] dark:text-[#E6EFE9]">{combinedRankLogs.length}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Rank change transactions</p>
         </div>
 
@@ -263,7 +263,7 @@ export function HRRankAssignmentLogsPage(props) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by faculty name, employee ID, or rank title..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-[#69A97C]"
             />
             {search && (
               <button
@@ -280,7 +280,7 @@ export function HRRankAssignmentLogsPage(props) {
           <select
             value={deptFilter}
             onChange={e => setDeptFilter(e.target.value)}
-            className="w-full md:w-56 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#1b4332]"
+            className="w-full md:w-56 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Departments</option>
             <option value="Department of Computer Studies">Computer Studies</option>
@@ -293,7 +293,7 @@ export function HRRankAssignmentLogsPage(props) {
           <select
             value={actionFilter}
             onChange={e => setActionFilter(e.target.value)}
-            className="w-full md:w-48 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#1b4332]"
+            className="w-full md:w-48 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Action Types</option>
             <option value="Promotion">Promotion</option>
@@ -357,7 +357,7 @@ export function HRRankAssignmentLogsPage(props) {
                     <td className="p-4">
                       <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${
                         log.action_type === 'Promotion'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#245F42] border border-emerald-200 dark:border-emerald-800'
                           : log.action_type === 'Reclassification'
                           ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
                           : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
@@ -373,7 +373,7 @@ export function HRRankAssignmentLogsPage(props) {
                           {log.previous_rank}
                         </span>
                         <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-extrabold border border-emerald-200/60 dark:border-emerald-800/60" title={log.conferred_rank}>
+                        <span className="truncate px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-[#245F42] font-extrabold border border-emerald-200/60 dark:border-emerald-800/60" title={log.conferred_rank}>
                           {log.conferred_rank}
                         </span>
                       </div>

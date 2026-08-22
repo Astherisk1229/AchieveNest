@@ -19,7 +19,7 @@ export default function FinalizeVerificationModal({ submission, scores = {}, isO
         <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-150 font-sans">
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2 text-xs font-black text-[#1b4332] dark:text-emerald-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs font-black text-[#064e2b] dark:text-emerald-400 uppercase tracking-wider">
               <ShieldCheck className="w-4 h-4" />
               <span>Finalize Portfolio Verification</span>
             </div>
@@ -38,15 +38,15 @@ export default function FinalizeVerificationModal({ submission, scores = {}, isO
               Pre-Finalization Checklist
             </p>
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 text-xs font-medium text-slate-700 dark:text-slate-300">
-              <div className="flex items-center gap-2 text-[#1b4332] dark:text-emerald-400 font-bold">
+              <div className="flex items-center gap-2 text-[#064e2b] dark:text-emerald-400 font-bold">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>All submitted evidence items reviewed &amp; verified</span>
               </div>
-              <div className="flex items-center gap-2 text-[#1b4332] dark:text-emerald-400 font-bold">
+              <div className="flex items-center gap-2 text-[#064e2b] dark:text-emerald-400 font-bold">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>NDMU Rating Matrix criteria mapped &amp; point caps enforced</span>
               </div>
-              <div className="flex items-center gap-2 text-[#1b4332] dark:text-emerald-400 font-bold">
+              <div className="flex items-center gap-2 text-[#064e2b] dark:text-emerald-400 font-bold">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Official HR evaluation seal will be generated</span>
               </div>
@@ -54,8 +54,8 @@ export default function FinalizeVerificationModal({ submission, scores = {}, isO
           </div>
 
           {/* Score Summary Box */}
-          <div className="p-4 rounded-2xl bg-[#1b4332]/5 dark:bg-emerald-950/30 border border-[#1b4332]/20 dark:border-emerald-800 space-y-2">
-            <p className="text-[10px] uppercase font-black tracking-wider text-[#1b4332] dark:text-emerald-400">
+          <div className="p-4 rounded-2xl bg-[#EFF7F0]/5 dark:bg-emerald-950/30 border border-[#69A97C]/20 dark:border-emerald-800 space-y-2">
+            <p className="text-[10px] uppercase font-black tracking-wider text-[#064e2b] dark:text-emerald-400">
               Official Awarded Point Score Summary
             </p>
             <div className="grid grid-cols-3 gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold">
@@ -73,9 +73,9 @@ export default function FinalizeVerificationModal({ submission, scores = {}, isO
               </div>
             </div>
 
-            <div className="pt-2 border-t border-[#1b4332]/20 flex items-center justify-between">
+            <div className="pt-2 border-t border-[#69A97C]/20 flex items-center justify-between">
               <span className="text-xs font-black text-slate-900 dark:text-white uppercase">Grand Total Score</span>
-              <span className="text-base font-black text-[#1b4332] dark:text-emerald-400">
+              <span className="text-base font-black text-[#064e2b] dark:text-emerald-400">
                 {scores.grandTotalAwarded || 141} / 160 Points Max
               </span>
             </div>
@@ -93,7 +93,7 @@ export default function FinalizeVerificationModal({ submission, scores = {}, isO
             <button
               type="button"
               onClick={handleFinalize}
-              className="px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>Finalize &amp; Issue Official HR Seal</span>

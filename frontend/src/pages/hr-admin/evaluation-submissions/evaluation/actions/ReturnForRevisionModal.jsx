@@ -72,7 +72,7 @@ export default function ReturnForRevisionModal({ submission, isOpen, onClose, on
                     type="checkbox"
                     checked={reasons[item.key]}
                     onChange={() => {}}
-                    className="w-4 h-4 rounded text-[#1b4332] focus:ring-[#1b4332]"
+                    className="w-4 h-4 rounded text-[#064e2b] focus:ring-[#064e2b]"
                   />
                   <span>{item.label}</span>
                 </label>
@@ -90,7 +90,7 @@ export default function ReturnForRevisionModal({ submission, isOpen, onClose, on
                 value={remarks}
                 onChange={e => setRemarks(e.target.value)}
                 placeholder="Specify exact instructions (e.g., 'Please re-upload a clear copy of your Ph.D. diploma and official transcript...')"
-                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#1b4332]"
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#69A97C]"
               />
             </div>
 

@@ -30,8 +30,8 @@ export default function EvaluationScoreStrip({ scores = {} }) {
         </span>
       </div>
 
-      <div className="px-3 py-1 rounded-xl bg-[#1b4332] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs">
-        <span className="text-[10px] text-emerald-300 uppercase tracking-wider">TOTAL</span>
+      <div className="px-3 py-1 rounded-xl bg-[#176B43] text-white font-extrabold text-xs flex items-center gap-1.5 shadow-2xs">
+        <span className="text-[10px] text-[#245F42] uppercase tracking-wider">TOTAL</span>
         <span className="text-xs font-black">{grandTotal} / 160 pts Max</span>
       </div>
     </div>

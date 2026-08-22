@@ -93,7 +93,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       issuer: 'IEEE Access Journal (Scopus Indexed)',
       description: 'Lead author on peer-reviewed Scopus research paper detailing automated evaluation metrics for student submission code bases.',
       icon: BookOpen,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
+      iconColor: 'text-[#16834a] bg-[#E7F3E9] border-[#cbe6d2]',
       attached_file_name: 'ieee_paper_scopus_santos_2026.pdf'
     },
     {
@@ -121,7 +121,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       issuer: 'NDMU Extension & Community Involvement Office',
       description: 'Lead proponent for digital literacy training program for barangay officials in Koronadal City.',
       icon: Building2,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
+      iconColor: 'text-[#16834a] bg-[#E7F3E9] border-[#cbe6d2]',
       attached_file_name: 'community_extension_report.pdf'
     },
     {
@@ -135,7 +135,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       issuer: 'Notre Dame of Marbel University',
       description: 'University-wide recognition for high research publication output and Scopus citation index.',
       icon: Award,
-      iconColor: 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]',
+      iconColor: 'text-[#16834a] bg-[#E7F3E9] border-[#cbe6d2]',
       attached_file_name: 'outstanding_researcher_award.pdf'
     },
     {
@@ -197,18 +197,18 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
         <div className="space-y-8 font-sans">
 
           {/* ================= HERO SUMMARY BANNER ================= */}
-          <div className="bg-[#4F7942] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#3f6334] relative overflow-hidden">
+          <div className="bg-[#EFF7F0] p-6 sm:p-8 rounded-3xl shadow-xs border border-[#69A97C] relative overflow-hidden">
 
             <div className="flex items-start justify-between mb-8 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#395c2f] border border-emerald-300/30 flex items-center justify-center text-white shadow-lg shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[#149653] border border-emerald-300/30 flex items-center justify-center text-white shadow-md shrink-0">
                   <Award className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-extrabold text-white tracking-tight">Personnel Professional Portfolio</h1>
+                    <h1 className="text-2xl font-extrabold text-[#17663B] tracking-tight">Personnel Professional Portfolio</h1>
                   </div>
-                  <p className="text-xs text-emerald-100/90 font-medium mt-0.5">
+                  <p className="text-xs text-[#245F42] font-medium mt-0.5">
                     {profile.full_name} • {profile.employee_id} • {profile.department}
                   </p>
                 </div>
@@ -217,62 +217,24 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
               <button
                 type="button"
                 onClick={() => setIsBarcodeOpen(true)}
-                className="px-3 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white flex items-center gap-2 transition text-xs font-bold shadow-md group shrink-0"
+                className="px-3 py-2 rounded-2xl bg-[#149653] hover:bg-[#125536] border border-[#149653] text-white flex items-center gap-2 transition text-xs font-bold shadow-xs group shrink-0"
                 title="Click to expand Faculty Digital ID Barcode"
               >
-                <QrCode className="w-4 h-4 text-amber-300 group-hover:scale-110 transition" />
+                <QrCode className="w-4 h-4 text-white group-hover:scale-110 transition" />
                 <span className="hidden sm:inline">Digital ID Barcode</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 relative z-10 w-full">
-              {/* Card 1: Total Accomplishments */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 relative z-10 w-full">
+              {/* Card 1: Attached Proof Files */}
               <Link
                 to="/personnel/portfolio/edit"
-                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-md hover:shadow-lg transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
+                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
               >
-                {/* Left Vertical Accent Line */}
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#2d8a4e] rounded-r-full"></div>
-
-                {/* Top Row: Icon + Title Beside Each Other */}
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#edf7ef] dark:bg-emerald-950/80 text-[#2d8a4e] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Award className="w-4.5 h-4.5 stroke-[2.2]" />
-                  </div>
-                  <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
-                    Accomplishments
-                  </h3>
-                </div>
-
-                {/* Metrics Row */}
-                <div className="translate-x-2.5 flex items-center gap-2 z-10 relative">
-                  <span className="text-xl sm:text-2xl font-extrabold text-[#2d8a4e] dark:text-emerald-400 font-heading leading-none">
-                    {accomplishments.length}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#edf7ef] dark:bg-emerald-950/80 text-[#2d8a4e] dark:text-emerald-300 text-[13px] font-bold">
-                    Records
-                  </span>
-                </div>
-
-                {/* Bottom-Right Leaf Watermark */}
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#2d8a4e] dark:text-emerald-400">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                    <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
-                    <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M50 70 Q 35 52 24 58 M50 70 C 38 60 30 55 24 58" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </Link>
-
-              {/* Card 2: Attached Proof Files */}
-              <Link
-                to="/personnel/portfolio/edit"
-                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-md hover:shadow-lg transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
-              >
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#2d8a4e] rounded-r-full"></div>
+                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] rounded-r-full"></div>
 
                 <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#edf7ef] dark:bg-emerald-950/80 text-[#2d8a4e] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <FileCheck2 className="w-4.5 h-4.5 stroke-[2.2]" />
                   </div>
                   <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
@@ -281,15 +243,15 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="translate-x-2.5 flex items-center gap-2 z-10 relative">
-                  <span className="text-xl sm:text-2xl font-extrabold text-[#2d8a4e] dark:text-emerald-400 font-heading leading-none">
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#159552] dark:text-emerald-400 font-heading leading-none">
                     {accomplishments.filter(a => a.proof_file || a.attached_file_name).length}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#edf7ef] dark:bg-emerald-950/80 text-[#2d8a4e] dark:text-emerald-300 text-[13px] font-bold">
-                    Files
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#17663B] dark:text-[#245F42] text-[13px] font-bold">
+                    Proof PDFs
                   </span>
                 </div>
 
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#2d8a4e] dark:text-emerald-400">
+                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#159552] dark:text-emerald-400">
                   <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
                     <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
                     <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
@@ -298,12 +260,12 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
               </Link>
 
-              {/* Card 3: Evaluation Period */}
-              <div className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-md transition-all duration-200 text-left overflow-hidden flex flex-col justify-between w-full">
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#2d8a4e] rounded-r-full"></div>
+              {/* Card 2: Evaluation Period */}
+              <div className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs transition-all duration-200 text-left overflow-hidden flex flex-col justify-between w-full">
+                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] rounded-r-full"></div>
 
                 <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#edf7ef] dark:bg-emerald-950/80 text-[#2d8a4e] dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0">
                     <BookOpen className="w-4.5 h-4.5 stroke-[2.2]" />
                   </div>
                   <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
@@ -312,13 +274,13 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="flex items-center z-10 relative">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#2d8a4e]/40 dark:border-emerald-500/40 text-[#2d8a4e] dark:text-emerald-300 text-[13px] font-bold bg-white dark:bg-slate-900">
-                    <span className="w-2 h-2 rounded-full bg-[#2d8a4e] dark:bg-emerald-400"></span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#159552]/40 dark:border-emerald-500/40 text-[#17663B] dark:text-[#245F42] text-[13px] font-bold bg-white dark:bg-slate-900">
+                    <span className="w-2 h-2 rounded-full bg-[#159552] dark:bg-emerald-400"></span>
                     AY 2025–2026
                   </span>
                 </div>
 
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#2d8a4e] dark:text-emerald-400">
+                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#159552] dark:text-emerald-400">
                   <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
                     <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
                     <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
@@ -327,15 +289,15 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
               </div>
 
-              {/* Card 4: Portfolio Status */}
+              {/* Card 3: Portfolio Status */}
               <Link
                 to="/personnel/portfolio"
-                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-md hover:shadow-lg transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
+                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
               >
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#2d8a4e] rounded-r-full"></div>
+                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] rounded-r-full"></div>
 
                 <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#edf7ef] dark:bg-emerald-950/80 text-[#2d8a4e] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <ShieldCheck className="w-4.5 h-4.5 stroke-[2.2]" />
                   </div>
                   <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
@@ -344,12 +306,12 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="flex items-center z-10 relative">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${portfolio?.status === 'HR_APPROVED' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${portfolio?.status === 'HR_APPROVED' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-[#245F42]' :
                     portfolio?.status === 'ENDORSED_TO_HR' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
                       portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
                         'border-amber-400 bg-amber-50/80 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                     }`}>
-                    <span className={`w-2 h-2 rounded-full ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#2d8a4e]' :
+                    <span className={`w-2 h-2 rounded-full ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#16834a]' :
                       portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-500' :
                         'bg-amber-500 animate-pulse'
                       }`}></span>
@@ -361,7 +323,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   </span>
                 </div>
 
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#2d8a4e] dark:text-emerald-400">
+                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#16834a] dark:text-emerald-400">
                   <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
                     <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
                     <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
@@ -379,7 +341,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
               <h2 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <span>Accomplishments Timeline</span>
                 {activeFilter !== 'All' && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] border border-[#cbe6d2] dark:border-emerald-800">
                     Filtered: {activeFilter}
                   </span>
                 )}
@@ -388,7 +350,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 <button
                   type="button"
                   onClick={() => setIsSubmitOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236c3d] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Log Accomplishment</span>
@@ -416,7 +378,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   type="button"
                   onClick={() => setActiveFilter(cat)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${activeFilter === cat
-                    ? 'bg-[#1b4332] text-white shadow-sm'
+                    ? 'bg-[#176B43] text-white shadow-sm'
                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                 >
@@ -440,7 +402,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                       className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
                       <div className="flex items-center gap-4 flex-1">
-                        <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#2d8a4e] bg-[#eef7f0] border-[#cbe6d2]'}`}>
+                        <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#16834a] bg-[#E7F3E9] border-[#cbe6d2]'}`}>
                           <IconComponent className="w-5 h-5" />
                         </div>
                         <div>
@@ -451,7 +413,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                             <span className="text-slate-300 dark:text-slate-700">•</span>
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.status === 'Verified'
-                                ? 'bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1e5831] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800'
+                                ? 'bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] border border-[#cbe6d2] dark:border-emerald-800'
                                 : item.status === 'Endorsed'
                                   ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                                   : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -471,10 +433,10 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                           onClick={() => alert(`Viewing attached proof: ${item.attached_file_name}`)}
                           className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition"
                         >
-                          <FileCheck2 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+                          <FileCheck2 className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" />
                           <span>Proof</span>
                         </button>
-                        <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800 shrink-0">
+                        <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-[#245F42] border border-emerald-100 dark:border-emerald-800 shrink-0">
                           {item.category}
                         </span>
                       </div>

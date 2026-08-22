@@ -81,13 +81,13 @@ export default function NotificationPopover() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#2d8a4e] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
+        className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#16834a] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
         aria-label="Notifications"
         title="Notification Center"
       >
         <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#2d8a4e] text-white font-black text-[10px] flex items-center justify-center shadow-xs animate-pulse border border-white dark:border-slate-900">
+          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#16834a] text-white font-black text-[10px] flex items-center justify-center shadow-xs animate-pulse border border-white dark:border-slate-900">
             {unreadCount}
           </span>
         )}
@@ -102,7 +102,7 @@ export default function NotificationPopover() {
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Notifications Center</h3>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
                     {unreadCount} new
                   </span>
                 )}
@@ -111,7 +111,7 @@ export default function NotificationPopover() {
                 <button
                   type="button"
                   onClick={markAllRead}
-                  className="text-xs text-[#2d8a4e] dark:text-emerald-400 hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                  className="text-xs text-[#16834a] dark:text-emerald-400 hover:underline flex items-center gap-1 font-bold cursor-pointer"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
                   Mark read
@@ -131,17 +131,17 @@ export default function NotificationPopover() {
                     className={`w-full p-3 rounded-2xl border text-left transition cursor-pointer group flex items-start justify-between gap-2 ${
                       notif.is_read 
                         ? 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 opacity-75 hover:opacity-100' 
-                        : 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 hover:border-[#2d8a4e]'
+                        : 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 hover:border-[#16834a]'
                     }`}
                   >
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 transition truncate">{notif.title}</span>
+                        <span className="text-xs font-extrabold text-slate-900 dark:text-white group-hover:text-[#16834a] dark:group-hover:text-emerald-400 transition truncate">{notif.title}</span>
                         <span className="text-[10px] text-slate-400 shrink-0">{notif.time}</span>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">{notif.message}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#2d8a4e] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition shrink-0 mt-1" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#16834a] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition shrink-0 mt-1" />
                   </button>
                 ))
               )}
@@ -160,7 +160,7 @@ export default function NotificationPopover() {
                     : '/personnel/notifications'
                   navigate(targetNotifPath)
                 }}
-                className="font-extrabold text-[#2d8a4e] dark:text-emerald-400 hover:underline cursor-pointer"
+                className="font-extrabold text-[#16834a] dark:text-emerald-400 hover:underline cursor-pointer"
               >
                 View all →
               </button>

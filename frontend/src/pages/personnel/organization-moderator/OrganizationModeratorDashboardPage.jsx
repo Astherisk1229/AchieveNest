@@ -286,11 +286,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
       {/* Copied Toast Notification */}
       {showCopiedToast && (
-        <div className="fixed top-20 right-6 z-50 bg-[#1b4332] text-white px-5 py-3 rounded-2xl shadow-2xl border border-emerald-400/30 flex items-center gap-3 animate-in fade-in slide-in-from-top duration-300">
+        <div className="fixed top-20 right-6 z-50 bg-[#176B43] text-white px-5 py-3 rounded-2xl shadow-2xl border border-emerald-400/30 flex items-center gap-3 animate-in fade-in slide-in-from-top duration-300">
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
           <div>
             <p className="text-xs font-extrabold">Officer Scanner Link Copied!</p>
-            <p className="text-[10px] text-emerald-200">Forward link to Student Officers to scan student barcodes.</p>
+            <p className="text-[10px] text-[#245F42]">Forward link to Student Officers to scan student barcodes.</p>
           </div>
         </div>
       )}
@@ -318,7 +318,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                 <button
                   onClick={() => handleGoToAttendanceSession(selectedEventDetail.id)}
-                  className="px-3.5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5 text-white" />
                   <span>Go to Attendance Session</span>
@@ -326,7 +326,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                 <button
                   onClick={() => handleOpenEditModal(selectedEventDetail)}
-                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 hover:text-[#2d8a4e] border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 hover:text-[#16834a] border border-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Edit className="w-3.5 h-3.5 text-slate-500" />
                   <span>Edit Event</span>
@@ -396,7 +396,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                   <div className="space-y-2.5 text-xs font-medium text-slate-700">
                     <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                      <Calendar className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+                      <Calendar className="w-4 h-4 text-[#16834a] shrink-0" />
                       <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase">Date</p>
                         <p className="font-extrabold text-slate-900">{selectedEventDetail.date}</p>
@@ -404,7 +404,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     </div>
 
                     <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                      <Clock className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+                      <Clock className="w-4 h-4 text-[#16834a] shrink-0" />
                       <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase">Time Schedule</p>
                         <p className="font-extrabold text-slate-900">{selectedEventDetail.time}</p>
@@ -412,7 +412,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     </div>
 
                     <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                      <MapPin className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+                      <MapPin className="w-4 h-4 text-[#16834a] shrink-0" />
                       <div>
                         <p className="text-[10px] text-slate-400 font-bold uppercase">Venue Location</p>
                         <p className="font-extrabold text-slate-900">{selectedEventDetail.venue}</p>
@@ -432,7 +432,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100">
                     <div className="flex items-center gap-2 text-xs">
-                      <Building2 className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+                      <Building2 className="w-4 h-4 text-[#16834a] shrink-0" />
                       <div>
                         <span className="font-bold text-slate-500">Target Audience: </span>
                         <span className="font-extrabold text-slate-900">{selectedEventDetail.target_audience || 'All NDMU Students & Faculty'}</span>
@@ -446,7 +446,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         setShowCopiedToast(true)
                         setTimeout(() => setShowCopiedToast(false), 3000)
                       }}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>Copy Officer Scanner Link</span>
@@ -461,13 +461,13 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Users className="w-4.5 h-4.5 text-[#2d8a4e]" />
+                  <Users className="w-4.5 h-4.5 text-[#16834a]" />
                   Attendance Statistics & Live Session Status
                 </h3>
 
                 <button
                   onClick={() => handleGoToAttendanceSession(selectedEventDetail.id)}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-xs"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-xs"
                 >
                   <QrCode className="w-3.5 h-3.5 text-white" />
                   <span>Manage Attendance Session</span>
@@ -477,7 +477,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Total Verified Attendees</p>
-                  <p className="text-xl font-extrabold text-[#2d8a4e] mt-1">
+                  <p className="text-xl font-extrabold text-[#16834a] mt-1">
                     {selectedEventDetail.participants_count} Checked-In
                   </p>
                   <p className="text-[10px] text-slate-500 mt-1 font-medium">
@@ -503,7 +503,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     href={`/scanner/${selectedEventDetail.id}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs font-mono font-bold text-[#2d8a4e] hover:underline flex items-center gap-1 mt-1 truncate"
+                    className="text-xs font-mono font-bold text-[#16834a] hover:underline flex items-center gap-1 mt-1 truncate"
                   >
                     <span>/scanner/{selectedEventDetail.id}</span>
                     <ExternalLink className="w-3 h-3 shrink-0" />
@@ -516,7 +516,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <Award className="w-4.5 h-4.5 text-[#2d8a4e]" />
+                  <Award className="w-4.5 h-4.5 text-[#16834a]" />
                   Official OSAD Certificate & Accreditation Setup
                 </h3>
                 <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5 self-start sm:self-auto">
@@ -552,10 +552,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       {/* Signatory 1 Upload Row */}
                       <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-100 shadow-2xs">
                         <p className="font-extrabold text-slate-800 flex items-center gap-1.5 truncate">
-                          <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e] shrink-0" />
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
                           <span className="truncate">{selectedEventDetail.signatory_1 || 'Dr. Ana Reyes (Club Moderator)'}</span>
                         </p>
-                        <label className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#2d8a4e] border border-emerald-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shrink-0">
+                        <label className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#16834a] border border-emerald-200 text-[10px] font-bold cursor-pointer transition flex items-center gap-1 shrink-0">
                           <Upload className="w-3 h-3" />
                           <span>Upload PNG</span>
                           <input
@@ -625,7 +625,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                     <div className="space-y-1 relative z-10">
                       <p className="text-[10px] text-slate-500 italic">This official digital certificate is proudly presented to</p>
-                      <h3 className="text-base font-extrabold text-[#2d8a4e] underline decoration-amber-500 decoration-2 underline-offset-4">
+                      <h3 className="text-base font-extrabold text-[#16834a] underline decoration-amber-500 decoration-2 underline-offset-4">
                         [STUDENT PARTICIPANT FULL NAME]
                       </h3>
                     </div>
@@ -711,7 +711,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                  <ShieldCheck className="w-4.5 h-4.5 text-[#2d8a4e]" />
+                  <ShieldCheck className="w-4.5 h-4.5 text-[#16834a]" />
                   Scanned Participant Roster & Verified Officer Logs
                 </h3>
 
@@ -724,7 +724,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     placeholder="Search roster..."
                     value={rosterSearchTerm}
                     onChange={(e) => setRosterSearchTerm(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#16834a]"
                   />
                 </div>
               </div>
@@ -791,7 +791,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             {/* Header Card */}
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#16834a] border border-emerald-100 flex items-center justify-center shrink-0">
                   <Calendar className="w-6 h-6" />
                 </div>
                 <div>
@@ -802,7 +802,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
               <button
                 onClick={handleOpenCreateModal}
-                className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 self-start sm:self-auto cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Event</span>
@@ -822,7 +822,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   placeholder="Search events..."
                   value={eventsSearchTerm}
                   onChange={(e) => setEventsSearchTerm(e.target.value)}
-                  className="w-full pl-9.5 pr-4 py-2 rounded-2xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#2d8a4e] transition"
+                  className="w-full pl-9.5 pr-4 py-2 rounded-2xl border border-slate-200 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#16834a] transition"
                 />
               </div>
 
@@ -831,8 +831,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 <button
                   onClick={() => setEventsFilter('All')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'All'
-                    ? 'bg-[#2d8a4e] text-white shadow-xs'
-                    : 'bg-[#eef7f0] text-slate-700 hover:bg-emerald-100'
+                    ? 'bg-[#16834a] text-white shadow-xs'
+                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
                     }`}
                 >
                   All ({allEventsCount - archivedCount})
@@ -841,8 +841,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 <button
                   onClick={() => setEventsFilter('Upcoming')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Upcoming'
-                    ? 'bg-[#2d8a4e] text-white shadow-xs'
-                    : 'bg-[#eef7f0] text-slate-700 hover:bg-emerald-100'
+                    ? 'bg-[#16834a] text-white shadow-xs'
+                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
                     }`}
                 >
                   Upcoming ({upcomingCount})
@@ -851,8 +851,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 <button
                   onClick={() => setEventsFilter('Ongoing')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Ongoing'
-                    ? 'bg-[#2d8a4e] text-white shadow-xs'
-                    : 'bg-[#eef7f0] text-slate-700 hover:bg-emerald-100'
+                    ? 'bg-[#16834a] text-white shadow-xs'
+                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
                     }`}
                 >
                   Ongoing ({ongoingCount})
@@ -861,8 +861,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 <button
                   onClick={() => setEventsFilter('Completed')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Completed'
-                    ? 'bg-[#2d8a4e] text-white shadow-xs'
-                    : 'bg-[#eef7f0] text-slate-700 hover:bg-emerald-100'
+                    ? 'bg-[#16834a] text-white shadow-xs'
+                    : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
                     }`}
                 >
                   Completed ({completedCount})
@@ -901,7 +901,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       </div>
 
                       <div className="min-w-0 space-y-1">
-                        <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-[#2d8a4e] transition truncate">
+                        <h3 className="font-extrabold text-sm text-slate-900 group-hover:text-[#16834a] transition truncate">
                           {evt.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-medium">
@@ -943,15 +943,15 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                       <button
                         onClick={() => handleViewEventDetails(evt)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#2d8a4e] border border-emerald-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#16834a] border border-emerald-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
                       >
-                        <Eye className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                        <Eye className="w-3.5 h-3.5 text-[#16834a]" />
                         <span>Preview</span>
                       </button>
 
                       <button
                         onClick={() => handleGoToAttendanceSession(evt.id)}
-                        className="px-3 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                        className="px-3 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-2xs"
                       >
                         <QrCode className="w-3.5 h-3.5 text-white" />
                         <span>Attendance</span>
@@ -986,7 +986,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           {/* Top Header Card with Clean Event Selector */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#16834a] border border-emerald-100 flex items-center justify-center shrink-0">
                 <QrCode className="w-6 h-6" />
               </div>
               <div>
@@ -1005,7 +1005,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               <select
                 value={activeAttendanceEvtId}
                 onChange={(e) => setActiveAttendanceEvtId(e.target.value)}
-                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#2d8a4e] cursor-pointer shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#16834a] cursor-pointer shadow-xs"
               >
                 {events.filter(e => e.status !== 'Archived').map(evt => (
                   <option key={evt.id} value={evt.id}>{evt.title}</option>
@@ -1015,14 +1015,14 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           </div>
 
           {/* Share Officer Scanner Access Link Box */}
-          <div className="bg-[#1b4332] text-white p-6 sm:p-7 rounded-3xl shadow-xl border border-[#245233] space-y-4 relative overflow-hidden">
+          <div className="bg-[#EFF7F0] text-[#17663B] p-6 sm:p-7 rounded-3xl shadow-xl border border-[#69A97C] space-y-4 relative overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
               <div className="space-y-1">
-                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider">
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-[#245F42] border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider">
                   OFFICER ACCESS LINK GENERATED
                 </span>
                 <h3 className="text-lg font-extrabold text-white">Share Scanner Link with Student Officers</h3>
-                <p className="text-xs text-emerald-200/80">
+                <p className="text-xs text-[#245F42]/80">
                   Forward this link to assigned Student Officers standing at entrance gates to scan student barcodes.
                 </p>
               </div>
@@ -1030,7 +1030,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                 <button
                   onClick={handleCopyOfficerLink}
-                  className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
                 >
                   <Copy className="w-4 h-4" />
                   <span>Copy Officer Link</span>
@@ -1042,14 +1042,14 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   rel="noreferrer"
                   className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition border border-white/20 flex items-center gap-2 cursor-pointer"
                 >
-                  <ExternalLink className="w-4 h-4 text-emerald-300" />
+                  <ExternalLink className="w-4 h-4 text-[#245F42]" />
                   <span>Open Mobile Scanner Tab</span>
                 </a>
               </div>
             </div>
 
             {/* Display Link Container */}
-            <div className="p-3.5 rounded-2xl bg-[#0c2416] border border-[#1e4a30] font-mono text-xs text-emerald-300 flex items-center justify-between gap-2 overflow-x-auto relative z-10">
+            <div className="p-3.5 rounded-2xl bg-[#EFF7F0] border border-[#69A97C] font-mono text-xs text-[#245F42] flex items-center justify-between gap-2 overflow-x-auto relative z-10">
               <span className="truncate">{window.location.origin}/scanner/{activeAttendanceEvtId}</span>
               <span className="text-[10px] font-sans font-bold text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-md shrink-0 border border-emerald-800">
                 Window: {session?.attendance_start_time || '08:30'} - {session?.attendance_end_time || '09:30'}
@@ -1079,7 +1079,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 {session?.session_status !== 'Active' && (
                   <button
                     onClick={() => handleSessionControl('Active')}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-50 text-[#2d8a4e] hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-50 text-[#16834a] hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <Unlock className="w-3.5 h-3.5" />
                     <span>Force Open Session</span>
@@ -1119,7 +1119,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <Users className="w-4.5 h-4.5 text-[#2d8a4e]" />
+                  <Users className="w-4.5 h-4.5 text-[#16834a]" />
                   Live Scanned Participant Stream ({(session?.scanned_list || []).length} Checked In)
                 </h3>
                 <span className="text-xs text-slate-500 font-medium">Auto-synced live</span>
@@ -1176,24 +1176,24 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
         <div className="space-y-6 animate-in fade-in duration-200">
 
           {/* Top Hero Organization Header Card */}
-          <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
+          <div className="bg-[#EFF7F0] text-[#17663B] p-6 sm:p-8 rounded-3xl shadow-xl border border-[#69A97C] relative overflow-hidden">
 
             {/* Background Glow */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
+                <div className="w-14 h-14 rounded-2xl bg-[#16834a] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
                   <Building2 className="w-7 h-7 text-white" />
                 </div>
                 <div className="space-y-0.5">
                   <h1 className="text-2xl font-extrabold text-white tracking-tight">
                     {profileData.name}
                   </h1>
-                  <p className="text-xs font-bold text-emerald-200/80 uppercase tracking-wider">
+                  <p className="text-xs font-bold text-[#245F42]/80 uppercase tracking-wider">
                     {profileData.code}
                   </p>
-                  <p className="text-xs text-emerald-200/90 font-medium pt-0.5">
+                  <p className="text-xs text-[#245F42] font-medium pt-0.5">
                     Adviser: {profileData.moderator_name}
                   </p>
                 </div>
@@ -1205,14 +1205,14 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     onClick={() => setIsEditingProfile(true)}
                     className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition flex items-center gap-2 cursor-pointer shadow-xs"
                   >
-                    <Edit className="w-4 h-4 text-emerald-300" />
+                    <Edit className="w-4 h-4 text-[#245F42]" />
                     <span>Edit Profile</span>
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleSaveProfile}
-                      className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-1.5 cursor-pointer"
                     >
                       <Check className="w-4 h-4" />
                       <span>Save Changes</span>
@@ -1232,7 +1232,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           {/* Section 1: Organization Information Card */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="w-8 h-8 rounded-full bg-emerald-100/80 text-[#2d8a4e] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-emerald-100/80 text-[#16834a] flex items-center justify-center">
                 <Building2 className="w-4 h-4" />
               </div>
               <h3 className="text-base font-extrabold text-slate-900">
@@ -1252,7 +1252,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     type="text"
                     value={profileData.name}
                     onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-sm font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-sm font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
                   />
                 ) : (
                   <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-sm font-extrabold text-slate-800">
@@ -1271,7 +1271,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     rows={3}
                     value={profileData.description}
                     onChange={(e) => setProfileData({ ...profileData, description: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-medium text-slate-800 focus:outline-none focus:border-[#2d8a4e] leading-relaxed"
+                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] leading-relaxed"
                   />
                 ) : (
                   <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-medium text-slate-800 leading-relaxed">
@@ -1290,7 +1290,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     type="email"
                     value={profileData.contact_email}
                     onChange={(e) => setProfileData({ ...profileData, contact_email: e.target.value })}
-                    className="w-full max-w-md px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full max-w-md px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
                   />
                 ) : (
                   <div className="w-full max-w-md px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-bold text-slate-800">
@@ -1309,7 +1309,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     type="text"
                     value={profileData.college_dept}
                     onChange={(e) => setProfileData({ ...profileData, college_dept: e.target.value })}
-                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
                   />
                 ) : (
                   <div className="w-full px-4 py-3.5 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-bold text-slate-800">
@@ -1329,7 +1329,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       type="text"
                       value={profileData.facebook_url}
                       onChange={(e) => setProfileData({ ...profileData, facebook_url: e.target.value })}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-medium text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                      className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a]"
                     />
                   ) : (
                     <div className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-medium text-slate-800 truncate">
@@ -1347,7 +1347,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       type="text"
                       value={profileData.moderator_name}
                       onChange={(e) => setProfileData({ ...profileData, moderator_name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                      className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#c5e4cb] text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#16834a]"
                     />
                   ) : (
                     <div className="w-full px-4 py-3 rounded-2xl bg-[#eaf4ed] border border-[#d2e8d7] text-xs font-extrabold text-slate-800">
@@ -1364,7 +1364,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100 flex items-center justify-center font-bold shadow-xs">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#16834a] border border-emerald-100 flex items-center justify-center font-bold shadow-xs">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -1394,7 +1394,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <div className="h-10 flex items-center justify-center flex-1">
                     <img src={vaultSignatures.signatory_1_img || DEFAULT_SIG_1_IMG} alt="Sig 1" className="h-9 max-w-[140px] object-contain" />
                   </div>
-                  <label className="px-3 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs">
+                  <label className="px-3 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs">
                     <Upload className="w-3.5 h-3.5" />
                     <span>Upload PNG</span>
                     <input
@@ -1439,7 +1439,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-md flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-11 h-11 rounded-2xl bg-[#16834a] text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Mail className="w-5 h-5 text-white" />
               </div>
               <div className="truncate">
@@ -1449,7 +1449,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-md flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-11 h-11 rounded-2xl bg-[#16834a] text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Share2 className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -1476,22 +1476,19 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
         <div className="space-y-8 animate-in fade-in duration-200">
 
           {/* Hero Organization Banner Card */}
-          <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
-
-            {/* Background Glow */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="bg-[#EFF7F0] dark:bg-[#21372A] p-6 sm:p-8 rounded-3xl shadow-xl border border-[#69A97C] dark:border-[#466B54] relative overflow-hidden">
 
             {/* Top Organization Header Row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[#159552] border border-emerald-400/30 flex items-center justify-center text-white shadow-md shrink-0">
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-[#17663B] dark:text-[#EFF6F1] tracking-tight">
                     {orgInfo.name}
                   </h1>
-                  <p className="text-xs text-emerald-200/90 font-medium">
+                  <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
                     {orgInfo.department} • {orgInfo.academic_year}
                   </p>
                 </div>
@@ -1500,9 +1497,9 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               <div className="flex items-center gap-3 self-end sm:self-auto">
                 <button
                   onClick={handleDashboardCreateEvent}
-                  className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-[#159552] hover:bg-[#117A43] text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4 text-white" />
                   <span>Create Event</span>
                 </button>
                 <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
@@ -1524,11 +1521,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
                 title="Click to Manage All Events"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Calendar className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">EVENTS (AY 25-26)</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">EVENTS (AY 25-26)</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.events_this_year}</p>
                 </div>
               </button>
@@ -1539,11 +1536,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
                 title="Click to Monitor Live Attendance Sessions"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">TOTAL ATTENDEES</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">TOTAL ATTENDEES</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.total_participants}</p>
                 </div>
               </button>
@@ -1554,11 +1551,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
                 title="Click to Preview & Issue Digital Certificates"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Award className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">DIGITAL CERTS ISSUED</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">DIGITAL CERTS ISSUED</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.certs_issued}</p>
                 </div>
               </button>
@@ -1569,11 +1566,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
                 title="Click to View Organization Profile & Roster"
               >
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#2d8a4e] group-hover:bg-[#2d8a4e] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <TrendingUp className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#2d8a4e] transition">REGISTERED MEMBERS</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">REGISTERED MEMBERS</p>
                   <p className="text-xl font-extrabold text-slate-900">{metrics.active_members}</p>
                 </div>
               </button>
@@ -1593,7 +1590,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleOpenScanner()}
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-[#2d8a4e] hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-[#16834a] hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   <span>Live Attendance Scanner</span>
@@ -1654,7 +1651,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
                       {/* Title overlay */}
                       <div className="relative z-10 max-w-[70%] self-end">
-                        <h3 className="font-extrabold text-lg text-white leading-tight drop-shadow-xs group-hover:text-emerald-300 transition">
+                        <h3 className="font-extrabold text-lg text-white leading-tight drop-shadow-xs group-hover:text-[#245F42] transition">
                           {evt.title}
                         </h3>
                       </div>
@@ -1686,7 +1683,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       <div className="pt-3 border-t border-slate-100 space-y-3">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-bold text-slate-500">Total Participants</span>
-                          <span className="font-extrabold text-[#2d8a4e] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{evt.participants_count} checked in</span>
+                          <span className="font-extrabold text-[#16834a] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">{evt.participants_count} checked in</span>
                         </div>
 
                         <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
@@ -1696,7 +1693,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                               setSearchParams({ tab: 'events' })
                               handleViewEventDetails(evt)
                             }}
-                            className="flex-1 py-2 px-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-[#2d8a4e] text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                            className="flex-1 py-2 px-3 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-[#16834a] text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5 text-slate-500" />
                             <span>Preview</span>
@@ -1705,7 +1702,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                           <button
                             type="button"
                             onClick={() => handleGoToAttendanceSession(evt.id)}
-                            className="flex-1 py-2 px-3 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                            className="flex-1 py-2 px-3 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                           >
                             <QrCode className="w-3.5 h-3.5 text-white" />
                             <span>Attendance</span>
@@ -1793,7 +1790,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                       handleSessionControl(confirmModalAction)
                       setConfirmModalAction(null)
                     }}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white ${confirmModalAction === 'Closed' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#2d8a4e] hover:bg-[#236e3e]'
+                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white ${confirmModalAction === 'Closed' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#16834a] hover:bg-[#236e3e]'
                       }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />

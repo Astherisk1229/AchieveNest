@@ -80,7 +80,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
 
         {/* Modal Header */}
         <div className="flex items-center gap-3 mb-5 shrink-0">
-          <div className="p-3 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e]">
+          <div className="p-3 rounded-2xl bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a]">
             <UserCheck className="w-6 h-6" />
           </div>
           <div>
@@ -111,7 +111,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                 value={formData.full_name}
                 onChange={handleChange}
                 placeholder="e.g. Dr. Maria L. Santos, Ph.D."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                 required
               />
             </div>
@@ -127,7 +127,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                 value={formData.employee_id}
                 onChange={handleChange}
                 placeholder="e.g. EMP-2021-0842"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition bg-slate-50"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition bg-slate-50"
                 readOnly
               />
             </div>
@@ -147,7 +147,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                   value={formData.designation}
                   onChange={handleChange}
                   placeholder="e.g. Associate Professor & Research Head"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                   required
                 />
               </div>
@@ -166,7 +166,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                   value={formData.department}
                   onChange={handleChange}
                   placeholder="e.g. College of Information Technology"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                   required
                 />
               </div>
@@ -187,7 +187,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                   value={formData.educational_attainment}
                   onChange={handleChange}
                   placeholder="e.g. Ph.D. in Computer Science"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                 />
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                 value={formData.years_of_service}
                 onChange={handleChange}
                 placeholder="e.g. 8 Years"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
               />
             </div>
           </div>
@@ -222,7 +222,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                   value={formData.contact_number}
                   onChange={handleChange}
                   placeholder="e.g. +63 917 123 4567"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                 />
               </div>
             </div>
@@ -240,7 +240,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="e.g. maria.santos@ndmu.edu.ph"
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                 />
               </div>
             </div>
@@ -259,7 +259,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
                 value={formData.location}
                 onChange={handleChange}
                 placeholder="e.g. Koronadal City, South Cotabato"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
               />
             </div>
           </div>
@@ -276,7 +276,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
               onChange={handleChange}
               rows={3}
               placeholder="Provide a brief professional biography and introduction..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition resize-none"
             />
           </div>
 
@@ -291,7 +291,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
               onChange={handleChange}
               rows={2}
               placeholder="e.g. Artificial Intelligence, Data Science, Educational Technology..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition resize-none"
             />
           </div>
 
@@ -307,7 +307,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold shadow-md flex items-center gap-2 transition disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold shadow-md flex items-center gap-2 transition disabled:opacity-50"
             >
               {isSubmitting ? (
                 <span>Saving Changes...</span>

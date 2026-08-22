@@ -56,7 +56,7 @@ export default function ForbiddenPage() {
 
           <Link
             to={getHomePath()}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143426] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143426] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2"
           >
             <Home className="w-4 h-4" />
             <span>Return to Dashboard</span>

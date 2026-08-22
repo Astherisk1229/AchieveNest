@@ -156,10 +156,10 @@ export default function OfficerScannerPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-[#2d8a4e] selection:text-white pb-12">
+    <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-[#16834a] selection:text-white pb-12">
       
       {/* Top Mobile Gateway Bar */}
-      <div className="bg-[#1b4332] border-b border-[#245233] p-4 sticky top-0 z-40 shadow-xl">
+      <div className="bg-[#EFF7F0] border-b border-[#69A97C] p-4 sticky top-0 z-40 shadow-xl">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
@@ -171,7 +171,7 @@ export default function OfficerScannerPage() {
             </div>
             <div>
               <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight">AchieveNest Gateway</h1>
-              <p className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider">NDMU Student Officer Scanner</p>
+              <p className="text-[10px] text-[#245F42] font-bold uppercase tracking-wider">NDMU Student Officer Scanner</p>
             </div>
           </div>
 
@@ -307,7 +307,7 @@ export default function OfficerScannerPage() {
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Unlock className="w-4 h-4" />
                 <span>Authenticate Officer & Unlock Terminal</span>
@@ -353,11 +353,11 @@ export default function OfficerScannerPage() {
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-extrabold text-white text-xs">{activeOfficer.full_name}</span>
-                    <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-400/30">
+                    <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-[#245F42] text-[9px] font-extrabold border border-emerald-400/30">
                       ON DUTY
                     </span>
                   </div>
-                  <p className="text-[10px] text-emerald-300/80 font-medium">{activeOfficer.position}</p>
+                  <p className="text-[10px] text-[#245F42]/80 font-medium">{activeOfficer.position}</p>
                 </div>
               </div>
 
@@ -385,7 +385,7 @@ export default function OfficerScannerPage() {
               {/* Viewfinder Graphic */}
               <div className="w-40 h-40 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex flex-col items-center justify-center text-emerald-400 mx-auto relative group">
                 <QrCode className="w-16 h-16 animate-pulse text-emerald-400" />
-                <span className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mt-2">WebCam Active</span>
+                <span className="text-[10px] font-bold text-[#245F42]/80 uppercase tracking-widest mt-2">WebCam Active</span>
                 
                 {/* Laser scan line animation */}
                 <div className="absolute inset-x-0 h-0.5 bg-emerald-400 shadow-[0_0_12px_#34d399] animate-bounce top-1/2"></div>
@@ -407,7 +407,7 @@ export default function OfficerScannerPage() {
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shrink-0 cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shrink-0 cursor-pointer"
                   >
                     Scan ID
                   </button>
@@ -428,21 +428,21 @@ export default function OfficerScannerPage() {
                   <button
                     type="button"
                     onClick={() => handleScanSubmit('2022-01452')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-emerald-300 transition cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-[#245F42] transition cursor-pointer"
                   >
                     2022-01452 (Juan)
                   </button>
                   <button
                     type="button"
                     onClick={() => handleScanSubmit('2021-00123')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-emerald-300 transition cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-[#245F42] transition cursor-pointer"
                   >
                     2021-00123 (Maria)
                   </button>
                   <button
                     type="button"
                     onClick={() => handleScanSubmit('2023-08812')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-emerald-300 transition cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-[#245F42] transition cursor-pointer"
                   >
                     2023-08812 (Marcus)
                   </button>
@@ -467,7 +467,7 @@ export default function OfficerScannerPage() {
                   session.scanned_list.map((scan) => (
                     <div key={scan.id} className="p-3 rounded-2xl bg-slate-900/80 border border-slate-700/60 flex items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 font-bold text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-[#245F42] font-bold text-xs shrink-0">
                           {scan.full_name[0]}
                         </div>
                         <div className="min-w-0">
@@ -498,7 +498,7 @@ export default function OfficerScannerPage() {
             </div>
 
             <div className="space-y-1">
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-500/30">
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-[#245F42] text-[10px] font-extrabold uppercase tracking-wider border border-emerald-500/30">
                 CHECK-IN VERIFIED
               </span>
               <h3 className="text-xl font-black text-white pt-2">{scannedStudent.full_name}</h3>
@@ -522,7 +522,7 @@ export default function OfficerScannerPage() {
 
             <button
               onClick={() => setIsModalOpen(false)}
-              className="w-full py-3 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-md cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-md cursor-pointer"
             >
               Continue Scanning next Student
             </button>

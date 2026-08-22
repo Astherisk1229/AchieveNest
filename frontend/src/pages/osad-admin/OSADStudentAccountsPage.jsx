@@ -162,7 +162,7 @@ export default function OSADStudentAccountsPage({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
+              <Users className="w-5 h-5 text-[#16834a] dark:text-emerald-400" />
               Student Accounts Directory
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -175,7 +175,7 @@ export default function OSADStudentAccountsPage({
             <button
               type="button"
               onClick={() => showToast && showToast('Add Student Account Modal Opened')}
-              className="px-3.5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236c3d] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Add Student Account</span>
@@ -186,7 +186,7 @@ export default function OSADStudentAccountsPage({
                 type="button"
                 onClick={() => setActiveAccountTab('directory')}
                 className={`px-4 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${activeAccountTab === 'directory'
-                    ? 'bg-[#1b4332] text-white shadow-2xs'
+                    ? 'bg-[#176B43] text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
               >
@@ -197,7 +197,7 @@ export default function OSADStudentAccountsPage({
                 type="button"
                 onClick={() => setActiveAccountTab('requests')}
                 className={`px-4 py-2 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer ${activeAccountTab === 'requests'
-                    ? 'bg-[#1b4332] text-white shadow-2xs'
+                    ? 'bg-[#176B43] text-white shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
                   }`}
               >
@@ -226,7 +226,7 @@ export default function OSADStudentAccountsPage({
                   ? 'Search by student name or student ID...'
                   : 'Search reset requests by name, ID, or email...'
               }
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#16834a]"
             />
           </div>
 
@@ -249,7 +249,7 @@ export default function OSADStudentAccountsPage({
                         key={c}
                         type="button"
                         onClick={() => { setSelectedCollege(c); setIsCollegeDropdownOpen(false); }}
-                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#2d8a4e]"
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#16834a]"
                       >
                         {c.toUpperCase()}
                       </button>
@@ -304,15 +304,15 @@ export default function OSADStudentAccountsPage({
                     <button
                       type="button"
                       onClick={() => handleSortColumnClick('name')}
-                      className="flex items-center gap-1.5 hover:text-[#2d8a4e] transition cursor-pointer group"
+                      className="flex items-center gap-1.5 hover:text-[#16834a] transition cursor-pointer group"
                       title="Click to sort by Name"
                     >
                       <span>Name</span>
                       {selectedSort === 'name' ? (
                         sortDirection === 'asc' ? (
-                          <ArrowUp className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-[#16834a]" />
                         ) : (
-                          <ArrowDown className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-[#16834a]" />
                         )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
@@ -323,15 +323,15 @@ export default function OSADStudentAccountsPage({
                     <button
                       type="button"
                       onClick={() => handleSortColumnClick('id')}
-                      className="flex items-center gap-1.5 hover:text-[#2d8a4e] transition cursor-pointer group"
+                      className="flex items-center gap-1.5 hover:text-[#16834a] transition cursor-pointer group"
                       title="Click to sort by Student ID"
                     >
                       <span>Student ID</span>
                       {selectedSort === 'id' ? (
                         sortDirection === 'asc' ? (
-                          <ArrowUp className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-[#16834a]" />
                         ) : (
-                          <ArrowDown className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-[#16834a]" />
                         )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
@@ -344,15 +344,15 @@ export default function OSADStudentAccountsPage({
                     <button
                       type="button"
                       onClick={() => handleSortColumnClick('points')}
-                      className="flex items-center gap-1.5 hover:text-[#2d8a4e] transition cursor-pointer group"
+                      className="flex items-center gap-1.5 hover:text-[#16834a] transition cursor-pointer group"
                       title="Click to sort by Verified Points and Evidence"
                     >
                       <span>Verified Points and Evidence</span>
                       {selectedSort === 'points' ? (
                         sortDirection === 'asc' ? (
-                          <ArrowUp className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-[#16834a]" />
                         ) : (
-                          <ArrowDown className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-[#16834a]" />
                         )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
@@ -381,7 +381,7 @@ export default function OSADStudentAccountsPage({
                         </span>
                       </td>
                       <td className="p-4">
-                        <span className="text-xs font-bold text-[#2d8a4e] dark:text-emerald-400 tracking-wider">
+                        <span className="text-xs font-bold text-[#16834a] dark:text-emerald-400 tracking-wider">
                           {user.college || 'CEAC'}
                         </span>
                       </td>
@@ -389,7 +389,7 @@ export default function OSADStudentAccountsPage({
                         <p className="text-xs font-medium text-slate-800 dark:text-slate-200">{user.program || 'BS Computer Science'}</p>
                       </td>
                       <td className="p-4">
-                        <p className="text-xs font-bold text-[#2d8a4e]">{user.total_points || 30} pts</p>
+                        <p className="text-xs font-bold text-[#16834a]">{user.total_points || 30} pts</p>
                         <p className="text-[11px] text-slate-400 font-normal">{user.verified_count || 3} verified proofs</p>
                       </td>
                       <td className="p-4 pr-6 text-right relative">
@@ -410,9 +410,9 @@ export default function OSADStudentAccountsPage({
                                   setViewingStudent(user)
                                   setActiveRowMenu(null)
                                 }}
-                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-[#2d8a4e] flex items-center gap-2 transition cursor-pointer"
+                                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-[#16834a] flex items-center gap-2 transition cursor-pointer"
                               >
-                                <Eye className="w-4 h-4 text-[#2d8a4e]" />
+                                <Eye className="w-4 h-4 text-[#16834a]" />
                                 <span>View Portfolio</span>
                               </button>
 
@@ -476,7 +476,7 @@ export default function OSADStudentAccountsPage({
                       <div className="flex items-center gap-2">
                         <p className="font-extrabold text-xs text-slate-900 dark:text-white">{req.student_name || 'Student Account'}</p>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${req.status === 'approved'
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400'
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400'
                             : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                           }`}>
                           {req.status}
@@ -506,9 +506,9 @@ export default function OSADStudentAccountsPage({
                             setResetRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved' } : r))
                           }
                         }}
-                        className="px-3.5 py-2 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        className="px-3.5 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#245F42]" />
                         <span>Approve Request and Issue Temporary Password</span>
                       </button>
                     ) : (
@@ -531,19 +531,19 @@ export default function OSADStudentAccountsPage({
           <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans">
 
             {/* Modal Header */}
-            <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
+            <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center font-extrabold text-sm shrink-0 border border-emerald-400/30">
+                <div className="w-10 h-10 rounded-xl bg-[#176B43] text-white flex items-center justify-center font-extrabold text-sm shrink-0 border border-[#176B43]">
                   {viewingStudent.full_name?.charAt(0) || 'S'}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-base text-white">{viewingStudent.full_name}</h3>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] font-extrabold uppercase">
+                    <h3 className="font-extrabold text-base text-[#17663B]">{viewingStudent.full_name}</h3>
+                    <span className="px-2 py-0.5 rounded-md bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3] text-[10px] font-extrabold uppercase">
                       STUDENT PORTFOLIO
                     </span>
                   </div>
-                  <p className="text-xs text-emerald-200/90 font-medium">
+                  <p className="text-xs text-[#245F42] font-medium">
                     ID: {viewingStudent.student_id || '202310492'} • {viewingStudent.college || 'CEAC'} — {viewingStudent.program || 'BS Computer Science'}
                   </p>
                 </div>
@@ -562,18 +562,18 @@ export default function OSADStudentAccountsPage({
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
 
               {/* Portfolio Security Scope Notice */}
-              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+              <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs text-emerald-800 dark:text-[#245F42] font-medium">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#2d8a4e] shrink-0" />
+                  <ShieldCheck className="w-4 h-4 text-[#16834a] shrink-0" />
                   <span>OSAD access is limited to Student portfolios.</span>
                 </div>
-                <span className="font-extrabold text-[#2d8a4e]">{viewingStudent.total_points || 320} Total Points</span>
+                <span className="font-extrabold text-[#16834a]">{viewingStudent.total_points || 320} Total Points</span>
               </div>
 
               {/* Portfolio Items List */}
               <div className="space-y-3">
                 <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-[#2d8a4e]" />
+                  <Award className="w-4 h-4 text-[#16834a]" />
                   Verified Achievements &amp; Extracurricular Records
                 </h4>
 
@@ -582,7 +582,7 @@ export default function OSADStudentAccountsPage({
                     <div key={item.id || idx} className="p-4 flex items-center justify-between gap-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-[#2d8a4e] dark:text-emerald-400 font-extrabold text-[10px]">
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 font-extrabold text-[10px]">
                             {item.category}
                           </span>
                           <span className="text-[11px] text-slate-400 font-medium">{item.date}</span>
@@ -591,8 +591,8 @@ export default function OSADStudentAccountsPage({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-300 text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-[#2d8a4e]" />
+                        <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-[#16834a]" />
                           +{item.points} pts
                         </span>
                       </div>
@@ -629,14 +629,14 @@ export default function OSADStudentAccountsPage({
           <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans">
 
             {/* Modal Header */}
-            <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
+            <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-extrabold text-sm shrink-0 border border-amber-400/30">
-                  <KeyRound className="w-5 h-5 text-amber-300" />
+                <div className="w-10 h-10 rounded-xl bg-[#FFF7E6] text-[#795600] flex items-center justify-center font-extrabold text-sm shrink-0 border border-[#E5C276]">
+                  <KeyRound className="w-5 h-5 text-[#B7791F]" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-white">Reset Student Password</h3>
-                  <p className="text-xs text-emerald-200/90 font-medium">Student Account Password Reset</p>
+                  <h3 className="font-extrabold text-base text-[#17663B]">Reset Student Password</h3>
+                  <p className="text-xs text-[#356148] font-medium">Student Account Password Reset</p>
                 </div>
               </div>
 
@@ -654,7 +654,7 @@ export default function OSADStudentAccountsPage({
 
               {/* Target Student Profile Summary */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#16834a] text-white flex items-center justify-center font-bold text-sm shrink-0">
                   {resetPasswordStudent.full_name?.charAt(0) || 'S'}
                 </div>
                 <div>
@@ -662,7 +662,7 @@ export default function OSADStudentAccountsPage({
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     ID: {resetPasswordStudent.student_id || '202310492'} • {resetPasswordStudent.program || 'BS Computer Science'}
                   </p>
-                  <p className="text-[11px] text-[#2d8a4e] font-semibold">{resetPasswordStudent.email || 'student@ndmu.edu.ph'}</p>
+                  <p className="text-[11px] text-[#16834a] font-semibold">{resetPasswordStudent.email || 'student@ndmu.edu.ph'}</p>
                 </div>
               </div>
 
@@ -673,7 +673,7 @@ export default function OSADStudentAccountsPage({
                   <button
                     type="button"
                     onClick={handleGenerateRandomPassword}
-                    className="text-[#2d8a4e] hover:underline text-[11px] font-extrabold flex items-center gap-1 cursor-pointer"
+                    className="text-[#16834a] hover:underline text-[11px] font-extrabold flex items-center gap-1 cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>Generate Temporary Password</span>
@@ -686,7 +686,7 @@ export default function OSADStudentAccountsPage({
                     value={tempPasswordInput}
                     onChange={(e) => setTempPasswordInput(e.target.value)}
                     required
-                    className="w-full pl-3.5 pr-20 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
+                    className="w-full pl-3.5 pr-20 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a]"
                   />
 
                   <button
@@ -716,7 +716,7 @@ export default function OSADStudentAccountsPage({
 
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-amber-300" />
                   <span>Confirm Password Reset</span>

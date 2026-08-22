@@ -14,7 +14,7 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
     <div className="space-y-4 font-sans">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-          <Trophy className="w-3.5 h-3.5 text-[#2d8a4e]" />
+          <Trophy className="w-3.5 h-3.5 text-[#16834a]" />
           <span>Award Category Overview Summaries ({summaries.length})</span>
         </h3>
         <span className="text-[11px] font-bold text-slate-400">Independent category leaderboards & scores</span>
@@ -34,7 +34,7 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
                 {/* Category Header Strip */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
+                    <div className="w-9 h-9 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center font-bold shrink-0">
                       <Award className="w-4.5 h-4.5" />
                     </div>
                     <div>
@@ -68,7 +68,7 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
                     </div>
 
                     <div className="text-right">
-                      <span className="text-base font-black text-[#2d8a4e] dark:text-emerald-400">
+                      <span className="text-base font-black text-[#16834a] dark:text-emerald-400">
                         {cat.highestScore} <span className="text-xs text-slate-400 font-medium">/ 100</span>
                       </span>
                     </div>
@@ -92,7 +92,7 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
                 <button
                   type="button"
                   onClick={() => onSelectCategory && onSelectCategory(cat.categoryTitle)}
-                  className="px-3 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1"
                 >
                   <span>Open Leaderboard</span>
                   <ArrowRight className="w-3.5 h-3.5" />

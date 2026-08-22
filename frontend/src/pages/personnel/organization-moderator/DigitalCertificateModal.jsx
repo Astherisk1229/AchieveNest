@@ -16,21 +16,21 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Modal Header */}
-        <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
+        <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
-              <Award className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F5EA] border border-[#B7DDC4] flex items-center justify-center text-[#17663B]">
+              <Award className="w-5 h-5 text-[#17663B]" />
             </div>
             <div>
-              <h3 className="font-extrabold text-lg">Digital Certificate Preview & Issuance</h3>
-              <p className="text-xs text-emerald-200/80">NDMU Official Event Verification System</p>
+              <h3 className="font-extrabold text-lg text-[#17663B]">Digital Certificate Preview & Issuance</h3>
+              <p className="text-xs text-[#356148] font-medium">NDMU Official Event Verification System</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+            className="p-2 rounded-xl text-[#356148] hover:bg-[#EAF4EC] hover:text-[#17663B] transition cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -54,7 +54,7 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
               <p className="text-xs text-slate-600 italic">This official digital certificate is Conferred upon</p>
               
               <div className="py-2">
-                <p className="text-xl font-bold text-[#1b4332] border-b border-amber-300 inline-block px-8 py-1">
+                <p className="text-xl font-bold text-[#064e2b] border-b border-amber-300 inline-block px-8 py-1">
                   MARIA SANTOS
                 </p>
               </div>
@@ -134,7 +134,7 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
             </div>
             <button
               onClick={handleExportPDF}
-              className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 shrink-0"
+              className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 shrink-0"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Issue All Certificates</span>

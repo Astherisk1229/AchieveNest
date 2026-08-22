@@ -293,9 +293,9 @@ export default function CustomDatePicker({
         onClick={() => handleSelectDay(d)}
         className={`h-8.5 w-8.5 mx-auto rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${
           isSelected
-            ? 'bg-[#1b4332] text-white shadow-md'
+            ? 'bg-[#176B43] text-white shadow-md'
             : isTodayCell
-            ? 'border-2 border-[#1b4332] dark:border-emerald-400 text-slate-900 dark:text-white font-black'
+            ? 'border-2 border-[#69A97C] dark:border-emerald-400 text-slate-900 dark:text-white font-black'
             : disabled
             ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-40'
             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -331,11 +331,11 @@ export default function CustomDatePicker({
         aria-invalid={Boolean(error)}
         onClick={() => setIsOpen(prev => !prev)}
         className={`w-full p-2.5 rounded-xl bg-white dark:bg-slate-900 border text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
-          error ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-200 dark:border-slate-800 hover:border-slate-400 focus:border-[#1b4332]'
+          error ? 'border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-200 dark:border-slate-800 hover:border-slate-400 focus:border-[#69A97C]'
         }`}
       >
         <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100 font-bold">
-          <Calendar className="w-4 h-4 text-[#1b4332] dark:text-emerald-400 shrink-0" />
+          <Calendar className="w-4 h-4 text-[#064e2b] dark:text-emerald-400 shrink-0" />
           <span>{getFormattedDisplayDate()}</span>
         </div>
         <span className="text-[11px] font-mono font-normal text-slate-400">{value || 'Optional'}</span>
@@ -404,12 +404,12 @@ export default function CustomDatePicker({
                         onClick={() => handleSelectMonth(idx)}
                         className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
                           idx === month
-                            ? 'bg-[#1b4332]/10 dark:bg-emerald-950/50 text-[#1b4332] dark:text-emerald-400 font-bold'
+                            ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 font-bold'
                             : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
                         <span>{m}</span>
-                        {idx === month && <Check className="w-3 h-3 text-[#1b4332] dark:text-emerald-400" />}
+                        {idx === month && <Check className="w-3 h-3 text-[#064e2b] dark:text-emerald-400" />}
                       </button>
                     ))}
                   </div>
@@ -449,12 +449,12 @@ export default function CustomDatePicker({
                           onClick={() => handleSelectYear(y)}
                           className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-between transition cursor-pointer ${
                             isSelectedYear
-                              ? 'bg-[#1b4332]/10 dark:bg-emerald-950/50 text-[#1b4332] dark:text-emerald-400 font-bold'
+                              ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 font-bold'
                               : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                           }`}
                         >
                           <span>{y}</span>
-                          {isSelectedYear && <Check className="w-3 h-3 text-[#1b4332] dark:text-emerald-400" />}
+                          {isSelectedYear && <Check className="w-3 h-3 text-[#064e2b] dark:text-emerald-400" />}
                         </button>
                       )
                     })}
@@ -503,7 +503,7 @@ export default function CustomDatePicker({
             <button
               type="button"
               onClick={handleSelectToday}
-              className="text-[#1b4332] dark:text-emerald-400 hover:underline cursor-pointer"
+              className="text-[#064e2b] dark:text-emerald-400 hover:underline cursor-pointer"
             >
               Select Today
             </button>

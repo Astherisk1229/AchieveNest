@@ -49,7 +49,7 @@ export default function OSADQuickActions({ onSelectTab }) {
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
+          <Sparkles className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" />
           <span>Setup and Management</span>
         </h2>
         <span className="text-[10px] font-bold text-slate-400">4 setup areas</span>
@@ -64,18 +64,18 @@ export default function OSADQuickActions({ onSelectTab }) {
               key={idx}
               type="button"
               onClick={() => onSelectTab(action.tab)}
-              className="p-4 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#1b4332] dark:hover:border-emerald-500 transition duration-150 text-left flex flex-col justify-between space-y-3 group cursor-pointer shadow-2xs"
+              className="p-4 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 hover:border-[#064e2b] dark:hover:border-emerald-500 transition duration-150 text-left flex flex-col justify-between space-y-3 group cursor-pointer shadow-2xs"
             >
               <div className="flex items-center justify-between">
                 <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${action.badgeClass}`}>
                   {action.badge}
                 </span>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#064e2b] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
               </div>
 
               <div className="space-y-1">
-                <h3 className="font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-[#1b4332] dark:group-hover:text-emerald-400 transition flex items-center gap-1.5">
-                  <Icon className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400 shrink-0" />
+                <h3 className="font-extrabold text-xs text-slate-900 dark:text-white group-hover:text-[#064e2b] dark:group-hover:text-emerald-400 transition flex items-center gap-1.5">
+                  <Icon className="w-4 h-4 text-[#16834a] dark:text-emerald-400 shrink-0" />
                   <span>{action.title}</span>
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">

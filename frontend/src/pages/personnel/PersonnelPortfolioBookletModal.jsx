@@ -443,7 +443,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || '2024'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'Ateneo de Manila University'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Conferred / Verified Attachment</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -458,7 +458,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">2020-2024</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">Ph.D. in Computer Science</td>
                         <td className="p-2 border-r border-slate-900">Ateneo de Manila University</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Conferred / Verified Attachment</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -491,7 +491,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || '2025'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'PCS Executive Board'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Active Officer / Member</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -524,7 +524,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || '2026'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'CHED Region XII'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Completed (40 Hours)</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -562,7 +562,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'Feb 2026'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'DOST Region XII'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Keynote Speaker / Served</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -628,7 +628,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'Apr 2026'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'IEEE Access Journal'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Scopus Published / Peer-Reviewed</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -661,7 +661,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'Dec 2025'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'NDMU University Research Office'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Completed Institutional Grant</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -699,7 +699,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                         <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'SY 2025-2026'}</td>
                         <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
                         <td className="p-2 border-r border-slate-900">{item.issuer || 'NDMU OSAD / LGU'}</td>
-                        <td className="p-2 font-bold text-[#1b4332] group-hover:text-emerald-700 flex items-center justify-between gap-1">
+                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
                           <span>Official Faculty Moderator</span>
                           <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                         </td>
@@ -726,7 +726,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                       <td className="p-2 border-r border-slate-900 font-sans text-[11px]">2016 – Present</td>
                       <td className="p-2 border-r border-slate-900 font-bold">Notre Dame of Marbel University</td>
                       <td className="p-2 border-r border-slate-900 font-bold">{yearsOfService} Years Full-Time Service</td>
-                      <td className="p-2 font-bold text-[#1b4332]">Active Permanent Faculty</td>
+                      <td className="p-2 font-bold text-[#064e2b]">Active Permanent Faculty</td>
                     </tr>
                   </tbody>
                 </table>
@@ -902,7 +902,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
             <button 
               type="button" 
               onClick={() => window.print()} 
-              className="px-4 py-2 rounded-xl bg-[#1b4332] hover:bg-[#122e22] text-white text-xs font-bold flex items-center gap-2 transition border border-emerald-600/60 shadow-sm cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#122e22] text-white text-xs font-bold flex items-center gap-2 transition border border-emerald-600/60 shadow-sm cursor-pointer"
             >
               <Printer className="w-4 h-4 text-emerald-400" />
               <span>Export PDF</span>
@@ -944,7 +944,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                   </h3>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono ${
-                  isDark ? 'bg-slate-900 border-slate-800 text-emerald-400' : 'bg-emerald-100 border-emerald-300 text-[#1b4332]'
+                  isDark ? 'bg-slate-900 border-slate-800 text-emerald-400' : 'bg-emerald-100 border-emerald-300 text-[#064e2b]'
                 }`}>
                   {totalPages} Pages
                 </span>
@@ -1004,7 +1004,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                             isSelected
                               ? isDark
                                 ? 'bg-[#122e22]/90 border border-emerald-500/50 text-white font-bold shadow-xs'
-                                : 'bg-emerald-100/90 border border-emerald-600/60 text-[#1b4332] font-bold shadow-xs'
+                                : 'bg-emerald-100/90 border border-emerald-600/60 text-[#064e2b] font-bold shadow-xs'
                               : isDark
                                 ? 'bg-slate-900/40 hover:bg-slate-900 border border-transparent text-slate-300'
                                 : 'bg-white hover:bg-slate-200/60 border border-slate-200/80 text-slate-800'
@@ -1019,8 +1019,8 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                           <span className={`text-[10px] font-extrabold font-mono px-1.5 py-0.5 rounded shrink-0 ${
                             isSelected
                               ? isDark
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                : 'bg-emerald-200 text-[#1b4332] border border-emerald-400'
+                                ? 'bg-emerald-500/20 text-[#245F42] border border-emerald-500/30'
+                                : 'bg-emerald-200 text-[#064e2b] border border-emerald-400'
                               : isDark
                                 ? 'bg-slate-800 text-slate-400 border border-slate-700/60'
                                 : 'bg-slate-200 text-slate-700 border border-slate-300'
@@ -1069,7 +1069,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                             isSelected
                               ? isDark
                                 ? 'bg-[#122e22]/90 border border-emerald-500/50 text-white font-bold shadow-xs'
-                                : 'bg-emerald-100/90 border border-emerald-600/60 text-[#1b4332] font-bold shadow-xs'
+                                : 'bg-emerald-100/90 border border-emerald-600/60 text-[#064e2b] font-bold shadow-xs'
                               : isDark
                                 ? 'bg-slate-900/40 hover:bg-slate-900 border border-transparent text-slate-300'
                                 : 'bg-white hover:bg-slate-200/60 border border-slate-200/80 text-slate-800'
@@ -1084,8 +1084,8 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                           <span className={`text-[10px] font-extrabold font-mono px-1.5 py-0.5 rounded shrink-0 ${
                             isSelected
                               ? isDark
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                : 'bg-emerald-200 text-[#1b4332] border border-emerald-400'
+                                ? 'bg-emerald-500/20 text-[#245F42] border border-emerald-500/30'
+                                : 'bg-emerald-200 text-[#064e2b] border border-emerald-400'
                               : isDark
                                 ? 'bg-slate-800 text-slate-400 border border-slate-700/60'
                                 : 'bg-slate-200 text-slate-700 border border-slate-300'

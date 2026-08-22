@@ -41,8 +41,8 @@ const ReqLabel = ({ label, value, isOcrAutoFilled }) => {
         )}
       </span>
       {isFilled ? (
-        <span className="text-[#2d8a4e] text-[11px] font-bold flex items-center gap-0.5" title="Field Requirement Completed">
-          <Check className="w-3.5 h-3.5 text-[#2d8a4e] stroke-[3]" />
+        <span className="text-[#16834a] text-[11px] font-bold flex items-center gap-0.5" title="Field Requirement Completed">
+          <Check className="w-3.5 h-3.5 text-[#16834a] stroke-[3]" />
         </span>
       ) : (
         <span className="text-slate-400 font-normal text-xs" title="Required Field">*</span>
@@ -372,13 +372,13 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         {/* ================= MODAL HEADER WITH LIVE ESTIMATED POINTS BADGE ================= */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-2xl bg-[#16834a] text-white flex items-center justify-center shadow-md">
               <Award className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Log New Accomplishment</h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#1b4332] text-amber-300 text-[11px] font-extrabold shadow-2xs border border-emerald-700/50">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#EFF7F0] text-amber-300 text-[11px] font-extrabold shadow-2xs border border-emerald-700/50">
                   NDMU Ranking Record
                 </span>
               </div>
@@ -407,8 +407,8 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
         {/* ================= OCR SCAN CONFIDENCE & STATUS BANNER ================= */}
         {isScanning && (
-          <div className="mx-5 mt-4 p-4 rounded-2xl bg-[#eef7f0] border border-emerald-300 text-[#1b4332] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
-            <div className="w-8 h-8 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center animate-spin shrink-0">
+          <div className="mx-5 mt-4 p-4 rounded-2xl bg-[#E7F3E9] border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
+            <div className="w-8 h-8 rounded-xl bg-[#16834a] text-white flex items-center justify-center animate-spin shrink-0">
               <RefreshCw className="w-4 h-4" />
             </div>
             <div className="flex-1">
@@ -424,7 +424,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         )}
 
         {ocrResult && !isScanning && (
-          <div className="mx-5 mt-4 p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-[#1b4332] text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150">
+          <div className="mx-5 mt-4 p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-[#064e2b] text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-700 text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
                 <Sparkles className="w-4 h-4" />
@@ -432,7 +432,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-slate-900">OCR Scan Completed</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-[#1b4332] text-[10px] font-extrabold border border-emerald-400/60">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-[#064e2b] text-[10px] font-extrabold border border-emerald-400/60">
                     {ocrResult.confidenceScore}% Confidence Match
                   </span>
                 </div>
@@ -446,7 +446,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
               <button
                 type="button"
                 onClick={() => performOcrScan(attachedFile)}
-                className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-[#1b4332] hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-[#064e2b] hover:bg-emerald-100 text-[11px] font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer shadow-2xs"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
                 <span>Re-scan</span>
@@ -461,11 +461,11 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
           <div className="p-4 rounded-2xl bg-slate-50 border border-emerald-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-[#2d8a4e] text-white flex items-center justify-center text-xs font-black shadow-2xs">1</span>
+                <span className="w-6 h-6 rounded-lg bg-[#16834a] text-white flex items-center justify-center text-xs font-black shadow-2xs">1</span>
                 <div>
                   <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
                     <span>Upload & Scan Certificate Document</span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-[#1b4332] text-[10px] font-extrabold border border-emerald-300/60 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-[#064e2b] text-[10px] font-extrabold border border-emerald-300/60 flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-amber-500 fill-amber-300" />
                       <span>OCR Auto-Fill Active</span>
                     </span>
@@ -477,13 +477,13 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             </div>
 
             {/* Proof Hint Banner */}
-            <div className="p-2.5 rounded-xl bg-emerald-100/60 border border-emerald-200 text-[#1e5831] text-[11px] font-semibold flex items-center gap-2">
-              <Paperclip className="w-3.5 h-3.5 text-[#2d8a4e] shrink-0" />
+            <div className="p-2.5 rounded-xl bg-emerald-100/60 border border-emerald-200 text-[#064e2b] text-[11px] font-semibold flex items-center gap-2">
+              <Paperclip className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
               <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
             </div>
 
             {/* Drag and Drop Zone */}
-            <div className="relative border-2 border-dashed border-emerald-300 hover:border-[#2d8a4e] rounded-2xl p-4 text-center transition bg-white hover:bg-[#eef7f0]/40 cursor-pointer group shadow-2xs">
+            <div className="relative border-2 border-dashed border-emerald-300 hover:border-[#16834a] rounded-2xl p-4 text-center transition bg-white hover:bg-[#E7F3E9]/40 cursor-pointer group shadow-2xs">
               <input
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg"
@@ -491,7 +491,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
               <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#2d8a4e] group-hover:scale-110 transition shadow-2xs">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#16834a] group-hover:scale-110 transition shadow-2xs">
                   <UploadCloud className="w-5 h-5" />
                 </div>
                 {attachedFile ? (
@@ -512,20 +512,20 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
             {/* Live OCR Scanning Spinner Status */}
             {isScanning && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#1b4332] text-xs font-bold flex items-center gap-3 animate-in fade-in">
-                <RefreshCw className="w-4 h-4 text-[#2d8a4e] animate-spin shrink-0" />
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 animate-in fade-in">
+                <RefreshCw className="w-4 h-4 text-[#16834a] animate-spin shrink-0" />
                 <span>Scanning document text & detecting NDMU category...</span>
               </div>
             )}
 
             {/* OCR Success Confidence Card */}
             {ocrResult && !isScanning && (
-              <div className="p-3 rounded-xl bg-white border border-emerald-300 text-[#1b4332] text-xs font-semibold flex items-center justify-between gap-3 animate-in fade-in shadow-2xs">
+              <div className="p-3 rounded-xl bg-white border border-emerald-300 text-[#064e2b] text-xs font-semibold flex items-center justify-between gap-3 animate-in fade-in shadow-2xs">
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="w-4 h-4 text-amber-500 fill-amber-300 shrink-0" />
                   <div>
                     <p className="font-extrabold text-slate-900">
-                      OCR Scan Complete • <span className="text-[#2d8a4e]">{ocrResult.confidenceScore}% Match</span>
+                      OCR Scan Complete • <span className="text-[#16834a]">{ocrResult.confidenceScore}% Match</span>
                     </p>
                     <p className="text-[11px] text-slate-600">
                       Detected: <strong>{ocrResult.detectedCategory}</strong>
@@ -537,9 +537,9 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                   <button
                     type="button"
                     onClick={() => performOcrScan(attachedFile)}
-                    className="px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#1b4332] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                    className="px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#064e2b] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
                   >
-                    <RefreshCw className="w-3 h-3 text-[#2d8a4e]" />
+                    <RefreshCw className="w-3 h-3 text-[#16834a]" />
                     <span>Re-scan</span>
                   </button>
                 )}
@@ -563,7 +563,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                   setCategory(e.target.value)
                   setOcrBadges(prev => ({ ...prev, category: false }))
                 }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-emerald-50/40 text-xs font-bold text-[#1b4332] focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none transition"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-emerald-50/40 text-xs font-bold text-[#064e2b] focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none transition"
               >
                 <option value="A.1 Degree/s">Area A: A.1 Educational Qualifications / Degrees</option>
                 <option value="A.2 Active Membership to Prof Orgs">Area A: A.2 Active Membership in Professional Orgs</option>
@@ -593,7 +593,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                         setDegreeLevel(e.target.value)
                         setOcrBadges(prev => ({ ...prev, degreeLevel: false }))
                       }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e]"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a]"
                     >
                       <option value="Ph.D. Degree Holder">Ph.D. Degree Holder</option>
                       <option value="Ph.D. Units">Ph.D. Units Earned</option>
@@ -612,7 +612,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                         setOcrBadges(prev => ({ ...prev, degreeTitle: false }))
                       }}
                       placeholder="e.g. Ph.D. in Computer Science / MA in Education"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                       required
                     />
                   </div>
@@ -629,7 +629,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                         setOcrBadges(prev => ({ ...prev, institution: false }))
                       }}
                       placeholder="e.g. Ateneo de Manila University"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                       required
                     />
                   </div>
@@ -664,7 +664,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                         setOcrBadges(prev => ({ ...prev, orgName: false }))
                       }}
                       placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                       required
                     />
                   </div>
@@ -713,7 +713,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, seminarTitle: false }))
                     }}
                     placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -768,7 +768,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, eventTitle: false }))
                     }}
                     placeholder="e.g. Keynote Address on Machine Learning in Higher Ed Analytics"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -840,7 +840,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, pubTitle: false }))
                     }}
                     placeholder="e.g. Predictive Student Performance Modeling Using Deep Learning"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -913,7 +913,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, researchTitle: false }))
                     }}
                     placeholder="e.g. AI-Driven Student Retention & Early Warning Analytics Framework"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -963,7 +963,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, awardTitle: false }))
                     }}
                     placeholder="e.g. NDMU Outstanding Research Faculty of the Year"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -1031,7 +1031,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, materialTitle: false }))
                     }}
                     placeholder="e.g. Bound Laboratory Exercises Manual for Artificial Intelligence"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -1082,7 +1082,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       setOcrBadges(prev => ({ ...prev, creativeTitle: false }))
                     }}
                     placeholder="e.g. University Digital Archiving Software / Artistic Performance"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                     required
                   />
                 </div>
@@ -1137,7 +1137,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                         setOcrBadges(prev => ({ ...prev, serviceTitle: false }))
                       }}
                       placeholder="e.g. Computer Science Student Society / Barangay Smart Literacy Outreach"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#2d8a4e]"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
                       required
                     />
                   </div>
@@ -1178,26 +1178,26 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
               <ReqLabel label="Supporting Proof Attachment" value={attachedFile} />
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-emerald-700">PDF / JPG / PNG (Max 10MB)</span>
-                <label className="flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px] font-extrabold text-[#1b4332]" title="Automatically run OCR scan on attached certificate">
+                <label className="flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px] font-extrabold text-[#064e2b]" title="Automatically run OCR scan on attached certificate">
                   <input
                     type="checkbox"
                     checked={isScanModeActive}
                     onChange={(e) => setIsScanModeActive(e.target.checked)}
-                    className="rounded text-[#2d8a4e] focus:ring-0 cursor-pointer"
+                    className="rounded text-[#16834a] focus:ring-0 cursor-pointer"
                   />
-                  <Scan className="w-3 h-3 text-[#2d8a4e]" />
+                  <Scan className="w-3 h-3 text-[#16834a]" />
                   <span>OCR Auto-Scan</span>
                 </label>
               </div>
             </div>
 
             {/* Proof Hint Banner */}
-            <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[#1e5831] text-[11px] font-semibold flex items-center gap-2">
-              <Paperclip className="w-3.5 h-3.5 text-[#2d8a4e] shrink-0" />
+            <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[#064e2b] text-[11px] font-semibold flex items-center gap-2">
+              <Paperclip className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
               <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
             </div>
 
-            <div className="relative border-2 border-dashed border-slate-200 hover:border-[#2d8a4e] rounded-2xl p-4 text-center transition bg-slate-50/50 hover:bg-[#eef7f0]/30 cursor-pointer group">
+            <div className="relative border-2 border-dashed border-slate-200 hover:border-[#16834a] rounded-2xl p-4 text-center transition bg-slate-50/50 hover:bg-[#E7F3E9]/30 cursor-pointer group">
               <input
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg"
@@ -1205,7 +1205,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
               <div className="flex flex-col items-center gap-1.5">
-                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#2d8a4e] group-hover:scale-110 transition shadow-2xs">
+                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#16834a] group-hover:scale-110 transition shadow-2xs">
                   <UploadCloud className="w-5 h-5" />
                 </div>
                 {attachedFile ? (
@@ -1217,7 +1217,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                   <div>
                     <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
                       <span>Drag & drop certificate here or click to browse</span>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-[#1b4332] rounded-md text-[10px] font-extrabold flex items-center gap-1 border border-emerald-300/60">
+                      <span className="px-2 py-0.5 bg-emerald-100 text-[#064e2b] rounded-md text-[10px] font-extrabold flex items-center gap-1 border border-emerald-300/60">
                         <Sparkles className="w-3 h-3 text-amber-500 fill-amber-300" />
                         <span>OCR Scanner Ready</span>
                       </span>
@@ -1239,7 +1239,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Provide additional details or publication DOI links if applicable..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 outline-none transition focus:border-[#2d8a4e]"
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 outline-none transition focus:border-[#16834a]"
             />
           </div>
 
@@ -1255,7 +1255,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md disabled:opacity-50 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md disabled:opacity-50 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

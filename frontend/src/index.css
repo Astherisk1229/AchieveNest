@@ -10,12 +10,92 @@
   :root {
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-heading: 'Plus Jakarta Sans', var(--font-sans);
+
+    /* Brighter Institutional Palette & Hero Tokens */
+    --app-background: #F8FAF7;
+    --app-background-subtle: #FAFCF9;
+
+    --surface-primary: #FFFFFF;
+    --surface-secondary: #F5F8F3;
+    --border-neutral: #DDE6DD;
+
+    --hero-background: #DCEBDD;
+    --hero-heading: #123D2A;
+    --hero-text-secondary: #3F6B52;
+    --hero-accent: #16834A;
+    --hero-border: #A9C6B1;
+
+    --hero-card-background: #F8FBF7;
+    --hero-card-text: #123D2A;
+    --hero-card-icon: #16834A;
+    --hero-card-border: #B7CEBC;
+
+    --hero-primary-button: #176B43;
+    --hero-primary-button-hover: #125536;
+    --hero-focus: #75A98A;
+
+    --hero-highlight-background: #238B57;
+    --hero-highlight-border: #76B892;
+    --hero-on-primary: #FFFFFF;
+
+    --non-student-page-background: #FAFCFA;
+    --non-student-surface-secondary: #F4F8F4;
+    --non-student-border-neutral: #D9E5DC;
+    --non-student-divider: #DDE7DF;
+
+    --non-student-hero-background: #EFF7F0;
+    --non-student-hero-border: #69A97C;
+    --non-student-hero-heading: #17663B;
+    --non-student-hero-heading-secondary: #17663B;
+    --non-student-hero-text: #245F42;
+    --non-student-hero-text-muted: #245F42;
+    --non-student-hero-accent: #159552;
+    --non-student-hero-badge-bg: #E7F3E9;
+    --non-student-hero-badge-border: #69A97C;
+    --non-student-hero-card-bg: #FFFFFF;
+    --non-student-hero-card-border: #D9E5DC;
+    --non-student-hero-icon-container: #149653;
+    --non-student-hero-action: #159552;
+    --non-student-hero-action-hover: #125536;
+    --non-student-hero-secondary-action-bg: #FFFFFF;
+    --non-student-hero-secondary-action-border: #D9E5DC;
+    --non-student-hero-secondary-action-hover: #F4F8F4;
+    --non-student-hero-on-action: #FFFFFF;
+
+    --page-background: #F8FAF7;
+    --student-portfolio-background: #DCEBDD;
+    --student-portfolio-text: #123D2A;
+    --student-portfolio-text-secondary: #3F6B52;
+    --student-portfolio-accent: #176B43;
+    --student-portfolio-border: #A9C6B1;
+
+    --student-stat-background: #F8FBF7;
+    --student-stat-highlight: #238B57;
+    --student-stat-icon: #16834A;
+
+    --color-primary: #176B43;
+    --color-primary-dark: #125536;
+    --color-primary-medium: #16834A;
+    --color-primary-soft: #DCEBDD;
+    --color-primary-subtle: #F5F8F3;
+
+    --color-surface: #FFFFFF;
+    --color-surface-secondary: #F5F8F3;
+    --color-page-background: #F8FAF7;
+
+    --color-text-primary: #123D2A;
+    --color-text-secondary: #3F6B52;
+    --color-border: #DDE6DD;
+
+    --color-focus: #16834A;
+    --color-disabled-background: #E9ECE8;
+    --color-disabled-text: #98A29B;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #dfebd9;
-    color: #0f172a;
+    background-color: var(--page-background, #F5F8F3);
+    color: var(--color-text-primary);
     overflow-x: hidden;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
@@ -31,7 +111,7 @@
 
   select option {
     background-color: #ffffff;
-    color: #0f172a;
+    color: #10251b;
     padding: 8px 12px;
   }
 
@@ -43,22 +123,22 @@
 
 /* Custom Utilities & Glassmorphism System */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
+  background: rgba(6, 78, 43, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .glass-card {
-  background: rgba(30, 41, 59, 0.6);
+  background: rgba(3, 61, 35, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* NDMU Brand Gradients */
 .bg-ndmu-gradient {
-  background: linear-gradient(135deg, #003618 0%, #004b23 50%, #00220f 100%);
+  background: linear-gradient(135deg, #064e2b 0%, #033d23 50%, #16834a 100%);
 }
 
 .text-gold-gradient {
@@ -74,7 +154,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #dfebd9;
+  background: #f8faf7;
 }
 
 .dark ::-webkit-scrollbar-track {
@@ -117,4 +197,256 @@
   width: 0;
   height: 0;
 }
+
+/* Student Profile Verification Badge (Strict 22px Circular Badge) */
+.student-profile-verification-badge {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 22px;
+
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: #ffffff;
+  line-height: 1;
+  z-index: 10;
+}
+
+.student-profile-verification-badge svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  stroke-width: 3;
+}
+
+/* Portfolio Area Tabs Styling */
+.portfolio-area-tab {
+  color: #243b53;
+  background-color: #ffffff;
+  border: 1px solid #d7e2da;
+  font-weight: 600;
+  opacity: 1;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.portfolio-area-tab .area-tab-icon {
+  color: #16834a;
+  opacity: 1;
+}
+
+.portfolio-area-tab .area-tab-count {
+  color: #40566a;
+  background-color: #f1f5f3;
+  border: 1px solid #dee6e1;
+  font-weight: 600;
+  opacity: 1;
+}
+
+.portfolio-area-tab:hover {
+  color: #145c39;
+  background-color: #f1f7f2;
+  border-color: #a9c9b3;
+}
+
+.portfolio-area-tab:hover .area-tab-icon {
+  color: #16834a;
+}
+
+.portfolio-area-tab[aria-selected="true"],
+.portfolio-area-tab.is-active {
+  color: #ffffff !important;
+  background-color: #176b43 !important;
+  border-color: #176b43 !important;
+  box-shadow: 0 3px 8px rgba(23, 107, 67, 0.18);
+}
+
+.portfolio-area-tab[aria-selected="true"]:hover,
+.portfolio-area-tab.is-active:hover {
+  background-color: #125536 !important;
+  border-color: #125536 !important;
+}
+
+.portfolio-area-tab[aria-selected="true"] .area-tab-icon,
+.portfolio-area-tab.is-active .area-tab-icon {
+  color: #ffffff !important;
+  opacity: 1;
+}
+
+.portfolio-area-tab[aria-selected="true"] .area-tab-count,
+.portfolio-area-tab.is-active .area-tab-count {
+  color: #145c39 !important;
+  background-color: #ddf3e5 !important;
+  border-color: #b7ddc4 !important;
+  opacity: 1;
+}
+
+.portfolio-area-tab:focus-visible {
+  outline: none;
+  border-color: #16834a;
+  box-shadow: 0 0 0 3px rgba(22, 131, 74, 0.24);
+}
+
+/* Standardized Action Buttons Group */
+.create-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .create-action-group {
+    flex-wrap: nowrap;
+  }
+}
+
+.create-action-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 18px;
+  border-radius: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 160ms ease;
+  cursor: pointer;
+}
+
+.create-action-button-primary {
+  background-color: #159552;
+  color: #ffffff;
+  border: 1px solid #159552;
+}
+
+.create-action-button-primary:hover {
+  background-color: #117a43;
+  border-color: #117a43;
+}
+
+.create-action-button-secondary {
+  background-color: #ffffff;
+  color: #145c39;
+  border: 1px solid #9fcfb0;
+}
+
+.create-action-button-secondary:hover {
+  background-color: #eaf4ec;
+}
+
+/* Shared Button System Variants */
+.button-return {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  color: #174e31;
+  background-color: #ffffff;
+  border: 1px solid #afc6b5;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(31, 70, 48, 0.08);
+  font-weight: 600;
+  opacity: 1;
+  transition: all 160ms ease;
+  cursor: pointer;
+}
+
+.button-return:hover {
+  color: #123d2a;
+  background-color: #f1f7f2;
+  border-color: #69a97c;
+}
+
+.button-return:active {
+  background-color: #e3efe6;
+}
+
+.button-return:focus-visible {
+  outline: none;
+  box-shadow:
+    0 2px 5px rgba(31, 70, 48, 0.08),
+    0 0 0 3px rgba(22, 131, 74, 0.20);
+}
+
+.btn-primary {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  color: #ffffff;
+  background-color: #176b43;
+  border: 1px solid #176b43;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(23, 107, 67, 0.16);
+  font-weight: 600;
+  transition: all 160ms ease;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background-color: #125536;
+  border-color: #125536;
+}
+
+.btn-primary:active {
+  background-color: #0e472d;
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(23, 107, 67, 0.24);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  color: #174e31;
+  background-color: #ffffff;
+  border: 1px solid #b8cdbd;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 160ms ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: #f1f7f2;
+  border-color: #6fa580;
+}
+
+.btn-secondary:active {
+  background-color: #e3efe6;
+}
+
+
+
 

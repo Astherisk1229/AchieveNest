@@ -40,7 +40,7 @@ class OSADController {
         code: 'DEPT-CS',
         programs: ['BS Computer Science', 'BS Information Technology'],
         dean_name: 'Dr. Ana Reyes',
-        dean_id: 'usr-[#2d8a4e]-201',
+        dean_id: 'usr-[#16834a]-201',
         student_count: 320,
         status: 'active'
       },
@@ -51,7 +51,7 @@ class OSADController {
         code: 'DEPT-BUS',
         programs: ['BS Business Administration', 'BS Accountancy'],
         dean_name: 'Prof. Grace Tan',
-        dean_id: 'usr-[#2d8a4e]-203',
+        dean_id: 'usr-[#16834a]-203',
         student_count: 245,
         status: 'active'
       },
@@ -62,7 +62,7 @@ class OSADController {
         code: 'DEPT-COM',
         programs: ['BA Communication', 'BS Psychology'],
         dean_name: 'Dr. Fernando Alonzo',
-        dean_id: 'usr-[#2d8a4e]-204',
+        dean_id: 'usr-[#16834a]-204',
         student_count: 190,
         status: 'active'
       }
@@ -76,12 +76,12 @@ class OSADController {
     ]
 
     this.#programCoordinatorAssignments = [
-      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', departmentId: 'dept-01', personnelId: 'usr-[#2d8a4e]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
-      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', departmentId: 'dept-02', personnelId: 'usr-[#2d8a4e]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', departmentId: 'dept-01', personnelId: 'usr-[#16834a]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', departmentId: 'dept-02', personnelId: 'usr-[#16834a]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
     ]
 
     this.#organizationModeratorAssignments = [
-      new OrganizationModeratorAssignmentModel({ id: 'oma-01', organizationId: 'org-01', personnelId: 'usr-[#2d8a4e]-205', personnelName: 'Prof. Elena Rostova', status: 'active' })
+      new OrganizationModeratorAssignmentModel({ id: 'oma-01', organizationId: 'org-01', personnelId: 'usr-[#16834a]-205', personnelName: 'Prof. Elena Rostova', status: 'active' })
     ]
 
     this.#organizations = [
@@ -90,7 +90,7 @@ class OSADController {
         name: 'Computer Society NDMU',
         category: 'Academic & Technology',
         coordinator_name: 'Engr. Roberto Cruz',
-        coordinator_id: 'usr-[#2d8a4e]-202',
+        coordinator_id: 'usr-[#16834a]-202',
         member_count: 140,
         status: 'Active'
       },
@@ -99,7 +99,7 @@ class OSADController {
         name: 'Junior Executive Club',
         category: 'Business Leadership',
         coordinator_name: 'Prof. Grace Tan',
-        coordinator_id: 'usr-[#2d8a4e]-203',
+        coordinator_id: 'usr-[#16834a]-203',
         member_count: 95,
         status: 'Active'
       },
@@ -108,7 +108,7 @@ class OSADController {
         name: 'Supreme Student Council',
         category: 'Student Government',
         coordinator_name: 'Engr. Roberto Cruz',
-        coordinator_id: 'usr-[#2d8a4e]-202',
+        coordinator_id: 'usr-[#16834a]-202',
         member_count: 220,
         status: 'Active'
       }
@@ -120,7 +120,7 @@ class OSADController {
         name: 'AI & Robotics Student Guild',
         parent_org: 'Computer Society NDMU',
         moderator_name: 'Dr. Ana Reyes',
-        moderator_id: 'usr-[#2d8a4e]-201',
+        moderator_id: 'usr-[#16834a]-201',
         member_count: 45,
         status: 'Active'
       },
@@ -129,7 +129,7 @@ class OSADController {
         name: 'FinTech & Accounting Circle',
         parent_org: 'Junior Executive Club',
         moderator_name: 'Prof. Grace Tan',
-        moderator_id: 'usr-[#2d8a4e]-203',
+        moderator_id: 'usr-[#16834a]-203',
         member_count: 38,
         status: 'Active'
       },
@@ -138,7 +138,7 @@ class OSADController {
         name: 'Green Campus Environment Club',
         parent_org: 'Supreme Student Council',
         moderator_name: 'Dr. Fernando Alonzo',
-        moderator_id: 'usr-[#2d8a4e]-204',
+        moderator_id: 'usr-[#16834a]-204',
         member_count: 60,
         status: 'Active'
       }
@@ -213,7 +213,7 @@ class OSADController {
 
       // Personnel / Faculty (Employee IDs formatted without dashes per university standard)
       {
-        id: 'usr-[#2d8a4e]-201',
+        id: 'usr-[#16834a]-201',
         full_name: 'Dr. Ana Reyes',
         employee_id: 'EMP8821',
         role: 'personnel',
@@ -226,7 +226,7 @@ class OSADController {
         status: 'Active'
       },
       {
-        id: 'usr-[#2d8a4e]-202',
+        id: 'usr-[#16834a]-202',
         full_name: 'Engr. Roberto Cruz',
         employee_id: 'EMP7491',
         role: 'personnel',
@@ -239,7 +239,7 @@ class OSADController {
         status: 'Active'
       },
       {
-        id: 'usr-[#2d8a4e]-203',
+        id: 'usr-[#16834a]-203',
         full_name: 'Prof. Grace Tan',
         employee_id: 'EMP6102',
         role: 'personnel',
@@ -252,7 +252,7 @@ class OSADController {
         status: 'Active'
       },
       {
-        id: 'usr-[#2d8a4e]-204',
+        id: 'usr-[#16834a]-204',
         full_name: 'Dr. Fernando Alonzo',
         employee_id: 'EMP9011',
         role: 'personnel',

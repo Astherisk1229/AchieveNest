@@ -9,7 +9,7 @@ export const ACCOUNT_ROLE_PRESENTATIONS = {
     roleKey: 'hr_staff',
     pageTitle: 'HR Staff Profile & Governance Credentials',
     badgeText: 'HR Staff & Administration',
-    badgeColor: 'bg-emerald-50 text-[#1e5831] border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
+    badgeColor: 'bg-emerald-50 text-[#064e2b] border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
     defaultUserData: {
       full_name: 'Director Evelyn Tan',
       employee_id: 'HR-DIR-2010-001',
@@ -31,7 +31,7 @@ export const ACCOUNT_ROLE_PRESENTATIONS = {
     roleKey: 'osad_staff',
     pageTitle: 'OSAD Administrator Profile',
     badgeText: 'OSAD Central Governance',
-    badgeColor: 'bg-emerald-50 text-[#1e5831] border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
+    badgeColor: 'bg-emerald-50 text-[#064e2b] border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
     defaultUserData: {
       full_name: 'Director Marcus Vance, Ph.D.',
       employee_id: 'OSAD-DIR-2015-002',
@@ -75,7 +75,7 @@ export const ACCOUNT_ROLE_PRESENTATIONS = {
     roleKey: 'student',
     pageTitle: 'Student Account & Achievements',
     badgeText: 'Student Scholar',
-    badgeColor: 'bg-emerald-50 text-[#1e5831] border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
+    badgeColor: 'bg-emerald-50 text-[#064e2b] border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60',
     defaultUserData: {
       full_name: 'Maria Santos',
       student_id: '2024-01234',

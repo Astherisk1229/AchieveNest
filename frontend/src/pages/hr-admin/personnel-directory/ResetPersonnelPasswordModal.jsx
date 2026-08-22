@@ -72,14 +72,14 @@ export default function ResetPersonnelPasswordModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-150 font-sans">
           {/* Modal Header */}
-          <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
+          <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-extrabold text-sm shrink-0 border border-amber-400/30">
-                <KeyRound className="w-5 h-5 text-amber-300" />
+              <div className="w-10 h-10 rounded-xl bg-[#FFF7E6] text-[#795600] flex items-center justify-center font-extrabold text-sm shrink-0 border border-[#E5C276]">
+                <KeyRound className="w-5 h-5 text-[#B7791F]" />
               </div>
               <div>
-                <h3 className="font-extrabold text-base text-white">Reset Personnel Password</h3>
-                <p className="text-xs text-emerald-200/90 font-medium">HR Administrative Credential Reset</p>
+                <h3 className="font-extrabold text-base text-[#17663B]">Reset Personnel Password</h3>
+                <p className="text-xs text-[#356148] font-medium">HR Administrative Credential Reset</p>
               </div>
             </div>
 
@@ -103,7 +103,7 @@ export default function ResetPersonnelPasswordModal({
                   className="w-10 h-10 rounded-xl object-cover shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-xl bg-[#1b4332] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#EFF7F0] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                   {initial}
                 </div>
               )}
@@ -112,7 +112,7 @@ export default function ResetPersonnelPasswordModal({
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                   ID: {empId} • {deptOrCollege}
                 </p>
-                <p className="text-[11px] text-[#2d8a4e] dark:text-emerald-400 font-semibold truncate">{email}</p>
+                <p className="text-[11px] text-[#16834a] dark:text-emerald-400 font-semibold truncate">{email}</p>
               </div>
             </div>
 
@@ -123,7 +123,7 @@ export default function ResetPersonnelPasswordModal({
                 <button
                   type="button"
                   onClick={handleGenerateRandom}
-                  className="text-[#2d8a4e] dark:text-emerald-400 hover:underline text-[11px] font-extrabold flex items-center gap-1 cursor-pointer"
+                  className="text-[#16834a] dark:text-emerald-400 hover:underline text-[11px] font-extrabold flex items-center gap-1 cursor-pointer"
                 >
                   <RefreshCw className="w-3 h-3" />
                   <span>Generate Random</span>
@@ -136,7 +136,7 @@ export default function ResetPersonnelPasswordModal({
                   value={tempPassword}
                   onChange={(e) => setTempPassword(e.target.value)}
                   required
-                  className="w-full pl-3.5 pr-20 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full pl-3.5 pr-20 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a]"
                 />
 
                 <button
@@ -178,7 +178,7 @@ export default function ResetPersonnelPasswordModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50 transition cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50 transition cursor-pointer"
               >
                 <KeyRound className="w-4 h-4 text-amber-300" />
                 <span>{isSubmitting ? 'Resetting Password...' : 'Confirm Password Reset'}</span>

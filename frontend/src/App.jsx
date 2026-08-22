@@ -63,7 +63,7 @@ class ErrorBoundary extends React.Component {
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 font-mono text-[11px] text-slate-700 overflow-x-auto">
               {String(this.state.error?.message || 'Unknown Render Error')}
             </div>
-            <button type="button" onClick={this.handleReset} className="w-full py-3 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer">
+            <button type="button" onClick={this.handleReset} className="w-full py-3 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer">
               Reset Session and Reload Portal
             </button>
           </div>

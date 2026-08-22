@@ -170,10 +170,10 @@ export default function StudentAchievementPopoverMenu({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
-                className="p-1 rounded-full text-slate-400 hover:text-[#1b4332] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
+                className="p-1 rounded-full text-slate-400 hover:text-[#064e2b] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
                 title="Edit Submission"
               >
-                <Edit3 className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400" />
+                <Edit3 className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400" />
               </button>
             )}
           </div>
@@ -194,7 +194,7 @@ export default function StudentAchievementPopoverMenu({
             variant="emerald"
             onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
           >
-            <ExternalLink className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
+            <ExternalLink className="w-4 h-4 text-[#064e2b] dark:text-emerald-400" />
             <span>Open in Preview Viewer</span>
           </DropdownMenuItem>
 

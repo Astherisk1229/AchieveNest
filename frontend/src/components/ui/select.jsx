@@ -68,12 +68,12 @@ export function Select({ value, onChange, children, placeholder = 'Select an opt
                   onClick={() => handleSelect(opt.value)}
                   className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg transition cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 font-bold'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-emerald-300 font-bold'
                       : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-[#1b4332] dark:text-emerald-400 shrink-0" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400 shrink-0" />}
                 </button>
               )
             })}

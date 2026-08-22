@@ -27,7 +27,7 @@ export default function DigitalBarcodeIDCardModal({ user, isOpen, onClose }) {
 
         {/* Modal Header */}
         <div className="text-center mb-6">
-          <span className="text-[10px] uppercase font-bold tracking-widest text-[#2d8a4e] bg-[#eef7f0] px-3 py-1 rounded-full border border-[#cbe6d2]">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-[#16834a] bg-[#eef7f0] px-3 py-1 rounded-full border border-[#cbe6d2]">
             Digital Campus Pass
           </span>
           <h3 className="text-xl font-extrabold text-slate-900 mt-2">NDMU Digital Barcode ID</h3>
@@ -35,7 +35,7 @@ export default function DigitalBarcodeIDCardModal({ user, isOpen, onClose }) {
         </div>
 
         {/* Digital ID Card Preview */}
-        <div className="rounded-2xl bg-gradient-to-br from-[#12361e] via-[#1b4332] to-[#0d2816] text-white p-6 shadow-xl border border-[#245233] relative overflow-hidden space-y-6">
+        <div className="rounded-2xl bg-gradient-to-br from-[#12361e] via-[#064e2b] to-[#0d2816] text-white p-6 shadow-xl border border-[#A9C6B1] relative overflow-hidden space-y-6">
           
           {/* Card Top Header */}
           <div className="flex items-center justify-between">

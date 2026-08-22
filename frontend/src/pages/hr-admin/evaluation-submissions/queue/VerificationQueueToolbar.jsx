@@ -20,7 +20,7 @@ export default function VerificationQueueToolbar({
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder='Search faculty by name, employee ID ("EMP-2019-0881"), email...'
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#1b4332]"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#69A97C]"
           />
         </div>
 
@@ -29,7 +29,7 @@ export default function VerificationQueueToolbar({
           <select
             value={collegeFilter}
             onChange={e => setCollegeFilter(e.target.value)}
-            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Colleges</option>
             <option value="CEAC">CEAC - Engineering &amp; Computing</option>
@@ -40,7 +40,7 @@ export default function VerificationQueueToolbar({
           <select
             value={deptFilter}
             onChange={e => setDeptFilter(e.target.value)}
-            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Departments</option>
             <option value="Department of Computer Studies">Computer Studies</option>
@@ -52,7 +52,7 @@ export default function VerificationQueueToolbar({
           <select
             value={submissionType}
             onChange={e => setSubmissionType(e.target.value)}
-            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#1b4332]"
+            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
           >
             <option value="ALL">All Submission Types</option>
             <option value="ranking">Ranking &amp; Promotion</option>

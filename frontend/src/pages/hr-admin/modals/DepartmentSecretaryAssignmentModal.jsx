@@ -36,14 +36,14 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
       <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Modal Header */}
-        <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between relative overflow-hidden">
+        <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-amber-300">
-              <ShieldCheck className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F5EA] border border-[#B7DDC4] flex items-center justify-center text-[#17663B]">
+              <ShieldCheck className="w-5 h-5 text-[#17663B]" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white">Assign Department Secretary</h2>
-              <p className="text-xs text-emerald-200/90 font-medium">Designate faculty or personnel members for department verification oversight</p>
+              <h2 className="text-lg font-extrabold text-[#17663B]">Assign Department Secretary</h2>
+              <p className="text-xs text-[#356148] font-medium">Designate faculty or personnel members for department verification oversight</p>
             </div>
           </div>
           <button
@@ -80,12 +80,12 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
                     onClick={() => setSelectedDept(dept)}
                     className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer ${
                       isSelected
-                        ? 'bg-[#eaf4ed] border-[#2d8a4e] text-[#1b4332] shadow-2xs font-extrabold'
+                        ? 'bg-[#eaf4ed] border-[#16834a] text-[#064e2b] shadow-2xs font-extrabold'
                         : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                      isSelected ? 'bg-[#2d8a4e] text-white' : 'bg-slate-100 text-slate-600'
+                      isSelected ? 'bg-[#16834a] text-white' : 'bg-slate-100 text-slate-600'
                     }`}>
                       <Building2 className="w-4 h-4" />
                     </div>
@@ -115,7 +115,7 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
                 placeholder="Search personnel by name, employee ID, or department..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
               />
             </div>
 
@@ -135,7 +135,7 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
                       onClick={() => setSelectedPersonnel(p)}
                       className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
                         isPicked
-                          ? 'bg-[#eaf4ed] border-[#2d8a4e] shadow-2xs'
+                          ? 'bg-[#eaf4ed] border-[#16834a] shadow-2xs'
                           : 'bg-white border-slate-200 hover:border-slate-300'
                       }`}
                     >
@@ -163,7 +163,7 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
 
                       <div className="shrink-0">
                         <div className={`w-6 h-6 rounded-full border flex items-center justify-center ${
-                          isPicked ? 'bg-[#2d8a4e] border-[#2d8a4e] text-white' : 'border-slate-300 bg-white'
+                          isPicked ? 'bg-[#16834a] border-[#16834a] text-white' : 'border-slate-300 bg-white'
                         }`}>
                           {isPicked && <UserCheck className="w-3.5 h-3.5" />}
                         </div>
@@ -181,7 +181,7 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
         <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
           <div className="text-xs text-slate-500 font-medium">
             {selectedPersonnel ? (
-              <span>Selected: <strong className="text-slate-800">{selectedPersonnel.full_name}</strong> for <strong className="text-[#1b4332]">{selectedDept.name}</strong></span>
+              <span>Selected: <strong className="text-slate-800">{selectedPersonnel.full_name}</strong> for <strong className="text-[#064e2b]">{selectedDept.name}</strong></span>
             ) : (
               <span>Please select a personnel member above.</span>
             )}
@@ -199,7 +199,7 @@ export default function DepartmentSecretaryAssignmentModal({ isOpen, onClose, pe
               type="button"
               disabled={!selectedPersonnel}
               onClick={handleConfirmAssignment}
-              className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Assign Role</span>

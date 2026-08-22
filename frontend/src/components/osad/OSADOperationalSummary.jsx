@@ -20,7 +20,7 @@ export default function OSADOperationalSummary({ currentUser, metrics = {} }) {
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
       {/* Restrained Operational Header Banner */}
-      <div className="bg-[#1b4332] dark:bg-[#0a2417] text-white p-5 sm:p-6 rounded-xl border border-slate-700/60 shadow-2xs relative overflow-hidden">
+      <div className="bg-[#064e2b] dark:bg-[#0a2417] text-white p-5 sm:p-6 rounded-xl border border-slate-700/60 shadow-2xs relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -40,7 +40,7 @@ export default function OSADOperationalSummary({ currentUser, metrics = {} }) {
           </div>
 
           {/* Operational Setup Coverage Badge */}
-          <div className="p-3 rounded-xl bg-[#0c2416] border border-[#1e4a30] shrink-0 self-start md:self-auto space-y-1 text-right">
+          <div className="p-3 rounded-xl bg-[#033d23] border border-[#033d23] shrink-0 self-start md:self-auto space-y-1 text-right">
             <p className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">OSAD Setup Progress</p>
             <div className="flex items-center justify-end gap-2 text-sm font-black text-white">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -60,7 +60,7 @@ export default function OSADOperationalSummary({ currentUser, metrics = {} }) {
         <div className="p-4 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-2xs">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-extrabold uppercase tracking-wider">Academic Structure</span>
-            <Building2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+            <Building2 className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
           </div>
           <p className="text-lg font-black text-slate-900 dark:text-white">
             {departmentsCount} <span className="text-xs font-semibold text-slate-500">Depts</span>

@@ -203,7 +203,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
 
         {/* Modal Header */}
         <div className="flex items-center gap-3.5 mb-4 shrink-0">
-          <div className="p-3 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] shadow-2xs">
+          <div className="p-3 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] shadow-2xs">
             <Award className="w-6 h-6" />
           </div>
           <div>
@@ -220,9 +220,9 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
         <div className="grid grid-cols-3 gap-2 mb-4 shrink-0">
           <div className={`py-1.5 px-3 rounded-xl text-center text-xs font-bold transition flex items-center justify-center gap-1.5 ${
             currentStep === 1 
-              ? 'bg-[#2d8a4e] text-white shadow-xs' 
+              ? 'bg-[#16834a] text-white shadow-xs' 
               : currentStep > 1 
-              ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]' 
+              ? 'bg-[#eef7f0] text-[#064e2b] border border-[#cbe6d2]' 
               : 'bg-slate-100 text-slate-400'
           }`}>
             {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : <span>1</span>}
@@ -231,9 +231,9 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
 
           <div className={`py-1.5 px-3 rounded-xl text-center text-xs font-bold transition flex items-center justify-center gap-1.5 ${
             currentStep === 2 
-              ? 'bg-[#2d8a4e] text-white shadow-xs' 
+              ? 'bg-[#16834a] text-white shadow-xs' 
               : currentStep > 2 
-              ? 'bg-[#eef7f0] text-[#1e5831] border border-[#cbe6d2]' 
+              ? 'bg-[#eef7f0] text-[#064e2b] border border-[#cbe6d2]' 
               : 'bg-slate-100 text-slate-400'
           }`}>
             {currentStep > 2 ? <Check className="w-3.5 h-3.5" /> : <span>2</span>}
@@ -242,7 +242,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
 
           <div className={`py-1.5 px-3 rounded-xl text-center text-xs font-bold transition flex items-center justify-center gap-1.5 ${
             currentStep === 3 
-              ? 'bg-[#2d8a4e] text-white shadow-xs' 
+              ? 'bg-[#16834a] text-white shadow-xs' 
               : 'bg-slate-100 text-slate-400'
           }`}>
             <span>3</span>
@@ -274,7 +274,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Dean's Lister - First Semester AY 2025-2026"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                   required
                 />
               </div>
@@ -288,7 +288,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
                   placeholder="e.g. 12th SOCCSKSARGEN IT Summit / NDMU Intramurals 2025"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                   required
                 />
               </div>
@@ -302,7 +302,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   value={issuerOrganization}
                   onChange={(e) => setIssuerOrganization(e.target.value)}
                   placeholder="e.g. NDMU CITE / DOST Region XII"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition"
                   required
                 />
               </div>
@@ -322,7 +322,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a] outline-none transition"
                   >
                     <option value="Academic">Academic</option>
                     <option value="Leadership">Leadership</option>
@@ -339,7 +339,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   <select
                     value={scopeLevel}
                     onChange={(e) => setScopeLevel(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a] outline-none transition"
                   >
                     <option value="Institutional / Campus-Wide">Institutional / Campus-Wide</option>
                     <option value="Local / City Level">Local / City Level</option>
@@ -357,7 +357,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                 <select
                   value={rankConferred}
                   onChange={(e) => setRankConferred(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a] outline-none transition"
                 >
                   <option value="Champion / 1st Place">Champion / 1st Place</option>
                   <option value="2nd Place">2nd Place</option>
@@ -377,7 +377,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   <select
                     value={academicYear}
                     onChange={(e) => setAcademicYear(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a] outline-none transition"
                   >
                     <option value="AY 2025-2026">AY 2025-2026</option>
                     <option value="AY 2024-2025">AY 2024-2025</option>
@@ -392,7 +392,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   <select
                     value={semester}
                     onChange={(e) => setSemester(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a] outline-none transition"
                   >
                     <option value="1st Semester">1st Semester</option>
                     <option value="2nd Semester">2nd Semester</option>
@@ -408,7 +408,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                     type="date"
                     value={dateAchieved}
                     onChange={(e) => setDateAchieved(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#2d8a4e] outline-none transition"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a] outline-none transition"
                     required
                   />
                 </div>
@@ -430,7 +430,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
                   placeholder="Brief details about the accomplishment, criteria met, or project abstract..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition resize-none"
                 />
               </div>
 
@@ -439,7 +439,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                   Supporting Evidence Document (PDF/JPG/PNG) *
                 </label>
                 
-                <div className="relative border-2 border-dashed border-slate-200 hover:border-[#2d8a4e] rounded-2xl p-6 text-center transition bg-slate-50/50 hover:bg-[#eef7f0]/30 cursor-pointer group">
+                <div className="relative border-2 border-dashed border-slate-200 hover:border-[#16834a] rounded-2xl p-6 text-center transition bg-slate-50/50 hover:bg-[#eef7f0]/30 cursor-pointer group">
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -447,11 +447,11 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
                   <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
-                    <div className="w-10 h-10 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center group-hover:scale-110 transition">
+                    <div className="w-10 h-10 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center group-hover:scale-110 transition">
                       <UploadCloud className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-extrabold text-slate-800 group-hover:text-[#2d8a4e] transition">
+                      <p className="text-xs font-extrabold text-slate-800 group-hover:text-[#16834a] transition">
                         Click or drag certificate attachment here
                       </p>
                       <p className="text-[11px] text-slate-400 font-medium mt-0.5">
@@ -462,9 +462,9 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                 </div>
 
                 {attachedFile && (
-                  <div className="mt-2 p-3 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] flex items-center justify-between text-xs text-[#1e5831] font-bold">
+                  <div className="mt-2 p-3 rounded-xl bg-[#eef7f0] border border-[#cbe6d2] flex items-center justify-between text-xs text-[#064e2b] font-bold">
                     <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-[#2d8a4e]" />
+                      <FileText className="w-4 h-4 text-[#16834a]" />
                       <span className="truncate max-w-[240px]">{attachedFile.name}</span>
                     </div>
                     <span className="text-[10px] text-emerald-700">{(attachedFile.size / 1024 / 1024).toFixed(2)} MB</span>
@@ -532,7 +532,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
               <button
                 type="submit"
                 form="wizard-step-1"
-                className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md"
+                className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md"
               >
                 <span>Next: Scope & Rank</span>
                 <ChevronRight className="w-4 h-4" />
@@ -553,7 +553,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
               <button
                 type="submit"
                 form="wizard-step-2"
-                className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md"
+                className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md"
               >
                 <span>Next: Proof & Submit</span>
                 <ChevronRight className="w-4 h-4" />
@@ -575,7 +575,7 @@ export default function AchievementSubmissionModal({ isOpen, onClose, onSubmitAc
                 type="submit"
                 form="wizard-step-3"
                 disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-md disabled:opacity-50"
               >
                 <Check className="w-4 h-4" />
                 <span>{isSubmitting ? 'Submitting...' : 'Submit Entry ✓'}</span>

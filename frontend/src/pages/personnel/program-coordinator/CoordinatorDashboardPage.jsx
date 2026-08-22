@@ -334,10 +334,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
       
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 px-4 py-3 rounded-2xl bg-[#2d8a4e] text-white text-xs font-bold shadow-xl border border-emerald-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+        <div className="fixed top-20 right-6 z-50 px-4 py-3 rounded-2xl bg-[#16834a] text-white text-xs font-bold shadow-xl border border-emerald-400 flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-[#245F42]" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage('')} className="ml-2 text-emerald-200 hover:text-white">
+          <button onClick={() => setToastMessage('')} className="ml-2 text-[#245F42] hover:text-white">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -348,54 +348,51 @@ export default function CoordinatorDashboardPage({ currentUser }) {
         <div className="space-y-6 animate-in fade-in duration-150">
 
           {/* Hero Summary Banner */}
-          <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
+          <div className="bg-[#EFF7F0] dark:bg-[#21372A] p-6 sm:p-8 rounded-3xl shadow-xl border border-[#69A97C] dark:border-[#466B54] relative overflow-hidden">
             
             {/* Top Header Row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
-                  <Shield className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-2xl bg-[#159552] border border-emerald-400/30 flex items-center justify-center text-white shadow-md shrink-0">
+                  <Shield className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Program Coordinator Dashboard</h1>
-                  <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-[#17663B] dark:text-[#EFF6F1] tracking-tight">Program Coordinator Dashboard</h1>
+                  <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
                     Achievement Verification &amp; Management • {user.program_scope || 'BS Computer Science'}
                   </p>
                 </div>
               </div>
 
-              {/* NDMU Crest Emblem Badge */}
-              <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-1.5 flex items-center justify-center shrink-0 shadow-md self-start sm:self-auto">
-                <svg viewBox="0 0 100 100" className="w-full h-full">
-                  <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#ffffff" opacity="0.9" />
-                  <path d="M50 15 L80 30 L80 70 L50 85 L20 70 L20 30 Z" fill="#1b4332" />
-                  <path d="M50 30 L56 42 L69 42 L58 51 L62 64 L50 55 L38 64 L42 51 L31 42 L44 42 Z" fill="#f59e0b" />
-                </svg>
+              {/* Decorative Icon Surface */}
+              <div className="w-10 h-10 rounded-2xl bg-[#E7F5EA] dark:bg-[#1D2A23] border border-[#69A97C]/30 flex items-center justify-center text-[#159552] dark:text-[#59AD7C] shadow-sm shrink-0 self-start sm:self-auto">
+                <Award className="w-5 h-5 text-[#159552] dark:text-[#59AD7C]" />
               </div>
             </div>
 
           </div>
 
           {/* Program Scope Filter Notice Banner */}
-          <div className="p-4 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] flex items-center justify-between gap-3">
+          <div className="p-4 rounded-2xl bg-[#EAF4EC] dark:bg-[#1D2A23] border border-[#B9D8C1] dark:border-[#374B3F] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-white text-[#2d8a4e] border border-[#cbe6d2] shrink-0 shadow-2xs">
-                <Filter className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#121A16] border border-[#B9D8C1] dark:border-[#374B3F] flex items-center justify-center text-[#16834A] shrink-0">
+                <Filter className="w-4 h-4 text-[#16834A]" />
               </div>
               <div>
-                <p className="text-xs font-extrabold text-[#1e5831]">
-                  Program Scope: {user.program_scope || 'BS Computer Science'}
-                </p>
-                <p className="text-[11px] text-emerald-800/80 font-medium mt-0.5">
-                  You can only view and manage students enrolled in your assigned degree program.
+                <h3 className="text-xs font-bold text-[#145C39] dark:text-[#E6EFE9]">
+                  Program Scope: {user.program_scope || 'BS Computer Science (BSCS)'}
+                </h3>
+                <p className="text-[11px] text-[#356148] dark:text-[#B1C0B6] font-medium">
+                  Viewing and verifying achievement entries for students enrolled under your assigned degree program.
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#2d8a4e] text-white hidden sm:inline-block">
-              ● Program Coordinator Mode
+
+            <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-[#176B43] text-white shadow-xs shrink-0 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-white" />
+              <span>Program Coordinator Mode</span>
             </span>
           </div>
-
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
@@ -405,7 +402,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100">
+                    <div className="p-2 rounded-xl bg-emerald-50 text-[#16834a] border border-emerald-100">
                       <Activity className="w-5 h-5" />
                     </div>
                     <div>
@@ -413,7 +410,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       <p className="text-xs text-slate-500 mt-0.5">Real-time audit stream for {user.program_scope || 'BS Computer Science'}</p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-[#1e5831] border border-emerald-200 text-[11px] font-bold">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-[#064e2b] border border-emerald-200 text-[11px] font-bold">
                     Live Audit Stream
                   </span>
                 </div>
@@ -427,7 +424,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       timestamp: '25 mins ago',
                       type: 'verified',
                       icon: CheckCircle2,
-                      badgeColor: 'bg-emerald-50 text-[#1e5831] border-emerald-200'
+                      badgeColor: 'bg-emerald-50 text-[#064e2b] border-emerald-200'
                     },
                     {
                       id: 'act-2',
@@ -464,8 +461,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 hover:border-emerald-300 hover:bg-white transition flex items-start justify-between gap-4 group"
                       >
                         <div className="flex items-start gap-3.5">
-                          <div className="p-2.5 rounded-xl bg-white text-[#2d8a4e] border border-slate-200 shadow-2xs group-hover:bg-[#eef7f0] transition shrink-0 mt-0.5">
-                            <ActIcon className="w-4 h-4 text-[#2d8a4e]" />
+                          <div className="p-2.5 rounded-xl bg-white text-[#16834a] border border-slate-200 shadow-2xs group-hover:bg-[#E7F3E9] transition shrink-0 mt-0.5">
+                            <ActIcon className="w-4 h-4 text-[#16834a]" />
                           </div>
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -501,7 +498,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                  <div className="p-2 rounded-xl bg-emerald-50 text-[#2d8a4e] border border-emerald-100">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-[#16834a] border border-emerald-100">
                     <FileText className="w-5 h-5" />
                   </div>
                   <div>
@@ -512,8 +509,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                 <div className="space-y-4 text-xs">
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <div className="flex items-center gap-2 text-[#1e5831] font-extrabold">
-                      <Clock className="w-4 h-4 text-[#2d8a4e]" />
+                    <div className="flex items-center gap-2 text-[#064e2b] font-extrabold">
+                      <Clock className="w-4 h-4 text-[#16834a]" />
                       <span>Review SLA Commitment</span>
                     </div>
                     <p className="text-slate-600 leading-relaxed text-[11px] font-medium pt-1">
@@ -522,8 +519,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <div className="flex items-center gap-2 text-[#1e5831] font-extrabold">
-                      <ShieldCheck className="w-4 h-4 text-[#2d8a4e]" />
+                    <div className="flex items-center gap-2 text-[#064e2b] font-extrabold">
+                      <ShieldCheck className="w-4 h-4 text-[#16834a]" />
                       <span>Proof Document Criteria</span>
                     </div>
                     <p className="text-slate-600 leading-relaxed text-[11px] font-medium pt-1">
@@ -532,8 +529,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   </div>
 
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <div className="flex items-center gap-2 text-[#1e5831] font-extrabold">
-                      <Award className="w-4 h-4 text-[#2d8a4e]" />
+                    <div className="flex items-center gap-2 text-[#064e2b] font-extrabold">
+                      <Award className="w-4 h-4 text-[#16834a]" />
                       <span>Verification Scope Standards</span>
                     </div>
                     <p className="text-slate-600 leading-relaxed text-[11px] font-medium pt-1">
@@ -604,7 +601,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               <div className="bg-white rounded-2xl px-5 py-3 border border-slate-200/90 shadow-2xs">
                 <h2 className="text-base font-extrabold text-slate-900">Verification Workspace</h2>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Review and verify active <strong className="text-[#2d8a4e]">AY 2025-2026</strong> student achievement submissions
+                  Review and verify active <strong className="text-[#16834a]">AY 2025-2026</strong> student achievement submissions
                 </p>
               </div>
 
@@ -624,7 +621,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search by title, student name, or Student ID..."
-                      className="w-full pl-10 pr-4 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] focus:bg-white transition"
+                      className="w-full pl-10 pr-4 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] focus:bg-white transition"
                     />
                   </div>
 
@@ -637,7 +634,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       ['Verified', finalSubmissions.filter(s => s.status === 'Verified').length]
                     ].map(([label, count]) => {
                       const isSelected = statusFilter === label
-                      let activeClass = 'bg-[#1b4332] text-white border-[#1b4332]'
+                      let activeClass = 'bg-[#176B43] text-white border-[#176B43]'
                       if (label === 'Pending') activeClass = 'bg-blue-600 text-white border-blue-600'
                       if (label === 'Returned') activeClass = 'bg-amber-600 text-white border-amber-600'
                       if (label === 'Verified') activeClass = 'bg-emerald-700 text-white border-emerald-700'
@@ -667,7 +664,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
                   >
                     <option value="All Categories">All Categories</option>
                     <option value="Academic">Academic</option>
@@ -682,7 +679,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   <select
                     value={scopeFilter}
                     onChange={(e) => setScopeFilter(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
                   >
                     <option value="All Scopes">All Scope Levels</option>
                     <option value="Institutional / Campus-Wide">Institutional</option>
@@ -693,8 +690,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   </select>
 
                   {/* Static Active Academic Year Indicator */}
-                  <div className="w-full px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-extrabold text-[#1b4332] flex items-center justify-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <div className="w-full px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-extrabold text-[#064e2b] flex items-center justify-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-[#16834a]" />
                     <span>AY 2025-2026 (Active)</span>
                   </div>
 
@@ -702,7 +699,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
                   >
                     <option value="Newest">Sort: Newest First</option>
                     <option value="Oldest">Sort: Oldest First</option>
@@ -748,7 +745,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                           onClick={() => { setSelectedWorkspaceItem(item); setWorkspaceRemarks('') }}
                           className={`w-full text-left px-4 py-3 transition cursor-pointer flex items-center justify-between gap-3 ${
                             isActive
-                              ? 'bg-[#f2f9f4] border-l-3 border-[#1b4332]'
+                              ? 'bg-[#f2f9f4] border-l-3 border-[#69A97C]'
                               : 'hover:bg-slate-50/80 border-l-3 border-transparent'
                           }`}
                         >
@@ -756,14 +753,14 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             {/* Avatar Badge */}
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-xs shrink-0 mt-0.5 transition ${
                               isActive
-                                ? 'bg-[#1b4332] text-white shadow-2xs'
+                                ? 'bg-[#176B43] text-white shadow-2xs'
                                 : 'bg-slate-100 text-slate-700'
                             }`}>
                               {(item.student_name || '?').charAt(0)}
                             </div>
 
                             <div className="flex-1 min-w-0 space-y-1">
-                              <p className={`text-xs leading-snug truncate ${isActive ? 'font-extrabold text-[#1b4332]' : 'font-bold text-slate-800'}`}>
+                              <p className={`text-xs leading-snug truncate ${isActive ? 'font-extrabold text-[#064e2b]' : 'font-bold text-slate-800'}`}>
                                 {item.title}
                               </p>
                               <p className="text-[11px] text-slate-500 font-medium truncate">
@@ -796,7 +793,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                           {/* Minimal Active Indicator Pill */}
                           {isActive && (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100/90 text-[#1b4332] text-[10px] font-extrabold border border-emerald-300/60 shrink-0">
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100/90 text-[#064e2b] text-[10px] font-extrabold border border-emerald-300/60 shrink-0">
                               Viewing
                             </span>
                           )}
@@ -833,7 +830,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                           <p className="text-sm font-extrabold text-slate-900 leading-snug truncate">{workspaceItem.student_name}</p>
                           <p className="text-[11px] text-slate-500 font-mono">Student ID: {workspaceItem.student_id}</p>
                           {workspaceItem.program && (
-                            <p className="text-[11px] text-[#2d8a4e] font-bold mt-0.5 truncate">{workspaceItem.program}</p>
+                            <p className="text-[11px] text-[#16834a] font-bold mt-0.5 truncate">{workspaceItem.program}</p>
                           )}
                         </div>
                       </div>
@@ -887,7 +884,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                           <div>
                             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Date Conferred</p>
                             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                              <Calendar className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                              <Calendar className="w-3.5 h-3.5 text-[#16834a]" />
                               <span>{workspaceItem.date}</span>
                             </div>
                           </div>
@@ -940,7 +937,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         {/* Certificate Document Card */}
                         <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#2d8a4e] flex items-center justify-center shrink-0 border border-emerald-100">
+                            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#16834a] flex items-center justify-center shrink-0 border border-emerald-100">
                               <FileText className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
@@ -1019,7 +1016,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                           onChange={(e) => setWorkspaceRemarks(e.target.value)}
                           rows={3}
                           placeholder="Provide feedback or specify what needs to be revised..."
-                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] focus:bg-white transition resize-none"
+                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] focus:bg-white transition resize-none"
                         />
                       </div>
 
@@ -1063,7 +1060,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                 setWorkspaceRemarks('')
                                 triggerToast('Achievement approved & verified successfully!')
                               }}
-                              className="px-6 py-2 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white font-extrabold text-xs shadow-2xs transition cursor-pointer flex items-center justify-center gap-2"
+                              className="px-6 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white font-extrabold text-xs shadow-2xs transition cursor-pointer flex items-center justify-center gap-2"
                             >
                               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                               <span>Approve &amp; Verify</span>
@@ -1121,7 +1118,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     onClick={() => setSelectedStudentDossier(null)}
                     className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-extrabold text-xs hover:bg-slate-50 transition shadow-2xs flex items-center gap-2 cursor-pointer w-fit"
                   >
-                    <ArrowLeft className="w-4 h-4 text-[#2d8a4e]" />
+                    <ArrowLeft className="w-4 h-4 text-[#16834a]" />
                     <span>Back to Students Roster</span>
                   </button>
 
@@ -1132,7 +1129,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     <button
                       type="button"
                       onClick={() => triggerToast(`Exported official portfolio report for ${selectedStudentDossier.full_name}`)}
-                      className="px-4 py-2.5 rounded-2xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
+                      className="px-4 py-2.5 rounded-2xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer"
                     >
                       <Download className="w-4 h-4 text-emerald-400" />
                       <span>Export Student Portfolio</span>
@@ -1152,7 +1149,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         <defs>
                           <linearGradient id="coordinatorHeroGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor="#143d2b" />
-                            <stop offset="50%" stopColor="#1b4332" />
+                            <stop offset="50%" stopColor="#064e2b" />
                             <stop offset="100%" stopColor="#0d281e" />
                           </linearGradient>
                         </defs>
@@ -1178,7 +1175,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         </div>
                         <div className="leading-tight">
                           <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
-                          <span className="text-[9px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
+                          <span className="text-[9px] font-bold text-[#245F42] tracking-widest uppercase block">NDMU</span>
                         </div>
                       </div>
 
@@ -1203,7 +1200,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                   className="w-full h-full object-cover rounded-full aspect-square"
                                 />
                               ) : (
-                                <div className="w-full h-full bg-[#2d8a4e] text-white font-black text-3xl flex items-center justify-center">
+                                <div className="w-full h-full bg-[#16834a] text-white font-black text-3xl flex items-center justify-center">
                                   {selectedStudentDossier.full_name.charAt(0)}
                                 </div>
                               )}
@@ -1216,28 +1213,28 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
                                 {selectedStudentDossier.full_name}
                               </h2>
-                              <span className="w-5 h-5 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
+                              <span className="w-5 h-5 rounded-full bg-[#16834a] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
                                 ✓
                               </span>
                             </div>
 
-                            <p className="text-xs font-extrabold text-[#2d8a4e]">{selectedStudentDossier.program || 'BS Computer Science'}</p>
+                            <p className="text-xs font-extrabold text-[#16834a]">{selectedStudentDossier.program || 'BS Computer Science'}</p>
                             <p className="text-xs text-slate-600 font-semibold">{selectedStudentDossier.year_level || '3rd Year Student'} • Notre Dame of Marbel University</p>
                             <p className="text-xs text-slate-500 font-medium">Koronadal City, South Cotabato</p>
 
                             <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
                               <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                                <GraduationCap className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                                <GraduationCap className="w-3.5 h-3.5 text-[#16834a]" />
                                 <span>{selectedStudentDossier.program}</span>
                               </div>
 
                               <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                                <Clock className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                                <Clock className="w-3.5 h-3.5 text-[#16834a]" />
                                 <span>{selectedStudentDossier.year_level}</span>
                               </div>
 
                               <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
-                                <CreditCard className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                                <CreditCard className="w-3.5 h-3.5 text-[#16834a]" />
                                 <span>Student ID: {selectedStudentDossier.student_id}</span>
                               </div>
                             </div>
@@ -1279,7 +1276,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       {/* About Me Card */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
                             <User className="w-4 h-4" />
                           </div>
                           <h3 className="text-base font-extrabold text-slate-900">About Me</h3>
@@ -1292,7 +1289,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       {/* Experience & Involvement Card */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
                             <Building2 className="w-4 h-4" />
                           </div>
                           <h3 className="text-base font-extrabold text-slate-900">Experience &amp; Involvement</h3>
@@ -1336,7 +1333,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
                               <Award className="w-4 h-4" />
                             </div>
                             <div>
@@ -1351,7 +1348,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             <select
                               value={dossierCategoryFilter}
                               onChange={(e) => setDossierCategoryFilter(e.target.value)}
-                              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 outline-none focus:border-[#2d8a4e] cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 outline-none focus:border-[#16834a] cursor-pointer"
                             >
                               <option value="All">All Categories</option>
                               <option value="Academic">Academic</option>
@@ -1370,7 +1367,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             onClick={() => setDossierActiveTab('all')}
                             className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer border ${
                               dossierActiveTab === 'all'
-                                ? 'bg-[#1b4332] text-white border-[#1b4332] shadow-xs'
+                                ? 'bg-[#176B43] text-white border-[#176B43] shadow-xs'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                             }`}
                           >
@@ -1381,7 +1378,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             onClick={() => setDossierActiveTab('verified')}
                             className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer border ${
                               dossierActiveTab === 'verified'
-                                ? 'bg-[#2d8a4e] text-white border-[#2d8a4e] shadow-xs'
+                                ? 'bg-[#16834a] text-white border-[#16834a] shadow-xs'
                                 : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                             }`}
                           >
@@ -1427,7 +1424,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                               >
                                 <div className="flex items-start justify-between gap-4">
                                   <div>
-                                    <span className="text-[10px] font-extrabold text-[#2d8a4e] uppercase tracking-wider">Achievement Entry</span>
+                                    <span className="text-[10px] font-extrabold text-[#16834a] uppercase tracking-wider">Achievement Entry</span>
                                     <h4 className="text-base font-extrabold text-slate-900 leading-snug">{item.title}</h4>
                                   </div>
                                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
@@ -1500,7 +1497,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                   <p className="text-xs font-extrabold text-slate-800">Attached Proof Documents</p>
                                   <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3 text-xs">
                                     <div className="flex items-center gap-2.5">
-                                      <FileText className="w-4 h-4 text-[#2d8a4e]" />
+                                      <FileText className="w-4 h-4 text-[#16834a]" />
                                       <span className="font-extrabold text-slate-800">{item.attached_file_name}</span>
                                     </div>
                                     <button
@@ -1532,7 +1529,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                     <button
                                       type="button"
                                       onClick={() => handleApprove(item.id)}
-                                      className="px-4 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                                      className="px-4 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
                                     >
                                       Approve &amp; Verify ✓
                                     </button>
@@ -1552,7 +1549,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
                         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
                             <Mail className="w-4 h-4" />
                           </div>
                           <h3 className="text-base font-extrabold text-slate-900">Contact Information</h3>
@@ -1561,21 +1558,21 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         <div className="space-y-3 text-xs">
                           <div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Email</p>
-                            <div className="p-3 rounded-2xl bg-[#eef7f0]/70 border border-[#cbe6d2] font-semibold text-slate-800">
+                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
                               {selectedStudentDossier.email}
                             </div>
                           </div>
 
                           <div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Phone</p>
-                            <div className="p-3 rounded-2xl bg-[#eef7f0]/70 border border-[#cbe6d2] font-semibold text-slate-800">
+                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
                               +63 912 345 6789
                             </div>
                           </div>
 
                           <div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Address</p>
-                            <div className="p-3 rounded-2xl bg-[#eef7f0]/70 border border-[#cbe6d2] font-semibold text-slate-800">
+                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
                               Koronadal City, South Cotabato
                             </div>
                           </div>
@@ -1584,7 +1581,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
                         <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#2d8a4e] flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
                             <Sparkles className="w-4 h-4" />
                           </div>
                           <h3 className="text-base font-extrabold text-slate-900">Skills &amp; Competencies</h3>
@@ -1624,7 +1621,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               
               {/* Title */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center shadow-xs shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-[#16834a] text-white flex items-center justify-center shadow-xs shrink-0">
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
@@ -1646,7 +1643,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search by name, ID, or email..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#eef7f0]/70 border border-[#cbe6d2] text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] transition"
                   />
                 </div>
 
@@ -1655,7 +1652,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   <select
                     value={yearFilter}
                     onChange={(e) => setYearFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-[#eef7f0]/70 border border-[#cbe6d2] text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer appearance-none"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer appearance-none"
                   >
                     <option value="All Years">All Years</option>
                     <option value="1st Year">1st Year</option>
@@ -1673,7 +1670,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   <select
                     value={courseFilter}
                     onChange={(e) => setCourseFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-2xl bg-[#eef7f0]/70 border border-[#cbe6d2] text-xs font-bold text-slate-700 outline-none focus:border-[#2d8a4e] cursor-pointer appearance-none"
+                    className="w-full px-4 py-2.5 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer appearance-none"
                   >
                     <option value="All Courses">All Courses</option>
                     <option value="BS Computer Science">BS Computer Science</option>
@@ -1724,7 +1721,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                 className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0"
                               />
                               <div className="min-w-0">
-                                <p className="font-extrabold text-slate-900 group-hover:text-[#2d8a4e] transition text-xs leading-tight">
+                                <p className="font-extrabold text-slate-900 group-hover:text-[#16834a] transition text-xs leading-tight">
                                   {std.full_name}
                                 </p>
                                 <p className="text-[11px] text-slate-500 font-mono mt-0.5">
@@ -1750,8 +1747,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                           </td>
 
                           <td className="py-3 px-4 text-center whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 text-[#1b4332] font-extrabold text-xs border border-emerald-200">
-                              <TrendingUp className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 text-[#064e2b] font-extrabold text-xs border border-emerald-200">
+                              <TrendingUp className="w-3.5 h-3.5 text-[#16834a]" />
                               <span>{std.verified_points} Points</span>
                             </span>
                           </td>
@@ -1763,7 +1760,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                 e.stopPropagation()
                                 setSelectedStudentDossier(std)
                               }}
-                              className="px-3 py-1.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white text-xs font-extrabold transition shadow-2xs flex items-center gap-1.5 mx-auto cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white text-xs font-extrabold transition shadow-2xs flex items-center gap-1.5 mx-auto cursor-pointer"
                             >
                               <Eye className="w-3.5 h-3.5 text-emerald-400" />
                               <span>Inspect Dossier</span>
@@ -1792,7 +1789,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
             </button>
 
             <div className="flex items-center gap-3 mb-4 shrink-0">
-              <div className="p-3 rounded-2xl bg-[#eef7f0] text-[#2d8a4e] border border-[#cbe6d2]">
+              <div className="p-3 rounded-2xl bg-[#E7F3E9] text-[#16834a] border border-[#cbe6d2]">
                 <Shield className="w-6 h-6" />
               </div>
               <div>
@@ -1814,19 +1811,19 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                 
                 <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
                   <span className="font-bold text-slate-700">Scope: {selectedReviewItem.scope_level}</span>
-                  <span className="font-bold text-[#2d8a4e]">Points: +{selectedReviewItem.points}</span>
+                  <span className="font-bold text-[#16834a]">Points: +{selectedReviewItem.points}</span>
                 </div>
               </div>
 
               {/* Document Proof Box */}
               <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
                 <p className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-[#2d8a4e]" />
+                  <FileText className="w-4 h-4 text-[#16834a]" />
                   <span>Attached Supporting Proof Document</span>
                 </p>
                 <div className="p-3 bg-white rounded-xl border border-emerald-200 flex items-center justify-between">
                   <span className="font-mono font-bold text-slate-800 text-xs">{selectedReviewItem.attached_file_name}</span>
-                  <span className="text-[10px] font-bold text-[#2d8a4e] px-2 py-0.5 bg-emerald-50 rounded-md">Validated PDF</span>
+                  <span className="text-[10px] font-bold text-[#16834a] px-2 py-0.5 bg-emerald-50 rounded-md">Validated PDF</span>
                 </div>
               </div>
 
@@ -1839,7 +1836,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   onChange={(e) => setReturnRemarks(e.target.value)}
                   rows={2}
                   placeholder="Specify missing document details or correction required..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-[#2d8a4e] focus:ring-2 focus:ring-[#2d8a4e]/20 outline-none text-xs text-slate-800 transition resize-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition resize-none"
                 />
               </div>
 
@@ -1856,7 +1853,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => handleApprove(selectedReviewItem.id)}
-                  className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold flex items-center gap-1.5 transition shadow-md cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold flex items-center gap-1.5 transition shadow-md cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   <span>Approve & Verify</span>

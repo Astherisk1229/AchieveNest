@@ -147,7 +147,7 @@ export default function EditStudentInfoModal({
 
         {/* Modal Header */}
         <div className="flex items-center gap-3.5 mb-5 shrink-0">
-          <div className="p-3 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] shadow-2xs">
+          <div className="p-3 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#16834a] shadow-2xs">
             <User className="w-6 h-6" />
           </div>
           <div>
@@ -165,7 +165,7 @@ export default function EditStudentInfoModal({
             onClick={() => setActiveTab('bio')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'bio'
-                ? 'bg-[#2d8a4e] text-white shadow-xs'
+                ? 'bg-[#16834a] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -178,7 +178,7 @@ export default function EditStudentInfoModal({
             onClick={() => setActiveTab('skills')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'skills'
-                ? 'bg-[#2d8a4e] text-white shadow-xs'
+                ? 'bg-[#16834a] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -191,7 +191,7 @@ export default function EditStudentInfoModal({
             onClick={() => setActiveTab('experience')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'experience'
-                ? 'bg-[#2d8a4e] text-white shadow-xs'
+                ? 'bg-[#16834a] text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -210,11 +210,11 @@ export default function EditStudentInfoModal({
               {/* Protected System Information Box */}
               <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-100 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold text-[#1e5831] uppercase tracking-wider flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <span className="text-[10px] font-extrabold text-[#064e2b] uppercase tracking-wider flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-[#16834a]" />
                     <span>Protected Registrar System Records (Read-Only)</span>
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#1e5831] border border-emerald-200">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#064e2b] border border-emerald-200">
                     Verified Student
                   </span>
                 </div>
@@ -246,14 +246,14 @@ export default function EditStudentInfoModal({
                   <img
                     src={avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
                     alt="Avatar Preview"
-                    className="w-12 h-12 rounded-2xl object-cover border-2 border-[#2d8a4e] shrink-0"
+                    className="w-12 h-12 rounded-2xl object-cover border-2 border-[#16834a] shrink-0"
                   />
                   <input
                     type="url"
                     value={avatarUrl}
                     onChange={(e) => setAvatarUrl(e.target.value)}
                     placeholder="https://images.unsplash.com/photo-..."
-                    className="flex-1 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition"
+                    className="flex-1 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] transition"
                   />
                 </div>
               </div>
@@ -266,7 +266,7 @@ export default function EditStudentInfoModal({
                   value={aboutMe}
                   onChange={(e) => setAboutMe(e.target.value)}
                   placeholder="Write a brief background statement about your academic goals..."
-                  className="w-full p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition leading-relaxed"
+                  className="w-full p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] transition leading-relaxed"
                 ></textarea>
               </div>
 
@@ -274,7 +274,7 @@ export default function EditStudentInfoModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                    <Mail className="w-3.5 h-3.5 text-[#16834a]" />
                     <span>University Email Address</span>
                   </label>
                   <input
@@ -282,13 +282,13 @@ export default function EditStudentInfoModal({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition"
+                    className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] transition"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                    <Phone className="w-3.5 h-3.5 text-[#16834a]" />
                     <span>Phone Number</span>
                   </label>
                   <input
@@ -296,14 +296,14 @@ export default function EditStudentInfoModal({
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition"
+                    className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] transition"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <MapPin className="w-3.5 h-3.5 text-[#16834a]" />
                   <span>Present Address / Location</span>
                 </label>
                 <input
@@ -311,7 +311,7 @@ export default function EditStudentInfoModal({
                   required
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e] transition"
+                  className="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] transition"
                 />
               </div>
 
@@ -325,7 +325,7 @@ export default function EditStudentInfoModal({
               {/* Add New Skill Form Box */}
               <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-3">
                 <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5 text-xs">
-                  <Plus className="w-4 h-4 text-[#2d8a4e]" />
+                  <Plus className="w-4 h-4 text-[#16834a]" />
                   <span>Add New Skill or Competency</span>
                 </h4>
 
@@ -335,13 +335,13 @@ export default function EditStudentInfoModal({
                     placeholder="e.g., Python Programming, Public Speaking..."
                     value={newSkillName}
                     onChange={(e) => setNewSkillName(e.target.value)}
-                    className="sm:col-span-6 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e]"
+                    className="sm:col-span-6 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a]"
                   />
 
                   <select
                     value={newSkillLevel}
                     onChange={(e) => setNewSkillLevel(Number(e.target.value))}
-                    className="sm:col-span-4 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-[#2d8a4e]"
+                    className="sm:col-span-4 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-[#16834a]"
                   >
                     <option value={1}>1 Dot - Familiar</option>
                     <option value={2}>2 Dots - Proficient</option>
@@ -351,7 +351,7 @@ export default function EditStudentInfoModal({
                   <button
                     type="button"
                     onClick={handleAddSkill}
-                    className="sm:col-span-2 py-2.5 px-3 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
+                    className="sm:col-span-2 py-2.5 px-3 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Add</span>
@@ -380,7 +380,7 @@ export default function EditStudentInfoModal({
                               type="button"
                               onClick={() => handleUpdateSkillLevel(idx, lvl)}
                               className={`w-3.5 h-3.5 rounded-full transition cursor-pointer ${
-                                lvl <= skill.level ? 'bg-[#2d8a4e]' : 'bg-slate-300'
+                                lvl <= skill.level ? 'bg-[#16834a]' : 'bg-slate-300'
                               }`}
                               title={`Set level ${lvl}`}
                             />
@@ -412,7 +412,7 @@ export default function EditStudentInfoModal({
               {/* Add New Experience Box */}
               <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 space-y-3">
                 <h4 className="font-extrabold text-slate-900 flex items-center gap-1.5 text-xs">
-                  <Plus className="w-4 h-4 text-[#2d8a4e]" />
+                  <Plus className="w-4 h-4 text-[#16834a]" />
                   <span>Add New Position or Involvement Entry</span>
                 </h4>
 
@@ -422,7 +422,7 @@ export default function EditStudentInfoModal({
                     placeholder="Role (e.g. Vice President, Volunteer)"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="sm:col-span-4 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e]"
+                    className="sm:col-span-4 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a]"
                   />
 
                   <input
@@ -430,7 +430,7 @@ export default function EditStudentInfoModal({
                     placeholder="Organization / Office (e.g. NDMU CITE)"
                     value={newOrg}
                     onChange={(e) => setNewOrg(e.target.value)}
-                    className="sm:col-span-5 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e]"
+                    className="sm:col-span-5 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a]"
                   />
 
                   <input
@@ -438,7 +438,7 @@ export default function EditStudentInfoModal({
                     placeholder="Period (e.g. AY 2025-2026)"
                     value={newPeriod}
                     onChange={(e) => setNewPeriod(e.target.value)}
-                    className="sm:col-span-3 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#2d8a4e]"
+                    className="sm:col-span-3 p-2.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a]"
                   />
                 </div>
 
@@ -446,7 +446,7 @@ export default function EditStudentInfoModal({
                   <button
                     type="button"
                     onClick={handleAddExperience}
-                    className="py-2 px-4 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                    className="py-2 px-4 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Add Position</span>
@@ -498,7 +498,7 @@ export default function EditStudentInfoModal({
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-2 transition shadow-md cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs flex items-center gap-2 transition shadow-md cursor-pointer"
             >
               <Save className="w-4 h-4" />
               <span>Save Profile Changes ✓</span>

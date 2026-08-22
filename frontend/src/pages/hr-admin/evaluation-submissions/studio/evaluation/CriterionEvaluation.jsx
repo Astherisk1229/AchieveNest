@@ -106,13 +106,13 @@ export default function CriterionEvaluation({
       <div className="rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs">
         <div className="p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-extrabold text-slate-800 dark:text-slate-200">
-            <FileText className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
+            <FileText className="w-4 h-4 text-[#064e2b] dark:text-emerald-400" />
             <span>{selectedEvidence.fileName || `${selectedEvidence.title}_Proof.pdf`}</span>
           </div>
           <a
             href="#"
             onClick={e => e.preventDefault()}
-            className="text-[11px] font-extrabold text-[#1b4332] dark:text-emerald-400 hover:underline flex items-center gap-1"
+            className="text-[11px] font-extrabold text-[#064e2b] dark:text-emerald-400 hover:underline flex items-center gap-1"
           >
             <span>Expand Fullscreen</span>
             <ExternalLink className="w-3 h-3" />
@@ -120,7 +120,7 @@ export default function CriterionEvaluation({
         </div>
 
         <div className="h-48 p-4 bg-white dark:bg-slate-950 flex flex-col items-center justify-center text-center space-y-2">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-[#1b4332] dark:text-emerald-400 flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-[#064e2b] dark:text-emerald-400 flex items-center justify-center font-bold">
             <FileText className="w-5 h-5" />
           </div>
           <div>
@@ -139,7 +139,7 @@ export default function CriterionEvaluation({
         <select
           value={classification}
           onChange={e => setClassification(e.target.value)}
-          className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#1b4332]"
+          className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#69A97C]"
         >
           {currentOpts.map((opt, idx) => (
             <option key={idx} value={opt.label}>{opt.label}</option>
@@ -148,7 +148,7 @@ export default function CriterionEvaluation({
 
         <div className="flex items-center justify-between text-xs font-extrabold text-slate-700 dark:text-slate-300 pt-1">
           <span>Awarded Points</span>
-          <span className="text-sm font-black text-[#1b4332] dark:text-emerald-400">
+          <span className="text-sm font-black text-[#064e2b] dark:text-emerald-400">
             {currentAwardedPts} / 40 Points
           </span>
         </div>
@@ -159,9 +159,9 @@ export default function CriterionEvaluation({
             <button
               type="button"
               onClick={handleVerifyNextCurrent}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <CheckCircle2 className="w-4 h-4 text-[#245F42]" />
               <span>Confirm Item &amp; Next</span>
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -169,9 +169,9 @@ export default function CriterionEvaluation({
             <button
               type="button"
               onClick={handleVerifyCurrent}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <CheckCircle2 className="w-4 h-4 text-[#245F42]" />
               <span>Confirm Item (+{currentAwardedPts} pts)</span>
             </button>
           )}
@@ -207,7 +207,7 @@ export default function CriterionEvaluation({
                 value={remarks}
                 onChange={e => setRemarks(e.target.value)}
                 placeholder="Optional verification note..."
-                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#1b4332]"
+                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#69A97C]"
               />
             </div>
           )}

@@ -23,7 +23,7 @@ export default function AdminOnboardingGuideWidget({ currentUser, activeRoleCont
         <button
           type="button"
           onClick={toggleDismissed}
-          className="text-[10px] font-extrabold text-slate-400 hover:text-[#1b4332] dark:hover:text-emerald-400 transition cursor-pointer"
+          className="text-[10px] font-extrabold text-slate-400 hover:text-[#064e2b] dark:hover:text-emerald-400 transition cursor-pointer"
         >
           + Show Setup Guide
         </button>

@@ -33,9 +33,9 @@ export default function NDMURatingPane({
   return (
     <div className="h-full flex flex-col font-sans overflow-hidden bg-white dark:bg-[#131e2e]">
       {/* Live Capped Score Summary Box Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-[#1b4332]/5 dark:bg-emerald-950/30 shrink-0 space-y-3">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-[#EFF7F0]/5 dark:bg-emerald-950/30 shrink-0 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-black text-[#1b4332] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-xs font-black text-[#064e2b] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
             <Award className="w-4 h-4" />
             <span>Official NDMU Rating Matrix Score Summary</span>
           </span>
@@ -74,9 +74,9 @@ export default function NDMURatingPane({
         </div>
 
         {/* Grand Total */}
-        <div className="p-3 rounded-xl bg-[#1b4332] text-white flex items-center justify-between shadow-xs">
+        <div className="p-3 rounded-xl bg-[#176B43] text-white flex items-center justify-between shadow-xs">
           <span className="text-xs font-black uppercase tracking-wider">Grand Total Awarded Score</span>
-          <span className="text-lg font-black tracking-tight text-emerald-300">
+          <span className="text-lg font-black tracking-tight text-[#245F42]">
             {scores.grandTotalAwarded || 141} / 160 Points Max
           </span>
         </div>
@@ -119,9 +119,9 @@ export default function NDMURatingPane({
                 <button
                   type="button"
                   onClick={handleVerifySelected}
-                  className="flex-1 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  <CheckCircle2 className="w-4 h-4 text-[#245F42]" />
                   <span>Verify Item (+{overridePoints || selectedEvidence.eligiblePoints} pts)</span>
                 </button>
 
@@ -153,7 +153,7 @@ export default function NDMURatingPane({
             value={remarks}
             onChange={e => setRemarks(e.target.value)}
             placeholder="Record official evaluation notes for ranking committee audit trail..."
-            className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#1b4332]"
+            className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#69A97C]"
           />
         </div>
       </div>
@@ -172,7 +172,7 @@ export default function NDMURatingPane({
         <button
           type="button"
           onClick={onOpenFinalizeModal}
-          className="px-5 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+          className="px-5 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
         >
           <ShieldCheck className="w-4 h-4" />
           <span>Finalize &amp; Issue Official HR Seal</span>

@@ -51,19 +51,19 @@ export default function DepartmentSecretaryEvaluationWorkbench({
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       {/* Top Header Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#1D2A23] p-6 rounded-2xl border border-[#DCE6DF] dark:border-[#374B3F] shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={onBackToRoster}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            className="p-2 rounded-xl border border-[#D9E5DC] dark:border-[#374B3F] hover:bg-[#F1F7F2] dark:hover:bg-slate-800 transition-all cursor-pointer"
           >
-            <ArrowLeft className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            <ArrowLeft className="w-4 h-4 text-[#183B2A] dark:text-[#E6EFE9]" />
           </button>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-extrabold text-[#102A43] dark:text-[#E6EFE9]">
               Evaluating: {portfolio.personnel_name}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[#4F6475] dark:text-[#B1C0B6]">
               {portfolio.academic_rank} • {portfolio.department_name} ({portfolio.academic_year})
             </p>
           </div>
@@ -74,13 +74,13 @@ export default function DepartmentSecretaryEvaluationWorkbench({
           <div className="flex items-center gap-3">
             <button
               onClick={() => { setReturnRemarks(''); setModalError(''); setShowReturnModal(true) }}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-[#B42318] dark:text-rose-400 bg-white dark:bg-[#121A16] border border-[#E6A5A5] dark:border-rose-900/60 hover:bg-[#FFF0F0] dark:hover:bg-rose-950/40 transition-all cursor-pointer"
             >
               Request Revision
             </button>
             <button
               onClick={() => { setModalError(''); setShowEndorseModal(true) }}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#159552] hover:bg-[#117A43] shadow-xs transition-all cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" /> Endorse to HR
             </button>
@@ -89,7 +89,7 @@ export default function DepartmentSecretaryEvaluationWorkbench({
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 text-rose-700 text-xs">
+        <div className="p-4 rounded-xl bg-[#FFF0F0] dark:bg-rose-950/40 border border-[#E6A5A5] text-[#B42318] text-xs">
           {error}
         </div>
       )}
@@ -99,54 +99,54 @@ export default function DepartmentSecretaryEvaluationWorkbench({
         {/* Left Column: Verification Controls & Item Evaluation */}
         <div className="lg:col-span-7 space-y-6">
           {/* Capped Score Cards */}
-          <div className="grid grid-cols-4 gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-              <div className="text-[10px] font-bold text-emerald-600 uppercase">Accepted Total</div>
-              <div className="text-xl font-extrabold text-slate-900 dark:text-white">{verified.acceptedTotal}</div>
-              <div className="text-[10px] text-slate-400">/ 160 Max</div>
+          <div className="grid grid-cols-4 gap-3 bg-white dark:bg-[#1D2A23] p-4 rounded-2xl border border-[#DCE6DF] dark:border-[#374B3F] shadow-xs">
+            <div className="p-3 rounded-xl bg-[#E7F5EA] dark:bg-emerald-950/60 border border-[#B7DDC4] dark:border-emerald-800/60 text-center">
+              <div className="text-[10px] font-bold text-[#159552] dark:text-emerald-400 uppercase">Accepted Total</div>
+              <div className="text-xl font-extrabold text-[#123D2A] dark:text-[#E6EFE9]">{verified.acceptedTotal}</div>
+              <div className="text-[10px] text-[#4F6475] dark:text-[#B1C0B6]">/ 160 Max</div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center">
-              <div className="text-[10px] font-semibold text-slate-500">Area A</div>
-              <div className="text-lg font-bold text-slate-900 dark:text-white">{verified.acceptedA} <span className="text-[10px] font-normal text-slate-400">/ 70</span></div>
+            <div className="p-3 rounded-xl bg-[#F4F8F4] dark:bg-[#233129] text-center border border-[#DCE6DF] dark:border-[#374B3F]">
+              <div className="text-[10px] font-semibold text-[#304A3C] dark:text-[#B1C0B6]">Area A</div>
+              <div className="text-lg font-bold text-[#123D2A] dark:text-[#E6EFE9]">{verified.acceptedA} <span className="text-[10px] font-normal text-slate-400">/ 70</span></div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center">
-              <div className="text-[10px] font-semibold text-slate-500">Area B</div>
-              <div className="text-lg font-bold text-slate-900 dark:text-white">{verified.acceptedB} <span className="text-[10px] font-normal text-slate-400">/ 50</span></div>
+            <div className="p-3 rounded-xl bg-[#F4F8F4] dark:bg-[#233129] text-center border border-[#DCE6DF] dark:border-[#374B3F]">
+              <div className="text-[10px] font-semibold text-[#304A3C] dark:text-[#B1C0B6]">Area B</div>
+              <div className="text-lg font-bold text-[#123D2A] dark:text-[#E6EFE9]">{verified.acceptedB} <span className="text-[10px] font-normal text-slate-400">/ 50</span></div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-center">
-              <div className="text-[10px] font-semibold text-slate-500">Area C</div>
-              <div className="text-lg font-bold text-slate-900 dark:text-white">{verified.acceptedC} <span className="text-[10px] font-normal text-slate-400">/ 40</span></div>
+            <div className="p-3 rounded-xl bg-[#F4F8F4] dark:bg-[#233129] text-center border border-[#DCE6DF] dark:border-[#374B3F]">
+              <div className="text-[10px] font-semibold text-[#304A3C] dark:text-[#B1C0B6]">Area C</div>
+              <div className="text-lg font-bold text-[#123D2A] dark:text-[#E6EFE9]">{verified.acceptedC} <span className="text-[10px] font-normal text-slate-400">/ 40</span></div>
             </div>
           </div>
 
           {/* Section Navigation Tabs */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-t-2xl px-4 pt-3 gap-2">
+          <div className="flex border-b border-[#DCE6DF] dark:border-[#374B3F] bg-white dark:bg-[#1D2A23] rounded-t-2xl px-4 pt-3 gap-2">
             <button
               onClick={() => setActiveArea('A')}
-              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all ${
+              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all cursor-pointer ${
                 activeArea === 'A'
-                  ? 'border-[#2d8a4e] text-[#1b4332] dark:text-emerald-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'border-[#159552] text-[#17663B] dark:text-emerald-400'
+                  : 'border-transparent text-[#4F6475] hover:text-[#102A43] dark:hover:text-white'
               }`}
             >
               Area A: Prof. Dev ({verified.acceptedA} pts)
             </button>
             <button
               onClick={() => setActiveArea('B')}
-              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all ${
+              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all cursor-pointer ${
                 activeArea === 'B'
-                  ? 'border-[#2d8a4e] text-[#1b4332] dark:text-emerald-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'border-[#159552] text-[#17663B] dark:text-emerald-400'
+                  : 'border-transparent text-[#4F6475] hover:text-[#102A43] dark:hover:text-white'
               }`}
             >
               Area B: Productivity ({verified.acceptedB} pts)
             </button>
             <button
               onClick={() => setActiveArea('C')}
-              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all ${
+              className={`px-4 py-2.5 text-xs font-extrabold border-b-2 transition-all cursor-pointer ${
                 activeArea === 'C'
-                  ? 'border-[#2d8a4e] text-[#1b4332] dark:text-emerald-400'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                  ? 'border-[#159552] text-[#17663B] dark:text-emerald-400'
+                  : 'border-transparent text-[#4F6475] hover:text-[#102A43] dark:hover:text-white'
               }`}
             >
               Area C: Leadership ({verified.acceptedC} pts)

@@ -175,7 +175,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
         {/* Copy Toast Alert */}
         {showCopiedToast && (
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-[#245F42] text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Portfolio link copied to clipboard!</span>
           </div>
@@ -190,7 +190,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
               <defs>
                 <linearGradient id="heroGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#143d2b" />
-                  <stop offset="50%" stopColor="#1b4332" />
+                  <stop offset="50%" stopColor="#064e2b" />
                   <stop offset="100%" stopColor="#0d281e" />
                 </linearGradient>
               </defs>
@@ -221,7 +221,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 </div>
                 <div className="leading-tight">
                   <span className="text-xs font-black tracking-tight text-white block">AchieveNest</span>
-                  <span className="text-[8px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
+                  <span className="text-[8px] font-bold text-[#245F42] tracking-widest uppercase block">NDMU</span>
                 </div>
               </div>
 
@@ -251,98 +251,59 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">{personnel.full_name}</h2>
-                    <span className="w-4 h-4 rounded-full bg-[#2d8a4e] text-white inline-flex items-center justify-center text-[10px] shadow-xs font-bold" title="Verified Account">
+                    <span className="w-4 h-4 rounded-full bg-[#16834a] text-white inline-flex items-center justify-center text-[10px] shadow-xs font-bold" title="Verified Account">
                       ✓
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#2d8a4e] dark:text-emerald-400">Associate Professor • {personnel.department || 'College of IT'}</p>
+                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {personnel.department || 'College of IT'}</p>
 
                   {/* Compact Credential Chips Row */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-[#2d8a4e] dark:text-emerald-400" />
-                      Ph.D. in IT
+                      <ShieldCheck className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
+                      {personnel.department || 'College of Information Technology'}
                     </span>
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[#2d8a4e] dark:text-emerald-400" />
-                      10+ Yrs Service
-                    </span>
-
-                    <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
-                      <CreditCard className="w-3 h-3 text-[#2d8a4e] dark:text-emerald-400" />
-                      ID: 2025-001
+                      <CreditCard className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
+                      ID: {personnel.employee_id || 'EMP-2021-0842'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Metrics & Actions Column */}
-              <div className="flex flex-col items-start lg:items-end gap-3 shrink-0">
-                {/* 4 Metric Pills */}
-                <div className="grid grid-cols-4 gap-2 w-full sm:w-auto">
-                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
-                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">5</div>
-                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Achievements</div>
-                  </div>
+              {/* Three Primary Portfolio Actions */}
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                {/* Action 1: Edit Profile */}
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DCE6DF] dark:border-slate-700 text-[#183B2A] dark:text-slate-200 hover:bg-[#F1F7F2] dark:hover:bg-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-[#159552]" />
+                  <span>Edit Profile</span>
+                </button>
 
-                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
-                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">8</div>
-                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Publications</div>
-                  </div>
+                {/* Action 2: Manage Portfolio Draft */}
+                <button
+                  type="button"
+                  onClick={() => navigate('/personnel/portfolio/edit')}
+                  className="px-4 py-2 rounded-xl bg-[#159552] hover:bg-[#117A43] active:scale-[0.99] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                  <span>Manage Portfolio Draft</span>
+                </button>
 
-                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
-                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">12</div>
-                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Trainings</div>
-                  </div>
-
-                  <div className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center min-w-[64px]">
-                    <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-none">3</div>
-                    <div className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Awards</div>
-                  </div>
-                </div>
-
-                {/* Hero Actions Hierarchy */}
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  {/* Primary CTA */}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/personnel/portfolio/edit')}
-                    className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Manage Portfolio Draft</span>
-                  </button>
-
-                  {/* Secondary Utilities */}
-                  <button
-                    type="button"
-                    onClick={() => setIsCanvaModalOpen(true)}
-                    className="px-3.5 py-2 rounded-xl bg-[#1b4332] hover:bg-[#123124] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <BookOpen className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Booklet View</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center gap-1.5 transition border border-slate-200 dark:border-slate-700 cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e] dark:text-emerald-400" />
-                    <span>Edit Faculty Profile</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleShareProfile}
-                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                    <span>Share</span>
-                  </button>
-                </div>
+                {/* Action 3: Share */}
+                <button
+                  type="button"
+                  onClick={handleShareProfile}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DCE6DF] dark:border-slate-700 text-[#183B2A] dark:text-slate-200 hover:bg-[#F1F7F2] dark:hover:bg-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-[#159552]" />
+                  <span>Share</span>
+                </button>
               </div>
 
             </div>
@@ -361,7 +322,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Users className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <Users className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>About Me</span>
                 </h3>
               </div>
@@ -374,7 +335,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Building2 className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <Building2 className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>Experience & Involvement</span>
                 </h3>
               </div>
@@ -384,7 +345,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   const Icon = exp.icon
                   return (
                     <div key={exp.id} className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3.5 transition hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <div className="w-9 h-9 rounded-xl bg-[#2d8a4e] text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                      <div className="w-9 h-9 rounded-xl bg-[#16834a] text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
                         <Icon className="w-4.5 h-4.5" />
                       </div>
                       <div className="flex-1">
@@ -404,7 +365,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Trophy className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <Trophy className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>Featured Accomplishments</span>
                 </h3>
                 <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{verifiedAccomplishments.length} verified</span>
@@ -417,10 +378,10 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     <div key={item.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
                             {item.category}
                           </span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-extrabold flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                             <span>Verified</span>
                           </span>
@@ -431,7 +392,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
                         <span>{item.date}</span>
-                        <ItemIcon className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                        <ItemIcon className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                       </div>
                     </div>
                   )
@@ -449,7 +410,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Mail className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <Mail className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>Contact Information</span>
                 </h3>
               </div>
@@ -476,7 +437,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Star className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400" />
+                  <Star className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>Key Competencies</span>
                 </h3>
               </div>
@@ -486,10 +447,10 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <div key={index} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-900 dark:text-white">{skill.name}</span>
-                      <span className="font-extrabold text-[#2d8a4e] dark:text-emerald-400 text-[10px]">{skill.label}</span>
+                      <span className="font-extrabold text-[#16834a] dark:text-emerald-400 text-[10px]">{skill.label}</span>
                     </div>
                     <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div className="h-full bg-[#2d8a4e] dark:bg-emerald-500 rounded-full" style={{ width: `${(skill.level / 3) * 100}%` }} />
+                      <div className="h-full bg-[#16834a] dark:bg-emerald-500 rounded-full" style={{ width: `${(skill.level / 3) * 100}%` }} />
                     </div>
                   </div>
                 ))}

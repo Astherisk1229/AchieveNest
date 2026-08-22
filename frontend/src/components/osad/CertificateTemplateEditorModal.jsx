@@ -80,7 +80,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#1b4332] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
@@ -121,7 +121,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Certificate of Leadership & Merit"
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#1b4332]"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
               />
             </div>
 
@@ -136,7 +136,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                       if (e.target.checked) setAllowedContexts([...allowedContexts, 'event'])
                       else setAllowedContexts(allowedContexts.filter(c => c !== 'event'))
                     }}
-                    className="accent-[#1b4332]"
+                    className="accent-[#064e2b]"
                   />
                   <span>Organization Events</span>
                 </label>
@@ -148,7 +148,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                       if (e.target.checked) setAllowedContexts([...allowedContexts, 'award'])
                       else setAllowedContexts(allowedContexts.filter(c => c !== 'award'))
                     }}
-                    className="accent-[#1b4332]"
+                    className="accent-[#064e2b]"
                   />
                   <span>OSAD Award Categories</span>
                 </label>
@@ -161,7 +161,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                 type="text"
                 value={heading}
                 onChange={(e) => setHeading(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#1b4332]"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
               />
             </div>
 
@@ -171,7 +171,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                 type="text"
                 value={recipientLeadIn}
                 onChange={(e) => setRecipientLeadIn(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#1b4332]"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
               />
             </div>
 
@@ -184,7 +184,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                 rows={3}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white focus:outline-hidden focus:border-[#1b4332]"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
               />
             </div>
 
@@ -195,7 +195,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
                 <button
                   type="button"
                   onClick={handleAddSignatory}
-                  className="text-[10px] font-extrabold text-[#1b4332] dark:text-emerald-400 hover:underline flex items-center gap-1"
+                  className="text-[10px] font-extrabold text-[#064e2b] dark:text-emerald-400 hover:underline flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" />
                   <span>Add Signatory</span>
@@ -242,7 +242,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
             <div className="pt-4 flex items-center gap-3">
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Save className="w-4 h-4" />
                 <span>Publish Certificate Template</span>
@@ -254,7 +254,7 @@ export default function CertificateTemplateEditorModal({ isOpen, onClose, onPubl
           <div className="lg:col-span-7 p-6 bg-slate-100 dark:bg-slate-950 flex flex-col justify-between space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-4 h-4 text-[#1b4332] dark:text-emerald-400" />
+                <Eye className="w-4 h-4 text-[#064e2b] dark:text-emerald-400" />
                 <span>Sample Live Preview (Not Issued)</span>
               </span>
               <span className="text-[10px] font-extrabold px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">

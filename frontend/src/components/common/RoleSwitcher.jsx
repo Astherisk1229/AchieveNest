@@ -21,28 +21,28 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
       title: 'Personnel Account',
       subtitle: 'Primary Employee Portfolio & Achievements',
       icon: UserCheck,
-      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+      color: 'text-[#064e2b] bg-[#eef7f0] border-[#d2e8d7]'
     },
     {
       id: 'department_secretary',
       title: 'Department Secretary',
       subtitle: 'Faculty Endorsement & Review Panel',
       icon: Building2,
-      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+      color: 'text-[#064e2b] bg-[#eef7f0] border-[#d2e8d7]'
     },
     {
       id: 'program_coordinator',
       title: 'Program Coordinator',
       subtitle: 'Degree Program Verification',
       icon: BookOpen,
-      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+      color: 'text-[#064e2b] bg-[#eef7f0] border-[#d2e8d7]'
     },
     {
       id: 'organization_moderator',
       title: 'Organization Moderator',
       subtitle: 'Org Events & Scanner Management',
       icon: Users,
-      color: 'text-[#1b4332] bg-[#eef7f0] border-[#d2e8d7]'
+      color: 'text-[#064e2b] bg-[#eef7f0] border-[#d2e8d7]'
     }
   ]
 
@@ -97,7 +97,7 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
                         <RoleIcon className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className={`text-xs font-bold ${isSelected ? 'text-[#1e5831]' : 'text-slate-800'}`}>
+                        <p className={`text-xs font-bold ${isSelected ? 'text-[#064e2b]' : 'text-slate-800'}`}>
                           {role.title}
                         </p>
                         <p className="text-[10px] text-slate-400 font-medium">{role.subtitle}</p>
@@ -105,7 +105,7 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
                     </div>
 
                     {isSelected && (
-                      <div className="w-5 h-5 rounded-full bg-[#2d8a4e] text-white flex items-center justify-center shrink-0">
+                      <div className="w-5 h-5 rounded-full bg-[#16834a] text-white flex items-center justify-center shrink-0">
                         <Check className="w-3 h-3" />
                       </div>
                     )}

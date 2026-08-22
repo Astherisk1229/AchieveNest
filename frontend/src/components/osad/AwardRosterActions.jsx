@@ -14,15 +14,15 @@ export function AwardRosterActions({
     <div className="flex flex-wrap items-center gap-2">
       {isPublished ? (
         <>
-          <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-[#1b4332] dark:text-emerald-300 text-xs font-black flex items-center gap-1">
-            <Globe className="w-3.5 h-3.5 text-[#2d8a4e]" />
+          <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-[#064e2b] dark:text-emerald-300 text-xs font-black flex items-center gap-1">
+            <Globe className="w-3.5 h-3.5 text-[#16834a]" />
             <span>Published Roster v1.0</span>
           </span>
 
           <button
             type="button"
             onClick={onPrintOfficial}
-            className="px-3 py-1.5 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            className="px-3 py-1.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
           >
             <Printer className="w-3.5 h-3.5 text-emerald-300" />
             <span>Print Official Roster</span>
@@ -51,7 +51,7 @@ export function AwardRosterActions({
           <button
             type="button"
             onClick={onPublishRoster}
-            className="px-3 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            className="px-3 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-200" />
             <span>Publish Official Roster</span>

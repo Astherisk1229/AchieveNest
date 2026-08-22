@@ -35,21 +35,21 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
     <div className="space-y-6 font-sans animate-in fade-in duration-200">
       
       {/* Top Hero Banner */}
-      <div className="bg-[#1b4332] text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-[#245233] relative overflow-hidden">
+      <div className="bg-[#EFF7F0] text-[#17663B] p-6 sm:p-8 rounded-3xl shadow-xl border border-[#69A97C] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-[#2d8a4e] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-[#16834a] border border-emerald-400/30 flex items-center justify-center text-white shadow-lg shrink-0">
               <Sparkles className="w-7 h-7 text-white" />
             </div>
             <div className="space-y-0.5">
               <h1 className="text-2xl font-extrabold text-white tracking-tight">
                 Digital Certificate Hub
               </h1>
-              <p className="text-xs font-bold text-emerald-200/80 uppercase tracking-wider">
+              <p className="text-xs font-bold text-[#245F42]/80 uppercase tracking-wider">
                 Official OSAD Accredited Event Credentials
               </p>
-              <p className="text-xs text-emerald-200/90 font-medium pt-0.5">
+              <p className="text-xs text-[#245F42] font-medium pt-0.5">
                 Bulk Issue & Transmit Verifiable Digital Certificates to Event Attendees
               </p>
             </div>
@@ -58,9 +58,9 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 border border-emerald-300 text-[#1b4332] font-extrabold text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shrink-0"
+            className="px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 border border-emerald-300 text-[#064e2b] font-extrabold text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shrink-0"
           >
-            <Sparkles className="w-4 h-4 text-[#2d8a4e]" />
+            <Sparkles className="w-4 h-4 text-[#16834a]" />
             <span>Issue Certificates</span>
           </button>
         </div>
@@ -138,7 +138,7 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
                     {batch.eventTitle}
                   </td>
                   <td className="p-3.5">
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px]">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] font-extrabold text-[10px]">
                       {batch.templateCode} ({batch.templateVersion})
                     </span>
                   </td>
@@ -152,7 +152,7 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
                     {new Date(batch.issuedAt).toLocaleDateString()}
                   </td>
                   <td className="p-3.5">
-                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-extrabold text-[10px] inline-flex items-center gap-1">
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] font-extrabold text-[10px] inline-flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Completed
                     </span>

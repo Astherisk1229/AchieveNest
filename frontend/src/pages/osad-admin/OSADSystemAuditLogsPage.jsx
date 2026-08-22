@@ -20,7 +20,7 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
       <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-4 shadow-2xs">
         <div>
           <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-[#2d8a4e] dark:text-emerald-400" />
+            <ShieldCheck className="w-5 h-5 text-[#16834a] dark:text-emerald-400" />
             OSAD Activity Log
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -31,7 +31,7 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
         <button
           type="button"
           onClick={refreshAuditLogs}
-          className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-700 dark:text-slate-200 hover:text-[#2d8a4e] border border-slate-200 dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
+          className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-700 dark:text-slate-200 hover:text-[#16834a] border border-slate-200 dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Refresh Activity Log</span>
@@ -44,7 +44,7 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
           {logs.map((log) => (
             <div key={log.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#2d8a4e] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div>

@@ -38,7 +38,7 @@ export default function CandidateScoreAuditDrawer({
         <div className="w-screen max-w-lg bg-white dark:bg-[#131e2e] shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between animate-in slide-in-from-right duration-200">
           
           {/* Header */}
-          <div className="p-6 bg-[#1b4332] text-white border-b border-emerald-900/60 flex items-center justify-between shrink-0">
+          <div className="p-6 bg-[#064e2b] text-white border-b border-emerald-900/60 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/10 text-emerald-300 border border-white/10 flex items-center justify-center font-bold shrink-0">
                 <Award className="w-5 h-5" />
@@ -74,7 +74,7 @@ export default function CandidateScoreAuditDrawer({
               <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
               <div>
                 <span className="text-[10px] uppercase font-black text-slate-400 block">System Score</span>
-                <span className="text-lg font-black text-[#2d8a4e] dark:text-emerald-400">{candidate.score || candidate.weightedScore || 90} / 100</span>
+                <span className="text-lg font-black text-[#16834a] dark:text-emerald-400">{candidate.score || candidate.weightedScore || 90} / 100</span>
               </div>
               <div className="h-8 w-px bg-slate-200 dark:bg-slate-800" />
               <div>
@@ -86,7 +86,7 @@ export default function CandidateScoreAuditDrawer({
             {/* Criteria & Score Calculation Breakdown */}
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                <FileText className="w-3.5 h-3.5 text-[#16834a]" />
                 <span>Score Breakdown Trace</span>
               </h3>
 
@@ -105,7 +105,7 @@ export default function CandidateScoreAuditDrawer({
                 </div>
                 <div className="flex items-center justify-between pt-1 font-black text-slate-900 dark:text-white">
                   <span>Calculated Composite Score</span>
-                  <span className="text-[#2d8a4e] dark:text-emerald-400">{candidate.score || 82} / 100</span>
+                  <span className="text-[#16834a] dark:text-emerald-400">{candidate.score || 82} / 100</span>
                 </div>
               </div>
             </div>
@@ -114,7 +114,7 @@ export default function CandidateScoreAuditDrawer({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#2d8a4e]" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#16834a]" />
                   <span>Verified Supporting Proofs ({proofItems.length})</span>
                 </h3>
                 <span className="text-[10px] text-slate-400 font-semibold">Verified by Program Coordinators</span>
@@ -128,7 +128,7 @@ export default function CandidateScoreAuditDrawer({
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-xs text-slate-900 dark:text-white">{item.title}</span>
-                      <span className="text-[11px] font-black text-[#2d8a4e] dark:text-emerald-400">+{item.points} pts</span>
+                      <span className="text-[11px] font-black text-[#16834a] dark:text-emerald-400">+{item.points} pts</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
                       <span className="flex items-center gap-1">
@@ -144,7 +144,7 @@ export default function CandidateScoreAuditDrawer({
 
             {/* Read-Only Scope Disclaimer */}
             <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 flex items-start gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
-              <Info className="w-4 h-4 text-[#2d8a4e] shrink-0 mt-0.5" />
+              <Info className="w-4 h-4 text-[#16834a] shrink-0 mt-0.5" />
               <span>
                 OSAD reviews verified achievement data for award candidacy. Program Coordinators remain the authoritative verifiers for individual Student submissions.
               </span>
@@ -175,7 +175,7 @@ export default function CandidateScoreAuditDrawer({
                 <button
                   type="button"
                   onClick={() => onConfirmAwardee && onConfirmAwardee(candidate.id)}
-                  className="px-4 py-2.5 rounded-xl bg-[#1b4332] hover:bg-[#2d8a4e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-300" />
                   <span>Confirm as Awardee</span>

@@ -20,8 +20,8 @@ export default function DepartmentSecretaryPortfolioRoster({
   const getStatusBadge = (status, isSelf = false) => {
     if (isSelf) {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-[#d2e8d7] dark:border-emerald-800/60">
-          <ShieldCheck className="w-3 h-3" /> Self-Portfolio (HR Direct)
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#E7F5EA] dark:bg-emerald-950/60 text-[#245F42] dark:text-emerald-300 border border-[#B7DDC4] dark:border-emerald-800/60">
+          <ShieldCheck className="w-3 h-3 text-[#16834A]" /> Self-Portfolio (HR Direct)
         </span>
       )
     }
@@ -29,32 +29,32 @@ export default function DepartmentSecretaryPortfolioRoster({
     switch (status) {
       case 'HR_APPROVED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-[#d2e8d7] dark:border-emerald-800/60">
-            <CheckCircle2 className="w-3 h-3" /> HR Approved
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#E7F5EA] dark:bg-emerald-950/60 text-[#245F42] dark:text-emerald-300 border border-[#B7DDC4] dark:border-emerald-800/60">
+            <CheckCircle2 className="w-3 h-3 text-[#16834A]" /> HR Approved
           </span>
         )
       case 'ENDORSED_TO_HR':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#eef7f0] dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-300 border border-[#d2e8d7] dark:border-emerald-800/60">
-            <ShieldCheck className="w-3 h-3" /> Endorsed to HR
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#E7F5EA] dark:bg-emerald-950/60 text-[#245F42] dark:text-emerald-300 border border-[#B7DDC4] dark:border-emerald-800/60">
+            <ShieldCheck className="w-3 h-3 text-[#16834A]" /> Endorsed to HR
           </span>
         )
       case 'UNDER_DEP_SEC_REVIEW':
       case 'SUBMITTED_TO_DEP_SEC':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            <Clock className="w-3 h-3 text-[#2d8a4e]" /> Pending Review
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF7E6] dark:bg-amber-950/60 text-[#704B12] dark:text-amber-300 border border-[#FFE3B3] dark:border-amber-800/60">
+            <Clock className="w-3 h-3 text-[#B7791F]" /> Pending Review
           </span>
         )
       case 'RETURNED_TO_PERSONNEL':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-            <AlertTriangle className="w-3 h-3" /> Revision Requested
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF0F0] dark:bg-rose-950/60 text-[#7A3333] dark:text-rose-300 border border-[#F5C2C2] dark:border-rose-800/60">
+            <AlertTriangle className="w-3 h-3 text-[#B54747]" /> Revision Requested
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
             Draft
           </span>
         )
@@ -62,14 +62,14 @@ export default function DepartmentSecretaryPortfolioRoster({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden mb-6">
+    <div className="bg-white dark:bg-[#1D2A23] rounded-2xl border border-[#DCE6DF] dark:border-[#374B3F] shadow-xs overflow-hidden mb-6">
       {/* Header & Controls */}
-      <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 border-b border-[#DDE6DF] dark:border-[#374B3F] flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-extrabold text-[#102A43] dark:text-[#E6EFE9]">
             Department Personnel Ranking Portfolios
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-[#4F6475] dark:text-[#B1C0B6]">
             First-level evaluation & score verification for assigned department faculty.
           </p>
         </div>
@@ -83,7 +83,7 @@ export default function DepartmentSecretaryPortfolioRoster({
               placeholder="Search faculty name or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#D7E2DA] dark:border-[#374B3F] bg-white dark:bg-[#121A16] text-[#243B53] dark:text-[#E6EFE9] focus:outline-none focus:border-[#16834A] focus:ring-2 focus:ring-[#16834A]/20"
             />
           </div>
 
@@ -91,7 +91,7 @@ export default function DepartmentSecretaryPortfolioRoster({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+            className="w-full sm:w-auto px-3 py-2 text-xs rounded-xl border border-[#D7E2DA] dark:border-[#374B3F] bg-white dark:bg-[#121A16] text-[#243B53] dark:text-[#E6EFE9] font-semibold"
           >
             <option value="All">All Statuses</option>
             <option value="SUBMITTED_TO_DEP_SEC">Submitted for Review</option>
@@ -105,14 +105,14 @@ export default function DepartmentSecretaryPortfolioRoster({
 
       {/* Roster Table */}
       {portfolios.length === 0 ? (
-        <div className="p-12 text-center text-slate-400 text-sm">
+        <div className="p-12 text-center text-[#718096] dark:text-[#87978D] text-sm">
           No personnel portfolios match the current search or status filter.
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase">
+              <tr className="bg-[#F4F8F4] dark:bg-[#233129] border-b border-[#DDE6DF] dark:border-[#374B3F] text-[#304A3C] dark:text-[#B1C0B6] font-semibold uppercase">
                 <th className="py-3.5 px-4">Faculty Member</th>
                 <th className="py-3.5 px-4">Academic Rank</th>
                 <th className="py-3.5 px-4">Status</th>

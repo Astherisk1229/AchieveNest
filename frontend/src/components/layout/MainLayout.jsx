@@ -87,7 +87,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   }
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-[#F8FAFC] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#2d8a4e] selection:text-white relative transition-colors duration-200">
+    <div className="h-screen w-screen flex overflow-hidden bg-[#F8FAF7] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#16834a] selection:text-white relative transition-colors duration-200">
       
       {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
       {isSidebarOpen && (
@@ -109,7 +109,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
       </div>
 
       {/* Right Column (Header Fixed Top + Scrollable Content Body) */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 bg-[#F8FAFC] dark:bg-[#0b1320] transition-colors duration-200">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 bg-[#F8FAF7] dark:bg-[#0b1320] transition-colors duration-200">
         
         {/* Stationary Fixed Header Bar / Topbar */}
         <Topbar
@@ -119,7 +119,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         />
 
         {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#dfebd9] dark:bg-[#0b1320] transition-colors duration-200 relative flex flex-col justify-between">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#F8FAF7] dark:bg-[#0b1320] transition-colors duration-200 relative flex flex-col justify-between">
           <div className="container-responsive space-y-6">
             {children}
           </div>
@@ -135,9 +135,9 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
           onClick={scrollToTop}
           aria-label="Scroll to top"
           title="Back to Top"
-          className="fixed bottom-6 right-6 z-50 px-3.5 py-2.5 rounded-2xl bg-[#1b4332] dark:bg-[#0a2417] text-white font-extrabold text-xs border border-[#2d8a4e]/60 shadow-lg hover:bg-[#2d8a4e] dark:hover:bg-emerald-600 transition-all duration-200 flex items-center gap-2 group cursor-pointer animate-in fade-in slide-in-from-bottom-3"
+          className="fixed bottom-6 right-6 z-50 px-3.5 py-2.5 rounded-2xl bg-[#064e2b] dark:bg-[#0a2417] text-white font-extrabold text-xs border border-[#16834a]/60 shadow-lg hover:bg-[#16834a] dark:hover:bg-emerald-600 transition-all duration-200 flex items-center gap-2 group cursor-pointer animate-in fade-in slide-in-from-bottom-3"
         >
-          <div className="w-6 h-6 rounded-lg bg-[#2d8a4e]/40 text-emerald-200 border border-emerald-400/30 flex items-center justify-center shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-[#16834a]/40 text-emerald-200 border border-emerald-400/30 flex items-center justify-center shrink-0">
             <ArrowUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5 text-white" />
           </div>
           <span className="hidden sm:inline">Back to Top</span>

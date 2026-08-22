@@ -18,7 +18,7 @@ export default function CertificateIssuancePreview({ template, selectedEvent, sa
         <span className="text-xs font-bold text-slate-500">
           Previewing sample certificate for recipient: <strong className="text-slate-900 dark:text-white">{sampleStudentName} ({sampleStudentId})</strong>
         </span>
-        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold flex items-center gap-1">
+        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
           <CheckCircle2 className="w-3.5 h-3.5" />
           High-Fidelity Document Rendering
         </span>
@@ -49,7 +49,7 @@ export default function CertificateIssuancePreview({ template, selectedEvent, sa
         {/* Recipient Lead-In & Name */}
         <div className="space-y-2 relative z-10 py-2">
           <p className="text-xs italic text-slate-600 dark:text-slate-400">This certificate is proudly awarded to</p>
-          <h3 className="text-2xl font-serif font-black text-emerald-950 dark:text-emerald-300 underline decoration-amber-500/50 underline-offset-8">
+          <h3 className="text-2xl font-serif font-black text-emerald-950 dark:text-[#245F42] underline decoration-amber-500/50 underline-offset-8">
             {sampleStudentName}
           </h3>
           <p className="text-xs text-slate-600 dark:text-slate-400 max-w-lg mx-auto pt-2 leading-relaxed">

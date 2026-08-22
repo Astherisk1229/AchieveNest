@@ -50,7 +50,7 @@ export default function CertificateSignatoryResolver({ template, approvedSignato
                   </h4>
                 </div>
 
-                <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold flex items-center gap-1">
+                <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Approved Asset Resolved
                 </span>

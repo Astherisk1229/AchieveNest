@@ -49,19 +49,19 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
       <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between relative overflow-hidden">
+        <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between relative overflow-hidden">
           <div className="flex items-center gap-3 relative z-10">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-amber-300">
-              <UserPlus className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F5EA] border border-[#B7DDC4] flex items-center justify-center text-[#17663B]">
+              <UserPlus className="w-5 h-5 text-[#17663B]" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white">Create Personnel Account</h2>
-              <h3 className="text-xs text-emerald-200/90 font-medium">Issue new institutional faculty or administrative staff access credentials</h3>
+              <h2 className="text-lg font-extrabold text-[#17663B]">Create Personnel Account</h2>
+              <p className="text-xs text-[#356148] font-medium">Issue new institutional faculty or administrative staff access credentials</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer relative z-10"
+            className="p-2 rounded-xl text-[#356148] hover:bg-[#EAF4EC] hover:text-[#17663B] transition cursor-pointer relative z-10"
           >
             <X className="w-4 h-4" />
           </button>
@@ -88,7 +88,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
                   required
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-mono font-bold text-slate-800 focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-mono font-bold text-slate-800 focus:outline-none focus:border-[#16834a]"
                 />
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
                   placeholder="e.g. Dr. Maria Clara Santos"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#2d8a4e]"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#16834a]"
                 />
               </div>
             </div>
@@ -119,7 +119,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
                 placeholder="e.g. msantos@ndmu.edu.ph"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#2d8a4e]"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#16834a]"
               />
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
               <select
                 value={college}
                 onChange={(e) => setCollege(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#2d8a4e] bg-white"
+                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#16834a] bg-white"
               >
                 {HRModel.COLLEGES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -146,7 +146,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
                 placeholder="e.g. Department of Computer Studies"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#2d8a4e]"
+                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#16834a]"
               />
             </div>
           </div>
@@ -157,7 +157,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
               <select
                 value={academicRank}
                 onChange={(e) => setAcademicRank(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#2d8a4e] bg-white"
+                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#16834a] bg-white"
               >
                 {HRModel.ACADEMIC_RANKS.map((rank) => (
                   <option key={rank} value={rank}>{rank}</option>
@@ -170,7 +170,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
               <select
                 value={employmentStatus}
                 onChange={(e) => setEmploymentStatus(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#2d8a4e] bg-white"
+                className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 focus:outline-none focus:border-[#16834a] bg-white"
               >
                 {HRModel.EMPLOYMENT_STATUSES.map((status) => (
                   <option key={status} value={status}>{status}</option>
@@ -187,7 +187,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
               max="40"
               value={tenureYears}
               onChange={(e) => setTenureYears(e.target.value)}
-              className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#2d8a4e]"
+              className="w-full p-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:outline-none focus:border-[#16834a]"
             />
           </div>
 
@@ -201,7 +201,7 @@ export default function CreatePersonnelAccountModal({ isOpen, onClose, onSave })
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold flex items-center gap-2 shadow-md transition cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Issue Account</span>

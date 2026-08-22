@@ -19,7 +19,7 @@ export default function CoordinatorMetricsSidebar({
       {/* Sidebar Section Title */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-          <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-[#1b4332] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/60">
+          <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/60">
             <ShieldCheck className="w-4 h-4" />
           </div>
           <h2 className="text-xs font-black tracking-tight uppercase">Verification Summary</h2>
@@ -64,12 +64,12 @@ export default function CoordinatorMetricsSidebar({
           onClick={() => onStatusSelect && onStatusSelect('Verified')}
           className={`p-3.5 rounded-2xl border text-left transition duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-emerald-500/50 flex flex-col justify-between ${
             isVerifiedActive
-              ? 'bg-[#1b4332] text-white border-emerald-900 shadow-sm'
-              : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/50 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/40 text-emerald-950 dark:text-emerald-200'
+              ? 'bg-[#176B43] text-white border-[#176B43] shadow-sm'
+              : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/50 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/40 text-emerald-950 dark:text-[#245F42]'
           }`}
         >
           <div className="flex items-center justify-between w-full mb-1">
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isVerifiedActive ? 'text-emerald-200' : 'text-emerald-800 dark:text-emerald-300'}`}>
+            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isVerifiedActive ? 'text-[#245F42]' : 'text-emerald-800 dark:text-[#245F42]'}`}>
               Verified
             </span>
             <CheckCircle2 className={`w-4 h-4 ${isVerifiedActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
@@ -78,7 +78,7 @@ export default function CoordinatorMetricsSidebar({
             <span className={`text-2xl font-black ${isVerifiedActive ? 'text-white' : 'text-emerald-950 dark:text-white'}`}>
               {verifiedCount}
             </span>
-            <span className={`text-[10px] font-bold ${isVerifiedActive ? 'text-emerald-200' : 'text-emerald-700 dark:text-emerald-400'}`}>
+            <span className={`text-[10px] font-bold ${isVerifiedActive ? 'text-[#245F42]' : 'text-emerald-700 dark:text-emerald-400'}`}>
               Click to queue →
             </span>
           </div>

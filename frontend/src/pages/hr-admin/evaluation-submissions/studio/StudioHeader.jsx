@@ -69,9 +69,9 @@ export default function StudioHeader({
           <span>C: <strong className="text-white font-bold">{areaC}</strong>/40</span>
         </div>
 
-        <div className="px-3 py-1 rounded-lg bg-[#1b4332] text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs shrink-0">
-          <span className="text-[9px] text-emerald-300 uppercase tracking-wider font-extrabold">TOTAL</span>
-          <span className="text-xs font-black text-emerald-200">{grandTotal} / 160 pts</span>
+        <div className="px-3 py-1 rounded-lg bg-[#176B43] text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs shrink-0">
+          <span className="text-[9px] text-[#245F42] uppercase tracking-wider font-extrabold">TOTAL</span>
+          <span className="text-xs font-black text-[#245F42]">{grandTotal} / 160 pts</span>
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export default function StudioHeader({
               title="Split View (Dual Pane)"
               className={`p-1.5 rounded text-xs font-extrabold flex items-center gap-1 transition cursor-pointer ${
                 workspaceMode === 'split'
-                  ? 'bg-[#1b4332] text-white'
+                  ? 'bg-[#176B43] text-white'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -99,7 +99,7 @@ export default function StudioHeader({
               title="Scoring Focus Mode"
               className={`p-1.5 rounded text-xs font-extrabold flex items-center gap-1 transition cursor-pointer ${
                 workspaceMode === 'scoring'
-                  ? 'bg-[#1b4332] text-white'
+                  ? 'bg-[#176B43] text-white'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -112,7 +112,7 @@ export default function StudioHeader({
               title="Preview Focus Mode"
               className={`p-1.5 rounded text-xs font-extrabold flex items-center gap-1 transition cursor-pointer ${
                 workspaceMode === 'preview'
-                  ? 'bg-[#1b4332] text-white'
+                  ? 'bg-[#176B43] text-white'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >

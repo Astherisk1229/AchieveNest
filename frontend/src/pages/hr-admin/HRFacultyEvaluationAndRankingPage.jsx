@@ -81,7 +81,7 @@ export function HRFacultyEvaluationAndRankingPage({
           <button
             type="button"
             onClick={handleGenerateReport}
-            className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer shrink-0"
+            className="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Generate Report</span>
@@ -182,7 +182,7 @@ export function HRFacultyEvaluationAndRankingPage({
                       <button
                         type="button"
                         onClick={() => onSelectAuditPortfolio && onSelectAuditPortfolio(p)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-extrabold text-xs text-white bg-[#1b4332] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-2xs cursor-pointer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-extrabold text-xs text-white bg-[#EFF7F0] hover:bg-[#143326] dark:bg-emerald-600 dark:hover:bg-emerald-500 transition-all shadow-2xs cursor-pointer"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" /> View Evaluation
                       </button>

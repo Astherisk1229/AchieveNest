@@ -39,7 +39,7 @@ export default function SearchablePersonnelDropdown({
   })
 
   const borderFocusClass = accentColor === 'emerald'
-    ? 'focus:border-[#2d8a4e] border-emerald-500/40'
+    ? 'focus:border-[#16834a] border-emerald-500/40'
     : 'focus:border-purple-600 border-purple-500/40'
 
   return (
@@ -137,7 +137,7 @@ export default function SearchablePersonnelDropdown({
                     }}
                     className={`w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-50 dark:bg-emerald-950/70 text-[#2d8a4e] dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/70 text-[#16834a] dark:text-[#245F42] border border-emerald-200/60 dark:border-emerald-800/60'
                         : 'text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                     }`}
                   >
@@ -153,7 +153,7 @@ export default function SearchablePersonnelDropdown({
                       </p>
                     </div>
 
-                    {isSelected && <Check className="w-4 h-4 text-[#2d8a4e] dark:text-emerald-400 shrink-0 ml-2" />}
+                    {isSelected && <Check className="w-4 h-4 text-[#16834a] dark:text-emerald-400 shrink-0 ml-2" />}
                   </button>
                 )
               })

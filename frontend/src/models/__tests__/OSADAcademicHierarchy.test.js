@@ -37,11 +37,11 @@ describe('OSAD Academic Hierarchy & Student Organization Rules', () => {
   })
 
   it('rejects Department creation if parent College is missing or archived', () => {
-    const invalidNoCollege = DepartmentModel.validate({ code: 'DEPT-[#2d8a4e]', name: 'No College Dept' }, mockColleges, [])
+    const invalidNoCollege = DepartmentModel.validate({ code: 'DEPT-[#16834a]', name: 'No College Dept' }, mockColleges, [])
     expect(invalidNoCollege.isValid).toBe(false)
     expect(invalidNoCollege.errors[0]).toContain('parent College must be selected')
 
-    const validDept = DepartmentModel.validate({ collegeId: 'col-ceac', code: 'DEPT-[#2d8a4e]', name: 'Valid Dept' }, mockColleges, [])
+    const validDept = DepartmentModel.validate({ collegeId: 'col-ceac', code: 'DEPT-[#16834a]', name: 'Valid Dept' }, mockColleges, [])
     expect(validDept.isValid).toBe(true)
   })
 

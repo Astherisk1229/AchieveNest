@@ -31,7 +31,9 @@ import {
   Search,
   RefreshCw,
   UploadCloud,
-  Scan
+  Scan,
+  Share2,
+  User
 } from 'lucide-react'
 
 export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
@@ -336,119 +338,120 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         )}
 
         {/* ================= 1. PAGE TOP SUMMARY & PORTFOLIO DOSSIER BANNER ================= */}
-        <div className="bg-[#1b4332] text-white p-4 sm:p-5 rounded-3xl shadow-xl border border-emerald-800/90 space-y-4">
+        <div className="bg-[#EFF7F0] p-4 sm:p-5 rounded-3xl shadow-xs border border-[#69A97C] space-y-4">
           
           {/* Top Bar Actions & Status */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/80 pb-3">
-            <div className="flex items-center gap-3">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#DDE7DF] pb-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#E7F3E9] text-[#17663B] border border-[#69A97C]">
                 Personnel Dossier Workbench
               </span>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                portfolio?.status === 'HR_APPROVED' ? 'bg-emerald-500 text-slate-950' :
-                portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'bg-amber-400 text-slate-950' :
-                portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-400 text-slate-950' : 'bg-slate-700 text-white'
+                portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3]' :
+                portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]' :
+                portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]'
               }`}>
                 STATUS: {portfolio?.status || 'DRAFT'}
               </span>
-              <span className="text-xs font-bold text-emerald-200 hidden md:inline">
+              <span className="text-xs font-bold text-[#245F42] hidden md:inline">
                 Evaluation Dossier • AY 2025-2026
               </span>
             </div>
 
-            {/* Header Action Buttons */}
-            <div className="flex items-center gap-2">
+            {/* Three Primary Portfolio Actions */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Action 1: Edit Profile */}
               <button
                 type="button"
-                onClick={() => setIsCanvaViewOpen(true)}
-                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 flex items-center gap-1.5 transition cursor-pointer backdrop-blur-xs"
+                onClick={() => setIsEditProfileOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F1F7F2] text-[#183B2A] font-extrabold text-xs border border-[#DCE6DF] flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
               >
-                <BookOpen className="w-3.5 h-3.5 text-amber-300" />
-                <span>Portfolio Booklet View</span>
+                <User className="w-3.5 h-3.5 text-[#159552]" />
+                <span>Edit Profile</span>
               </button>
 
+              {/* Action 2: Manage Portfolio Draft */}
               {isEditable && (
                 <button
                   type="button"
                   onClick={handleSubmitPortfolio}
-                  className="px-4 py-1.5 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-1.5 rounded-xl bg-[#159552] hover:bg-[#117A43] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Submit to DepSec</span>
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                  <span>Manage Portfolio Draft</span>
                 </button>
               )}
+
+              {/* Action 3: Share */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(window.location.href)
+                    showToast('Portfolio link copied to clipboard!')
+                  } else {
+                    setIsCanvaViewOpen(true)
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F1F7F2] text-[#183B2A] font-extrabold text-xs border border-[#DCE6DF] flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+              >
+                <Share2 className="w-3.5 h-3.5 text-[#159552]" />
+                <span>Share</span>
+              </button>
             </div>
           </div>
 
-          {/* 4 Summary Cards for Personnel */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Total Accomplishments Logged */}
-            <div className="p-3 rounded-2xl bg-white/10 border border-white/10 space-y-1">
-              <div className="text-[10px] font-extrabold text-emerald-200 uppercase">
-                Total Accomplishments
-              </div>
-              <div className="text-lg font-black">
-                {((portfolio?.area_a_items?.length || 0) + (portfolio?.area_b_items?.length || 0) + (portfolio?.area_c_items?.length || 0)) || 10} <span className="text-xs font-normal text-white/70">Entries</span>
-              </div>
-              <div className="text-[10px] font-semibold text-emerald-300">
-                Log entries across Areas A, B & C
-              </div>
-            </div>
-
-            {/* Attached Proof Certificates */}
-            <div className="p-3 rounded-2xl bg-white/10 border border-white/10 space-y-1">
-              <div className="text-[10px] font-extrabold text-emerald-200 uppercase">
+          {/* Rebalanced Workflow Cards (No tenure / duplicate counters) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Attached Proof Certificates Card */}
+            <div className="p-3.5 rounded-2xl bg-white border border-[#D9E5DC] space-y-1">
+              <div className="text-[10px] font-extrabold text-[#245F42] uppercase tracking-wider">
                 Document Attachments
               </div>
-              <div className="text-lg font-black">
-                {[...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])].filter(i => i.proof_file_name).length || 10} <span className="text-xs font-normal text-white/70">Proof PDFs</span>
+              <div className="text-xl font-black text-[#102A43]">
+                {[...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])].filter(i => i.proof_file_name).length} <span className="text-xs font-semibold text-[#64748B]">Proof PDFs Attached</span>
               </div>
-              <div className="text-[10px] font-semibold text-emerald-300">
-                Verified scanned proof files
-              </div>
-            </div>
-
-            {/* NDMU Service Record */}
-            <div className="p-3 rounded-2xl bg-white/10 border border-white/10 space-y-1">
-              <div className="text-[10px] font-extrabold text-emerald-200 uppercase">
-                NDMU Service Tenure
-              </div>
-              <div className="text-lg font-black">
-                {portfolio?.years_of_service || 10} <span className="text-xs font-normal text-white/70">Full Years</span>
-              </div>
-              <div className="text-[10px] font-semibold text-emerald-300">
-                Full-time NDMU Faculty Service
+              <div className="text-[10px] font-medium text-[#245F42]">
+                Verified scanned proof documents in Areas A, B & C
               </div>
             </div>
 
-            {/* Portfolio Verification Status */}
-            <div className="p-3 rounded-2xl bg-amber-500/20 border border-amber-400/30 space-y-1">
-              <div className="text-[10px] font-extrabold text-amber-200 uppercase">
+            {/* Submission Status Card */}
+            <div className={`p-3.5 rounded-2xl border space-y-1 ${
+              portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] border-[#BBDCC3]' : 'bg-[#FFF8E7] border-[#E7A51D]'
+            }`}>
+              <div className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+              }`}>
                 Submission Status
               </div>
-              <div className="text-base font-black text-amber-300 truncate">
+              <div className={`text-xl font-black truncate ${
+                portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+              }`}>
                 {portfolio?.status || 'DRAFT'}
               </div>
-              <div className="text-[10px] font-semibold text-amber-200/80">
-                Formal Portfolio Dossier
+              <div className={`text-[10px] font-medium ${
+                portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+              }`}>
+                Formal Faculty Dossier State
               </div>
             </div>
           </div>
         </div>
 
         {/* ================= 2. FACULTY COMPACT MINI BANNER ================= */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3">
             <img
               src={activeUser.avatar_url || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80"}
               alt={activeUser.full_name}
-              className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
+              className="w-10 h-10 rounded-xl object-cover border border-[#D9E5DC] shrink-0"
             />
             <div>
-              <h2 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight">
-                {activeUser.full_name} <span className="text-xs font-normal text-slate-500">• {activeUser.academic_rank || 'Associate Professor'}</span>
+              <h2 className="text-sm font-extrabold text-[#17663B] dark:text-white leading-tight">
+                {activeUser.full_name} <span className="text-xs font-normal text-[#245F42]">• {activeUser.academic_rank || 'Associate Professor'}</span>
               </h2>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-[#245F42] font-medium">
                 {activeUser.department || 'College of Information Technology'} • ID: {activeUser.employee_id}
               </p>
             </div>
@@ -457,10 +460,10 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           <button
             type="button"
             onClick={() => setIsEditProfileOpen(true)}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto shrink-0"
+            className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F1F7F2] text-[#183B2A] border border-[#DCE6DF] text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
           >
-            <Edit3 className="w-3.5 h-3.5 text-[#2d8a4e]" />
-            <span>Edit Bio & Info</span>
+            <User className="w-3.5 h-3.5 text-[#159552]" />
+            <span>Edit Profile</span>
           </button>
         </div>
 
@@ -468,48 +471,42 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-3 scrollbar-none">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeArea === 'A'}
             onClick={() => { setActiveArea('A'); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-            className={`px-5 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition cursor-pointer shrink-0 ${
-              activeArea === 'A'
-                ? 'bg-[#1b4332] text-white shadow-md'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
-            }`}
+            className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer ${activeArea === 'A' ? 'is-active' : ''}`}
           >
-            <GraduationCap className="w-4 h-4 text-amber-300" />
+            <GraduationCap className="w-4 h-4 area-tab-icon" />
             <span>Area A: Prof. Development</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeArea === 'A' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+            <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
               {(portfolio?.area_a_items?.length || 3)} Entries
             </span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeArea === 'B'}
             onClick={() => { setActiveArea('B'); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-            className={`px-5 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition cursor-pointer shrink-0 ${
-              activeArea === 'B'
-                ? 'bg-[#1b4332] text-white shadow-md'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
-            }`}
+            className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer ${activeArea === 'B' ? 'is-active' : ''}`}
           >
-            <BookOpen className="w-4 h-4 text-amber-300" />
+            <BookOpen className="w-4 h-4 area-tab-icon" />
             <span>Area B: Productivity</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeArea === 'B' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+            <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
               {(portfolio?.area_b_items?.length || 5)} Entries
             </span>
           </button>
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeArea === 'C'}
             onClick={() => { setActiveArea('C'); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-            className={`px-5 py-2.5 rounded-2xl font-extrabold text-xs flex items-center gap-2 transition cursor-pointer shrink-0 ${
-              activeArea === 'C'
-                ? 'bg-[#1b4332] text-white shadow-md'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'
-            }`}
+            className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer ${activeArea === 'C' ? 'is-active' : ''}`}
           >
-            <Heart className="w-4 h-4 text-amber-300" />
+            <Heart className="w-4 h-4 area-tab-icon" />
             <span>Area C: Service & Leadership</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeArea === 'C' ? 'bg-emerald-500/30 text-emerald-200' : 'bg-slate-100 text-slate-600'}`}>
+            <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
               {(portfolio?.area_c_items?.length || 2)} Entries
             </span>
           </button>
@@ -555,7 +552,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 <button
                   type="button"
                   onClick={() => handleOpenAddModal(activeArea)}
-                  className="px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>+ Add Item to Area {activeArea}</span>
@@ -632,7 +629,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                   >
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950 text-[#1e5831] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950 text-[#064e2b] dark:text-[#245F42] border border-emerald-200 dark:border-emerald-800">
                           {item.category || `Category ${activeArea}`}
                         </span>
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-slate-200 text-slate-700">
@@ -750,7 +747,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
                 {!modalFileObj && !itemProofName ? (
                   /* Empty Upload Panel */
-                  <div className="relative border border-dashed border-emerald-300 dark:border-emerald-700/80 hover:border-[#2d8a4e] rounded-xl p-5 text-center transition bg-[#f4fbf6] dark:bg-emerald-950/10 cursor-pointer group">
+                  <div className="relative border border-dashed border-emerald-300 dark:border-emerald-700/80 hover:border-[#16834a] rounded-xl p-5 text-center transition bg-[#f4fbf6] dark:bg-emerald-950/10 cursor-pointer group">
                     <input
                       type="file"
                       accept=".pdf,.png,.jpg,.jpeg"
@@ -760,7 +757,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
                     <div className="flex flex-col items-center gap-1.5">
-                      <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-[#2d8a4e] shadow-2xs">
+                      <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-[#16834a] shadow-2xs">
                         <UploadCloud className="w-4 h-4" />
                       </div>
                       <div>
@@ -773,7 +770,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                   /* Selected File Card */
                   <div className="p-3.5 rounded-xl bg-[#f4fbf6] dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[#2d8a4e] text-white flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#16834a] text-white flex items-center justify-center shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
@@ -804,14 +801,14 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 {/* OCR Processing Indicator */}
                 {isModalScanning && (
                   <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-emerald-300 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <RefreshCw className="w-3.5 h-3.5 text-[#2d8a4e] animate-spin shrink-0" />
+                    <RefreshCw className="w-3.5 h-3.5 text-[#16834a] animate-spin shrink-0" />
                     <span>Extracting document information...</span>
                   </div>
                 )}
 
                 {/* OCR Success Message */}
                 {modalOcrResult && !isModalScanning && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-900 dark:text-emerald-300 flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-900 dark:text-[#245F42] flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Information extracted from document ({modalOcrResult.detectedCategory})</span>
@@ -844,7 +841,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         handleMainCategoryChange(e.target.value)
                         setModalOcrBadges(prev => ({ ...prev, category: false }))
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                     >
                       {availableCategories.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -867,7 +864,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       value={itemDateAchieved}
                       onChange={(e) => { setItemDateAchieved(e.target.value); setModalOcrBadges(prev => ({ ...prev, date: false })) }}
                       placeholder="e.g. 2023 - 2024 or Oct 15, 2023"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                       required
                     />
                   </div>
@@ -888,7 +885,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         setItemScope(e.target.value)
                         setModalOcrBadges(prev => ({ ...prev, scope: false }))
                       }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                     >
                       <option value="Local">Local / Institutional</option>
                       <option value="Regional">Regional (Region XII)</option>
@@ -910,7 +907,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={itemTitle}
                           onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
                           placeholder="e.g. Ph.D. in Computer Science / MA in Education"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -925,7 +922,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={institution}
                           onChange={(e) => { setInstitution(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
                           placeholder="e.g. Ateneo de Manila University / NDMU"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -944,7 +941,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={itemTitle}
                           onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
                           placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -959,7 +956,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={organizerVenue}
                           onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
                           placeholder="e.g. National Board / Local Chapter"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -978,7 +975,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={itemTitle}
                           onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
                           placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -993,7 +990,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={organizerVenue}
                           onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
                           placeholder="e.g. CHED Region XII / NDMU Campus"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1012,7 +1009,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={itemTitle}
                           onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
                           placeholder="e.g. Keynote Address on Educational Data Mining"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1027,7 +1024,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={organizerVenue}
                           onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
                           placeholder="e.g. DOST Region XII / MSU"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1051,7 +1048,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={itemTitle}
                           onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
                           placeholder="e.g. Title of Work, Research, Award, Material, or Creative Work"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1066,7 +1063,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={publisherIssn}
                           onChange={(e) => { setPublisherIssn(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
                           placeholder="e.g. IEEE Access / NDMU Research Office / Conferring Body"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1085,7 +1082,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={itemTitle}
                           onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
                           placeholder="e.g. Junior Philippine Computer Society / Outreach Activity"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1100,7 +1097,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           value={organizerVenue}
                           onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
                           placeholder="e.g. OSAD / Parish Pastoral Council / Local Government Unit"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                           required
                         />
                       </div>
@@ -1117,7 +1114,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       value={itemSubCategory}
                       onChange={(e) => setItemSubCategory(e.target.value)}
                       placeholder="e.g. Full-time Permanent / Officer / Volume 12 Issue 3"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                     />
                   </div>
 
@@ -1131,7 +1128,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       value={itemProofName}
                       onChange={(e) => setItemProofName(e.target.value)}
                       placeholder="e.g. certificate_proof_document.pdf"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#2d8a4e] focus:ring-1 focus:ring-[#2d8a4e]"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
                     />
                   </div>
                 </div>
@@ -1149,7 +1146,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
                 >
                   {editingItem ? 'Save Changes' : 'Add to Portfolio Draft'}
                 </button>

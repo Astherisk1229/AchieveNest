@@ -177,7 +177,7 @@ export default function AchievementPopoverMenu({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
-              className="p-1 rounded-full text-slate-400 hover:text-[#2d8a4e] hover:bg-[#eef7f0] transition cursor-pointer"
+              className="p-1 rounded-full text-slate-400 hover:text-[#16834a] hover:bg-[#E7F3E9] transition cursor-pointer"
               title="Edit Title"
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -185,7 +185,7 @@ export default function AchievementPopoverMenu({
           )}
         </div>
         <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
-          {achievement.category} • <span className="text-[#2d8a4e] font-semibold">{achievement.portfolio_status || achievement.status}</span>
+          {achievement.category} • <span className="text-[#16834a] font-semibold">{achievement.portfolio_status || achievement.status}</span>
         </p>
       </div>
 
@@ -196,9 +196,9 @@ export default function AchievementPopoverMenu({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#eef7f0] hover:text-[#2d8a4e] font-semibold transition cursor-pointer"
+          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#E7F3E9] hover:text-[#16834a] font-semibold transition cursor-pointer"
         >
-          <ExternalLink className="w-4 h-4 text-[#2d8a4e]" />
+          <ExternalLink className="w-4 h-4 text-[#16834a]" />
           <span>Open in Preview Viewer</span>
         </button>
 
@@ -216,7 +216,7 @@ export default function AchievementPopoverMenu({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onAttachPortfolio(achievement.id); onClose() }}
-          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#eef7f0] hover:text-[#1e5831] font-semibold transition cursor-pointer"
+          className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-[#E7F3E9] hover:text-[#064e2b] font-semibold transition cursor-pointer"
         >
           <PlusCircle className="w-4 h-4 text-emerald-600" />
           <span>Attach to Annual Portfolio</span>

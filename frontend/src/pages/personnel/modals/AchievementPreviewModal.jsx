@@ -52,12 +52,12 @@ export default function AchievementPreviewModal({
         {/* Modal Top Header Bar */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#2d8a4e] bg-[#eef7f0] px-2 py-0.5 rounded border border-[#cbe6d2]">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#16834a] bg-[#E7F3E9] px-2 py-0.5 rounded border border-[#cbe6d2]">
                   {achievement.ndmu_area || 'Area B: Productivity & Creative Work'}
                 </span>
                 <span className="text-xs font-semibold text-slate-400">• {achievement.category}</span>
@@ -130,7 +130,7 @@ export default function AchievementPreviewModal({
                 className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-slate-200 text-slate-800 space-y-6 select-none"
               >
                 <div className="text-center space-y-2 border-b border-slate-100 pb-6">
-                  <div className="w-12 h-12 rounded-full bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] mx-auto flex items-center justify-center font-bold">
+                  <div className="w-12 h-12 rounded-full bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] mx-auto flex items-center justify-center font-bold">
                     <Award className="w-6 h-6" />
                   </div>
                   <h3 className="text-xs font-black tracking-widest uppercase text-emerald-800">
@@ -186,7 +186,7 @@ export default function AchievementPreviewModal({
               
               {/* Category & Status Badges */}
               <div className="flex items-center justify-between gap-2">
-                <span className="px-3 py-1 rounded-full bg-[#eef7f0] border border-[#cbe6d2] text-[#2d8a4e] text-xs font-extrabold">
+                <span className="px-3 py-1 rounded-full bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] text-xs font-extrabold">
                   {achievement.category}
                 </span>
 
@@ -232,7 +232,7 @@ export default function AchievementPreviewModal({
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <Briefcase className="w-4 h-4 text-[#2d8a4e]" />
+                    <Briefcase className="w-4 h-4 text-[#16834a]" />
                     <span>Annual Rating Portfolio</span>
                   </span>
                   <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -298,7 +298,7 @@ export default function AchievementPreviewModal({
               <button
                 type="button"
                 onClick={() => onDownload(achievement)}
-                className="w-full py-3 rounded-2xl bg-[#eef7f0] hover:bg-[#e2f2e5] border border-[#cbe6d2] text-[#1e5831] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                className="w-full py-3 rounded-2xl bg-[#E7F3E9] hover:bg-[#e2f2e5] border border-[#cbe6d2] text-[#064e2b] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Proof Document</span>

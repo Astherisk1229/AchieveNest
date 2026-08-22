@@ -200,7 +200,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
         {/* TOP MODAL HEADER */}
         <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#1b4332] text-emerald-400 border border-emerald-600/40 shadow-xs">
+            <div className="p-2.5 rounded-2xl bg-[#DCEBDD] text-emerald-400 border border-emerald-600/40 shadow-xs">
               <Layers className="w-5 h-5" />
             </div>
             <div>
@@ -240,7 +240,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 <select
                   value={safePageIndex}
                   onChange={(e) => setCurrentPageIndex(Number(e.target.value))}
-                  className="bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-[#2d8a4e] transition"
+                  className="bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-[#16834a] transition"
                 >
                   {pagesList.map((p, idx) => (
                     <option key={idx} value={idx}>
@@ -260,7 +260,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 </button>
               </div>
 
-              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-[#1b4332] text-emerald-300 border border-emerald-600/40">
+              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-[#DCEBDD] text-emerald-300 border border-emerald-600/40">
                 Page {safePageIndex + 1} / {totalPagesCount}
               </span>
             </div>
@@ -275,26 +275,26 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 
                 {/* 1. COVER PAGE VIEW */}
                 {activePage.type === 'cover' && (
-                  <div className="h-full flex flex-col justify-between border-4 border-[#1b4332] p-6 rounded-xl relative overflow-hidden bg-gradient-to-b from-emerald-50/50 via-white to-white">
+                  <div className="h-full flex flex-col justify-between border-4 border-[#A9C6B1] p-6 rounded-xl relative overflow-hidden bg-gradient-to-b from-emerald-50/50 via-white to-white">
                     
                     {/* Header Seal */}
                     <div className="text-center space-y-2 pt-2">
-                      <div className="w-14 h-14 mx-auto rounded-2xl bg-[#1b4332] text-amber-400 flex items-center justify-center font-black text-2xl shadow-md border-2 border-amber-400">
+                      <div className="w-14 h-14 mx-auto rounded-2xl bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-2xl shadow-md border-2 border-amber-400">
                         <ShieldCheck className="w-8 h-8" />
                       </div>
-                      <h2 className="text-xs font-black text-[#1b4332] tracking-wider uppercase">Notre Dame of Marbel University</h2>
+                      <h2 className="text-xs font-black text-[#064e2b] tracking-wider uppercase">Notre Dame of Marbel University</h2>
                       <p className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest">Koronadal City, South Cotabato • Philippines</p>
                     </div>
 
                     {/* Title & Metadata */}
                     <div className="text-center space-y-3 my-auto">
-                      <div className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-[#1e5831] text-[9px] font-extrabold uppercase tracking-widest">
+                      <div className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-[#064e2b] text-[9px] font-extrabold uppercase tracking-widest">
                         Official Academic Record
                       </div>
                       <h1 className="text-xl font-black text-slate-900 leading-tight tracking-tight uppercase">
                         STUDENT ACCOMPLISHMENT PORTFOLIO DOSSIER
                       </h1>
-                      <div className="w-20 h-1 bg-[#2d8a4e] mx-auto rounded-full"></div>
+                      <div className="w-20 h-1 bg-[#16834a] mx-auto rounded-full"></div>
                     </div>
 
                     {/* Student Info Footer Card */}
@@ -310,22 +310,22 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 {activePage.type === 'toc' && (
                   <div className="h-full flex flex-col justify-between space-y-3">
                     <div>
-                      <div className="flex items-center justify-between border-b-2 border-[#1b4332] pb-2 mb-3">
+                      <div className="flex items-center justify-between border-b-2 border-[#A9C6B1] pb-2 mb-3">
                         <div>
-                          <h2 className="text-sm font-black text-[#1b4332] uppercase">Table of Contents & Executive Summary</h2>
+                          <h2 className="text-sm font-black text-[#064e2b] uppercase">Table of Contents & Executive Summary</h2>
                           <p className="text-[10px] text-slate-500 font-medium">Dynamically calculated from selected portfolio items</p>
                         </div>
-                        <FileText className="w-5 h-5 text-[#2d8a4e]" />
+                        <FileText className="w-5 h-5 text-[#16834a]" />
                       </div>
 
                       {/* Recalculated Executive Metrics Box */}
                       <div className="grid grid-cols-3 gap-2 bg-[#eef7f0] p-2.5 rounded-xl border border-[#cbe6d2] mb-3 text-center">
                         <div>
-                          <p className="text-sm font-black text-[#1e5831]">{dynamicTotal}</p>
+                          <p className="text-sm font-black text-[#064e2b]">{dynamicTotal}</p>
                           <p className="text-[8px] font-bold text-slate-500 uppercase">Selected Items</p>
                         </div>
                         <div>
-                          <p className="text-sm font-black text-[#1e5831]">{dynamicVerified}</p>
+                          <p className="text-sm font-black text-[#064e2b]">{dynamicVerified}</p>
                           <p className="text-[8px] font-bold text-slate-500 uppercase">Verified Records</p>
                         </div>
                         <div>
@@ -339,7 +339,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                         {pagesList.filter(p => p.type === 'achievement').map((itemPage, idx) => (
                           <div key={idx} className="flex items-center justify-between border-b border-dashed border-slate-200 pb-1">
                             <span className="font-bold text-slate-800 truncate max-w-[300px]">{idx + 1}. {itemPage.item.title}</span>
-                            <span className="text-[10px] font-extrabold text-[#2d8a4e] shrink-0">Page {itemPage.pageNum}</span>
+                            <span className="text-[10px] font-extrabold text-[#16834a] shrink-0">Page {itemPage.pageNum}</span>
                           </div>
                         ))}
                       </div>
@@ -353,11 +353,11 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
 
                 {/* 3. CATEGORY SEPARATOR SLIDE VIEW */}
                 {activePage.type === 'separator' && (
-                  <div className="h-full bg-[#1b4332] text-white p-6 rounded-xl flex flex-col justify-between relative overflow-hidden border-4 border-amber-400/80">
+                  <div className="h-full bg-[#DCEBDD] text-white p-6 rounded-xl flex flex-col justify-between relative overflow-hidden border-4 border-amber-400/80">
                     <div className="text-amber-400 font-black text-[10px] uppercase tracking-widest">Section Divider</div>
 
                     <div className="space-y-3 my-auto">
-                      <div className="w-12 h-12 rounded-2xl bg-[#2d8a4e] text-white flex items-center justify-center font-black text-xl shadow-lg border border-emerald-400/40">
+                      <div className="w-12 h-12 rounded-2xl bg-[#16834a] text-white flex items-center justify-center font-black text-xl shadow-lg border border-emerald-400/40">
                         <Award className="w-6 h-6" />
                       </div>
                       <h2 className="text-lg font-black tracking-tight uppercase leading-tight text-white">
@@ -381,12 +381,12 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                     {/* TOP STRIP */}
                     <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-md bg-[#1b4332] text-amber-400 flex items-center justify-center font-black text-[10px]">
+                        <div className="w-5 h-5 rounded-md bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-[10px]">
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </div>
                         <span className="text-[9px] font-black text-slate-800 uppercase tracking-wide">NDMU ACHIEVENEST VERIFIED DOSSIER</span>
                       </div>
-                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-[#1e5831] border border-emerald-200">
+                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-[#064e2b] border border-emerald-200">
                         {activePage.item.category}
                       </span>
                     </div>
@@ -399,7 +399,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                           <h3 className="text-xs font-black text-slate-900 leading-tight">{activePage.item.title}</h3>
                           <p className="text-[10px] text-slate-600 font-bold mt-0.5">{activePage.item.event_name}</p>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full bg-[#eef7f0] text-[#1e5831] text-[9px] font-extrabold border border-[#cbe6d2] shrink-0">
+                        <span className="px-2 py-0.5 rounded-full bg-[#eef7f0] text-[#064e2b] text-[9px] font-extrabold border border-[#cbe6d2] shrink-0">
                           {activePage.item.status} ✓
                         </span>
                       </div>
@@ -460,7 +460,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 <select
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-[#2d8a4e] transition"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-[#16834a] transition"
                 >
                   <option value="ndmu_dossier">Official NDMU Dossier (Standard)</option>
                   <option value="modern_clean">Modern Clean Executive</option>
@@ -564,7 +564,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
               <button
                 type="button"
                 onClick={handlePrintPDF}
-                className="w-full py-3 px-4 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-lg cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-lg cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Download Portfolio PDF ({totalPagesCount} Pages)</span>

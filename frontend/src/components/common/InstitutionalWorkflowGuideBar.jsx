@@ -87,7 +87,7 @@ export default function InstitutionalWorkflowGuideBar({ currentStep = 1, activeA
     <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 shadow-2xs font-sans space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#2d8a4e] animate-pulse"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#16834a] animate-pulse"></span>
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
             <span>Seamless Institutional Governance &amp; Setup Flow</span>
           </h3>
@@ -111,7 +111,7 @@ export default function InstitutionalWorkflowGuideBar({ currentStep = 1, activeA
                 onClick={() => navigate(s.path)}
                 className={`p-2.5 rounded-xl border text-left transition shrink-0 cursor-pointer flex items-center gap-2.5 ${
                   isActive
-                    ? 'bg-[#1b4332] text-white border-[#2d8a4e] shadow-md ring-2 ring-emerald-500/30'
+                    ? 'bg-[#064e2b] text-white border-[#16834a] shadow-md ring-2 ring-emerald-500/30'
                     : isDone
                     ? 'bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100/50'
                     : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-100'

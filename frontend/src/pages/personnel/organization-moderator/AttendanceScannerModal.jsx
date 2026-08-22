@@ -69,34 +69,32 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
       <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Gateway Header */}
-        <div className="p-6 bg-[#1b4332] text-white flex items-center justify-between">
+        <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300">
-              <QrCode className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F5EA] border border-[#B7DDC4] flex items-center justify-center text-[#17663B]">
+              <QrCode className="w-5 h-5 text-[#17663B]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-lg">AchieveNest Student Officer Gateway</h3>
+                <h3 className="font-extrabold text-lg text-[#17663B]">AchieveNest Student Officer Gateway</h3>
                 {activeOfficer ? (
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-extrabold uppercase">
-                    UNLOCKED
+                  <span className="px-2 py-0.5 rounded-full bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3] text-[10px] font-bold">
+                    Active Officer: {activeOfficer.name}
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-extrabold uppercase">
-                    LOCKED
+                  <span className="px-2 py-0.5 rounded-full bg-[#FFF7E6] text-[#795600] border border-[#E5C276] text-[10px] font-bold">
+                    No Officer
                   </span>
                 )}
               </div>
-              <p className="text-xs text-emerald-200/80 truncate">
-                {activeEvent?.title || 'Computer Society Tech Summit 2026'}
-              </p>
+              <p className="text-xs text-[#356148] font-medium">Verify attendance and validate student QR passes</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+            className="p-2 rounded-xl text-[#356148] hover:bg-[#EAF4EC] hover:text-[#17663B] transition cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -145,7 +143,7 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-2xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Unlock className="w-4 h-4" />
                 <span>Authenticate Officer & Unlock Terminal</span>
@@ -191,11 +189,11 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-extrabold text-white text-xs">{activeOfficer.full_name}</span>
-                    <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold border border-emerald-400/30">
+                    <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-[#245F42] text-[9px] font-extrabold border border-emerald-400/30">
                       ON DUTY
                     </span>
                   </div>
-                  <p className="text-[10px] text-emerald-300/80 font-medium">{activeOfficer.position}</p>
+                  <p className="text-[10px] text-[#245F42]/80 font-medium">{activeOfficer.position}</p>
                 </div>
               </div>
 
@@ -215,12 +213,12 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
               <div className="w-48 h-28 rounded-2xl border-2 border-dashed border-emerald-400/80 flex flex-col items-center justify-center gap-2 bg-emerald-950/40 relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-1 bg-emerald-400 shadow-[0_0_12px_#34d399] animate-pulse"></div>
                 <Camera className="w-7 h-7 text-emerald-400" />
-                <span className="text-[10px] font-bold text-emerald-300">Align NDMU Digital Barcode</span>
+                <span className="text-[10px] font-bold text-[#245F42]">Align NDMU Digital Barcode</span>
               </div>
 
               <button
                 onClick={handleSimulateScan}
-                className="mt-3 px-4 py-2 rounded-xl bg-[#2d8a4e] hover:bg-[#236e3e] text-white text-xs font-bold transition shadow-lg flex items-center gap-2 cursor-pointer"
+                className="mt-3 px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold transition shadow-lg flex items-center gap-2 cursor-pointer"
               >
                 <QrCode className="w-4 h-4" />
                 <span>Simulate Live Student Barcode Scan</span>
@@ -235,7 +233,7 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
                   placeholder="Enter NDMU Student ID Barcode (e.g. 2022-01452)..."
                   value={manualIdInput}
                   onChange={(e) => setManualIdInput(e.target.value)}
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#2d8a4e]"
+                  className="flex-1 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-[#16834a]"
                 />
                 <button
                   type="submit"
@@ -252,7 +250,7 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Live Verified Attendees ({scannedLogs.length})
                 </h4>
-                <span className="text-xs font-bold text-[#2d8a4e] flex items-center gap-1">
+                <span className="text-xs font-bold text-[#16834a] flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Audit Trail Active</span>
                 </span>

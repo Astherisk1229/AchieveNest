@@ -1,7 +1,10 @@
 /**
  * AchieveNest Authentication Service
- * Automatic User Type Identification & Mock Authentication Engine
+ * Real Supabase Auth + backend-authoritative identity resolution.
  */
+
+import { supabase } from '../config/supabase'
+import apiClient from './apiClient'
 
 export const DEMO_USERS = {
   student: {
@@ -93,42 +96,48 @@ const STORAGE_KEY_USER = 'achievenest_current_user'
 const STORAGE_KEY_RESETS = 'achievenest_password_resets'
 
 export async function authenticateUser(email, password, rememberMe = true) {
-  await new Promise(resolve => setTimeout(resolve, 600))
+  const cleanEmail = String(email || '').trim().toLowerCase()
 
-  const cleanEmail = email.trim().toLowerCase()
-
-  if (!cleanEmail.endsWith('@ndmu.edu.ph')) {
+  if (!cleanEmail || !cleanEmail.endsWith('@ndmu.edu.ph')) {
     throw new Error('Please enter a valid NDMU institutional email (@ndmu.edu.ph).')
   }
 
-  let matchedUser = Object.values(DEMO_USERS).find(u => u.email.toLowerCase() === cleanEmail)
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: cleanEmail,
+    password
+  })
 
-  if (!matchedUser) {
-    if (cleanEmail.includes('student')) {
-      matchedUser = { ...DEMO_USERS.student, email: cleanEmail }
-    } else if (cleanEmail.includes('hr')) {
-      matchedUser = { ...DEMO_USERS.osad, user_type: 'hr_staff', email: cleanEmail }
-    } else if (cleanEmail.includes('osad')) {
-      matchedUser = { ...DEMO_USERS.osad, email: cleanEmail }
-    } else if (cleanEmail.includes('sec')) {
-      matchedUser = { ...DEMO_USERS.depsec, email: cleanEmail }
-    } else if (cleanEmail.includes('coord')) {
-      matchedUser = { ...DEMO_USERS.coordinator, email: cleanEmail }
-    } else if (cleanEmail.includes('mod')) {
-      matchedUser = { ...DEMO_USERS.organization, email: cleanEmail }
-    } else {
-      matchedUser = { ...DEMO_USERS.personnel, email: cleanEmail, full_name: cleanEmail.split('@')[0].toUpperCase() }
+  if (error) {
+    throw new Error(error.message || 'Supabase authentication failed.')
+  }
+
+  const accessToken = data?.session?.access_token
+  if (!accessToken) {
+    throw new Error('Supabase login succeeded but no access token was returned.')
+  }
+
+  const backendResponse = await apiClient.get('/auth/me', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
     }
+  })
+
+  const user = backendResponse?.data?.user || backendResponse?.user || null
+  if (!user) {
+    throw new Error('Authenticated session is valid, but the backend profile could not be resolved.')
   }
 
   const sessionPayload = {
-    ...matchedUser,
-    active_role_context: matchedUser.active_role_context || matchedUser.user_type,
-    assigned_roles: matchedUser.assigned_roles && matchedUser.assigned_roles.length > 0
-      ? matchedUser.assigned_roles
-      : (matchedUser.user_type === 'personnel' || matchedUser.user_type === 'department_secretary' || matchedUser.user_type === 'program_coordinator' || matchedUser.user_type === 'organization_moderator' ? ['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary'] : []),
-    token: `jwt_mock_${Date.now()}_${matchedUser.id}`,
-    logged_in_at: new Date().toISOString()
+    ...user,
+    id: user.id,
+    email: user.institutional_email || cleanEmail,
+    full_name: user.full_name || cleanEmail,
+    user_type: user.account_type || 'personnel',
+    active_role_context: user.account_type || 'personnel',
+    assigned_roles: (user.roles || []).map(role => role.role_key),
+    token: accessToken,
+    logged_in_at: new Date().toISOString(),
+    rememberMe
   }
 
   if (rememberMe) {

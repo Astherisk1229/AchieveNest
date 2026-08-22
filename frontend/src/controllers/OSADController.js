@@ -11,6 +11,7 @@ import DegreeProgramModel from '../models/DegreeProgramModel.js'
 import StudentOrganizationModel from '../models/StudentOrganizationModel.js'
 import ProgramCoordinatorAssignmentModel from '../models/ProgramCoordinatorAssignmentModel.js'
 import OrganizationModeratorAssignmentModel from '../models/OrganizationModeratorAssignmentModel.js'
+import AcademicStructureController from './AcademicStructureController.js'
 
 class OSADController {
   #users
@@ -25,6 +26,8 @@ class OSADController {
   #awardees
   #auditLogs
   #accreditationReports
+
+  #academicStructureController
 
   constructor() {
     this.#colleges = [
@@ -449,21 +452,39 @@ class OSADController {
         accreditation_status: 'Approved for Parangal',
       }
     ]
+
+    this.#academicStructureController = new AcademicStructureController({
+      colleges: this.#colleges,
+      departments: this.#departments,
+      degreePrograms: this.#degreePrograms,
+      organizations: this.#organizations,
+      clubs: this.#clubs,
+      programCoordinatorAssignments: this.#programCoordinatorAssignments,
+      organizationModeratorAssignments: this.#organizationModeratorAssignments
+    })
+  }
+
+  syncAcademicStructureState() {
+    this.#academicStructureController.colleges = this.#colleges
+    this.#academicStructureController.departments = this.#departments
+    this.#academicStructureController.degreePrograms = this.#degreePrograms
+    this.#academicStructureController.organizations = this.#organizations
+    this.#academicStructureController.clubs = this.#clubs
+    this.#academicStructureController.programCoordinatorAssignments = this.#programCoordinatorAssignments
+    this.#academicStructureController.organizationModeratorAssignments = this.#organizationModeratorAssignments
   }
 
   // --- Academic Structure Hierarchy Queries & Mutators ---
   getColleges() {
-    return this.#colleges
+    return this.#academicStructureController.getColleges()
   }
 
   getDepartments(collegeId = null) {
-    if (!collegeId || collegeId === 'all') return this.#departments
-    return this.#departments.filter(d => d.collegeId === collegeId)
+    return this.#academicStructureController.getDepartments(collegeId)
   }
 
   getDegreePrograms(departmentId = null) {
-    if (!departmentId || departmentId === 'all') return this.#degreePrograms
-    return this.#degreePrograms.filter(p => p.departmentId === departmentId)
+    return this.#academicStructureController.getDegreePrograms(departmentId)
   }
 
   getStudentOrganizations(scopeFilter = 'all') {
@@ -472,11 +493,11 @@ class OSADController {
   }
 
   getProgramCoordinatorAssignments() {
-    return this.#programCoordinatorAssignments
+    return this.#academicStructureController.getProgramCoordinatorAssignments()
   }
 
   getOrganizationModeratorAssignments() {
-    return this.#organizationModeratorAssignments
+    return this.#academicStructureController.getOrganizationModeratorAssignments()
   }
 
   createCollege(payload) {
@@ -485,6 +506,7 @@ class OSADController {
 
     const college = new CollegeModel(payload)
     this.#colleges.push(college)
+    this.syncAcademicStructureState()
     this.addAuditLog('COLLEGE_CREATED', `Created College [${college.name}] (${college.code})`, college.code, 'SUCCESS')
     return college
   }
@@ -495,6 +517,7 @@ class OSADController {
 
     const dept = new DepartmentModel(payload)
     this.#departments.push(dept)
+    this.syncAcademicStructureState()
     this.addAuditLog('DEPARTMENT_CREATED', `Created Department [${dept.name}] under College [${dept.collegeId}]`, dept.code, 'SUCCESS')
     return dept
   }
@@ -505,6 +528,7 @@ class OSADController {
 
     const prog = new DegreeProgramModel(payload)
     this.#degreePrograms.push(prog)
+    this.syncAcademicStructureState()
     this.addAuditLog('DEGREE_PROGRAM_CREATED', `Created Degree Program [${prog.name}] (${prog.code}) under Department [${prog.departmentId}]`, prog.code, 'SUCCESS')
     return prog
   }
@@ -515,6 +539,7 @@ class OSADController {
 
     const org = new StudentOrganizationModel(payload)
     this.#organizations.push(org)
+    this.syncAcademicStructureState()
     this.addAuditLog('ORGANIZATION_CREATED', `Created Student Organization [${org.name}] with scope [${org.scopeType}]`, org.code, 'SUCCESS')
     return org
   }
@@ -523,22 +548,9 @@ class OSADController {
     const val = ProgramCoordinatorAssignmentModel.validate({ departmentId, personnelId }, this.#departments, this.getPersonnelList())
     if (!val.isValid) throw new Error(val.errors.join(' '))
 
-    // End previous active assignment for this department
-    const previous = this.#programCoordinatorAssignments.find(a => a.departmentId === departmentId && a.status === 'active')
-    if (previous) {
-      previous.status = 'ended'
-      previous.effectiveTo = new Date().toISOString()
-      previous.endReason = 'Replaced by OSAD Staff'
-    }
-
-    const newAssignment = new ProgramCoordinatorAssignmentModel({
-      departmentId,
-      personnelId,
-      personnelName,
-      status: 'active'
-    })
-
-    this.#programCoordinatorAssignments.push(newAssignment)
+    const newAssignment = this.#academicStructureController.assignProgramCoordinatorToDepartment(departmentId, personnelId, personnelName)
+    this.#programCoordinatorAssignments = this.#academicStructureController.getProgramCoordinatorAssignments()
+    this.syncAcademicStructureState()
     this.addAuditLog('PROGRAM_COORDINATOR_ASSIGNED', `Assigned Program Coordinator [${personnelName}] to Department [${departmentId}]`, departmentId, 'SUCCESS')
     return newAssignment
   }
@@ -547,21 +559,9 @@ class OSADController {
     const val = OrganizationModeratorAssignmentModel.validate({ organizationId, personnelId }, this.#organizations, this.getPersonnelList())
     if (!val.isValid) throw new Error(val.errors.join(' '))
 
-    const previous = this.#organizationModeratorAssignments.find(a => a.organizationId === organizationId && a.status === 'active')
-    if (previous) {
-      previous.status = 'ended'
-      previous.effectiveTo = new Date().toISOString()
-      previous.endReason = 'Replaced by OSAD Staff'
-    }
-
-    const newAssignment = new OrganizationModeratorAssignmentModel({
-      organizationId,
-      personnelId,
-      personnelName,
-      status: 'active'
-    })
-
-    this.#organizationModeratorAssignments.push(newAssignment)
+    const newAssignment = this.#academicStructureController.assignOrganizationModeratorToOrg(organizationId, personnelId, personnelName)
+    this.#organizationModeratorAssignments = this.#academicStructureController.getOrganizationModeratorAssignments()
+    this.syncAcademicStructureState()
     this.addAuditLog('ORGANIZATION_MODERATOR_ASSIGNED', `Assigned Organization Moderator [${personnelName}] to Student Organization [${organizationId}]`, organizationId, 'SUCCESS')
     return newAssignment
   }
@@ -599,7 +599,7 @@ class OSADController {
 
   // --- Department Governance & Hierarchy ---
   getDepartments() {
-    return [...this.#departments]
+    return this.#academicStructureController.getDepartments()
   }
 
   createDepartment(deptData) {
@@ -627,6 +627,7 @@ class OSADController {
     newDept.student_count = reconciledCount || (deptData.programs ? deptData.programs.length * 80 : 0)
 
     this.#departments.push(newDept)
+    this.syncAcademicStructureState()
 
     this.addAuditLog(
       'DEPARTMENT_CREATED',
@@ -639,7 +640,7 @@ class OSADController {
 
   // --- Student Organization Governance ---
   getOrganizations() {
-    return [...this.#organizations]
+    return this.#academicStructureController.getOrganizations()
   }
 
   createOrganization(orgData) {
@@ -658,6 +659,7 @@ class OSADController {
     }
 
     this.#organizations.push(newOrg)
+    this.syncAcademicStructureState()
 
     this.addAuditLog(
       'ORGANIZATION_CREATED',
@@ -927,6 +929,8 @@ class OSADController {
       dept.assigned_coordinator_id = usr.id
     }
 
+    this.syncAcademicStructureState()
+
     this.addAuditLog(
       'ROLE_ASSIGNMENT',
       `Assigned Department Program Coordinator for [${deptName}]`,
@@ -952,6 +956,8 @@ class OSADController {
       club.moderator_id = usr.id
     }
 
+    this.syncAcademicStructureState()
+
     this.addAuditLog(
       'ROLE_ASSIGNMENT',
       `Assigned role [Organization Moderator] for ${clubName}`,
@@ -963,7 +969,7 @@ class OSADController {
 
   // --- Student Clubs Governance ---
   getClubs() {
-    return [...this.#clubs]
+    return this.#academicStructureController.getClubs()
   }
 
   createClub(clubData) {
@@ -982,6 +988,7 @@ class OSADController {
     }
 
     this.#clubs.push(newClub)
+    this.syncAcademicStructureState()
 
     this.addAuditLog(
       'CLUB_CREATED',

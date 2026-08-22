@@ -9,6 +9,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/AuthContext'
 import { getCurrentUser } from './services/authService'
+import RouteAccessController from './controllers/RouteAccessController'
 
 import ActiveRoleGuard from './components/common/ActiveRoleGuard'
 import PermissionRoute from './components/security/PermissionRoute'
@@ -89,13 +90,10 @@ function LayoutShell({ allowedRoles }) {
     return <Navigate to="/login" replace />
   }
 
-  const role = currentUser.active_role_context || currentUser.primary_role || 'personnel'
+  const role = RouteAccessController.getCurrentRole(currentUser)
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
-    if (role === 'student') return <Navigate to="/student/dashboard" replace />
-    if (role === 'hr_staff') return <Navigate to="/hr/dashboard" replace />
-    if (role === 'osad_staff') return <Navigate to="/osad/dashboard" replace />
-    return <Navigate to="/personnel/dashboard" replace />
+  if (!RouteAccessController.isAllowedRole(role, allowedRoles)) {
+    return <Navigate to={RouteAccessController.resolveRedirect(role)} replace />
   }
 
   return (

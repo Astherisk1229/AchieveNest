@@ -54,7 +54,7 @@ class Database extends Config
         ],
     ];
 
-        /**
+    /**
      * Supabase development/testing database.
      *
      * Credentials are supplied through the local .env file.
@@ -234,12 +234,10 @@ class Database extends Config
     {
         parent::__construct();
 
-        // Ensure that we always set the database group to 'tests' if
-        // we are currently running an automated test suite, so that
-        // we don't overwrite live data on accident.
+        // Keep local development and automated tests isolated from production.
         if (ENVIRONMENT === 'development') {
-        $this->defaultGroup = 'development';
-        }elseif (ENVIRONMENT === 'testing') {
+            $this->defaultGroup = 'development';
+        } elseif (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
     }

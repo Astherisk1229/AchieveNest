@@ -181,7 +181,7 @@ SQL);
             $this->db->query($index);
         }
 
-        foreach (['roles', 'colleges', 'departments', 'degree_programs', 'profiles', 'profile_roles', 'account_lifecycle_events'] as $table) {
+        foreach (['migrations', 'roles', 'colleges', 'departments', 'degree_programs', 'profiles', 'profile_roles', 'account_lifecycle_events'] as $table) {
             $this->db->query("ALTER TABLE public.{$table} ENABLE ROW LEVEL SECURITY");
             $this->db->query("REVOKE ALL ON TABLE public.{$table} FROM anon, authenticated");
         }

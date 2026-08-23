@@ -1,0 +1,10 @@
+{
+  "name": "achievenest-backend-development-tools",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "2.53.0",
+    "pg": "^8.16.3",
+    "xlsx": "^0.18.5"
+  }
+}

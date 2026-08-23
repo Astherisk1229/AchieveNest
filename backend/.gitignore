@@ -63,6 +63,9 @@ Vagrantfile
 /writable/debugbar/*
 !/writable/debugbar/index.html
 
+/writable/demo-credentials/*
+!/writable/demo-credentials/.gitkeep
+
 php_errors.log
 
 #-------------------------

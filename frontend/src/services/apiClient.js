@@ -13,19 +13,20 @@ const apiClient = axios.create({
   timeout: 15000
 })
 
-// Request Interceptor: Attach JWT Bearer Token
+// Request Interceptor: Attach JWT Bearer Token from the current Supabase session
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     try {
-      const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
-      if (rawUser) {
-        const user = JSON.parse(rawUser)
-        if (user && user.token) {
-          config.headers.Authorization = `Bearer ${user.token}`
-        }
+      const { data: { session } } = await import('../config/supabase').then(({ supabase }) => supabase.auth.getSession())
+      const token = session?.access_token
+
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      } else {
+        delete config.headers.Authorization
       }
     } catch {
-      // Ignore token parsing error
+      delete config.headers.Authorization
     }
     return config
   },

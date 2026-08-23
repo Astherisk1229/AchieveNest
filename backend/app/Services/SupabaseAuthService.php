@@ -15,7 +15,7 @@ class SupabaseAuthService
             throw new RuntimeException('Bearer token is empty.');
         }
 
-        $projectUrl = rtrim((string) env('supabase.url', ''), '/');
+        $projectUrl = rtrim((string) env('SUPABASE_URL', ''), '/');
         if ($projectUrl === '') {
             throw new RuntimeException('Supabase project URL is not configured.');
         }

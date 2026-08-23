@@ -66,7 +66,7 @@ class AuthController extends Controller
                     'code' => 'PROFILE_NOT_FOUND',
                     'message' => 'Authenticated user has no application profile yet.',
                 ],
-            ], 404);
+            ], 403);
         }
 
         $roles = $db->query(

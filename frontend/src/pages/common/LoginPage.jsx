@@ -54,21 +54,22 @@ export default function LoginPage() {
         login(session)
       }
 
-      switch (session.user_type) {
+      const accountType = session.account_type || session.user_type
+      switch (accountType) {
         case 'student':
           navigate('/student/dashboard')
           break
         case 'personnel':
           navigate('/personnel/dashboard')
           break
-        case 'hr_staff':
+        case 'hr_admin':
           navigate('/hr/dashboard')
           break
-        case 'osad_staff':
+        case 'osad_admin':
           navigate('/osad/dashboard')
           break
         default:
-          navigate('/student/dashboard')
+          navigate(RouteAccessController.resolveRedirect(session))
       }
     } catch (err) {
       setError(err.message || 'Failed to authenticate. Please check your credentials.')

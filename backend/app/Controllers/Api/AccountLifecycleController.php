@@ -61,19 +61,23 @@ class AccountLifecycleController extends Controller
     }
 
     /**
-     * Helper to validate authority over target profile (HR manages personnel, OSAD manages students).
+     * Helper to validate authority over target profile (HR Admin manages personnel, OSAD Admin manages students).
      */
     protected function checkLifecycleAuthority(array $actor, array $target): ?string
     {
-        $isHr = in_array('hr_staff', $actor['roles'], true);
-        $isOsad = in_array('osad_staff', $actor['roles'], true);
+        $isHrAdmin = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
+        $isOsadAdmin = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
-        if ($target['account_type'] === 'personnel' && ! $isHr) {
-            return 'Only HR administrators may manage personnel account lifecycles.';
+        if (in_array($target['account_type'], ['hr_admin', 'osad_admin'], true)) {
+            return 'Top-level administrative accounts cannot be modified through standard lifecycle endpoints.';
         }
 
-        if ($target['account_type'] === 'student' && ! $isOsad) {
-            return 'Only OSAD administrators may manage student account lifecycles.';
+        if ($target['account_type'] === 'personnel' && ! $isHrAdmin) {
+            return 'Only dedicated HR administrators (hr_admin) may manage personnel account lifecycles.';
+        }
+
+        if ($target['account_type'] === 'student' && ! $isOsadAdmin) {
+            return 'Only dedicated OSAD administrators (osad_admin) may manage student account lifecycles.';
         }
 
         return null;
@@ -111,9 +115,11 @@ class AccountLifecycleController extends Controller
         ]);
 
         $db->table('public.account_lifecycle_events')->insert([
-            'profile_id' => $targetId,
-            'event_type' => 'suspended',
-            'reason'     => sprintf('Suspended by %s: %s', $actor['profile']['full_name'], $reason),
+            'profile_id'   => $targetId,
+            'event_type'   => 'suspended',
+            'performed_by' => $actor['profile']['id'],
+            'reason'       => $reason,
+            'occurred_at'  => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
@@ -157,9 +163,11 @@ class AccountLifecycleController extends Controller
         ]);
 
         $db->table('public.account_lifecycle_events')->insert([
-            'profile_id' => $targetId,
-            'event_type' => 'archived',
-            'reason'     => sprintf('Archived by %s: %s', $actor['profile']['full_name'], $reason),
+            'profile_id'   => $targetId,
+            'event_type'   => 'archived',
+            'performed_by' => $actor['profile']['id'],
+            'reason'       => $reason,
+            'occurred_at'  => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
@@ -205,9 +213,11 @@ class AccountLifecycleController extends Controller
         ]);
 
         $db->table('public.account_lifecycle_events')->insert([
-            'profile_id' => $targetId,
-            'event_type' => 'restored',
-            'reason'     => sprintf('Restored to active status by %s', $actor['profile']['full_name']),
+            'profile_id'   => $targetId,
+            'event_type'   => 'restored',
+            'performed_by' => $actor['profile']['id'],
+            'reason'       => sprintf('Restored to active status by %s', $actor['profile']['full_name']),
+            'occurred_at'  => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([

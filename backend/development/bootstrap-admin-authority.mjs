@@ -53,8 +53,8 @@ const adminProfiles = [
     last_name: 'Mercado',
     full_name: 'Evelyn Tan Mercado',
     designation: 'HR Director',
+    account_type: 'hr_admin',
     admin_role_key: 'hr_staff',
-    dept_code: 'HRD', // or CSD fallback
   },
   {
     institutional_id: '9000000020',
@@ -63,13 +63,13 @@ const adminProfiles = [
     middle_name: 'Vance',
     last_name: 'Cruz',
     full_name: 'Marcus Vance Cruz',
-    designation: 'OSAD Director',
+    designation: 'OSAD Office Holder',
+    account_type: 'osad_admin',
     admin_role_key: 'osad_staff',
-    dept_code: 'OSAD',
   }
 ]
 
-console.log('--- Phase 2: Bootstrapping HR & OSAD Administrative Authority ---')
+console.log('--- Phase 2: Bootstrapping Dedicated HR & OSAD Administrative Authority ---')
 
 for (const adminProfile of adminProfiles) {
   console.log(`Processing: ${adminProfile.full_name} (${adminProfile.email})...`)
@@ -84,7 +84,7 @@ for (const adminProfile of adminProfiles) {
       email: adminProfile.email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: adminProfile.full_name, account_type: 'personnel' }
+      user_metadata: { full_name: adminProfile.full_name, account_type: adminProfile.account_type }
     })
     if (createErr || !created.user?.id) throw new Error(`Auth user creation failed: ${createErr?.message}`)
     authUser = created.user
@@ -92,26 +92,19 @@ for (const adminProfile of adminProfiles) {
     console.log(`  -> Auth user created: ${authUser.id}`)
   } else {
     // Reset password for test credentials record
-    await admin.auth.admin.updateUserById(authUser.id, { password })
+    await admin.auth.admin.updateUserById(authUser.id, { password, user_metadata: { account_type: adminProfile.account_type } })
     await appendFile(credentialPath, `\n${adminProfile.email}:${password}`)
     console.log(`  -> Auth user exists: ${authUser.id} (password updated in credentials file)`)
   }
 
-  // Ensure department and roles exist in database
   await database.query('BEGIN')
   try {
-    const personnelRole = (await database.query("SELECT id FROM public.roles WHERE role_key = 'personnel'")).rows[0]
     const adminRole = (await database.query("SELECT id FROM public.roles WHERE role_key = $1", [adminProfile.admin_role_key])).rows[0]
-    
-    if (!personnelRole || !adminRole) {
+    if (!adminRole) {
       throw new Error(`Required role definition missing for ${adminProfile.admin_role_key}`)
     }
 
-    // Get any active department for personnel department foreign key
-    const dept = (await database.query("SELECT id FROM public.departments WHERE status = 'active' LIMIT 1")).rows[0]
-    const deptId = dept ? dept.id : null
-
-    // Check or upsert profile
+    // Upsert profile with dedicated account_type
     const existingProfile = await database.query("SELECT id FROM public.profiles WHERE id = $1", [authUser.id])
     if (existingProfile.rowCount === 0) {
       await database.query(`
@@ -120,7 +113,7 @@ for (const adminProfile of adminProfiles) {
            account_type, department_id, degree_program_id, year_level, designation, status, provisioning_method,
            must_change_password, provisioned_at, activated_at)
         VALUES ($1, $2, $3, $4, $5, $6, NULL, $7,
-          'personnel', $8, NULL, NULL, $9, 'active', 'bootstrap_admin', false, now(), now())
+          $8, NULL, NULL, NULL, $9, 'active', 'manual', false, now(), now())
       `, [
         authUser.id,
         adminProfile.institutional_id,
@@ -129,37 +122,45 @@ for (const adminProfile of adminProfiles) {
         adminProfile.middle_name,
         adminProfile.last_name,
         adminProfile.full_name,
-        deptId,
+        adminProfile.account_type,
         adminProfile.designation
       ])
-      console.log(`  -> Profile record inserted`)
+      console.log(`  -> Dedicated admin profile record inserted (${adminProfile.account_type})`)
+    } else {
+      await database.query(`
+        UPDATE public.profiles
+        SET account_type = $1, designation = $2, status = 'active'
+        WHERE id = $3
+      `, [adminProfile.account_type, adminProfile.designation, authUser.id])
+      console.log(`  -> Profile updated to dedicated account_type: ${adminProfile.account_type}`)
     }
 
-    // Assign base role 'personnel'
-    await database.query(`
-      INSERT INTO public.profile_roles (profile_id, role_id, scope_type, scope_id, is_active)
-      VALUES ($1, $2, 'university', NULL, true)
-      ON CONFLICT (profile_id, role_id, COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))
-      DO UPDATE SET is_active = true
-    `, [authUser.id, personnelRole.id])
-
-    // Assign administrative role ('hr_staff' or 'osad_staff')
-    await database.query(`
-      INSERT INTO public.profile_roles (profile_id, role_id, scope_type, scope_id, is_active)
-      VALUES ($1, $2, 'university', NULL, true)
-      ON CONFLICT (profile_id, role_id, COALESCE(scope_id, '00000000-0000-0000-0000-000000000000'::uuid))
-      DO UPDATE SET is_active = true
+    // Assign dedicated administrative role ('hr_staff' or 'osad_staff')
+    const roleInsertRes = await database.query(`
+      INSERT INTO public.profile_roles (profile_id, role_id, scope_type, scope_id, is_active, assigned_at)
+      VALUES ($1, $2, 'university', NULL, true, now())
+      ON CONFLICT (profile_id, role_id, scope_type, scope_id) WHERE is_active = true
+      DO UPDATE SET is_active = true, revoked_at = NULL
+      RETURNING id
     `, [authUser.id, adminRole.id])
+
+    const profileRoleId = roleInsertRes.rows[0]?.id
 
     // Record lifecycle events
     await database.query(`
       INSERT INTO public.account_lifecycle_events (profile_id, event_type, reason)
-      VALUES ($1, 'provisioned', 'Bootstrapped as test administrative office holder'),
-             ($1, 'activated', 'Activated with top-level role')
+      VALUES ($1, 'provisioned', 'Bootstrapped as dedicated test administrative office holder'),
+             ($1, 'activated', 'Activated with dedicated top-level admin role')
     `, [authUser.id])
 
+    // Record role assignment audit in role_assignment_events
+    await database.query(`
+      INSERT INTO public.role_assignment_events (profile_role_id, target_profile_id, role_id, event_type, scope_type, scope_id, reason)
+      VALUES ($1, $2, $3, 'assigned', 'university', NULL, 'Initial system bootstrap of top-level administrative authority')
+    `, [profileRoleId, authUser.id, adminRole.id])
+
     await database.query('COMMIT')
-    console.log(`  -> Roles assigned: personnel + ${adminProfile.admin_role_key}`)
+    console.log(`  -> Dedicated role assigned: ${adminProfile.admin_role_key}`)
   } catch (err) {
     await database.query('ROLLBACK')
     throw err

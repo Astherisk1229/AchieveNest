@@ -90,7 +90,7 @@ const PERSONNEL_ROLES = [
   'organization_moderator'
 ]
 
-function LayoutShell({ allowedRoles }) {
+function LayoutShell({ allowedAccountTypes = [], requiredRoles = [] }) {
   const { isInitializing } = useAuth()
   const currentUser = getCurrentUser()
 
@@ -102,10 +102,8 @@ function LayoutShell({ allowedRoles }) {
     return <Navigate to="/login" replace />
   }
 
-  const role = RouteAccessController.getCurrentRole(currentUser)
-
-  if (!RouteAccessController.isAllowedRole(role, allowedRoles)) {
-    return <Navigate to={RouteAccessController.resolveRedirect(role)} replace />
+  if (!RouteAccessController.isAllowedAccess(currentUser, allowedAccountTypes, requiredRoles)) {
+    return <Navigate to={RouteAccessController.resolveRedirect(currentUser)} replace />
   }
 
   return (
@@ -135,8 +133,8 @@ function AppContent() {
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/verify/certificate/:publicId" element={<Suspense fallback={<RouteLoadingFallback />}><PublicCertificateVerificationPage /></Suspense>} />
 
-            {/* Personnel Portal — LayoutShell mounts once, Outlet swaps page content */}
-            <Route element={<LayoutShell allowedRoles={PERSONNEL_ROLES} />}>
+            {/* Personnel Portal — Rejected for hr_admin & osad_admin */}
+            <Route element={<LayoutShell allowedAccountTypes={['personnel']} requiredRoles={['personnel']} />}>
               <Route path="/personnel/dashboard" element={<PersonnelDashboardPage />} />
               <Route path="/personnel/portfolio/edit" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelPortfolioEditPage /></ActiveRoleGuard>} />
               <Route path="/personnel/portfolio" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelPortfolioPage /></ActiveRoleGuard>} />
@@ -147,7 +145,7 @@ function AppContent() {
             </Route>
 
             {/* Student Portal */}
-            <Route element={<LayoutShell allowedRoles={['student']} />}>
+            <Route element={<LayoutShell allowedAccountTypes={['student']} requiredRoles={['student']} />}>
               <Route path="/student/dashboard" element={<StudentDashboardPage />} />
               <Route path="/student/achievements" element={<StudentAchievementsPage />} />
               <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
@@ -156,8 +154,8 @@ function AppContent() {
               <Route path="/student/notifications" element={<NotificationsPage />} />
             </Route>
 
-            {/* HR Portal */}
-            <Route element={<LayoutShell allowedRoles={['hr_staff']} />}>
+            {/* HR Admin Portal — Dedicated to hr_admin with hr_staff */}
+            <Route element={<LayoutShell allowedAccountTypes={['hr_admin']} requiredRoles={['hr_staff']} />}>
               <Route path="/hr/dashboard" element={<HRDashboardPage />} />
               <Route path="/hr/personnel-directory" element={<HRPersonnelDirectoryPage />} />
               <Route path="/hr/evaluation-submissions" element={<HREvaluationSubmissionsPage />} />
@@ -175,8 +173,8 @@ function AppContent() {
               <Route path="/hr/accreditation-and-audit-logs" element={<Navigate to="/hr/audit-trail" replace />} />
             </Route>
 
-            {/* OSAD Portal */}
-            <Route element={<LayoutShell allowedRoles={['osad_staff']} />}>
+            {/* OSAD Admin Portal — Dedicated to osad_admin with osad_staff */}
+            <Route element={<LayoutShell allowedAccountTypes={['osad_admin']} requiredRoles={['osad_staff']} />}>
               <Route path="/osad/dashboard" element={<OSADDashboardPage />} />
               <Route path="/osad/account" element={<AccountPage />} />
               <Route path="/osad/settings" element={<SettingsPage />} />

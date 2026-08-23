@@ -52,10 +52,9 @@ jobs:
 
   backend:
     name: Backend checks
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     defaults:
       run:
-        shell: pwsh
         working-directory: backend
 
     steps:

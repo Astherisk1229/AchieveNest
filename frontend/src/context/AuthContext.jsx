@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { getCurrentUser, authenticateUser, updateUserRoleContext, logoutUser } from '../services/authService'
-import { normalizeRoleContext, normalizeAssignedRoles } from '../utils/roleContext'
+import {
+  getCurrentUser,
+  authenticateUser,
+  fetchProfileAndCreateSession,
+  updateUserRoleContext,
+  logoutUser
+} from '../services/authService'
 import { supabase } from '../config/supabase'
 
 const AuthContext = createContext(null)
@@ -8,18 +13,90 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getCurrentUser())
   const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
 
   const syncUserFromStorage = useCallback(() => {
     const current = getCurrentUser()
     setUser(current)
   }, [])
 
+  // Initial session restoration from Supabase + backend /auth/me
   useEffect(() => {
+    let isMounted = true
+
+    async function initializeSession() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error || !session?.access_token) {
+          if (isMounted) {
+            await logoutUser()
+            setUser(null)
+          }
+          return
+        }
+
+        // Revalidate token & resolve authoritative profile from CodeIgniter API
+        try {
+          const resolvedUser = await fetchProfileAndCreateSession(
+            session.access_token,
+            session.user?.email || ''
+          )
+          if (isMounted) {
+            setUser(resolvedUser)
+          }
+        } catch (apiErr) {
+          console.warn('Session profile revalidation failed:', apiErr)
+          if (isMounted) {
+            await logoutUser()
+            setUser(null)
+          }
+        }
+      } catch (err) {
+        console.error('Session initialization error:', err)
+        if (isMounted) {
+          await logoutUser()
+          setUser(null)
+        }
+      } finally {
+        if (isMounted) {
+          setIsInitializing(false)
+        }
+      }
+    }
+
+    initializeSession()
+
+    // Listen to Supabase auth state changes (token refresh, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        if (isMounted) {
+          setUser(null)
+        }
+      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        try {
+          const resolvedUser = await fetchProfileAndCreateSession(
+            session.access_token,
+            session.user?.email || ''
+          )
+          if (isMounted) {
+            setUser(resolvedUser)
+          }
+        } catch (e) {
+          console.warn('AuthStateChange profile sync warning:', e)
+        }
+      }
+    })
+
     const handleStorageChange = () => {
       syncUserFromStorage()
     }
     window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
+
+    return () => {
+      isMounted = false
+      subscription?.unsubscribe()
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [syncUserFromStorage])
 
   const login = async (emailOrUser, password, rememberMe = true) => {
@@ -41,14 +118,20 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
-    logoutUser()
-    setUser(null)
+    setIsLoading(true)
+    try {
+      await logoutUser()
+      setUser(null)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const switchRoleContext = (newRoleContext) => {
     const updated = updateUserRoleContext(newRoleContext)
-    setUser({ ...updated })
+    if (updated) {
+      setUser({ ...updated })
+    }
     return updated
   }
 
@@ -61,6 +144,7 @@ export function AuthProvider({ children }) {
     activeRoleContext,
     isAuthenticated,
     isLoading,
+    isInitializing,
     login,
     logout,
     switchRoleContext,
@@ -84,6 +168,7 @@ export function useAuth() {
       activeRoleContext: fallbackUser?.active_role_context || fallbackUser?.user_type || 'personnel',
       isAuthenticated: !!fallbackUser,
       isLoading: false,
+      isInitializing: false,
       login: async () => {},
       logout: () => {},
       switchRoleContext: (role) => updateUserRoleContext(role),

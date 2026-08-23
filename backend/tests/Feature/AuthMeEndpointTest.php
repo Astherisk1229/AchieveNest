@@ -20,4 +20,28 @@ final class AuthMeEndpointTest extends CIUnitTestCase
             ],
         ]);
     }
+
+    public function testAuthMeRejectsNonBearerScheme(): void
+    {
+        $result = $this->withHeaders(['Authorization' => 'Basic 12345'])->get('/api/v1/auth/me');
+
+        $result->assertStatus(401);
+        $result->assertJSONFragment([
+            'error' => [
+                'code' => 'MISSING_BEARER_TOKEN',
+            ],
+        ]);
+    }
+
+    public function testAuthMeRejectsInvalidToken(): void
+    {
+        $result = $this->withHeaders(['Authorization' => 'Bearer invalid.token.payload'])->get('/api/v1/auth/me');
+
+        $result->assertStatus(401);
+        $result->assertJSONFragment([
+            'error' => [
+                'code' => 'INVALID_ACCESS_TOKEN',
+            ],
+        ]);
+    }
 }

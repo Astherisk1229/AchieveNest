@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import useUserProfile from '../../hooks/useUserProfile'
+import { supabase } from '../../config/supabase'
 
 export default function AccountPage({ currentUser }) {
   const { user: authUser } = useAuth()
@@ -41,7 +42,36 @@ export default function AccountPage({ currentUser }) {
 
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
   const [tempAvatarUrl, setTempAvatarUrl] = useState(user.avatar_url || '')
-  const [showPasswordNoticeModal, setShowPasswordNoticeModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' })
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault()
+    setPasswordMsg({ type: '', text: '' })
+    if (newPassword.length < 8) {
+      setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters long.' })
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: 'error', text: 'Passwords do not match.' })
+      return
+    }
+    setIsUpdatingPassword(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password.' })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
+  }
 
   const handleSaveForm = (e) => {
     e.preventDefault()
@@ -290,7 +320,7 @@ export default function AccountPage({ currentUser }) {
 
           <button
             type="button"
-            onClick={() => setShowPasswordNoticeModal(true)}
+            onClick={() => setShowPasswordModal(true)}
             className="px-3.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
           >
             <KeyRound className="w-3.5 h-3.5 text-slate-500" />
@@ -345,33 +375,77 @@ export default function AccountPage({ currentUser }) {
         </div>
       )}
 
-      {/* Password Reset Notice Modal */}
-      {showPasswordNoticeModal && (
+      {/* Password Reset / Update Modal */}
+      {showPasswordModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xl font-sans">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-amber-500" />
-                <span>Authentication Notice</span>
+                <KeyRound className="w-4 h-4 text-[#16834a]" />
+                <span>Update Account Password</span>
               </h3>
-              <button onClick={() => setShowPasswordNoticeModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button onClick={() => setShowPasswordModal(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              In accordance with institutional security policies, password updates in this local prototype require verification from the backend authentication service. For password resets, please use the <strong>Personnel Directory Reset Queue</strong> or contact OSAD IT Support.
-            </p>
+            {passwordMsg.text && (
+              <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                passwordMsg.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {passwordMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                )}
+                <span>{passwordMsg.text}</span>
+              </div>
+            )}
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowPasswordNoticeModal(false)}
-                className="px-4 py-1.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs cursor-pointer transition-all shadow-xs"
-              >
-                Acknowledge
-              </button>
-            </div>
+            <form onSubmit={handleUpdatePassword} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Re-type new password"
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs"
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingPassword}
+                  className="px-4 py-1.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isUpdatingPassword ? 'Saving...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

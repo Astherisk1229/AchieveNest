@@ -1,12 +1,13 @@
 import React from 'react'
-import { Clock, ShieldCheck, RotateCcw, CheckCircle2 } from 'lucide-react'
+import { Clock, FileCheck, RotateCcw, CheckCircle2, ShieldCheck } from 'lucide-react'
 
 export default function VerificationStatusTabs({ activeTab, setActiveTab, counts = {} }) {
   const tabs = [
-    { id: 'pending', label: 'Awaiting HR Review', icon: Clock, count: counts.pending ?? 2 },
-    { id: 'ready_finalization', label: 'Ready for Finalization', icon: CheckCircle2, count: counts.ready_finalization ?? 1 },
-    { id: 'returned', label: 'Returned for Revision', icon: RotateCcw, count: counts.returned ?? 1 },
-    { id: 'completed', label: 'Completed', icon: ShieldCheck, count: counts.completed ?? 24 },
+    { id: 'submitted', label: 'Awaiting HR Evaluation', icon: Clock, count: counts.submitted ?? counts.pending ?? 0 },
+    { id: 'in_evaluation', label: 'In Evaluation', icon: FileCheck, count: counts.in_evaluation ?? counts.inReview ?? 0 },
+    { id: 'ready_for_finalization', label: 'Ready for Final Evaluation', icon: CheckCircle2, count: counts.ready_for_finalization ?? counts.ready_finalization ?? 0 },
+    { id: 'returned_for_revision', label: 'Returned for Revision', icon: RotateCcw, count: counts.returned_for_revision ?? counts.returned ?? 0 },
+    { id: 'completed', label: 'Completed', icon: ShieldCheck, count: counts.completed ?? 0 },
   ]
 
   return (
@@ -21,7 +22,7 @@ export default function VerificationStatusTabs({ activeTab, setActiveTab, counts
             role="tab"
             aria-selected={isActive}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
               isActive
                 ? 'bg-[#176B43] text-white shadow-xs'
                 : 'bg-[#F4F7F5] dark:bg-[#121A16] text-[#344A5E] dark:text-[#E6EFE9] hover:bg-[#EAF4EC] hover:text-[#145C39]'

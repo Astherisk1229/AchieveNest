@@ -1,6 +1,6 @@
 /**
  * ui_components.test.jsx
- * Unit test suite for shadcn UI components (Card, Badge, Button, Progress, Tabs, Skeleton).
+ * Unit test suite for shadcn UI components (Card, Badge, Button, Progress, Tabs, Skeleton, Select).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -11,6 +11,7 @@ import { Button } from '../button'
 import { Progress } from '../progress'
 import { Skeleton } from '../skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../tabs'
+import { Select, SelectItem } from '../select'
 
 describe('shadcn UI Components System', () => {
   it('instantiates Card components', () => {
@@ -68,5 +69,17 @@ describe('shadcn UI Components System', () => {
     )
 
     expect(tabs.type).toBe(Tabs)
+  })
+
+  it('instantiates Select component system with SelectItem', () => {
+    const select = (
+      <Select value="opt1" placeholder="Select an option">
+        <SelectItem value="opt1">Option 1</SelectItem>
+        <SelectItem value="opt2">Option 2</SelectItem>
+      </Select>
+    )
+
+    expect(select.type).toBe(Select)
+    expect(select.props.value).toBe('opt1')
   })
 })

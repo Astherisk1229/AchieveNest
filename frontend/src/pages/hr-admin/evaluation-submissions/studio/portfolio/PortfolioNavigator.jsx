@@ -237,7 +237,7 @@ export default function PortfolioNavigator({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaBItems.filter(i => i.criterionKey === 'lectures').map(item => {
+                {areaBItems.filter(i => i.criterionKey === 'lectures' || i.criterionCode === 'B.1').map(item => {
                   const isSelected = selectedEvidence?.id === item.id
                   return (
                     <tr
@@ -245,14 +245,14 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#176B43]'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 13, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
-                      <td className="p-2 border-r border-slate-900">DepEd Region XII</td>
-                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
+                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Jul 28, 2026'}</td>
+                      <td className="p-2 border-r border-slate-900 font-bold">{item.activityTitle || item.title}</td>
+                      <td className="p-2 border-r border-slate-900">{item.conductedBy || 'PSITE National Chapter'}</td>
+                      <td className="p-2 font-bold text-[#176B43] dark:text-emerald-400">{item.awardedPoints ?? item.eligiblePoints ?? 13} pts</td>
                     </tr>
                   )
                 })}

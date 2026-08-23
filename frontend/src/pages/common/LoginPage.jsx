@@ -20,10 +20,9 @@ export default function LoginPage() {
   // Forgot Password Request Modal State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
-  const [forgotReason, setForgotReason] = useState('')
-  const [forgotTargetOffice, setForgotTargetOffice] = useState('osad') // 'osad' | 'hr'
   const [forgotSubmitting, setForgotSubmitting] = useState(false)
   const [forgotSuccess, setForgotSuccess] = useState(false)
+  const [forgotError, setForgotError] = useState(null)
 
   // Test Accounts Presets for AchieveNest-Test
   const demoAccounts = [
@@ -93,56 +92,57 @@ export default function LoginPage() {
         {/* Ambient Radial Concentric Arc Rings matching inspiration image */}
         <div className="absolute inset-0 flex items-center justify-center opacity-15">
           <div className="w-[500px] h-[500px] rounded-full border border-emerald-300/40" />
-          <div className="w-[800px] h-[800px] rounded-full border border-emerald-300/30" />
-          <div className="w-[1100px] h-[1100px] rounded-full border border-emerald-300/20" />
         </div>
       </div>
 
-      {/* ================= CENTERED FLOATING AUTH CARD ================= */}
-      <div className="max-w-md w-full rounded-[2rem] bg-white/95 backdrop-blur-2xl border border-white/80 shadow-2xl p-7 sm:p-9 text-center relative z-10 space-y-5 animate-in zoom-in-95 duration-300">
-
-        {/* Floating Top Center Emblem Icon Badge */}
-        <div className="w-14 h-14 rounded-2xl bg-white shadow-md border border-slate-200/80 mx-auto flex items-center justify-center -mt-2 p-1.5 shrink-0">
-          <svg viewBox="0 0 100 100" className="w-full h-full">
-            <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
-            <circle cx="50" cy="50" r="28" fill="#ffffff" />
-            <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
-          </svg>
+      {/* Main Login Card */}
+      <div className="w-full max-w-sm sm:max-w-md bg-white rounded-3xl border border-slate-200/90 shadow-2xl p-6 sm:p-8 space-y-4 relative z-10 text-center animate-in zoom-in-95 duration-200">
+        
+        {/* NDMU Crest / Logo */}
+        <div className="flex justify-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#064e2b] to-[#12361e] text-white flex items-center justify-center font-black text-2xl shadow-lg border-2 border-emerald-400/30">
+            A
+          </div>
         </div>
 
-        {/* Centered Heading & Subtitle */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Sign in to AchieveNest</h1>
+        {/* Title & Subtitle matching inspiration */}
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-black tracking-tight text-slate-900">
+            AchieveNest
+          </h1>
+          <p className="text-xs font-semibold text-slate-500">
+            Notre Dame of Marbel University
+          </p>
         </div>
 
+        {/* Error Alert */}
         {error && (
-          <div className="p-3 rounded-xl bg-[#fdebec] border border-[#f5c6cb] text-[#9f2f2d] text-xs flex items-center gap-2 text-left">
-            <AlertCircle className="w-4 h-4 shrink-0 text-[#9f2f2d]" />
+          <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2 text-left animate-shake">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Form Inputs */}
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-left">
-
-          {/* Email Input */}
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-left pt-1">
+          {/* Institutional Email Field */}
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <Mail className="w-4 h-4" />
             </div>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
+              placeholder="Institutional Email (@ndmu.edu.ph)"
               className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-100/90 border border-slate-200/80 text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#064e2b] focus:bg-white transition"
               required
             />
           </div>
 
-          {/* Password Input */}
+          {/* Password Field with Eye Toggle */}
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
               <Lock className="w-4 h-4" />
             </div>
             <input
@@ -177,9 +177,9 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                setForgotEmail(email || 'student@ndmu.edu.ph')
-                setForgotReason('Locked out of institutional account. Please reset my credentials.')
+                setForgotEmail(email || '')
                 setForgotSuccess(false)
+                setForgotError(null)
                 setIsForgotModalOpen(true)
               }}
               className="font-semibold text-slate-600 hover:text-[#064e2b] cursor-pointer transition"
@@ -206,7 +206,7 @@ export default function LoginPage() {
         </div>
 
         {/* Demo Accounts Preset Grid matching inspiration bottom buttons */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {demoAccounts.map((demo, idx) => (
             <button
               key={idx}
@@ -227,20 +227,20 @@ export default function LoginPage() {
 
       </div>
 
-      {/* Student Password Reset Request Modal */}
+      {/* Password Reset Modal */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans text-slate-900">
 
             {/* Modal Header */}
-            <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
+            <div className="p-6 bg-[#EFF7F0] border-b border-[#BBDCC3] text-[#17663B] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#E7F5EA] text-[#17663B] flex items-center justify-center font-extrabold text-sm shrink-0 border border-[#BBDCC3]">
                   <KeyRound className="w-5 h-5 text-[#17663B]" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-[#17663B]">Request Password Reset</h3>
-                  <p className="text-xs text-[#356148] font-medium">NDMU OSAD Administrative Assistance</p>
+                  <h3 className="font-extrabold text-base text-[#17663B]">Reset Your Password</h3>
+                  <p className="text-xs text-[#356148] font-medium">NDMU Institutional Account Recovery</p>
                 </div>
               </div>
 
@@ -256,17 +256,24 @@ export default function LoginPage() {
             {/* Modal Body */}
             {forgotSuccess ? (
               <div className="p-6 space-y-4 text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#064e2b] border border-emerald-200 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#064e2b] border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
                   <CheckCircle2 className="w-6 h-6 text-[#064e2b]" />
                 </div>
-                <h4 className="text-base font-extrabold text-slate-900">Reset Request Dispatched!</h4>
+                <h4 className="text-base font-extrabold text-slate-900">Password Reset Email Sent</h4>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  {forgotTargetOffice === 'hr' ? (
-                    <>Your password reset request has been logged and routed to <strong>Human Resources (HR)</strong>. An HR administrator will review your personnel record and issue temporary credentials.</>
-                  ) : (
-                    <>Your password reset request has been logged and routed to <strong>OSAD</strong>. An OSAD administrator will review your student record and issue temporary credentials.</>
-                  )}
+                  If an account exists for <strong>{forgotEmail}</strong>, password recovery instructions have been dispatched.
+                  Please check your inbox and follow the secure link to create a new password.
                 </p>
+                
+                {/* Fallback In-person Assistance Notice */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-[11px] text-slate-600 text-left space-y-1">
+                  <span className="block font-bold text-slate-700">Didn't receive an email or cannot access your inbox?</span>
+                  <p className="text-slate-500 leading-relaxed">
+                    • <strong>Students:</strong> Visit the <strong>OSAD Office</strong> for in-person identity verification and recovery.<br />
+                    • <strong>Personnel / Faculty:</strong> Visit the <strong>HR Office</strong> for in-person identity verification.
+                  </p>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setIsForgotModalOpen(false)}
@@ -279,112 +286,72 @@ export default function LoginPage() {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault()
-                  if (!forgotEmail) return
+                  setForgotError(null)
+                  const clean = String(forgotEmail || '').trim().toLowerCase()
+                  if (!clean || !clean.endsWith('@ndmu.edu.ph')) {
+                    setForgotError('Please enter a valid NDMU institutional email (@ndmu.edu.ph).')
+                    return
+                  }
+
                   setForgotSubmitting(true)
                   try {
-                    await requestPasswordReset(forgotEmail)
+                    await requestPasswordReset(clean)
                     setForgotSuccess(true)
                   } catch (err) {
-                    setError(err.message || 'Unable to process reset request.')
-                    setIsForgotModalOpen(false)
+                    setForgotError(err.message || 'Unable to send password reset instructions. Please try again.')
                   } finally {
                     setForgotSubmitting(false)
                   }
                 }}
                 className="p-6 space-y-4"
               >
+                {forgotError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{forgotError}</span>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Select Account Category for Reset
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setForgotTargetOffice('osad')}
-                      className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer ${forgotTargetOffice === 'osad'
-                          ? 'border-[#69A97C] bg-emerald-50/70 text-[#064e2b]'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                        }`}
-                    >
-                      <span className="text-xs font-extrabold">Student Reset</span>
-                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">OSAD Admin</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setForgotTargetOffice('hr')}
-                      className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition cursor-pointer ${forgotTargetOffice === 'hr'
-                          ? 'border-[#69A97C] bg-emerald-50/70 text-[#064e2b]'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                        }`}
-                    >
-                      <span className="text-xs font-extrabold">Faculty / Personnel Reset</span>
-                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">Human Resources</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Institutional Email Address (@ndmu.edu.ph)
                   </label>
                   <input
                     type="email"
                     value={forgotEmail}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setForgotEmail(val)
-                      // Auto-switch target department if email suggests faculty/personnel
-                      if (val.includes('faculty') || val.includes('coord') || val.includes('sec') || val.includes('mod') || val.includes('hr')) {
-                        setForgotTargetOffice('hr')
-                      }
-                    }}
+                    onChange={(e) => setForgotEmail(e.target.value)}
                     required
-                    placeholder={forgotTargetOffice === 'hr' ? 'faculty@ndmu.edu.ph' : 'student@ndmu.edu.ph'}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#69A97C]"
+                    placeholder="e.g. jdelacruz@ndmu.edu.ph"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#69A97C] focus:bg-white transition"
                   />
+                  <span className="block text-[11px] text-slate-400 mt-1">
+                    A secure password reset link will be sent to this email address.
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Remarks / Reason for Assistance
-                  </label>
-                  <textarea
-                    value={forgotReason}
-                    onChange={(e) => setForgotReason(e.target.value)}
-                    rows={3}
-                    required
-                    placeholder="Explain why you need a password reset..."
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#69A97C]"
-                  />
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 font-medium">
-                  {forgotTargetOffice === 'hr' ? (
-                    <>Human Resources (HR) will verify your employee record and issue your temporary credentials.</>
-                  ) : (
-                    <>OSAD will verify your student record and send an approval notification once approved.</>
-                  )}
+                {/* Secondary In-Person Recovery Guidance Notice */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-[11px] text-slate-600 space-y-1.5">
+                  <span className="block font-bold text-slate-700">Can't access your institutional email?</span>
+                  <div className="text-slate-500 leading-relaxed space-y-1">
+                    <p>• <strong>Students:</strong> Please visit <strong>OSAD</strong> for in-person account recovery assistance.</p>
+                    <p>• <strong>Personnel:</strong> Please visit <strong>HR</strong> for in-person account recovery assistance.</p>
+                  </div>
                 </div>
 
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={forgotSubmitting}
-                    className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#12361e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
+                    className="px-5 py-2.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white text-xs font-extrabold transition cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    {forgotSubmitting
-                      ? 'Submitting Request...'
-                      : forgotTargetOffice === 'hr'
-                        ? 'Submit Request to HR'
-                        : 'Submit Request to OSAD'}
+                    {forgotSubmitting ? 'Sending Reset Link...' : 'Send Password Reset Link'}
                   </button>
                 </div>
               </form>
@@ -397,4 +364,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

@@ -39,6 +39,7 @@ const HRRankAssignmentLogsPage = lazy(() => import('./pages/hr-admin/HRRankAssig
 const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
 const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
 const PublicCertificateVerificationPage = lazy(() => import('./pages/common/PublicCertificateVerificationPage'))
+const ResetPasswordPage = lazy(() => import('./pages/common/ResetPasswordPage'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -58,14 +59,19 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="min-h-screen w-full flex items-center justify-center p-6 bg-[#f4f8f5] font-sans">
           <div className="max-w-lg w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-4 text-slate-800">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center font-bold text-xl">!</div>
-            <h1 className="text-lg font-extrabold text-slate-900">Application View Reload Required</h1>
-            <p className="text-xs text-slate-600 leading-relaxed font-medium">A runtime view update occurred. Click below to refresh your view state.</p>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 font-mono text-[11px] text-slate-700 overflow-x-auto">
-              {String(this.state.error?.message || 'Unknown Render Error')}
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center font-bold text-xl">!</div>
+            <h1 className="text-xl font-black text-slate-900">Application Error Encountered</h1>
+            <p className="text-sm text-slate-600 font-medium leading-relaxed">
+              AchieveNest ran into an unhandled UI state exception. Session caches have been isolated to protect your data.
+            </p>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 break-words max-h-32 overflow-y-auto">
+              {this.state.error?.message || 'Unknown React render error'}
             </div>
-            <button type="button" onClick={this.handleReset} className="w-full py-3 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md transition cursor-pointer">
-              Reset Session and Reload Portal
+            <button
+              onClick={this.handleReset}
+              className="w-full py-3 bg-[#064e2b] hover:bg-[#1a382b] text-white font-bold rounded-xl text-sm transition shadow-md"
+            >
+              Reset Session & Return to Safety
             </button>
           </div>
         </div>
@@ -77,16 +83,18 @@ class ErrorBoundary extends React.Component {
 
 const PERSONNEL_ROLES = [
   'personnel',
+  'hr_staff',
+  'osad_staff',
+  'department_secretary',
   'program_coordinator',
-  'organization_moderator',
-  'department_secretary'
+  'organization_moderator'
 ]
 
 function LayoutShell({ allowedRoles }) {
-  const { user: authUser, isInitializing } = useAuth() || {}
-  const currentUser = authUser || getCurrentUser()
+  const { isInitializing } = useAuth()
+  const currentUser = getCurrentUser()
 
-  if (isInitializing && !currentUser) {
+  if (isInitializing) {
     return <RouteLoadingFallback />
   }
 
@@ -123,6 +131,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset-password" element={<Suspense fallback={<RouteLoadingFallback />}><ResetPasswordPage /></Suspense>} />
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/verify/certificate/:publicId" element={<Suspense fallback={<RouteLoadingFallback />}><PublicCertificateVerificationPage /></Suspense>} />
 

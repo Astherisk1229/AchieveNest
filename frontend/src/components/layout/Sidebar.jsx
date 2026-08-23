@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import useTheme from '../../hooks/useTheme'
 import { Search, ShieldCheck } from 'lucide-react'
 import AdminOnboardingGuideWidget from '../common/AdminOnboardingGuideWidget'
-import { getPersonnelNavigation } from '../../config/personnelRoleNavigation'
+import { getAuthorizedNavigationForSession } from '../../config/personnelRoleNavigation'
+import { normalizeRoleContext } from '../../utils/roleContext'
 
-export default function Sidebar({ currentUser, onRoleChange }) {
-  const navigate = useNavigate()
+export default function Sidebar({ currentUser }) {
   const { isDark } = useTheme()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -16,7 +16,7 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const user = authUser || currentUser || getCurrentUser()
   const [searchTerm, setSearchTerm] = useState('')
 
-  const activeContext = authRoleContext || user?.active_role_context || user?.user_type || 'student'
+  const activeContext = normalizeRoleContext(authRoleContext || user?.active_role_context || user?.role)
   const activeTabParam = searchParams.get('tab') || 'overview'
 
   const getPortalInfo = () => {
@@ -24,15 +24,16 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       case 'student':
         return { label: 'Student Portal', path: '/student/dashboard', roleTitle: 'Student Portal' }
       case 'program_coordinator':
-        return { label: 'Program Coordinator', path: '/personnel/dashboard?tab=overview', roleTitle: 'Program Coordinator' }
+        return { label: 'Program Coordinator Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Program Coordinator Portal' }
       case 'organization_moderator':
-        return { label: 'Org Moderator Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Organization Account' }
+        return { label: 'Organization Moderator Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Organization Moderator Portal' }
       case 'department_secretary':
-        return { label: 'Dept Secretary Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Department Secretary' }
+        return { label: 'Department Secretary Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Department Secretary Portal' }
       case 'hr_staff':
-        return { label: 'HR Office Portal', path: '/hr/dashboard', roleTitle: 'HR Staff' }
+        return { label: 'HR Admin Portal', path: '/hr/dashboard', roleTitle: 'HR Admin Portal' }
       case 'osad_staff':
-        return { label: 'OSAD Portal', path: '/osad/dashboard', roleTitle: 'OSAD Staff' }
+        return { label: 'OSAD Admin Portal', path: '/osad/dashboard', roleTitle: 'OSAD Admin Portal' }
+      case 'personnel':
       default:
         return { label: 'Personnel Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Personnel Portal' }
     }
@@ -43,24 +44,18 @@ export default function Sidebar({ currentUser, onRoleChange }) {
   const isDashboardPage = location.pathname.includes('dashboard')
 
   // Pre-render authorization filtering: Exclude unauthorized items BEFORE JSX mapping
-  const userSession = {
+  const userSession = user ? {
     ...user,
     active_role_context: activeContext,
-    assigned_roles: user?.assigned_roles || [activeContext]
-  }
+    assigned_roles: user.assigned_roles || [activeContext]
+  } : null
 
-  const navItems = getPersonnelNavigation(userSession)
+  const navItems = userSession ? getAuthorizedNavigationForSession(userSession) : []
 
   const filteredNavItems = navItems.filter(item => {
     if (!searchTerm.trim()) return true
     return item.label.toLowerCase().includes(searchTerm.toLowerCase().trim())
   })
-
-  const effectiveAdminContext = location.pathname.includes('/hr/')
-    ? 'hr_staff'
-    : location.pathname.includes('/osad/')
-      ? 'osad_staff'
-      : activeContext
 
   return (
     <aside className="w-64 bg-white dark:bg-[#131e2e] border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between h-screen sticky top-0 font-sans z-30 shadow-2xs">
@@ -153,9 +148,9 @@ export default function Sidebar({ currentUser, onRoleChange }) {
       </div>
 
       {/* Docked Admin Onboarding Guide Widget (For OSAD & HR Staff Admins) */}
-      {(effectiveAdminContext === 'hr_staff' || effectiveAdminContext === 'osad_staff') && (
+      {(activeContext === 'hr_staff' || activeContext === 'osad_staff') && (
         <div className="shrink-0 px-3 pb-3 pt-2">
-          <AdminOnboardingGuideWidget currentUser={user} activeRoleContext={effectiveAdminContext} />
+          <AdminOnboardingGuideWidget currentUser={user} activeRoleContext={activeContext} />
         </div>
       )}
     </aside>

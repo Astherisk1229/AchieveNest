@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, KeyRound, X } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, AlertTriangle, KeyRound, X } from 'lucide-react'
 import { authenticateUser, requestPasswordReset } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import campusBanner from '../../assets/ndmu_login_bg.jpg'
@@ -26,10 +26,10 @@ export default function LoginPage() {
 
   // Test Accounts Presets for AchieveNest-Test
   const demoAccounts = [
+    { label: 'HR Admin', desc: 'HR Director Account', email: 'hr.admin01@ndmu.edu.ph' },
+    { label: 'OSAD Admin', desc: 'OSAD Office Holder Account', email: 'osad.admin01@ndmu.edu.ph' },
     { label: 'Student 01', desc: 'Student Demo Account', email: 'achievenest.demo.student01@ndmu.edu.ph' },
-    { label: 'Student 02', desc: 'Student Demo Account', email: 'achievenest.demo.student02@ndmu.edu.ph' },
     { label: 'Personnel 01', desc: 'Personnel Demo Account', email: 'achievenest.demo.personnel01@ndmu.edu.ph' },
-    { label: 'Personnel 02', desc: 'Personnel Demo Account', email: 'achievenest.demo.personnel02@ndmu.edu.ph' },
   ]
 
   const handleSelectDemo = (demoEmail) => {

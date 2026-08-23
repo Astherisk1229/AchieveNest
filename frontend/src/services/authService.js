@@ -6,7 +6,13 @@
 import { supabase } from '../config/supabase'
 import apiClient from './apiClient'
 import AuthController from '../controllers/AuthController'
-import { normalizeRoleContext, normalizeAssignedRoles } from '../utils/roleContext'
+import {
+  normalizeAccountType,
+  normalizeRoleContext,
+  normalizeAssignedRoles,
+  resolveDefaultActiveRole,
+  isValidAccountRoleCombination
+} from '../utils/roleContext'
 
 const STORAGE_KEY_USER = 'achievenest_current_user'
 
@@ -66,9 +72,10 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
 
   const cleanEmail = user.institutional_email || emailFallback
 
-  // Determine initial role context
+  // Determine authoritative account type & assigned roles
   const userRoles = (user.roles || []).map(r => (typeof r === 'object' ? r.role_key : r))
-  const defaultRole = user.account_type || (userRoles.includes('student') ? 'student' : 'personnel')
+  const accountType = normalizeAccountType(user.account_type || (userRoles.includes('student') ? 'student' : 'personnel'))
+  const activeRoleContext = resolveDefaultActiveRole(accountType, userRoles)
 
   const sessionPayload = {
     ...user,
@@ -77,12 +84,12 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     institutional_email: user.institutional_email || cleanEmail,
     email: user.institutional_email || cleanEmail,
     full_name: user.full_name || cleanEmail,
-    user_type: user.account_type || defaultRole,
-    account_type: user.account_type || defaultRole,
+    account_type: accountType,
+    user_type: accountType,
     status: user.status || 'active',
-    active_role_context: defaultRole,
+    active_role_context: activeRoleContext,
     roles: user.roles || [],
-    assigned_roles: userRoles.length > 0 ? userRoles : [defaultRole],
+    assigned_roles: userRoles.length > 0 ? userRoles : (activeRoleContext ? [activeRoleContext] : []),
     department_id: user.department_id || null,
     degree_program_id: user.degree_program_id || null,
     designation: user.designation || null,
@@ -103,7 +110,7 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
 }
 
 /**
- * Retrieves the currently saved user session from storage.
+ * Retrieves the currently saved user session from storage with validation and restoration.
  */
 export function getCurrentUser() {
   const local = localStorage.getItem(STORAGE_KEY_USER)
@@ -119,17 +126,31 @@ export function getCurrentUser() {
     return null
   }
 
-  raw.user_type = normalizeRoleContext(raw.user_type || raw.account_type)
-  if (raw.active_role_context) {
+  raw.account_type = normalizeAccountType(raw.account_type || raw.user_type)
+  raw.user_type = raw.account_type
+
+  const rawAssigned = Array.isArray(raw.assigned_roles || raw.roles) ? (raw.assigned_roles || raw.roles) : []
+  raw.assigned_roles = rawAssigned
+    .map(r => (typeof r === 'object' ? r.role_key : r))
+    .filter(Boolean)
+    .map(r => normalizeRoleContext(r))
+
+  // Validate active_role_context: must be valid for account_type and present in assigned_roles
+  const isCurrentActiveValid = raw.active_role_context &&
+    isValidAccountRoleCombination(raw.account_type, raw.active_role_context) &&
+    raw.assigned_roles.includes(normalizeRoleContext(raw.active_role_context))
+
+  if (!isCurrentActiveValid) {
+    raw.active_role_context = resolveDefaultActiveRole(raw.account_type, raw.assigned_roles)
+  } else {
     raw.active_role_context = normalizeRoleContext(raw.active_role_context)
   }
-  raw.assigned_roles = normalizeAssignedRoles(raw.assigned_roles || raw.roles, raw.user_type)
 
   return raw
 }
 
 /**
- * Updates the user's active UI role context among authorized assigned roles.
+ * Updates the user's active UI role context among authorized assigned roles (Personnel only).
  */
 export function updateUserRoleContext(newRoleContext) {
   const normNewRole = normalizeRoleContext(newRoleContext)
@@ -144,11 +165,20 @@ export function updateUserRoleContext(newRoleContext) {
 
   if (!raw) return null
 
-  raw.assigned_roles = normalizeAssignedRoles(raw.assigned_roles || raw.roles, raw.user_type)
+  raw.account_type = normalizeAccountType(raw.account_type || raw.user_type)
 
-  // Validate that the requested role context is in assigned_roles
-  if (!raw.assigned_roles.includes(normNewRole)) {
-    console.warn(`Role switch rejected: ${normNewRole} is not in assigned_roles [${raw.assigned_roles.join(', ')}]`)
+  // Dedicated admin accounts cannot switch roles
+  if (raw.account_type !== 'personnel') {
+    console.warn(`Role switch rejected: Account type [${raw.account_type}] does not support role switching.`)
+    return raw
+  }
+
+  const assigned = (Array.isArray(raw.assigned_roles || raw.roles) ? (raw.assigned_roles || raw.roles) : [])
+    .map(r => (typeof r === 'object' ? r.role_key : r))
+    .map(r => normalizeRoleContext(r))
+
+  if (!isValidAccountRoleCombination(raw.account_type, normNewRole) || !assigned.includes(normNewRole)) {
+    console.warn(`Role switch rejected: ${normNewRole} is not an authorized assigned role for this personnel account.`)
     return raw
   }
 
@@ -200,4 +230,3 @@ export async function requestPasswordReset(email) {
     message: 'Password reset instructions have been sent to your institutional email.'
   }
 }
-

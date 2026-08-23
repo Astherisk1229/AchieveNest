@@ -1,15 +1,18 @@
 /**
  * roleContext.js
- * Utility module for normalizing, validating, and managing personnel role contexts.
- * Canonical Role Identifiers:
- * - 'personnel'
- * - 'program_coordinator'
- * - 'organization_moderator'
- * - 'department_secretary'
- * - 'hr_staff'
- * - 'osad_staff'
- * - 'student'
+ * Utility module for normalizing, validating, and managing account types and role contexts.
+ * 
+ * Separation of Concerns:
+ * - Account Type: Identity category ('student', 'personnel', 'hr_admin', 'osad_admin')
+ * - Active Role Context: Authorization working context ('student', 'personnel', 'department_secretary', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff')
  */
+
+export const CANONICAL_ACCOUNT_TYPES = {
+  STUDENT: 'student',
+  PERSONNEL: 'personnel',
+  HR_ADMIN: 'hr_admin',
+  OSAD_ADMIN: 'osad_admin'
+}
 
 export const CANONICAL_ROLES = {
   PERSONNEL: 'personnel',
@@ -21,6 +24,34 @@ export const CANONICAL_ROLES = {
   STUDENT: 'student'
 }
 
+/**
+ * Normalizes an account type string into canonical identifier.
+ */
+export function normalizeAccountType(typeStr = '') {
+  if (!typeStr || typeof typeStr !== 'string') return null
+  const clean = typeStr.toLowerCase().trim()
+
+  switch (clean) {
+    case 'student':
+      return CANONICAL_ACCOUNT_TYPES.STUDENT
+    case 'personnel':
+    case 'faculty':
+    case 'staff':
+      return CANONICAL_ACCOUNT_TYPES.PERSONNEL
+    case 'hr_admin':
+    case 'hr':
+      return CANONICAL_ACCOUNT_TYPES.HR_ADMIN
+    case 'osad_admin':
+    case 'osad':
+      return CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN
+    default:
+      return clean
+  }
+}
+
+/**
+ * Normalizes a role context string into canonical identifier.
+ */
 export function normalizeRoleContext(roleStr = '') {
   if (!roleStr || typeof roleStr !== 'string') return CANONICAL_ROLES.PERSONNEL
   const clean = roleStr.toLowerCase().trim()
@@ -62,22 +93,105 @@ export function normalizeRoleContext(roleStr = '') {
   }
 }
 
-export function normalizeAssignedRoles(roles = [], primaryType = 'personnel') {
-  const normPrimary = normalizeRoleContext(primaryType)
-  const normList = Array.isArray(roles) ? roles.map(r => normalizeRoleContext(r)) : []
-  
-  if (normPrimary && !normList.includes(normPrimary)) {
-    normList.unshift(normPrimary)
-  }
+/**
+ * Returns allowed canonical roles for a given account type.
+ */
+export function getValidRolesForAccountType(accountType = '') {
+  const normType = normalizeAccountType(accountType)
 
-  // Fall back safely to primary role if empty
-  if (normList.length === 0) {
-    normList.push(normPrimary || CANONICAL_ROLES.PERSONNEL)
+  switch (normType) {
+    case CANONICAL_ACCOUNT_TYPES.STUDENT:
+      return [CANONICAL_ROLES.STUDENT]
+    case CANONICAL_ACCOUNT_TYPES.PERSONNEL:
+      return [
+        CANONICAL_ROLES.PERSONNEL,
+        CANONICAL_ROLES.DEPARTMENT_SECRETARY,
+        CANONICAL_ROLES.PROGRAM_COORDINATOR,
+        CANONICAL_ROLES.ORGANIZATION_MODERATOR
+      ]
+    case CANONICAL_ACCOUNT_TYPES.HR_ADMIN:
+      return [CANONICAL_ROLES.HR_STAFF]
+    case CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN:
+      return [CANONICAL_ROLES.OSAD_STAFF]
+    default:
+      return []
+  }
+}
+
+/**
+ * Checks whether a role is valid for the given account type.
+ */
+export function isValidAccountRoleCombination(accountType = '', role = '') {
+  if (!accountType || !role) return false
+  const validRoles = getValidRolesForAccountType(accountType)
+  return validRoles.includes(normalizeRoleContext(role))
+}
+
+/**
+ * Resolves a default active role context from account type and assigned roles.
+ * Does NOT silently grant unassigned roles.
+ */
+export function resolveDefaultActiveRole(accountType = '', assignedRoles = []) {
+  const normType = normalizeAccountType(accountType)
+  if (!normType) return null
+
+  const rawList = Array.isArray(assignedRoles) ? assignedRoles : []
+  const normList = rawList
+    .map(r => (typeof r === 'object' ? r.role_key : r))
+    .filter(Boolean)
+    .map(r => normalizeRoleContext(r))
+
+  // Filter only roles that are both valid for the account type AND assigned
+  const validAssigned = normList.filter(r => isValidAccountRoleCombination(normType, r))
+
+  switch (normType) {
+    case CANONICAL_ACCOUNT_TYPES.HR_ADMIN:
+      return validAssigned.includes(CANONICAL_ROLES.HR_STAFF) ? CANONICAL_ROLES.HR_STAFF : null
+
+    case CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN:
+      return validAssigned.includes(CANONICAL_ROLES.OSAD_STAFF) ? CANONICAL_ROLES.OSAD_STAFF : null
+
+    case CANONICAL_ACCOUNT_TYPES.STUDENT:
+      return validAssigned.includes(CANONICAL_ROLES.STUDENT) ? CANONICAL_ROLES.STUDENT : null
+
+    case CANONICAL_ACCOUNT_TYPES.PERSONNEL:
+      if (validAssigned.includes(CANONICAL_ROLES.PERSONNEL)) {
+        return CANONICAL_ROLES.PERSONNEL
+      }
+      return validAssigned[0] || null
+
+    default:
+      return validAssigned[0] || null
+  }
+}
+
+/**
+ * Normalizes an array of assigned roles with respect to primary account type.
+ */
+export function normalizeAssignedRoles(roles = [], primaryType = 'personnel') {
+  const normType = normalizeAccountType(primaryType)
+  const rawList = Array.isArray(roles) ? roles : []
+  const normList = rawList
+    .map(r => (typeof r === 'object' ? r.role_key : r))
+    .filter(Boolean)
+    .map(r => normalizeRoleContext(r))
+
+  if (normType) {
+    const validRoles = getValidRolesForAccountType(normType)
+    const filtered = normList.filter(r => validRoles.includes(r))
+    if (filtered.length === 0) {
+      const defaultRole = resolveDefaultActiveRole(normType, roles)
+      if (defaultRole) filtered.push(defaultRole)
+    }
+    return Array.from(new Set(filtered))
   }
 
   return Array.from(new Set(normList))
 }
 
+/**
+ * Verifies whether a role is assigned to the user.
+ */
 export function isRoleAssigned(userOrRole = {}, targetRole = '') {
   if (typeof userOrRole === 'string' && Array.isArray(targetRole)) {
     const normTarget = normalizeRoleContext(userOrRole)
@@ -91,11 +205,18 @@ export function isRoleAssigned(userOrRole = {}, targetRole = '') {
 
   const normTarget = normalizeRoleContext(targetRole)
   const userObj = userOrRole || {}
-  const assigned = normalizeAssignedRoles(userObj.assigned_roles || userObj.roles, userObj.role || userObj.user_type)
+  const assigned = normalizeAssignedRoles(
+    userObj.assigned_roles || userObj.roles,
+    userObj.account_type || userObj.user_type
+  )
   return assigned.includes(normTarget)
 }
 
+/**
+ * Safe fallback role resolution from user object.
+ */
 export function getSafeFallbackRole(user = {}) {
-  const assigned = normalizeAssignedRoles(user.assigned_roles || user.roles, user.user_type)
-  return assigned[0] || CANONICAL_ROLES.PERSONNEL
+  const accountType = user.account_type || user.user_type
+  const assigned = user.assigned_roles || user.roles
+  return resolveDefaultActiveRole(accountType, assigned) || CANONICAL_ROLES.PERSONNEL
 }

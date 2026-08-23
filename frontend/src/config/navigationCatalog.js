@@ -3,7 +3,7 @@
  * Central Navigation Catalog for AchieveNest.
  * 
  * Security Rule:
- * Every catalog item defines required permissions and allowed active contexts.
+ * Every catalog item defines allowed account types, required permissions, and allowed active contexts.
  * Visual components MUST use permissionResolver to filter items BEFORE rendering JSX.
  * Unauthorized links must NEVER be present in the DOM (no CSS `display: none` or hidden classes).
  */
@@ -25,7 +25,7 @@ import {
   Trophy,
   FileSpreadsheet
 } from 'lucide-react'
-import { CANONICAL_ROLES } from '../utils/roleContext'
+import { CANONICAL_ROLES, CANONICAL_ACCOUNT_TYPES } from '../utils/roleContext'
 
 export const NAVIGATION_CATALOG = [
   // ==========================================
@@ -37,6 +37,7 @@ export const NAVIGATION_CATALOG = [
     icon: Home,
     path: '/student/dashboard',
     portal: 'student',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
     requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
     requiredPermissions: ['student.dashboard.read']
   },
@@ -46,6 +47,7 @@ export const NAVIGATION_CATALOG = [
     icon: Award,
     path: '/student/achievements',
     portal: 'student',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
     requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
     requiredPermissions: ['student.achievement.manage']
   },
@@ -55,6 +57,7 @@ export const NAVIGATION_CATALOG = [
     icon: BookOpen,
     path: '/student/portfolio',
     portal: 'student',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
     requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
     requiredPermissions: ['student.portfolio.read']
   },
@@ -64,6 +67,7 @@ export const NAVIGATION_CATALOG = [
     icon: User,
     path: '/student/account',
     portal: 'student',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.STUDENT],
     requiredActiveContexts: [CANONICAL_ROLES.STUDENT],
     requiredPermissions: ['student.account.manage']
   },
@@ -78,6 +82,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=overview',
     tab: 'overview',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
     requiredPermissions: ['portfolio.personal.read']
   },
@@ -87,6 +92,7 @@ export const NAVIGATION_CATALOG = [
     icon: FolderKanban,
     path: '/personnel/portfolio/edit',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
     requiredPermissions: ['portfolio.personal.update']
   },
@@ -96,6 +102,7 @@ export const NAVIGATION_CATALOG = [
     icon: BookOpen,
     path: '/personnel/portfolio',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
     requiredPermissions: ['portfolio.personal.read']
   },
@@ -105,6 +112,7 @@ export const NAVIGATION_CATALOG = [
     icon: User,
     path: '/personnel/account',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
     requiredPermissions: ['personnel.account.manage']
   },
@@ -119,6 +127,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=overview',
     tab: 'overview',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PROGRAM_COORDINATOR],
     requiredPermissions: ['achievement.student.verify']
   },
@@ -129,6 +138,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=workspace',
     tab: 'workspace',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PROGRAM_COORDINATOR],
     requiredPermissions: ['achievement.student.verify']
   },
@@ -139,6 +149,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=students',
     tab: 'students',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PROGRAM_COORDINATOR],
     requiredPermissions: ['achievement.student.verify']
   },
@@ -153,6 +164,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=overview',
     tab: 'overview',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
     requiredPermissions: ['organization.event.manage']
   },
@@ -163,6 +175,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=events',
     tab: 'events',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
     requiredPermissions: ['organization.event.manage']
   },
@@ -173,6 +186,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=attendance',
     tab: 'attendance',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
     requiredPermissions: ['organization.attendance.manage']
   },
@@ -183,6 +197,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=certificates',
     tab: 'certificates',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
     requiredPermissions: ['organization.certificate.issue']
   },
@@ -193,6 +208,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=profile',
     tab: 'profile',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.ORGANIZATION_MODERATOR],
     requiredPermissions: ['organization.event.manage']
   },
@@ -207,6 +223,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=overview',
     tab: 'overview',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEPARTMENT_SECRETARY],
     requiredPermissions: ['department.portfolio.review']
   },
@@ -217,6 +234,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=workspace',
     tab: 'workspace',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEPARTMENT_SECRETARY],
     requiredPermissions: ['department.portfolio.review']
   },
@@ -227,6 +245,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/dashboard?tab=personnel',
     tab: 'personnel',
     portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEPARTMENT_SECRETARY],
     requiredPermissions: ['department.portfolio.review']
   },
@@ -241,6 +260,7 @@ export const NAVIGATION_CATALOG = [
     path: '/hr/dashboard',
     tab: 'overview',
     portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.evaluation.manage']
   },
@@ -250,6 +270,7 @@ export const NAVIGATION_CATALOG = [
     icon: Users,
     path: '/hr/personnel-directory',
     portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.personnel.manage']
   },
@@ -259,6 +280,7 @@ export const NAVIGATION_CATALOG = [
     icon: FolderKanban,
     path: '/hr/evaluation-submissions',
     portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.evaluation.manage']
   },
@@ -268,6 +290,7 @@ export const NAVIGATION_CATALOG = [
     icon: ShieldCheck,
     path: '/hr/audit-trail',
     portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.evaluation.manage']
   },
@@ -277,6 +300,7 @@ export const NAVIGATION_CATALOG = [
     icon: FileCheck2,
     path: '/hr/rank-assignment-logs',
     portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.evaluation.manage']
   },
@@ -291,6 +315,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard',
     tab: 'overview',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   },
@@ -301,6 +326,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=departments',
     tab: 'departments',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   },
@@ -311,6 +337,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=accounts',
     tab: 'accounts',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   },
@@ -321,6 +348,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=organizations',
     tab: 'organizations',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   },
@@ -331,6 +359,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=awards',
     tab: 'awards',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.awardee.confirm']
   },
@@ -341,6 +370,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=certificate-templates',
     tab: 'certificate-templates',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.certificate_template.manage']
   },
@@ -351,6 +381,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=awardees',
     tab: 'awardees',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.awardee.confirm']
   },
@@ -361,6 +392,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=reports',
     tab: 'reports',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   },
@@ -371,6 +403,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=audit',
     tab: 'audit',
     portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   }

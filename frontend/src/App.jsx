@@ -105,13 +105,17 @@ function LayoutShell({ allowedRoles }) {
   )
 }
 
-export default function App() {
-  const { showWarning, secondsRemaining, stayLoggedIn, handleLogout } = useIdleSession(30, 2)
+function AppContent() {
+  const { logout } = useAuth()
+  const { showWarning, secondsRemaining, stayLoggedIn } = useIdleSession(
+    logout,
+    15 * 60 * 1000,
+    13 * 60 * 1000
+  )
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <ErrorBoundary>
+    <ThemeProvider>
+      <ErrorBoundary>
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
@@ -178,9 +182,16 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
 
-          <SessionTimeoutModal isOpen={showWarning} secondsRemaining={secondsRemaining} onStayLoggedIn={stayLoggedIn} onLogoutNow={handleLogout} />
-        </ErrorBoundary>
-      </ThemeProvider>
+        <SessionTimeoutModal isOpen={showWarning} secondsRemaining={secondsRemaining} onStayLoggedIn={stayLoggedIn} onLogoutNow={logout} />
+      </ErrorBoundary>
+    </ThemeProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   )
 }

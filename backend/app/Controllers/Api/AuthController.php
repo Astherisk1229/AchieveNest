@@ -10,6 +10,11 @@ class AuthController extends Controller
 {
     use ResponseTrait;
 
+    public function options()
+    {
+        return $this->respond(null, 204);
+    }
+
     public function me()
     {
         $authorization = $this->request->getHeaderLine('Authorization');

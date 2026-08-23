@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { getCurrentUser, authenticateUser, updateUserRoleContext, logoutUser } from '../services/authService'
 import { normalizeRoleContext, normalizeAssignedRoles } from '../utils/roleContext'
+import { supabase } from '../config/supabase'
 
 const AuthContext = createContext(null)
 
@@ -39,7 +40,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut()
     logoutUser()
     setUser(null)
   }

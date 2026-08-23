@@ -2,11 +2,17 @@
  * permissionResolver.js
  * Pre-Render Authorization Resolver for AchieveNest.
  * 
- * Pure security functions that evaluate user session identity, assigned roles,
- * active context, and permissions BEFORE rendering navigation or components.
+ * Pure security functions that evaluate user session identity, account type,
+ * assigned roles, active context, and permissions BEFORE rendering navigation or components.
  */
 
-import { normalizeRoleContext, normalizeAssignedRoles, isRoleAssigned } from '../utils/roleContext'
+import {
+  normalizeAccountType,
+  normalizeRoleContext,
+  normalizeAssignedRoles,
+  isRoleAssigned,
+  isValidAccountRoleCombination
+} from '../utils/roleContext'
 
 /**
  * Default permissions mapped per canonical role context.
@@ -63,11 +69,17 @@ export function getSessionPermissions(userSession) {
 export function can(userSession, permission, _resourceContext = null) {
   if (!userSession || !permission) return false
 
-  const assignedRoles = normalizeAssignedRoles(userSession.assigned_roles, userSession.role)
+  const accountType = normalizeAccountType(userSession.account_type || userSession.user_type)
+  const assignedRoles = normalizeAssignedRoles(userSession.assigned_roles, accountType)
   const activeContext = normalizeRoleContext(userSession.active_role_context || userSession.role)
 
-  // Security check: active context MUST be present in assigned roles
+  // Security check 1: active context MUST be present in assigned roles
   if (!isRoleAssigned(activeContext, assignedRoles)) {
+    return false
+  }
+
+  // Security check 2: active context MUST be a valid role for the account type
+  if (accountType && !isValidAccountRoleCombination(accountType, activeContext)) {
     return false
   }
 
@@ -81,22 +93,34 @@ export function can(userSession, permission, _resourceContext = null) {
 export function canAccessNavigationItem(userSession, item) {
   if (!userSession || !item) return false
 
-  const assignedRoles = normalizeAssignedRoles(userSession.assigned_roles, userSession.role)
+  const accountType = normalizeAccountType(userSession.account_type || userSession.user_type)
   const activeContext = normalizeRoleContext(userSession.active_role_context || userSession.role)
+  const assignedRoles = normalizeAssignedRoles(userSession.assigned_roles, accountType)
 
-  // 1. Active context MUST be valid and assigned to the user
+  // 1. Account type requirement check (defense-in-depth)
+  if (Array.isArray(item.allowedAccountTypes) && item.allowedAccountTypes.length > 0) {
+    if (!accountType || !item.allowedAccountTypes.includes(accountType)) {
+      return false
+    }
+  }
+
+  // 2. Active context MUST be valid, assigned, and compatible with account type
   if (!isRoleAssigned(activeContext, assignedRoles)) {
     return false
   }
 
-  // 2. Item required active context check
+  if (accountType && !isValidAccountRoleCombination(accountType, activeContext)) {
+    return false
+  }
+
+  // 3. Item required active context check
   if (Array.isArray(item.requiredActiveContexts) && item.requiredActiveContexts.length > 0) {
     if (!item.requiredActiveContexts.includes(activeContext)) {
       return false
     }
   }
 
-  // 3. Item required permissions check
+  // 4. Item required permissions check
   if (Array.isArray(item.requiredPermissions) && item.requiredPermissions.length > 0) {
     const hasAllPermissions = item.requiredPermissions.every(perm => can(userSession, perm))
     if (!hasAllPermissions) return false

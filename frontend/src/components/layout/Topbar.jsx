@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 
 import { useAuth } from '../../context/AuthContext'
-import { normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
+import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
 import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
 
@@ -29,7 +29,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { isDark, toggleTheme } = useTheme()
-  const { user: authUser, switchRoleContext: authSwitchRole } = useAuth() || {}
+  const { user: authUser, activeRoleContext: authRoleContext, switchRoleContext: authSwitchRole } = useAuth() || {}
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSwitchToOpen, setIsSwitchToOpen] = useState(true)
 
@@ -39,10 +39,10 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     active_role_context: 'student'
   }
 
-  const userType = normalizeRoleContext(user?.user_type || 'student')
-  const activeRoleContext = normalizeRoleContext(user?.active_role_context || userType)
-  const assignedRoles = normalizeAssignedRoles(user?.assigned_roles || user?.roles, userType)
-  const isPersonnelUser = userType !== 'student' && userType !== 'osad_staff' && userType !== 'hr_staff'
+  const accountType = normalizeAccountType(user?.account_type || user?.user_type || 'student')
+  const activeRoleContext = normalizeRoleContext(authRoleContext || user?.active_role_context || accountType)
+  const assignedRoles = normalizeAssignedRoles(user?.assigned_roles || user?.roles, accountType)
+  const isPersonnelUser = accountType === 'personnel'
   
   const targetAccountPath = getAccountRoute(user)
   const targetSettingsPath = getSettingsRoute(user)
@@ -80,14 +80,14 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
   // Label display helper for user type & active role context
   const getUserTypeLabel = () => {
+    if (accountType === 'hr_admin') return 'HR Admin'
+    if (accountType === 'osad_admin') return 'OSAD Admin'
+    if (accountType === 'student') return 'Student'
     if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
     if (activeRoleContext === 'department_secretary') return 'Department Secretary'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
     if (activeRoleContext === 'personnel') return 'Personnel'
-    if (activeRoleContext === 'hr_staff' || userType === 'hr_staff') return 'HR Staff'
-    if (activeRoleContext === 'osad_staff' || userType === 'osad_staff') return 'OSAD Staff'
-    if (userType === 'student') return 'Student'
-    return userType.replace('_', ' ')
+    return 'Personnel'
   }
 
   return (
@@ -132,7 +132,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition active:scale-[0.98] cursor-pointer group"
           >
-            {userType === 'student' ? (
+            {accountType === 'student' ? (
               <Avatar size="sm" className="w-9 h-9 border-2 border-[#16834a] shadow-xs">
                 <AvatarImage src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={user?.full_name || 'Student Avatar'} />
                 <AvatarFallback>

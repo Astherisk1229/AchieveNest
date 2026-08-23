@@ -1,21 +1,24 @@
 import React, { useState } from 'react'
 import { ChevronDown, UserCheck, Building2, BookOpen, Users, Check } from 'lucide-react'
-import { getCurrentUser } from '../services/authService'
+import { getCurrentUser } from '../../services/authService'
+import { normalizeAccountType, normalizeRoleContext } from '../../utils/roleContext'
 
 export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
   const [isOpen, setIsOpen] = useState(false)
   const currentUser = propUser || getCurrentUser()
 
-  const isPersonnel = currentUser && (
-    ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(currentUser.user_type) ||
-    ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator'].includes(currentUser.active_role_context)
-  )
+  const accountType = normalizeAccountType(currentUser?.account_type || currentUser?.user_type)
+  const isPersonnel = accountType === 'personnel'
 
   if (!currentUser || !isPersonnel) {
     return null
   }
 
-  const availableRoles = [
+  const assignedRoles = (Array.isArray(currentUser.assigned_roles || currentUser.roles) ? (currentUser.assigned_roles || currentUser.roles) : [])
+    .map(r => (typeof r === 'object' ? r.role_key : r))
+    .map(r => normalizeRoleContext(r))
+
+  const allPersonnelRoles = [
     {
       id: 'personnel',
       title: 'Personnel Account',
@@ -46,7 +49,15 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
     }
   ]
 
-  const currentRoleObj = availableRoles.find(r => r.id === currentUser.active_role_context) || availableRoles[0]
+  // Filter available roles strictly by normalized assigned_roles
+  const availableRoles = allPersonnelRoles.filter(role => assignedRoles.includes(role.id))
+
+  if (availableRoles.length <= 1) {
+    return null
+  }
+
+  const currentRoleContext = normalizeRoleContext(currentUser.active_role_context || 'personnel')
+  const currentRoleObj = availableRoles.find(r => r.id === currentRoleContext) || availableRoles[0]
   const CurrentIcon = currentRoleObj.icon
 
   const handleSelectRole = (roleId) => {
@@ -83,7 +94,7 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
             <div className="space-y-1">
               {availableRoles.map((role) => {
                 const RoleIcon = role.icon
-                const isSelected = currentUser.active_role_context === role.id
+                const isSelected = currentRoleContext === role.id
                 return (
                   <button
                     key={role.id}

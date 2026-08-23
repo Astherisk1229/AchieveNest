@@ -6,6 +6,7 @@ import {
   updateUserRoleContext,
   logoutUser
 } from '../services/authService'
+import { resolveDefaultActiveRole } from '../utils/roleContext'
 import { supabase } from '../config/supabase'
 
 const AuthContext = createContext(null)
@@ -135,7 +136,7 @@ export function AuthProvider({ children }) {
     return updated
   }
 
-  const activeRoleContext = user?.active_role_context || user?.user_type || 'student'
+  const activeRoleContext = user?.active_role_context || resolveDefaultActiveRole(user?.account_type || user?.user_type, user?.assigned_roles || user?.roles) || null
   const isAuthenticated = !!user
 
   const value = {
@@ -165,7 +166,7 @@ export function useAuth() {
     return {
       user: fallbackUser,
       setUser: () => {},
-      activeRoleContext: fallbackUser?.active_role_context || fallbackUser?.user_type || 'personnel',
+      activeRoleContext: fallbackUser?.active_role_context || resolveDefaultActiveRole(fallbackUser?.account_type || fallbackUser?.user_type, fallbackUser?.assigned_roles || fallbackUser?.roles) || null,
       isAuthenticated: !!fallbackUser,
       isLoading: false,
       isInitializing: false,

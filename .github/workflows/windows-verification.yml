@@ -71,7 +71,6 @@ jobs:
 
       - name: Display tool versions
         run: |
-          $PSVersionTable.PSVersion
           php --version
           composer --version
 

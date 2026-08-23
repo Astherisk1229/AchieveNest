@@ -74,8 +74,9 @@ class ProvisioningController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        if (! in_array('osad_staff', $actor['roles'], true)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may provision Student accounts.']], 403);
+        $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
+        if (! $isOsad) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only dedicated OSAD administrators (osad_admin) may provision Student accounts.']], 403);
         }
 
         $json = $this->request->getJSON(true) ?? [];
@@ -144,24 +145,37 @@ class ProvisioningController extends Controller
                 'degree_program_id'    => $progId,
                 'year_level'           => $yearLevel,
                 'status'               => 'active',
-                'provisioning_method'  => 'manual_osad',
+                'provisioning_method'  => 'manual',
+                'created_by'           => $actor['profile']['id'],
                 'must_change_password' => true,
                 'provisioned_at'       => date('Y-m-d H:i:s'),
                 'activated_at'         => date('Y-m-d H:i:s'),
             ]);
 
             $db->table('public.profile_roles')->insert([
-                'profile_id' => $profileId,
-                'role_id'    => $studentRole['id'],
-                'scope_type' => 'university',
-                'scope_id'   => null,
-                'is_active'  => true,
+                'profile_id'  => $profileId,
+                'role_id'     => $studentRole['id'],
+                'scope_type'  => 'university',
+                'scope_id'    => null,
+                'is_active'   => true,
+                'assigned_by' => $actor['profile']['id'],
+                'assigned_at' => date('Y-m-d H:i:s'),
             ]);
 
             $db->table('public.account_lifecycle_events')->insert([
-                'profile_id' => $profileId,
-                'event_type' => 'provisioned',
-                'reason'     => sprintf('Manually provisioned by OSAD administrator %s', $actor['profile']['full_name']),
+                'profile_id'   => $profileId,
+                'event_type'   => 'provisioned',
+                'performed_by' => $actor['profile']['id'],
+                'reason'       => sprintf('Manually provisioned by OSAD administrator %s', $actor['profile']['full_name']),
+                'occurred_at'  => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->table('public.account_lifecycle_events')->insert([
+                'profile_id'   => $profileId,
+                'event_type'   => 'activated',
+                'performed_by' => $actor['profile']['id'],
+                'reason'       => 'Activated upon manual provisioning',
+                'occurred_at'  => date('Y-m-d H:i:s'),
             ]);
 
             $db->transCommit();
@@ -193,8 +207,9 @@ class ProvisioningController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        if (! in_array('hr_staff', $actor['roles'], true)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may provision Personnel accounts.']], 403);
+        $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
+        if (! $isHr) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only dedicated HR administrators (hr_admin) may provision Personnel accounts.']], 403);
         }
 
         $json = $this->request->getJSON(true) ?? [];
@@ -252,24 +267,37 @@ class ProvisioningController extends Controller
                 'degree_program_id'    => null,
                 'designation'          => $designation,
                 'status'               => 'active',
-                'provisioning_method'  => 'manual_hr',
+                'provisioning_method'  => 'manual',
+                'created_by'           => $actor['profile']['id'],
                 'must_change_password' => true,
                 'provisioned_at'       => date('Y-m-d H:i:s'),
                 'activated_at'         => date('Y-m-d H:i:s'),
             ]);
 
             $db->table('public.profile_roles')->insert([
-                'profile_id' => $profileId,
-                'role_id'    => $personnelRole['id'],
-                'scope_type' => 'university',
-                'scope_id'   => null,
-                'is_active'  => true,
+                'profile_id'  => $profileId,
+                'role_id'     => $personnelRole['id'],
+                'scope_type'  => 'university',
+                'scope_id'    => null,
+                'is_active'   => true,
+                'assigned_by' => $actor['profile']['id'],
+                'assigned_at' => date('Y-m-d H:i:s'),
             ]);
 
             $db->table('public.account_lifecycle_events')->insert([
-                'profile_id' => $profileId,
-                'event_type' => 'provisioned',
-                'reason'     => sprintf('Manually provisioned by HR administrator %s', $actor['profile']['full_name']),
+                'profile_id'   => $profileId,
+                'event_type'   => 'provisioned',
+                'performed_by' => $actor['profile']['id'],
+                'reason'       => sprintf('Manually provisioned by HR administrator %s', $actor['profile']['full_name']),
+                'occurred_at'  => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->table('public.account_lifecycle_events')->insert([
+                'profile_id'   => $profileId,
+                'event_type'   => 'activated',
+                'performed_by' => $actor['profile']['id'],
+                'reason'       => 'Activated upon manual provisioning',
+                'occurred_at'  => date('Y-m-d H:i:s'),
             ]);
 
             $db->transCommit();
@@ -305,14 +333,14 @@ class ProvisioningController extends Controller
         $rosterType = trim((string) ($json['roster_type'] ?? 'student'));
         $rows = (array) ($json['rows'] ?? []);
 
-        $isHr = in_array('hr_staff', $actor['roles'], true);
-        $isOsad = in_array('osad_staff', $actor['roles'], true);
+        $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
+        $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
         if ($rosterType === 'personnel' && ! $isHr) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may validate personnel rosters.']], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only dedicated HR administrators may validate personnel rosters.']], 403);
         }
         if ($rosterType === 'student' && ! $isOsad) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may validate student rosters.']], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only dedicated OSAD administrators may validate student rosters.']], 403);
         }
 
         $db = db_connect();

@@ -81,14 +81,14 @@ class PersonnelRoleController extends Controller
             ], 401);
         }
 
-        $isHr = in_array('hr_staff', $actor['roles'], true);
-        $isOsad = in_array('osad_staff', $actor['roles'], true);
+        $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
+        $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
         if (! $isHr && ! $isOsad) {
             return $this->respond([
                 'error' => [
                     'code'    => 'FORBIDDEN',
-                    'message' => 'Administrative role (hr_staff or osad_staff) required to access role management.',
+                    'message' => 'Dedicated administrative account (hr_admin with hr_staff or osad_admin with osad_staff) required.',
                 ],
             ], 403);
         }
@@ -105,7 +105,7 @@ class PersonnelRoleController extends Controller
         }
 
         $assignments = $db->query(
-            'SELECT pr.id AS assignment_id, pr.profile_id, pr.scope_type, pr.scope_id, pr.is_active, pr.created_at AS assigned_at,
+            'SELECT pr.id AS assignment_id, pr.profile_id, pr.scope_type, pr.scope_id, pr.is_active, pr.assigned_at, pr.assigned_by,
                     p.institutional_id, p.institutional_email, p.full_name, p.designation,
                     r.role_key, r.display_name AS role_display_name
              FROM public.profile_roles pr
@@ -139,14 +139,14 @@ class PersonnelRoleController extends Controller
             ], 401);
         }
 
-        $isHr = in_array('hr_staff', $actor['roles'], true);
-        $isOsad = in_array('osad_staff', $actor['roles'], true);
+        $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
+        $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
         if (! $isHr && ! $isOsad) {
             return $this->respond([
                 'error' => [
                     'code'    => 'FORBIDDEN',
-                    'message' => 'Administrative role required to assign specialized roles.',
+                    'message' => 'Dedicated administrative account required to assign specialized roles.',
                 ],
             ], 403);
         }
@@ -155,6 +155,7 @@ class PersonnelRoleController extends Controller
         $roleKey = trim((string) ($json['role_key'] ?? ''));
         $scopeType = trim((string) ($json['scope_type'] ?? 'university'));
         $scopeId = ! empty($json['scope_id']) ? (string) $json['scope_id'] : null;
+        $reason = trim((string) ($json['reason'] ?? 'Specialized role appointment'));
 
         // Check assignment authority per governance rules
         if ($roleKey === 'department_secretary' && ! $isHr) {
@@ -298,34 +299,56 @@ class PersonnelRoleController extends Controller
             ], 409);
         }
 
-        // Insert role assignment
-        $db->table('public.profile_roles')->insert([
-            'profile_id' => $targetProfileId,
-            'role_id'    => $roleRecord['id'],
-            'scope_type' => $scopeType,
-            'scope_id'   => $scopeId,
-            'is_active'  => true,
-        ]);
+        $profileRoleId = (string) service('uuid')->uuid4();
 
-        // Record audit lifecycle event
-        $db->table('public.account_lifecycle_events')->insert([
-            'profile_id' => $targetProfileId,
-            'event_type' => 'role_assigned',
-            'reason'     => sprintf(
-                'Assigned role %s (scope: %s) by %s',
-                $roleKey,
-                $scopeType . ($scopeId ? ':' . $scopeId : ''),
-                $actor['profile']['full_name']
-            ),
-        ]);
+        $db->transBegin();
+        try {
+            // Insert role assignment
+            $db->table('public.profile_roles')->insert([
+                'id'          => $profileRoleId,
+                'profile_id'  => $targetProfileId,
+                'role_id'     => $roleRecord['id'],
+                'scope_type'  => $scopeType,
+                'scope_id'    => $scopeId,
+                'is_active'   => true,
+                'assigned_by' => $actor['profile']['id'],
+                'assigned_at' => date('Y-m-d H:i:s'),
+                'revoked_at'  => null,
+            ]);
+
+            // Record audit in role_assignment_events
+            $db->table('public.role_assignment_events')->insert([
+                'id'                => (string) service('uuid')->uuid4(),
+                'profile_role_id'   => $profileRoleId,
+                'target_profile_id' => $targetProfileId,
+                'role_id'           => $roleRecord['id'],
+                'event_type'        => 'assigned',
+                'scope_type'        => $scopeType,
+                'scope_id'          => $scopeId,
+                'performed_by'      => $actor['profile']['id'],
+                'reason'            => $reason,
+                'occurred_at'       => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            return $this->respond([
+                'error' => [
+                    'code'    => 'ASSIGNMENT_FAILED',
+                    'message' => 'Failed to record role assignment: ' . $e->getMessage(),
+                ],
+            ], 500);
+        }
 
         return $this->respondCreated([
             'data' => [
-                'message'    => 'Role assigned successfully.',
-                'profile_id' => $targetProfileId,
-                'role_key'   => $roleKey,
-                'scope_type' => $scopeType,
-                'scope_id'   => $scopeId,
+                'message'       => 'Role assigned successfully.',
+                'assignment_id' => $profileRoleId,
+                'profile_id'    => $targetProfileId,
+                'role_key'      => $roleKey,
+                'scope_type'    => $scopeType,
+                'scope_id'      => $scopeId,
             ],
         ]);
     }
@@ -346,14 +369,14 @@ class PersonnelRoleController extends Controller
             ], 401);
         }
 
-        $isHr = in_array('hr_staff', $actor['roles'], true);
-        $isOsad = in_array('osad_staff', $actor['roles'], true);
+        $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
+        $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
         if (! $isHr && ! $isOsad) {
             return $this->respond([
                 'error' => [
                     'code'    => 'FORBIDDEN',
-                    'message' => 'Administrative role required to revoke specialized roles.',
+                    'message' => 'Dedicated administrative account required to revoke specialized roles.',
                 ],
             ], 403);
         }
@@ -361,7 +384,7 @@ class PersonnelRoleController extends Controller
         $db = db_connect();
 
         $assignment = $db->query(
-            'SELECT pr.id, pr.profile_id, r.role_key
+            'SELECT pr.id, pr.profile_id, pr.role_id, pr.scope_type, pr.scope_id, r.role_key
              FROM public.profile_roles pr
              JOIN public.roles r ON r.id = pr.role_id
              WHERE pr.id = ? AND pr.profile_id = ? AND pr.is_active = true',
@@ -398,23 +421,43 @@ class PersonnelRoleController extends Controller
             ], 403);
         }
 
-        // Soft revoke
-        $db->table('public.profile_roles')
-            ->where('id', $assignmentId)
-            ->update([
-                'is_active' => false,
+        $json = $this->request->getJSON(true) ?? [];
+        $reason = trim((string) ($json['reason'] ?? 'Specialized role revocation'));
+
+        $db->transBegin();
+        try {
+            // Soft revoke
+            $db->table('public.profile_roles')
+                ->where('id', $assignmentId)
+                ->update([
+                    'is_active'  => false,
+                    'revoked_at' => date('Y-m-d H:i:s'),
+                ]);
+
+            // Record audit in role_assignment_events
+            $db->table('public.role_assignment_events')->insert([
+                'id'                => (string) service('uuid')->uuid4(),
+                'profile_role_id'   => $assignmentId,
+                'target_profile_id' => $targetProfileId,
+                'role_id'           => $assignment['role_id'],
+                'event_type'        => 'revoked',
+                'scope_type'        => $assignment['scope_type'],
+                'scope_id'          => $assignment['scope_id'],
+                'performed_by'      => $actor['profile']['id'],
+                'reason'            => $reason,
+                'occurred_at'       => date('Y-m-d H:i:s'),
             ]);
 
-        // Record lifecycle audit event
-        $db->table('public.account_lifecycle_events')->insert([
-            'profile_id' => $targetProfileId,
-            'event_type' => 'role_revoked',
-            'reason'     => sprintf(
-                'Revoked role %s by %s',
-                $roleKey,
-                $actor['profile']['full_name']
-            ),
-        ]);
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            return $this->respond([
+                'error' => [
+                    'code'    => 'REVOCATION_FAILED',
+                    'message' => 'Failed to revoke role assignment: ' . $e->getMessage(),
+                ],
+            ], 500);
+        }
 
         return $this->respond([
             'data' => [

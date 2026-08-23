@@ -2,18 +2,37 @@ export default class RouteAccessController {
   static PERSONNEL_ROLES = ['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']
 
   static getCurrentRole(user) {
-    return user?.active_role_context || user?.primary_role || 'personnel'
+    return user?.active_role_context || user?.account_type || user?.primary_role || 'student'
   }
 
-  static isAllowedRole(role, allowedRoles = []) {
-    if (!allowedRoles || allowedRoles.length === 0) return true
-    return allowedRoles.includes(role)
+  static isAllowedAccess(user, allowedAccountTypes = [], requiredRoles = []) {
+    if (!user) return false
+    const accountType = user.account_type || user.user_type
+    const roles = user.assigned_roles || user.roles || []
+
+    // Verify account type if specified
+    if (allowedAccountTypes.length > 0 && !allowedAccountTypes.includes(accountType)) {
+      return false
+    }
+
+    // Verify required roles if specified
+    if (requiredRoles.length > 0) {
+      const hasRequiredRole = requiredRoles.some(r => roles.includes(r))
+      if (!hasRequiredRole) return false
+    }
+
+    return true
   }
 
-  static resolveRedirect(role) {
-    if (role === 'student') return '/student/dashboard'
-    if (role === 'hr_staff') return '/hr/dashboard'
-    if (role === 'osad_staff') return '/osad/dashboard'
-    return '/personnel/dashboard'
+  static resolveRedirect(userOrAccountType) {
+    const accountType = typeof userOrAccountType === 'object'
+      ? (userOrAccountType?.account_type || userOrAccountType?.user_type || 'student')
+      : userOrAccountType
+
+    if (accountType === 'student') return '/student/dashboard'
+    if (accountType === 'hr_admin') return '/hr/dashboard'
+    if (accountType === 'osad_admin') return '/osad/dashboard'
+    if (accountType === 'personnel') return '/personnel/dashboard'
+    return '/student/dashboard'
   }
-}
+}

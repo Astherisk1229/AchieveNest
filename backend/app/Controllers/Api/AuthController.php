@@ -74,6 +74,24 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if (($profile['status'] ?? '') === 'suspended') {
+            return $this->respond([
+                'error' => [
+                    'code' => 'ACCOUNT_SUSPENDED',
+                    'message' => 'This account has been suspended. Please contact administrative support.',
+                ],
+            ], 403);
+        }
+
+        if (($profile['status'] ?? '') === 'archived') {
+            return $this->respond([
+                'error' => [
+                    'code' => 'ACCOUNT_ARCHIVED',
+                    'message' => 'This account has been archived and cannot access application features.',
+                ],
+            ], 403);
+        }
+
         $roles = $db->query(
             'SELECT r.role_key, r.display_name, r.description
              FROM public.profile_roles pr

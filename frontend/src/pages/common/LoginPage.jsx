@@ -25,19 +25,17 @@ export default function LoginPage() {
   const [forgotSubmitting, setForgotSubmitting] = useState(false)
   const [forgotSuccess, setForgotSuccess] = useState(false)
 
-  // Demo Accounts Presets
+  // Test Accounts Presets for AchieveNest-Test
   const demoAccounts = [
-    { label: 'Student', desc: 'Student dashboard', email: 'student@ndmu.edu.ph' },
-    { label: 'Personnel', desc: 'Faculty / personnel view', email: 'faculty@ndmu.edu.ph' },
-    { label: 'Coordinator', desc: 'Program coordinator view', email: 'coordinator@ndmu.edu.ph' },
-    { label: 'Organization', desc: 'Org moderator view', email: 'moderator@ndmu.edu.ph' },
-    { label: 'OSAD Admin', desc: 'Student affairs admin', email: 'osad@ndmu.edu.ph' },
-    { label: 'HR Admin', desc: 'Human resource executive', email: 'hr@ndmu.edu.ph' }
+    { label: 'Student 01', desc: 'Student Demo Account', email: 'achievenest.demo.student01@ndmu.edu.ph' },
+    { label: 'Student 02', desc: 'Student Demo Account', email: 'achievenest.demo.student02@ndmu.edu.ph' },
+    { label: 'Personnel 01', desc: 'Personnel Demo Account', email: 'achievenest.demo.personnel01@ndmu.edu.ph' },
+    { label: 'Personnel 02', desc: 'Personnel Demo Account', email: 'achievenest.demo.personnel02@ndmu.edu.ph' },
   ]
 
   const handleSelectDemo = (demoEmail) => {
     setEmail(demoEmail)
-    setPassword('password123')
+    setPassword('')
     setError('')
   }
 
@@ -284,10 +282,11 @@ export default function LoginPage() {
                   if (!forgotEmail) return
                   setForgotSubmitting(true)
                   try {
-                    await requestPasswordReset(forgotEmail, forgotReason, forgotTargetOffice)
+                    await requestPasswordReset(forgotEmail)
                     setForgotSuccess(true)
                   } catch (err) {
-                    console.error('Request reset error:', err)
+                    setError(err.message || 'Unable to process reset request.')
+                    setIsForgotModalOpen(false)
                   } finally {
                     setForgotSubmitting(false)
                   }

@@ -83,8 +83,12 @@ const PERSONNEL_ROLES = [
 ]
 
 function LayoutShell({ allowedRoles }) {
-  const { user: authUser } = useAuth() || {}
+  const { user: authUser, isInitializing } = useAuth() || {}
   const currentUser = authUser || getCurrentUser()
+
+  if (isInitializing && !currentUser) {
+    return <RouteLoadingFallback />
+  }
 
   if (!currentUser) {
     return <Navigate to="/login" replace />

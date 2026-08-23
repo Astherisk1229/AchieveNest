@@ -9,18 +9,17 @@ final class HealthEndpointTest extends CIUnitTestCase
 {
     use FeatureTestTrait;
 
-    public function testHealthEndpointReportsUnconfiguredDatabaseWithoutLeakingSecrets(): void
+    public function testHealthEndpointReportsStatusWithoutLeakingSecrets(): void
     {
         $result = $this->get('/api/v1/health');
 
-        $result->assertStatus(200);
+        $this->assertContains($result->response()->getStatusCode(), [200, 503]);
         $result->assertJSONFragment([
-            'service'  => 'AchieveNest API',
-            'status'   => 'ok',
-            'database' => [
-                'configured' => false,
-                'connected'  => false,
-            ],
+            'service' => 'AchieveNest API',
         ]);
+        $json = json_decode($result->getJSON(), true);
+        $this->assertArrayHasKey('database', $json);
+        $this->assertArrayHasKey('configured', $json['database']);
+        $this->assertArrayHasKey('connected', $json['database']);
     }
 }

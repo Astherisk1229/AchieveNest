@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext'
 import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
 import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
+import RoleSwitcher from '../common/RoleSwitcher'
 
 export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
@@ -67,16 +68,14 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
   // Personnel role options for role switcher
   const allPersonnelRoles = [
-    { id: 'personnel', label: 'Personnel Account View', icon: UserCheck },
-    { id: 'department_secretary', label: 'Department Secretary View', icon: Building2 },
+    { id: 'personnel', label: 'Personnel / Faculty View', icon: UserCheck },
     { id: 'program_coordinator', label: 'Program Coordinator View', icon: ShieldCheck },
-    { id: 'organization_moderator', label: 'Organization Account View', icon: Users }
+    { id: 'organization_moderator', label: 'Organization Moderator View', icon: Users },
+    { id: 'department_secretary', label: 'Dean (Dep Sec) View', icon: Building2 }
   ]
 
-  // Filter switch roles strictly by normalized assigned_roles
-  const availableSwitchRoles = allPersonnelRoles.filter(role => 
-    role.id !== activeRoleContext && assignedRoles.includes(role.id)
-  )
+  // Filter switch roles for personnel demo
+  const availableSwitchRoles = allPersonnelRoles.filter(role => role.id !== activeRoleContext)
 
   // Label display helper for user type & active role context
   const getUserTypeLabel = () => {
@@ -84,9 +83,9 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     if (accountType === 'osad_admin') return 'OSAD Admin'
     if (accountType === 'student') return 'Student'
     if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
-    if (activeRoleContext === 'department_secretary') return 'Department Secretary'
+    if (activeRoleContext === 'department_secretary') return 'Dean (Dep Sec)'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
-    if (activeRoleContext === 'personnel') return 'Personnel'
+    if (activeRoleContext === 'personnel') return 'Personnel / Faculty'
     return 'Personnel'
   }
 
@@ -105,8 +104,20 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
         </button>
       </div>
 
-      {/* Right Side: Notification Icon, Theme Toggle & User Profile Dropdown */}
+      {/* Right Side: Role Switcher Pill, Notification Icon, Theme Toggle & User Profile Dropdown */}
       <div className="flex items-center gap-2.5 sm:gap-3.5">
+        
+        {/* Quick Personnel Role Switcher Dropdown (Demo) */}
+        {isPersonnelUser && (
+          <RoleSwitcher
+            currentUser={{
+              ...user,
+              account_type: accountType,
+              active_role_context: activeRoleContext
+            }}
+            onSwitchRole={handleSelectRole}
+          />
+        )}
         
         {/* Dark / Light Mode Quick Toggle Button */}
         <button

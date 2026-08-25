@@ -142,20 +142,20 @@ describe('permissionResolver', () => {
       expect(labels).not.toContain('Edit Portfolio')
     })
 
-    it('returns strictly 3 operational items for department_secretary context', () => {
+    it('returns strictly 3 operational items for dean context', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
-        active_role_context: 'department_secretary',
-        assigned_roles: ['personnel', 'department_secretary']
+        active_role_context: 'dean',
+        assigned_roles: ['personnel', 'dean']
       }
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
       expect(labels).toEqual([
-        'Dashboard Overview',
-        'Review & Endorsement',
-        'Department Faculty Roster'
+        'Dean Dashboard',
+        'Faculty Ranking Reviews',
+        'College Faculty Roster'
       ])
       expect(labels).not.toContain('Edit Portfolio')
     })

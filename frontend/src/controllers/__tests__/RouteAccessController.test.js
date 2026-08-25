@@ -41,7 +41,7 @@ describe('RouteAccessController — Admin Portal Isolation & Route Access', () =
 
     const personnelWithSpecializedRole = {
       account_type: 'personnel',
-      roles: ['personnel', 'hr_staff', 'department_secretary'],
+      roles: ['personnel', 'hr_staff', 'dean'],
     }
 
     const student = {

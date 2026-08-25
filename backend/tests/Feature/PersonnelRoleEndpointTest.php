@@ -24,7 +24,7 @@ final class PersonnelRoleEndpointTest extends CIUnitTestCase
     public function testAssignRoleRequiresAuthorization(): void
     {
         $result = $this->post('/api/v1/personnel/usr_test_123/roles', [
-            'role_key' => 'department_secretary',
+            'role_key' => 'dean',
         ]);
 
         $result->assertStatus(401);

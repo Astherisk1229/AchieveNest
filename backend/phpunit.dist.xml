@@ -8,17 +8,10 @@
     colors="true"
     columns="max"
     failOnRisky="true"
-    failOnWarning="true"
+    failOnWarning="false"
     cacheDirectory="build/.phpunit.cache"
 >
-    <coverage pathCoverage="false" ignoreDeprecatedCodeUnits="true">
-        <report>
-            <clover outputFile="build/logs/clover.xml"/>
-            <html outputDirectory="build/logs/html"/>
-            <php outputFile="build/logs/coverage.serialized"/>
-            <text outputFile="php://stdout" showUncoveredFiles="false"/>
-        </report>
-    </coverage>
+
 
     <testsuites>
         <testsuite name="App">

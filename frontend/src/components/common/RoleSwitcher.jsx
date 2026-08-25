@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { ChevronDown, UserCheck, Building2, ShieldCheck, Users, Check, Sparkles } from 'lucide-react'
+import { ChevronDown, UserCheck, Building2, ShieldCheck, Users, Check } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
-import { normalizeAccountType, normalizeRoleContext } from '../../utils/roleContext'
+import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
 
 export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -14,13 +14,21 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
     return null
   }
 
-  const allPersonnelRoles = [
+  const roleDefinitions = [
     {
       id: 'personnel',
       title: 'Personnel / Faculty',
       subtitle: 'Primary Employee Portfolio & Achievements',
       badge: 'Faculty',
       icon: UserCheck,
+      color: 'text-[#17663B] bg-[#EFF7F0] border-[#BBDCC3] dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800/60'
+    },
+    {
+      id: 'dean',
+      title: 'Dean',
+      subtitle: 'College Faculty Ranking & Reviews',
+      badge: 'Dean',
+      icon: Building2,
       color: 'text-[#17663B] bg-[#EFF7F0] border-[#BBDCC3] dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800/60'
     },
     {
@@ -38,24 +46,41 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
       badge: 'Moderator',
       icon: Users,
       color: 'text-[#17663B] bg-[#EFF7F0] border-[#BBDCC3] dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800/60'
-    },
-    {
-      id: 'department_secretary',
-      title: 'Dean (Dep Sec)',
-      subtitle: 'Faculty Endorsement & Review Panel',
-      badge: 'Dean / DepSec',
-      icon: Building2,
-      color: 'text-[#17663B] bg-[#EFF7F0] border-[#BBDCC3] dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-800/60'
     }
   ]
 
+  const assignedRoles = normalizeAssignedRoles(currentUser.assigned_roles || currentUser.roles, 'personnel')
+  const availableRoles = roleDefinitions.filter(r => assignedRoles.includes(r.id))
+
+  // If no specialized roles are assigned, ensure at least base personnel is present
+  if (availableRoles.length === 0) {
+    availableRoles.push(roleDefinitions[0])
+  }
+
   const currentRoleContext = normalizeRoleContext(currentUser.active_role_context || 'personnel')
-  const currentRoleObj = allPersonnelRoles.find(r => r.id === currentRoleContext) || allPersonnelRoles[0]
+  const currentRoleObj = availableRoles.find(r => r.id === currentRoleContext) || availableRoles[0]
   const CurrentIcon = currentRoleObj.icon
 
   const handleSelectRole = (roleId) => {
-    onSwitchRole(roleId)
+    if (assignedRoles.includes(roleId) && onSwitchRole) {
+      onSwitchRole(roleId)
+    }
     setIsOpen(false)
+  }
+
+  // If user only has 1 assigned role, show static badge without dropdown trigger
+  if (availableRoles.length <= 1) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#EFF7F0] dark:bg-emerald-950/40 border border-[#BBDCC3] dark:border-emerald-800/50 text-[#17663B] dark:text-emerald-300 text-xs font-bold shadow-2xs">
+        <div className="p-1 rounded-lg bg-[#149653] text-white shadow-2xs">
+          <CurrentIcon className="w-3.5 h-3.5" />
+        </div>
+        <div className="text-left hidden sm:block">
+          <p className="text-[9px] text-[#245F42] dark:text-emerald-400/80 uppercase tracking-wider font-extrabold leading-none">Role Context</p>
+          <p className="text-xs font-black text-[#17663B] dark:text-white truncate max-w-[130px]">{currentRoleObj.title}</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -64,16 +89,13 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#EFF7F0] dark:bg-emerald-950/40 hover:bg-[#E3F2E5] dark:hover:bg-emerald-900/40 border border-[#BBDCC3] dark:border-emerald-800/50 text-[#17663B] dark:text-emerald-300 text-xs font-bold transition shadow-2xs cursor-pointer active:scale-[0.98]"
-        title="Demo: Switch Personnel Working Role Context"
+        title="Switch Active Working Role Context"
       >
         <div className="p-1 rounded-lg bg-[#149653] text-white shadow-2xs">
           <CurrentIcon className="w-3.5 h-3.5" />
         </div>
         <div className="text-left hidden sm:block">
-          <p className="text-[9px] text-[#245F42] dark:text-emerald-400/80 uppercase tracking-wider font-extrabold leading-none flex items-center gap-1">
-            <span>Demo Context</span>
-            <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-          </p>
+          <p className="text-[9px] text-[#245F42] dark:text-emerald-400/80 uppercase tracking-wider font-extrabold leading-none">Role Context</p>
           <p className="text-xs font-black text-[#17663B] dark:text-white truncate max-w-[130px]">{currentRoleObj.title}</p>
         </div>
         <ChevronDown className={`w-3.5 h-3.5 text-[#17663B] dark:text-emerald-300 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -85,14 +107,14 @@ export default function RoleSwitcher({ currentUser: propUser, onSwitchRole }) {
           <div className="absolute right-0 top-full mt-2 w-72 rounded-3xl bg-white dark:bg-[#131e2e] text-[#123D2A] dark:text-slate-100 shadow-2xl border border-[#dde6dd] dark:border-slate-800 p-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase font-black tracking-wider text-[#17663B] dark:text-emerald-400">Switch Personnel Role</p>
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">Demo</span>
+                <p className="text-[10px] uppercase font-black tracking-wider text-[#17663B] dark:text-emerald-400">Switch Working Role</p>
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">Authorized</span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Select active working context to preview views</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Select among your assigned role contexts</p>
             </div>
 
             <div className="space-y-1">
-              {allPersonnelRoles.map((role) => {
+              {availableRoles.map((role) => {
                 const RoleIcon = role.icon
                 const isSelected = currentRoleContext === role.id
                 return (

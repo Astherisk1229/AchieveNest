@@ -212,7 +212,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
           {/* Banner Body */}
           <div className="relative z-20 p-5 sm:p-6 space-y-4">
-            
+
             {/* Top Brand & Motto Bar */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -273,8 +273,19 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 </div>
               </div>
 
-              {/* Three Primary Portfolio Actions */}
+              {/* Primary Portfolio Actions */}
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                {/* Action: Portfolio Booklet View */}
+                <button
+                  type="button"
+                  onClick={() => setIsCanvaModalOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-[#245F42] hover:bg-[#1B4731] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-[0.98]"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Portfolio Booklet View</span>
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                </button>
+
                 {/* Action 1: Edit Profile */}
                 <button
                   type="button"

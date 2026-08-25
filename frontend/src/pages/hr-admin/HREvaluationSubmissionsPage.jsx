@@ -7,7 +7,7 @@ import VerificationQueueToolbar from './evaluation-submissions/queue/Verificatio
 import PortfolioSubmissionRow from './evaluation-submissions/queue/PortfolioSubmissionRow'
 import PortfolioEvaluationStudio from './evaluation-submissions/evaluation/PortfolioEvaluationStudio'
 import ReturnForRevisionModal from './evaluation-submissions/evaluation/actions/ReturnForRevisionModal'
-import FinalizeVerificationModal from './evaluation-submissions/evaluation/actions/FinalizeVerificationModal'
+import FinalizeEvaluationModal from './evaluation-submissions/evaluation/actions/FinalizeVerificationModal'
 
 export function HREvaluationSubmissionsPage(props) {
   const hrHook = useHR()
@@ -18,8 +18,8 @@ export function HREvaluationSubmissionsPage(props) {
   const handleSealVerification = props.handleSealVerification || hrHook.handleSealVerification
   const handleReturnAccomplishment = props.handleReturnAccomplishment || hrHook.handleReturnAccomplishment
 
-  // Queue State
-  const [activeTab, setActiveTab] = useState('pending') // 'pending' | 'in_review' | 'returned' | 'completed'
+  // Queue State: 'submitted' | 'in_evaluation' | 'ready_for_finalization' | 'returned_for_revision' | 'completed'
+  const [activeTab, setActiveTab] = useState('submitted')
   const [search, setSearch] = useState('')
   const [collegeFilter, setCollegeFilter] = useState('ALL')
   const [deptFilter, setDeptFilter] = useState('ALL')
@@ -41,8 +41,8 @@ export function HREvaluationSubmissionsPage(props) {
     }
   }
 
-  // Portfolio Submissions Catalog Mock Data
-  const mockSubmissions = useMemo(() => {
+  // Authoritative Submissions Catalog
+  const baseSubmissions = useMemo(() => {
     return [
       {
         id: 'sub-101',
@@ -52,11 +52,15 @@ export function HREvaluationSubmissionsPage(props) {
         college: 'CEAC - College of Engineering, Architecture, and Computing',
         department: 'Department of Computer Studies',
         academic_rank: 'Associate Professor I',
-        submissionType: 'Ranking & Promotion Portfolio',
+        submission_type: 'Personnel Ranking Evaluation',
+        submissionType: 'Personnel Ranking Evaluation',
+        submitted_at: '2026-08-14T08:30:00Z',
         submittedDate: 'Aug 14, 2026',
-        completedItemsCount: 16,
-        totalItemsCount: 18,
-        status: 'pending',
+        completed_items_count: 6,
+        completedItemsCount: 6,
+        total_items_count: 6,
+        totalItemsCount: 6,
+        status: 'submitted',
         tenure_years: 7,
       },
       {
@@ -67,11 +71,15 @@ export function HREvaluationSubmissionsPage(props) {
         college: 'CBA - College of Business Administration',
         department: 'Department of Business Management',
         academic_rank: 'Full Professor I',
-        submissionType: 'Tenure & Promotion Portfolio',
+        submission_type: 'Personnel Ranking Evaluation',
+        submissionType: 'Personnel Ranking Evaluation',
+        submitted_at: '2026-08-12T09:15:00Z',
         submittedDate: 'Aug 12, 2026',
-        completedItemsCount: 18,
-        totalItemsCount: 18,
-        status: 'in_review',
+        completed_items_count: 4,
+        completedItemsCount: 4,
+        total_items_count: 6,
+        totalItemsCount: 6,
+        status: 'in_evaluation',
         tenure_years: 15,
       },
       {
@@ -82,11 +90,15 @@ export function HREvaluationSubmissionsPage(props) {
         college: 'CAS - College of Arts and Sciences',
         department: 'Department of Physical Sciences',
         academic_rank: 'Instructor III',
-        submissionType: 'Ranking Portfolio',
+        submission_type: 'Personnel Ranking Evaluation',
+        submissionType: 'Personnel Ranking Evaluation',
+        submitted_at: '2026-08-10T11:00:00Z',
         submittedDate: 'Aug 10, 2026',
-        completedItemsCount: 12,
-        totalItemsCount: 15,
-        status: 'returned',
+        completed_items_count: 3,
+        completedItemsCount: 3,
+        total_items_count: 6,
+        totalItemsCount: 6,
+        status: 'returned_for_revision',
         tenure_years: 4,
       },
     ]
@@ -94,61 +106,61 @@ export function HREvaluationSubmissionsPage(props) {
 
   // Filter Submissions
   const filteredSubmissions = useMemo(() => {
-    return mockSubmissions.filter(sub => {
+    return baseSubmissions.filter(sub => {
       const q = search.toLowerCase().trim()
       const matchesSearch = !q ||
         sub.faculty_name.toLowerCase().includes(q) ||
-        sub.employee_id.toLowerCase().includes(q) ||
+        (sub.employee_id && sub.employee_id.toLowerCase().includes(q)) ||
+        (sub.institutional_id && sub.institutional_id.toLowerCase().includes(q)) ||
         sub.email.toLowerCase().includes(q) ||
         sub.department.toLowerCase().includes(q)
 
       const matchesCollege = collegeFilter === 'ALL' || sub.college.includes(collegeFilter)
       const matchesDept = deptFilter === 'ALL' || sub.department === deptFilter
-      const matchesTab = sub.status === activeTab || (activeTab === 'pending' && sub.status === 'pending')
+      
+      const matchesTab =
+        sub.status === activeTab ||
+        (activeTab === 'submitted' && (sub.status === 'submitted' || sub.status === 'pending')) ||
+        (activeTab === 'in_evaluation' && (sub.status === 'in_evaluation' || sub.status === 'in_review')) ||
+        (activeTab === 'returned_for_revision' && (sub.status === 'returned_for_revision' || sub.status === 'returned')) ||
+        (activeTab === 'ready_for_finalization' && (sub.status === 'ready_for_finalization' || sub.status === 'ready_finalization'))
 
       return matchesSearch && matchesCollege && matchesDept && matchesTab
     })
-  }, [mockSubmissions, search, collegeFilter, deptFilter, activeTab])
+  }, [baseSubmissions, search, collegeFilter, deptFilter, activeTab])
 
-  // Counts
+  // Zero-Safe Counts
   const counts = useMemo(() => ({
-    pending: mockSubmissions.filter(s => s.status === 'pending').length,
-    inReview: mockSubmissions.filter(s => s.status === 'in_review').length,
-    returned: mockSubmissions.filter(s => s.status === 'returned').length,
-    completed: mockSubmissions.filter(s => s.status === 'completed').length,
-  }), [mockSubmissions])
-
-  // Active Review Conflict Check
-  const [conflictModalActive, setConflictModalActive] = useState(false)
-  const activeReview = hrHook.activeReview
+    submitted: baseSubmissions.filter(s => s.status === 'submitted' || s.status === 'pending').length,
+    in_evaluation: baseSubmissions.filter(s => s.status === 'in_evaluation' || s.status === 'in_review').length,
+    ready_for_finalization: baseSubmissions.filter(s => s.status === 'ready_for_finalization' || s.status === 'ready_finalization').length,
+    returned_for_revision: baseSubmissions.filter(s => s.status === 'returned_for_revision' || s.status === 'returned').length,
+    completed: baseSubmissions.filter(s => s.status === 'completed').length,
+  }), [baseSubmissions])
 
   const handleInspect = (sub) => {
-    // If starting a new review while another is active, trigger conflict modal
-    if ((sub.status === 'pending' || sub.status === 'FORWARDED_TO_HR') && activeReview && activeReview.id !== sub.id) {
-      setConflictModalActive(true)
-      return
-    }
     setEvaluatingSubmission(sub)
   }
 
-  const handleSaveProgress = () => {
-    showToast('Evaluation progress saved successfully.')
+  const handleSaveProgress = (items, scores) => {
+    showToast('Evaluation draft saved.')
   }
 
   const handleConfirmReturn = (subId, returnData) => {
     if (handleReturnAccomplishment) {
       handleReturnAccomplishment(subId, returnData.remarks)
     }
-    showToast(`Returned portfolio to ${returningSubmission?.faculty_name || 'faculty'} for revision.`)
+    showToast(`Returned portfolio to ${returningSubmission?.faculty_name || 'personnel'} for revision.`)
     setReturningSubmission(null)
     setEvaluatingSubmission(null)
   }
 
   const handleConfirmFinalize = (subId, scores) => {
     if (handleSealVerification) {
-      handleSealVerification(subId, 'HR-SEAL-2026-0099')
+      handleSealVerification(subId, 'HR-FINALIZED')
     }
-    showToast(`Successfully finalized portfolio for ${finalizingSubmission?.faculty_name || 'faculty'} (${scores.grandTotalAwarded || 141} / 160 Points). Official HR Seal Applied!`)
+    const totalPts = scores.grandTotalAwarded ?? scores.total_score ?? scores.totalScore ?? 0
+    showToast(`Successfully finalized evaluation for ${finalizingSubmission?.faculty_name || 'personnel'} (${Number(totalPts).toFixed(2)} / 160.00 Points).`)
     setFinalizingSubmission(null)
     setEvaluatingSubmission(null)
   }
@@ -157,7 +169,7 @@ export function HREvaluationSubmissionsPage(props) {
     <div className="space-y-6 font-sans text-slate-900 dark:text-slate-100">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#176B43] text-white font-extrabold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-[#176B43] text-white font-bold text-xs shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMsg}</span>
         </div>
@@ -165,33 +177,6 @@ export function HREvaluationSubmissionsPage(props) {
 
       {/* Header & Workload Counters */}
       <VerificationQueueHeader stats={counts} />
-
-      {/* Persistent Current Review Banner */}
-      {activeReview && (
-        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-[#064e2b] dark:text-[#245F42] flex items-center justify-center font-bold shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-[#176B43] text-white text-[10px] font-extrabold uppercase">My Current Review</span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">{activeReview.faculty_name || 'Dr. Maria Santos'}</span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">
-                {activeReview.department || 'Department of Computer Studies'} · 16 of 18 evidence items reviewed (89%)
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleInspect(activeReview)}
-            className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition cursor-pointer shrink-0 shadow-2xs"
-          >
-            Continue Review →
-          </button>
-        </div>
-      )}
 
       {/* Status Tabs */}
       <VerificationStatusTabs
@@ -212,11 +197,11 @@ export function HREvaluationSubmissionsPage(props) {
         setSubmissionType={setSubmissionType}
       />
 
-      {/* Portfolio Submissions Queue */}
+      {/* Personnel Ranking Submissions Queue */}
       <div className="space-y-3">
         {filteredSubmissions.length === 0 ? (
           <div className="p-8 text-center bg-white dark:bg-[#131e2e] rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-400 font-medium">
-            No portfolio submissions match your search or filter criteria.
+            No evaluation submissions match your search or filter criteria in this queue.
           </div>
         ) : (
           filteredSubmissions.map(sub => (
@@ -235,9 +220,9 @@ export function HREvaluationSubmissionsPage(props) {
           submission={evaluatingSubmission}
           onClose={() => setEvaluatingSubmission(null)}
           onSaveProgress={handleSaveProgress}
-          onOpenReturnModal={(sub) => setReturningSubmission(sub)}
-          onOpenFinalizeModal={(sub, scores) => {
-            setFinalizingSubmission(sub)
+          onOpenReturnModal={() => setReturningSubmission(evaluatingSubmission)}
+          onOpenFinalizeModal={(scores) => {
+            setFinalizingSubmission(evaluatingSubmission)
             setFinalizingScores(scores)
           }}
         />
@@ -251,51 +236,15 @@ export function HREvaluationSubmissionsPage(props) {
         onConfirmReturn={handleConfirmReturn}
       />
 
-      {/* Finalize Verification Checklist Modal */}
-      <FinalizeVerificationModal
+      {/* Finalize Evaluation Modal */}
+      <FinalizeEvaluationModal
         submission={finalizingSubmission}
         scores={finalizingScores}
         isOpen={Boolean(finalizingSubmission)}
         onClose={() => setFinalizingSubmission(null)}
         onConfirmFinalize={handleConfirmFinalize}
       />
-
-      {/* Active Review Conflict Warning Modal */}
-      {conflictModalActive && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100 dark:border-slate-800">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 flex items-center justify-center font-bold">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white">Active Review Already in Progress</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-normal">
-              You already have an evaluation in progress for <strong className="text-slate-900 dark:text-white">{activeReview?.faculty_name || 'Dr. Maria Santos'}</strong>. Each HR staff account can actively review one portfolio at a time.
-            </p>
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setConflictModalActive(false)}
-                className="w-1/2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConflictModalActive(false)
-                  if (activeReview) handleInspect(activeReview)
-                }}
-                className="w-1/2 py-2.5 rounded-xl bg-[#176B43] text-white text-xs font-extrabold hover:bg-[#143326] cursor-pointer shadow-2xs"
-              >
-                Continue Review →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-
-export const HREvaluationSubmissions = HREvaluationSubmissionsPage
 export default HREvaluationSubmissionsPage

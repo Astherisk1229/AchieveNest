@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, User, AlertCircle, RefreshCw
 } from 'lucide-react'
 import PersonnelActionsMenu from './PersonnelActionsMenu'
+import { Select, SelectItem } from '../../../components/ui/select'
 
 // Rank weight calculation for stable sorting
 const getRankWeight = (rankStr = '') => {
@@ -23,6 +24,55 @@ const getRankWeight = (rankStr = '') => {
   else if (r.includes(' i') || r.includes(' 1')) subWeight = 1
 
   return baseWeight + subWeight
+}
+
+// Normalized search string helper
+const normalizeSearchValue = (value) =>
+  String(value ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ')
+
+// Comprehensive multi-attribute search matcher
+const matchesPersonnelSearch = (person, query) => {
+  if (!query) return true
+  const normalizedQuery = normalizeSearchValue(query)
+  if (!normalizedQuery) return true
+
+  const compositeName = [person.first_name, person.middle_name, person.last_name]
+    .filter(Boolean)
+    .join(' ')
+
+  const searchValues = [
+    person.first_name,
+    person.middle_name,
+    person.last_name,
+    person.full_name,
+    compositeName,
+    person.employee_id,
+    person.institutional_id,
+    person.email,
+    person.institutional_email,
+    person.department,
+    person.department_name,
+    person.department_code,
+    person.college
+  ].filter(Boolean).map(normalizeSearchValue)
+
+  // Direct full substring match
+  if (searchValues.some(val => val.includes(normalizedQuery))) {
+    return true
+  }
+
+  // Multi-token match (e.g. "Evelyn Mercado" matching first_name + last_name across fields)
+  const tokens = normalizedQuery.split(' ').filter(Boolean)
+  if (tokens.length > 1) {
+    return tokens.every(token =>
+      searchValues.some(val => val.includes(token))
+    )
+  }
+
+  return false
 }
 
 /**
@@ -51,6 +101,8 @@ export default function PersonnelDirectoryTable({
   const [collegeFilter, setCollegeFilter] = useState('ALL')
   const [deptFilter, setDeptFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
+
+  const searchInputRef = useRef(null)
 
   // Controlled Sorting State
   const sortColumn = sortConfig?.column || 'full_name'
@@ -128,15 +180,9 @@ export default function PersonnelDirectoryTable({
   const filteredSortedList = useMemo(() => {
     let list = [...personnelList]
 
-    // 1. Search Query
+    // 1. Search Query with Multi-Attribute Matching
     if (search.trim()) {
-      const q = search.toLowerCase().trim()
-      list = list.filter(p =>
-        (p.full_name && p.full_name.toLowerCase().includes(q)) ||
-        (p.employee_id && p.employee_id.toLowerCase().includes(q)) ||
-        (p.email && p.email.toLowerCase().includes(q)) ||
-        (p.department && p.department.toLowerCase().includes(q))
-      )
+      list = list.filter(p => matchesPersonnelSearch(p, search))
     }
 
     // 2. Filters
@@ -224,11 +270,50 @@ export default function PersonnelDirectoryTable({
   }
 
   // Handle Quick Sort Selector Change
-  const handleQuickSortChange = (e) => {
-    const [col, dir] = e.target.value.split(':')
+  const handleQuickSortChange = (valueOrEvent) => {
+    const rawVal = typeof valueOrEvent === 'string' ? valueOrEvent : valueOrEvent?.target?.value
+    if (!rawVal) return
+    const [col, dir] = rawVal.split(':')
     if (onSortChange) {
       onSortChange({ column: col, direction: dir })
     }
+  }
+
+  // Handle Search Input Change
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value)
+    setCurrentPage(1)
+  }
+
+  // Handle Clear Search with Focus Restoration
+  const handleClearSearch = () => {
+    setSearch('')
+    setCurrentPage(1)
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus()
+    })
+  }
+
+  // Handle College Filter Change
+  const handleCollegeChange = (valueOrEvent) => {
+    const val = typeof valueOrEvent === 'string' ? valueOrEvent : valueOrEvent?.target?.value
+    setCollegeFilter(val || 'ALL')
+    setDeptFilter('ALL')
+    setCurrentPage(1)
+  }
+
+  // Handle Department Filter Change
+  const handleDeptChange = (valueOrEvent) => {
+    const val = typeof valueOrEvent === 'string' ? valueOrEvent : valueOrEvent?.target?.value
+    setDeptFilter(val || 'ALL')
+    setCurrentPage(1)
+  }
+
+  // Handle Status Filter Change
+  const handleStatusChange = (valueOrEvent) => {
+    const val = typeof valueOrEvent === 'string' ? valueOrEvent : valueOrEvent?.target?.value
+    setStatusFilter(val || 'ALL')
+    setCurrentPage(1)
   }
 
   // Handle Header Checkbox Toggle (Current Page Only)
@@ -319,6 +404,7 @@ export default function PersonnelDirectoryTable({
     setCollegeFilter('ALL')
     setDeptFilter('ALL')
     setStatusFilter('ALL')
+    setCurrentPage(1)
   }
 
   // Helper Badge Renderers
@@ -385,136 +471,157 @@ export default function PersonnelDirectoryTable({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Search Input */}
           <div className="relative flex-1 w-full min-w-0">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <Search className="w-4 h-4" />
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <Search className="w-4 h-4 text-slate-400" />
             </div>
             <input
+              ref={searchInputRef}
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search personnel by name, employee ID, or email..."
+              onChange={handleSearchChange}
+              placeholder="Search by name, employee ID, or email..."
               aria-label="Search personnel by name, employee ID, or email"
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white focus:outline-none focus:border-[#69A97C]"
+              className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43] dark:focus:border-emerald-600 transition"
             />
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                aria-label="Clear search text"
+                onClick={handleClearSearch}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                aria-label="Clear personnel search"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Quick Sort Selector */}
+          {/* Quick Sort Selector with Shadcn Select */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto lg:shrink-0">
-            <label htmlFor="quick-sort-select" className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Sort by:</label>
-            <select
-              id="quick-sort-select"
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">Sort by:</label>
+            <Select
               value={`${sortColumn}:${sortDirection}`}
-              onChange={handleQuickSortChange}
-              aria-label="Sort personnel directory"
-              className="w-full sm:w-[300px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-[#064e2b] dark:text-emerald-400 focus:outline-none focus:border-[#69A97C]"
+              onValueChange={handleQuickSortChange}
+              ariaLabel="Sort personnel directory"
+              className="w-full sm:w-[280px]"
+              triggerClassName="py-2 text-sm font-semibold text-[#176B43] dark:text-emerald-400"
             >
-              <option value="created_at:desc">Recently Added (Newest First)</option>
-              <option value="full_name:asc">Name (A to Z)</option>
-              <option value="full_name:desc">Name (Z to A)</option>
-              <option value="academic_rank:desc">Academic Rank (Highest First)</option>
-              <option value="department:asc">Department and College (A to Z)</option>
-            </select>
+              <SelectItem value="created_at:desc">Recently Added (Newest First)</SelectItem>
+              <SelectItem value="full_name:asc">Name (A to Z)</SelectItem>
+              <SelectItem value="full_name:desc">Name (Z to A)</SelectItem>
+              <SelectItem value="academic_rank:desc">Academic Rank (Highest First)</SelectItem>
+              <SelectItem value="department:asc">Department &amp; College (A to Z)</SelectItem>
+            </Select>
           </div>
         </div>
 
-        {/* Row 2: Category Filter Bar */}
+        {/* Row 2: Category Filter Bar with Shadcn Selects */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800/80">
           {/* College Filter */}
-          <select
-            value={collegeFilter}
-            onChange={e => setCollegeFilter(e.target.value)}
-            aria-label="Filter by college"
-            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
-          >
-            <option value="ALL">All Colleges</option>
-            <option value="CEAC">CEAC - Engineering &amp; Computing</option>
-            <option value="CBA">CBA - Business Administration</option>
-            <option value="CAS">CAS - Arts &amp; Sciences</option>
-          </select>
+          <div>
+            <Select
+              value={collegeFilter}
+              onValueChange={handleCollegeChange}
+              ariaLabel="Filter by college"
+              className="w-full"
+              triggerClassName="py-2 text-sm font-medium"
+            >
+              <SelectItem value="ALL">All Colleges</SelectItem>
+              <SelectItem value="CEAC">CEAC - Engineering &amp; Computing</SelectItem>
+              <SelectItem value="CBA">CBA - Business Administration</SelectItem>
+              <SelectItem value="CAS">CAS - Arts &amp; Sciences</SelectItem>
+            </Select>
+          </div>
 
           {/* Department Filter */}
-          <select
-            value={deptFilter}
-            onChange={e => setDeptFilter(e.target.value)}
-            aria-label="Filter by department"
-            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
-          >
-            <option value="ALL">All Departments</option>
-            {availableDepartments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
+          <div>
+            <Select
+              value={deptFilter}
+              onValueChange={handleDeptChange}
+              disabled={availableDepartments.length === 0 && collegeFilter !== 'ALL'}
+              placeholder={availableDepartments.length === 0 && collegeFilter !== 'ALL' ? 'No departments available' : 'All Departments'}
+              ariaLabel="Filter by department"
+              className="w-full"
+              triggerClassName="py-2 text-sm font-medium"
+            >
+              <SelectItem value="ALL">All Departments</SelectItem>
+              {availableDepartments.map(dept => (
+                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+              ))}
+            </Select>
+          </div>
 
           {/* Employment Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            aria-label="Filter by employment status"
-            className="w-full min-w-0 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
-          >
-            <option value="ALL">All Employment Statuses</option>
-            <option value="Full-Time Permanent">Full-Time Permanent</option>
-            <option value="Full-Time Probationary">Full-Time Probationary</option>
-            <option value="Part-Time Lecturer">Part-Time Lecturer</option>
-            <option value="Contractual">Contractual</option>
-          </select>
+          <div>
+            <Select
+              value={statusFilter}
+              onValueChange={handleStatusChange}
+              ariaLabel="Filter by employment status"
+              className="w-full"
+              triggerClassName="py-2 text-sm font-medium"
+            >
+              <SelectItem value="ALL">All Employment Statuses</SelectItem>
+              <SelectItem value="Full-Time Permanent">Full-Time Permanent</SelectItem>
+              <SelectItem value="Full-Time Probationary">Full-Time Probationary</SelectItem>
+              <SelectItem value="Part-Time Lecturer">Part-Time Lecturer</SelectItem>
+              <SelectItem value="Contractual">Contractual</SelectItem>
+            </Select>
+          </div>
         </div>
 
-        {/* Active Filter Chips Bar */}
-        {activeFilterCount > 0 && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
-            <span className="font-semibold text-slate-500 dark:text-slate-400">Active filters:</span>
-            {search.trim() && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                Search: "{search}"
-                <button type="button" onClick={() => setSearch('')} className="hover:text-red-500 cursor-pointer" aria-label="Clear search filter">
-                  <X className="w-3.5 h-3.5" />
+        {/* Row 3: Result Count & Active Filter Chips Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Showing <strong className="text-slate-800 dark:text-white font-bold">{filteredSortedList.length}</strong> of <strong className="text-slate-800 dark:text-white font-bold">{personnelList.length}</strong> personnel
+            </span>
+
+            {activeFilterCount > 0 && (
+              <>
+                <span className="text-slate-300 dark:text-slate-700">|</span>
+                <span className="font-semibold text-slate-500 dark:text-slate-400">Active filters:</span>
+                {search.trim() && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                    Search: "{search}"
+                    <button type="button" onClick={handleClearSearch} className="hover:text-red-500 cursor-pointer" aria-label="Clear search filter">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                )}
+                {collegeFilter !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium">
+                    College: {collegeFilter}
+                    <button type="button" onClick={() => handleCollegeChange('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear college filter">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                )}
+                {deptFilter !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-medium">
+                    Dept: {deptFilter}
+                    <button type="button" onClick={() => handleDeptChange('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear department filter">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                )}
+                {statusFilter !== 'ALL' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-[#245F42] font-medium">
+                    Status: {statusFilter}
+                    <button type="button" onClick={() => handleStatusChange('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear employment status filter">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs font-semibold text-[#176B43] dark:text-emerald-400 hover:underline ml-1 cursor-pointer"
+                >
+                  Clear all
                 </button>
-              </span>
+              </>
             )}
-            {collegeFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-medium">
-                College: {collegeFilter}
-                <button type="button" onClick={() => setCollegeFilter('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear college filter">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            )}
-            {deptFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 font-medium">
-                Dept: {deptFilter}
-                <button type="button" onClick={() => setDeptFilter('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear department filter">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            )}
-            {statusFilter !== 'ALL' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-[#245F42] font-medium">
-                Status: {statusFilter}
-                <button type="button" onClick={() => setStatusFilter('ALL')} className="hover:text-red-500 cursor-pointer" aria-label="Clear employment status filter">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="text-xs font-semibold text-[#064e2b] dark:text-emerald-400 hover:underline ml-1 cursor-pointer"
-            >
-              Clear all
-            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Sticky Bulk Action Toolbar */}
@@ -660,9 +767,9 @@ export default function PersonnelDirectoryTable({
                     ) : (
                       <div className="space-y-3 max-w-md mx-auto">
                         <AlertCircle className="w-10 h-10 text-amber-500/80 mx-auto" />
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No matching personnel</h3>
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No matching personnel found</h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          No records match your search query or filter selections. Try clearing your active filters.
+                          No records match your search query or filter selections. Try adjusting your search or filters.
                         </p>
                         <button
                           type="button"
@@ -670,7 +777,7 @@ export default function PersonnelDirectoryTable({
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition cursor-pointer"
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
-                          <span>Reset search and filters</span>
+                          <span>Clear search and filters</span>
                         </button>
                       </div>
                     )}
@@ -710,111 +817,93 @@ export default function PersonnelDirectoryTable({
                           {p.avatar_url ? (
                             <img
                               src={p.avatar_url}
-                              alt={p.full_name || 'Personnel Avatar'}
-                              onError={(e) => { e.currentTarget.style.display = 'none' }}
-                              className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                              alt={p.full_name}
+                              className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 font-bold text-sm">
-                              {p.full_name ? p.full_name.charAt(0) : 'U'}
+                            <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200 dark:border-slate-700">
+                              {p.full_name ? p.full_name.charAt(0) : 'P'}
                             </div>
                           )}
-
-                          <div className="space-y-0.5 min-w-0 flex-1 overflow-hidden">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <p
-                                title={p.full_name}
-                                className="text-sm font-semibold leading-snug text-slate-900 dark:text-white group-hover:text-[#064e2b] dark:group-hover:text-emerald-400 transition truncate"
-                              >
-                                {p.full_name || 'Unnamed Personnel'}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-slate-900 dark:text-white truncate group-hover:text-[#064e2b] dark:group-hover:text-emerald-400 transition">
+                                {p.full_name}
                               </p>
                               {isNewlyCreated && (
-                                <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white uppercase tracking-wider animate-in fade-in shrink-0">
-                                  NEW
+                                <span className="inline-flex items-center px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 shrink-0">
+                                  New
                                 </span>
                               )}
                             </div>
-
-                            {/* Interactive Email with Mailto & Copy */}
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 group/email min-w-0" onClick={e => e.stopPropagation()}>
-                              {p.email ? (
-                                <>
-                                  <a
-                                    href={`mailto:${p.email}`}
-                                    aria-label={`Email ${p.full_name}`}
-                                    title={p.email}
-                                    className="hover:text-[#064e2b] dark:hover:text-emerald-400 hover:underline truncate"
-                                  >
-                                    {p.email}
-                                  </a>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleCopyEmail(p.email, p.id, e)}
-                                    aria-label={`Copy ${p.full_name}'s email`}
-                                    title="Copy Email"
-                                    className="opacity-0 group-hover/email:opacity-100 focus:opacity-100 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer shrink-0"
-                                  >
-                                    {copiedEmailId === p.id ? (
-                                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    ) : (
-                                      <Copy className="w-3.5 h-3.5" />
-                                    )}
-                                  </button>
-                                </>
-                              ) : (
-                                <span className="italic text-slate-400">No email on record</span>
+                            
+                            {/* Email with Hover Copy Icon */}
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                              <span className="truncate">{p.email}</span>
+                              {p.email && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopyEmail(p.email, p.id, e)}
+                                  className="opacity-0 group-hover:opacity-100 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer p-0.5"
+                                  aria-label={`Copy email address for ${p.full_name}`}
+                                  title="Copy email to clipboard"
+                                >
+                                  {copiedEmailId === p.id ? (
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
                               )}
                             </div>
 
-                            <p className="text-xs font-mono text-slate-400 dark:text-slate-500 truncate" title={p.employee_id}>
-                              {p.employee_id || 'ID Pending'}
+                            {/* Employee ID Subtext */}
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                              {p.employee_id || p.institutional_id || 'ID Pending'}
                             </p>
                           </div>
                         </div>
                       </td>
 
                       {/* Department and College */}
-                      <td className="p-4 min-w-0 overflow-hidden">
-                        <div className="space-y-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate" title={p.department}>
-                            {p.department || 'Unassigned Department'}
-                          </p>
-                          <div>
-                            {renderCollegeBadge(p.college)}
-                          </div>
+                      <td className="p-4">
+                        <p className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                          {p.department || 'Unassigned'}
+                        </p>
+                        <div className="mt-1">
+                          {renderCollegeBadge(p.college)}
                         </div>
                       </td>
 
                       {/* Academic Rank */}
-                      <td className="p-4 min-w-0">
-                        <span className="inline-block max-w-full truncate px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold" title={p.academic_rank}>
-                          {p.academic_rank || 'Unassigned Rank'}
+                      <td className="p-4">
+                        <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80">
+                          {p.academic_rank || 'No Rank'}
                         </span>
                       </td>
 
-                      {/* Employment Details */}
-                      <td className="p-4 min-w-0">
-                        <div className="space-y-1 min-w-0">
-                          <div className="truncate">
-                            {renderStatusBadge(p.employment_status)}
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                            {p.tenure_years != null ? `${p.tenure_years} ${p.tenure_years === 1 ? 'year' : 'years'} of service` : 'Service length pending'}
-                          </p>
+                      {/* Employment Status & Tenure */}
+                      <td className="p-4">
+                        <div>
+                          {renderStatusBadge(p.employment_status)}
                         </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          {p.tenure_years !== undefined ? `${p.tenure_years} years of service` : 'Service years not set'}
+                        </p>
                       </td>
 
-                      {/* Actions Menu Kebab Trigger */}
+                      {/* Row Actions Menu Button */}
                       <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end">
+                        <div className="relative inline-block text-left">
                           <button
                             ref={el => { triggerRefs.current[p.id] = el }}
                             type="button"
-                            onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
-                            aria-haspopup="menu"
-                            aria-expanded={activeMenuId === p.id}
-                            aria-label={`Open actions for ${p.full_name || 'personnel'}`}
-                            className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setActiveMenuId(activeMenuId === p.id ? null : p.id)
+                            }}
+                            aria-label={`Open action menu for ${p.full_name}`}
+                            className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition cursor-pointer"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -842,21 +931,26 @@ export default function PersonnelDirectoryTable({
             )}
           </div>
 
-          {/* Rows Per Page & Pagination Buttons */}
-          <div className="flex items-center gap-4">
+          {/* Rows Per Page & Pagination Buttons with Shadcn Select */}
+          <div className="flex flex-wrap items-center gap-4">
             {/* Rows Per Page Selector */}
             <div className="flex items-center gap-2">
-              <span>Rows per page:</span>
-              <select
-                value={rowsPerPage}
-                onChange={e => setRowsPerPage(Number(e.target.value))}
-                aria-label="Select rows per page"
-                className="py-1 px-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Rows per page:</span>
+              <Select
+                value={String(rowsPerPage)}
+                onValueChange={(val) => {
+                  setRowsPerPage(Number(val))
+                  setCurrentPage(1)
+                }}
+                ariaLabel="Select rows per page"
+                className="w-20"
+                triggerClassName="py-1 px-2.5 min-h-[32px] text-xs font-semibold rounded-lg"
               >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </Select>
             </div>
 
             {/* Pagination Controls */}
@@ -888,20 +982,37 @@ export default function PersonnelDirectoryTable({
           </div>
         </div>
 
-        {/* Portal Action Menu */}
-        <PersonnelActionsMenu
-          isOpen={Boolean(activeMenuId && activePersonnel)}
-          onClose={() => setActiveMenuId(null)}
-          triggerRef={{ current: activeMenuId ? triggerRefs.current[activeMenuId] : null }}
-          personnel={activePersonnel}
-          handleSelect={handleSelect}
-          onEditAssignment={onEditAssignment}
-          onPromoteRank={onPromoteRank}
-          onResetPassword={onResetPassword}
-        />
       </section>
+
+      {/* Floating Action Menu Popover Portal */}
+      {activePersonnel && triggerRefs.current[activePersonnel.id] && (
+        <PersonnelActionsMenu
+          personnel={activePersonnel}
+          triggerRef={{ current: triggerRefs.current[activePersonnel.id] }}
+          isOpen={true}
+          onClose={() => setActiveMenuId(null)}
+          onViewDossier={() => {
+            setActiveMenuId(null)
+            if (typeof handleSelect === 'function') handleSelect(activePersonnel)
+          }}
+          onEditAssignment={() => {
+            setActiveMenuId(null)
+            if (typeof onEditAssignment === 'function') onEditAssignment(activePersonnel)
+          }}
+          onPromoteRank={() => {
+            setActiveMenuId(null)
+            if (typeof onPromoteRank === 'function') onPromoteRank(activePersonnel)
+          }}
+          onResetPassword={() => {
+            setActiveMenuId(null)
+            if (typeof onResetPassword === 'function') onResetPassword(activePersonnel)
+          }}
+          onManageRole={(roleKey) => {
+            setActiveMenuId(null)
+            if (typeof onManageRole === 'function') onManageRole(activePersonnel, roleKey)
+          }}
+        />
+      )}
     </div>
   )
 }
-
-export const FacultyDirectory = PersonnelDirectoryTable

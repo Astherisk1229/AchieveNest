@@ -49,10 +49,26 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('verification/(:segment)/decide', 'Api\\VerificationQueueController::options');
 
     // Official Events & Certificates
-    $routes->get('events', 'Api\\EventController::index');
-    $routes->options('events', 'Api\\EventController::options');
-    $routes->post('events', 'Api\\EventController::create');
-    $routes->options('events', 'Api\\EventController::options');
-    $routes->post('events/(:segment)/participants', 'Api\\EventController::addParticipants/$1');
-    $routes->options('events/(:segment)/participants', 'Api\\EventController::options');
+    $routes->get('events', 'Api\EventController::index');
+    $routes->options('events', 'Api\EventController::options');
+    $routes->post('events', 'Api\EventController::create');
+    $routes->options('events', 'Api\EventController::options');
+    $routes->post('events/(:segment)/participants', 'Api\EventController::addParticipants/$1');
+    $routes->options('events/(:segment)/participants', 'Api\EventController::options');
+
+    // HR Personnel Ranking Evaluations
+    $routes->get('hr/evaluations', 'Api\HREvaluationController::list');
+    $routes->options('hr/evaluations', 'Api\HREvaluationController::options');
+    $routes->get('hr/evaluations/(:segment)', 'Api\HREvaluationController::get/$1');
+    $routes->options('hr/evaluations/(:segment)', 'Api\HREvaluationController::options');
+    $routes->post('hr/evaluations/(:segment)/start', 'Api\HREvaluationController::start/$1');
+    $routes->options('hr/evaluations/(:segment)/start', 'Api\HREvaluationController::options');
+    $routes->patch('hr/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::verifyItem/$1/$2');
+    $routes->options('hr/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::options');
+    $routes->patch('hr/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::rateItem/$1/$2');
+    $routes->options('hr/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::options');
+    $routes->post('hr/evaluations/(:segment)/return', 'Api\HREvaluationController::returnEvaluation/$1');
+    $routes->options('hr/evaluations/(:segment)/return', 'Api\HREvaluationController::options');
+    $routes->post('hr/evaluations/(:segment)/finalize', 'Api\HREvaluationController::finalizeEvaluation/$1');
+    $routes->options('hr/evaluations/(:segment)/finalize', 'Api\HREvaluationController::options');
 });

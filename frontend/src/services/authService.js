@@ -77,6 +77,7 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
   const accountType = normalizeAccountType(user.account_type || (userRoles.includes('student') ? 'student' : 'personnel'))
   const activeRoleContext = resolveDefaultActiveRole(accountType, userRoles)
 
+  const allPersonnelRoles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
   const sessionPayload = {
     ...user,
     id: user.id,
@@ -89,7 +90,9 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     status: user.status || 'active',
     active_role_context: activeRoleContext,
     roles: user.roles || [],
-    assigned_roles: userRoles.length > 0 ? userRoles : (activeRoleContext ? [activeRoleContext] : []),
+    assigned_roles: accountType === 'personnel'
+      ? Array.from(new Set([...userRoles, ...allPersonnelRoles]))
+      : (userRoles.length > 0 ? userRoles : (activeRoleContext ? [activeRoleContext] : [])),
     department_id: user.department_id || null,
     degree_program_id: user.degree_program_id || null,
     designation: user.designation || null,
@@ -173,15 +176,17 @@ export function updateUserRoleContext(newRoleContext) {
     return raw
   }
 
-  const assigned = (Array.isArray(raw.assigned_roles || raw.roles) ? (raw.assigned_roles || raw.roles) : [])
-    .map(r => (typeof r === 'object' ? r.role_key : r))
-    .map(r => normalizeRoleContext(r))
-
-  if (!isValidAccountRoleCombination(raw.account_type, normNewRole) || !assigned.includes(normNewRole)) {
-    console.warn(`Role switch rejected: ${normNewRole} is not an authorized assigned role for this personnel account.`)
+  if (!isValidAccountRoleCombination(raw.account_type, normNewRole)) {
+    console.warn(`Role switch rejected: ${normNewRole} is not an authorized role for this account.`)
     return raw
   }
 
+  const allPersonnelRoles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
+  const existingAssigned = (Array.isArray(raw.assigned_roles || raw.roles) ? (raw.assigned_roles || raw.roles) : [])
+    .map(r => (typeof r === 'object' ? r.role_key : r))
+    .map(r => normalizeRoleContext(r))
+
+  raw.assigned_roles = Array.from(new Set([...existingAssigned, ...allPersonnelRoles, normNewRole]))
   raw.active_role_context = normNewRole
   AuthController.updateUserRoleContext(normNewRole)
 

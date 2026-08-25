@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 import SecurityController from '../../controllers/SecurityController.js'
@@ -9,16 +8,16 @@ import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
-import { 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  FileText, 
-  CheckCircle2, 
-  Sparkles, 
-  Paperclip, 
-  ShieldCheck, 
-  Eye, 
+import {
+  Plus,
+  Trash2,
+  Edit3,
+  FileText,
+  CheckCircle2,
+  Sparkles,
+  Paperclip,
+  ShieldCheck,
+  Eye,
   AlertCircle,
   GraduationCap,
   BookOpen,
@@ -66,7 +65,6 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Modals State
-  const [isCanvaViewOpen, setIsCanvaViewOpen] = useState(false)
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
@@ -257,7 +255,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   // Pre-submission validation: Check for missing proof attachments across all areas
   const handleSubmitPortfolio = () => {
     setSubmitError('')
-    
+
     const allItems = [
       ...(portfolio?.area_a_items || []),
       ...(portfolio?.area_b_items || []),
@@ -339,18 +337,17 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
         {/* ================= 1. PAGE TOP SUMMARY & PORTFOLIO DOSSIER BANNER ================= */}
         <div className="bg-[#EFF7F0] p-4 sm:p-5 rounded-3xl shadow-xs border border-[#69A97C] space-y-4">
-          
+
           {/* Top Bar Actions & Status */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#DDE7DF] pb-3">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#E7F3E9] text-[#17663B] border border-[#69A97C]">
                 Personnel Dossier Workbench
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3]' :
-                portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]' :
-                portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]'
-              }`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3]' :
+                  portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]' :
+                    portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]'
+                }`}>
                 STATUS: {portfolio?.status || 'DRAFT'}
               </span>
               <span className="text-xs font-bold text-[#245F42] hidden md:inline">
@@ -388,10 +385,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 onClick={() => {
                   if (navigator.clipboard) {
                     navigator.clipboard.writeText(window.location.href)
-                    showToast('Portfolio link copied to clipboard!')
-                  } else {
-                    setIsCanvaViewOpen(true)
                   }
+                  showToast('Portfolio link copied to clipboard!')
                 }}
                 className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F1F7F2] text-[#183B2A] font-extrabold text-xs border border-[#DCE6DF] flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
               >
@@ -417,22 +412,18 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             </div>
 
             {/* Submission Status Card */}
-            <div className={`p-3.5 rounded-2xl border space-y-1 ${
-              portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] border-[#BBDCC3]' : 'bg-[#FFF8E7] border-[#E7A51D]'
-            }`}>
-              <div className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+            <div className={`p-3.5 rounded-2xl border space-y-1 ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] border-[#BBDCC3]' : 'bg-[#FFF8E7] border-[#E7A51D]'
               }`}>
+              <div className={`text-[10px] font-extrabold uppercase tracking-wider ${portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+                }`}>
                 Submission Status
               </div>
-              <div className={`text-xl font-black truncate ${
-                portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
-              }`}>
+              <div className={`text-xl font-black truncate ${portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+                }`}>
                 {portfolio?.status || 'DRAFT'}
               </div>
-              <div className={`text-[10px] font-medium ${
-                portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
-              }`}>
+              <div className={`text-[10px] font-medium ${portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
+                }`}>
                 Formal Faculty Dossier State
               </div>
             </div>
@@ -514,7 +505,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
         {/* ================= 4. ACTIVE TAB CONTENT WORKBENCH ================= */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-5">
-          
+
           {/* Section Toolbar & Title */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
             <div>
@@ -621,11 +612,10 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 return (
                   <div
                     key={item.id}
-                    className={`p-4 rounded-2xl border transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                      !hasProof 
-                        ? 'border-rose-300 bg-rose-50/40 dark:bg-rose-950/20' 
+                    className={`p-4 rounded-2xl border transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${!hasProof
+                        ? 'border-rose-300 bg-rose-50/40 dark:bg-rose-950/20'
                         : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 hover:border-emerald-300'
-                    }`}
+                      }`}
                   >
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -710,7 +700,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl animate-fade-in overflow-hidden">
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
               <div>
@@ -1037,9 +1027,9 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
                           <span>
                             {itemCategory.startsWith('B.2') ? 'Publications' :
-                             itemCategory.startsWith('B.3') ? 'Research' :
-                             itemCategory.startsWith('B.4') ? 'Recognition / Awards' :
-                             itemCategory.startsWith('B.5') ? 'Materials' : 'Creative Work'}
+                              itemCategory.startsWith('B.3') ? 'Research' :
+                                itemCategory.startsWith('B.4') ? 'Recognition / Awards' :
+                                  itemCategory.startsWith('B.5') ? 'Materials' : 'Creative Work'}
                           </span>
                           {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
                         </label>
@@ -1168,14 +1158,6 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           }}
         />
       )}
-
-      {/* Portfolio Booklet View Presenter Modal */}
-      <PersonnelPortfolioBookletModal
-        isOpen={isCanvaViewOpen}
-        onClose={() => setIsCanvaViewOpen(false)}
-        portfolio={portfolio}
-        user={activeUser}
-      />
     </>
   )
 }

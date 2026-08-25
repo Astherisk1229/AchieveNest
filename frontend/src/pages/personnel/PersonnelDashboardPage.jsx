@@ -90,7 +90,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
         <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
         <OrganizationModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
-      ) : activeRoleContext === 'department_secretary' && activeTabParam !== 'faculty_view' ? (
+      ) : (activeRoleContext === 'dean' || activeRoleContext === 'department_secretary') && activeTabParam !== 'faculty_view' ? (
         <DepartmentSecretaryDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">

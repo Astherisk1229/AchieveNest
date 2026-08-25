@@ -69,9 +69,9 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   // Personnel role options for role switcher
   const allPersonnelRoles = [
     { id: 'personnel', label: 'Personnel / Faculty View', icon: UserCheck },
+    { id: 'dean', label: 'Dean View', icon: Building2 },
     { id: 'program_coordinator', label: 'Program Coordinator View', icon: ShieldCheck },
-    { id: 'organization_moderator', label: 'Organization Moderator View', icon: Users },
-    { id: 'department_secretary', label: 'Dean (Dep Sec) View', icon: Building2 }
+    { id: 'organization_moderator', label: 'Organization Moderator View', icon: Users }
   ]
 
   // Filter switch roles for personnel demo
@@ -82,8 +82,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     if (accountType === 'hr_admin') return 'HR Admin'
     if (accountType === 'osad_admin') return 'OSAD Admin'
     if (accountType === 'student') return 'Student'
+    if (activeRoleContext === 'dean') return 'Dean'
     if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
-    if (activeRoleContext === 'department_secretary') return 'Dean (Dep Sec)'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
     if (activeRoleContext === 'personnel') return 'Personnel / Faculty'
     return 'Personnel'

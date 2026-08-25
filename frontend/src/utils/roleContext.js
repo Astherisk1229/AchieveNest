@@ -18,7 +18,7 @@ export const CANONICAL_ROLES = {
   PERSONNEL: 'personnel',
   PROGRAM_COORDINATOR: 'program_coordinator',
   ORGANIZATION_MODERATOR: 'organization_moderator',
-  DEPARTMENT_SECRETARY: 'department_secretary',
+  DEAN: 'dean',
   HR_STAFF: 'hr_staff',
   OSAD_STAFF: 'osad_staff',
   STUDENT: 'student'
@@ -71,11 +71,12 @@ export function normalizeRoleContext(roleStr = '') {
     case 'moderator':
       return CANONICAL_ROLES.ORGANIZATION_MODERATOR
 
+    case 'dean':
     case 'department_secretary':
     case 'dept_secretary':
     case 'dep_sec':
     case 'secretary':
-      return CANONICAL_ROLES.DEPARTMENT_SECRETARY
+      return CANONICAL_ROLES.DEAN
 
     case 'hr_staff':
     case 'hr':
@@ -105,7 +106,7 @@ export function getValidRolesForAccountType(accountType = '') {
     case CANONICAL_ACCOUNT_TYPES.PERSONNEL:
       return [
         CANONICAL_ROLES.PERSONNEL,
-        CANONICAL_ROLES.DEPARTMENT_SECRETARY,
+        CANONICAL_ROLES.DEAN,
         CANONICAL_ROLES.PROGRAM_COORDINATOR,
         CANONICAL_ROLES.ORGANIZATION_MODERATOR
       ]

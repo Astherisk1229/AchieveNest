@@ -27,8 +27,8 @@ export default function Sidebar({ currentUser }) {
         return { label: 'Program Coordinator Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Program Coordinator Portal' }
       case 'organization_moderator':
         return { label: 'Organization Moderator Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Organization Moderator Portal' }
-      case 'department_secretary':
-        return { label: 'Department Secretary Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Department Secretary Portal' }
+      case 'dean':
+        return { label: 'Dean Portal', path: '/personnel/dashboard?tab=overview', roleTitle: 'Dean Portal' }
       case 'hr_staff':
         return { label: 'HR Admin Portal', path: '/hr/dashboard', roleTitle: 'HR Admin Portal' }
       case 'osad_staff':

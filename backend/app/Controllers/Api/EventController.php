@@ -96,7 +96,7 @@ class EventController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'department_secretary', 'osad_staff'];
+        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'dean', 'osad_staff'];
         $hasRole = count(array_intersect($allowedOrganizerRoles, $actor['roles'])) > 0;
 
         if (! $hasRole) {
@@ -150,7 +150,7 @@ class EventController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'department_secretary', 'osad_staff'];
+        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'dean', 'osad_staff'];
         $hasRole = count(array_intersect($allowedOrganizerRoles, $actor['roles'])) > 0;
 
         if (! $hasRole) {

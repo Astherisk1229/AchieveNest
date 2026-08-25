@@ -41,8 +41,8 @@ export function getPortalRoutes(userOrRoleContext) {
     role = userOrRoleContext.active_role_context || userOrRoleContext.user_type || 'student'
   }
 
-  // Normalize assigned personnel roles (program_coordinator, department_secretary, org_moderator, etc.)
-  const personnelRoles = ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator']
+  // Normalize assigned personnel roles (program_coordinator, dean, org_moderator, etc.)
+  const personnelRoles = ['personnel', 'faculty', 'dean', 'program_coordinator', 'organization_moderator']
   if (personnelRoles.includes(role)) {
     return PORTAL_ROUTES.personnel
   }

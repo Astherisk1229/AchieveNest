@@ -85,7 +85,7 @@ const PERSONNEL_ROLES = [
   'personnel',
   'hr_staff',
   'osad_staff',
-  'department_secretary',
+  'dean',
   'program_coordinator',
   'organization_moderator'
 ]

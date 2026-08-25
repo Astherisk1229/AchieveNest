@@ -37,8 +37,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     'organization.attendance.manage',
     'organization.certificate.issue'
   ],
-  department_secretary: [
-    'department.portfolio.review'
+  dean: [
+    'college.faculty.review'
   ],
   hr_staff: [
     'hr.personnel.manage',

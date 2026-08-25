@@ -9,6 +9,17 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('health', 'Api\\HealthController::index');
     $routes->get('auth/me', 'Api\\AuthController::me');
     $routes->options('auth/me', 'Api\\AuthController::options');
+    $routes->post('auth/change-password', 'Api\\AuthController::changePassword');
+    $routes->options('auth/change-password', 'Api\\AuthController::options');
+
+    // Admin-Handled Password Reset Requests
+    $routes->post('password-reset-requests', 'Api\\PasswordResetRequestController::submit');
+    $routes->get('password-reset-requests', 'Api\\PasswordResetRequestController::list');
+    $routes->options('password-reset-requests', 'Api\\PasswordResetRequestController::options');
+    $routes->post('password-reset-requests/(:segment)/reset', 'Api\\PasswordResetRequestController::reset/$1');
+    $routes->options('password-reset-requests/(:segment)/reset', 'Api\\PasswordResetRequestController::options');
+    $routes->post('password-reset-requests/(:segment)/reject', 'Api\\PasswordResetRequestController::reject/$1');
+    $routes->options('password-reset-requests/(:segment)/reject', 'Api\\PasswordResetRequestController::options');
 
     // Personnel Role & Scope Management
     $routes->get('personnel/roles', 'Api\\PersonnelRoleController::index');

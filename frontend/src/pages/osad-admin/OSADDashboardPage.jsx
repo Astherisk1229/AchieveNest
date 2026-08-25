@@ -27,6 +27,7 @@ import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
 import OSADAwardCandidateReviewPage from './OSADAwardCandidateReviewPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
+import OSADPasswordResetRequestsPage from './OSADPasswordResetRequestsPage'
 
 export default function OSADDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -254,6 +255,10 @@ export default function OSADDashboardPage({ currentUser }) {
           auditLogs={auditLogs}
           refreshAuditLogs={refreshAuditLogs}
         />
+      )}
+
+      {activeTab === 'password-resets' && (
+        <OSADPasswordResetRequestsPage />
       )}
 
       {/* Personnel Selector Modal */}

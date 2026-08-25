@@ -109,7 +109,7 @@ describe('roleContext utility & navigation registry', () => {
   })
 
   describe('getAuthorizedNavigationForSession', () => {
-    it('returns strictly 5 HR items for HR Admin session (resolving empty sidebar bug)', () => {
+    it('returns strictly authorized HR items for HR Admin session including Password Resets', () => {
       const hrSession = {
         account_type: 'hr_admin',
         active_role_context: 'hr_staff',
@@ -123,7 +123,8 @@ describe('roleContext utility & navigation registry', () => {
         'Personnel Directory',
         'Evaluation Submissions',
         'HR Audit Trail',
-        'Rank Assignment Logs'
+        'Rank Assignment Logs',
+        'Password Resets'
       ])
       expect(labels).not.toContain('Personnel Dashboard')
       expect(labels).not.toContain('Dashboard Overview')

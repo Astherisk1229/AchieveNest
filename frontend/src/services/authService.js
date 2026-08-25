@@ -16,6 +16,12 @@ import {
 
 const STORAGE_KEY_USER = 'achievenest_current_user'
 
+function dispatchStorageEvent() {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new Event('storage'))
+  }
+}
+
 /**
  * Authenticate user with Supabase Auth and resolve profile + roles from CodeIgniter backend.
  */
@@ -92,9 +98,9 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     roles: user.roles || [],
     assigned_roles: authoritativeAssignedRoles,
     department_id: user.department_id || null,
-    degree_program_id: user.degree_program_id || null,
     designation: user.designation || null,
     year_level: user.year_level || null,
+    must_change_password: Boolean(user.must_change_password),
     token: accessToken,
     logged_in_at: new Date().toISOString(),
     rememberMe
@@ -106,7 +112,7 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sessionPayload))
   }
 
-  window.dispatchEvent(new Event('storage'))
+  dispatchStorageEvent()
   return sessionPayload
 }
 
@@ -192,7 +198,7 @@ export function updateUserRoleContext(newRoleContext) {
   if (session) sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
   if (!local && !session) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(raw))
 
-  window.dispatchEvent(new Event('storage'))
+  dispatchStorageEvent()
   return raw
 }
 
@@ -207,11 +213,11 @@ export async function logoutUser() {
   } catch (err) {
     console.warn('Supabase signOut notice:', err)
   }
-  window.dispatchEvent(new Event('storage'))
+  dispatchStorageEvent()
 }
 
 /**
- * Submits a self-service password reset request via Supabase Auth.
+ * Submits an administrator-handled password reset request via the backend API.
  */
 export async function requestPasswordReset(email) {
   const cleanEmail = String(email || '').trim().toLowerCase()
@@ -220,16 +226,41 @@ export async function requestPasswordReset(email) {
     throw new Error('Please enter a valid NDMU institutional email (@ndmu.edu.ph).')
   }
 
-  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-    redirectTo: `${window.location.origin}/reset-password`
+  const response = await apiClient.post('/password-reset-requests', {
+    institutional_email: cleanEmail
   })
-
-  if (error) {
-    throw new Error(error.message || 'Unable to send password reset email.')
-  }
 
   return {
     success: true,
-    message: 'Password reset instructions have been sent to your institutional email.'
+    message: response?.data?.message || 'If an eligible account exists, your password reset request has been submitted to the appropriate office.'
   }
 }
+
+/**
+ * Submits a mandatory password change for the authenticated user and clears must_change_password flag.
+ */
+export async function submitPasswordChange(newPassword, confirmPassword) {
+  const currentUser = getCurrentUser()
+  const token = currentUser?.token
+
+  const response = await apiClient.post('/auth/change-password', {
+    new_password: newPassword,
+    confirm_password: confirmPassword
+  }, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  })
+
+  // Update local session to clear must_change_password
+  if (currentUser) {
+    currentUser.must_change_password = false
+    const local = localStorage.getItem(STORAGE_KEY_USER)
+    const session = sessionStorage.getItem(STORAGE_KEY_USER)
+    if (local) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
+    if (session) sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
+    if (!local && !session) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
+    dispatchStorageEvent()
+  }
+
+  return response?.data || response
+}
+

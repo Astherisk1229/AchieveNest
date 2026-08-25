@@ -1,23 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { AwardCandidacyModel, CANDIDACY_ELIGIBILITY, CANDIDACY_CONFIRMATION } from '../AwardCandidacyModel'
+import { AwardCandidacyModel, CANDIDACY_STATUS, OSAD_DECISION } from '../AwardCandidacyModel'
 
 describe('AwardCandidacyModel', () => {
-  it('validates candidacy confirmability correctly', () => {
-    const qualified = { eligibilityStatus: CANDIDACY_ELIGIBILITY.QUALIFIED, confirmationStatus: CANDIDACY_CONFIRMATION.UNCONFIRMED }
-    expect(AwardCandidacyModel.isConfirmable(qualified, 'ready_for_review').eligible).toBe(true)
+  it('validates candidate advancement eligibility correctly', () => {
+    const qualified = { potentialCandidateStatus: CANDIDACY_STATUS.POTENTIAL_CANDIDATE, osadDecision: OSAD_DECISION.PENDING }
+    expect(AwardCandidacyModel.canAdvance(qualified, 'active').canAdvance).toBe(true)
 
-    const belowThreshold = { eligibilityStatus: CANDIDACY_ELIGIBILITY.BELOW_THRESHOLD }
-    expect(AwardCandidacyModel.isConfirmable(belowThreshold, 'ready_for_review').eligible).toBe(false)
-
-    const alreadyConfirmed = { eligibilityStatus: CANDIDACY_ELIGIBILITY.QUALIFIED, confirmationStatus: CANDIDACY_CONFIRMATION.CONFIRMED }
-    expect(AwardCandidacyModel.isConfirmable(alreadyConfirmed, 'ready_for_review').eligible).toBe(false)
+    expect(AwardCandidacyModel.canAdvance(qualified, 'published').canAdvance).toBe(false)
   })
 
-  it('sorts candidates deterministically by score, raw score, verified proofs, and name', () => {
+  it('sorts candidates deterministically by Stage 1 score, raw score, verified proofs, and name', () => {
     const candidates = [
-      { id: '1', student_name: 'Bob', weightedScore: 90, verified_proofs: 3 },
-      { id: '2', student_name: 'Alice', weightedScore: 95, verified_proofs: 4 },
-      { id: '3', student_name: 'Charlie', weightedScore: 90, verified_proofs: 5 }
+      { id: '1', student_name: 'Bob', stage1_score: 90, verified_proofs: 3 },
+      { id: '2', student_name: 'Alice', stage1_score: 95, verified_proofs: 4 },
+      { id: '3', student_name: 'Charlie', stage1_score: 90, verified_proofs: 5 }
     ]
 
     const sorted = AwardCandidacyModel.sortCandidatesDeterministic(candidates)
@@ -26,16 +22,16 @@ describe('AwardCandidacyModel', () => {
     expect(sorted[2].id).toBe('1') // score 90, proofs 3
   })
 
-  it('assigns global ranks while preserving individual objects', () => {
+  it('assigns Stage 1 ranks while preserving candidate properties', () => {
     const candidates = [
-      { id: '1', weightedScore: 80 },
-      { id: '2', weightedScore: 98 }
+      { id: '1', stage1_score: 80 },
+      { id: '2', stage1_score: 98 }
     ]
 
     const ranked = AwardCandidacyModel.assignGlobalRanks(candidates)
     expect(ranked[0].id).toBe('2')
-    expect(ranked[0].globalRank).toBe(1)
+    expect(ranked[0].stage1Rank).toBe(1)
     expect(ranked[1].id).toBe('1')
-    expect(ranked[1].globalRank).toBe(2)
+    expect(ranked[1].stage1Rank).toBe(2)
   })
 })

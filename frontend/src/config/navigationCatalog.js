@@ -361,7 +361,7 @@ export const NAVIGATION_CATALOG = [
     portal: 'osad',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.awardee.confirm']
+    requiredPermissions: ['osad.award_candidate.review']
   },
   {
     id: 'osad-certificate-templates',
@@ -375,15 +375,15 @@ export const NAVIGATION_CATALOG = [
     requiredPermissions: ['osad.certificate_template.manage']
   },
   {
-    id: 'osad-identify-awardees',
-    label: 'Identify Awardees',
+    id: 'osad-award-candidate-review',
+    label: 'Award Candidate Review',
     icon: Trophy,
-    path: '/osad/dashboard?tab=awardees',
-    tab: 'awardees',
+    path: '/osad/dashboard?tab=candidate-review',
+    tab: 'candidate-review',
     portal: 'osad',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.awardee.confirm']
+    requiredPermissions: ['osad.award_candidate.review']
   },
   {
     id: 'osad-accreditation-reports',

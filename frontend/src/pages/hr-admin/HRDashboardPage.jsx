@@ -16,7 +16,7 @@ import DepartmentSecretaryAssignmentModal from './modals/DepartmentSecretaryAssi
 import CreatePersonnelAccountModal from './modals/CreatePersonnelAccountModal'
 import HRPersonnelDirectory from './HRPersonnelDirectoryPage'
 import HREvaluationSubmissions from './HREvaluationSubmissionsPage'
-import HRFacultyEvaluationAndRanking from './HRFacultyEvaluationAndRankingPage'
+import HRFacultyEvaluationAndRanking from './HRFacultyEvaluationOversightPage'
 import HRAuditTrail from './HRAuditTrailPage'
 
 export function HRDashboard({ currentUser }) {

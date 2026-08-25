@@ -1,13 +1,16 @@
 import React from 'react'
-import { CheckSquare, X, ShieldCheck } from 'lucide-react'
+import { CheckSquare, X, ArrowRight, CheckCircle2 } from 'lucide-react'
 
-export function BatchConfirmationToolbar({
+export function BatchInterviewAdvancementToolbar({
   selectedCount,
   onSelectAllEligible,
   onClearSelection,
+  onOpenBatchAdvanceModal,
   onOpenBatchConfirmModal
 }) {
   if (selectedCount === 0) return null
+
+  const handleOpenModal = onOpenBatchAdvanceModal || onOpenBatchConfirmModal
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 dark:bg-slate-950 text-white rounded-2xl px-5 py-3 shadow-2xl border border-slate-800 flex items-center gap-4 animate-in slide-in-from-bottom duration-200 font-sans">
@@ -26,16 +29,16 @@ export function BatchConfirmationToolbar({
         className="text-xs font-extrabold text-slate-300 hover:text-white transition cursor-pointer flex items-center gap-1"
       >
         <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
-        <span>Select Visible Eligible</span>
+        <span>Select Potential Candidates</span>
       </button>
 
       <button
         type="button"
-        onClick={onOpenBatchConfirmModal}
+        onClick={handleOpenModal}
         className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-sm flex items-center gap-1.5"
       >
-        <ShieldCheck className="w-3.5 h-3.5" />
-        <span>Batch Confirm ({selectedCount})</span>
+        <CheckCircle2 className="w-3.5 h-3.5" />
+        <span>Batch Advance to Interview ({selectedCount})</span>
       </button>
 
       <button
@@ -50,4 +53,5 @@ export function BatchConfirmationToolbar({
   )
 }
 
-export default BatchConfirmationToolbar
+export const BatchConfirmationToolbar = BatchInterviewAdvancementToolbar
+export default BatchInterviewAdvancementToolbar

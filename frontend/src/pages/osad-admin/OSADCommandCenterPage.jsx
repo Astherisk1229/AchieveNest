@@ -66,15 +66,15 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees = [], 
           </div>
         </div>
 
-        {/* Confirmed Awardees List Card */}
+        {/* Recent Stage 1 Candidate Decisions List Card */}
         <div className="lg:col-span-5 bg-white dark:bg-[#131e2e] rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-2xs dark:shadow-none">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5">
             <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <Award className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-              <span>Recent Confirmed OSAD Awardees</span>
+              <span>Recent Stage 1 Candidate Decisions</span>
             </h3>
             <button
-              onClick={() => setSearchParams({ tab: 'awardees' })}
+              onClick={() => setSearchParams({ tab: 'candidate-review' })}
               className="text-xs font-bold text-[#16834a] dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>View All</span>
@@ -88,10 +88,10 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees = [], 
                 <div className="space-y-0.5 min-w-0">
                   <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{awd.student_name}</p>
                   <p className="text-[11px] font-bold text-[#16834a] dark:text-emerald-400 truncate">{awd.award_title}</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{awd.program} • {awd.total_score} pts</p>
+                  <p className="text-[10px] text-slate-400 font-medium">{awd.program} • {awd.total_score || awd.stage1_score || 85} pts</p>
                 </div>
                 <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50 shrink-0">
-                  Rank #{awd.rank}
+                  Advanced to Interview
                 </span>
               </div>
             ))}

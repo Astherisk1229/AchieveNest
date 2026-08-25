@@ -47,6 +47,8 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   osad_staff: [
     'osad.academic_structure.manage',
     'osad.certificate_template.manage',
+    'osad.award_candidate.review',
+    'osad.award_candidate.advance',
     'osad.awardee.confirm'
   ]
 }

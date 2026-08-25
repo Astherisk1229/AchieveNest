@@ -32,7 +32,7 @@ const PersonnelAchievementsPage = lazy(() => import('./pages/personnel/Personnel
 const HRDashboardPage = lazy(() => import('./pages/hr-admin/HRDashboardPage'))
 const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnelDirectoryPage'))
 const HREvaluationSubmissionsPage = lazy(() => import('./pages/hr-admin/HREvaluationSubmissionsPage'))
-const HRFacultyEvaluationAndRankingPage = lazy(() => import('./pages/hr-admin/HRFacultyEvaluationAndRankingPage'))
+const HRFacultyEvaluationAndRankingPage = lazy(() => import('./pages/hr-admin/HRFacultyEvaluationOversightPage'))
 const HRAuditTrailPage = lazy(() => import('./pages/hr-admin/HRAuditTrailPage'))
 const HRRankAssignmentLogsPage = lazy(() => import('./pages/hr-admin/HRRankAssignmentLogsPage'))
 

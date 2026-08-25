@@ -2,7 +2,7 @@ import React from 'react'
 import { Search, ShieldCheck, Award, Building, Download, CheckCircle2, TrendingUp } from 'lucide-react'
 import PersonnelPortfolioModel from '../../models/PersonnelPortfolioModel'
 
-export function HRFacultyEvaluationAndRankingPage({
+export function HRFacultyEvaluationOversightPage({
   portfolios = [],
   searchQuery,
   setSearchQuery,
@@ -198,5 +198,6 @@ export function HRFacultyEvaluationAndRankingPage({
   )
 }
 
-export const HRFacultyEvaluationAndRanking = HRFacultyEvaluationAndRankingPage
-export default HRFacultyEvaluationAndRankingPage
+export const HRFacultyEvaluationAndRankingPage = HRFacultyEvaluationOversightPage
+export const HRFacultyEvaluationAndRanking = HRFacultyEvaluationOversightPage
+export default HRFacultyEvaluationOversightPage

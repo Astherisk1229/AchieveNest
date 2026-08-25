@@ -25,6 +25,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('provisioning/manual-personnel', 'Api\\ProvisioningController::options');
     $routes->post('provisioning/preview-roster', 'Api\\ProvisioningController::previewRoster');
     $routes->options('provisioning/preview-roster', 'Api\\ProvisioningController::options');
+    $routes->post('provisioning/commit-roster', 'Api\\ProvisioningController::commitRoster');
+    $routes->options('provisioning/commit-roster', 'Api\\ProvisioningController::options');
 
     // Account Lifecycle & Audit History (Phase 5)
     $routes->post('accounts/(:segment)/suspend', 'Api\\AccountLifecycleController::suspend/$1');

@@ -16,8 +16,9 @@ import DepartmentSecretaryAssignmentModal from './modals/DepartmentSecretaryAssi
 import CreatePersonnelAccountModal from './modals/CreatePersonnelAccountModal'
 import HRPersonnelDirectory from './HRPersonnelDirectoryPage'
 import HREvaluationSubmissions from './HREvaluationSubmissionsPage'
-import HRFacultyEvaluationAndRanking from './HRFacultyEvaluationAndRankingPage'
+import HRFacultyEvaluationAndRanking from './HRFacultyEvaluationOversightPage'
 import HRAuditTrail from './HRAuditTrailPage'
+import HRPasswordResetRequests from './HRPasswordResetRequestsPage'
 
 export function HRDashboard({ currentUser }) {
   const hrUser = currentUser || { full_name: 'Director Evelyn Tan', email: 'hr@ndmu.edu.ph', employee_id: 'HR-2010-001' }
@@ -486,6 +487,11 @@ export function HRDashboard({ currentUser }) {
           handleExportFacultyMatrix={handleExportFacultyMatrix}
           exportCSV={exportCSV}
         />
+      )}
+
+      {/* ================= MODULE 6: PASSWORD RESETS ================= */}
+      {effectiveTab === 'password-resets' && (
+        <HRPasswordResetRequests />
       )}
 
       {/* ================= EDIT RANK MODAL ================= */}

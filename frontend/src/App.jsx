@@ -32,14 +32,16 @@ const PersonnelAchievementsPage = lazy(() => import('./pages/personnel/Personnel
 const HRDashboardPage = lazy(() => import('./pages/hr-admin/HRDashboardPage'))
 const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnelDirectoryPage'))
 const HREvaluationSubmissionsPage = lazy(() => import('./pages/hr-admin/HREvaluationSubmissionsPage'))
-const HRFacultyEvaluationAndRankingPage = lazy(() => import('./pages/hr-admin/HRFacultyEvaluationAndRankingPage'))
+const HRFacultyEvaluationAndRankingPage = lazy(() => import('./pages/hr-admin/HRFacultyEvaluationOversightPage'))
 const HRAuditTrailPage = lazy(() => import('./pages/hr-admin/HRAuditTrailPage'))
 const HRRankAssignmentLogsPage = lazy(() => import('./pages/hr-admin/HRRankAssignmentLogsPage'))
+const HRPasswordResetRequestsPage = lazy(() => import('./pages/hr-admin/HRPasswordResetRequestsPage'))
 
 const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
 const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
 const PublicCertificateVerificationPage = lazy(() => import('./pages/common/PublicCertificateVerificationPage'))
 const ResetPasswordPage = lazy(() => import('./pages/common/ResetPasswordPage'))
+const ChangePasswordPage = lazy(() => import('./pages/common/ChangePasswordPage'))
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -102,6 +104,10 @@ function LayoutShell({ allowedAccountTypes = [], requiredRoles = [] }) {
     return <Navigate to="/login" replace />
   }
 
+  if (currentUser.must_change_password) {
+    return <Navigate to="/change-password" replace />
+  }
+
   if (!RouteAccessController.isAllowedAccess(currentUser, allowedAccountTypes, requiredRoles)) {
     return <Navigate to={RouteAccessController.resolveRedirect(currentUser)} replace />
   }
@@ -130,6 +136,7 @@ function AppContent() {
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/reset-password" element={<Suspense fallback={<RouteLoadingFallback />}><ResetPasswordPage /></Suspense>} />
+            <Route path="/change-password" element={<Suspense fallback={<RouteLoadingFallback />}><ChangePasswordPage /></Suspense>} />
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/verify/certificate/:publicId" element={<Suspense fallback={<RouteLoadingFallback />}><PublicCertificateVerificationPage /></Suspense>} />
 
@@ -162,6 +169,7 @@ function AppContent() {
               <Route path="/hr/faculty-evaluation-and-ranking" element={<HRFacultyEvaluationAndRankingPage />} />
               <Route path="/hr/audit-trail" element={<HRAuditTrailPage />} />
               <Route path="/hr/rank-assignment-logs" element={<HRRankAssignmentLogsPage />} />
+              <Route path="/hr/password-resets" element={<HRPasswordResetRequestsPage />} />
               <Route path="/hr/account" element={<AccountPage />} />
               <Route path="/hr/settings" element={<SettingsPage />} />
 

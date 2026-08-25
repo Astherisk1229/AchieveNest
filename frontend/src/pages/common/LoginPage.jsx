@@ -228,7 +228,7 @@ export default function LoginPage() {
 
       </div>
 
-      {/* Password Reset Modal */}
+      {/* Password Reset Request Modal */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans text-slate-900">
@@ -240,7 +240,7 @@ export default function LoginPage() {
                   <KeyRound className="w-5 h-5 text-[#17663B]" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-[#17663B]">Reset Your Password</h3>
+                  <h3 className="font-extrabold text-base text-[#17663B]">Request Password Reset</h3>
                   <p className="text-xs text-[#356148] font-medium">NDMU Institutional Account Recovery</p>
                 </div>
               </div>
@@ -260,18 +260,17 @@ export default function LoginPage() {
                 <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#064e2b] border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
                   <CheckCircle2 className="w-6 h-6 text-[#064e2b]" />
                 </div>
-                <h4 className="text-base font-extrabold text-slate-900">Password Reset Email Sent</h4>
+                <h4 className="text-base font-extrabold text-slate-900">Password Reset Request Submitted</h4>
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  If an account exists for <strong>{forgotEmail}</strong>, password recovery instructions have been dispatched.
-                  Please check your inbox and follow the secure link to create a new password.
+                  Your request has been forwarded to the appropriate office for verification.
                 </p>
                 
-                {/* Fallback In-person Assistance Notice */}
+                {/* Office Routing Explanation */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-[11px] text-slate-600 text-left space-y-1">
-                  <span className="block font-bold text-slate-700">Didn't receive an email or cannot access your inbox?</span>
+                  <span className="block font-bold text-slate-700">How will I receive my temporary credentials?</span>
                   <p className="text-slate-500 leading-relaxed">
-                    • <strong>Students:</strong> Visit the <strong>OSAD Office</strong> for in-person identity verification and recovery.<br />
-                    • <strong>Personnel:</strong> Visit the <strong>HR Office</strong> for in-person identity verification.
+                    • <strong>Students:</strong> Verified and issued by the <strong>OSAD Office</strong>.<br />
+                    • <strong>Personnel:</strong> Verified and issued by the <strong>HR Office</strong>.
                   </p>
                 </div>
 
@@ -299,7 +298,7 @@ export default function LoginPage() {
                     await requestPasswordReset(clean)
                     setForgotSuccess(true)
                   } catch (err) {
-                    setForgotError(err.message || 'Unable to send password reset instructions. Please try again.')
+                    setForgotError(err.message || 'Unable to submit password reset request. Please try again.')
                   } finally {
                     setForgotSubmitting(false)
                   }
@@ -313,6 +312,10 @@ export default function LoginPage() {
                   </div>
                 )}
 
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Submit a password reset request using your NDMU institutional email. Your request will be forwarded to the appropriate office for verification.
+                </p>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1.5">
                     Institutional Email Address (@ndmu.edu.ph)
@@ -325,17 +328,14 @@ export default function LoginPage() {
                     placeholder="e.g. jdelacruz@ndmu.edu.ph"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#69A97C] focus:bg-white transition"
                   />
-                  <span className="block text-[11px] text-slate-400 mt-1">
-                    A secure password reset link will be sent to this email address.
-                  </span>
                 </div>
 
-                {/* Secondary In-Person Recovery Guidance Notice */}
+                {/* In-Person Recovery Guidance Notice */}
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-[11px] text-slate-600 space-y-1.5">
-                  <span className="block font-bold text-slate-700">Can't access your institutional email?</span>
+                  <span className="block font-bold text-slate-700">Office Verification Routing</span>
                   <div className="text-slate-500 leading-relaxed space-y-1">
-                    <p>• <strong>Students:</strong> Please visit <strong>OSAD</strong> for in-person account recovery assistance.</p>
-                    <p>• <strong>Personnel:</strong> Please visit <strong>HR</strong> for in-person account recovery assistance.</p>
+                    <p>• <strong>Students:</strong> Requests are processed by the <strong>OSAD Office</strong>.</p>
+                    <p>• <strong>Personnel:</strong> Requests are processed by the <strong>HR Office</strong>.</p>
                   </div>
                 </div>
 
@@ -343,16 +343,16 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setIsForgotModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={forgotSubmitting}
-                    className="px-5 py-2.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white text-xs font-extrabold transition cursor-pointer shadow-md disabled:opacity-50"
+                    className="px-5 py-2.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
                   >
-                    {forgotSubmitting ? 'Sending Reset Link...' : 'Send Password Reset Link'}
+                    {forgotSubmitting ? 'Submitting Request...' : 'Submit Request'}
                   </button>
                 </div>
               </form>

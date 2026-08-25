@@ -25,6 +25,9 @@ export default class RouteAccessController {
   }
 
   static resolveRedirect(userOrAccountType) {
+    if (typeof userOrAccountType === 'object' && userOrAccountType?.must_change_password) {
+      return '/change-password'
+    }
     const accountType = typeof userOrAccountType === 'object'
       ? (userOrAccountType?.account_type || userOrAccountType?.user_type || 'student')
       : userOrAccountType

@@ -1,10 +1,11 @@
 import React, { useState } from 'react'
 import { X, RotateCcw, AlertTriangle, ShieldAlert } from 'lucide-react'
 
-export function ConfirmationCorrectionModal({
+export function AdvancementDecisionCorrectionModal({
   candidate,
   isPublished = false,
   onClose,
+  onConfirmReverse,
   onConfirmUndo
 }) {
   const [reason, setReason] = useState('')
@@ -12,14 +13,18 @@ export function ConfirmationCorrectionModal({
 
   if (!candidate) return null
 
+  const handleExecute = onConfirmReverse || onConfirmUndo
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!reason.trim()) {
-      setError('A mandatory reason is required for administrative corrections.')
+      setError('A mandatory reason is required for administrative decision changes.')
       return
     }
 
-    onConfirmUndo(candidate.id, reason.trim())
+    if (handleExecute) {
+      handleExecute(candidate.candidacyId || candidate.id || candidate.studentId, reason.trim())
+    }
     onClose()
   }
 
@@ -32,7 +37,7 @@ export function ConfirmationCorrectionModal({
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-rose-200" />
             <h3 className="font-extrabold text-base">
-              {isPublished ? 'Revoke Confirmation' : 'Undo Confirmation'}
+              Reverse Advancement Decision
             </h3>
           </div>
           <button
@@ -47,7 +52,7 @@ export function ConfirmationCorrectionModal({
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           <p className="text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-            You are about to {isPublished ? 'revoke official confirmation' : 'undo confirmation'} for candidate{' '}
+            You are about to reverse the Stage 1 advancement decision for candidate{' '}
             <strong className="text-slate-900 dark:text-white">{candidate.student_name || candidate.name}</strong> ({candidate.program}).
           </p>
 
@@ -60,7 +65,7 @@ export function ConfirmationCorrectionModal({
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              Reason for Correction <span className="text-rose-500">*</span>
+              Reason for Decision Reversal <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
@@ -69,7 +74,7 @@ export function ConfirmationCorrectionModal({
                 setReason(e.target.value)
                 if (error) setError('')
               }}
-              placeholder="Provide a detailed administrative explanation for this correction..."
+              placeholder="Provide a detailed administrative explanation for reversing this decision..."
               className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-rose-500 transition"
             />
             {error && <p className="text-rose-500 font-extrabold text-[11px]">{error}</p>}
@@ -88,7 +93,7 @@ export function ConfirmationCorrectionModal({
               className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-extrabold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Confirm {isPublished ? 'Revocation' : 'Undo'}</span>
+              <span>Confirm Reversal</span>
             </button>
           </div>
         </form>
@@ -98,4 +103,5 @@ export function ConfirmationCorrectionModal({
   )
 }
 
-export default ConfirmationCorrectionModal
+export const ConfirmationCorrectionModal = AdvancementDecisionCorrectionModal
+export default AdvancementDecisionCorrectionModal

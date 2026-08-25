@@ -54,7 +54,7 @@ describe('permissionResolver', () => {
   })
 
   describe('getAuthorizedNavigation pre-render catalog filtering', () => {
-    it('returns strictly 5 HR items for HR Admin context', () => {
+    it('returns strictly authorized HR items for HR Admin context including Password Resets', () => {
       const session = {
         account_type: 'hr_admin',
         active_role_context: 'hr_staff',
@@ -68,7 +68,8 @@ describe('permissionResolver', () => {
         'Personnel Directory',
         'Evaluation Submissions',
         'HR Audit Trail',
-        'Rank Assignment Logs'
+        'Rank Assignment Logs',
+        'Password Resets'
       ])
       expect(labels).not.toContain('Dashboard Overview')
       expect(labels).not.toContain('OSAD Dashboard')

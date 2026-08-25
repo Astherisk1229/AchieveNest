@@ -1,5 +1,5 @@
 import React from 'react'
-import { Trophy, Award, CheckCircle2, ChevronRight, Users, ShieldCheck, ArrowRight } from 'lucide-react'
+import { Trophy, Award, ArrowRight } from 'lucide-react'
 
 export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
   if (!summaries || summaries.length === 0) {
@@ -15,14 +15,14 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
       <div className="flex items-center justify-between px-1">
         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
           <Trophy className="w-3.5 h-3.5 text-[#16834a]" />
-          <span>Award Category Overview Summaries ({summaries.length})</span>
+          <span>Award Category Stage 1 Overview ({summaries.length})</span>
         </h3>
-        <span className="text-[11px] font-bold text-slate-400">Independent category leaderboards & scores</span>
+        <span className="text-[11px] font-bold text-slate-400">Independent category criteria & Stage 1 scores</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {summaries.map((cat) => {
-          const leader = cat.leader
+          const leader = cat.highestCandidate || cat.leader
 
           return (
             <div
@@ -56,8 +56,8 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
                 {leader ? (
                   <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] uppercase font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                        <span>🥇</span> Category Leader (#1)
+                      <span className="text-[10px] uppercase font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                        <span>⭐</span> Highest Stage 1 Score (#1)
                       </span>
                       <h5 className="font-extrabold text-xs text-slate-900 dark:text-white mt-0.5">
                         {leader.student_name}
@@ -75,7 +75,7 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
                   </div>
                 ) : (
                   <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-400 text-xs font-medium">
-                    No qualified candidates yet.
+                    No potential candidates surfaced yet.
                   </div>
                 )}
 
@@ -84,9 +84,9 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
               {/* Card Footer */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3 text-slate-500 font-bold">
-                  <span>{cat.qualifiedCount} Qualified</span>
+                  <span>{cat.potentialCandidateCount ?? cat.qualifiedCount ?? 0} Potential Candidates</span>
                   <span>•</span>
-                  <span>{cat.confirmedCount} / {cat.recipientLimit || 1} Confirmed</span>
+                  <span>{cat.advancedCount ?? cat.confirmedCount ?? 0} Advanced to Interview</span>
                 </div>
 
                 <button
@@ -94,7 +94,7 @@ export function CategoryOverviewCards({ summaries = [], onSelectCategory }) {
                   onClick={() => onSelectCategory && onSelectCategory(cat.categoryTitle)}
                   className="px-3 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1"
                 >
-                  <span>Open Leaderboard</span>
+                  <span>Review Candidates</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>

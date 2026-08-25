@@ -99,6 +99,34 @@ class SupabaseAdminAuthService
     }
 
     /**
+     * Updates a user's password via the backend Supabase Admin API.
+     *
+     * @param string $userId Supabase Auth UUID
+     * @param string $newPassword
+     * @return array
+     * @throws RuntimeException
+     */
+    public function updateUserPassword(string $userId, string $newPassword): array
+    {
+        $authId = trim($userId);
+        if ($authId === '' || ! $this->isConfigured()) {
+            throw new RuntimeException('Supabase URL or Service Role Key is not configured for administrative auth operations.');
+        }
+
+        if (trim($newPassword) === '') {
+            throw new RuntimeException('Password cannot be empty.');
+        }
+
+        $endpoint = $this->projectUrl . '/auth/v1/admin/users/' . urlencode($authId);
+
+        $payload = [
+            'password' => $newPassword,
+        ];
+
+        return $this->sendRequest('PUT', $endpoint, $payload);
+    }
+
+    /**
      * Sends an HTTP request to the Supabase Admin endpoint.
      */
     protected function sendRequest(string $method, string $url, ?array $body = null): array

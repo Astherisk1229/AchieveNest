@@ -7,7 +7,7 @@ import VerificationQueueToolbar from './evaluation-submissions/queue/Verificatio
 import PortfolioSubmissionRow from './evaluation-submissions/queue/PortfolioSubmissionRow'
 import PortfolioEvaluationStudio from './evaluation-submissions/evaluation/PortfolioEvaluationStudio'
 import ReturnForRevisionModal from './evaluation-submissions/evaluation/actions/ReturnForRevisionModal'
-import FinalizeEvaluationModal from './evaluation-submissions/evaluation/actions/FinalizeVerificationModal'
+import FinalizeEvaluationModal from './evaluation-submissions/evaluation/actions/FinalizeEvaluationModal'
 
 export function HREvaluationSubmissionsPage(props) {
   const hrHook = useHR()

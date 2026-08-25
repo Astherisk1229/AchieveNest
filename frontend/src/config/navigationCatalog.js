@@ -23,7 +23,8 @@ import {
   User,
   GraduationCap,
   Trophy,
-  FileSpreadsheet
+  FileSpreadsheet,
+  KeyRound
 } from 'lucide-react'
 import { CANONICAL_ROLES, CANONICAL_ACCOUNT_TYPES } from '../utils/roleContext'
 
@@ -304,6 +305,16 @@ export const NAVIGATION_CATALOG = [
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.evaluation.manage']
   },
+  {
+    id: 'hr-password-resets',
+    label: 'Password Resets',
+    icon: KeyRound,
+    path: '/hr/password-resets',
+    portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
+    requiredPermissions: ['hr.personnel.manage']
+  },
 
   // ==========================================
   // 7. OSAD STAFF NAVIGATION
@@ -361,7 +372,7 @@ export const NAVIGATION_CATALOG = [
     portal: 'osad',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.awardee.confirm']
+    requiredPermissions: ['osad.award_candidate.review']
   },
   {
     id: 'osad-certificate-templates',
@@ -375,15 +386,15 @@ export const NAVIGATION_CATALOG = [
     requiredPermissions: ['osad.certificate_template.manage']
   },
   {
-    id: 'osad-identify-awardees',
-    label: 'Identify Awardees',
+    id: 'osad-award-candidate-review',
+    label: 'Award Candidate Review',
     icon: Trophy,
-    path: '/osad/dashboard?tab=awardees',
-    tab: 'awardees',
+    path: '/osad/dashboard?tab=candidate-review',
+    tab: 'candidate-review',
     portal: 'osad',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.awardee.confirm']
+    requiredPermissions: ['osad.award_candidate.review']
   },
   {
     id: 'osad-accreditation-reports',
@@ -402,6 +413,17 @@ export const NAVIGATION_CATALOG = [
     icon: ShieldCheck,
     path: '/osad/dashboard?tab=audit',
     tab: 'audit',
+    portal: 'osad',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
+    requiredPermissions: ['osad.academic_structure.manage']
+  },
+  {
+    id: 'osad-password-resets',
+    label: 'Password Resets',
+    icon: KeyRound,
+    path: '/osad/dashboard?tab=password-resets',
+    tab: 'password-resets',
     portal: 'osad',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],

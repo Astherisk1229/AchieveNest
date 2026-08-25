@@ -23,15 +23,16 @@ import OSADCommandCenterPage from './OSADCommandCenterPage'
 import OSADStudentAccountsPage from './OSADStudentAccountsPage'
 import OSADDepartmentsProgramsPage from './OSADDepartmentsProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
-import OSADAwardCategoriesPage from './OSADAwardCategoriesPage'
 import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
-import OSADIdentifyAwardeesPage from './OSADIdentifyAwardeesPage'
+import OSADAwardCandidateReviewPage from './OSADAwardCandidateReviewPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
+import OSADPasswordResetRequestsPage from './OSADPasswordResetRequestsPage'
 
 export default function OSADDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') || 'overview'
+  const rawTab = searchParams.get('tab') || 'overview'
+  const activeTab = rawTab === 'awardees' ? 'candidate-review' : rawTab
 
   const {
     metrics,
@@ -223,13 +224,17 @@ export default function OSADDashboardPage({ currentUser }) {
         <OSADCertificateTemplatesPage />
       )}
 
-      {activeTab === 'awardees' && (
-        <OSADIdentifyAwardeesPage
+      {(activeTab === 'candidate-review' || activeTab === 'awardees') && (
+        <OSADAwardCandidateReviewPage
           awardCategories={awardCategories}
           awardees={awardees}
+          candidateDecisions={awardees}
           getUsers={getUsers}
           getStudentLeaderboards={getStudentLeaderboards}
           generateAwardCandidates={generateAwardCandidates}
+          advanceCandidateToInterview={confirmAwardee}
+          doNotAdvanceCandidate={undoAwardeeConfirmation}
+          reverseAdvancementDecision={undoAwardeeConfirmation}
           confirmAwardee={confirmAwardee}
           batchConfirmAwardees={batchConfirmAwardees}
           undoAwardeeConfirmation={undoAwardeeConfirmation}
@@ -250,6 +255,10 @@ export default function OSADDashboardPage({ currentUser }) {
           auditLogs={auditLogs}
           refreshAuditLogs={refreshAuditLogs}
         />
+      )}
+
+      {activeTab === 'password-resets' && (
+        <OSADPasswordResetRequestsPage />
       )}
 
       {/* Personnel Selector Modal */}

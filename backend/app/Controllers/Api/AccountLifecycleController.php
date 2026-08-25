@@ -2,14 +2,20 @@
 
 namespace App\Controllers\Api;
 
-use App\Services\SupabaseAuthService;
+use App\Services\AuthenticatedActorService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
-use Throwable;
 
 class AccountLifecycleController extends Controller
 {
     use ResponseTrait;
+
+    protected AuthenticatedActorService $actorService;
+
+    public function __construct(?AuthenticatedActorService $actorService = null)
+    {
+        $this->actorService = $actorService ?? new AuthenticatedActorService();
+    }
 
     public function options()
     {
@@ -18,46 +24,7 @@ class AccountLifecycleController extends Controller
 
     protected function resolveActor(): ?array
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
-        if ($authorization === '' || ! preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
-            return null;
-        }
-
-        $token = trim($matches[1]);
-
-        try {
-            $claims = (new SupabaseAuthService())->verifyAccessToken($token);
-        } catch (Throwable) {
-            return null;
-        }
-
-        $authUserId = (string) ($claims->sub ?? '');
-        if ($authUserId === '') {
-            return null;
-        }
-
-        $db = db_connect();
-        $profile = $db->table('public.profiles')
-            ->where('id', $authUserId)
-            ->get()
-            ->getRowArray();
-
-        if ($profile === null || ($profile['status'] ?? '') !== 'active') {
-            return null;
-        }
-
-        $roles = $db->query(
-            'SELECT r.role_key
-             FROM public.profile_roles pr
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.profile_id = ? AND pr.is_active = true',
-            [$authUserId]
-        )->getResultArray();
-
-        return [
-            'profile' => $profile,
-            'roles'   => array_column($roles, 'role_key'),
-        ];
+        return $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
     }
 
     /**
@@ -102,6 +69,15 @@ class AccountLifecycleController extends Controller
         $authErr = $this->checkLifecycleAuthority($actor, $target);
         if ($authErr !== null) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => $authErr]], 403);
+        }
+
+        // Validate state transition
+        $currentStatus = $target['status'] ?? 'active';
+        if ($currentStatus === 'suspended') {
+            return $this->respond(['error' => ['code' => 'INVALID_STATE_TRANSITION', 'message' => 'Account is already suspended.']], 422);
+        }
+        if ($currentStatus === 'archived') {
+            return $this->respond(['error' => ['code' => 'INVALID_STATE_TRANSITION', 'message' => 'Archived accounts cannot be directly suspended. Restore first if necessary.']], 422);
         }
 
         $json = $this->request->getJSON(true) ?? [];
@@ -152,6 +128,12 @@ class AccountLifecycleController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => $authErr]], 403);
         }
 
+        // Validate state transition
+        $currentStatus = $target['status'] ?? 'active';
+        if ($currentStatus === 'archived') {
+            return $this->respond(['error' => ['code' => 'INVALID_STATE_TRANSITION', 'message' => 'Account is already archived.']], 422);
+        }
+
         $json = $this->request->getJSON(true) ?? [];
         $reason = trim((string) ($json['reason'] ?? 'Administrative archive'));
 
@@ -198,6 +180,12 @@ class AccountLifecycleController extends Controller
         $authErr = $this->checkLifecycleAuthority($actor, $target);
         if ($authErr !== null) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => $authErr]], 403);
+        }
+
+        // Validate state transition
+        $currentStatus = $target['status'] ?? 'active';
+        if ($currentStatus === 'active') {
+            return $this->respond(['error' => ['code' => 'INVALID_STATE_TRANSITION', 'message' => 'Account is already active.']], 422);
         }
 
         $db->table('public.profiles')->where('id', $targetId)->update([
@@ -247,7 +235,7 @@ class AccountLifecycleController extends Controller
 
         $events = $db->table('public.account_lifecycle_events')
             ->where('profile_id', $targetId)
-            ->orderBy('created_at', 'DESC')
+            ->orderBy('occurred_at', 'DESC')
             ->get()
             ->getResultArray();
 

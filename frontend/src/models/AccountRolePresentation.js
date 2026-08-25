@@ -106,7 +106,7 @@ export function getAccountRolePresentation(userOrRole) {
     roleKey = userOrRole.active_role_context || userOrRole.user_type || 'student'
   }
 
-  const personnelRoles = ['personnel', 'faculty', 'department_secretary', 'program_coordinator', 'organization_moderator']
+  const personnelRoles = ['personnel', 'faculty', 'dean', 'program_coordinator', 'organization_moderator']
   if (personnelRoles.includes(roleKey)) {
     return ACCOUNT_ROLE_PRESENTATIONS.personnel
   }

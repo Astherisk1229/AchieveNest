@@ -73,11 +73,11 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
   const cleanEmail = user.institutional_email || emailFallback
 
   // Determine authoritative account type & assigned roles
-  const userRoles = (user.roles || []).map(r => (typeof r === 'object' ? r.role_key : r))
+  const userRoles = (user.roles || []).map(r => (typeof r === 'object' ? r.role_key : r)).map(r => normalizeRoleContext(r))
   const accountType = normalizeAccountType(user.account_type || (userRoles.includes('student') ? 'student' : 'personnel'))
-  const activeRoleContext = resolveDefaultActiveRole(accountType, userRoles)
+  const authoritativeAssignedRoles = normalizeAssignedRoles(userRoles, accountType)
+  const activeRoleContext = resolveDefaultActiveRole(accountType, authoritativeAssignedRoles)
 
-  const allPersonnelRoles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
   const sessionPayload = {
     ...user,
     id: user.id,
@@ -90,9 +90,7 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     status: user.status || 'active',
     active_role_context: activeRoleContext,
     roles: user.roles || [],
-    assigned_roles: accountType === 'personnel'
-      ? Array.from(new Set([...userRoles, ...allPersonnelRoles]))
-      : (userRoles.length > 0 ? userRoles : (activeRoleContext ? [activeRoleContext] : [])),
+    assigned_roles: authoritativeAssignedRoles,
     department_id: user.department_id || null,
     degree_program_id: user.degree_program_id || null,
     designation: user.designation || null,
@@ -133,12 +131,9 @@ export function getCurrentUser() {
   raw.user_type = raw.account_type
 
   const rawAssigned = Array.isArray(raw.assigned_roles || raw.roles) ? (raw.assigned_roles || raw.roles) : []
-  raw.assigned_roles = rawAssigned
-    .map(r => (typeof r === 'object' ? r.role_key : r))
-    .filter(Boolean)
-    .map(r => normalizeRoleContext(r))
+  raw.assigned_roles = normalizeAssignedRoles(rawAssigned, raw.account_type)
 
-  // Validate active_role_context: must be valid for account_type and present in assigned_roles
+  // Validate active_role_context: must be valid for account_type and present in authoritative assigned_roles
   const isCurrentActiveValid = raw.active_role_context &&
     isValidAccountRoleCombination(raw.account_type, raw.active_role_context) &&
     raw.assigned_roles.includes(normalizeRoleContext(raw.active_role_context))
@@ -181,12 +176,15 @@ export function updateUserRoleContext(newRoleContext) {
     return raw
   }
 
-  const allPersonnelRoles = ['personnel', 'department_secretary', 'program_coordinator', 'organization_moderator']
-  const existingAssigned = (Array.isArray(raw.assigned_roles || raw.roles) ? (raw.assigned_roles || raw.roles) : [])
-    .map(r => (typeof r === 'object' ? r.role_key : r))
-    .map(r => normalizeRoleContext(r))
+  const existingAssigned = normalizeAssignedRoles(raw.assigned_roles || raw.roles, raw.account_type)
 
-  raw.assigned_roles = Array.from(new Set([...existingAssigned, ...allPersonnelRoles, normNewRole]))
+  // Confirm requested role is present in authoritative assigned_roles
+  if (!existingAssigned.includes(normNewRole)) {
+    console.warn(`Role switch rejected: ${normNewRole} is not assigned to this personnel account.`)
+    return raw
+  }
+
+  raw.assigned_roles = existingAssigned
   raw.active_role_context = normNewRole
   AuthController.updateUserRoleContext(normNewRole)
 

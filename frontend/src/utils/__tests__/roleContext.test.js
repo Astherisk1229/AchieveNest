@@ -29,7 +29,9 @@ describe('roleContext utility & navigation registry', () => {
   describe('normalizeRoleContext', () => {
     it('normalizes legacy aliases to canonical identifiers', () => {
       expect(normalizeRoleContext('faculty')).toBe(CANONICAL_ROLES.PERSONNEL)
-      expect(normalizeRoleContext('dep_sec')).toBe(CANONICAL_ROLES.DEPARTMENT_SECRETARY)
+      expect(normalizeRoleContext('dean')).toBe(CANONICAL_ROLES.DEAN)
+      expect(normalizeRoleContext('dep_sec')).toBe(CANONICAL_ROLES.DEAN)
+      expect(normalizeRoleContext('department_secretary')).toBe(CANONICAL_ROLES.DEAN)
       expect(normalizeRoleContext('org_moderator')).toBe(CANONICAL_ROLES.ORGANIZATION_MODERATOR)
       expect(normalizeRoleContext('coordinator')).toBe(CANONICAL_ROLES.PROGRAM_COORDINATOR)
       expect(normalizeRoleContext('hr_staff')).toBe(CANONICAL_ROLES.HR_STAFF)
@@ -42,7 +44,7 @@ describe('roleContext utility & navigation registry', () => {
     it('returns valid roles for each account type', () => {
       expect(getValidRolesForAccountType('student')).toEqual(['student'])
       expect(getValidRolesForAccountType('personnel')).toEqual([
-        'personnel', 'department_secretary', 'program_coordinator', 'organization_moderator'
+        'personnel', 'dean', 'program_coordinator', 'organization_moderator'
       ])
       expect(getValidRolesForAccountType('hr_admin')).toEqual(['hr_staff'])
       expect(getValidRolesForAccountType('osad_admin')).toEqual(['osad_staff'])
@@ -54,13 +56,17 @@ describe('roleContext utility & navigation registry', () => {
       expect(isValidAccountRoleCombination('osad_admin', 'osad_staff')).toBe(true)
       expect(isValidAccountRoleCombination('student', 'student')).toBe(true)
       expect(isValidAccountRoleCombination('personnel', 'personnel')).toBe(true)
+      expect(isValidAccountRoleCombination('personnel', 'dean')).toBe(true)
       expect(isValidAccountRoleCombination('personnel', 'program_coordinator')).toBe(true)
 
       // Invalid combinations (Defense against privilege crossover)
       expect(isValidAccountRoleCombination('hr_admin', 'personnel')).toBe(false)
+      expect(isValidAccountRoleCombination('hr_admin', 'dean')).toBe(false)
       expect(isValidAccountRoleCombination('hr_admin', 'osad_staff')).toBe(false)
       expect(isValidAccountRoleCombination('osad_admin', 'personnel')).toBe(false)
+      expect(isValidAccountRoleCombination('osad_admin', 'dean')).toBe(false)
       expect(isValidAccountRoleCombination('osad_admin', 'hr_staff')).toBe(false)
+      expect(isValidAccountRoleCombination('student', 'dean')).toBe(false)
       expect(isValidAccountRoleCombination('student', 'hr_staff')).toBe(false)
       expect(isValidAccountRoleCombination('personnel', 'hr_staff')).toBe(false)
       expect(isValidAccountRoleCombination('personnel', 'osad_staff')).toBe(false)

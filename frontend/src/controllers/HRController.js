@@ -25,7 +25,7 @@ const DEFAULT_PERSONNEL = [
     employment_status: 'Full-Time Permanent',
     tenure_years: 9,
     verified_accomplishments_count: 14,
-    assigned_roles: ['program_coordinator', 'organization_moderator', 'department_secretary'],
+    assigned_roles: ['program_coordinator', 'organization_moderator', 'dean'],
     avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150'
   },
   {
@@ -67,7 +67,7 @@ const DEFAULT_PERSONNEL = [
     employment_status: 'Full-Time Permanent',
     tenure_years: 15,
     verified_accomplishments_count: 31,
-    assigned_roles: ['department_secretary'],
+    assigned_roles: ['dean'],
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
   },
   {
@@ -256,23 +256,27 @@ class HRController {
     return updated.map(item => new PersonnelEntity(item))
   }
 
-  assignDepartmentSecretary(id, departmentName) {
+  assignDean(id, collegeName) {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY_PERSONNEL) || '[]')
     let targetName = ''
     const updated = raw.map(p => {
       if (p.id === id) {
         targetName = p.full_name
         const roles = Array.isArray(p.assigned_roles) ? p.assigned_roles : []
-        if (!roles.includes('department_secretary')) {
-          roles.push('department_secretary')
+        if (!roles.includes('dean')) {
+          roles.push('dean')
         }
-        return { ...p, department: departmentName || p.department, assigned_roles: roles }
+        return { ...p, college: collegeName || p.college, assigned_roles: roles }
       }
       return p
     })
     localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(updated))
-    this.logAudit('ROLE_ASSIGNMENT', targetName, `Assigned as Department Secretary for ${departmentName}.`)
+    this.logAudit('ROLE_ASSIGNMENT', targetName, `Assigned as Dean for ${collegeName}.`)
     return updated.map(item => new PersonnelEntity(item))
+  }
+
+  assignDepartmentSecretary(id, departmentName) {
+    return this.assignDean(id, departmentName)
   }
 
   revokePersonnelRole(id, roleKey) {

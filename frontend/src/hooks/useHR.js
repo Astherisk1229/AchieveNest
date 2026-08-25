@@ -140,6 +140,7 @@ export function useHR() {
   const directHRQueue = accomplishments.filter(a => {
     const submitter = personnelList.find(p => p.employee_id === a.faculty_id || p.full_name === a.faculty_name)
     const isOfficialOrSec = submitter && (
+      (submitter.assigned_roles || []).includes('dean') ||
       (submitter.assigned_roles || []).includes('department_secretary') ||
       (submitter.assigned_roles || []).includes('program_coordinator') ||
       submitter.academic_rank.includes('Professor') ||

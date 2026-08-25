@@ -71,7 +71,7 @@ class VerificationQueueController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $verifierRoles = ['department_secretary', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff'];
+        $verifierRoles = ['dean', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff'];
         $hasVerifierRole = count(array_intersect($verifierRoles, $actor['roles'])) > 0;
 
         if (! $hasVerifierRole) {
@@ -109,7 +109,7 @@ class VerificationQueueController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $verifierRoles = ['department_secretary', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff'];
+        $verifierRoles = ['dean', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff'];
         $hasVerifierRole = count(array_intersect($verifierRoles, $actor['roles'])) > 0;
 
         if (! $hasVerifierRole) {

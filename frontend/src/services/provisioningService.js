@@ -17,6 +17,14 @@ export const provisioningService = {
       rows
     })
     return res?.data || res
+  },
+
+  async commitRoster(rosterType, rows) {
+    const res = await apiClient.post('/provisioning/commit-roster', {
+      roster_type: rosterType,
+      rows
+    })
+    return res?.data || res
   }
 }
 

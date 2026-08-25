@@ -97,7 +97,7 @@ class PersonnelRoleController extends Controller
 
         $allowedRoleKeys = [];
         if ($isHr) {
-            $allowedRoleKeys[] = 'department_secretary';
+            $allowedRoleKeys[] = 'dean';
         }
         if ($isOsad) {
             $allowedRoleKeys[] = 'program_coordinator';
@@ -158,11 +158,11 @@ class PersonnelRoleController extends Controller
         $reason = trim((string) ($json['reason'] ?? 'Specialized role appointment'));
 
         // Check assignment authority per governance rules
-        if ($roleKey === 'department_secretary' && ! $isHr) {
+        if ($roleKey === 'dean' && ! $isHr) {
             return $this->respond([
                 'error' => [
                     'code'    => 'FORBIDDEN_ROLE_ASSIGNMENT',
-                    'message' => 'Only HR administrators may assign the department_secretary role.',
+                    'message' => 'Only HR administrators may assign the dean role.',
                 ],
             ], 403);
         }
@@ -176,7 +176,7 @@ class PersonnelRoleController extends Controller
             ], 403);
         }
 
-        if (! in_array($roleKey, ['department_secretary', 'program_coordinator', 'organization_moderator'], true)) {
+        if (! in_array($roleKey, ['dean', 'program_coordinator', 'organization_moderator'], true)) {
             return $this->respond([
                 'error' => [
                     'code'    => 'INVALID_ROLE_KEY',
@@ -236,25 +236,22 @@ class PersonnelRoleController extends Controller
         }
 
         // Validate scope compatibility
-        if ($roleKey === 'department_secretary') {
-            $scopeType = 'department';
-            if ($scopeId === null && ! empty($targetProfile['department_id'])) {
-                $scopeId = $targetProfile['department_id'];
-            }
+        if ($roleKey === 'dean') {
+            $scopeType = 'college';
             if ($scopeId === null) {
                 return $this->respond([
                     'error' => [
                         'code'    => 'MISSING_SCOPE',
-                        'message' => 'Department scope_id is required for Department Secretary assignment.',
+                        'message' => 'College scope_id is required for Dean assignment.',
                     ],
                 ], 422);
             }
-            $depExists = $db->table('public.departments')->where('id', $scopeId)->countAllResults();
-            if ($depExists === 0) {
+            $collegeExists = $db->table('public.colleges')->where('id', $scopeId)->countAllResults();
+            if ($collegeExists === 0) {
                 return $this->respond([
                     'error' => [
                         'code'    => 'INVALID_SCOPE',
-                        'message' => 'Specified department scope does not exist.',
+                        'message' => 'Specified college scope does not exist.',
                     ],
                 ], 422);
             }
@@ -277,6 +274,16 @@ class PersonnelRoleController extends Controller
                     'error' => [
                         'code'    => 'INVALID_SCOPE',
                         'message' => 'Specified degree program scope does not exist.',
+                    ],
+                ], 422);
+            }
+        } elseif ($roleKey === 'organization_moderator') {
+            $scopeType = 'organization';
+            if ($scopeId === null) {
+                return $this->respond([
+                    'error' => [
+                        'code'    => 'MISSING_SCOPE',
+                        'message' => 'Organization scope_id is required for Organization Moderator assignment.',
                     ],
                 ], 422);
             }
@@ -403,11 +410,11 @@ class PersonnelRoleController extends Controller
         $roleKey = $assignment['role_key'];
 
         // Validate office revocation authority
-        if ($roleKey === 'department_secretary' && ! $isHr) {
+        if ($roleKey === 'dean' && ! $isHr) {
             return $this->respond([
                 'error' => [
                     'code'    => 'FORBIDDEN_ROLE_REVOCATION',
-                    'message' => 'Only HR administrators may revoke the department_secretary role.',
+                    'message' => 'Only HR administrators may revoke the dean role.',
                 ],
             ], 403);
         }

@@ -73,7 +73,7 @@ export const NAVIGATION_CATALOG = [
   },
 
   // ==========================================
-  // 2. PERSONNEL / FACULTY PORTAL NAVIGATION
+  // 2. PERSONNEL PORTAL NAVIGATION
   // ==========================================
   {
     id: 'personnel-dashboard-overview',
@@ -214,40 +214,40 @@ export const NAVIGATION_CATALOG = [
   },
 
   // ==========================================
-  // 5. DEPARTMENT SECRETARY NAVIGATION
+  // 5. DEAN NAVIGATION
   // ==========================================
   {
-    id: 'depsec-dashboard-overview',
-    label: 'Dashboard Overview',
+    id: 'dean-dashboard-overview',
+    label: 'Dean Dashboard',
     icon: Home,
     path: '/personnel/dashboard?tab=overview',
     tab: 'overview',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.DEPARTMENT_SECRETARY],
-    requiredPermissions: ['department.portfolio.review']
+    requiredActiveContexts: [CANONICAL_ROLES.DEAN],
+    requiredPermissions: ['college.faculty.review']
   },
   {
-    id: 'depsec-review-workspace',
-    label: 'Review & Endorsement',
+    id: 'dean-review-workspace',
+    label: 'Faculty Ranking Reviews',
     icon: FileCheck2,
     path: '/personnel/dashboard?tab=workspace',
     tab: 'workspace',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.DEPARTMENT_SECRETARY],
-    requiredPermissions: ['department.portfolio.review']
+    requiredActiveContexts: [CANONICAL_ROLES.DEAN],
+    requiredPermissions: ['college.faculty.review']
   },
   {
-    id: 'depsec-faculty-roster',
-    label: 'Department Faculty Roster',
+    id: 'dean-faculty-roster',
+    label: 'College Faculty Roster',
     icon: Users,
     path: '/personnel/dashboard?tab=personnel',
     tab: 'personnel',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.DEPARTMENT_SECRETARY],
-    requiredPermissions: ['department.portfolio.review']
+    requiredActiveContexts: [CANONICAL_ROLES.DEAN],
+    requiredPermissions: ['college.faculty.review']
   },
 
   // ==========================================

@@ -52,6 +52,21 @@ final class ProvisioningAndLifecycleEndpointTest extends CIUnitTestCase
         ]);
     }
 
+    public function testCommitRosterRequiresAuthorization(): void
+    {
+        $result = $this->post('/api/v1/provisioning/commit-roster', [
+            'roster_type' => 'student',
+            'rows'        => [],
+        ]);
+
+        $result->assertStatus(401);
+        $result->assertJSONFragment([
+            'error' => [
+                'code' => 'UNAUTHORIZED',
+            ],
+        ]);
+    }
+
     public function testSuspendAccountRequiresAuthorization(): void
     {
         $result = $this->post('/api/v1/accounts/usr_target_123/suspend', [

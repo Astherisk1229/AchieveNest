@@ -74,8 +74,8 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
       updated = updateUserRoleContext(newRoleContext)
     }
     
-    // Auto-navigate to personnel dashboard if role switches to personnel/coordinator mode from another page
-    if (['program_coordinator', 'personnel', 'organization_moderator', 'department_secretary'].includes(newRoleContext)) {
+    // Auto-navigate to personnel dashboard if role switches to personnel/dean/coordinator mode from another page
+    if (['program_coordinator', 'personnel', 'organization_moderator', 'dean'].includes(newRoleContext)) {
       if (location.pathname !== '/personnel/dashboard') {
         navigate('/personnel/dashboard')
       }

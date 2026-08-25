@@ -271,7 +271,7 @@ export default function LoginPage() {
                   <span className="block font-bold text-slate-700">Didn't receive an email or cannot access your inbox?</span>
                   <p className="text-slate-500 leading-relaxed">
                     • <strong>Students:</strong> Visit the <strong>OSAD Office</strong> for in-person identity verification and recovery.<br />
-                    • <strong>Personnel / Faculty:</strong> Visit the <strong>HR Office</strong> for in-person identity verification.
+                    • <strong>Personnel:</strong> Visit the <strong>HR Office</strong> for in-person identity verification.
                   </p>
                 </div>
 

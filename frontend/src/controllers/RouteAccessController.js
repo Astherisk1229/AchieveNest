@@ -1,5 +1,5 @@
 export default class RouteAccessController {
-  static PERSONNEL_ROLES = ['personnel', 'program_coordinator', 'organization_moderator', 'department_secretary']
+  static PERSONNEL_ROLES = ['personnel', 'dean', 'program_coordinator', 'organization_moderator']
 
   static getCurrentRole(user) {
     return user?.active_role_context || user?.account_type || user?.primary_role || 'student'

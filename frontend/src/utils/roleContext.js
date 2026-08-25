@@ -4,7 +4,7 @@
  * 
  * Separation of Concerns:
  * - Account Type: Identity category ('student', 'personnel', 'hr_admin', 'osad_admin')
- * - Active Role Context: Authorization working context ('student', 'personnel', 'department_secretary', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff')
+ * - Active Role Context: Authorization working context ('student', 'personnel', 'dean', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff')
  */
 
 export const CANONICAL_ACCOUNT_TYPES = {

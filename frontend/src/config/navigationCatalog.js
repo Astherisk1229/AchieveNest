@@ -73,7 +73,7 @@ export const NAVIGATION_CATALOG = [
   },
 
   // ==========================================
-  // 2. PERSONNEL / FACULTY PORTAL NAVIGATION
+  // 2. PERSONNEL PORTAL NAVIGATION
   // ==========================================
   {
     id: 'personnel-dashboard-overview',

@@ -24,7 +24,6 @@ import { useAuth } from '../../context/AuthContext'
 import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
 import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
-import RoleSwitcher from '../common/RoleSwitcher'
 
 export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
@@ -66,16 +65,31 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     navigate('/personnel/dashboard?tab=overview')
   }
 
-  // Personnel role options for role switcher
-  const allPersonnelRoles = [
-    { id: 'personnel', label: 'Personnel / Faculty View', icon: UserCheck },
-    { id: 'dean', label: 'Dean View', icon: Building2 },
-    { id: 'program_coordinator', label: 'Program Coordinator View', icon: ShieldCheck },
-    { id: 'organization_moderator', label: 'Organization Moderator View', icon: Users }
-  ]
+  // Canonical display names for Personnel roles
+  const ROLE_DISPLAY_NAMES = {
+    personnel: 'Personnel',
+    dean: 'Dean',
+    program_coordinator: 'Program Coordinator',
+    organization_moderator: 'Organization Moderator'
+  }
 
-  // Filter switch roles for personnel demo
-  const availableSwitchRoles = allPersonnelRoles.filter(role => role.id !== activeRoleContext)
+  const ROLE_ICONS = {
+    personnel: UserCheck,
+    dean: Building2,
+    program_coordinator: ShieldCheck,
+    organization_moderator: Users
+  }
+
+  // Filter switch roles strictly from assigned roles, excluding current active context
+  const availableSwitchRoles = isPersonnelUser
+    ? assignedRoles
+        .filter(r => r !== activeRoleContext && ROLE_DISPLAY_NAMES[r])
+        .map(r => ({
+          id: r,
+          label: ROLE_DISPLAY_NAMES[r],
+          icon: ROLE_ICONS[r] || UserCheck
+        }))
+    : []
 
   // Label display helper for user type & active role context
   const getUserTypeLabel = () => {
@@ -85,8 +99,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     if (activeRoleContext === 'dean') return 'Dean'
     if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
-    if (activeRoleContext === 'personnel') return 'Personnel / Faculty'
-    return 'Personnel'
+    // For base personnel: use actual stored classification/designation if present, fallback to "Personnel"
+    return user?.designation || user?.classification || 'Personnel'
   }
 
   return (
@@ -104,20 +118,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
         </button>
       </div>
 
-      {/* Right Side: Role Switcher Pill, Notification Icon, Theme Toggle & User Profile Dropdown */}
+      {/* Right Side: Theme Toggle, Notification Icon & User Profile Dropdown */}
       <div className="flex items-center gap-2.5 sm:gap-3.5">
-        
-        {/* Quick Personnel Role Switcher Dropdown (Demo) */}
-        {isPersonnelUser && (
-          <RoleSwitcher
-            currentUser={{
-              ...user,
-              account_type: accountType,
-              active_role_context: activeRoleContext
-            }}
-            onSwitchRole={handleSelectRole}
-          />
-        )}
         
         {/* Dark / Light Mode Quick Toggle Button */}
         <button
@@ -239,17 +241,18 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                     </span>
                   </button>
 
-                  {/* Switch Workspace Accordion Submenu */}
+                  {/* Switch Role Accordion Submenu */}
                   {isPersonnelUser && availableSwitchRoles.length > 0 && (
                     <div className="pt-1">
                       <button
                         type="button"
                         onClick={() => setIsSwitchToOpen(!isSwitchToOpen)}
                         className="w-full px-3 py-2 rounded-xl text-[#123D2A] dark:text-slate-200 hover:bg-[#f8faf7] dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-between transition text-left active:scale-[0.98] cursor-pointer"
+                        aria-expanded={isSwitchToOpen}
                       >
                         <div className="flex items-center gap-2.5">
                           <RefreshCw className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                          <span>Switch Workspace Context</span>
+                          <span>Switch Role</span>
                         </div>
                         {isSwitchToOpen ? (
                           <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
@@ -269,6 +272,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                                 type="button"
                                 onClick={() => { handleSelectRole(role.id); setIsProfileOpen(false) }}
                                 className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition text-left text-[#3F6B52] dark:text-slate-300 hover:bg-[#f5f8f3] dark:hover:bg-emerald-950/60 hover:text-[#176B43] dark:hover:text-emerald-300 active:scale-[0.98] cursor-pointer"
+                                aria-label={`Switch to ${role.label}`}
                               >
                                 <IconComp className="w-3.5 h-3.5 text-[#176B43] dark:text-emerald-400" />
                                 <span>{role.label}</span>

@@ -214,7 +214,7 @@ class OSADController {
         status: 'Active'
       },
 
-      // Personnel / Faculty (Employee IDs formatted without dashes per university standard)
+      // Personnel (Employee IDs formatted without dashes per university standard)
       {
         id: 'usr-[#16834a]-201',
         full_name: 'Dr. Ana Reyes',

@@ -89,10 +89,10 @@ export default function DepartmentSecretaryDashboardPage({ currentUser }) {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-extrabold text-[#17663B] dark:text-[#EFF6F1] tracking-tight">Department Secretary Dashboard</h1>
+                    <h1 className="text-2xl font-extrabold text-[#17663B] dark:text-[#EFF6F1] tracking-tight">Dean Dashboard</h1>
                   </div>
                   <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
-                    Faculty Portfolio Evaluation & Verification • {currentUser?.department_name || 'College of Engineering, Architecture & Computing'}
+                    College Faculty Portfolio Review & Verification • {currentUser?.college_name || currentUser?.college || 'College of Engineering, Architecture & Computing'}
                   </p>
                 </div>
               </div>
@@ -186,14 +186,14 @@ export default function DepartmentSecretaryDashboardPage({ currentUser }) {
                 <h3 className="text-xs font-bold text-[#102A43] dark:text-[#E6EFE9]">
                   Department Scope: {currentUser?.department_name || 'College of Engineering, Architecture & Computing (DEP-CEAC)'}
                 </h3>
-                <p className="text-[11px] text-[#4F6475] dark:text-[#B1C0B6]">
-                  You can only view and evaluate faculty ranking portfolios submitted within your assigned department.
+                <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium leading-relaxed mt-0.5">
+                  You can only view and evaluate faculty ranking portfolios submitted within your assigned college.
                 </p>
               </div>
             </div>
 
             <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-[#159552] text-white shadow-xs shrink-0">
-              ● Department Secretary Mode
+              ● Dean Mode
             </span>
           </div>
 
@@ -209,7 +209,7 @@ export default function DepartmentSecretaryDashboardPage({ currentUser }) {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent Verification Activity Log</h3>
-                    <p className="text-[11px] text-slate-400">Real-time audit stream for department faculty evaluation</p>
+                    <p className="text-[11px] text-slate-400">Real-time audit stream for college faculty evaluation</p>
                   </div>
                 </div>
 
@@ -258,7 +258,7 @@ export default function DepartmentSecretaryDashboardPage({ currentUser }) {
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-900 dark:text-white">Self-Portfolio HR Direct Audit Bypass</div>
-                      <div className="text-[11px] text-slate-500">Secretary self-portfolio routed directly to HR Director for independent audit</div>
+                      <div className="text-[11px] text-slate-500">Dean self-portfolio routed directly to HR Director for independent audit</div>
                       <div className="text-[10px] text-slate-400 mt-1">3 hrs ago</div>
                     </div>
                   </div>
@@ -269,14 +269,14 @@ export default function DepartmentSecretaryDashboardPage({ currentUser }) {
               </div>
             </div>
 
-            {/* Right Column: Department Secretary Guidelines */}
+            {/* Right Column: Dean Review Guidelines */}
             <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
               <div className="flex items-center gap-2.5 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="w-8 h-8 rounded-lg bg-[#E7F3E9] dark:bg-emerald-950/60 flex items-center justify-center text-[#16834a]">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Department Secretary Guidelines</h3>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Dean Review Guidelines</h3>
                   <p className="text-[11px] text-slate-400">Verification Standards & SLA Policy</p>
                 </div>
               </div>

@@ -39,7 +39,7 @@ export default function ForbiddenPage() {
             Restricted Page or Context
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-            You do not have authorization to view this section in your current active role context (<span className="font-bold text-slate-700 dark:text-slate-300">{activeRoleContext || 'unassigned'}</span>). Please switch to an authorized role context or return to your dashboard.
+            You do not have authorization to view this section in your current active role (<span className="font-bold text-slate-700 dark:text-slate-300">{activeRoleContext || 'unassigned'}</span>). Please switch to an authorized role or return to your dashboard.
           </p>
         </div>
 

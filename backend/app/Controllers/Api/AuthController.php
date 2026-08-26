@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Api;
 
+use App\Services\AuthenticatedActorService;
 use App\Services\SupabaseAuthService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
@@ -92,19 +93,67 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $roles = $db->query(
-            'SELECT r.role_key, r.display_name, r.description
-             FROM public.profile_roles pr
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.profile_id = ? AND pr.is_active = true',
-            [$authUserId]
-        )->getResultArray();
+        $actor = (new AuthenticatedActorService())->resolveActor($authorization);
+        $assignments = $actor['assignments'] ?? [];
+        $mappedRoles = array_map(static fn (array $assignment): array => [
+            'role_key' => $assignment['role_key'],
+            'display_name' => $assignment['display_name'] ?? $assignment['role_key'],
+            'assignment_id' => $assignment['assignment_id'] ?? null,
+            'scope_type' => $assignment['scope_type'] ?? null,
+            'scope_id' => $assignment['scope_id'] ?? null,
+        ], $assignments);
 
-        $mappedRoles = array_map(static fn (array $role): array => [
-            'role_key' => $role['role_key'],
-            'display_name' => $role['display_name'],
-            'description' => $role['description'] ?? null,
-        ], $roles);
+        $studentPlacement = null;
+        $personnelAffiliation = null;
+        $programAffiliations = [];
+
+        if (($profile['account_type'] ?? '') === 'student') {
+            $studentPlacement = $db->query(
+                "SELECT e.academic_program_id, ap.code AS academic_program_code,
+                        ap.name AS academic_program_name, ap.college_id,
+                        c.code AS college_code, c.name AS college_name,
+                        e.year_level, e.academic_year
+                 FROM public.student_program_enrollments e
+                 JOIN public.academic_programs ap ON ap.id = e.academic_program_id
+                 JOIN public.colleges c ON c.id = ap.college_id
+                 WHERE e.student_profile_id = ? AND e.is_active = true
+                 LIMIT 1",
+                [$authUserId]
+            )->getRowArray();
+        }
+
+        if (($profile['account_type'] ?? '') === 'personnel') {
+            $personnelAffiliation = $db->query(
+                "SELECT pp.personnel_classification,
+                        pca.college_id, c.code AS college_code, c.name AS college_name,
+                        pau.administrative_unit_id,
+                        au.code AS administrative_unit_code,
+                        au.name AS administrative_unit_name
+                 FROM public.personnel_profiles pp
+                 LEFT JOIN public.personnel_college_affiliations pca
+                    ON pca.personnel_profile_id = pp.profile_id AND pca.is_active = true
+                 LEFT JOIN public.colleges c ON c.id = pca.college_id
+                 LEFT JOIN public.personnel_administrative_unit_affiliations pau
+                    ON pau.personnel_profile_id = pp.profile_id AND pau.is_active = true
+                 LEFT JOIN public.administrative_units au ON au.id = pau.administrative_unit_id
+                 WHERE pp.profile_id = ?
+                 LIMIT 1",
+                [$authUserId]
+            )->getRowArray();
+
+            $programAffiliations = $db->query(
+                "SELECT ppa.academic_program_id, ap.code AS academic_program_code,
+                        ap.name AS academic_program_name, ap.college_id
+                 FROM public.personnel_program_affiliations ppa
+                 JOIN public.academic_programs ap ON ap.id = ppa.academic_program_id
+                 WHERE ppa.personnel_profile_id = ? AND ppa.is_active = true
+                 ORDER BY ap.code",
+                [$authUserId]
+            )->getResultArray();
+        }
+
+        $primaryProgramId = $studentPlacement['academic_program_id']
+            ?? ($programAffiliations[0]['academic_program_id'] ?? null);
 
         return $this->respond([
             'data' => [
@@ -116,12 +165,16 @@ class AuthController extends Controller
                     'full_name' => $profile['full_name'],
                     'account_type' => $profile['account_type'],
                     'status' => $profile['status'],
-                    'department_id' => $profile['department_id'],
-                    'degree_program_id' => $profile['degree_program_id'],
                     'designation' => $profile['designation'],
-                    'year_level' => $profile['year_level'],
+                    'year_level' => $studentPlacement['year_level'] ?? $profile['year_level'],
                     'must_change_password' => (bool) ($profile['must_change_password'] ?? false),
+                    'academic_placement' => $studentPlacement,
+                    'personnel_affiliation' => $personnelAffiliation,
+                    'program_affiliations' => $programAffiliations,
                     'roles' => $mappedRoles,
+                    // Temporary compatibility aliases. Frontend must migrate to academic_placement/program_affiliations.
+                    'department_id' => null,
+                    'degree_program_id' => $primaryProgramId,
                 ],
             ],
         ], 200);
@@ -240,4 +293,3 @@ class AuthController extends Controller
         ], 200);
     }
 }
-

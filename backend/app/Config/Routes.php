@@ -29,11 +29,12 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->delete('personnel/(:segment)/roles/(:segment)', 'Api\\PersonnelRoleController::revoke/$1/$2');
     $routes->options('personnel/(:segment)/roles/(:segment)', 'Api\\PersonnelRoleController::options');
 
-    // Account Provisioning
-    $routes->post('provisioning/manual-student', 'Api\\ProvisioningController::manualStudent');
-    $routes->options('provisioning/manual-student', 'Api\\ProvisioningController::options');
-    $routes->post('provisioning/manual-personnel', 'Api\\ProvisioningController::manualPersonnel');
-    $routes->options('provisioning/manual-personnel', 'Api\\ProvisioningController::options');
+    // Account Provisioning — target-schema manual flows.
+    $routes->post('provisioning/manual-student', 'Api\\TargetProvisioningController::manualStudent');
+    $routes->options('provisioning/manual-student', 'Api\\TargetProvisioningController::options');
+    $routes->post('provisioning/manual-personnel', 'Api\\TargetProvisioningController::manualPersonnel');
+    $routes->options('provisioning/manual-personnel', 'Api\\TargetProvisioningController::options');
+    // Roster endpoints remain on legacy controller until target roster payload is finalized.
     $routes->post('provisioning/preview-roster', 'Api\\ProvisioningController::previewRoster');
     $routes->options('provisioning/preview-roster', 'Api\\ProvisioningController::options');
     $routes->post('provisioning/commit-roster', 'Api\\ProvisioningController::commitRoster');
@@ -78,17 +79,17 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // HR Personnel Directory & Governance (Phases 3-7, 14-15)
     // =========================================================================
 
-    // Authoritative Personnel Directory
-    $routes->get('hr/personnel', 'Api\\HRPersonnelController::directory');
-    $routes->options('hr/personnel', 'Api\\HRPersonnelController::options');
+    // Target-schema Personnel Directory
+    $routes->get('hr/personnel', 'Api\\TargetHRPersonnelController::directory');
+    $routes->options('hr/personnel', 'Api\\TargetHRPersonnelController::options');
 
-    // Dean role assignment / revocation
-    $routes->post('hr/personnel/(:segment)/dean-role', 'Api\\HRPersonnelController::assignDean/$1');
-    $routes->delete('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\HRPersonnelController::revokeDean/$1/$2');
-    $routes->options('hr/personnel/(:segment)/dean-role', 'Api\\HRPersonnelController::options');
-    $routes->options('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\HRPersonnelController::options');
+    // Target-schema Dean assignment / revocation
+    $routes->post('hr/personnel/(:segment)/dean-role', 'Api\\TargetHRPersonnelController::assignDean/$1');
+    $routes->delete('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\TargetHRPersonnelController::revokeDean/$1/$2');
+    $routes->options('hr/personnel/(:segment)/dean-role', 'Api\\TargetHRPersonnelController::options');
+    $routes->options('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\TargetHRPersonnelController::options');
 
-    // Prerequisite Qualification Report gate
+    // Prerequisite Qualification Report gate (legacy controller; no Department dependency in these methods)
     $routes->post('hr/personnel/(:segment)/qualification-reviews', 'Api\\HRPersonnelController::recordQualification/$1');
     $routes->get('hr/personnel/(:segment)/qualification-reviews', 'Api\\HRPersonnelController::listQualificationReviews/$1');
     $routes->options('hr/personnel/(:segment)/qualification-reviews', 'Api\\HRPersonnelController::options');
@@ -141,4 +142,39 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
 
     // General evaluation options catch-all (must come last under hr/evaluations)
     $routes->options('hr/evaluations/(:segment)', 'Api\\HREvaluationController::options');
+
+    // =========================================================================
+    // Target Student Portfolio & Program Coordinator Verification
+    // =========================================================================
+    $routes->get('portfolio/categories', 'Api\\StudentPortfolioController::categories');
+    $routes->options('portfolio/categories', 'Api\\StudentPortfolioController::options');
+    $routes->get('portfolio', 'Api\\StudentPortfolioController::index');
+    $routes->post('portfolio', 'Api\\StudentPortfolioController::create');
+    $routes->options('portfolio', 'Api\\StudentPortfolioController::options');
+    $routes->get('portfolio/(:segment)', 'Api\\StudentPortfolioController::get/$1');
+    $routes->options('portfolio/(:segment)', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/evidence', 'Api\\StudentPortfolioController::addEvidence/$1');
+    $routes->options('portfolio/(:segment)/evidence', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/verify', 'Api\\StudentPortfolioController::verifyRecord/$1');
+    $routes->options('portfolio/(:segment)/verify', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/request-revision', 'Api\\StudentPortfolioController::requestRevision/$1');
+    $routes->options('portfolio/(:segment)/request-revision', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/reject', 'Api\\StudentPortfolioController::rejectRecord/$1');
+    $routes->options('portfolio/(:segment)/reject', 'Api\\StudentPortfolioController::options');
+
+    // Program Coordinator Scoped Queue
+    $routes->get('program-coordinator/verification-queue', 'Api\\StudentPortfolioController::coordinatorQueue');
+    $routes->options('program-coordinator/verification-queue', 'Api\\StudentPortfolioController::options');
+
+    // OSAD Awards & Explainable Scoring Basis
+    $routes->get('osad/awards', 'Api\\AwardEvaluationController::listAwards');
+    $routes->options('osad/awards', 'Api\\AwardEvaluationController::options');
+    $routes->get('osad/awards/(:segment)/candidates', 'Api\\AwardEvaluationController::listCandidates/$1');
+    $routes->options('osad/awards/(:segment)/candidates', 'Api\\AwardEvaluationController::options');
+    $routes->get('osad/awards/(:segment)/students/(:segment)/basis', 'Api\\AwardEvaluationController::scoringBasis/$1/$2');
+    $routes->options('osad/awards/(:segment)/students/(:segment)/basis', 'Api\\AwardEvaluationController::options');
+
+    // Dean Nominations
+    $routes->post('dean/nominations', 'Api\\AwardEvaluationController::createDeanNomination');
+    $routes->options('dean/nominations', 'Api\\AwardEvaluationController::options');
 });

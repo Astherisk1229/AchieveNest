@@ -2,7 +2,7 @@
 
 namespace App\Controllers\Api;
 
-use App\Services\SupabaseAuthService;
+use App\Services\AuthenticatedActorService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -11,468 +11,345 @@ class PersonnelRoleController extends Controller
 {
     use ResponseTrait;
 
+    protected AuthenticatedActorService $actorService;
+
+    public function __construct(?AuthenticatedActorService $actorService = null)
+    {
+        $this->actorService = $actorService ?? new AuthenticatedActorService();
+    }
+
     public function options()
     {
         return $this->respond(null, 204);
     }
 
-    /**
-     * Resolves and verifies authenticated actor, ensuring active status and returning roles.
-     */
     protected function resolveActor(): ?array
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
-        if ($authorization === '' || ! preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
-            return null;
-        }
-
-        $token = trim($matches[1]);
-
-        try {
-            $claims = (new SupabaseAuthService())->verifyAccessToken($token);
-        } catch (Throwable) {
-            return null;
-        }
-
-        $authUserId = (string) ($claims->sub ?? '');
-        if ($authUserId === '') {
-            return null;
-        }
-
-        $db = db_connect();
-        $profile = $db->table('public.profiles')
-            ->where('id', $authUserId)
-            ->get()
-            ->getRowArray();
-
-        if ($profile === null || ($profile['status'] ?? '') !== 'active') {
-            return null;
-        }
-
-        $roles = $db->query(
-            'SELECT r.role_key
-             FROM public.profile_roles pr
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.profile_id = ? AND pr.is_active = true',
-            [$authUserId]
-        )->getResultArray();
-
-        $roleKeys = array_column($roles, 'role_key');
-
-        return [
-            'profile' => $profile,
-            'roles'   => $roleKeys,
-        ];
+        return $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
     }
 
     /**
      * GET /api/v1/personnel/roles
-     * Lists personnel and their active specialized role assignments.
+     * HR sees Dean assignments. OSAD sees Program Coordinator and Organization Moderator assignments.
      */
     public function index()
     {
         $actor = $this->resolveActor();
         if ($actor === null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'UNAUTHORIZED',
-                    'message' => 'Valid authenticated active session required.',
-                ],
-            ], 401);
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated active session required.']], 401);
         }
 
         $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
         $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
         if (! $isHr && ! $isOsad) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN',
-                    'message' => 'Dedicated administrative account (hr_admin with hr_staff or osad_admin with osad_staff) required.',
-                ],
-            ], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Dedicated HR or OSAD administrator required.']], 403);
         }
 
         $db = db_connect();
+        $assignments = [];
 
-        $allowedRoleKeys = [];
         if ($isHr) {
-            $allowedRoleKeys[] = 'dean';
+            $assignments = array_merge($assignments, $db->query(
+                "SELECT da.id AS assignment_id, da.personnel_profile_id AS profile_id,
+                        'dean'::text AS role_key, 'Dean'::text AS role_display_name,
+                        'college'::text AS scope_type, da.college_id AS scope_id,
+                        c.code AS scope_code, c.name AS scope_name,
+                        da.is_active, da.assigned_at, da.assigned_by,
+                        p.institutional_id, p.institutional_email, p.full_name, p.designation
+                 FROM public.dean_assignments da
+                 JOIN public.profiles p ON p.id = da.personnel_profile_id
+                 JOIN public.colleges c ON c.id = da.college_id
+                 WHERE da.is_active = true
+                 ORDER BY p.full_name"
+            )->getResultArray());
         }
+
         if ($isOsad) {
-            $allowedRoleKeys[] = 'program_coordinator';
-            $allowedRoleKeys[] = 'organization_moderator';
+            $assignments = array_merge($assignments, $db->query(
+                "SELECT pca.id AS assignment_id, pca.personnel_profile_id AS profile_id,
+                        'program_coordinator'::text AS role_key,
+                        'Program Coordinator'::text AS role_display_name,
+                        'academic_program'::text AS scope_type,
+                        pca.academic_program_id AS scope_id,
+                        ap.code AS scope_code, ap.name AS scope_name,
+                        pca.is_active, pca.assigned_at, pca.assigned_by,
+                        p.institutional_id, p.institutional_email, p.full_name, p.designation
+                 FROM public.program_coordinator_assignments pca
+                 JOIN public.profiles p ON p.id = pca.personnel_profile_id
+                 JOIN public.academic_programs ap ON ap.id = pca.academic_program_id
+                 WHERE pca.is_active = true
+                 ORDER BY p.full_name"
+            )->getResultArray());
+
+            $assignments = array_merge($assignments, $db->query(
+                "SELECT oma.id AS assignment_id, oma.personnel_profile_id AS profile_id,
+                        'organization_moderator'::text AS role_key,
+                        'Organization Moderator'::text AS role_display_name,
+                        'organization'::text AS scope_type,
+                        oma.organization_id AS scope_id,
+                        o.code AS scope_code, o.name AS scope_name,
+                        oma.is_active, oma.assigned_at, oma.assigned_by,
+                        p.institutional_id, p.institutional_email, p.full_name, p.designation
+                 FROM public.organization_moderator_assignments oma
+                 JOIN public.profiles p ON p.id = oma.personnel_profile_id
+                 JOIN public.organizations o ON o.id = oma.organization_id
+                 WHERE oma.is_active = true
+                 ORDER BY p.full_name"
+            )->getResultArray());
         }
 
-        $assignments = $db->query(
-            'SELECT pr.id AS assignment_id, pr.profile_id, pr.scope_type, pr.scope_id, pr.is_active, pr.assigned_at, pr.assigned_by,
-                    p.institutional_id, p.institutional_email, p.full_name, p.designation,
-                    r.role_key, r.display_name AS role_display_name
-             FROM public.profile_roles pr
-             JOIN public.profiles p ON p.id = pr.profile_id
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.is_active = true AND r.role_key IN ?
-             ORDER BY p.full_name ASC',
-            [$allowedRoleKeys]
-        )->getResultArray();
-
-        return $this->respond([
-            'data' => [
-                'assignments' => $assignments,
-            ],
-        ], 200);
+        return $this->respond(['data' => ['assignments' => $assignments]], 200);
     }
 
     /**
      * POST /api/v1/personnel/{id}/roles
-     * Assigns a specialized role to a personnel account.
+     * Body: role_key + one of college_id / academic_program_id / organization_id.
+     * scope_id remains accepted temporarily as a compatibility alias only.
      */
     public function assign(string $targetProfileId)
     {
         $actor = $this->resolveActor();
         if ($actor === null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'UNAUTHORIZED',
-                    'message' => 'Valid authenticated active session required.',
-                ],
-            ], 401);
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated active session required.']], 401);
         }
 
         $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
         $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
 
-        if (! $isHr && ! $isOsad) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN',
-                    'message' => 'Dedicated administrative account required to assign specialized roles.',
-                ],
-            ], 403);
-        }
-
         $json = $this->request->getJSON(true) ?? [];
         $roleKey = trim((string) ($json['role_key'] ?? ''));
-        $scopeType = trim((string) ($json['scope_type'] ?? 'university'));
-        $scopeId = ! empty($json['scope_id']) ? (string) $json['scope_id'] : null;
+        $compatScopeId = ! empty($json['scope_id']) ? (string) $json['scope_id'] : null;
         $reason = trim((string) ($json['reason'] ?? 'Specialized role appointment'));
 
-        // Check assignment authority per governance rules
         if ($roleKey === 'dean' && ! $isHr) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN_ROLE_ASSIGNMENT',
-                    'message' => 'Only HR administrators may assign the dean role.',
-                ],
-            ], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_ASSIGNMENT', 'message' => 'Only HR may assign Dean.']], 403);
         }
-
         if (in_array($roleKey, ['program_coordinator', 'organization_moderator'], true) && ! $isOsad) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN_ROLE_ASSIGNMENT',
-                    'message' => 'Only OSAD administrators may assign program_coordinator or organization_moderator roles.',
-                ],
-            ], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_ASSIGNMENT', 'message' => 'Only OSAD may assign Program Coordinator or Organization Moderator.']], 403);
         }
-
         if (! in_array($roleKey, ['dean', 'program_coordinator', 'organization_moderator'], true)) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'INVALID_ROLE_KEY',
-                    'message' => 'Invalid or unsupported specialized role key.',
-                ],
-            ], 422);
+            return $this->respond(['error' => ['code' => 'INVALID_ROLE_KEY', 'message' => 'Unsupported specialized role.']], 422);
         }
 
         $db = db_connect();
+        $target = $db->query(
+            "SELECT p.id, p.account_type, p.status, pp.personnel_classification
+             FROM public.profiles p
+             JOIN public.personnel_profiles pp ON pp.profile_id = p.id
+             WHERE p.id = ?",
+            [$targetProfileId]
+        )->getRowArray();
 
-        // Validate target profile
-        $targetProfile = $db->table('public.profiles')
-            ->where('id', $targetProfileId)
-            ->get()
-            ->getRowArray();
-
-        if ($targetProfile === null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'PROFILE_NOT_FOUND',
-                    'message' => 'Target profile does not exist.',
-                ],
-            ], 404);
+        if ($target === null) {
+            return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Personnel profile does not exist in the target personnel model.']], 404);
+        }
+        if (($target['account_type'] ?? '') !== 'personnel' || ($target['status'] ?? '') !== 'active') {
+            return $this->respond(['error' => ['code' => 'INVALID_PERSONNEL_STATE', 'message' => 'Specialized roles require an active Personnel account.']], 422);
         }
 
-        if (($targetProfile['account_type'] ?? '') !== 'personnel') {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'INVALID_ACCOUNT_TYPE',
-                    'message' => 'Specialized roles can only be assigned to personnel accounts.',
-                ],
-            ], 422);
-        }
-
-        if (($targetProfile['status'] ?? '') !== 'active') {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'INACTIVE_ACCOUNT',
-                    'message' => 'Cannot assign roles to an inactive, suspended, or archived account.',
-                ],
-            ], 422);
-        }
-
-        // Validate role exists in catalog
-        $roleRecord = $db->table('public.roles')
-            ->where('role_key', $roleKey)
-            ->get()
-            ->getRowArray();
-
-        if ($roleRecord === null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'ROLE_NOT_FOUND',
-                    'message' => 'Role definition not found in catalog.',
-                ],
-            ], 404);
-        }
-
-        // Validate scope compatibility
-        if ($roleKey === 'dean') {
-            $scopeType = 'college';
-            if ($scopeId === null) {
-                return $this->respond([
-                    'error' => [
-                        'code'    => 'MISSING_SCOPE',
-                        'message' => 'College scope_id is required for Dean assignment.',
-                    ],
-                ], 422);
-            }
-            $collegeExists = $db->table('public.colleges')->where('id', $scopeId)->countAllResults();
-            if ($collegeExists === 0) {
-                return $this->respond([
-                    'error' => [
-                        'code'    => 'INVALID_SCOPE',
-                        'message' => 'Specified college scope does not exist.',
-                    ],
-                ], 422);
-            }
-        } elseif ($roleKey === 'program_coordinator') {
-            $scopeType = 'degree_program';
-            if ($scopeId === null && ! empty($targetProfile['degree_program_id'])) {
-                $scopeId = $targetProfile['degree_program_id'];
-            }
-            if ($scopeId === null) {
-                return $this->respond([
-                    'error' => [
-                        'code'    => 'MISSING_SCOPE',
-                        'message' => 'Degree program scope_id is required for Program Coordinator assignment.',
-                    ],
-                ], 422);
-            }
-            $progExists = $db->table('public.degree_programs')->where('id', $scopeId)->countAllResults();
-            if ($progExists === 0) {
-                return $this->respond([
-                    'error' => [
-                        'code'    => 'INVALID_SCOPE',
-                        'message' => 'Specified degree program scope does not exist.',
-                    ],
-                ], 422);
-            }
-        } elseif ($roleKey === 'organization_moderator') {
-            $scopeType = 'organization';
-            if ($scopeId === null) {
-                return $this->respond([
-                    'error' => [
-                        'code'    => 'MISSING_SCOPE',
-                        'message' => 'Organization scope_id is required for Organization Moderator assignment.',
-                    ],
-                ], 422);
-            }
-        }
-
-        // Check if active duplicate assignment already exists
-        $existing = $db->table('public.profile_roles')
-            ->where('profile_id', $targetProfileId)
-            ->where('role_id', $roleRecord['id'])
-            ->where('is_active', true)
-            ->get()
-            ->getRowArray();
-
-        if ($existing !== null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'ROLE_ALREADY_ASSIGNED',
-                    'message' => 'This personnel profile already holds an active assignment for this role.',
-                ],
-            ], 409);
-        }
-
-        $profileRoleId = (string) service('uuid')->uuid4();
-
-        $db->transBegin();
         try {
-            // Insert role assignment
-            $db->table('public.profile_roles')->insert([
-                'id'          => $profileRoleId,
-                'profile_id'  => $targetProfileId,
-                'role_id'     => $roleRecord['id'],
-                'scope_type'  => $scopeType,
-                'scope_id'    => $scopeId,
-                'is_active'   => true,
+            if ($roleKey === 'dean') {
+                $scopeId = ! empty($json['college_id']) ? (string) $json['college_id'] : $compatScopeId;
+                if ($scopeId === null) {
+                    return $this->respond(['error' => ['code' => 'MISSING_COLLEGE', 'message' => 'college_id is required for Dean assignment.']], 422);
+                }
+
+                $eligible = $db->query(
+                    "SELECT 1 FROM public.personnel_college_affiliations
+                     WHERE personnel_profile_id = ? AND college_id = ? AND is_active = true",
+                    [$targetProfileId, $scopeId]
+                )->getRowArray();
+                if ($eligible === null) {
+                    return $this->respond(['error' => ['code' => 'INELIGIBLE_DEAN_AFFILIATION', 'message' => 'Personnel must have an active affiliation to the same College.']], 422);
+                }
+
+                $assignmentId = (string) service('uuid')->uuid4();
+                $db->table('public.dean_assignments')->insert([
+                    'id' => $assignmentId,
+                    'personnel_profile_id' => $targetProfileId,
+                    'college_id' => $scopeId,
+                    'effective_from' => date('Y-m-d'),
+                    'is_active' => true,
+                    'assigned_by' => $actor['profile']['id'],
+                    'assigned_at' => date('Y-m-d H:i:s'),
+                ]);
+
+                return $this->respondCreated(['data' => [
+                    'message' => 'Dean assignment created.',
+                    'assignment_id' => $assignmentId,
+                    'profile_id' => $targetProfileId,
+                    'role_key' => $roleKey,
+                    'scope_type' => 'college',
+                    'scope_id' => $scopeId,
+                ]]);
+            }
+
+            if ($roleKey === 'program_coordinator') {
+                $scopeId = ! empty($json['academic_program_id']) ? (string) $json['academic_program_id'] : $compatScopeId;
+                if ($scopeId === null) {
+                    return $this->respond(['error' => ['code' => 'MISSING_ACADEMIC_PROGRAM', 'message' => 'academic_program_id is required for Program Coordinator assignment.']], 422);
+                }
+
+                $eligible = $db->query(
+                    "SELECT 1 FROM public.personnel_program_affiliations
+                     WHERE personnel_profile_id = ? AND academic_program_id = ? AND is_active = true",
+                    [$targetProfileId, $scopeId]
+                )->getRowArray();
+                if ($eligible === null) {
+                    return $this->respond(['error' => ['code' => 'INELIGIBLE_PROGRAM_AFFILIATION', 'message' => 'Personnel must have an active affiliation to the exact Academic Program.']], 422);
+                }
+
+                $assignmentId = (string) service('uuid')->uuid4();
+                $db->table('public.program_coordinator_assignments')->insert([
+                    'id' => $assignmentId,
+                    'personnel_profile_id' => $targetProfileId,
+                    'academic_program_id' => $scopeId,
+                    'effective_from' => date('Y-m-d'),
+                    'is_active' => true,
+                    'assigned_by' => $actor['profile']['id'],
+                    'assigned_at' => date('Y-m-d H:i:s'),
+                ]);
+
+                return $this->respondCreated(['data' => [
+                    'message' => 'Program Coordinator assignment created.',
+                    'assignment_id' => $assignmentId,
+                    'profile_id' => $targetProfileId,
+                    'role_key' => $roleKey,
+                    'scope_type' => 'academic_program',
+                    'scope_id' => $scopeId,
+                ]]);
+            }
+
+            $scopeId = ! empty($json['organization_id']) ? (string) $json['organization_id'] : $compatScopeId;
+            if ($scopeId === null) {
+                return $this->respond(['error' => ['code' => 'MISSING_ORGANIZATION', 'message' => 'organization_id is required for Organization Moderator assignment.']], 422);
+            }
+
+            $organization = $db->table('public.organizations')->where('id', $scopeId)->where('status', 'active')->get()->getRowArray();
+            if ($organization === null) {
+                return $this->respond(['error' => ['code' => 'INVALID_ORGANIZATION', 'message' => 'Active Organization not found.']], 422);
+            }
+
+            if (($organization['scope'] ?? '') === 'college') {
+                $eligible = $db->query(
+                    "SELECT 1 FROM public.personnel_college_affiliations
+                     WHERE personnel_profile_id = ? AND college_id = ? AND is_active = true",
+                    [$targetProfileId, $organization['college_id']]
+                )->getRowArray();
+                if ($eligible === null) {
+                    return $this->respond(['error' => ['code' => 'INELIGIBLE_ORGANIZATION_AFFILIATION', 'message' => 'College-based Organization moderators must be affiliated with the Organization College.']], 422);
+                }
+            }
+
+            $assignmentId = (string) service('uuid')->uuid4();
+            $db->table('public.organization_moderator_assignments')->insert([
+                'id' => $assignmentId,
+                'organization_id' => $scopeId,
+                'personnel_profile_id' => $targetProfileId,
+                'effective_from' => date('Y-m-d'),
+                'is_active' => true,
                 'assigned_by' => $actor['profile']['id'],
                 'assigned_at' => date('Y-m-d H:i:s'),
-                'revoked_at'  => null,
             ]);
 
-            // Record audit in role_assignment_events
-            $db->table('public.role_assignment_events')->insert([
-                'id'                => (string) service('uuid')->uuid4(),
-                'profile_role_id'   => $profileRoleId,
-                'target_profile_id' => $targetProfileId,
-                'role_id'           => $roleRecord['id'],
-                'event_type'        => 'assigned',
-                'scope_type'        => $scopeType,
-                'scope_id'          => $scopeId,
-                'performed_by'      => $actor['profile']['id'],
-                'reason'            => $reason,
-                'occurred_at'       => date('Y-m-d H:i:s'),
-            ]);
-
-            $db->transCommit();
+            return $this->respondCreated(['data' => [
+                'message' => 'Organization Moderator assignment created.',
+                'assignment_id' => $assignmentId,
+                'profile_id' => $targetProfileId,
+                'role_key' => $roleKey,
+                'scope_type' => 'organization',
+                'scope_id' => $scopeId,
+            ]]);
         } catch (Throwable $e) {
-            $db->transRollback();
-            return $this->respond([
-                'error' => [
-                    'code'    => 'ASSIGNMENT_FAILED',
-                    'message' => 'Failed to record role assignment: ' . $e->getMessage(),
-                ],
-            ], 500);
+            return $this->respond(['error' => [
+                'code' => 'ASSIGNMENT_FAILED',
+                'message' => 'Failed to create assignment: ' . $e->getMessage(),
+            ]], 500);
         }
-
-        return $this->respondCreated([
-            'data' => [
-                'message'       => 'Role assigned successfully.',
-                'assignment_id' => $profileRoleId,
-                'profile_id'    => $targetProfileId,
-                'role_key'      => $roleKey,
-                'scope_type'    => $scopeType,
-                'scope_id'      => $scopeId,
-            ],
-        ]);
     }
 
     /**
      * DELETE /api/v1/personnel/{id}/roles/{assignmentId}
-     * Soft-revokes an active specialized role assignment.
+     * Optional body role_key avoids ambiguous ID lookup across assignment tables.
      */
     public function revoke(string $targetProfileId, string $assignmentId)
     {
         $actor = $this->resolveActor();
         if ($actor === null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'UNAUTHORIZED',
-                    'message' => 'Valid authenticated active session required.',
-                ],
-            ], 401);
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated active session required.']], 401);
         }
 
         $isHr = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
         $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
-
-        if (! $isHr && ! $isOsad) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN',
-                    'message' => 'Dedicated administrative account required to revoke specialized roles.',
-                ],
-            ], 403);
-        }
-
+        $json = $this->request->getJSON(true) ?? [];
+        $requestedRole = trim((string) ($json['role_key'] ?? ''));
+        $reason = trim((string) ($json['reason'] ?? 'Specialized role revocation'));
         $db = db_connect();
 
-        $assignment = $db->query(
-            'SELECT pr.id, pr.profile_id, pr.role_id, pr.scope_type, pr.scope_id, r.role_key
-             FROM public.profile_roles pr
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.id = ? AND pr.profile_id = ? AND pr.is_active = true',
-            [$assignmentId, $targetProfileId]
-        )->getRowArray();
+        $candidates = $requestedRole !== '' ? [$requestedRole] : ['dean', 'program_coordinator', 'organization_moderator'];
 
-        if ($assignment === null) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'ASSIGNMENT_NOT_FOUND',
-                    'message' => 'Active role assignment not found for this personnel.',
-                ],
-            ], 404);
-        }
-
-        $roleKey = $assignment['role_key'];
-
-        // Validate office revocation authority
-        if ($roleKey === 'dean' && ! $isHr) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN_ROLE_REVOCATION',
-                    'message' => 'Only HR administrators may revoke the dean role.',
-                ],
-            ], 403);
-        }
-
-        if (in_array($roleKey, ['program_coordinator', 'organization_moderator'], true) && ! $isOsad) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'FORBIDDEN_ROLE_REVOCATION',
-                    'message' => 'Only OSAD administrators may revoke program_coordinator or organization_moderator roles.',
-                ],
-            ], 403);
-        }
-
-        $json = $this->request->getJSON(true) ?? [];
-        $reason = trim((string) ($json['reason'] ?? 'Specialized role revocation'));
-
-        $db->transBegin();
-        try {
-            // Soft revoke
-            $db->table('public.profile_roles')
-                ->where('id', $assignmentId)
-                ->update([
-                    'is_active'  => false,
-                    'revoked_at' => date('Y-m-d H:i:s'),
+        foreach ($candidates as $roleKey) {
+            if ($roleKey === 'dean') {
+                $row = $db->table('public.dean_assignments')
+                    ->where('id', $assignmentId)->where('personnel_profile_id', $targetProfileId)
+                    ->where('is_active', true)->get()->getRowArray();
+                if ($row === null) {
+                    continue;
+                }
+                if (! $isHr) {
+                    return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_REVOCATION', 'message' => 'Only HR may revoke Dean.']], 403);
+                }
+                $db->table('public.dean_assignments')->where('id', $assignmentId)->update([
+                    'is_active' => false,
+                    'effective_to' => date('Y-m-d'),
+                    'ended_by' => $actor['profile']['id'],
+                    'ended_at' => date('Y-m-d H:i:s'),
+                    'end_reason' => $reason,
                 ]);
+                return $this->respond(['data' => ['message' => 'Dean assignment revoked.', 'assignment_id' => $assignmentId]], 200);
+            }
 
-            // Record audit in role_assignment_events
-            $db->table('public.role_assignment_events')->insert([
-                'id'                => (string) service('uuid')->uuid4(),
-                'profile_role_id'   => $assignmentId,
-                'target_profile_id' => $targetProfileId,
-                'role_id'           => $assignment['role_id'],
-                'event_type'        => 'revoked',
-                'scope_type'        => $assignment['scope_type'],
-                'scope_id'          => $assignment['scope_id'],
-                'performed_by'      => $actor['profile']['id'],
-                'reason'            => $reason,
-                'occurred_at'       => date('Y-m-d H:i:s'),
-            ]);
+            if ($roleKey === 'program_coordinator') {
+                $row = $db->table('public.program_coordinator_assignments')
+                    ->where('id', $assignmentId)->where('personnel_profile_id', $targetProfileId)
+                    ->where('is_active', true)->get()->getRowArray();
+                if ($row === null) {
+                    continue;
+                }
+                if (! $isOsad) {
+                    return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_REVOCATION', 'message' => 'Only OSAD may revoke Program Coordinator.']], 403);
+                }
+                $db->table('public.program_coordinator_assignments')->where('id', $assignmentId)->update([
+                    'is_active' => false,
+                    'effective_to' => date('Y-m-d'),
+                    'ended_by' => $actor['profile']['id'],
+                    'ended_at' => date('Y-m-d H:i:s'),
+                    'end_reason' => $reason,
+                ]);
+                return $this->respond(['data' => ['message' => 'Program Coordinator assignment revoked.', 'assignment_id' => $assignmentId]], 200);
+            }
 
-            $db->transCommit();
-        } catch (Throwable $e) {
-            $db->transRollback();
-            return $this->respond([
-                'error' => [
-                    'code'    => 'REVOCATION_FAILED',
-                    'message' => 'Failed to revoke role assignment: ' . $e->getMessage(),
-                ],
-            ], 500);
+            if ($roleKey === 'organization_moderator') {
+                $row = $db->table('public.organization_moderator_assignments')
+                    ->where('id', $assignmentId)->where('personnel_profile_id', $targetProfileId)
+                    ->where('is_active', true)->get()->getRowArray();
+                if ($row === null) {
+                    continue;
+                }
+                if (! $isOsad) {
+                    return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_REVOCATION', 'message' => 'Only OSAD may revoke Organization Moderator.']], 403);
+                }
+                $db->table('public.organization_moderator_assignments')->where('id', $assignmentId)->update([
+                    'is_active' => false,
+                    'effective_to' => date('Y-m-d'),
+                    'ended_at' => date('Y-m-d H:i:s'),
+                    'end_reason' => $reason,
+                ]);
+                return $this->respond(['data' => ['message' => 'Organization Moderator assignment revoked.', 'assignment_id' => $assignmentId]], 200);
+            }
         }
 
-        return $this->respond([
-            'data' => [
-                'message'       => 'Role assignment revoked successfully.',
-                'assignment_id' => $assignmentId,
-                'profile_id'    => $targetProfileId,
-                'role_key'      => $roleKey,
-            ],
-        ], 200);
+        return $this->respond(['error' => ['code' => 'ASSIGNMENT_NOT_FOUND', 'message' => 'Active specialized assignment not found.']], 404);
     }
 }

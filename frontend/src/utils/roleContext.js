@@ -71,7 +71,12 @@ export function normalizeRoleContext(roleStr = '') {
     case 'moderator':
       return CANONICAL_ROLES.ORGANIZATION_MODERATOR
 
+    // Transitional aliases only. Department Secretary is no longer a valid
+    // business role; old persisted/frontend aliases normalize to Dean so
+    // compatibility code cannot resurrect a separate Department Secretary role.
     case 'dean':
+    case 'dep_sec':
+    case 'department_secretary':
       return CANONICAL_ROLES.DEAN
 
     case 'hr_staff':

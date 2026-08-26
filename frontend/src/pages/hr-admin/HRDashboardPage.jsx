@@ -178,7 +178,7 @@ export function HRDashboard({ currentUser }) {
                   </div>
                 </div>
                 <div className="mt-3.5">
-                  <p className="text-3xl font-bold text-[#634300] dark:text-amber-100 leading-tight">{stats.pendingEndorsements || 2}</p>
+                  <p className="text-3xl font-bold text-[#634300] dark:text-amber-100 leading-tight">{stats.pendingEndorsements}</p>
                   <p className="text-sm font-normal text-[#805600] dark:text-amber-300/90 leading-normal mt-1">Department-forwarded evaluations</p>
                 </div>
               </button>
@@ -244,7 +244,7 @@ export function HRDashboard({ currentUser }) {
                   </div>
                 </div>
                 <div className="mt-3.5">
-                  <p className="text-3xl font-bold text-[#13486B] dark:text-blue-100 leading-tight">{stats.readyForFinalizationCount || 1}</p>
+                  <p className="text-3xl font-bold text-[#13486B] dark:text-blue-100 leading-tight">{stats.evaluationCounts?.ready_for_finalization ?? stats.readyForFinalizationCount}</p>
                   <p className="text-sm font-normal text-[#1F6C9F] dark:text-blue-300/90 leading-normal mt-1">Evaluation awaiting confirmation</p>
                 </div>
               </button>
@@ -262,7 +262,7 @@ export function HRDashboard({ currentUser }) {
                   </div>
                 </div>
                 <div className="mt-3.5">
-                  <p className="text-3xl font-bold text-[#064e2b] dark:text-[#245F42] leading-tight">{stats.verifiedAccomplishments || 1}</p>
+                  <p className="text-3xl font-bold text-[#064e2b] dark:text-[#245F42] leading-tight">{stats.evaluationCounts?.completed ?? stats.verifiedAccomplishments}</p>
                   <p className="text-sm font-normal text-[#16834a] dark:text-[#245F42]/90 leading-normal mt-1">AY 2025–2026</p>
                 </div>
               </button>
@@ -275,7 +275,7 @@ export function HRDashboard({ currentUser }) {
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{stats.totalPersonnel || 52} Total Personnel</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{stats.totalPersonnel} Total Personnel</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Faculty and administrative personnel directory across university colleges.</p>
                 </div>
               </div>
@@ -313,7 +313,7 @@ export function HRDashboard({ currentUser }) {
                     <span>Evaluations awaiting HR review</span>
                   </p>
                   <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal">
-                    {stats.pendingEndorsements || 2} faculty evaluation submissions forwarded by departments awaiting initial HR review.
+                    {stats.evaluationCounts?.submitted ?? stats.pendingEndorsements} personnel evaluation submissions awaiting review.
                   </p>
                 </div>
                 <button
@@ -356,7 +356,7 @@ export function HRDashboard({ currentUser }) {
                     <span>Evaluations ready for finalization</span>
                   </p>
                   <p className="text-sm font-normal text-slate-600 dark:text-slate-400 leading-normal">
-                    {stats.readyForFinalizationCount || 1} evaluation ready for final HR confirmation and official seal.
+                    {stats.evaluationCounts?.ready_for_finalization ?? stats.readyForFinalizationCount} evaluation(s) ready for finalization.
                   </p>
                 </div>
                 <button

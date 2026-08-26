@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Api;
 
+use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
 use App\Services\SupabaseAdminAuthService;
 use CodeIgniter\API\ResponseTrait;
@@ -63,7 +64,8 @@ class ProvisioningController extends Controller
         $deptId = ! empty($json['department_id']) ? (string) $json['department_id'] : null;
         $progId = ! empty($json['degree_program_id']) ? (string) $json['degree_program_id'] : null;
         $yearLevel = ! empty($json['year_level']) ? trim((string) $json['year_level']) : '1st Year';
-        $initialPassword = ! empty($json['password']) ? (string) $json['password'] : 'NDMU@Student2026!';
+        // Always server-generated — no fixed/default password is ever accepted or stored
+        $initialPassword = ValidationHelper::generateTemporaryPassword();
 
         // Institutional ID ownership: Must be supplied externally, never generated
         if ($instId === '' || $email === '' || $firstName === '' || $lastName === '') {
@@ -197,6 +199,9 @@ class ProvisioningController extends Controller
                 'institutional_email' => $email,
                 'full_name'           => $fullName,
                 'account_type'        => 'student',
+                // One-time display only — never stored in logs, audit trail, or DB
+                'temporary_password'  => $initialPassword,
+                'must_change_password' => true,
             ],
         ]);
     }
@@ -227,7 +232,8 @@ class ProvisioningController extends Controller
         $suffix = ! empty($json['suffix']) ? trim((string) $json['suffix']) : null;
         $deptId = ! empty($json['department_id']) ? (string) $json['department_id'] : null;
         $designation = ! empty($json['designation']) ? trim((string) $json['designation']) : 'Faculty Member';
-        $initialPassword = ! empty($json['password']) ? (string) $json['password'] : 'NDMU@Personnel2026!';
+        // Always server-generated — no fixed/default password is ever accepted or stored
+        $initialPassword = ValidationHelper::generateTemporaryPassword();
 
         // Institutional ID ownership: Must be supplied externally, never generated
         if ($instId === '' || $email === '' || $firstName === '' || $lastName === '') {
@@ -352,6 +358,9 @@ class ProvisioningController extends Controller
                 'institutional_email' => $email,
                 'full_name'           => $fullName,
                 'account_type'        => 'personnel',
+                // One-time display only — never stored in logs, audit trail, or DB
+                'temporary_password'  => $initialPassword,
+                'must_change_password' => true,
             ],
         ]);
     }

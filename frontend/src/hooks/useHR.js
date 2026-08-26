@@ -5,6 +5,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import HRController from '../controllers/HRController'
+import { provisioningService } from '../services/provisioningService'
+import { fetchPasswordResetRequests, executePasswordReset } from '../services/passwordResetAdminService'
+import { fetchHRAudit, fetchHRDashboard, fetchPersonnelDirectory } from '../services/hrAdminService'
 
 export function useHR() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -13,6 +16,9 @@ export function useHR() {
   const [serviceAwards, setServiceAwards] = useState([])
   const [auditLogs, setAuditLogs] = useState([])
   const [passwordResets, setPasswordResets] = useState([])
+  const [dashboardMetrics, setDashboardMetrics] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
@@ -27,26 +33,55 @@ export function useHR() {
   const [isProofModalOpen, setIsProofModalOpen] = useState(false)
 
   // Refresh All Data
-  const refreshData = useCallback(() => {
-    const pList = HRController.getPersonnelList()
+  const refreshData = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    // Accomplishment scoring remains on the existing UI model until its
+    // dedicated persistence endpoints are available. Directory, dashboard,
+    // reset queue, and audit data are authoritative backend data now.
     const accList = HRController.getAccomplishments()
     const awdList = HRController.getServiceAwards()
-    const logs = HRController.getAuditLogs()
-    const resets = HRController.getPersonnelPasswordResetRequests()
-
-    setPersonnelList(pList)
     setAccomplishments(accList)
     setServiceAwards(awdList)
-    setAuditLogs(logs)
-    setPasswordResets(resets)
 
     if (awdList.length > 0 && !selectedAwardId) {
       setSelectedAwardId(awdList[0].id)
     }
+
+    try {
+      const [directory, dashboard, resets, audit] = await Promise.all([
+        fetchPersonnelDirectory({ per_page: 100 }),
+        fetchHRDashboard(),
+        fetchPasswordResetRequests('all'),
+        fetchHRAudit({ per_page: 50 })
+      ])
+
+      setPersonnelList((directory.personnel || []).map(person => ({
+        ...person,
+        employee_id: person.institutional_id,
+        email: person.institutional_email,
+        department: person.department_name || 'Pending placement',
+        college: person.college_name || 'Pending placement',
+        employment_status: person.status,
+        academic_rank: person.designation || 'Personnel',
+        assigned_roles: person.assigned_roles || []
+      })))
+      setDashboardMetrics(dashboard)
+      setPasswordResets(resets)
+      setAuditLogs(audit.events || [])
+    } catch (requestError) {
+      setError(requestError?.error?.message || requestError?.message || 'Unable to load HR data.')
+      setPersonnelList([])
+      setPasswordResets([])
+      setAuditLogs([])
+    } finally {
+      setIsLoading(false)
+    }
   }, [selectedAwardId])
 
   useEffect(() => {
-    refreshData()
+    void refreshData()
     const handleResetEvent = () => refreshData()
     window.addEventListener('achievenest_reset_request_submitted', handleResetEvent)
     window.addEventListener('storage', handleResetEvent)
@@ -65,9 +100,9 @@ export function useHR() {
   }, [selectedAwardId, personnelList])
 
   // --- Business Actions ---
-  const handleCreatePersonnelAccount = (accountData) => {
-    const createdRecord = HRController.createPersonnelAccount(accountData)
-    refreshData()
+  const handleCreatePersonnelAccount = async (accountData) => {
+    const createdRecord = await provisioningService.provisionManualPersonnel(accountData)
+    await refreshData()
     return createdRecord
   }
 
@@ -116,9 +151,9 @@ export function useHR() {
     setIsProofModalOpen(false)
   }
 
-  const handleApprovePasswordReset = (requestId, tempPassword = 'NDMU-Faculty2026!', hrOfficerName = 'Director Evelyn Tan') => {
-    const res = HRController.approvePersonnelPasswordReset(requestId, tempPassword, hrOfficerName)
-    refreshData()
+  const handleApprovePasswordReset = async (requestId) => {
+    const res = await executePasswordReset(requestId)
+    await refreshData()
     return res
   }
 
@@ -156,14 +191,16 @@ export function useHR() {
 
   // Stats computation
   const stats = {
-    totalPersonnel: personnelList.length,
+    totalPersonnel: dashboardMetrics?.total_personnel ?? personnelList.length,
     verifiedAccomplishments: accomplishments.filter(a => a.status === 'hr_verified' || a.status === 'COMPLETED').length,
     pendingEndorsements: pendingEndorsements.length,
     inReviewCount: activeReview ? 1 : 0,
     activeReview: activeReview,
     readyForFinalizationCount: readyForFinalizationQueue.length,
     directHRCount: directHRQueue.length,
-    pendingResets: passwordResets.filter(r => r.status === 'pending').length,
+    pendingResets: dashboardMetrics?.pending_password_resets ?? passwordResets.filter(r => r.status === 'pending').length,
+    pendingQualifications: dashboardMetrics?.pending_qualification_reviews ?? 0,
+    evaluationCounts: dashboardMetrics?.evaluations || {},
     accreditationScore: '98.4%'
   }
 
@@ -197,6 +234,9 @@ export function useHR() {
     isProofModalOpen,
     setIsProofModalOpen,
     stats,
+    dashboardMetrics,
+    isLoading,
+    error,
     handleCreatePersonnelAccount,
     handleUpdateRank,
     handleAssignRole,

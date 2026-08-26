@@ -29,11 +29,12 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->delete('personnel/(:segment)/roles/(:segment)', 'Api\\PersonnelRoleController::revoke/$1/$2');
     $routes->options('personnel/(:segment)/roles/(:segment)', 'Api\\PersonnelRoleController::options');
 
-    // Account Provisioning
-    $routes->post('provisioning/manual-student', 'Api\\ProvisioningController::manualStudent');
-    $routes->options('provisioning/manual-student', 'Api\\ProvisioningController::options');
-    $routes->post('provisioning/manual-personnel', 'Api\\ProvisioningController::manualPersonnel');
-    $routes->options('provisioning/manual-personnel', 'Api\\ProvisioningController::options');
+    // Account Provisioning — target-schema manual flows.
+    $routes->post('provisioning/manual-student', 'Api\\TargetProvisioningController::manualStudent');
+    $routes->options('provisioning/manual-student', 'Api\\TargetProvisioningController::options');
+    $routes->post('provisioning/manual-personnel', 'Api\\TargetProvisioningController::manualPersonnel');
+    $routes->options('provisioning/manual-personnel', 'Api\\TargetProvisioningController::options');
+    // Roster endpoints remain on legacy controller until target roster payload is finalized.
     $routes->post('provisioning/preview-roster', 'Api\\ProvisioningController::previewRoster');
     $routes->options('provisioning/preview-roster', 'Api\\ProvisioningController::options');
     $routes->post('provisioning/commit-roster', 'Api\\ProvisioningController::commitRoster');

@@ -101,6 +101,8 @@ class AuthController extends Controller
             'assignment_id' => $assignment['assignment_id'] ?? null,
             'scope_type' => $assignment['scope_type'] ?? null,
             'scope_id' => $assignment['scope_id'] ?? null,
+            'scope_code' => $assignment['scope_code'] ?? null,
+            'scope_name' => $assignment['scope_name'] ?? null,
         ], $assignments);
 
         $studentPlacement = null;
@@ -171,7 +173,8 @@ class AuthController extends Controller
                     'academic_placement' => $studentPlacement,
                     'personnel_affiliation' => $personnelAffiliation,
                     'program_affiliations' => $programAffiliations,
-                    'roles' => $mappedRoles,
+                    'roles' => array_values(array_unique(array_column($mappedRoles, 'role_key'))),
+                    'role_assignments' => $mappedRoles,
                     // Temporary compatibility aliases. Frontend must migrate to academic_placement/program_affiliations.
                     'department_id' => null,
                     'degree_program_id' => $primaryProgramId,

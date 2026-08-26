@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 import HRModel from '../../models/HRModel'
-import DepartmentSecretaryAssignmentModal from './modals/DepartmentSecretaryAssignmentModal'
+import DeanAssignmentModal from './modals/DeanAssignmentModal'
 import CreatePersonnelAccountModal from './modals/CreatePersonnelAccountModal'
 import HRPersonnelDirectory from './HRPersonnelDirectoryPage'
 import HREvaluationSubmissions from './HREvaluationSubmissionsPage'
@@ -632,14 +632,14 @@ export function HRDashboard({ currentUser }) {
         </div>
       )}
 
-      {/* DEPARTMENT SECRETARY ROLE ASSIGNMENT MODAL */}
-      <DepartmentSecretaryAssignmentModal
+      {/* DEAN ROLE ASSIGNMENT MODAL */}
+      <DeanAssignmentModal
         isOpen={isAssignDeptSecModalOpen}
         onClose={() => setIsAssignDeptSecModalOpen(false)}
         personnelList={personnelList}
         onAssign={(id, role) => {
           handleAssignDepartmentSecretary(id, role)
-          showToast('Updated Department Secretary governance role.')
+          showToast('Updated Dean governance role.')
         }}
       />
 

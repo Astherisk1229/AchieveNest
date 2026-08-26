@@ -142,4 +142,39 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
 
     // General evaluation options catch-all (must come last under hr/evaluations)
     $routes->options('hr/evaluations/(:segment)', 'Api\\HREvaluationController::options');
+
+    // =========================================================================
+    // Target Student Portfolio & Program Coordinator Verification
+    // =========================================================================
+    $routes->get('portfolio/categories', 'Api\\StudentPortfolioController::categories');
+    $routes->options('portfolio/categories', 'Api\\StudentPortfolioController::options');
+    $routes->get('portfolio', 'Api\\StudentPortfolioController::index');
+    $routes->post('portfolio', 'Api\\StudentPortfolioController::create');
+    $routes->options('portfolio', 'Api\\StudentPortfolioController::options');
+    $routes->get('portfolio/(:segment)', 'Api\\StudentPortfolioController::get/$1');
+    $routes->options('portfolio/(:segment)', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/evidence', 'Api\\StudentPortfolioController::addEvidence/$1');
+    $routes->options('portfolio/(:segment)/evidence', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/verify', 'Api\\StudentPortfolioController::verifyRecord/$1');
+    $routes->options('portfolio/(:segment)/verify', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/request-revision', 'Api\\StudentPortfolioController::requestRevision/$1');
+    $routes->options('portfolio/(:segment)/request-revision', 'Api\\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/reject', 'Api\\StudentPortfolioController::rejectRecord/$1');
+    $routes->options('portfolio/(:segment)/reject', 'Api\\StudentPortfolioController::options');
+
+    // Program Coordinator Scoped Queue
+    $routes->get('program-coordinator/verification-queue', 'Api\\StudentPortfolioController::coordinatorQueue');
+    $routes->options('program-coordinator/verification-queue', 'Api\\StudentPortfolioController::options');
+
+    // OSAD Awards & Explainable Scoring Basis
+    $routes->get('osad/awards', 'Api\\AwardEvaluationController::listAwards');
+    $routes->options('osad/awards', 'Api\\AwardEvaluationController::options');
+    $routes->get('osad/awards/(:segment)/candidates', 'Api\\AwardEvaluationController::listCandidates/$1');
+    $routes->options('osad/awards/(:segment)/candidates', 'Api\\AwardEvaluationController::options');
+    $routes->get('osad/awards/(:segment)/students/(:segment)/basis', 'Api\\AwardEvaluationController::scoringBasis/$1/$2');
+    $routes->options('osad/awards/(:segment)/students/(:segment)/basis', 'Api\\AwardEvaluationController::options');
+
+    // Dean Nominations
+    $routes->post('dean/nominations', 'Api\\AwardEvaluationController::createDeanNomination');
+    $routes->options('dean/nominations', 'Api\\AwardEvaluationController::options');
 });

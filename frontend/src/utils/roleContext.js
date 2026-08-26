@@ -72,10 +72,6 @@ export function normalizeRoleContext(roleStr = '') {
       return CANONICAL_ROLES.ORGANIZATION_MODERATOR
 
     case 'dean':
-    case 'department_secretary':
-    case 'dept_secretary':
-    case 'dep_sec':
-    case 'secretary':
       return CANONICAL_ROLES.DEAN
 
     case 'hr_staff':
@@ -211,6 +207,41 @@ export function isRoleAssigned(userOrRole = {}, targetRole = '') {
     userObj.account_type || userObj.user_type
   )
   return assigned.includes(normTarget)
+}
+
+/**
+ * Helper: checks if user has a specific role key.
+ */
+export function hasRole(user = {}, roleKey = '') {
+  return isRoleAssigned(user, roleKey)
+}
+
+/**
+ * Helper: retrieves role assignments array from user object.
+ */
+export function getRoleAssignments(user = {}) {
+  return Array.isArray(user?.role_assignments) ? user.role_assignments : []
+}
+
+/**
+ * Helper: retrieves Program Coordinator assignments for user.
+ */
+export function getProgramCoordinatorAssignments(user = {}) {
+  return getRoleAssignments(user).filter(a => a.role_key === CANONICAL_ROLES.PROGRAM_COORDINATOR)
+}
+
+/**
+ * Helper: retrieves Dean assignment for user.
+ */
+export function getDeanAssignment(user = {}) {
+  return getRoleAssignments(user).find(a => a.role_key === CANONICAL_ROLES.DEAN) || null
+}
+
+/**
+ * Helper: retrieves Organization Moderator assignments for user.
+ */
+export function getOrganizationModeratorAssignments(user = {}) {
+  return getRoleAssignments(user).filter(a => a.role_key === CANONICAL_ROLES.ORGANIZATION_MODERATOR)
 }
 
 /**

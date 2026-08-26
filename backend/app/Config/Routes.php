@@ -79,17 +79,17 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // HR Personnel Directory & Governance (Phases 3-7, 14-15)
     // =========================================================================
 
-    // Authoritative Personnel Directory
-    $routes->get('hr/personnel', 'Api\\HRPersonnelController::directory');
-    $routes->options('hr/personnel', 'Api\\HRPersonnelController::options');
+    // Target-schema Personnel Directory
+    $routes->get('hr/personnel', 'Api\\TargetHRPersonnelController::directory');
+    $routes->options('hr/personnel', 'Api\\TargetHRPersonnelController::options');
 
-    // Dean role assignment / revocation
-    $routes->post('hr/personnel/(:segment)/dean-role', 'Api\\HRPersonnelController::assignDean/$1');
-    $routes->delete('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\HRPersonnelController::revokeDean/$1/$2');
-    $routes->options('hr/personnel/(:segment)/dean-role', 'Api\\HRPersonnelController::options');
-    $routes->options('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\HRPersonnelController::options');
+    // Target-schema Dean assignment / revocation
+    $routes->post('hr/personnel/(:segment)/dean-role', 'Api\\TargetHRPersonnelController::assignDean/$1');
+    $routes->delete('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\TargetHRPersonnelController::revokeDean/$1/$2');
+    $routes->options('hr/personnel/(:segment)/dean-role', 'Api\\TargetHRPersonnelController::options');
+    $routes->options('hr/personnel/(:segment)/dean-role/(:segment)', 'Api\\TargetHRPersonnelController::options');
 
-    // Prerequisite Qualification Report gate
+    // Prerequisite Qualification Report gate (legacy controller; no Department dependency in these methods)
     $routes->post('hr/personnel/(:segment)/qualification-reviews', 'Api\\HRPersonnelController::recordQualification/$1');
     $routes->get('hr/personnel/(:segment)/qualification-reviews', 'Api\\HRPersonnelController::listQualificationReviews/$1');
     $routes->options('hr/personnel/(:segment)/qualification-reviews', 'Api\\HRPersonnelController::options');

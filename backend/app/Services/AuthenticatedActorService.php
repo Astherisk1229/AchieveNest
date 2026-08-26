@@ -15,10 +15,12 @@ class AuthenticatedActorService
 
     /**
      * Resolves the authenticated actor from Authorization Bearer header.
-     * Checks token validity, profile existence, active status, and active roles.
      *
-     * @param string|null $authorizationHeader
-     * @return array|null Returns actor array with 'profile', 'roles', 'scopes', and 'claims' or null if unauthorized/inactive.
+     * Generic account roles (student, personnel, hr_staff, osad_staff) remain
+     * sourced from profile_roles during the compatibility period. Business-scoped
+     * governance roles are sourced exclusively from their final assignment tables.
+     *
+     * @return array|null Actor with profile, role keys, normalized assignments, claims.
      */
     public function resolveActor(?string $authorizationHeader = null): ?array
     {
@@ -50,21 +52,56 @@ class AuthenticatedActorService
             return null;
         }
 
-        $roleRows = $db->query(
-            'SELECT r.role_key, r.display_name, pr.id AS assignment_id, pr.scope_type, pr.scope_id
+        // Generic/global roles only. Specialized governance roles are resolved below.
+        $genericRoleRows = $db->query(
+            "SELECT r.role_key, r.display_name, pr.id AS assignment_id,
+                    'university'::text AS scope_type, NULL::uuid AS scope_id
              FROM public.profile_roles pr
              JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.profile_id = ? AND pr.is_active = true',
+             WHERE pr.profile_id = ?
+               AND pr.is_active = true
+               AND r.role_key NOT IN ('dean', 'program_coordinator', 'organization_moderator')",
             [$authUserId]
         )->getResultArray();
 
-        $roles = array_column($roleRows, 'role_key');
+        $deanRows = $db->query(
+            "SELECT 'dean'::text AS role_key, 'Dean'::text AS display_name,
+                    da.id AS assignment_id, 'college'::text AS scope_type,
+                    da.college_id AS scope_id
+             FROM public.dean_assignments da
+             WHERE da.personnel_profile_id = ? AND da.is_active = true",
+            [$authUserId]
+        )->getResultArray();
+
+        $coordinatorRows = $db->query(
+            "SELECT 'program_coordinator'::text AS role_key,
+                    'Program Coordinator'::text AS display_name,
+                    pca.id AS assignment_id, 'academic_program'::text AS scope_type,
+                    pca.academic_program_id AS scope_id
+             FROM public.program_coordinator_assignments pca
+             WHERE pca.personnel_profile_id = ? AND pca.is_active = true",
+            [$authUserId]
+        )->getResultArray();
+
+        $moderatorRows = $db->query(
+            "SELECT 'organization_moderator'::text AS role_key,
+                    'Organization Moderator'::text AS display_name,
+                    oma.id AS assignment_id, 'organization'::text AS scope_type,
+                    oma.organization_id AS scope_id
+             FROM public.organization_moderator_assignments oma
+             WHERE oma.personnel_profile_id = ? AND oma.is_active = true",
+            [$authUserId]
+        )->getResultArray();
+
+        $assignments = array_merge($genericRoleRows, $deanRows, $coordinatorRows, $moderatorRows);
+        $roles = array_values(array_unique(array_column($assignments, 'role_key')));
 
         return [
-            'profile' => $profile,
-            'roles'   => $roles,
-            'scopes'  => $roleRows,
-            'claims'  => $claims,
+            'profile'      => $profile,
+            'roles'        => $roles,
+            'scopes'       => $assignments, // compatibility alias
+            'assignments'  => $assignments,
+            'claims'       => $claims,
         ];
     }
 }

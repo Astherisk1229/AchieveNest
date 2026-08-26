@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Api;
 
+use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
 use App\Services\SupabaseAdminAuthService;
 use CodeIgniter\API\ResponseTrait;
@@ -91,10 +92,11 @@ class PasswordResetRequestController extends Controller
 
         $assignedOffice = ($accountType === 'student') ? 'osad' : 'hr';
 
-        // Check for existing pending request to prevent duplicates
+        // Rate-limit: reject if a pending request exists within the last 24 hours (generic response — no account disclosure)
         $existingPending = $db->table('password_reset_requests')
             ->where('user_id', $profile['id'])
             ->where('status', 'pending')
+            ->where('requested_at >=', date('Y-m-d H:i:s', strtotime('-24 hours')))
             ->get()
             ->getRowArray();
 
@@ -335,6 +337,10 @@ class PasswordResetRequestController extends Controller
 
         $json = $this->request->getJSON(true) ?? [];
         $reason = trim((string) ($json['reason'] ?? 'Rejected by administrator'));
+        // Bound rejection reason to prevent abuse
+        if (strlen($reason) > ValidationHelper::MAX_REASON_LENGTH) {
+            return $this->respond(['error' => ['code' => 'REASON_TOO_LONG', 'message' => 'Rejection reason must not exceed ' . ValidationHelper::MAX_REASON_LENGTH . ' characters.']], 422);
+        }
 
         $db->transStart();
 

@@ -2,6 +2,42 @@
 
 namespace App\Services;
 
+/**
+ * HREvaluationService
+ *
+ * Authoritative backend scoring engine.
+ *
+ * =============================================================================
+ * SCORING RULE TRACEABILITY MATRIX
+ * Source: NDMU Rating Sheet / Administrators Ranking Scale (confirmed 2026-08-26)
+ * =============================================================================
+ *
+ * Criterion          | Code | Source Confidence           | Scoring Mode
+ * -------------------|------|-----------------------------|-------------------
+ * Educational Degrees| A.1  | CONFIRMED (NDMU Rating Sheet)| QUANTITY_DERIVED
+ * Memberships        | A.2  | CONFIRMED (NDMU Rating Sheet)| SINGLE_CATEGORY
+ * Seminars/Trainings | A.3  | CONFIRMED (NDMU Rating Sheet)| SINGLE_CATEGORY
+ * Guest Lecturer     | B.1  | STRUCTURALLY_IMPLIED         | MULTI_FACTOR
+ * Publications       | B.2  | STRUCTURALLY_IMPLIED         | MATRIX_LOOKUP
+ * Conduct of Research| B.3  | UNDEFINED                    | MANUAL_BOUNDED *
+ * Awards/Recognition | B.4  | CONFIRMED (NDMU Rating Sheet)| MATRIX_LOOKUP
+ * Instructional Mat. | B.5  | CONFIRMED (NDMU Rating Sheet)| SINGLE_CATEGORY
+ * Creative Work      | B.6  | UNDEFINED                    | MANUAL_BOUNDED *
+ * Extracurricular    | C.1  | UNDEFINED                    | MANUAL_BOUNDED *
+ * Community Service  | C.2  | UNDEFINED                    | MANUAL_BOUNDED *
+ * Years of Service   | C.3  | CONFIRMED (NDMU Rating Sheet)| AUTOMATIC_DERIVED
+ *
+ * * UNDEFINED rules are MANUAL_BOUNDED only:
+ *   - No automatic promotion or rank recommendation is generated.
+ *   - Points require evaluator justification (min 10 chars).
+ *   - They are bounded by maxPoints but not formula-calculated.
+ *
+ * IMPORTANT: Do not add CONFIRMED status to any rule without
+ * tracing it to an approved NDMU source document.
+ *
+ * rank_recommendation is permanently null — deferred per confirmed HR decision.
+ * =============================================================================
+ */
 class HREvaluationService
 {
     public const AREA_A_MAX = 70.0;

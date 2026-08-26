@@ -195,9 +195,12 @@ export function HRPersonnelDirectoryPage(props) {
         <PasswordResetQueue
           passwordResets={passwordResets}
           resets={passwordResets}
-          onApproveReset={(reqId) => {
-            const res = handleApprovePasswordReset(reqId)
-            showToast(`Approved reset request for ${res?.user_name || 'personnel'}. Issued temporary passkey: NDMU-Faculty2026!`)
+          onApproveReset={async (reqId) => {
+            const res = await handleApprovePasswordReset(reqId)
+            const temporaryPassword = res?.temporary_password
+            showToast(temporaryPassword
+              ? `Reset approved. Copy the one-time temporary password now: ${temporaryPassword}`
+              : 'Reset approved. The temporary credential was issued securely.')
           }}
         />
       )}

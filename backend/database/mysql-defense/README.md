@@ -45,8 +45,8 @@ Repository legacy structures do not override finalized target business rules.
 | File | Domain | Status |
 |---|---|---|
 | `migrations/000001_identity_and_institutional.sql` | identity, local credentials, lifecycle, roles, colleges, academic programs, administrative units | AUTHORED — REVIEW ONLY |
-| `migrations/000002_student_personnel_affiliations.sql` | Student/Personnel subtypes, enrollment, College/Program/Admin Unit affiliations | PENDING |
-| `migrations/000003_governance_and_organizations.sql` | Dean, Program Coordinator, organizations, Moderator assignments | PENDING |
+| `migrations/000002_student_personnel_affiliations.sql` | Student/Personnel subtypes, enrollment, College/Program/Admin Unit affiliations | AUTHORED — REVIEW ONLY |
+| `migrations/000003_governance_and_organizations.sql` | Dean, Program Coordinator, organizations, Moderator assignments | AUTHORED — REVIEW ONLY |
 | `migrations/000004_student_portfolio_verification.sql` | 9/57 taxonomy structure, portfolio records, evidence metadata, verification history | PENDING |
 | `migrations/000005_events_and_certificates.sql` | events, attendance, certificate templates/issuance | PENDING |
 | `migrations/000006_award_scoring_and_eligibility.sql` | 15 Potential Awards structure, rules, evaluations, nominations, eligibility | PENDING |
@@ -54,6 +54,12 @@ Repository legacy structures do not override finalized target business rules.
 | `migrations/000008_personnel_ranking.sql` | Personnel accomplishments, qualification and Administrator Ranking | PENDING |
 | `migrations/000009_audit_and_file_security.sql` | append-only audit and evidence security history | PENDING |
 | `migrations/000010_constraints_indexes_reference_seeds.sql` | cross-domain guards, indexes and authoritative permanent seed data | PENDING |
+
+## Current Phase 5 checkpoint
+
+Three domain migrations are authored and isolated from the executable CodeIgniter migration directory. No MySQL migration in this package has been executed against `achievenest_local`.
+
+Next authoring target: `000004_student_portfolio_verification.sql` using the finalized 9-category / 57-subcategory taxonomy structure and existing evidence/verification security semantics. Permanent seed rows remain deferred until the exact authoritative wording is loaded into the seed migration.
 
 ## Execution model
 

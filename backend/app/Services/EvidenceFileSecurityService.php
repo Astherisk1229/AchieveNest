@@ -151,14 +151,23 @@ class EvidenceFileSecurityService
      *
      * Configure EVIDENCE_MALWARE_SCANNER_PATH to clamdscan or clamscan.
      * EVIDENCE_MALWARE_SCAN_REQUIRED defaults to true.
+     * OS/container process environment takes precedence over CodeIgniter .env.
      *
      * @return array{0:string,1:string}
      */
     private function runMalwareScan(string $path): array
     {
-        $requiredRaw = strtolower(trim((string) (env('EVIDENCE_MALWARE_SCAN_REQUIRED', 'true') ?: 'true')));
+        $processRequired = getenv('EVIDENCE_MALWARE_SCAN_REQUIRED');
+        $requiredValue = $processRequired !== false
+            ? (string) $processRequired
+            : (string) (env('EVIDENCE_MALWARE_SCAN_REQUIRED', 'true') ?: 'true');
+        $requiredRaw = strtolower(trim($requiredValue));
         $required = ! in_array($requiredRaw, ['0', 'false', 'no', 'off'], true);
-        $scannerPath = trim((string) (env('EVIDENCE_MALWARE_SCANNER_PATH', '') ?: getenv('EVIDENCE_MALWARE_SCANNER_PATH')));
+
+        $processScanner = getenv('EVIDENCE_MALWARE_SCANNER_PATH');
+        $scannerPath = trim($processScanner !== false
+            ? (string) $processScanner
+            : (string) (env('EVIDENCE_MALWARE_SCANNER_PATH', '') ?: ''));
 
         if ($scannerPath === '') {
             if ($required) {

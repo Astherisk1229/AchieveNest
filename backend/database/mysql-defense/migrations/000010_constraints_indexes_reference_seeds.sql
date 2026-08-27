@@ -12,46 +12,46 @@
 -- 1. Profiles: Exactly one active HR Administrator
 ALTER TABLE profiles
     ADD COLUMN active_hr_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN account_type = 'hr_admin' AND status = 'active' THEN id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN account_type = 'hr_admin' AND status = 'active' THEN id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_profiles_one_active_hr_admin (active_hr_guard);
 
 -- 2. Student Program Enrollments: Exactly one active enrollment per student
 ALTER TABLE student_program_enrollments
     ADD COLUMN active_student_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN student_profile_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN student_profile_id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_active_student_enrollment (active_student_guard);
 
 -- 3. Personnel College Affiliations: Exactly one active college affiliation per academic personnel
 ALTER TABLE personnel_college_affiliations
     ADD COLUMN active_personnel_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN personnel_profile_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN personnel_profile_id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_active_personnel_college (active_personnel_guard);
 
 -- 4. Personnel Administrative Unit Affiliations: Exactly one active unit affiliation per non-academic personnel
 ALTER TABLE personnel_administrative_unit_affiliations
     ADD COLUMN active_personnel_unit_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN personnel_profile_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN personnel_profile_id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_active_personnel_admin_unit (active_personnel_unit_guard);
 
 -- 5. Dean Assignments: Exactly one active dean per college, and one active dean assignment per personnel
 ALTER TABLE dean_assignments
     ADD COLUMN active_college_dean_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN college_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN college_id ELSE NULL END) VIRTUAL,
     ADD COLUMN active_personnel_dean_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN personnel_profile_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN personnel_profile_id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_active_college_dean (active_college_dean_guard),
     ADD UNIQUE KEY uq_active_personnel_dean (active_personnel_dean_guard);
 
 -- 6. Program Coordinator Assignments: Exactly one active coordinator per academic program
 ALTER TABLE program_coordinator_assignments
     ADD COLUMN active_program_coord_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN academic_program_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN academic_program_id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_active_program_coordinator (active_program_coord_guard);
 
 -- 7. Organization Moderator Assignments: Exactly one active moderator per student organization
 ALTER TABLE organization_moderator_assignments
     ADD COLUMN active_org_moderator_guard CHAR(36)
-    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN organization_id ELSE NULL END) STORED,
+    GENERATED ALWAYS AS (CASE WHEN is_active = 1 THEN organization_id ELSE NULL END) VIRTUAL,
     ADD UNIQUE KEY uq_active_org_moderator (active_org_moderator_guard);
 
 

@@ -3,7 +3,6 @@
 use App\Services\EvidenceFileSecurityService;
 use CodeIgniter\HTTP\Files\UploadedFile;
 use CodeIgniter\Test\CIUnitTestCase;
-use RuntimeException;
 
 /**
  * @internal
@@ -53,7 +52,7 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
         $bytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /OpenAction 2 0 R >>\nendobj\n2 0 obj\n<< /S /JavaScript /JS (app.alert('x')) >>\nendobj\n%%EOF\n";
         $file = $this->uploadedFile($bytes, 'unsafe.pdf', 'application/pdf');
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('unsupported active or embedded content');
         (new EvidenceFileSecurityService())->inspectAndScan($file);
     }
@@ -62,7 +61,7 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
     {
         $file = $this->uploadedFile('This is not a PDF file.', 'fake.pdf', 'application/pdf');
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unsupported evidence file type');
         (new EvidenceFileSecurityService())->inspectAndScan($file);
     }
@@ -79,7 +78,7 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
 
         $file = new UploadedFile($path, 'too-large.pdf', 'application/pdf', filesize($path), UPLOAD_ERR_OK);
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('between 1 byte and 20 MB');
         (new EvidenceFileSecurityService())->inspectAndScan($file);
     }
@@ -92,7 +91,7 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
         $bytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n";
         $file = $this->uploadedFile($bytes, 'certificate.pdf', 'application/pdf');
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('malware scanner is not configured');
         (new EvidenceFileSecurityService())->inspectAndScan($file);
     }

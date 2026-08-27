@@ -59,8 +59,11 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('personnel/accomplishments', 'Api\\PersonnelAccomplishmentController::index');
     $routes->post('personnel/accomplishments', 'Api\\PersonnelAccomplishmentController::create');
     $routes->options('personnel/accomplishments', 'Api\\PersonnelAccomplishmentController::options');
-    $routes->post('personnel/accomplishments/(:segment)/evidence', 'Api\\PersonnelAccomplishmentController::addEvidence/$1');
-    $routes->options('personnel/accomplishments/(:segment)/evidence', 'Api\\PersonnelAccomplishmentController::options');
+    // SECURITY: actual multipart bytes are validated/scanned server-side before Storage registration.
+    $routes->post('personnel/accomplishments/(:segment)/evidence', 'Api\\SecureEvidenceController::uploadPersonnel/$1');
+    $routes->options('personnel/accomplishments/(:segment)/evidence', 'Api\\SecureEvidenceController::options');
+    $routes->get('personnel/evidence/(:segment)/download', 'Api\\SecureEvidenceController::personnelDownload/$1');
+    $routes->options('personnel/evidence/(:segment)/download', 'Api\\SecureEvidenceController::options');
 
     // Verification Queue & Decisions
     $routes->get('verification/queue', 'Api\\VerificationQueueController::queue');
@@ -153,8 +156,11 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('portfolio', 'Api\\StudentPortfolioController::options');
     $routes->get('portfolio/(:segment)', 'Api\\StudentPortfolioController::get/$1');
     $routes->options('portfolio/(:segment)', 'Api\\StudentPortfolioController::options');
-    $routes->post('portfolio/(:segment)/evidence', 'Api\\StudentPortfolioController::addEvidence/$1');
-    $routes->options('portfolio/(:segment)/evidence', 'Api\\StudentPortfolioController::options');
+    // SECURITY: backend receives the actual multipart file and generates the Storage object path.
+    $routes->post('portfolio/(:segment)/evidence', 'Api\\SecureEvidenceController::uploadStudent/$1');
+    $routes->options('portfolio/(:segment)/evidence', 'Api\\SecureEvidenceController::options');
+    $routes->get('portfolio/evidence/(:segment)/download', 'Api\\SecureEvidenceController::studentDownload/$1');
+    $routes->options('portfolio/evidence/(:segment)/download', 'Api\\SecureEvidenceController::options');
     $routes->post('portfolio/(:segment)/verify', 'Api\\StudentPortfolioController::verifyRecord/$1');
     $routes->options('portfolio/(:segment)/verify', 'Api\\StudentPortfolioController::options');
     $routes->post('portfolio/(:segment)/request-revision', 'Api\\StudentPortfolioController::requestRevision/$1');

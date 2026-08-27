@@ -10,7 +10,7 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  timeout: 15000
+  timeout: 30000
 })
 
 // Request Interceptor: Attach JWT Bearer Token from the current Supabase session
@@ -24,6 +24,12 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`
       } else {
         delete config.headers.Authorization
+      }
+
+      // For FormData, never force application/json. The browser must generate
+      // the multipart/form-data boundary itself.
+      if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+        delete config.headers['Content-Type']
       }
     } catch {
       delete config.headers.Authorization

@@ -21,8 +21,24 @@ export const portfolioService = {
     return res?.data || res
   },
 
-  async addEvidence(id, payload) {
-    const res = await apiClient.post(`/portfolio/${id}/evidence`, payload)
+  /**
+   * Secure multipart evidence upload. The backend derives MIME type, size,
+   * checksum and Storage path from the actual bytes; callers must not supply
+   * those security-sensitive values.
+   */
+  async addEvidence(id, file, evidenceType = 'certificate') {
+    if (!(file instanceof File)) {
+      throw new TypeError('A File object is required for evidence upload.')
+    }
+    const form = new FormData()
+    form.append('file', file, file.name)
+    form.append('evidence_type', evidenceType)
+    const res = await apiClient.post(`/portfolio/${id}/evidence`, form)
+    return res?.data || res
+  },
+
+  async getEvidenceDownload(evidenceId) {
+    const res = await apiClient.get(`/portfolio/evidence/${evidenceId}/download`)
     return res?.data || res
   },
 

@@ -21,6 +21,8 @@ class EvidenceFileSecurityService
     ];
 
     /**
+     * Production HTTP entry point. Synthetic/local files do not pass this gate.
+     *
      * @return array{
      *   temp_path:string,original_filename:string,mime_type:string,extension:string,
      *   byte_size:int,sha256:string,scanner:string,scan_status:string
@@ -33,6 +35,24 @@ class EvidenceFileSecurityService
         }
 
         $tempPath = $file->getTempName();
+        if ($tempPath === '' || ! is_file($tempPath) || ! is_readable($tempPath)) {
+            throw new RuntimeException('Unable to read the uploaded evidence file.');
+        }
+
+        return $this->inspectPath($tempPath, (string) $file->getClientName());
+    }
+
+    /**
+     * Core byte-inspection pipeline. Kept protected so tests can exercise the
+     * actual validation logic without weakening the HTTP upload gate above.
+     *
+     * @return array{
+     *   temp_path:string,original_filename:string,mime_type:string,extension:string,
+     *   byte_size:int,sha256:string,scanner:string,scan_status:string
+     * }
+     */
+    protected function inspectPath(string $tempPath, string $clientName): array
+    {
         if ($tempPath === '' || ! is_file($tempPath) || ! is_readable($tempPath)) {
             throw new RuntimeException('Unable to read the uploaded evidence file.');
         }
@@ -60,7 +80,7 @@ class EvidenceFileSecurityService
 
         [$scanner, $scanStatus] = $this->runMalwareScan($tempPath);
 
-        $original = basename(trim($file->getClientName()));
+        $original = basename(trim($clientName));
         $original = preg_replace('/[^A-Za-z0-9._ ()-]/', '_', $original) ?: 'evidence.' . self::MIME_TO_EXTENSION[$detectedMime];
         if (strlen($original) > 255) {
             $original = substr($original, 0, 240) . '.' . self::MIME_TO_EXTENSION[$detectedMime];

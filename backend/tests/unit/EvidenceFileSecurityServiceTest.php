@@ -1,8 +1,20 @@
 <?php
 
 use App\Services\EvidenceFileSecurityService;
-use CodeIgniter\HTTP\Files\UploadedFile;
 use CodeIgniter\Test\CIUnitTestCase;
+
+/**
+ * Test wrapper exposes only the protected byte-inspection core. Production
+ * HTTP requests still go through inspectAndScan(), which requires a valid
+ * UploadedFile created by PHP's HTTP upload mechanism.
+ */
+final class TestableEvidenceFileSecurityService extends EvidenceFileSecurityService
+{
+    public function inspectPathForTest(string $path, string $clientName): array
+    {
+        return $this->inspectPath($path, $clientName);
+    }
+}
 
 /**
  * @internal
@@ -36,9 +48,9 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
     public function testAcceptsCleanPdfAndDerivesChecksumFromBytes(): void
     {
         $bytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<<>>\n%%EOF\n";
-        $file = $this->uploadedFile($bytes, 'certificate.pdf', 'application/pdf');
+        $path = $this->tempFile($bytes);
 
-        $result = (new EvidenceFileSecurityService())->inspectAndScan($file);
+        $result = (new TestableEvidenceFileSecurityService())->inspectPathForTest($path, 'certificate.pdf');
 
         $this->assertSame('application/pdf', $result['mime_type']);
         $this->assertSame('pdf', $result['extension']);
@@ -50,20 +62,20 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
     public function testRejectsPdfWithActiveJavaScriptMarker(): void
     {
         $bytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /OpenAction 2 0 R >>\nendobj\n2 0 obj\n<< /S /JavaScript /JS (app.alert('x')) >>\nendobj\n%%EOF\n";
-        $file = $this->uploadedFile($bytes, 'unsafe.pdf', 'application/pdf');
+        $path = $this->tempFile($bytes);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('unsupported active or embedded content');
-        (new EvidenceFileSecurityService())->inspectAndScan($file);
+        (new TestableEvidenceFileSecurityService())->inspectPathForTest($path, 'unsafe.pdf');
     }
 
     public function testRejectsDisguisedPdfWhoseBytesArePlainText(): void
     {
-        $file = $this->uploadedFile('This is not a PDF file.', 'fake.pdf', 'application/pdf');
+        $path = $this->tempFile('This is not a PDF file.');
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unsupported evidence file type');
-        (new EvidenceFileSecurityService())->inspectAndScan($file);
+        (new TestableEvidenceFileSecurityService())->inspectPathForTest($path, 'fake.pdf');
     }
 
     public function testRejectsOversizedFile(): void
@@ -76,11 +88,9 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
         fwrite($handle, "X");
         fclose($handle);
 
-        $file = new UploadedFile($path, 'too-large.pdf', 'application/pdf', filesize($path), UPLOAD_ERR_OK);
-
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('between 1 byte and 20 MB');
-        (new EvidenceFileSecurityService())->inspectAndScan($file);
+        (new TestableEvidenceFileSecurityService())->inspectPathForTest($path, 'too-large.pdf');
     }
 
     public function testFailsClosedWhenMalwareScannerIsRequiredButMissing(): void
@@ -89,19 +99,18 @@ final class EvidenceFileSecurityServiceTest extends CIUnitTestCase
         $_ENV['EVIDENCE_MALWARE_SCAN_REQUIRED'] = 'true';
         $_SERVER['EVIDENCE_MALWARE_SCAN_REQUIRED'] = 'true';
         $bytes = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n";
-        $file = $this->uploadedFile($bytes, 'certificate.pdf', 'application/pdf');
+        $path = $this->tempFile($bytes);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('malware scanner is not configured');
-        (new EvidenceFileSecurityService())->inspectAndScan($file);
+        (new TestableEvidenceFileSecurityService())->inspectPathForTest($path, 'certificate.pdf');
     }
 
-    private function uploadedFile(string $bytes, string $name, string $declaredMime): UploadedFile
+    private function tempFile(string $bytes): string
     {
         $path = tempnam(sys_get_temp_dir(), 'achievenest-evidence-');
         file_put_contents($path, $bytes);
         $this->tempFiles[] = $path;
-
-        return new UploadedFile($path, $name, $declaredMime, strlen($bytes), UPLOAD_ERR_OK);
+        return $path;
     }
 }

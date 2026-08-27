@@ -58,6 +58,68 @@ class AwardEvaluationController extends Controller
     }
 
     /**
+     * PATCH /api/v1/osad/awards/{awardId}/candidate-threshold
+     * The audit actor is always derived from the verified bearer token context.
+     */
+    public function updateCandidateThreshold(string $awardId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        if (! $this->isAuthorizedThresholdActor($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Active OSAD administrator authorization required.']], 403);
+        }
+
+        $payload = $this->request->getJSON(true) ?? [];
+        $arguments = $this->thresholdMutationArguments($actor, $awardId, $payload);
+        if ($arguments === null) {
+            return $this->respond(['error' => ['code' => 'INVALID_THRESHOLD', 'message' => 'candidate_threshold_percent must be between 0 and 100 with at most two decimal places.']], 422);
+        }
+
+        try {
+            $row = db_connect()->query(
+                'SELECT public.admin_update_award_candidate_threshold(?, ?, ?) AS result',
+                $arguments
+            )->getRowArray();
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'THRESHOLD_UPDATE_FAILED', 'message' => 'Award threshold update failed.']], 500);
+        }
+
+        return $this->respond(['data' => json_decode((string) ($row['result'] ?? '{}'), true)], 200);
+    }
+
+    /**
+     * Builds database arguments exclusively from trusted actor context, route ID,
+     * and the single approved mutable payload field.
+     *
+     * @return array{0:string,1:string,2:string}|null
+     */
+    protected function thresholdMutationArguments(array $actor, string $awardId, array $payload): ?array
+    {
+        $rawThreshold = $payload['candidate_threshold_percent'] ?? null;
+        if (! is_numeric($rawThreshold)) {
+            return null;
+        }
+
+        $threshold = (string) $rawThreshold;
+        if ((float) $threshold < 0 || (float) $threshold > 100
+            || ! preg_match('/^(?:100(?:\.0{1,2})?|\d{1,2}(?:\.\d{1,2})?)$/', $threshold)) {
+            return null;
+        }
+
+        return [(string) $actor['profile']['id'], $awardId, $threshold];
+    }
+
+    protected function isAuthorizedThresholdActor(array $actor): bool
+    {
+        return ($actor['profile']['account_type'] ?? '') === 'osad_admin'
+            && ($actor['profile']['status'] ?? '') === 'active'
+            && in_array('osad_staff', $actor['roles'] ?? [], true);
+    }
+
+    /**
      * GET /api/v1/osad/awards/{awardId}/candidates
      * Lists candidate evaluations (both portfolio-based and Dean nominations).
      */

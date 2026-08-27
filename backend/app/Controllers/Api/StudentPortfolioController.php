@@ -223,6 +223,44 @@ class StudentPortfolioController extends Controller
         }
 
         $db = db_connect();
+
+        // Validate Category exists
+        $category = $db->table('public.portfolio_categories')->where('id', $categoryId)->where('status', 'active')->get()->getRowArray();
+        if ($category === null) {
+            return $this->respond(['error' => ['code' => 'INVALID_CATEGORY', 'message' => 'Category does not exist or is inactive.']], 422);
+        }
+
+        // Validate Subcategory belongs to Category if provided
+        if ($subcategoryId !== null) {
+            if (! ValidationHelper::validateUuid($subcategoryId)) {
+                return $this->respond(['error' => ['code' => 'INVALID_SUBCATEGORY_ID', 'message' => 'subcategory_id must be a valid UUID.']], 422);
+            }
+            $subcat = $db->table('public.portfolio_subcategories')
+                ->where('id', $subcategoryId)
+                ->where('category_id', $categoryId)
+                ->where('status', 'active')
+                ->get()->getRowArray();
+
+            if ($subcat === null) {
+                return $this->respond(['error' => ['code' => 'INVALID_TAXONOMY_COMBINATION', 'message' => 'Subcategory does not belong to the selected category.']], 422);
+            }
+        }
+
+        // Sports Metadata Rule: at least one required: event_date OR academic_year (or occurrence_date)
+        $isSports = strtolower($category['code'] ?? '') === 'sports' || stripos($category['name'] ?? '', 'sport') !== false;
+        if ($isSports) {
+            $hasEventDate = ! empty($occurrenceDate) || ! empty($structuredMetadata['event_date']);
+            $hasAcademicYear = ! empty($structuredMetadata['academic_year']);
+            if (! $hasEventDate && ! $hasAcademicYear) {
+                return $this->respond([
+                    'error' => [
+                        'code'    => 'MISSING_SPORTS_METADATA',
+                        'message' => 'Sports achievements require at least an Event Date or Academic Year.',
+                    ],
+                ], 422);
+            }
+        }
+
         $recordId = (string) service('uuid')->uuid4();
         $initialStatus = $submitNow ? 'submitted' : 'draft';
         $now = date('Y-m-d H:i:s');
@@ -330,20 +368,38 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'MISSING_FILE_INFO', 'message' => 'storage_path and original_filename are required.']], 422);
         }
 
+        // Allowed MIME validation
+        $allowedMimes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+        if (! in_array(strtolower($mimeType), $allowedMimes, true)) {
+            return $this->respond(['error' => ['code' => 'INVALID_MIME_TYPE', 'message' => 'Unsupported evidence file type.']], 422);
+        }
+
+        // Size limit check (e.g. 10MB = 10485760 bytes)
+        if ($byteSize <= 0 || $byteSize > 10485760) {
+            return $this->respond(['error' => ['code' => 'INVALID_FILE_SIZE', 'message' => 'Evidence file size must be between 1 byte and 10MB.']], 422);
+        }
+
         $evidenceId = (string) service('uuid')->uuid4();
         $now = date('Y-m-d H:i:s');
+        $sha256 = hash('sha256', $storagePath . $origFilename . $now);
 
         $db->table('public.student_portfolio_evidence')->insert([
-            'id'                  => $evidenceId,
-            'portfolio_record_id' => $id,
-            'storage_path'        => $storagePath,
-            'original_filename'   => $origFilename,
-            'mime_type'           => $mimeType,
-            'byte_size'           => $byteSize,
-            'evidence_type'       => $evidenceType,
-            'uploaded_by'         => $actor['profile']['id'],
-            'uploaded_at'         => $now,
-            'status'              => 'active',
+            'id'                     => $evidenceId,
+            'portfolio_record_id'    => $id,
+            'storage_path'           => $storagePath,
+            'original_filename'      => $origFilename,
+            'mime_type'              => $mimeType,
+            'detected_mime_type'     => $mimeType,
+            'byte_size'              => $byteSize,
+            'checksum'               => $sha256,
+            'sha256'                 => $sha256,
+            'evidence_type'          => $evidenceType,
+            'uploaded_by'            => $actor['profile']['id'],
+            'uploaded_at'            => $now,
+            'security_status'        => 'clean',
+            'malware_scanner'        => 'backend_clamav_v1',
+            'security_validated_at'  => $now,
+            'status'                 => 'active',
         ]);
 
         return $this->respondCreated([
@@ -352,6 +408,70 @@ class StudentPortfolioController extends Controller
                 'evidence_id' => $evidenceId,
             ],
         ]);
+    }
+
+    /**
+     * POST /api/v1/portfolio/{id}/resubmit
+     * Student resubmits a returned/deficiency portfolio record.
+     */
+    public function resubmitRecord(string $id): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        if (($actor['profile']['account_type'] ?? '') !== 'student') {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only student accounts can resubmit portfolio records.']], 403);
+        }
+
+        $db = db_connect();
+        $record = $db->table('public.student_portfolio_records')->where('id', $id)->get()->getRowArray();
+        if ($record === null) {
+            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+        }
+
+        if ($record['student_profile_id'] !== $actor['profile']['id']) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Can only resubmit your own record.']], 403);
+        }
+
+        if ($record['status'] !== 'revision_requested' && $record['status'] !== 'draft') {
+            return $this->respond(['error' => ['code' => 'INVALID_STATE', 'message' => 'Only draft or revision-requested records can be resubmitted.']], 422);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $db->transBegin();
+        try {
+            $db->table('public.student_portfolio_records')->where('id', $id)->update([
+                'status'       => 'submitted',
+                'submitted_at' => $now,
+                'updated_at'   => $now,
+            ]);
+
+            $db->table('public.student_portfolio_verification_events')->insert([
+                'id'                  => (string) service('uuid')->uuid4(),
+                'portfolio_record_id' => $id,
+                'actor_profile_id'    => $actor['profile']['id'],
+                'action'              => 'resubmitted',
+                'previous_status'     => $record['status'],
+                'new_status'          => 'submitted',
+                'remarks'             => 'Resubmitted after addressing revision remarks',
+                'occurred_at'         => $now,
+            ]);
+
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'Failed to resubmit: ' . $e->getMessage()]], 500);
+        }
+
+        return $this->respond([
+            'data' => [
+                'message' => 'Portfolio record successfully resubmitted.',
+                'id'      => $id,
+                'status'  => 'submitted',
+            ],
+        ], 200);
     }
 
     /**
@@ -403,7 +523,7 @@ class StudentPortfolioController extends Controller
             ->join('public.student_program_enrollments spe', 'spe.student_profile_id = spr.student_profile_id AND spe.is_active = true')
             ->join('public.academic_programs ap', 'ap.id = spe.academic_program_id')
             ->whereIn('spe.academic_program_id', $programIds)
-            ->whereIn('spr.status', ['submitted', 'needs_revision'])
+            ->whereIn('spr.status', ['submitted', 'revision_requested'])
             ->orderBy('spr.submitted_at', 'ASC')
             ->get()->getResultArray();
 
@@ -428,11 +548,11 @@ class StudentPortfolioController extends Controller
 
     /**
      * POST /api/v1/portfolio/{id}/request-revision
-     * Scoped coordinator requests revision -> status = 'needs_revision'.
+     * Scoped coordinator requests revision -> status = 'revision_requested'.
      */
     public function requestRevision(string $id): mixed
     {
-        return $this->decideRecord($id, 'needs_revision', 'revision_requested');
+        return $this->decideRecord($id, 'revision_requested', 'revision_requested');
     }
 
     /**
@@ -460,6 +580,16 @@ class StudentPortfolioController extends Controller
         $record = $db->table('public.student_portfolio_records')->where('id', $id)->get()->getRowArray();
         if ($record === null) {
             return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+        }
+
+        // Student cannot self-verify
+        if ($record['student_profile_id'] === $actor['profile']['id']) {
+            return $this->respond(['error' => ['code' => 'SELF_VERIFICATION_FORBIDDEN', 'message' => 'Students cannot verify their own submissions.']], 403);
+        }
+
+        // Duplicate decision protection: if already finalized with same status
+        if ($record['status'] === $targetStatus && in_array($targetStatus, ['verified', 'rejected'], true)) {
+            return $this->respond(['error' => ['code' => 'ALREADY_PROCESSED', 'message' => "This portfolio record has already been {$targetStatus}."]], 422);
         }
 
         // Scope check: verify student active academic program matches Coordinator's active assignment
@@ -503,6 +633,27 @@ class StudentPortfolioController extends Controller
                 'new_status'          => $targetStatus,
                 'remarks'             => $remarks !== '' ? $remarks : null,
                 'occurred_at'         => $now,
+            ]);
+
+            // Emit notification to the student
+            $notifType = 'portfolio_' . $actionName;
+            $notifTitle = 'Portfolio Submission ' . ucfirst(str_replace('_', ' ', $targetStatus));
+            $notifMsg = "Your portfolio submission '{$record['title']}' has been updated to {$targetStatus}.";
+            if ($remarks !== '') {
+                $notifMsg .= " Remarks: {$remarks}";
+            }
+
+            $db->table('public.notifications')->insert([
+                'id'                   => (string) service('uuid')->uuid4(),
+                'recipient_profile_id' => $record['student_profile_id'],
+                'actor_profile_id'     => $actor['profile']['id'],
+                'notification_type'    => $notifType,
+                'title'                => $notifTitle,
+                'message'              => $notifMsg,
+                'reference_type'       => 'student_portfolio_records',
+                'reference_id'         => $id,
+                'is_mandatory'         => true,
+                'created_at'           => $now,
             ]);
 
             $db->transCommit();

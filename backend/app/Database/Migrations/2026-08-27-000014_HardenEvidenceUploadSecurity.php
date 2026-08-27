@@ -83,6 +83,13 @@ DROP POLICY IF EXISTS personnel_evidence_insert_own ON storage.objects;
 DROP POLICY IF EXISTS personnel_evidence_select_own ON storage.objects;
 DROP POLICY IF EXISTS hr_read_personnel_evidence ON storage.objects;
 
+-- Evidence metadata is also backend-owned. A browser cannot bypass the binary
+-- validation pipeline by calling PostgREST directly and fabricating metadata.
+DROP POLICY IF EXISTS student_insert_own_portfolio_evidence ON public.student_portfolio_evidence;
+REVOKE INSERT, UPDATE, DELETE ON public.student_portfolio_evidence FROM authenticated;
+REVOKE INSERT, UPDATE, DELETE ON public.personnel_accomplishment_evidence FROM authenticated;
+REVOKE ALL ON public.file_security_audit_events FROM anon, authenticated;
+
 -- Prevent legacy metadata-only endpoints from registering arbitrary objects.
 CREATE OR REPLACE FUNCTION public.require_clean_student_evidence()
 RETURNS trigger

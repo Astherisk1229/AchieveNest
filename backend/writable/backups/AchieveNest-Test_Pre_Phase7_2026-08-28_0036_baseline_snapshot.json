@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "environment": "AchieveNest-Test",
+    "project_ref": "gliqcruavudrjehgbfei",
+    "timestamp": "2026-08-28T00:36:25+08:00",
+    "branch": "compat/target-schema-test",
+    "head_sha": "e66202976219a2a86bc9b6dfcc99174171742575",
+    "baseline_migrations_count": 13,
+    "baseline_highest_migration": "2026-08-26-000013",
+    "baseline_tables_count": 18
+  },
+  "baseline_tables": [
+    "account_lifecycle_events",
+    "profile_roles",
+    "profiles",
+    "colleges",
+    "departments",
+    "degree_programs",
+    "roles",
+    "role_assignment_events",
+    "personnel_evaluations",
+    "personnel_evaluation_items",
+    "personnel_evaluation_events",
+    "password_reset_requests",
+    "password_reset_events",
+    "personnel_accomplishments",
+    "personnel_accomplishment_evidence",
+    "personnel_qualification_reviews",
+    "personnel_evaluation_deficiency_requests",
+    "personnel_evaluation_reports"
+  ],
+  "target_reconciliation_migrations": [
+    "2026-08-27-000014_CreateTargetInstitutionalStructure",
+    "2026-08-27-000015_CreateIdentityAffiliationGovernance",
+    "2026-08-27-000016_CreateStudentPortfolioDomain",
+    "2026-08-27-000017_CreateAwardScoringDomain",
+    "2026-08-27-000018_CreateNotificationsCertificatesAudit",
+    "2026-08-27-000019_HardenAdminAndHrConstraints",
+    "2026-08-27-000020_CreateAuthorizationAndIntegrityGuards",
+    "2026-08-27-000021_CreateCompatibilityViewsAndValidation",
+    "2026-08-27-000022_EnableTargetRlsAndGrants",
+    "2026-08-27-000023_CreateStorageBucketsAndPolicies",
+    "2026-08-27-000024_SeedPermanentReferenceData",
+    "2026-08-27-000025_AutomateAwardInterviewEligibility",
+    "2026-08-27-000026_HardenEvidenceUploadSecurity"
+  ]
+}

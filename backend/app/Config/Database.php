@@ -230,12 +230,44 @@ class Database extends Config
         ],
     ];
 
+    /**
+     * Local WAMP defense MySQL database.
+     *
+     * @var array<string, mixed>
+     */
+    public array $local_defense = [
+        'DSN'             => '',
+        'hostname'        => 'localhost',
+        'username'        => 'achievenest_app',
+        'password'        => '',
+        'database'        => 'achievenest_local',
+        'DBDriver'        => 'MySQLi',
+        'DBPrefix'        => '',
+        'pConnect'        => false,
+        'DBDebug'         => true,
+        'charset'         => 'utf8mb4',
+        'DBCollat'        => 'utf8mb4_unicode_ci',
+        'swapPre'         => '',
+        'encrypt'         => false,
+        'compress'        => false,
+        'strictOn'        => false,
+        'failover'        => [],
+        'port'            => 3306,
+        'dateFormat'      => [
+            'date'     => 'Y-m-d',
+            'datetime' => 'Y-m-d H:i:s',
+            'time'     => 'H:i:s',
+        ],
+    ];
+
     public function __construct()
     {
         parent::__construct();
 
-        // Keep local development and automated tests isolated from production.
-        if (ENVIRONMENT === 'development') {
+        // Keep local defense, hosted development, and automated tests isolated.
+        if (env('ACHIEVENEST_ENV') === 'local-defense' || env('database.defaultGroup') === 'local_defense') {
+            $this->defaultGroup = 'local_defense';
+        } elseif (ENVIRONMENT === 'development') {
             $this->defaultGroup = 'development';
         } elseif (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';

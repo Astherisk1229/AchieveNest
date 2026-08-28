@@ -7,6 +7,10 @@ $routes->get('/', 'Home::index');
 
 $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('health', 'Api\HealthController::index');
+    $routes->post('auth/login', 'Api\AuthController::login');
+    $routes->options('auth/login', 'Api\AuthController::options');
+    $routes->post('auth/logout', 'Api\AuthController::logout');
+    $routes->options('auth/logout', 'Api\AuthController::options');
     $routes->get('auth/me', 'Api\AuthController::me');
     $routes->options('auth/me', 'Api\AuthController::options');
     $routes->post('auth/change-password', 'Api\AuthController::changePassword');

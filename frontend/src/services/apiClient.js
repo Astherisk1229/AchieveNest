@@ -13,20 +13,45 @@ const apiClient = axios.create({
   timeout: 15000
 })
 
-// Request Interceptor: Attach JWT Bearer Token from the current Supabase session
+// Request Interceptor: Attach JWT Bearer Token from local storage or session storage
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      const { data: { session } } = await import('../config/supabase').then(({ supabase }) => supabase.auth.getSession())
-      const token = session?.access_token
+      // 1. Direct local token check (local-defense mode or authenticated session)
+      let token = localStorage.getItem('achievenest_access_token') || sessionStorage.getItem('achievenest_access_token')
+
+      if (!token) {
+        const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
+        if (rawUser) {
+          try {
+            const parsed = JSON.parse(rawUser)
+            token = parsed?.token || parsed?.access_token
+          } catch {
+            token = null
+          }
+        }
+      }
+
+      // 2. Hosted Supabase fallback only if no local token and not explicitly local-defense
+      if (!token && import.meta.env.VITE_AUTH_MODE !== 'local-defense') {
+        try {
+          const { supabase } = await import('../config/supabase')
+          const { data: { session } } = await supabase.auth.getSession()
+          token = session?.access_token
+        } catch {
+          token = null
+        }
+      }
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
-      } else {
+      } else if (!config.headers.Authorization) {
         delete config.headers.Authorization
       }
     } catch {
-      delete config.headers.Authorization
+      if (!config.headers.Authorization) {
+        delete config.headers.Authorization
+      }
     }
     return config
   },
@@ -42,6 +67,8 @@ apiClient.interceptors.response.use(
         console.warn('API Unauthenticated (401). Redirecting to login session.')
         localStorage.removeItem('achievenest_current_user')
         sessionStorage.removeItem('achievenest_current_user')
+        localStorage.removeItem('achievenest_access_token')
+        sessionStorage.removeItem('achievenest_access_token')
         window.dispatchEvent(new Event('storage'))
       }
       return Promise.reject(error.response.data || error.response)

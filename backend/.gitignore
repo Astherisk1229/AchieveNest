@@ -66,6 +66,12 @@ Vagrantfile
 /writable/demo-credentials/*
 !/writable/demo-credentials/.gitkeep
 
+/writable/backups/*
+!/writable/backups/.gitkeep
+
+/writable/restore_test/*
+!/writable/restore_test/.gitkeep
+
 php_errors.log
 
 #-------------------------

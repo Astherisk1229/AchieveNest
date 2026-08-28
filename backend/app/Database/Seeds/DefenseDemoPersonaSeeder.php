@@ -2,6 +2,7 @@
 
 namespace App\Database\Seeds;
 
+use App\Services\DefenseDemoPreflightService;
 use CodeIgniter\Database\Seeder;
 use RuntimeException;
 
@@ -10,34 +11,18 @@ class DefenseDemoPersonaSeeder extends Seeder
     public function run()
     {
         $db = $this->db;
-        $password = env('ACHIEVENEST_DEMO_PASSWORD') ?: 'Password123!@#';
+        $preflight = new DefenseDemoPreflightService();
+        $validated = $preflight->validate($db);
+
+        $password = $validated['password'];
         $passwordHash = password_hash($password, PASSWORD_BCRYPT);
         $now = date('Y-m-d H:i:s');
 
-        // Resolve reference dependencies by authoritative codes
-        $roles = [];
-        foreach ($db->table('roles')->get()->getResultArray() as $r) {
-            $roles[$r['role_key']] = $r['id'];
-        }
-
-        $cba = $db->table('colleges')->where('code', 'CBA')->get()->getRowArray();
-        if ($cba === null) {
-            throw new RuntimeException('Authoritative College CBA not found in database.');
-        }
-
-        $bsa = $db->table('academic_programs')->where('code', 'BSA')->where('college_id', $cba['id'])->get()->getRowArray();
-        $bsba = $db->table('academic_programs')->where('code', 'BSBA-FM')->where('college_id', $cba['id'])->get()->getRowArray();
-        if ($bsa === null || $bsba === null) {
-            throw new RuntimeException('Authoritative Academic Programs BSA / BSBA-FM not found in database.');
-        }
-
-        $adminUnit = $db->table('administrative_units')->where('code', 'REG')->orWhere('code', 'ADM_REG')->get()->getRowArray();
-        if ($adminUnit === null) {
-            $adminUnit = $db->table('administrative_units')->orderBy('code', 'ASC')->get()->getRowArray();
-        }
-        if ($adminUnit === null) {
-            throw new RuntimeException('No authoritative Administrative Unit found in database.');
-        }
+        $roles = $validated['roles'];
+        $cba = $validated['college'];
+        $bsa = $validated['programA'];
+        $bsba = $validated['programB'];
+        $adminUnit = $validated['unit'];
 
         // Demo Organization (operational demo data, scoped to CBA / BSA)
         $demoOrgId = 'd0000000-0000-0000-0002-000000000000';

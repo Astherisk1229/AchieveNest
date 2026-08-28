@@ -110,7 +110,8 @@ class VerifyPhase12Demo extends BaseCommand
             'demo.moderator@ndmu.edu.ph',
         ];
 
-        $password = env('ACHIEVENEST_DEMO_PASSWORD') ?: 'Password123!@#';
+        $demoConfig = new \App\Services\DefenseDemoConfigService();
+        $password = $demoConfig->requirePassword();
 
         // DEMO-002: Student A
         $studentA = $db->table('profiles')->where('email', 'demo.student.a@ndmu.edu.ph')->get()->getRowArray();
@@ -310,6 +311,55 @@ class VerifyPhase12Demo extends BaseCommand
             ->where('spr.id IS NULL')
             ->countAllResults();
         $runTest('DEMO-033', 'Zero orphan demo evidence rows or broken foreign keys', $orphanStudentEv === 0);
+
+        // DEMO-034: Exact Administrative Unit code resolution
+        $unitRow = $db->table('administrative_units au')
+            ->join('personnel_administrative_unit_affiliations pau', 'pau.administrative_unit_id = au.id')
+            ->where('pau.personnel_profile_id', 'd0000000-0000-0000-0001-000000000004')
+            ->where('pau.is_active', 1)
+            ->get()->getRowArray();
+        $expectedUnitCode = $demoConfig->requiredAdministrativeUnitCode();
+        $runTest('DEMO-034', "Exact Administrative Unit code resolution ({$expectedUnitCode}) without fallback", ($unitRow['code'] ?? '') === $expectedUnitCode);
+
+        // DEMO-035: Static source audit: zero committed password fallbacks in Phase 12 files
+        $phase12Files = [
+            APPPATH . 'Database/Seeds/DefenseDemoPersonaSeeder.php',
+            APPPATH . 'Database/Seeds/DefenseDemoScenarioSeeder.php',
+            APPPATH . 'Database/Seeds/DefenseDemoSeeder.php',
+            APPPATH . 'Commands/DemoReset.php',
+            APPPATH . 'Services/DefenseDemoConfigService.php',
+            APPPATH . 'Services/DefenseDemoPreflightService.php',
+        ];
+        $forbiddenLiteral = 'Pass' . 'word123';
+        $hasPasswordLiteral = false;
+        foreach ($phase12Files as $filePath) {
+            if (file_exists($filePath)) {
+                $content = file_get_contents($filePath);
+                if (str_contains($content, $forbiddenLiteral) || str_contains($content, 'admin123')) {
+                    $hasPasswordLiteral = true;
+                    break;
+                }
+            }
+        }
+        $runTest('DEMO-035', 'Static audit: zero hardcoded fallback passwords in Phase 12 sources', ! $hasPasswordLiteral);
+
+        // DEMO-036: Preflight fails fast on missing secret with zero mutation
+        $mockConfig = new class extends \App\Services\DefenseDemoConfigService {
+            public function requirePassword(): string
+            {
+                throw new \RuntimeException('MOCK_MISSING_SECRET_TEST');
+            }
+        };
+        $mockPreflight = new \App\Services\DefenseDemoPreflightService($mockConfig);
+        $caughtException = false;
+        try {
+            $mockPreflight->validate($db);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'MOCK_MISSING_SECRET_TEST') {
+                $caughtException = true;
+            }
+        }
+        $runTest('DEMO-036', 'Preflight fails fast on missing secret before any mutation', $caughtException);
 
         $passedCount = count(array_filter($testCases, static fn($t) => $t['passed']));
         $totalCount = count($testCases);

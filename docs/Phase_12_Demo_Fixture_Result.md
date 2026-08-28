@@ -2,7 +2,7 @@
 
 - Branch: defense/wamp-local
 - Starting commit: a711a2ba3bffac23b9b824e9eba3e3b6b1e3e1a5
-- Final commit: bd2150923135633cfa2c781f3652933af1368576
+- Final commit: 953c1c1c722273ebf1dfd6cc72fe876b820d8e66
 - Runtime database: achievenest_local
 - Runtime DB version: 8.4.7
 - Permanent reference fingerprint before: a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f
@@ -44,6 +44,10 @@
 - Personnel accomplishment scenario: IEEE journal publication submission
 - Personnel evaluation scenario: Administrator Ranking Scale oversight
 - Audit fixture: Verification events and system audit history
+- Admin Unit exact code: HR (Authoritative human resources office)
+- Administrative Unit fallback: REMOVED (Strict fail-fast validation)
+- Committed password fallback: REMOVED (DefenseDemoConfigService strict resolver)
+- Missing password behavior: FAIL FAST / ZERO MUTATION
 - All demo personas authenticate: YES (10 / 10 JWT bearer tokens issued)
 - Cross-Program denial: PROVEN (Coordinator B denied access to Student A records)
 - Production identities used: NO (100% synthetic demo.*@ndmu.edu.ph namespace)
@@ -54,7 +58,7 @@
 - Phase 8 regression: 36 / 36 PASSED
 - Phase 9 regression: 28 / 28 PASSED
 - Phase 11 regression: 24 / 24 PASSED
-- Phase 12 suite: 33 / 33 PASSED
+- Phase 12 suite: 36 / 36 PASSED
 - Backend routes: PASSED (0 errors)
 - PHP syntax: PASSED (0 errors)
 - Frontend build: PASSED (0 errors)

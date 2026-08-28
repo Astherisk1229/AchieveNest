@@ -2,6 +2,7 @@
 
 namespace App\Database\Seeds;
 
+use App\Services\DefenseDemoPreflightService;
 use App\Services\LocalEvidenceStorageService;
 use CodeIgniter\Database\Seeder;
 
@@ -10,6 +11,11 @@ class DefenseDemoSeeder extends Seeder
     public function run()
     {
         $db = $this->db;
+
+        // 0. Preflight validation - fail fast before any mutation or deletion
+        $preflight = new DefenseDemoPreflightService();
+        $preflight->validate($db);
+
         $storage = new LocalEvidenceStorageService();
 
         // 1. Controlled cleanup of existing demo-owned records only (IDs starting with 'd0000000-')

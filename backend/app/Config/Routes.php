@@ -185,4 +185,17 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // Dean Nominations
     $routes->post('dean/nominations', 'Api\AwardEvaluationController::createDeanNomination');
     $routes->options('dean/nominations', 'Api\AwardEvaluationController::options');
+
+    // =========================================================================
+    // Protected Evidence File Metadata & Streaming Downloads (Phase 9)
+    // =========================================================================
+    $routes->get('evidence/student/(:segment)', 'Api\EvidenceController::studentMetadata/$1');
+    $routes->options('evidence/student/(:segment)', 'Api\EvidenceController::options');
+    $routes->get('evidence/student/(:segment)/download', 'Api\EvidenceController::studentDownload/$1');
+    $routes->options('evidence/student/(:segment)/download', 'Api\EvidenceController::options');
+
+    $routes->get('evidence/personnel/(:segment)', 'Api\EvidenceController::personnelMetadata/$1');
+    $routes->options('evidence/personnel/(:segment)', 'Api\EvidenceController::options');
+    $routes->get('evidence/personnel/(:segment)/download', 'Api\EvidenceController::personnelDownload/$1');
+    $routes->options('evidence/personnel/(:segment)/download', 'Api\EvidenceController::options');
 });

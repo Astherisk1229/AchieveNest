@@ -2,6 +2,9 @@
 
 namespace App\Services\Policies;
 
+use App\Services\Policies\PersonnelPolicy;
+use App\Services\Policies\StudentPortfolioPolicy;
+
 class EvidencePolicy
 {
     protected StudentPortfolioPolicy $portfolioPolicy;
@@ -21,10 +24,14 @@ class EvidencePolicy
     public function canReadStudentEvidence(array $actor, array $evidence): bool
     {
         $actorId = (string) ($actor['profile']['id'] ?? '');
-        $ownerProfileId = (string) ($evidence['student_profile_id'] ?? '');
+        if ($actorId === '') {
+            return false;
+        }
 
-        // 1. Direct owner
-        if ($actorId !== '' && $actorId === $ownerProfileId) {
+        $ownerProfileId = (string) ($evidence['student_profile_id'] ?? $evidence['uploaded_by'] ?? '');
+
+        // 1. Direct student owner
+        if ($actorId === $ownerProfileId) {
             return true;
         }
 
@@ -59,9 +66,12 @@ class EvidencePolicy
     public function canDeleteStudentEvidence(array $actor, array $evidence): bool
     {
         $actorId = (string) ($actor['profile']['id'] ?? '');
-        $ownerProfileId = (string) ($evidence['student_profile_id'] ?? '');
+        if ($actorId === '') {
+            return false;
+        }
 
-        if ($actorId === '' || $actorId !== $ownerProfileId) {
+        $ownerProfileId = (string) ($evidence['student_profile_id'] ?? $evidence['uploaded_by'] ?? '');
+        if ($actorId !== $ownerProfileId) {
             return false;
         }
 
@@ -87,15 +97,44 @@ class EvidencePolicy
     public function canReadPersonnelEvidence(array $actor, array $evidence): bool
     {
         $actorId = (string) ($actor['profile']['id'] ?? '');
-        $ownerId = (string) ($evidence['personnel_profile_id'] ?? '');
+        if ($actorId === '') {
+            return false;
+        }
+
+        $ownerId = (string) ($evidence['personnel_profile_id'] ?? $evidence['uploaded_by'] ?? '');
         $roles = (array) ($actor['roles'] ?? []);
 
-        if ($actorId !== '' && $actorId === $ownerId) {
+        // 1. Direct owner
+        if ($actorId === $ownerId) {
             return true;
         }
 
+        // 2. HR Staff
         if (in_array('hr_staff', $roles, true)) {
             return true;
+        }
+
+        // 3. Dean assigned to the Personnel's college
+        if (in_array('dean', $roles, true) && $ownerId !== '') {
+            $db = db_connect();
+            $deanAssignment = $db->table('dean_assignments')
+                ->where('personnel_profile_id', $actorId)
+                ->where('is_active', 1)
+                ->get()
+                ->getRowArray();
+
+            if ($deanAssignment !== null && ! empty($deanAssignment['college_id'])) {
+                $personnelAffiliation = $db->table('personnel_college_affiliations')
+                    ->where('personnel_profile_id', $ownerId)
+                    ->where('college_id', $deanAssignment['college_id'])
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getRowArray();
+
+                if ($personnelAffiliation !== null) {
+                    return true;
+                }
+            }
         }
 
         return false;

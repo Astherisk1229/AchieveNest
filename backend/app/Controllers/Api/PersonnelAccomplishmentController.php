@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
+use App\Services\LocalEvidenceStorageService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -13,10 +14,14 @@ class PersonnelAccomplishmentController extends Controller
     use ResponseTrait;
 
     private AuthorizationService $authz;
+    private LocalEvidenceStorageService $storage;
 
-    public function __construct(?AuthorizationService $authz = null)
-    {
+    public function __construct(
+        ?AuthorizationService $authz = null,
+        ?LocalEvidenceStorageService $storage = null
+    ) {
         $this->authz = $authz ?? new AuthorizationService();
+        $this->storage = $storage ?? new LocalEvidenceStorageService();
     }
 
     public function options(): mixed
@@ -56,7 +61,6 @@ class PersonnelAccomplishmentController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You may only view your own accomplishments.']], 403);
         }
 
-        $targetId = $requestedProfileId !== '' ? $requestedProfileId : $profileId;
         $db = db_connect();
         $builder = $db->table('personnel_accomplishments a')
             ->select('a.*, COUNT(e.id) AS evidence_count')
@@ -87,33 +91,43 @@ class PersonnelAccomplishmentController extends Controller
 
         $json = $this->request->getJSON(true) ?? [];
         $title = trim((string) ($json['title'] ?? ''));
-        $categoryCode = trim((string) ($json['category_code'] ?? ''));
+        $domain = trim((string) ($json['domain'] ?? ''));
         $categoryArea = trim((string) ($json['category_area'] ?? ''));
+        if ($domain === '') {
+            $domain = match ($categoryArea) {
+                'areaA' => 'productivity_creative_work',
+                'areaB' => 'professional_development',
+                'areaC' => 'service_leadership',
+                default => 'professional_development',
+            };
+        }
+        $organizer = ! empty($json['organizer_or_publisher']) ? trim((string) $json['organizer_or_publisher']) : null;
         $description = trim((string) ($json['description'] ?? ''));
-        $dateAchieved = trim((string) ($json['date_achieved'] ?? ''));
-        $metadata = $json['category_metadata'] ?? [];
+        $dateAchieved = trim((string) ($json['date_achieved'] ?? $json['occurrence_date'] ?? ''));
+        $claimedPoints = (float) ($json['claimed_points'] ?? 0.0);
 
         if (! ValidationHelper::validateBoundedText($title, ValidationHelper::MAX_LABEL_LENGTH)
-            || ! ValidationHelper::validateBoundedText($categoryCode, 100)
-            || ! ValidationHelper::validateEnum($categoryArea, ['areaA', 'areaB', 'areaC'])
+            || ! in_array($domain, ['professional_development', 'productivity_creative_work', 'service_leadership'], true)
             || ($description !== '' && ! ValidationHelper::validateBoundedText($description, ValidationHelper::MAX_DESCRIPTION_LENGTH, true))
-            || ($dateAchieved !== '' && ! ValidationHelper::validateDateString($dateAchieved))
-            || ! is_array($metadata)) {
+            || ($dateAchieved !== '' && ! ValidationHelper::validateDateString($dateAchieved))) {
             return $this->respond(['error' => ['code' => 'INVALID_ACCOMPLISHMENT', 'message' => 'Invalid accomplishment fields.']], 422);
         }
 
         $id = $this->genUuid();
+        $now = date('Y-m-d H:i:s');
         try {
             db_connect()->table('personnel_accomplishments')->insert([
-                'id'                   => $id,
-                'personnel_profile_id' => $actor['profile']['id'],
-                'category_code'        => $categoryCode,
-                'category_area'        => $categoryArea,
-                'title'                => $title,
-                'category_metadata'    => json_encode($metadata),
-                'date_achieved'        => $dateAchieved ?: null,
-                'description'          => $description ?: null,
-                'status'               => 'draft',
+                'id'                     => $id,
+                'personnel_profile_id'   => $actor['profile']['id'],
+                'domain'                 => $domain,
+                'title'                  => $title,
+                'organizer_or_publisher' => $organizer,
+                'occurrence_date'        => $dateAchieved ?: null,
+                'description'            => $description ?: null,
+                'claimed_points'         => $claimedPoints,
+                'status'                 => 'draft',
+                'created_at'             => $now,
+                'updated_at'             => $now,
             ]);
         } catch (Throwable) {
             return $this->respond(['error' => ['code' => 'CREATE_FAILED', 'message' => 'Unable to create the accomplishment.']], 500);
@@ -131,38 +145,80 @@ class PersonnelAccomplishmentController extends Controller
 
         $db = db_connect();
         $accomplishment = $db->table('personnel_accomplishments')
-            ->where('id', $id)->where('personnel_profile_id', $actor['profile']['id'])
-            ->whereIn('status', ['draft', 'rejected', 'pending'])->get()->getRowArray();
+            ->where('id', $id)
+            ->get()->getRowArray();
+
         if ($accomplishment === null) {
-            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Editable accomplishment not found.']], 404);
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Accomplishment not found.']], 404);
         }
 
-        $json = $this->request->getJSON(true) ?? [];
-        $path = trim((string) ($json['storage_path'] ?? ''));
-        $filename = trim((string) ($json['original_filename'] ?? ''));
-        $mime = trim((string) ($json['mime_type'] ?? ''));
-        $size = filter_var($json['byte_size'] ?? null, FILTER_VALIDATE_INT);
-        $allowedMime = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (! $this->authz->evidence()->canUploadPersonnelEvidence($actor, $accomplishment)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not authorized to upload evidence for this accomplishment.']], 403);
+        }
 
-        if ($path === '' || ! str_starts_with($path, $actor['profile']['id'] . '/')
-            || ! ValidationHelper::validateBoundedText($filename, 255)
-            || ! in_array($mime, $allowedMime, true)
-            || $size === false || $size < 1 || $size > 10 * 1024 * 1024) {
-            return $this->respond(['error' => ['code' => 'INVALID_EVIDENCE', 'message' => 'Invalid evidence metadata or object path.']], 422);
+        $file = $this->request->getFile('file') ?? $this->request->getFile('evidence_file');
+        if ($file === null || ! $file->isValid()) {
+            return $this->respond(['error' => ['code' => 'FILE_REQUIRED', 'message' => 'A valid evidence file is required in multipart/form-data.']], 400);
+        }
+
+        $val = $this->storage->validateFile($file->getTempName(), $file->getClientName());
+        if (! $val['success']) {
+            $status = $val['error_code'] === 'FILE_TOO_LARGE' ? 413 : ($val['error_code'] === 'UNSUPPORTED_FILE_TYPE' ? 415 : 422);
+            return $this->respond(['error' => ['code' => $val['error_code'], 'message' => $val['error_message']]], $status);
+        }
+
+        try {
+            $stored = $this->storage->storeFile(
+                $file->getTempName(),
+                'personnel',
+                $actor['profile']['id'],
+                $id,
+                $val['extension'],
+                true
+            );
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'STORAGE_FAILED', 'message' => 'Failed to store uploaded file.']], 500);
         }
 
         $evidenceId = $this->genUuid();
-        $db->table('personnel_accomplishment_evidence')->insert([
-            'id'                => $evidenceId,
-            'accomplishment_id' => $id,
-            'storage_path'      => $path,
-            'original_filename' => $filename,
-            'mime_type'         => $mime,
-            'byte_size'         => $size,
-            'checksum'          => trim((string) ($json['checksum'] ?? '')) ?: null,
-            'uploaded_by'       => $actor['profile']['id'],
-        ]);
+        $now = date('Y-m-d H:i:s');
+        $evidenceRow = [
+            'id'                  => $evidenceId,
+            'accomplishment_id'   => $id,
+            'storage_path'        => $stored['storage_path'],
+            'original_filename'   => $file->getClientName(),
+            'mime_type'           => $val['detected_mime'],
+            'detected_mime_type'  => $val['detected_mime'],
+            'byte_size'           => $stored['byte_size'],
+            'checksum'            => $stored['sha256'],
+            'sha256'              => $stored['sha256'],
+            'uploaded_by'         => $actor['profile']['id'],
+            'uploaded_at'         => $now,
+            'security_status'     => 'pending',
+            'malware_scanner'     => 'backend_local_v1',
+            'status'              => 'active',
+        ];
 
-        return $this->respondCreated(['data' => ['id' => $evidenceId]]);
+        $db->transStart();
+        try {
+            $db->table('personnel_accomplishment_evidence')->insert($evidenceRow);
+            $db->transComplete();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            $this->storage->deletePhysicalFile($stored['storage_path']);
+            return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
+        }
+
+        if ($db->transStatus() === false) {
+            $this->storage->deletePhysicalFile($stored['storage_path']);
+            return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
+        }
+
+        return $this->respondCreated([
+            'data' => [
+                'message'  => 'Evidence uploaded and secured successfully.',
+                'evidence' => $this->storage->formatSafeEvidence($evidenceRow, 'personnel'),
+            ],
+        ]);
     }
 }

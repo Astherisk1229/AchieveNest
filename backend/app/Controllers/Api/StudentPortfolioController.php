@@ -423,7 +423,7 @@ class StudentPortfolioController extends Controller
             'uploaded_by'         => $actor['profile']['id'],
             'uploaded_at'         => $now,
             'security_status'     => 'pending',
-            'malware_scanner'     => 'backend_local_v1',
+            'malware_scanner'     => 'none_deferred',
             'status'              => 'active',
         ];
 

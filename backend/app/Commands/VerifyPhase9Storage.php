@@ -212,7 +212,7 @@ class VerifyPhase9Storage extends BaseCommand
             'uploaded_by'         => $studentActor['profile']['id'],
             'uploaded_at'         => date('Y-m-d H:i:s'),
             'security_status'     => 'pending',
-            'malware_scanner'     => 'backend_local_v1',
+            'malware_scanner'     => 'none_deferred',
             'status'              => 'active',
         ]);
         $evRow = $db->table('student_portfolio_evidence')->where('id', $studentEvidenceId)->get()->getRowArray();
@@ -285,7 +285,7 @@ class VerifyPhase9Storage extends BaseCommand
             'uploaded_by'         => $personnelActor['profile']['id'],
             'uploaded_at'         => date('Y-m-d H:i:s'),
             'security_status'     => 'pending',
-            'malware_scanner'     => 'backend_local_v1',
+            'malware_scanner'     => 'none_deferred',
             'status'              => 'active',
         ]);
         $pEvRow = $db->table('personnel_accomplishment_evidence')->where('id', $personnelEvidenceId)->get()->getRowArray();

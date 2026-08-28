@@ -28,9 +28,21 @@ class VerificationQueueController extends Controller
         return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
     }
 
+    private function genUuid(): string
+    {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+        );
+    }
+
     /**
      * GET /api/v1/verification/queue
-     * Verifiers view pending submissions.
+     * Verifiers view pending submissions mapped from student_portfolio_records.
      */
     public function queue()
     {
@@ -40,28 +52,42 @@ class VerificationQueueController extends Controller
         }
 
         $verifierRoles = ['dean', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff'];
-        $hasVerifierRole = count(array_intersect($verifierRoles, $actor['roles'])) > 0;
+        $hasVerifierRole = count(array_intersect($verifierRoles, $actor['roles'] ?? [])) > 0;
 
         if (! $hasVerifierRole) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Authorized verifier role required.']], 403);
         }
 
         $db = db_connect();
+        $builder = $db->table('student_portfolio_records spr')
+            ->select([
+                'spr.id AS request_id',
+                'spr.id AS achievement_id',
+                'spr.status AS request_status',
+                'spr.submitted_at',
+                'spr.title',
+                'pc.name AS category',
+                'spr.description',
+                'spr.occurrence_date AS date_awarded',
+                'spr.organizer_or_body AS venue',
+                'p.id AS student_id',
+                'p.institutional_id',
+                'p.full_name AS student_name',
+                'p.email AS institutional_email',
+            ])
+            ->join('portfolio_categories pc', 'pc.id = spr.category_id')
+            ->join('profiles p', 'p.id = spr.student_profile_id')
+            ->whereIn('spr.status', ['submitted', 'under_review', 'revisions_requested'])
+            ->orderBy('spr.submitted_at', 'ASC');
 
-        $queue = $db->query(
-            'SELECT vr.id AS request_id, vr.status AS request_status, vr.submitted_at,
-                    a.id AS achievement_id, a.title, a.category, a.description, a.date_awarded, a.venue, a.evidence_url,
-                    p.id AS student_id, p.institutional_id, p.full_name AS student_name, p.email AS institutional_email
-             FROM verification_requests vr
-             JOIN achievements a ON a.id = vr.achievement_id
-             JOIN profiles p ON p.id = a.student_id
-             WHERE vr.status = \'pending\'
-             ORDER BY vr.submitted_at ASC'
-        )->getResultArray();
+        $this->authz->portfolio()->scopeVerificationQuery($actor, $builder);
+
+        $queue = $builder->get()->getResultArray();
 
         return $this->respond([
             'data' => [
                 'queue' => $queue,
+                'total' => count($queue),
             ],
         ], 200);
     }
@@ -78,7 +104,7 @@ class VerificationQueueController extends Controller
         }
 
         $verifierRoles = ['dean', 'program_coordinator', 'organization_moderator', 'hr_staff', 'osad_staff'];
-        $hasVerifierRole = count(array_intersect($verifierRoles, $actor['roles'])) > 0;
+        $hasVerifierRole = count(array_intersect($verifierRoles, $actor['roles'] ?? [])) > 0;
 
         if (! $hasVerifierRole) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Authorized verifier role required to make verification decisions.']], 403);
@@ -93,29 +119,41 @@ class VerificationQueueController extends Controller
         }
 
         $db = db_connect();
-
-        $request = $db->table('verification_requests')->where('id', $requestId)->get()->getRowArray();
-        if ($request === null) {
+        $record = $db->table('student_portfolio_records')->where('id', $requestId)->get()->getRowArray();
+        if ($record === null) {
             return $this->respond(['error' => ['code' => 'REQUEST_NOT_FOUND', 'message' => 'Verification request not found.']], 404);
         }
 
-        $achievementStatus = $decision === 'approved' ? 'verified' : ($decision === 'rejected' ? 'rejected' : 'returned');
+        if (! $this->authz->portfolio()->canVerify($actor, $record)) {
+            if ($record['student_profile_id'] === $actor['profile']['id']) {
+                return $this->respond(['error' => ['code' => 'SELF_VERIFICATION_FORBIDDEN', 'message' => 'Students cannot verify their own submissions.']], 403);
+            }
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not the authorized active Program Coordinator for this student program.']], 403);
+        }
 
-        $db->transBegin();
+        $targetStatus = $decision === 'approved' ? 'verified' : ($decision === 'rejected' ? 'rejected' : 'revisions_requested');
+        $now = date('Y-m-d H:i:s');
+
+        $db->transStart();
         try {
-            $db->table('verification_requests')->where('id', $requestId)->update([
-                'status'      => $decision,
-                'reviewed_at' => date('Y-m-d H:i:s'),
-                'reviewer_id' => $actor['profile']['id'],
-                'remarks'     => $remarks,
+            $db->table('student_portfolio_records')->where('id', $requestId)->update([
+                'status'      => $targetStatus,
+                'verified_at' => $targetStatus === 'verified' ? $now : null,
+                'updated_at'  => $now,
             ]);
 
-            $db->table('achievements')->where('id', $request['achievement_id'])->update([
-                'status'     => $achievementStatus,
-                'updated_at' => date('Y-m-d H:i:s'),
+            $db->table('student_portfolio_verification_events')->insert([
+                'id'                  => $this->genUuid(),
+                'portfolio_record_id' => $requestId,
+                'actor_profile_id'    => $actor['profile']['id'],
+                'action'              => $decision,
+                'previous_status'     => $record['status'],
+                'new_status'          => $targetStatus,
+                'remarks'             => $remarks !== '' ? $remarks : null,
+                'occurred_at'         => $now,
             ]);
 
-            $db->transCommit();
+            $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
             return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'Failed to record decision: ' . $e->getMessage()]], 500);
@@ -123,10 +161,10 @@ class VerificationQueueController extends Controller
 
         return $this->respond([
             'data' => [
-                'message'            => sprintf('Achievement %s successfully.', $achievementStatus),
+                'message'            => sprintf('Achievement %s successfully.', $targetStatus),
                 'request_id'         => $requestId,
-                'achievement_id'     => $request['achievement_id'],
-                'achievement_status' => $achievementStatus,
+                'achievement_id'     => $requestId,
+                'achievement_status' => $targetStatus,
                 'decision'           => $decision,
             ],
         ], 200);

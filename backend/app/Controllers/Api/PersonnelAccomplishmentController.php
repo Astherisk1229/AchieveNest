@@ -3,7 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
-use App\Services\AuthenticatedActorService;
+use App\Services\AuthorizationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -12,11 +12,11 @@ class PersonnelAccomplishmentController extends Controller
 {
     use ResponseTrait;
 
-    private AuthenticatedActorService $actorService;
+    private AuthorizationService $authz;
 
-    public function __construct(?AuthenticatedActorService $actorService = null)
+    public function __construct(?AuthorizationService $authz = null)
     {
-        $this->actorService = $actorService ?? new AuthenticatedActorService();
+        $this->authz = $authz ?? new AuthorizationService();
     }
 
     public function options(): mixed
@@ -26,7 +26,19 @@ class PersonnelAccomplishmentController extends Controller
 
     private function actor(): ?array
     {
-        return $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
+        return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+    }
+
+    private function genUuid(): string
+    {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+        );
     }
 
     public function index(): mixed
@@ -37,8 +49,7 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $profileId = $actor['profile']['id'];
-        $isHr = ($actor['profile']['account_type'] ?? '') === 'hr_admin'
-            && in_array('hr_staff', $actor['roles'], true);
+        $isHr = $this->authz->hasRole($actor, 'hr_staff');
         $requestedProfileId = trim((string) $this->request->getGet('personnel_profile_id'));
 
         if ($requestedProfileId !== '' && ! $isHr && $requestedProfileId !== $profileId) {
@@ -46,11 +57,18 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $targetId = $requestedProfileId !== '' ? $requestedProfileId : $profileId;
-        $rows = db_connect()->table('public.personnel_accomplishments a')
+        $db = db_connect();
+        $builder = $db->table('personnel_accomplishments a')
             ->select('a.*, COUNT(e.id) AS evidence_count')
-            ->join('public.personnel_accomplishment_evidence e', 'e.accomplishment_id = a.id', 'left')
-            ->where('a.personnel_profile_id', $targetId)
-            ->groupBy('a.id')
+            ->join('personnel_accomplishment_evidence e', 'e.accomplishment_id = a.id', 'left');
+
+        if ($requestedProfileId !== '') {
+            $builder->where('a.personnel_profile_id', $requestedProfileId);
+        } else {
+            $this->authz->personnel()->scopeAccomplishmentQuery($actor, $builder);
+        }
+
+        $rows = $builder->groupBy('a.id')
             ->orderBy('a.created_at', 'DESC')
             ->get()->getResultArray();
 
@@ -63,8 +81,8 @@ class PersonnelAccomplishmentController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
-        if (($actor['profile']['account_type'] ?? '') !== 'personnel') {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only Personnel may create portfolio accomplishments.']], 403);
+        if (! $this->authz->personnel()->canCreateAccomplishment($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only active Personnel may create portfolio accomplishments.']], 403);
         }
 
         $json = $this->request->getJSON(true) ?? [];
@@ -84,18 +102,18 @@ class PersonnelAccomplishmentController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_ACCOMPLISHMENT', 'message' => 'Invalid accomplishment fields.']], 422);
         }
 
-        $id = (string) service('uuid')->uuid4();
+        $id = $this->genUuid();
         try {
-            db_connect()->table('public.personnel_accomplishments')->insert([
-                'id' => $id,
+            db_connect()->table('personnel_accomplishments')->insert([
+                'id'                   => $id,
                 'personnel_profile_id' => $actor['profile']['id'],
-                'category_code' => $categoryCode,
-                'category_area' => $categoryArea,
-                'title' => $title,
-                'category_metadata' => json_encode($metadata),
-                'date_achieved' => $dateAchieved ?: null,
-                'description' => $description ?: null,
-                'status' => 'draft',
+                'category_code'        => $categoryCode,
+                'category_area'        => $categoryArea,
+                'title'                => $title,
+                'category_metadata'    => json_encode($metadata),
+                'date_achieved'        => $dateAchieved ?: null,
+                'description'          => $description ?: null,
+                'status'               => 'draft',
             ]);
         } catch (Throwable) {
             return $this->respond(['error' => ['code' => 'CREATE_FAILED', 'message' => 'Unable to create the accomplishment.']], 500);
@@ -112,9 +130,9 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $db = db_connect();
-        $accomplishment = $db->table('public.personnel_accomplishments')
+        $accomplishment = $db->table('personnel_accomplishments')
             ->where('id', $id)->where('personnel_profile_id', $actor['profile']['id'])
-            ->whereIn('status', ['draft', 'rejected'])->get()->getRowArray();
+            ->whereIn('status', ['draft', 'rejected', 'pending'])->get()->getRowArray();
         if ($accomplishment === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Editable accomplishment not found.']], 404);
         }
@@ -133,16 +151,16 @@ class PersonnelAccomplishmentController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_EVIDENCE', 'message' => 'Invalid evidence metadata or object path.']], 422);
         }
 
-        $evidenceId = (string) service('uuid')->uuid4();
-        $db->table('public.personnel_accomplishment_evidence')->insert([
-            'id' => $evidenceId,
+        $evidenceId = $this->genUuid();
+        $db->table('personnel_accomplishment_evidence')->insert([
+            'id'                => $evidenceId,
             'accomplishment_id' => $id,
-            'storage_path' => $path,
+            'storage_path'      => $path,
             'original_filename' => $filename,
-            'mime_type' => $mime,
-            'byte_size' => $size,
-            'checksum' => trim((string) ($json['checksum'] ?? '')) ?: null,
-            'uploaded_by' => $actor['profile']['id'],
+            'mime_type'         => $mime,
+            'byte_size'         => $size,
+            'checksum'          => trim((string) ($json['checksum'] ?? '')) ?: null,
+            'uploaded_by'       => $actor['profile']['id'],
         ]);
 
         return $this->respondCreated(['data' => ['id' => $evidenceId]]);

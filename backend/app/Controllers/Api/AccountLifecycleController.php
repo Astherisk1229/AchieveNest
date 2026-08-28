@@ -2,7 +2,7 @@
 
 namespace App\Controllers\Api;
 
-use App\Services\AuthenticatedActorService;
+use App\Services\AuthorizationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 
@@ -10,11 +10,11 @@ class AccountLifecycleController extends Controller
 {
     use ResponseTrait;
 
-    protected AuthenticatedActorService $actorService;
+    protected AuthorizationService $authz;
 
-    public function __construct(?AuthenticatedActorService $actorService = null)
+    public function __construct(?AuthorizationService $authz = null)
     {
-        $this->actorService = $actorService ?? new AuthenticatedActorService();
+        $this->authz = $authz ?? new AuthorizationService();
     }
 
     public function options()
@@ -24,7 +24,19 @@ class AccountLifecycleController extends Controller
 
     protected function resolveActor(): ?array
     {
-        return $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
+        return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+    }
+
+    private function genUuid(): string
+    {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+        );
     }
 
     /**
@@ -32,19 +44,18 @@ class AccountLifecycleController extends Controller
      */
     protected function checkLifecycleAuthority(array $actor, array $target): ?string
     {
-        $isHrAdmin = (($actor['profile']['account_type'] ?? '') === 'hr_admin' && in_array('hr_staff', $actor['roles'], true));
-        $isOsadAdmin = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
-
         if (in_array($target['account_type'], ['hr_admin', 'osad_admin'], true)) {
             return 'Top-level administrative accounts cannot be modified through standard lifecycle endpoints.';
         }
 
-        if ($target['account_type'] === 'personnel' && ! $isHrAdmin) {
-            return 'Only dedicated HR administrators (hr_admin) may manage personnel account lifecycles.';
-        }
-
-        if ($target['account_type'] === 'student' && ! $isOsadAdmin) {
-            return 'Only dedicated OSAD administrators (osad_admin) may manage student account lifecycles.';
+        if (! $this->authz->governance()->canManageLifecycle($actor, $target['account_type'] ?? '')) {
+            if ($target['account_type'] === 'personnel') {
+                return 'Only dedicated HR administrators (hr_admin) may manage personnel account lifecycles.';
+            }
+            if ($target['account_type'] === 'student') {
+                return 'Only dedicated OSAD administrators (osad_admin) may manage student account lifecycles.';
+            }
+            return 'Unauthorized lifecycle management action.';
         }
 
         return null;
@@ -61,7 +72,7 @@ class AccountLifecycleController extends Controller
         }
 
         $db = db_connect();
-        $target = $db->table('public.profiles')->where('id', $targetId)->get()->getRowArray();
+        $target = $db->table('profiles')->where('id', $targetId)->get()->getRowArray();
         if ($target === null) {
             return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Target account not found.']], 404);
         }
@@ -83,19 +94,20 @@ class AccountLifecycleController extends Controller
         $json = $this->request->getJSON(true) ?? [];
         $reason = trim((string) ($json['reason'] ?? 'Administrative suspension'));
 
-        $db->table('public.profiles')->where('id', $targetId)->update([
-            'status'            => 'suspended',
-            'suspended_at'      => date('Y-m-d H:i:s'),
-            'suspended_by'      => $actor['profile']['id'],
-            'suspension_reason' => $reason,
+        $db->table('profiles')->where('id', $targetId)->update([
+            'status'     => 'suspended',
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $db->table('public.account_lifecycle_events')->insert([
-            'profile_id'   => $targetId,
-            'event_type'   => 'suspended',
-            'performed_by' => $actor['profile']['id'],
-            'reason'       => $reason,
-            'occurred_at'  => date('Y-m-d H:i:s'),
+        $db->table('account_lifecycle_events')->insert([
+            'id'               => $this->genUuid(),
+            'profile_id'       => $targetId,
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_type'       => 'suspended',
+            'previous_status'  => $currentStatus,
+            'new_status'       => 'suspended',
+            'reason'           => $reason,
+            'occurred_at'      => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
@@ -118,7 +130,7 @@ class AccountLifecycleController extends Controller
         }
 
         $db = db_connect();
-        $target = $db->table('public.profiles')->where('id', $targetId)->get()->getRowArray();
+        $target = $db->table('profiles')->where('id', $targetId)->get()->getRowArray();
         if ($target === null) {
             return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Target account not found.']], 404);
         }
@@ -137,19 +149,20 @@ class AccountLifecycleController extends Controller
         $json = $this->request->getJSON(true) ?? [];
         $reason = trim((string) ($json['reason'] ?? 'Administrative archive'));
 
-        $db->table('public.profiles')->where('id', $targetId)->update([
-            'status'         => 'archived',
-            'archived_at'    => date('Y-m-d H:i:s'),
-            'archived_by'    => $actor['profile']['id'],
-            'archive_reason' => $reason,
+        $db->table('profiles')->where('id', $targetId)->update([
+            'status'     => 'archived',
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $db->table('public.account_lifecycle_events')->insert([
-            'profile_id'   => $targetId,
-            'event_type'   => 'archived',
-            'performed_by' => $actor['profile']['id'],
-            'reason'       => $reason,
-            'occurred_at'  => date('Y-m-d H:i:s'),
+        $db->table('account_lifecycle_events')->insert([
+            'id'               => $this->genUuid(),
+            'profile_id'       => $targetId,
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_type'       => 'archived',
+            'previous_status'  => $currentStatus,
+            'new_status'       => 'archived',
+            'reason'           => $reason,
+            'occurred_at'      => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
@@ -172,7 +185,7 @@ class AccountLifecycleController extends Controller
         }
 
         $db = db_connect();
-        $target = $db->table('public.profiles')->where('id', $targetId)->get()->getRowArray();
+        $target = $db->table('profiles')->where('id', $targetId)->get()->getRowArray();
         if ($target === null) {
             return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Target account not found.']], 404);
         }
@@ -188,24 +201,20 @@ class AccountLifecycleController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_STATE_TRANSITION', 'message' => 'Account is already active.']], 422);
         }
 
-        $db->table('public.profiles')->where('id', $targetId)->update([
-            'status'            => 'active',
-            'suspended_at'      => null,
-            'suspended_by'      => null,
-            'suspension_reason' => null,
-            'archived_at'       => null,
-            'archived_by'       => null,
-            'archive_reason'    => null,
-            'restored_at'       => date('Y-m-d H:i:s'),
-            'restored_by'       => $actor['profile']['id'],
+        $db->table('profiles')->where('id', $targetId)->update([
+            'status'     => 'active',
+            'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
-        $db->table('public.account_lifecycle_events')->insert([
-            'profile_id'   => $targetId,
-            'event_type'   => 'restored',
-            'performed_by' => $actor['profile']['id'],
-            'reason'       => sprintf('Restored to active status by %s', $actor['profile']['full_name']),
-            'occurred_at'  => date('Y-m-d H:i:s'),
+        $db->table('account_lifecycle_events')->insert([
+            'id'               => $this->genUuid(),
+            'profile_id'       => $targetId,
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_type'       => 'restored',
+            'previous_status'  => $currentStatus,
+            'new_status'       => 'active',
+            'reason'           => sprintf('Restored to active status by %s', $actor['profile']['full_name']),
+            'occurred_at'      => date('Y-m-d H:i:s'),
         ]);
 
         return $this->respond([
@@ -228,12 +237,12 @@ class AccountLifecycleController extends Controller
         }
 
         $db = db_connect();
-        $target = $db->table('public.profiles')->where('id', $targetId)->get()->getRowArray();
+        $target = $db->table('profiles')->where('id', $targetId)->get()->getRowArray();
         if ($target === null) {
             return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Target account not found.']], 404);
         }
 
-        $events = $db->table('public.account_lifecycle_events')
+        $events = $db->table('account_lifecycle_events')
             ->where('profile_id', $targetId)
             ->orderBy('occurred_at', 'DESC')
             ->get()

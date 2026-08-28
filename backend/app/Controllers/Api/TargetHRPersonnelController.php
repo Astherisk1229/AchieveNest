@@ -3,7 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
-use App\Services\AuthenticatedActorService;
+use App\Services\AuthorizationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -12,11 +12,11 @@ class TargetHRPersonnelController extends Controller
 {
     use ResponseTrait;
 
-    protected AuthenticatedActorService $actorService;
+    protected AuthorizationService $authz;
 
-    public function __construct(?AuthenticatedActorService $actorService = null)
+    public function __construct(?AuthorizationService $authz = null)
     {
-        $this->actorService = $actorService ?? new AuthenticatedActorService();
+        $this->authz = $authz ?? new AuthorizationService();
     }
 
     public function options(): mixed
@@ -26,14 +26,24 @@ class TargetHRPersonnelController extends Controller
 
     protected function resolveActor(): ?array
     {
-        return $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
+        return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+    }
+
+    private function genUuid(): string
+    {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+        );
     }
 
     protected function requireHrAdmin(?array $actor): bool
     {
-        return $actor !== null
-            && ($actor['profile']['account_type'] ?? '') === 'hr_admin'
-            && in_array('hr_staff', $actor['roles'], true);
+        return $actor !== null && $this->authz->hasRole($actor, 'hr_staff');
     }
 
     public function directory(): mixed
@@ -57,37 +67,37 @@ class TargetHRPersonnelController extends Controller
             $this->request->getGet('per_page') ?? 25
         );
 
-        $builder = $db->table('public.profiles p')
+        $builder = $db->table('profiles p')
             ->select([
-                'p.id', 'p.institutional_id', 'p.institutional_email', 'p.full_name',
-                'p.first_name', 'p.middle_name', 'p.last_name', 'p.suffix',
-                'p.designation', 'p.status', 'p.must_change_password',
-                'p.provisioned_at', 'p.activated_at', 'p.created_at',
+                'p.id', 'p.institutional_id', 'p.email AS institutional_email', 'p.full_name',
+                'p.first_name', 'p.middle_name', 'p.last_name',
+                'p.designation_title AS designation', 'p.status', 'p.must_change_password',
+                'p.created_at',
                 'pp.personnel_classification',
                 'pca.college_id', 'c.code AS college_code', 'c.name AS college_name',
                 'pau.administrative_unit_id', 'au.code AS administrative_unit_code',
                 'au.name AS administrative_unit_name',
-                "(SELECT da.id FROM public.dean_assignments da
-                   WHERE da.personnel_profile_id = p.id AND da.is_active = true LIMIT 1) AS dean_assignment_id",
-                "(SELECT c2.name FROM public.dean_assignments da
-                   JOIN public.colleges c2 ON c2.id = da.college_id
-                   WHERE da.personnel_profile_id = p.id AND da.is_active = true LIMIT 1) AS dean_college_name",
-                "(SELECT qr.eligibility_decision FROM public.personnel_qualification_reviews qr
+                "(SELECT da.id FROM dean_assignments da
+                   WHERE da.personnel_profile_id = p.id AND da.is_active = 1 LIMIT 1) AS dean_assignment_id",
+                "(SELECT c2.name FROM dean_assignments da
+                   JOIN colleges c2 ON c2.id = da.college_id
+                   WHERE da.personnel_profile_id = p.id AND da.is_active = 1 LIMIT 1) AS dean_college_name",
+                "(SELECT qr.eligibility_decision FROM personnel_qualification_reviews qr
                    WHERE qr.personnel_profile_id = p.id
                    ORDER BY qr.created_at DESC LIMIT 1) AS latest_qualification_decision",
             ])
-            ->join('public.personnel_profiles pp', 'pp.profile_id = p.id')
-            ->join('public.personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = true', 'left')
-            ->join('public.colleges c', 'c.id = pca.college_id', 'left')
-            ->join('public.personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id = p.id AND pau.is_active = true', 'left')
-            ->join('public.administrative_units au', 'au.id = pau.administrative_unit_id', 'left')
+            ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+            ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1', 'left')
+            ->join('colleges c', 'c.id = pca.college_id', 'left')
+            ->join('personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id = p.id AND pau.is_active = 1', 'left')
+            ->join('administrative_units au', 'au.id = pau.administrative_unit_id', 'left')
             ->where('p.account_type', 'personnel');
 
         if ($search !== '') {
             $builder->groupStart()
                 ->like('p.full_name', $search)
                 ->orLike('p.institutional_id', $search)
-                ->orLike('p.institutional_email', $search)
+                ->orLike('p.email', $search)
                 ->groupEnd();
         }
         if ($collegeId !== '') {
@@ -111,19 +121,19 @@ class TargetHRPersonnelController extends Controller
         foreach ($rows as &$row) {
             $row['program_affiliations'] = $db->query(
                 "SELECT ap.id AS academic_program_id, ap.code, ap.name
-                 FROM public.personnel_program_affiliations ppa
-                 JOIN public.academic_programs ap ON ap.id = ppa.academic_program_id
-                 WHERE ppa.personnel_profile_id = ? AND ppa.is_active = true
+                 FROM personnel_program_affiliations ppa
+                 JOIN academic_programs ap ON ap.id = ppa.academic_program_id
+                 WHERE ppa.personnel_profile_id = ? AND ppa.is_active = 1
                  ORDER BY ap.code",
                 [$row['id']]
             )->getResultArray();
 
             $roleRows = $db->query(
-                "SELECT 'dean'::text AS role_key FROM public.dean_assignments WHERE personnel_profile_id=? AND is_active=true
+                "SELECT 'dean' AS role_key FROM dean_assignments WHERE personnel_profile_id=? AND is_active=1
                  UNION ALL
-                 SELECT 'program_coordinator'::text FROM public.program_coordinator_assignments WHERE personnel_profile_id=? AND is_active=true
+                 SELECT 'program_coordinator' AS role_key FROM program_coordinator_assignments WHERE personnel_profile_id=? AND is_active=1
                  UNION ALL
-                 SELECT 'organization_moderator'::text FROM public.organization_moderator_assignments WHERE personnel_profile_id=? AND is_active=true",
+                 SELECT 'organization_moderator' AS role_key FROM organization_moderator_assignments WHERE personnel_profile_id=? AND is_active=1",
                 [$row['id'], $row['id'], $row['id']]
             )->getResultArray();
             $row['assigned_roles'] = array_values(array_unique(array_column($roleRows, 'role_key')));
@@ -131,9 +141,9 @@ class TargetHRPersonnelController extends Controller
         unset($row);
 
         return $this->respond(['data' => [
-            'total' => $total,
-            'page' => $pagination['page'],
-            'per_page' => $pagination['per_page'],
+            'total'     => $total,
+            'page'      => $pagination['page'],
+            'per_page'  => $pagination['per_page'],
             'personnel' => $rows,
         ]], 200);
     }
@@ -141,8 +151,11 @@ class TargetHRPersonnelController extends Controller
     public function assignDean(string $profileId): mixed
     {
         $actor = $this->resolveActor();
-        if (! $this->requireHrAdmin($actor)) {
-            return $this->respond(['error' => ['code' => $actor === null ? 'UNAUTHORIZED' : 'FORBIDDEN', 'message' => 'HR Admin access required.']], $actor === null ? 401 : 403);
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (! $this->authz->governance()->canAssignDean($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Admin access required.']], 403);
         }
 
         $json = $this->request->getJSON(true) ?? [];
@@ -153,9 +166,9 @@ class TargetHRPersonnelController extends Controller
 
         $db = db_connect();
         $eligible = $db->query(
-            "SELECT 1 FROM public.profiles p
-             JOIN public.personnel_profiles pp ON pp.profile_id=p.id AND pp.personnel_classification='academic'
-             JOIN public.personnel_college_affiliations pca ON pca.personnel_profile_id=p.id AND pca.college_id=? AND pca.is_active=true
+            "SELECT 1 FROM profiles p
+             JOIN personnel_profiles pp ON pp.profile_id=p.id AND pp.personnel_classification='academic'
+             JOIN personnel_college_affiliations pca ON pca.personnel_profile_id=p.id AND pca.college_id=? AND pca.is_active=1
              WHERE p.id=? AND p.account_type='personnel' AND p.status='active'",
             [$collegeId, $profileId]
         )->getRowArray();
@@ -163,52 +176,52 @@ class TargetHRPersonnelController extends Controller
             return $this->respond(['error' => ['code' => 'INELIGIBLE_DEAN_AFFILIATION', 'message' => 'Dean must be active Academic Personnel affiliated with the selected College.']], 422);
         }
 
-        $assignmentId = (string) service('uuid')->uuid4();
+        $assignmentId = $this->genUuid();
         try {
-            $db->table('public.dean_assignments')->insert([
-                'id' => $assignmentId,
+            $db->table('dean_assignments')->insert([
+                'id'                   => $assignmentId,
                 'personnel_profile_id' => $profileId,
-                'college_id' => $collegeId,
-                'effective_from' => date('Y-m-d'),
-                'is_active' => true,
-                'assigned_by' => $actor['profile']['id'],
-                'assigned_at' => date('Y-m-d H:i:s'),
+                'college_id'           => $collegeId,
+                'effective_from'       => date('Y-m-d'),
+                'is_active'            => 1,
+                'assigned_by'          => $actor['profile']['id'],
+                'assigned_at'          => date('Y-m-d H:i:s'),
             ]);
         } catch (Throwable $e) {
             return $this->respond(['error' => ['code' => 'ASSIGNMENT_FAILED', 'message' => 'Failed to assign Dean: ' . $e->getMessage()]], 409);
         }
 
-        return $this->respond(['data' => [
-            'message' => 'Dean assignment created.',
+        return $this->respondCreated(['data' => [
+            'message'       => 'Dean assignment created.',
             'assignment_id' => $assignmentId,
-            'profile_id' => $profileId,
-            'college_id' => $collegeId,
-        ]], 201);
+            'profile_id'    => $profileId,
+            'college_id'    => $collegeId,
+        ]]);
     }
 
     public function revokeDean(string $profileId, string $assignmentId): mixed
     {
         $actor = $this->resolveActor();
-        if (! $this->requireHrAdmin($actor)) {
-            return $this->respond(['error' => ['code' => $actor === null ? 'UNAUTHORIZED' : 'FORBIDDEN', 'message' => 'HR Admin access required.']], $actor === null ? 401 : 403);
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (! $this->authz->governance()->canAssignDean($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Admin access required.']], 403);
         }
 
         $db = db_connect();
-        $assignment = $db->table('public.dean_assignments')
+        $assignment = $db->table('dean_assignments')
             ->where('id', $assignmentId)
             ->where('personnel_profile_id', $profileId)
-            ->where('is_active', true)
+            ->where('is_active', 1)
             ->get()->getRowArray();
         if ($assignment === null) {
             return $this->respond(['error' => ['code' => 'ASSIGNMENT_NOT_FOUND', 'message' => 'Active Dean assignment not found.']], 404);
         }
 
-        $db->table('public.dean_assignments')->where('id', $assignmentId)->update([
-            'is_active' => false,
-            'effective_to' => date('Y-m-d'),
-            'ended_by' => $actor['profile']['id'],
-            'ended_at' => date('Y-m-d H:i:s'),
-            'end_reason' => 'Revoked by HR administrator',
+        $db->table('dean_assignments')->where('id', $assignmentId)->update([
+            'is_active'       => 0,
+            'effective_until' => date('Y-m-d'),
         ]);
 
         return $this->respond(['data' => ['message' => 'Dean assignment revoked.', 'assignment_id' => $assignmentId]], 200);

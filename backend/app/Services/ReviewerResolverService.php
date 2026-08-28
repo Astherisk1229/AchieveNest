@@ -22,10 +22,10 @@ class ReviewerResolverService
 
         $personnel = $db->query(
             "SELECT p.*, pp.personnel_classification
-             FROM public.profiles p
-             JOIN public.personnel_profiles pp ON pp.profile_id = p.id
+             FROM profiles p
+             JOIN personnel_profiles pp ON pp.profile_id = p.id
              WHERE p.id = ?
-               AND p.account_type = 'personnel'
+               AND p.account_type IN ('personnel', 'hr_admin', 'osad_admin')
                AND p.status = 'active'",
             [$personnelProfileId]
         )->getRowArray();
@@ -47,7 +47,7 @@ class ReviewerResolverService
 
     private function requiresHrDirectReview(\CodeIgniter\Database\BaseConnection $db, array $personnel): bool
     {
-        $designation = strtolower(trim((string) ($personnel['designation'] ?? '')));
+        $designation = strtolower(trim((string) ($personnel['designation_title'] ?? $personnel['designation'] ?? '')));
         $hrDesignations = ['director', 'coordinator', 'dean', 'head', 'chair', 'president', 'vice president'];
 
         foreach ($hrDesignations as $designationKeyword) {
@@ -56,18 +56,18 @@ class ReviewerResolverService
             }
         }
 
-        $isDean = $db->table('public.dean_assignments')
+        $isDean = $db->table('dean_assignments')
             ->where('personnel_profile_id', $personnel['id'])
-            ->where('is_active', true)
+            ->where('is_active', 1)
             ->countAllResults() > 0;
 
         if ($isDean) {
             return true;
         }
 
-        $isProgramCoordinator = $db->table('public.program_coordinator_assignments')
+        $isProgramCoordinator = $db->table('program_coordinator_assignments')
             ->where('personnel_profile_id', $personnel['id'])
-            ->where('is_active', true)
+            ->where('is_active', 1)
             ->countAllResults() > 0;
 
         return $isProgramCoordinator;
@@ -77,13 +77,13 @@ class ReviewerResolverService
     {
         $hrAdmin = $db->query(
             "SELECT p.id, p.full_name
-             FROM public.profiles p
-             JOIN public.profile_roles pr ON pr.profile_id = p.id
-             JOIN public.roles r ON r.id = pr.role_id
+             FROM profiles p
+             JOIN profile_roles pr ON pr.profile_id = p.id
+             JOIN roles r ON r.id = pr.role_id
              WHERE p.account_type = 'hr_admin'
                AND p.status = 'active'
                AND r.role_key = 'hr_staff'
-               AND pr.is_active = true
+               AND pr.is_active = 1
              LIMIT 1"
         )->getRowArray();
 
@@ -104,9 +104,9 @@ class ReviewerResolverService
     {
         $affiliation = $db->query(
             "SELECT pca.college_id
-             FROM public.personnel_college_affiliations pca
+             FROM personnel_college_affiliations pca
              WHERE pca.personnel_profile_id = ?
-               AND pca.is_active = true
+               AND pca.is_active = 1
              LIMIT 1",
             [$personnelProfileId]
         )->getRowArray();
@@ -118,10 +118,10 @@ class ReviewerResolverService
         $collegeId = $affiliation['college_id'];
         $dean = $db->query(
             "SELECT p.id, p.full_name, da.college_id
-             FROM public.dean_assignments da
-             JOIN public.profiles p ON p.id = da.personnel_profile_id
+             FROM dean_assignments da
+             JOIN profiles p ON p.id = da.personnel_profile_id
              WHERE da.college_id = ?
-               AND da.is_active = true
+               AND da.is_active = 1
                AND p.status = 'active'
              LIMIT 1",
             [$collegeId]
@@ -140,6 +140,6 @@ class ReviewerResolverService
 
     public function isValidEvaluatorActor(array $actor, array $resolvedReviewer): bool
     {
-        return $actor['profile']['id'] === $resolvedReviewer['evaluator_profile_id'];
+        return ($actor['profile']['id'] ?? '') === ($resolvedReviewer['evaluator_profile_id'] ?? '');
     }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Controllers\Api;
 
-use App\Services\SupabaseAuthService;
+use App\Services\AuthorizationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -11,6 +11,13 @@ class VerificationQueueController extends Controller
 {
     use ResponseTrait;
 
+    protected AuthorizationService $authz;
+
+    public function __construct(?AuthorizationService $authz = null)
+    {
+        $this->authz = $authz ?? new AuthorizationService();
+    }
+
     public function options()
     {
         return $this->respond(null, 204);
@@ -18,46 +25,7 @@ class VerificationQueueController extends Controller
 
     protected function resolveActor(): ?array
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
-        if ($authorization === '' || ! preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
-            return null;
-        }
-
-        $token = trim($matches[1]);
-
-        try {
-            $claims = (new SupabaseAuthService())->verifyAccessToken($token);
-        } catch (Throwable) {
-            return null;
-        }
-
-        $authUserId = (string) ($claims->sub ?? '');
-        if ($authUserId === '') {
-            return null;
-        }
-
-        $db = db_connect();
-        $profile = $db->table('public.profiles')
-            ->where('id', $authUserId)
-            ->get()
-            ->getRowArray();
-
-        if ($profile === null || ($profile['status'] ?? '') !== 'active') {
-            return null;
-        }
-
-        $roles = $db->query(
-            'SELECT r.role_key
-             FROM public.profile_roles pr
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.profile_id = ? AND pr.is_active = true',
-            [$authUserId]
-        )->getResultArray();
-
-        return [
-            'profile' => $profile,
-            'roles'   => array_column($roles, 'role_key'),
-        ];
+        return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
     }
 
     /**
@@ -83,10 +51,10 @@ class VerificationQueueController extends Controller
         $queue = $db->query(
             'SELECT vr.id AS request_id, vr.status AS request_status, vr.submitted_at,
                     a.id AS achievement_id, a.title, a.category, a.description, a.date_awarded, a.venue, a.evidence_url,
-                    p.id AS student_id, p.institutional_id, p.full_name AS student_name, p.institutional_email
-             FROM public.verification_requests vr
-             JOIN public.achievements a ON a.id = vr.achievement_id
-             JOIN public.profiles p ON p.id = a.student_id
+                    p.id AS student_id, p.institutional_id, p.full_name AS student_name, p.email AS institutional_email
+             FROM verification_requests vr
+             JOIN achievements a ON a.id = vr.achievement_id
+             JOIN profiles p ON p.id = a.student_id
              WHERE vr.status = \'pending\'
              ORDER BY vr.submitted_at ASC'
         )->getResultArray();
@@ -126,7 +94,7 @@ class VerificationQueueController extends Controller
 
         $db = db_connect();
 
-        $request = $db->table('public.verification_requests')->where('id', $requestId)->get()->getRowArray();
+        $request = $db->table('verification_requests')->where('id', $requestId)->get()->getRowArray();
         if ($request === null) {
             return $this->respond(['error' => ['code' => 'REQUEST_NOT_FOUND', 'message' => 'Verification request not found.']], 404);
         }
@@ -135,14 +103,14 @@ class VerificationQueueController extends Controller
 
         $db->transBegin();
         try {
-            $db->table('public.verification_requests')->where('id', $requestId)->update([
+            $db->table('verification_requests')->where('id', $requestId)->update([
                 'status'      => $decision,
                 'reviewed_at' => date('Y-m-d H:i:s'),
                 'reviewer_id' => $actor['profile']['id'],
                 'remarks'     => $remarks,
             ]);
 
-            $db->table('public.achievements')->where('id', $request['achievement_id'])->update([
+            $db->table('achievements')->where('id', $request['achievement_id'])->update([
                 'status'     => $achievementStatus,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);

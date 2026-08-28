@@ -1,0 +1,66 @@
+# Phase 12 Result
+
+- Branch: defense/wamp-local
+- Starting commit: a711a2ba3bffac23b9b824e9eba3e3b6b1e3e1a5
+- Final commit: bd2150923135633cfa2c781f3652933af1368576
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- Permanent reference fingerprint before: a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f
+- Permanent reference fingerprint after: a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f
+- Permanent reference fingerprint unchanged: YES
+- Demo fixture fingerprint: b626f7ebf471a5cc7d859b360ded788cbe1f0dd799d5461c8aa97c61dd030c8c
+- Demo reset command: php spark demo:reset
+- Demo reset idempotent: YES (identical fingerprints across consecutive runs)
+- Legacy DemoAcademicStructureSeeder executed: NO (Guarded with local-defense runtime exception)
+- LocalDefenseAuthSeeder used as final demo source: NO (Preserved purely as security/regression fixture)
+- Student A: demo.student.a@ndmu.edu.ph
+- Student A Program: BSA (College of Business and Accountancy)
+- Student B: demo.student.b@ndmu.edu.ph
+- Student B Program: BSBA-FM (College of Business and Accountancy)
+- Students in different Programs: YES (BSA vs BSBA-FM)
+- Academic Personnel: demo.academic.personnel@ndmu.edu.ph (CBA / BSA)
+- Non-Academic Personnel: demo.nonacademic.personnel@ndmu.edu.ph (Administrative Unit)
+- HR Admin: demo.hr.admin@ndmu.edu.ph (hr_staff role)
+- OSAD Admin: demo.osad.admin@ndmu.edu.ph (osad_staff role)
+- Dean: demo.dean@ndmu.edu.ph (Dean of CBA)
+- Coordinator A: demo.coordinator.a@ndmu.edu.ph (Coordinator of BSA)
+- Coordinator B: demo.coordinator.b@ndmu.edu.ph (Coordinator of BSBA-FM)
+- Coordinator B different Program: YES (BSBA-FM vs BSA)
+- Organization Moderator: demo.moderator@ndmu.edu.ph (DEMO_JPIA)
+- Demo Organization: DEMO_JPIA (College of Business and Accountancy)
+- Portfolio draft fixture: DEMO-PORT-01
+- Portfolio submitted fixture: DEMO-PORT-02
+- Portfolio verified fixture: DEMO-PORT-03
+- Revision fixture: DEMO-PORT-04
+- Rejection fixture: Supported via Coordinator rejection workflow
+- Sports fixture: DEMO-PORT-05 (Structured sports metadata)
+- Student evidence fixture: Real synthetic PDF physical files attached
+- Personnel evidence fixture: Real synthetic PDF physical files attached
+- Phase 10 evidence posture: security_status='pending', malware_scanner='none_deferred'
+- Notifications: Populated for Student A verification events
+- Award cycle: AY 2025-2026 Annual Student Honors & Awards
+- Award scenario: Automated evaluation + verified achievements threshold
+- Dean nomination scenario: Dean CBA independent student nomination
+- Personnel accomplishment scenario: IEEE journal publication submission
+- Personnel evaluation scenario: Administrator Ranking Scale oversight
+- Audit fixture: Verification events and system audit history
+- All demo personas authenticate: YES (10 / 10 JWT bearer tokens issued)
+- Cross-Program denial: PROVEN (Coordinator B denied access to Student A records)
+- Production identities used: NO (100% synthetic demo.*@ndmu.edu.ph namespace)
+- Real evidence used: NO (100% synthetic PDF fixtures)
+- Plaintext passwords stored: NO (100% bcrypt hashes)
+- Deprecated Department dependency: NO (0 tables/columns)
+- Phase 7 regression: 27 / 27 PASSED
+- Phase 8 regression: 36 / 36 PASSED
+- Phase 9 regression: 28 / 28 PASSED
+- Phase 11 regression: 24 / 24 PASSED
+- Phase 12 suite: 33 / 33 PASSED
+- Backend routes: PASSED (0 errors)
+- PHP syntax: PASSED (0 errors)
+- Frontend build: PASSED (0 errors)
+- Offline smoke: PASSED (100% local MySQL)
+- PostgreSQL/Supabase migrations modified: NO
+- Production Supabase modified: NO
+- Real secrets committed: NO
+- Phase 12: PASSED
+- Blocking issues: None

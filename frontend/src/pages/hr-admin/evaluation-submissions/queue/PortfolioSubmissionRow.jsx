@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { formatPersonnelPlacement } from '../../../../utils/personnelPlacement'
 
 export default function PortfolioSubmissionRow({ submission, onInspect }) {
   const getCollegeAcronym = (collegeStr) => {
@@ -32,7 +33,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
               {getCollegeAcronym(submission.college)}
             </span>
             <span className="text-sm font-normal text-slate-600 dark:text-slate-400">
-              · {submission.department}
+              · {formatPersonnelPlacement(submission)}
             </span>
           </div>
 

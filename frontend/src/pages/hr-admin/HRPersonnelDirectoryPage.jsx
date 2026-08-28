@@ -7,10 +7,10 @@ import GovernanceTabs from './personnel-directory/GovernanceTabs'
 import PersonnelDirectoryTable from './personnel-directory/PersonnelDirectoryTable'
 import FacultyDossierDrawer from './personnel-directory/FacultyDossierDrawer'
 import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
-import DepartmentAssignments from './personnel-directory/DepartmentAssignments'
 import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
 import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
+import { collectPersonnelPlacementOptions } from '../../utils/personnelPlacement'
 
 export function HRPersonnelDirectoryPage(props) {
   const hrHook = useHR()
@@ -20,18 +20,18 @@ export function HRPersonnelDirectoryPage(props) {
   const passwordResets = props.passwordResets || hrHook.passwordResets || []
   const handleApprovePasswordReset = props.handleApprovePasswordReset || hrHook.handleApprovePasswordReset
   const handleCreatePersonnelAccount = props.handleCreatePersonnelAccount || hrHook.handleCreatePersonnelAccount
-  const handleAssignDepartmentSecretary = props.handleAssignDepartmentSecretary || hrHook.handleAssignDepartmentSecretary
   const handleUpdateRank = props.handleUpdateRank || hrHook.handleUpdateRank
 
-  // Tab State: 'directory' | 'departments' | 'resets'
+  // Tab State: 'directory' | 'resets'
   const tabQuery = searchParams.get('tab')
-  const [activeTab, setActiveTabState] = useState(tabQuery || 'directory')
+  const safeTabQuery = tabQuery === 'resets' ? 'resets' : 'directory'
+  const [activeTab, setActiveTabState] = useState(safeTabQuery)
 
   useEffect(() => {
-    if (tabQuery && tabQuery !== activeTab) {
-      setActiveTabState(tabQuery)
+    if (safeTabQuery !== activeTab) {
+      setActiveTabState(safeTabQuery)
     }
-  }, [tabQuery])
+  }, [safeTabQuery, activeTab])
 
   const setActiveTab = (tab) => {
     setActiveTabState(tab)
@@ -89,9 +89,6 @@ export function HRPersonnelDirectoryPage(props) {
   }
 
   const handleSaveAssignment = (updatedData) => {
-    if (handleAssignDepartmentSecretary) {
-      handleAssignDepartmentSecretary(updatedData.id, updatedData.department)
-    }
     showToast(`Updated administrative assignment for ${updatedData.full_name || 'personnel'}.`)
     setEditingAssignmentPersonnel(null)
   }
@@ -184,13 +181,6 @@ export function HRPersonnelDirectoryPage(props) {
         />
       )}
 
-      {activeTab === 'departments' && (
-        <DepartmentAssignments
-          personnelList={personnelList}
-          onEditAssignment={handleOpenEditAssignment}
-        />
-      )}
-
       {activeTab === 'resets' && (
         <PasswordResetQueue
           passwordResets={passwordResets}
@@ -222,6 +212,7 @@ export function HRPersonnelDirectoryPage(props) {
         isOpen={Boolean(editingAssignmentPersonnel)}
         onClose={() => setEditingAssignmentPersonnel(null)}
         onSave={handleSaveAssignment}
+        placementOptions={collectPersonnelPlacementOptions(personnelList)}
       />
 
       {/* Reset Personnel Password Modal */}
@@ -238,6 +229,7 @@ export function HRPersonnelDirectoryPage(props) {
         evaluatorContext={{ evaluatorId: 'HR-2010-001', role: 'hr_staff' }}
         onClose={() => setIsOnboardingOpen(false)}
         onSubmit={handleOnboardSubmit}
+        placementOptions={collectPersonnelPlacementOptions(personnelList)}
       />
     </div>
   )

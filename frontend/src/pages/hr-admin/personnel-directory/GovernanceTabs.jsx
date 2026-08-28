@@ -1,11 +1,10 @@
 import React from 'react'
-import { Users, Building2, Lock } from 'lucide-react'
+import { Users, Lock } from 'lucide-react'
 
 export default function GovernanceTabs({ activeTab, setActiveTab, pendingResetsCount = 0, pendingResetCount = 0 }) {
   const badgeCount = pendingResetsCount || pendingResetCount
   const tabs = [
     { id: 'directory', label: 'Personnel Records', icon: Users },
-    { id: 'departments', label: 'Department Assignments', icon: Building2 },
     { id: 'resets', label: 'Password Reset Queue', icon: Lock, badge: badgeCount },
   ]
 

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 
 export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
@@ -53,8 +54,9 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     full_name: 'Dr. Maria Santos',
     student_id: 'EMP-2021-0842',
     employee_id: 'EMP-2021-0842',
-    program: 'Department of Computer Studies',
-    department: 'Department of Computer Studies',
+    personnel_classification: 'academic',
+    college_name: 'College of Engineering, Architecture, and Computing',
+    program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
     designation: 'Associate Professor & Research Coordinator',
     year_level: '8 Years Service',
     age: 38,
@@ -77,7 +79,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     {
       id: 2,
       role: 'Associate Professor',
-      organization: 'Department of Computer Studies – NDMU',
+      organization: 'BS Computer Science Program – NDMU',
       period: 'AY 2022–Present',
       icon: GraduationCap
     },
@@ -256,13 +258,13 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {personnel.department || 'College of IT'}</p>
+              <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {formatPersonnelPlacement(personnel)}</p>
 
                   {/* Compact Credential Chips Row */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
-                      {personnel.department || 'College of Information Technology'}
+                      {formatPersonnelPlacement(personnel)}
                     </span>
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">

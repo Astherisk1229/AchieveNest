@@ -9,7 +9,7 @@ export default function PersonnelDirectoryHeader({ onOpenOnboarding }) {
           Personnel Directory
         </h1>
         <p className="text-sm font-medium leading-relaxed text-[#4F6475] dark:text-[#B1C0B6] mt-1">
-          View and manage personnel information, department assignments, employment status, academic ranks, and evaluation records.
+          View and manage personnel information, institutional affiliations, employment status, academic ranks, and evaluation records.
         </p>
       </div>
 

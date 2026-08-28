@@ -22,7 +22,6 @@ export function HREvaluationSubmissionsPage(props) {
   const [activeTab, setActiveTab] = useState('submitted')
   const [search, setSearch] = useState('')
   const [collegeFilter, setCollegeFilter] = useState('ALL')
-  const [deptFilter, setDeptFilter] = useState('ALL')
   const [submissionType, setSubmissionType] = useState('ALL')
 
   // Evaluation Studio & Modals State
@@ -50,7 +49,8 @@ export function HREvaluationSubmissionsPage(props) {
         email: 'moderator@ndmu.edu.ph',
         employee_id: 'EMP-2019-0881',
         college: 'CEAC - College of Engineering, Architecture, and Computing',
-        department: 'Department of Computer Studies',
+        personnel_classification: 'academic',
+        program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
         academic_rank: 'Associate Professor I',
         submission_type: 'Personnel Ranking Evaluation',
         submissionType: 'Personnel Ranking Evaluation',
@@ -69,7 +69,8 @@ export function HREvaluationSubmissionsPage(props) {
         email: 'gmendoza@ndmu.edu.ph',
         employee_id: 'EMP-2018-0412',
         college: 'CBA - College of Business Administration',
-        department: 'Department of Business Management',
+        personnel_classification: 'academic',
+        program_affiliations: [{ code: 'BSBA', name: 'BS Business Administration' }],
         academic_rank: 'Full Professor I',
         submission_type: 'Personnel Ranking Evaluation',
         submissionType: 'Personnel Ranking Evaluation',
@@ -88,7 +89,8 @@ export function HREvaluationSubmissionsPage(props) {
         email: 'scruz@ndmu.edu.ph',
         employee_id: 'EMP-2022-0901',
         college: 'CAS - College of Arts and Sciences',
-        department: 'Department of Physical Sciences',
+        personnel_classification: 'academic',
+        program_affiliations: [{ code: 'BSPHY', name: 'BS Physics' }],
         academic_rank: 'Instructor III',
         submission_type: 'Personnel Ranking Evaluation',
         submissionType: 'Personnel Ranking Evaluation',
@@ -113,10 +115,9 @@ export function HREvaluationSubmissionsPage(props) {
         (sub.employee_id && sub.employee_id.toLowerCase().includes(q)) ||
         (sub.institutional_id && sub.institutional_id.toLowerCase().includes(q)) ||
         sub.email.toLowerCase().includes(q) ||
-        sub.department.toLowerCase().includes(q)
+        (sub.program_affiliations || []).some(program => `${program.code} ${program.name}`.toLowerCase().includes(q))
 
       const matchesCollege = collegeFilter === 'ALL' || sub.college.includes(collegeFilter)
-      const matchesDept = deptFilter === 'ALL' || sub.department === deptFilter
       
       const matchesTab =
         sub.status === activeTab ||
@@ -125,9 +126,9 @@ export function HREvaluationSubmissionsPage(props) {
         (activeTab === 'returned_for_revision' && (sub.status === 'returned_for_revision' || sub.status === 'returned')) ||
         (activeTab === 'ready_for_finalization' && (sub.status === 'ready_for_finalization' || sub.status === 'ready_finalization'))
 
-      return matchesSearch && matchesCollege && matchesDept && matchesTab
+      return matchesSearch && matchesCollege && matchesTab
     })
-  }, [baseSubmissions, search, collegeFilter, deptFilter, activeTab])
+  }, [baseSubmissions, search, collegeFilter, activeTab])
 
   // Zero-Safe Counts
   const counts = useMemo(() => ({
@@ -191,8 +192,6 @@ export function HREvaluationSubmissionsPage(props) {
         setSearch={setSearch}
         collegeFilter={collegeFilter}
         setCollegeFilter={setCollegeFilter}
-        deptFilter={deptFilter}
-        setDeptFilter={setDeptFilter}
         submissionType={submissionType}
         setSubmissionType={setSubmissionType}
       />

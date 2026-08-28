@@ -85,7 +85,7 @@ class StudentAchievementController {
         status: 'Verified',
         category: 'Sports',
         scope_level: 'Institutional / Campus-Wide',
-        description: 'Point guard and co-captain for Champion IT Department Varsity Basketball Team.',
+        description: 'Point guard and co-captain for Champion College Varsity Basketball Team.',
         attached_file_name: 'intramurals_champ_cert.pdf',
         return_remarks: '',
         is_favorited: true,

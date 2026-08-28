@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react'
 import useTheme from '../../hooks/useTheme'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { 
   X, 
   ChevronLeft, 
@@ -34,7 +35,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   // User Profile & Metadata
   const facultyName = user.full_name || user.name || portfolio?.personnel_name || 'Dr. Maria Santos'
   const employeeId = user.employee_id || portfolio?.personnel_id || 'EMP-2021-0842'
-  const department = user.department_name || user.department || portfolio?.department_name || 'College of Information Technology'
+  const affiliation = formatPersonnelPlacement({ ...portfolio, ...user })
   const academicRank = user.rank || user.academic_rank || portfolio?.academic_rank || 'Associate Professor II'
   const academicYear = portfolio?.academic_year || 'AY 2025-2026'
   const status = portfolio?.status || 'HR APPROVED'
@@ -167,7 +168,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
       { 
         id: 8, area_key: 'B', category_code: 'B.5',
         category_name: 'B.5 Production of Instructional Materials',
-        title: 'Laboratory Workbook for Applied Data Structures', issuer: 'NDMU CITE Department', 
+          title: 'Laboratory Workbook for Applied Data Structures', issuer: 'NDMU BSCS Academic Program',
         date: '2025-07-10', date_display: 'Jul 10, 2025', status: 'Verified', points: 10,
         tailored_fields: [
           { label: 'Title of Material', value: 'Laboratory Workbook for Applied Data Structures & Algorithms' },
@@ -740,7 +741,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                     <span className="font-bold text-sm text-slate-900">{facultyName}</span>
                   </div>
                   <p className="text-xs font-semibold text-slate-700">Signature over Printed Name</p>
-                  <p className="text-[10px] text-slate-500 font-sans font-medium">{academicRank} • {department}</p>
+                  <p className="text-[10px] text-slate-500 font-sans font-medium">{academicRank} • {affiliation}</p>
                 </div>
               </div>
 

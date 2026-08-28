@@ -28,15 +28,21 @@ export function AuthProvider({ children }) {
     async function initializeSession() {
       try {
         const isLocalDefense = import.meta.env.VITE_AUTH_MODE === 'local-defense'
-        const localToken = localStorage.getItem('achievenest_access_token') ||
-          sessionStorage.getItem('achievenest_access_token') ||
+        const persistentToken = localStorage.getItem('achievenest_access_token')
+        const sessionToken = sessionStorage.getItem('achievenest_access_token')
+        const localToken = persistentToken ||
+          sessionToken ||
           getCurrentUser()?.token ||
           getCurrentUser()?.access_token
 
         // 1. Local-defense or local token session restoration
         if (localToken) {
           try {
-            const resolvedUser = await fetchProfileAndCreateSession(localToken)
+            const resolvedUser = await fetchProfileAndCreateSession(
+              localToken,
+              getCurrentUser()?.institutional_email || getCurrentUser()?.email || '',
+              Boolean(persistentToken)
+            )
             if (isMounted) {
               setUser(resolvedUser)
             }

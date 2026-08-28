@@ -6,16 +6,17 @@ export default function OSADOperationalSummary({ currentUser, metrics = {} }) {
   const userRole = currentUser?.designation || 'Director of Student Affairs & Services'
 
   const {
-    collegesCount = 5,
-    departmentsCount = 6,
-    programsCount = 12,
+    collegesCount = 3,
+    programsCount = 4,
     activeStudentsCount = 3840,
     activeOrganizationsCount = 24,
-    departmentsWithCoordinatorCount = 6,
+    programsWithCoordinatorCount = 2,
     organizationsWithModeratorCount = 22,
     pendingAssignmentsCount = 2,
     setupCoveragePercent = 93
   } = metrics
+
+  const assignedCount = (programsWithCoordinatorCount || 0) + (organizationsWithModeratorCount || 0)
 
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
@@ -47,7 +48,7 @@ export default function OSADOperationalSummary({ currentUser, metrics = {} }) {
               <span>{setupCoveragePercent}% Configured</span>
             </div>
             <p className="text-[10px] text-emerald-300/80 font-mono">
-              {departmentsWithCoordinatorCount + organizationsWithModeratorCount} assigned
+              {assignedCount} assigned
             </p>
           </div>
         </div>
@@ -63,10 +64,10 @@ export default function OSADOperationalSummary({ currentUser, metrics = {} }) {
             <Building2 className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
           </div>
           <p className="text-lg font-black text-slate-900 dark:text-white">
-            {departmentsCount} <span className="text-xs font-semibold text-slate-500">Depts</span>
+            {collegesCount} <span className="text-xs font-semibold text-slate-500">Colleges</span>
           </p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            {collegesCount} Colleges • {programsCount} Degree Programs
+            {programsCount} Academic Programs
           </p>
         </div>
 

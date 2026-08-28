@@ -38,7 +38,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   const user = currentUser || getCurrentUser() || {
     full_name: 'Dr. Maria Santos',
     employee_id: 'EMP-2021-0842',
-    department: 'Department of Computer Studies'
+    personnel_classification: 'academic', college_code: 'CEAC', program_affiliations: [{ code: 'BSCS' }]
   }
 
   const activeRoleContext = user?.active_role_context || 'personnel'

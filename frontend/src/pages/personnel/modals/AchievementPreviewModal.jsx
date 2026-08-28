@@ -220,7 +220,7 @@ export default function AchievementPreviewModal({
                 <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-2">
                   <div className="flex items-center gap-2 text-rose-900 font-extrabold text-xs">
                     <Info className="w-4 h-4 text-rose-600" />
-                    <span>Evaluator Feedback (Department Secretary / HR)</span>
+                    <span>Evaluator Feedback (HR)</span>
                   </div>
                   <p className="text-xs text-rose-700 font-medium leading-relaxed">
                     "{achievement.return_remarks || 'Please upload clear legible proof document with official signature.'}"

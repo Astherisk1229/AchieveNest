@@ -4,11 +4,11 @@ import { Building2, Users, ShieldCheck, Trophy, ChevronRight, Award, FileSpreads
 export default function OSADQuickActions({ onSelectTab }) {
   const primaryActions = [
     {
-      tab: 'departments',
-      title: 'Academic Structure',
-      description: 'Create and manage Colleges, Departments, and Degree Programs',
+      tab: 'academic-programs',
+      title: 'Academic Programs',
+      description: 'View Colleges and manage their Academic Programs',
       icon: Building2,
-      badge: 'Academic Structure',
+      badge: 'College & Programs',
       badgeClass: 'bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800/60'
     },
     {
@@ -28,18 +28,18 @@ export default function OSADQuickActions({ onSelectTab }) {
       badgeClass: 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
     },
     {
-      tab: 'departments',
+      tab: 'academic-programs',
       title: 'Program Coordinators',
-      description: 'Assign eligible personnel as Program Coordinator for each Department',
+      description: 'Assign eligible personnel as Program Coordinator for each Academic Program',
       icon: UserCheck,
-      badge: 'Department Assignments',
+      badge: 'Program Assignments',
       badgeClass: 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'
     }
   ]
 
   const secondaryActions = [
     { tab: 'awards', title: 'Award Categories', icon: Award, desc: 'Honor roll categories' },
-    { tab: 'awardees', title: 'Identify Awardees', icon: Trophy, desc: 'Review and confirm award candidates' },
+    { tab: 'candidate-review', title: 'Potential Candidates', icon: Trophy, desc: 'Review portfolio-based eligibility' },
     { tab: 'reports', title: 'Accreditation Reports', icon: FileSpreadsheet, desc: 'Print or export official PDF reports' },
     { tab: 'audit', title: 'OSAD Activity Log', icon: ShieldAlert, desc: 'Review administrative activity logs' }
   ]

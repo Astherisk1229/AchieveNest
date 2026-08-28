@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Search, UserCheck, Check, Building2, Shield, X } from 'lucide-react'
+import { formatPersonnelPlacement } from '../../../utils/personnelPlacement'
+import { Search, UserCheck, Check, X } from 'lucide-react'
 
 export default function PersonnelSelectorModal({
   isOpen,
@@ -22,7 +23,9 @@ export default function PersonnelSelectorModal({
     return (
       p.full_name.toLowerCase().includes(cleanQuery) ||
       cleanEmpId.includes(cleanQuery) ||
-      (p.department && p.department.toLowerCase().includes(cleanQuery)) ||
+      (p.college && p.college.toLowerCase().includes(cleanQuery)) ||
+      (p.college_code && p.college_code.toLowerCase().includes(cleanQuery)) ||
+      (p.administrative_unit && p.administrative_unit.toLowerCase().includes(cleanQuery)) ||
       (p.email && p.email.toLowerCase().includes(cleanQuery))
     )
   })
@@ -61,7 +64,7 @@ export default function PersonnelSelectorModal({
             <input
               type="text"
               autoFocus
-              placeholder="Search eligible personnel by name, Employee ID (e.g. EMP7491), or department..."
+              placeholder="Search eligible personnel by name, Employee ID, or institutional affiliation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#16834a] placeholder:text-slate-400"
@@ -78,7 +81,7 @@ export default function PersonnelSelectorModal({
               filteredList.map(person => {
                 const cleanEmpId = (person.employee_id || 'EMP7491').replace(/-/g, '')
                 const isCurrentlyAssigned = 
-                  roleType === 'coordinator' ? (person.coordinator_department === targetName || person.coordinator_program === targetName) :
+                  roleType === 'coordinator' ? person.coordinator_program === targetName :
                   person.moderator_org === targetName
 
                 return (
@@ -94,7 +97,7 @@ export default function PersonnelSelectorModal({
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                        {person.academic_rank || 'Personnel'} • {person.department}
+                        {person.academic_rank || 'Personnel'} • {formatPersonnelPlacement(person)}
                       </p>
                       
                       {/* Current Assigned Roles Badges */}
@@ -103,7 +106,7 @@ export default function PersonnelSelectorModal({
                           {person.assigned_roles.map(r => (
                             <span key={r} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/60">
                               {r === 'college_dean' ? `College Dean (${person.dean_college})` :
-                               r === 'program_coordinator' ? `Program Coordinator (${person.coordinator_department || person.coordinator_program})` :
+                               r === 'program_coordinator' ? `Program Coordinator (${person.coordinator_program})` :
                                r === 'organization_moderator' ? `Organization Moderator (${person.moderator_org})` : r}
                             </span>
                           ))}

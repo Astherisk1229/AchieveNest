@@ -59,7 +59,7 @@ export default class PersonnelAchievementController {
         date: 'Mar 20, 2026',
         status: 'Pending Review',
         category: 'A.3 Attendance to Seminars/Trainings',
-        description: 'Resource speaker and trainer for 45 IT department faculty members.',
+        description: 'Resource speaker and trainer for 45 IT program faculty members.',
         attached_file_name: 'ched_ai_workshop_certificate.pdf',
         is_favorited: false,
         portfolio_id: 'port_ay2526',

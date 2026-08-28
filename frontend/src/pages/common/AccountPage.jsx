@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { 
   User, 
   Mail, 
@@ -165,7 +166,7 @@ export default function AccountPage({ currentUser }) {
               <span>{user.designation || 'HR Staff Officer'}</span>
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
-              {user.department || user.college || 'Human Resource Management & Development Office'}
+              {user.account_type === 'personnel' ? formatPersonnelPlacement(user) : (user.academic_program_name || user.college_name || user.designation || 'Institutional account')}
             </p>
             <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
               <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">

@@ -99,7 +99,7 @@ export default function StudentDashboardPage({ currentUser }) {
       status: 'Returned',
       statusType: 'returned',
       category: 'Academic',
-      issuer: 'NDMU CITE Department',
+        issuer: 'NDMU BSCS Academic Program',
       hasProof: false,
       icon: RotateCcw
     }

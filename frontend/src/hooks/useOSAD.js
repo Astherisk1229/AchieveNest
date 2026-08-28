@@ -3,7 +3,6 @@ import OSADController from '../controllers/OSADController'
 
 export default function useOSAD() {
   const [metrics, setMetrics] = useState(() => OSADController.getMetrics())
-  const [departments, setDepartments] = useState(() => OSADController.getDepartments())
   const [organizations, setOrganizations] = useState(() => OSADController.getOrganizations())
   const [clubs, setClubs] = useState(() => OSADController.getClubs())
   const [awardCategories, setAwardCategories] = useState(() => OSADController.getAwardCategories())
@@ -13,10 +12,6 @@ export default function useOSAD() {
 
   const refreshMetrics = useCallback(() => {
     setMetrics(OSADController.getMetrics())
-  }, [])
-
-  const refreshDepartments = useCallback(() => {
-    setDepartments(OSADController.getDepartments())
   }, [])
 
   const refreshOrganizations = useCallback(() => {
@@ -51,13 +46,6 @@ export default function useOSAD() {
     return OSADController.getStudentPortfolios(searchQuery, collegeFilter)
   }, [])
 
-  const createDepartment = useCallback((deptData) => {
-    const created = OSADController.createDepartment(deptData)
-    refreshDepartments()
-    refreshAuditLogs()
-    return created
-  }, [refreshDepartments, refreshAuditLogs])
-
   const createOrganization = useCallback((orgData) => {
     const created = OSADController.createOrganization(orgData)
     refreshOrganizations()
@@ -91,12 +79,11 @@ export default function useOSAD() {
   const revokeRole = useCallback((userId, roleId) => {
     const updated = OSADController.revokeRole(userId, roleId)
     refreshMetrics()
-    refreshDepartments()
     refreshOrganizations()
     refreshClubs()
     refreshAuditLogs()
     return updated
-  }, [refreshMetrics, refreshDepartments, refreshOrganizations, refreshClubs, refreshAuditLogs])
+  }, [refreshMetrics, refreshOrganizations, refreshClubs, refreshAuditLogs])
 
   const createAwardCategory = useCallback((categoryData) => {
     const created = OSADController.createAwardCategory(categoryData)
@@ -200,7 +187,6 @@ export default function useOSAD() {
   return {
     metrics,
     colleges,
-    departments,
     degreePrograms,
     organizations,
     clubs,
@@ -212,7 +198,6 @@ export default function useOSAD() {
     getPersonnelList,
     getStudentPortfolios,
     createCollege,
-    createDepartment,
     createDegreeProgram,
     createOrganization,
     createStudentOrganizationWithScope,
@@ -221,12 +206,6 @@ export default function useOSAD() {
     getAccreditationReportDetails,
     assignProgramCoordinator,
     assignOrganizationModerator,
-    assignProgramCoordinatorToDepartment: useCallback((deptId, persId, persName) => {
-      const res = OSADController.assignProgramCoordinatorToDepartment(deptId, persId, persName)
-      refreshDepartments()
-      refreshAuditLogs()
-      return res
-    }, [refreshDepartments, refreshAuditLogs]),
     assignOrganizationModeratorToOrg: useCallback((orgId, persId, persName) => {
       const res = OSADController.assignOrganizationModeratorToOrg(orgId, persId, persName)
       refreshOrganizations()

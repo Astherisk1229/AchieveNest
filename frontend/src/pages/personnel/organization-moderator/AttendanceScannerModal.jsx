@@ -56,7 +56,7 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
       id: String(Date.now()),
       student_id: manualIdInput,
       name: 'Registered NDMU Student',
-      course: 'CEAC Department',
+      course: 'CEAC College',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       officer_name: `${activeOfficer.full_name} (${activeOfficer.position.split(' ')[0]})`
     }

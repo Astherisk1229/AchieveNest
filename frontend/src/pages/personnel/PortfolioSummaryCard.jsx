@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { Award, CheckCircle2, AlertCircle, Send, FileText, ShieldCheck, Sparkles, Clock, AlertTriangle } from 'lucide-react'
 
 export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepSec, error }) {
@@ -60,7 +61,7 @@ export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepS
             {getStatusBadge()}
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {portfolio.academic_rank} • {portfolio.department_name} ({portfolio.academic_year})
+            {portfolio.academic_rank} • {formatPersonnelPlacement(portfolio)} ({portfolio.academic_year})
           </p>
         </div>
 

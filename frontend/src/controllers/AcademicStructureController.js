@@ -1,5 +1,4 @@
 import CollegeModel from '../models/CollegeModel.js'
-import DepartmentModel from '../models/DepartmentModel.js'
 import DegreeProgramModel from '../models/DegreeProgramModel.js'
 import StudentOrganizationModel from '../models/StudentOrganizationModel.js'
 import ProgramCoordinatorAssignmentModel from '../models/ProgramCoordinatorAssignmentModel.js'
@@ -13,47 +12,11 @@ export default class AcademicStructureController {
       new CollegeModel({ id: 'col-cas', code: 'CAS', name: 'College of Arts & Sciences' })
     ]
 
-    this.departments = initialState.departments || [
-      {
-        id: 'dept-01',
-        collegeId: 'col-ceac',
-        name: 'Department of Computer Studies (CEAC)',
-        code: 'DEPT-CS',
-        programs: ['BS Computer Science', 'BS Information Technology'],
-        dean_name: 'Dr. Ana Reyes',
-        dean_id: 'usr-[#16834a]-201',
-        student_count: 320,
-        status: 'active'
-      },
-      {
-        id: 'dept-02',
-        collegeId: 'col-cba',
-        name: 'Department of Business Administration (CBA)',
-        code: 'DEPT-BUS',
-        programs: ['BS Business Administration', 'BS Accountancy'],
-        dean_name: 'Prof. Grace Tan',
-        dean_id: 'usr-[#16834a]-203',
-        student_count: 245,
-        status: 'active'
-      },
-      {
-        id: 'dept-03',
-        collegeId: 'col-cas',
-        name: 'Department of Communication & Social Sciences (CAS)',
-        code: 'DEPT-COM',
-        programs: ['BA Communication', 'BS Psychology'],
-        dean_name: 'Dr. Fernando Alonzo',
-        dean_id: 'usr-[#16834a]-204',
-        student_count: 190,
-        status: 'active'
-      }
-    ]
-
     this.degreePrograms = initialState.degreePrograms || [
-      new DegreeProgramModel({ id: 'prog-01', departmentId: 'dept-01', code: 'BSCS', name: 'BS Computer Science', degreeLevel: 'Bachelor', status: 'active' }),
-      new DegreeProgramModel({ id: 'prog-02', departmentId: 'dept-01', code: 'BSIT', name: 'BS Information Technology', degreeLevel: 'Bachelor', status: 'active' }),
-      new DegreeProgramModel({ id: 'prog-03', departmentId: 'dept-02', code: 'BSBA', name: 'BS Business Administration', degreeLevel: 'Bachelor', status: 'active' }),
-      new DegreeProgramModel({ id: 'prog-04', departmentId: 'dept-03', code: 'BACOM', name: 'BA Communication', degreeLevel: 'Bachelor', status: 'active' })
+      new DegreeProgramModel({ id: 'prog-01', collegeId: 'col-ceac', code: 'BSCS', name: 'BS Computer Science', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-02', collegeId: 'col-ceac', code: 'BSIT', name: 'BS Information Technology', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-03', collegeId: 'col-cba', code: 'BSBA', name: 'BS Business Administration', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-04', collegeId: 'col-cas', code: 'BACOM', name: 'BA Communication', degreeLevel: 'Bachelor', status: 'active' })
     ]
 
     this.organizations = initialState.organizations || [
@@ -117,8 +80,8 @@ export default class AcademicStructureController {
     ]
 
     this.programCoordinatorAssignments = initialState.programCoordinatorAssignments || [
-      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', departmentId: 'dept-01', personnelId: 'usr-[#16834a]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
-      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', departmentId: 'dept-02', personnelId: 'usr-[#16834a]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', academicProgramId: 'prog-01', personnelId: 'usr-[#16834a]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', academicProgramId: 'prog-03', personnelId: 'usr-[#16834a]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
     ]
 
     this.organizationModeratorAssignments = initialState.organizationModeratorAssignments || [
@@ -130,14 +93,13 @@ export default class AcademicStructureController {
     return [...this.colleges]
   }
 
-  getDepartments(collegeId = null) {
-    if (!collegeId || collegeId === 'all') return [...this.departments]
-    return this.departments.filter(d => d.collegeId === collegeId)
+  getAcademicPrograms(collegeId = null) {
+    if (!collegeId || collegeId === 'all') return [...this.degreePrograms]
+    return this.degreePrograms.filter(p => p.collegeId === collegeId || p.college_id === collegeId)
   }
 
-  getDegreePrograms(departmentId = null) {
-    if (!departmentId || departmentId === 'all') return [...this.degreePrograms]
-    return this.degreePrograms.filter(p => p.departmentId === departmentId)
+  getDegreePrograms(collegeId = null) {
+    return this.getAcademicPrograms(collegeId)
   }
 
   getOrganizations() {
@@ -162,16 +124,14 @@ export default class AcademicStructureController {
     return college
   }
 
-  createDepartment(payload) {
-    const dept = new DepartmentModel(payload)
-    this.departments.push(dept)
-    return dept
-  }
-
   createDegreeProgram(payload) {
     const program = new DegreeProgramModel(payload)
     this.degreePrograms.push(program)
     return program
+  }
+
+  createAcademicProgram(payload) {
+    return this.createDegreeProgram(payload)
   }
 
   createStudentOrganizationWithScope(payload) {
@@ -180,15 +140,15 @@ export default class AcademicStructureController {
     return organization
   }
 
-  assignProgramCoordinatorToDepartment(departmentId, personnelId, personnelName) {
-    const previous = this.programCoordinatorAssignments.find(a => a.departmentId === departmentId && a.status === 'active')
+  assignProgramCoordinator(academicProgramId, personnelId, personnelName) {
+    const previous = this.programCoordinatorAssignments.find(a => (a.academicProgramId === academicProgramId || a.programId === academicProgramId) && a.status === 'active')
     if (previous) {
       previous.status = 'ended'
       previous.effectiveTo = new Date().toISOString()
       previous.endReason = 'Replaced by OSAD Staff'
     }
 
-    const assignment = new ProgramCoordinatorAssignmentModel({ departmentId, personnelId, personnelName, status: 'active' })
+    const assignment = new ProgramCoordinatorAssignmentModel({ academicProgramId, personnelId, personnelName, status: 'active' })
     this.programCoordinatorAssignments.push(assignment)
     return assignment
   }

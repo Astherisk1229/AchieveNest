@@ -12,17 +12,18 @@ export default class PersonnelPortfolioModel {
   #personnel_id
   #personnel_name
   #academic_rank
-  #department_id
-  #department_name
+  #college_id
+  #college_name
+  #program_affiliations
   #academic_year
   #status
   #area_a_items
   #area_b_items
   #area_c_items
   #years_of_service
-  #dep_sec_evaluator_name
-  #dep_sec_remarks
-  #dep_sec_endorsed_date
+  #dean_evaluator_name
+  #dean_remarks
+  #dean_endorsed_date
   #hr_evaluator_name
   #hr_remarks
   #hr_approved_date
@@ -33,8 +34,9 @@ export default class PersonnelPortfolioModel {
     this.#personnel_id = data.personnel_id || 'EMP-2024-001'
     this.#personnel_name = data.personnel_name || 'Dr. Maria Santos'
     this.#academic_rank = data.academic_rank || 'Assistant Professor II'
-    this.#department_id = data.department_id || 'DEP-CEAC'
-    this.#department_name = data.department_name || 'College of Engineering, Architecture & Computing'
+    this.#college_id = data.college_id || 'COL-CEAC'
+    this.#college_name = data.college_name || 'College of Engineering, Architecture, and Technology'
+    this.#program_affiliations = Array.isArray(data.program_affiliations) ? data.program_affiliations : ['BSCS']
     this.#academic_year = data.academic_year || 'AY 2025-2026'
     this.#status = data.status || 'DRAFT'
     this.#years_of_service = Number(data.years_of_service) || 4
@@ -43,9 +45,9 @@ export default class PersonnelPortfolioModel {
     this.#area_b_items = Array.isArray(data.area_b_items) ? data.area_b_items : []
     this.#area_c_items = Array.isArray(data.area_c_items) ? data.area_c_items : []
 
-    this.#dep_sec_evaluator_name = data.dep_sec_evaluator_name || ''
-    this.#dep_sec_remarks = data.dep_sec_remarks || ''
-    this.#dep_sec_endorsed_date = data.dep_sec_endorsed_date || null
+    this.#dean_evaluator_name = data.dean_evaluator_name || data.dep_sec_evaluator_name || ''
+    this.#dean_remarks = data.dean_remarks || data.dep_sec_remarks || ''
+    this.#dean_endorsed_date = data.dean_endorsed_date || data.dep_sec_endorsed_date || null
     this.#hr_evaluator_name = data.hr_evaluator_name || ''
     this.#hr_remarks = data.hr_remarks || ''
     this.#hr_approved_date = data.hr_approved_date || null
@@ -67,17 +69,18 @@ export default class PersonnelPortfolioModel {
   get personnel_id() { return this.#personnel_id }
   get personnel_name() { return this.#personnel_name }
   get academic_rank() { return this.#academic_rank }
-  get department_id() { return this.#department_id }
-  get department_name() { return this.#department_name }
+  get college_id() { return this.#college_id }
+  get college_name() { return this.#college_name }
+  get program_affiliations() { return [...this.#program_affiliations] }
   get academic_year() { return this.#academic_year }
   get status() { return this.#status }
   get years_of_service() { return this.#years_of_service }
   get area_a_items() { return [...this.#area_a_items] }
   get area_b_items() { return [...this.#area_b_items] }
   get area_c_items() { return [...this.#area_c_items] }
-  get dep_sec_evaluator_name() { return this.#dep_sec_evaluator_name }
-  get dep_sec_remarks() { return this.#dep_sec_remarks }
-  get dep_sec_endorsed_date() { return this.#dep_sec_endorsed_date }
+  get dean_evaluator_name() { return this.#dean_evaluator_name }
+  get dean_remarks() { return this.#dean_remarks }
+  get dean_endorsed_date() { return this.#dean_endorsed_date }
   get hr_evaluator_name() { return this.#hr_evaluator_name }
   get hr_remarks() { return this.#hr_remarks }
   get hr_approved_date() { return this.#hr_approved_date }
@@ -164,9 +167,9 @@ export default class PersonnelPortfolioModel {
     this.#status = newStatus
 
     if (newStatus === 'ENDORSED_TO_HR') {
-      this.#dep_sec_evaluator_name = actorName
-      this.#dep_sec_remarks = remarks
-      this.#dep_sec_endorsed_date = new Date().toISOString()
+      this.#dean_evaluator_name = actorName
+      this.#dean_remarks = remarks
+      this.#dean_endorsed_date = new Date().toISOString()
     } else if (newStatus === 'HR_APPROVED') {
       this.#hr_evaluator_name = actorName
       this.#hr_remarks = remarks
@@ -186,8 +189,8 @@ export default class PersonnelPortfolioModel {
     return this
   }
 
-  matchesDepartment(departmentId) {
-    return !departmentId || this.#department_id === departmentId
+  matchesCollege(collegeId) {
+    return !collegeId || this.#college_id === collegeId
   }
 
   toJSON() {
@@ -197,17 +200,18 @@ export default class PersonnelPortfolioModel {
       personnel_id: this.#personnel_id,
       personnel_name: this.#personnel_name,
       academic_rank: this.#academic_rank,
-      department_id: this.#department_id,
-      department_name: this.#department_name,
+      college_id: this.#college_id,
+      college_name: this.#college_name,
+      program_affiliations: this.#program_affiliations,
       academic_year: this.#academic_year,
       status: this.#status,
       years_of_service: this.#years_of_service,
       area_a_items: this.#area_a_items,
       area_b_items: this.#area_b_items,
       area_c_items: this.#area_c_items,
-      dep_sec_evaluator_name: this.#dep_sec_evaluator_name,
-      dep_sec_remarks: this.#dep_sec_remarks,
-      dep_sec_endorsed_date: this.#dep_sec_endorsed_date,
+      dean_evaluator_name: this.#dean_evaluator_name,
+      dean_remarks: this.#dean_remarks,
+      dean_endorsed_date: this.#dean_endorsed_date,
       hr_evaluator_name: this.#hr_evaluator_name,
       hr_remarks: this.#hr_remarks,
       hr_approved_date: this.#hr_approved_date,

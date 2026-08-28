@@ -29,12 +29,12 @@ export default class CollegeModel {
     }
   }
 
-  static isDeletable(collegeId, departments = [], organizations = []) {
-    const activeDepts = departments.filter(d => d.collegeId === collegeId && d.status !== 'archived')
+  static isDeletable(collegeId, academicPrograms = [], organizations = []) {
+    const activePrograms = academicPrograms.filter(program => program.collegeId === collegeId && program.status !== 'archived')
     const activeOrgs = organizations.filter(o => o.collegeId === collegeId && o.status !== 'archived')
     return {
-      canDelete: activeDepts.length === 0 && activeOrgs.length === 0,
-      activeDepartmentCount: activeDepts.length,
+      canDelete: activePrograms.length === 0 && activeOrgs.length === 0,
+      activeAcademicProgramCount: activePrograms.length,
       activeOrganizationCount: activeOrgs.length
     }
   }

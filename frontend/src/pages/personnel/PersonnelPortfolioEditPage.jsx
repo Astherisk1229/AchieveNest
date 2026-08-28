@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { useNavigate } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
@@ -41,7 +42,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const activeUser = propUser || authUser || getCurrentUser() || {
     full_name: 'Dr. Maria Santos',
     employee_id: 'EMP-2021-0842',
-    department: 'College of Information Technology',
+    personnel_classification: 'academic', college_name: 'College of Information Technology', program_affiliations: [{ code: 'BSIT' }],
     active_role_context: 'personnel'
   }
 
@@ -271,7 +272,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
     const res = submitToDepSec()
     if (res.success) {
-      showToast('Portfolio draft endorsed to Department Secretary for verification!')
+      showToast('Portfolio draft submitted to HR for verification!')
     } else {
       setSubmitError(res.message || 'Submission failed.')
     }
@@ -443,7 +444,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 {activeUser.full_name} <span className="text-xs font-normal text-[#245F42]">• {activeUser.academic_rank || 'Associate Professor'}</span>
               </h2>
               <p className="text-xs text-[#245F42] font-medium">
-                {activeUser.department || 'College of Information Technology'} • ID: {activeUser.employee_id}
+                {formatPersonnelPlacement(activeUser)} • ID: {activeUser.employee_id}
               </p>
             </div>
           </div>

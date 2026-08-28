@@ -126,7 +126,7 @@ export default class OcrScanController {
       return `NOTRE DAME OF MARBEL UNIVERSITY\nCERTIFICATE OF RECOGNITION\nIS HEREBY CONFERRED UPON\nDr. Maria Santos\nFOR BEING AWARDED\nOutstanding Research Faculty of the Year 2025\nNational Recognition of Academic Excellence\nAwarded on December 18, 2025`
     }
     if (nameLower.includes('research') || nameLower.includes('grant') || nameLower.includes('dost')) {
-      return `DEPARTMENT OF SCIENCE AND TECHNOLOGY\nRESEARCH GRANT AWARD CERTIFICATE\nProject Title: AI-Driven Student Retention & Early Warning Analytics Framework\nPrincipal Investigator: Dr. Maria Santos\nStatus: Completed Institutional Research Project\nGranted on August 10, 2025`
+      return `DOST PHILIPPINES - RESEARCH AND INNOVATION COUNCIL\nRESEARCH GRANT AWARD CERTIFICATE\nProject Title: AI-Driven Student Retention & Early Warning Analytics Framework\nPrincipal Investigator: Dr. Maria Santos\nStatus: Completed Institutional Research Project\nGranted on August 10, 2025`
     }
     if (nameLower.includes('member') || nameLower.includes('psite') || nameLower.includes('pcs')) {
       return `PHILIPPINE COMPUTER SOCIETY (PCS)\nMEMBERSHIP CERTIFICATE\nTHIS IS TO CERTIFY THAT\nDr. Maria Santos\nIS A MEMBER IN GOOD STANDING FOR AY 2025-2026\nPosition: Officer / Board Member\nIssued on July 5, 2025`

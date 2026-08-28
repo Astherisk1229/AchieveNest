@@ -289,7 +289,7 @@ export default class RankingCriteriaModel {
       return 'Award Plaque Photo / Official Certificate of Award'
     }
     if (text.includes('material') || text.includes('module') || text.includes('workbook')) {
-      return 'Bound Material Copy / Department Approval Sign-off'
+      return 'Bound Material Copy / Dean Approval Sign-off'
     }
     if (text.includes('moderator') || text.includes('coach') || text.includes('committee')) {
       return 'Official Designation Letter / Special Order'

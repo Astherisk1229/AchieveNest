@@ -91,7 +91,7 @@ export default function OSADCommandCenterPage({ setSearchParams, awardees = [], 
                   <p className="text-[10px] text-slate-400 font-medium">{awd.program} • {awd.total_score || awd.stage1_score || 85} pts</p>
                 </div>
                 <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-extrabold border border-emerald-100 dark:border-emerald-800/50 shrink-0">
-                  Advanced to Interview
+                  Eligible for Interview
                 </span>
               </div>
             ))}

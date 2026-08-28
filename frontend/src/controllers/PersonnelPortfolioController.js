@@ -52,8 +52,9 @@ export default class PersonnelPortfolioController {
       personnel_id: personnelId,
       personnel_name: defaultData.personnel_name || 'Dr. Maria Santos',
       academic_rank: defaultData.academic_rank || 'Assistant Professor II',
-      department_id: defaultData.department_id || 'DEP-CEAC',
-      department_name: defaultData.department_name || 'College of Engineering, Architecture & Computing',
+      college_id: defaultData.college_id || 'COL-CEAC',
+      college_name: defaultData.college_name || 'College of Engineering, Architecture, and Technology',
+      program_affiliations: defaultData.program_affiliations || ['BSCS'],
       academic_year: 'AY 2025-2026',
       years_of_service: 6,
       area_a_items: [
@@ -214,9 +215,9 @@ export default class PersonnelPortfolioController {
   }
 
   /**
-   * Submits portfolio to Department Secretary for evaluation.
+   * Submits portfolio for evaluation.
    */
-  static submitToDepSec(portfolioModel, actorName = 'Personnel') {
+  static submitToDean(portfolioModel, actorName = 'Personnel') {
     const validation = PersonnelPortfolioController.validateSubmissionGuard(portfolioModel)
     if (!validation.isValid) {
       throw new Error(`Cannot submit portfolio: ${validation.missingProofCount} item(s) are missing required proof documents.`)
@@ -226,11 +227,15 @@ export default class PersonnelPortfolioController {
       'SUBMITTED_TO_DEP_SEC',
       actorName,
       'Personnel',
-      'Submitted complete ranking portfolio to Department Secretary for verification.'
+      'Submitted complete ranking portfolio for evaluation and verification.'
     )
 
     PersonnelPortfolioController.persistPortfolio(portfolioModel)
     return portfolioModel
+  }
+
+  static submitToDepSec(portfolioModel, actorName = 'Personnel') {
+    return PersonnelPortfolioController.submitToDean(portfolioModel, actorName)
   }
 
   /**

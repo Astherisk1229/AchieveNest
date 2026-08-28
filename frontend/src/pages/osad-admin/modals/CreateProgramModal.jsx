@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { GraduationCap, X, Plus } from 'lucide-react'
 
-export default function CreateProgramModal({ isOpen, onClose, onSubmit, departments = [] }) {
-  const [departmentId, setDepartmentId] = useState(departments[0]?.id || '')
+export default function CreateProgramModal({ isOpen, onClose, onSubmit, colleges = [] }) {
+  const [collegeId, setCollegeId] = useState(colleges[0]?.id || '')
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [degreeLevel, setDegreeLevel] = useState('Undergraduate')
@@ -21,14 +21,12 @@ export default function CreateProgramModal({ isOpen, onClose, onSubmit, departme
     setIsSubmitting(true)
     setError(null)
 
-    const selectedDept = departments.find(d => d.id === departmentId) || departments[0]
+    const selectedCollege = colleges.find(c => c.id === collegeId) || colleges[0]
 
     try {
       await onSubmit({
-        department_id: selectedDept?.id || 'dept_cs',
-        department_code: selectedDept?.code || 'CS',
-        college_id: selectedDept?.college_id || 'col_ceac',
-        college_code: selectedDept?.college_code || 'CEAC',
+        college_id: selectedCollege?.id,
+        college_code: selectedCollege?.code,
         code: code.trim(),
         name: name.trim(),
         degree_level: degreeLevel
@@ -38,7 +36,7 @@ export default function CreateProgramModal({ isOpen, onClose, onSubmit, departme
       setIsSubmitting(false)
       onClose()
     } catch (err) {
-      setError(err.message || 'Failed to create degree program.')
+      setError(err.message || 'Failed to create Academic Program.')
       setIsSubmitting(false)
     }
   }
@@ -49,7 +47,7 @@ export default function CreateProgramModal({ isOpen, onClose, onSubmit, departme
         <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
           <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-            <span>Create Degree Program under Department</span>
+            <span>Create Academic Program under College</span>
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 cursor-pointer">
             <X className="w-4 h-4" />
@@ -64,14 +62,14 @@ export default function CreateProgramModal({ isOpen, onClose, onSubmit, departme
 
         <form onSubmit={handleSubmit} className="space-y-3 text-xs font-medium">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Parent Department</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Parent College</label>
             <select
-              value={departmentId}
-              onChange={e => setDepartmentId(e.target.value)}
+              value={collegeId}
+              onChange={e => setCollegeId(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
             >
-              {departments.map(dept => (
-                <option key={dept.id} value={dept.id}>{dept.code} — {dept.name}</option>
+              {colleges.map(college => (
+                <option key={college.id} value={college.id}>{college.code} — {college.name}</option>
               ))}
             </select>
           </div>
@@ -88,7 +86,7 @@ export default function CreateProgramModal({ isOpen, onClose, onSubmit, departme
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Degree Program Name</label>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Academic Program Name</label>
             <input
               type="text"
               value={name}

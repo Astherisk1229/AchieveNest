@@ -32,7 +32,7 @@ export default function HRScoreAuditModal({
   const handleConfirmReturn = (e) => {
     e.preventDefault()
     if (!returnRemarks.trim()) {
-      setModalError('Please provide feedback remarks for the Department Secretary.')
+      setModalError('Please provide feedback remarks for the Personnel record owner.')
       return
     }
     const result = onReturnToDepSec(hrOfficerName, returnRemarks)
@@ -51,7 +51,7 @@ export default function HRScoreAuditModal({
             <div>
               <h3 className="text-lg font-bold">HR Ranking Score Audit & Lock</h3>
               <p className="text-xs text-slate-400">
-                {portfolio.personnel_name} • {portfolio.department_name} ({portfolio.academic_year})
+                {portfolio.personnel_name} • {portfolio.college_name || portfolio.administrative_unit_name || 'Institutional affiliation'} ({portfolio.academic_year})
               </p>
             </div>
           </div>
@@ -76,7 +76,7 @@ export default function HRScoreAuditModal({
             <UserCheck className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
             <div>
               <div className="text-xs font-bold text-slate-900 dark:text-white">
-                Endorsed by Department Secretary: {portfolio.dep_sec_evaluator_name || 'Dept. Secretary'}
+                Prior review recorded by: {portfolio.dep_sec_evaluator_name || 'Authorized reviewer'}
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 "{portfolio.dep_sec_remarks || 'All line items and attached proof documents verified.'}"
@@ -188,7 +188,7 @@ export default function HRScoreAuditModal({
         {/* Return Dialog Extension */}
         {showReturnDialog && (
           <div className="p-6 bg-rose-50/50 dark:bg-rose-950/30 border-t border-rose-200 dark:border-rose-900/50">
-            <h4 className="text-xs font-bold text-rose-900 dark:text-rose-300 mb-2">Return to Department Secretary for Re-Evaluation</h4>
+            <h4 className="text-xs font-bold text-rose-900 dark:text-rose-300 mb-2">Return to Personnel for Revision</h4>
             {modalError && <div className="text-xs text-rose-600 mb-2">{modalError}</div>}
             <textarea
               rows="2"

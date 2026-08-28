@@ -397,7 +397,7 @@ export default function OSADAwardCandidateReviewPage({
                             onClick={() => handleAdvanceSingleCandidate(candidate.candidacyId || candidate.id || candidate.studentId)}
                             className="px-3 py-1 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
                           >
-                            Advance to Interview
+                            Mark Eligible for Interview
                           </button>
                         )}
                       </div>
@@ -421,7 +421,7 @@ export default function OSADAwardCandidateReviewPage({
                 </p>
               </div>
               <span className="text-[11px] font-bold text-slate-400">
-                {filteredCandidates.length} Candidates Reviewed ({advancedCount} Advanced to Interview)
+                {filteredCandidates.length} Potential Candidates Reviewed ({advancedCount} Eligible for Interview)
               </span>
             </div>
 
@@ -518,7 +518,7 @@ export default function OSADAwardCandidateReviewPage({
                             disabled={candidate.potentialCandidateStatus === 'BELOW_THRESHOLD' || candidate.eligibilityStatus === 'below_threshold'}
                             className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs transition cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
                           >
-                            Advance to Interview
+                            Mark Eligible for Interview
                           </button>
                         )}
                       </div>

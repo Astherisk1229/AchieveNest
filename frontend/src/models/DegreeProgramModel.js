@@ -1,7 +1,7 @@
 export default class DegreeProgramModel {
   constructor(data = {}) {
     this.id = data.id || `prog-${Date.now()}`
-    this.departmentId = data.departmentId || ''
+    this.collegeId = data.collegeId || data.college_id || ''
     this.code = (data.code || '').trim().toUpperCase()
     this.name = (data.name || '').trim()
     this.degreeLevel = data.degreeLevel || 'Bachelor' // Bachelor | Master | Doctorate | Associate
@@ -12,28 +12,28 @@ export default class DegreeProgramModel {
     this.updatedAt = data.updatedAt || new Date().toISOString()
   }
 
-  static validate(data = {}, departments = [], existingPrograms = []) {
+  static validate(data = {}, colleges = [], existingPrograms = []) {
     const errors = []
-    const departmentId = data.departmentId
+    const collegeId = data.collegeId || data.college_id
     const code = (data.code || '').trim().toUpperCase()
     const name = (data.name || '').trim()
 
-    if (!departmentId) {
-      errors.push('A parent Department must be selected for the Degree Program.')
+    if (!collegeId) {
+      errors.push('A parent College must be selected for the Academic Program.')
     } else {
-      const parentDept = departments.find(d => d.id === departmentId && d.status === 'active')
-      if (!parentDept) {
-        errors.push('Selected parent Department is invalid or archived.')
+      const parentCollege = colleges.find(c => c.id === collegeId && c.status === 'active')
+      if (!parentCollege) {
+        errors.push('Selected parent College is invalid or archived.')
       }
     }
 
-    if (!code) errors.push('Degree Program code is required.')
-    if (!name) errors.push('Degree Program name is required.')
+    if (!code) errors.push('Academic Program code is required.')
+    if (!name) errors.push('Academic Program name is required.')
 
     const duplicateCode = existingPrograms.find(
       p => p.id !== data.id && p.code.toUpperCase() === code
     )
-    if (duplicateCode) errors.push(`Degree Program code "${code}" already exists.`)
+    if (duplicateCode) errors.push(`Academic Program code "${code}" already exists.`)
 
     return {
       isValid: errors.length === 0,

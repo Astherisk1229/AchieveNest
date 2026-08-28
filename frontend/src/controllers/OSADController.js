@@ -6,7 +6,6 @@
 
 import { parseFullName } from '../utils/nameFormatter.js'
 import CollegeModel from '../models/CollegeModel.js'
-import DepartmentModel from '../models/DepartmentModel.js'
 import DegreeProgramModel from '../models/DegreeProgramModel.js'
 import StudentOrganizationModel from '../models/StudentOrganizationModel.js'
 import ProgramCoordinatorAssignmentModel from '../models/ProgramCoordinatorAssignmentModel.js'
@@ -16,7 +15,6 @@ import AcademicStructureController from './AcademicStructureController.js'
 class OSADController {
   #users
   #colleges
-  #departments
   #degreePrograms
   #organizations
   #clubs
@@ -35,52 +33,17 @@ class OSADController {
       new CollegeModel({ id: 'col-cba', code: 'CBA', name: 'College of Business & Accountancy' }),
       new CollegeModel({ id: 'col-cas', code: 'CAS', name: 'College of Arts & Sciences' })
     ]
-    this.#departments = [
-      {
-        id: 'dept-01',
-        collegeId: 'col-ceac',
-        name: 'Department of Computer Studies (CEAC)',
-        code: 'DEPT-CS',
-        programs: ['BS Computer Science', 'BS Information Technology'],
-        dean_name: 'Dr. Ana Reyes',
-        dean_id: 'usr-[#16834a]-201',
-        student_count: 320,
-        status: 'active'
-      },
-      {
-        id: 'dept-02',
-        collegeId: 'col-cba',
-        name: 'Department of Business Administration (CBA)',
-        code: 'DEPT-BUS',
-        programs: ['BS Business Administration', 'BS Accountancy'],
-        dean_name: 'Prof. Grace Tan',
-        dean_id: 'usr-[#16834a]-203',
-        student_count: 245,
-        status: 'active'
-      },
-      {
-        id: 'dept-03',
-        collegeId: 'col-cas',
-        name: 'Department of Communication & Social Sciences (CAS)',
-        code: 'DEPT-COM',
-        programs: ['BA Communication', 'BS Psychology'],
-        dean_name: 'Dr. Fernando Alonzo',
-        dean_id: 'usr-[#16834a]-204',
-        student_count: 190,
-        status: 'active'
-      }
-    ]
 
     this.#degreePrograms = [
-      new DegreeProgramModel({ id: 'prog-01', departmentId: 'dept-01', code: 'BSCS', name: 'BS Computer Science', degreeLevel: 'Bachelor', status: 'active' }),
-      new DegreeProgramModel({ id: 'prog-02', departmentId: 'dept-01', code: 'BSIT', name: 'BS Information Technology', degreeLevel: 'Bachelor', status: 'active' }),
-      new DegreeProgramModel({ id: 'prog-03', departmentId: 'dept-02', code: 'BSBA', name: 'BS Business Administration', degreeLevel: 'Bachelor', status: 'active' }),
-      new DegreeProgramModel({ id: 'prog-04', departmentId: 'dept-03', code: 'BACOM', name: 'BA Communication', degreeLevel: 'Bachelor', status: 'active' })
+      new DegreeProgramModel({ id: 'prog-01', collegeId: 'col-ceac', code: 'BSCS', name: 'BS Computer Science', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-02', collegeId: 'col-ceac', code: 'BSIT', name: 'BS Information Technology', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-03', collegeId: 'col-cba', code: 'BSBA', name: 'BS Business Administration', degreeLevel: 'Bachelor', status: 'active' }),
+      new DegreeProgramModel({ id: 'prog-04', collegeId: 'col-cas', code: 'BACOM', name: 'BA Communication', degreeLevel: 'Bachelor', status: 'active' })
     ]
 
     this.#programCoordinatorAssignments = [
-      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', departmentId: 'dept-01', personnelId: 'usr-[#16834a]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
-      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', departmentId: 'dept-02', personnelId: 'usr-[#16834a]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-01', academicProgramId: 'prog-01', personnelId: 'usr-[#16834a]-202', personnelName: 'Prof. Marco Valdez', status: 'active' }),
+      new ProgramCoordinatorAssignmentModel({ id: 'pca-02', academicProgramId: 'prog-03', personnelId: 'usr-[#16834a]-203', personnelName: 'Prof. Grace Tan', status: 'active' })
     ]
 
     this.#organizationModeratorAssignments = [
@@ -146,6 +109,7 @@ class OSADController {
         status: 'Active'
       }
     ]
+
     this.#users = [
       // Students
       {
@@ -214,14 +178,16 @@ class OSADController {
         status: 'Active'
       },
 
-      // Personnel (Employee IDs formatted without dashes per university standard)
+      // Personnel
       {
         id: 'usr-[#16834a]-201',
         full_name: 'Dr. Ana Reyes',
         employee_id: 'EMP8821',
         role: 'personnel',
         academic_rank: 'Associate Professor',
-        department: 'Computer Science Department',
+        college: 'CEAC',
+        college_code: 'CEAC',
+        academic_programs: ['BSCS'],
         email: 'ana.reyes@ndmu.edu.ph',
         assigned_roles: ['organization_moderator'],
         moderator_org: 'Computer Society NDMU',
@@ -234,7 +200,9 @@ class OSADController {
         employee_id: 'EMP7491',
         role: 'personnel',
         academic_rank: 'Assistant Professor',
-        department: 'Computer Science Department',
+        college: 'CEAC',
+        college_code: 'CEAC',
+        academic_programs: ['BSCS'],
         email: 'roberto.cruz@ndmu.edu.ph',
         assigned_roles: ['program_coordinator'],
         moderator_org: null,
@@ -247,11 +215,13 @@ class OSADController {
         employee_id: 'EMP6102',
         role: 'personnel',
         academic_rank: 'Senior Lecturer',
-        department: 'Business Administration',
+        college: 'CBA',
+        college_code: 'CBA',
+        academic_programs: ['BSBA'],
         email: 'grace.tan@ndmu.edu.ph',
-        assigned_roles: ['department_secretary'],
+        assigned_roles: ['program_coordinator'],
         moderator_org: null,
-        coordinator_program: null,
+        coordinator_program: 'BS Business Administration',
         status: 'Active'
       },
       {
@@ -260,7 +230,9 @@ class OSADController {
         employee_id: 'EMP9011',
         role: 'personnel',
         academic_rank: 'Full Professor',
-        department: 'Civil Engineering Department',
+        college: 'CAS',
+        college_code: 'CAS',
+        academic_programs: ['BACOM'],
         email: 'fernando.alonzo@ndmu.edu.ph',
         assigned_roles: [],
         moderator_org: null,
@@ -290,7 +262,7 @@ class OSADController {
         description: 'Recognition for outstanding research publications, conference presentations, and innovation models.',
         min_points: 250,
         weight_multiplier: 2.0,
-        required_prerequisites: 'Department Endorsement',
+        required_prerequisites: 'Academic Program Endorsement',
         attached_template_id: 'OSAD-TPL-04',
         attached_template_name: 'Excellence & Special Distinction Award',
         is_active: true,
@@ -455,7 +427,6 @@ class OSADController {
 
     this.#academicStructureController = new AcademicStructureController({
       colleges: this.#colleges,
-      departments: this.#departments,
       degreePrograms: this.#degreePrograms,
       organizations: this.#organizations,
       clubs: this.#clubs,
@@ -466,7 +437,6 @@ class OSADController {
 
   syncAcademicStructureState() {
     this.#academicStructureController.colleges = this.#colleges
-    this.#academicStructureController.departments = this.#departments
     this.#academicStructureController.degreePrograms = this.#degreePrograms
     this.#academicStructureController.organizations = this.#organizations
     this.#academicStructureController.clubs = this.#clubs
@@ -479,12 +449,12 @@ class OSADController {
     return this.#academicStructureController.getColleges()
   }
 
-  getDepartments(collegeId = null) {
-    return this.#academicStructureController.getDepartments(collegeId)
+  getAcademicPrograms(collegeId = null) {
+    return this.#academicStructureController.getAcademicPrograms(collegeId)
   }
 
-  getDegreePrograms(departmentId = null) {
-    return this.#academicStructureController.getDegreePrograms(departmentId)
+  getDegreePrograms(collegeId = null) {
+    return this.#academicStructureController.getDegreePrograms(collegeId)
   }
 
   getStudentOrganizations(scopeFilter = 'all') {
@@ -511,30 +481,23 @@ class OSADController {
     return college
   }
 
-  createDepartment(payload) {
-    const val = DepartmentModel.validate(payload, this.#colleges, this.#departments)
-    if (!val.isValid) throw new Error(val.errors.join(' '))
-
-    const dept = new DepartmentModel(payload)
-    this.#departments.push(dept)
-    this.syncAcademicStructureState()
-    this.addAuditLog('DEPARTMENT_CREATED', `Created Department [${dept.name}] under College [${dept.collegeId}]`, dept.code, 'SUCCESS')
-    return dept
-  }
-
   createDegreeProgram(payload) {
-    const val = DegreeProgramModel.validate(payload, this.#departments, this.#degreePrograms)
+    const val = DegreeProgramModel.validate(payload, this.#colleges, this.#degreePrograms)
     if (!val.isValid) throw new Error(val.errors.join(' '))
 
     const prog = new DegreeProgramModel(payload)
     this.#degreePrograms.push(prog)
     this.syncAcademicStructureState()
-    this.addAuditLog('DEGREE_PROGRAM_CREATED', `Created Degree Program [${prog.name}] (${prog.code}) under Department [${prog.departmentId}]`, prog.code, 'SUCCESS')
+    this.addAuditLog('ACADEMIC_PROGRAM_CREATED', `Created Academic Program [${prog.name}] (${prog.code}) under College [${prog.collegeId}]`, prog.code, 'SUCCESS')
     return prog
   }
 
+  createAcademicProgram(payload) {
+    return this.createDegreeProgram(payload)
+  }
+
   createStudentOrganizationWithScope(payload) {
-    const val = StudentOrganizationModel.validate(payload, this.#colleges, this.#departments, this.#degreePrograms, this.#organizations)
+    const val = StudentOrganizationModel.validate(payload, this.#colleges, this.#degreePrograms, this.#organizations)
     if (!val.isValid) throw new Error(val.errors.join(' '))
 
     const org = new StudentOrganizationModel(payload)
@@ -544,14 +507,14 @@ class OSADController {
     return org
   }
 
-  assignProgramCoordinatorToDepartment(departmentId, personnelId, personnelName) {
-    const val = ProgramCoordinatorAssignmentModel.validate({ departmentId, personnelId }, this.#departments, this.getPersonnelList())
+  assignProgramCoordinator(academicProgramId, personnelId, personnelName) {
+    const val = ProgramCoordinatorAssignmentModel.validate({ academicProgramId, personnelId }, this.#degreePrograms, this.getPersonnelList())
     if (!val.isValid) throw new Error(val.errors.join(' '))
 
-    const newAssignment = this.#academicStructureController.assignProgramCoordinatorToDepartment(departmentId, personnelId, personnelName)
+    const newAssignment = this.#academicStructureController.assignProgramCoordinator(academicProgramId, personnelId, personnelName)
     this.#programCoordinatorAssignments = this.#academicStructureController.getProgramCoordinatorAssignments()
     this.syncAcademicStructureState()
-    this.addAuditLog('PROGRAM_COORDINATOR_ASSIGNED', `Assigned Program Coordinator [${personnelName}] to Department [${departmentId}]`, departmentId, 'SUCCESS')
+    this.addAuditLog('PROGRAM_COORDINATOR_ASSIGNED', `Assigned Program Coordinator [${personnelName}] to Academic Program [${academicProgramId}]`, academicProgramId, 'SUCCESS')
     return newAssignment
   }
 
@@ -564,78 +527,6 @@ class OSADController {
     this.syncAcademicStructureState()
     this.addAuditLog('ORGANIZATION_MODERATOR_ASSIGNED', `Assigned Organization Moderator [${personnelName}] to Student Organization [${organizationId}]`, organizationId, 'SUCCESS')
     return newAssignment
-  }
-
-  // --- Pre-Imported Student Soft-Mapping & Auto-Reconciliation Engine ---
-  reconcileStudentsWithDepartment(department) {
-    if (!department || !department.programs) return 0
-    let reconciledCount = 0
-
-    this.#users.forEach(usr => {
-      if (usr.role === 'student' && usr.program) {
-        const matchesProgram = department.programs.some(p => 
-          usr.program.toLowerCase().includes(p.toLowerCase()) || 
-          p.toLowerCase().includes(usr.program.toLowerCase())
-        )
-        if (matchesProgram) {
-          usr.department_id = department.id
-          usr.college = department.code
-          reconciledCount++
-        }
-      }
-    })
-
-    if (reconciledCount > 0) {
-      this.addAuditLog(
-        'STUDENT_AUTO_RECONCILIATION',
-        `Auto-reconciled ${reconciledCount} pre-imported student accounts to department [${department.name}] (${department.code})`,
-        department.code,
-        'SUCCESS'
-      )
-    }
-
-    return reconciledCount
-  }
-
-  // --- Department Governance & Hierarchy ---
-  getDepartments() {
-    return this.#academicStructureController.getDepartments()
-  }
-
-  createDepartment(deptData) {
-    const newDept = {
-      id: `dept-${Date.now()}`,
-      name: deptData.name,
-      code: deptData.code || deptData.name.split(' ').map(w => w[0]).join(''),
-      programs: deptData.programs || [],
-      dean_name: deptData.dean_name || 'Unassigned',
-      dean_id: deptData.dean_id || null,
-      student_count: 0,
-      status: 'Active'
-    }
-
-    if (deptData.dean_id) {
-      const usr = this.#users.find(u => u.id === deptData.dean_id)
-      if (usr) {
-        newDept.dean_name = usr.full_name
-        newDept.dean_id = usr.id
-      }
-    }
-
-    // Auto-reconcile pre-imported students with this newly created department
-    const reconciledCount = this.reconcileStudentsWithDepartment(newDept)
-    newDept.student_count = reconciledCount || (deptData.programs ? deptData.programs.length * 80 : 0)
-
-    this.#departments.push(newDept)
-    this.syncAcademicStructureState()
-
-    this.addAuditLog(
-      'DEPARTMENT_CREATED',
-      `Created academic department [${newDept.name}] (${newDept.code}) with ${newDept.student_count} reconciled students`,
-      newDept.name,
-      'SUCCESS'
-    )
-    return { department: newDept, reconciledCount }
   }
 
   // --- Student Organization Governance ---
@@ -670,45 +561,86 @@ class OSADController {
     return newOrg
   }
 
-  // --- Personnel Selection Utility (Searchable Faculty List) ---
+  // --- Student Clubs Governance ---
+  getClubs() {
+    return this.#academicStructureController.getClubs()
+  }
+
+  createClub(clubData) {
+    const newClub = {
+      id: `club-${Date.now()}`,
+      name: clubData.name,
+      parent_org: clubData.parent_org || 'NDMU Supreme Student Council',
+      moderator_name: clubData.moderator_name || 'Unassigned',
+      moderator_id: clubData.moderator_id || null,
+      member_count: 0,
+      status: 'Active'
+    }
+
+    if (clubData.moderator_id) {
+      this.assignOrganizationModerator(clubData.moderator_id, newClub.name)
+    }
+
+    this.#clubs.push(newClub)
+    this.syncAcademicStructureState()
+
+    this.addAuditLog(
+      'CLUB_CREATED',
+      `Created student sub-club [${newClub.name}] under parent [${newClub.parent_org}]`,
+      newClub.name,
+      'SUCCESS'
+    )
+    return newClub
+  }
+
+  // --- Searchable Personnel Directory for Selection Modals ---
   getPersonnelList(searchQuery = '') {
-    const term = searchQuery.toLowerCase().trim()
-    const cleanTerm = term.replace(/-/g, '')
+    const query = searchQuery.toLowerCase().trim()
     return this.#users
       .filter(u => u.role === 'personnel')
       .filter(u => {
-        if (!term) return true
-        const cleanEmpId = (u.employee_id || '').toLowerCase().replace(/-/g, '')
+        if (!query) return true
+        const parsed = parseFullName(u.full_name)
         return (
-          u.full_name.toLowerCase().includes(term) ||
-          cleanEmpId.includes(cleanTerm) ||
-          (u.department && u.department.toLowerCase().includes(term)) ||
-          (u.email && u.email.toLowerCase().includes(term))
+          u.full_name.toLowerCase().includes(query) ||
+          parsed.formatted.toLowerCase().includes(query) ||
+          (u.employee_id && u.employee_id.toLowerCase().includes(query)) ||
+          (u.email && u.email.toLowerCase().includes(query)) ||
+          (u.college && u.college.toLowerCase().includes(query)) ||
+          (u.academic_rank && u.academic_rank.toLowerCase().includes(query))
         )
       })
   }
 
-  // --- Student Portfolio Access (Strictly Restricted from Personnel Portfolios) ---
+  // --- Student Portfolios for Award Deliberation ---
   getStudentPortfolios(searchQuery = '', collegeFilter = 'all') {
-    const term = searchQuery.toLowerCase().trim()
+    const query = searchQuery.toLowerCase().trim()
     return this.#users
       .filter(u => u.role === 'student')
+      .filter(u => collegeFilter === 'all' || u.college === collegeFilter)
       .filter(u => {
-        const matchCollege = collegeFilter === 'all' ? true : u.college === collegeFilter
-        const matchTerm = !term ? true : (
-          u.full_name.toLowerCase().includes(term) ||
-          u.student_id.toLowerCase().includes(term) ||
-          u.program.toLowerCase().includes(term)
+        if (!query) return true
+        return (
+          u.full_name.toLowerCase().includes(query) ||
+          (u.student_id && u.student_id.toLowerCase().includes(query)) ||
+          (u.program && u.program.toLowerCase().includes(query))
         )
-        return matchCollege && matchTerm
       })
       .map(std => ({
-        ...std,
-        portfolio_items: [
+        id: std.id,
+        student_name: std.full_name,
+        student_id: std.student_id,
+        program: std.program,
+        college: std.college,
+        year_level: std.year_level,
+        total_points: std.total_points,
+        verified_count: std.verified_count,
+        email: std.email,
+        achievements_sample: [
           {
             id: `p-rec-${std.id}-1`,
-            title: `1st Place — National ${std.program.includes('Computer') ? 'Hackathon & AI Challenge' : 'Academic Summit'} 2026`,
-            category: 'National Competition',
+            title: 'Dean\'s List First Honors Recognition',
+            category: 'Academic Distinction',
             points: 120,
             date: '2026-02-14',
             status: 'OSAD Verified',
@@ -716,9 +648,9 @@ class OSADController {
           },
           {
             id: `p-rec-${std.id}-2`,
-            title: 'NDMU Supreme Student Council Executive Leadership Service',
-            category: 'Student Leadership',
-            points: 100,
+            title: '1st Place Hackathon Innovation Award',
+            category: 'Student Competition',
+            points: 150,
             date: '2026-01-20',
             status: 'OSAD Verified',
             proof_url: 'https://ndmu.edu.ph/proof/cert-882.pdf'
@@ -824,10 +756,10 @@ class OSADController {
     const pendingAuditAlerts = this.#auditLogs.filter(l => l.severity === 'WARNING' || l.severity === 'HIGH').length
 
     // Compute derived operational metrics
-    const departmentsWithCoord = this.#departments.filter(d => Boolean(d.assigned_coordinator_id || d.coordinator_name || d.dean_id)).length
+    const programsWithCoord = this.#degreePrograms.filter(p => this.#programCoordinatorAssignments.some(a => (a.academicProgramId === p.id || a.programId === p.id) && a.status === 'active')).length
     const orgsWithMod = this.#clubs.filter(c => Boolean(c.moderator_id || c.moderator_name)).length
-    const totalRequired = this.#departments.length + this.#clubs.length
-    const configured = departmentsWithCoord + orgsWithMod
+    const totalRequired = this.#degreePrograms.length + this.#clubs.length
+    const configured = programsWithCoord + orgsWithMod
     const setupCoveragePercent = totalRequired > 0 ? Math.round((configured / totalRequired) * 100) : 100
 
     return {
@@ -838,12 +770,11 @@ class OSADController {
       pending_audit_alerts: pendingAuditAlerts,
 
       // Derived Operational Setup Coverage Metrics
-      collegesCount: 5,
-      departmentsCount: this.#departments.length,
-      programsCount: 12,
+      collegesCount: this.#colleges.length || 3,
+      programsCount: this.#degreePrograms.length,
       activeStudentsCount: totalStudents || 3840,
       activeOrganizationsCount: this.#clubs.length,
-      departmentsWithCoordinatorCount: departmentsWithCoord,
+      programsWithCoordinatorCount: programsWithCoord,
       organizationsWithModeratorCount: orgsWithMod,
       totalRequiredAssignments: totalRequired,
       configuredAssignments: configured,
@@ -856,7 +787,7 @@ class OSADController {
   getUsers(roleFilter = 'student', searchTerm = '', collegeFilter = 'all', sortBy = 'name') {
     let result = this.#users.filter(u => {
       const matchRole = roleFilter === 'all' ? true : u.role === roleFilter
-      const matchCollege = collegeFilter === 'all' ? true : (u.college === collegeFilter || (u.department && u.department.includes(collegeFilter)))
+      const matchCollege = collegeFilter === 'all' ? true : (u.college === collegeFilter || u.college_code === collegeFilter)
       const term = searchTerm.toLowerCase()
       const matchTerm = !term ? true : (
         u.full_name.toLowerCase().includes(term) ||
@@ -864,7 +795,7 @@ class OSADController {
         (u.student_id && u.student_id.toLowerCase().includes(term)) ||
         (u.employee_id && u.employee_id.toLowerCase().includes(term)) ||
         (u.email && u.email.toLowerCase().includes(term)) ||
-        (u.department && u.department.toLowerCase().includes(term)) ||
+        (u.college && u.college.toLowerCase().includes(term)) ||
         (u.program && u.program.toLowerCase().includes(term))
       )
       return matchRole && matchCollege && matchTerm
@@ -887,53 +818,26 @@ class OSADController {
   }
 
   // --- 3-Tier Administrative Role Assignment ---
-  assignCollegeDean(userId, collegeName) {
-    const usr = this.#users.find(u => u.id === userId)
-    if (!usr) return null
-    if (!usr.assigned_roles) usr.assigned_roles = []
-    if (!usr.assigned_roles.includes('college_dean')) {
-      usr.assigned_roles.push('college_dean')
-    }
-    usr.dean_college = collegeName
-
-    // Update department record
-    const dept = this.#departments.find(d => d.name.includes(collegeName) || d.code === collegeName)
-    if (dept) {
-      dept.dean_name = usr.full_name
-      dept.dean_id = usr.id
-    }
-
-    this.addAuditLog(
-      'ROLE_ASSIGNMENT',
-      `Assigned role [College Dean] for ${collegeName}`,
-      usr.full_name,
-      'INFO'
-    )
-    return { ...usr }
-  }
-
-  assignProgramCoordinator(userId, deptName) {
+  assignProgramCoordinator(userId, programName) {
     const usr = this.#users.find(u => u.id === userId)
     if (!usr) return null
     if (!usr.assigned_roles) usr.assigned_roles = []
     if (!usr.assigned_roles.includes('program_coordinator')) {
       usr.assigned_roles.push('program_coordinator')
     }
-    usr.coordinator_department = deptName
-    usr.coordinator_program = deptName
+    usr.coordinator_program = programName
 
-    // Update department record
-    const dept = this.#departments.find(d => d.name === deptName || d.code === deptName || d.name.includes(deptName))
-    if (dept) {
-      dept.coordinator_name = usr.full_name
-      dept.assigned_coordinator_id = usr.id
+    const prog = this.#degreePrograms.find(p => p.name === programName || p.code === programName || p.name.includes(programName))
+    if (prog) {
+      prog.coordinator_name = usr.full_name
+      prog.assigned_coordinator_id = usr.id
     }
 
     this.syncAcademicStructureState()
 
     this.addAuditLog(
       'ROLE_ASSIGNMENT',
-      `Assigned Department Program Coordinator for [${deptName}]`,
+      `Assigned Program Coordinator for [${programName}]`,
       usr.full_name,
       'INFO'
     )
@@ -967,55 +871,32 @@ class OSADController {
     return { ...usr }
   }
 
-  // --- Student Clubs Governance ---
-  getClubs() {
-    return this.#academicStructureController.getClubs()
-  }
-
-  createClub(clubData) {
-    const newClub = {
-      id: `club-${Date.now()}`,
-      name: clubData.name,
-      parent_org: clubData.parent_org || 'Computer Society NDMU',
-      moderator_name: clubData.moderator_name || 'Unassigned',
-      moderator_id: clubData.moderator_id || null,
-      member_count: 0,
-      status: 'Active'
-    }
-
-    if (clubData.moderator_id) {
-      this.assignOrganizationModerator(clubData.moderator_id, newClub.name)
-    }
-
-    this.#clubs.push(newClub)
-    this.syncAcademicStructureState()
-
-    this.addAuditLog(
-      'CLUB_CREATED',
-      `Created student club [${newClub.name}] under [${newClub.parent_org}]`,
-      newClub.name,
-      'SUCCESS'
-    )
-    return newClub
-  }
-
   revokeRole(userId, roleId) {
     const usr = this.#users.find(u => u.id === userId)
     if (!usr) return null
-    usr.assigned_roles = usr.assigned_roles.filter(r => r !== roleId)
-    if (roleId === 'program_coordinator') usr.coordinator_program = null
-    if (roleId === 'organization_moderator') usr.moderator_org = null
+
+    if (usr.assigned_roles) {
+      usr.assigned_roles = usr.assigned_roles.filter(r => r !== roleId)
+    }
+
+    if (roleId === 'program_coordinator') {
+      usr.coordinator_program = null
+    } else if (roleId === 'organization_moderator') {
+      usr.moderator_org = null
+    }
+
+    this.syncAcademicStructureState()
 
     this.addAuditLog(
       'ROLE_REVOCATION',
-      `Revoked role [${roleId}]`,
+      `Revoked administrative role [${roleId}] from ${usr.full_name}`,
       usr.full_name,
       'WARNING'
     )
     return { ...usr }
   }
 
-  // --- Award Management & Criteria Setup ---
+  // --- Award Categories Configuration ---
   getAwardCategories() {
     return [...this.#awardCategories]
   }
@@ -1147,7 +1028,6 @@ class OSADController {
     const awardTitle = candidateDataOrId?.award_title || "Dean's Honor Roll"
 
     // Enforce Rule: Only 1 student can be confirmed per award category.
-    // Unconfirm any previously confirmed student for this same category.
     this.#awardees = this.#awardees.filter(a => a.award_title !== awardTitle)
 
     const newAwardee = {
@@ -1212,23 +1092,23 @@ class OSADController {
   getAccreditationReportDetails(reportId) {
     const report = this.#accreditationReports.find(r => r.id === reportId) || this.#accreditationReports[0]
     
-    const departmentBreakdown = [
-      { dept: 'College of Engineering, Architecture & Computing (CEAC)', student_records: 184, faculty_records: 76, verification_rate: '98.2%', status: 'Compliant' },
-      { dept: 'College of Business & Accountancy (CBA)', student_records: 122, faculty_records: 52, verification_rate: '95.4%', status: 'Compliant' },
-      { dept: 'College of Arts & Sciences (CAS)', student_records: 64, faculty_records: 38, verification_rate: '94.8%', status: 'Compliant' },
-      { dept: 'College of Education (CED)', student_records: 42, faculty_records: 22, verification_rate: '97.0%', status: 'Compliant' },
+    const collegeBreakdown = [
+      { college: 'College of Engineering, Architecture & Computing (CEAC)', student_records: 184, faculty_records: 76, verification_rate: '98.2%', status: 'Compliant' },
+      { college: 'College of Business & Accountancy (CBA)', student_records: 122, faculty_records: 52, verification_rate: '95.4%', status: 'Compliant' },
+      { college: 'College of Arts & Sciences (CAS)', student_records: 64, faculty_records: 38, verification_rate: '94.8%', status: 'Compliant' },
+      { college: 'College of Education (CED)', student_records: 42, faculty_records: 22, verification_rate: '97.0%', status: 'Compliant' },
     ]
 
     const includedRecordsSample = [
-      { id: 'rec-1', title: 'Machine Learning Frameworks in Higher Education Analytics', category: 'Research & Publications', owner: 'Dr. Maria Santos', dept: 'CEAC', verified_by: 'HR Verified', date: 'Jan 15, 2026' },
-      { id: 'rec-2', title: 'National Hackathon Competition 2026 - 1st Place Winner', category: 'Student Competition', owner: 'Juan Dela Cruz', dept: 'CEAC', verified_by: 'OSAD Verified', date: 'Feb 10, 2026' },
-      { id: 'rec-3', title: 'CHED Regional Training on AI Curriculum Integration', category: 'Seminars & Workshops', owner: 'Engr. Roberto Cruz', dept: 'CEAC', verified_by: 'HR Verified', date: 'Dec 04, 2025' },
-      { id: 'rec-4', title: 'Barangay Smart Literacy Outreach Program', category: 'Extension Services', owner: 'Prof. Grace Tan', dept: 'CBA', verified_by: 'OSAD Verified', date: 'Nov 20, 2025' },
+      { id: 'rec-1', title: 'Machine Learning Frameworks in Higher Education Analytics', category: 'Research & Publications', owner: 'Dr. Maria Santos', college_code: 'CEAC', verified_by: 'HR Verified', date: 'Jan 15, 2026' },
+      { id: 'rec-2', title: 'National Hackathon Competition 2026 - 1st Place Winner', category: 'Student Competition', owner: 'Juan Dela Cruz', college_code: 'CEAC', verified_by: 'OSAD Verified', date: 'Feb 10, 2026' },
+      { id: 'rec-3', title: 'CHED Regional Training on AI Curriculum Integration', category: 'Seminars & Workshops', owner: 'Engr. Roberto Cruz', college_code: 'CEAC', verified_by: 'HR Verified', date: 'Dec 04, 2025' },
+      { id: 'rec-4', title: 'Barangay Smart Literacy Outreach Program', category: 'Extension Services', owner: 'Prof. Grace Tan', college_code: 'CBA', verified_by: 'OSAD Verified', date: 'Nov 20, 2025' },
     ]
 
     return {
       ...report,
-      departmentBreakdown,
+      collegeBreakdown,
       includedRecordsSample
     }
   }

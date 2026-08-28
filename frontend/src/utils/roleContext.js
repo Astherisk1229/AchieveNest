@@ -60,6 +60,8 @@ export function normalizeRoleContext(roleStr = '') {
     case 'faculty':
     case 'personnel':
     case 'staff':
+    case 'academic_personnel':
+    case 'non_academic_personnel':
       return CANONICAL_ROLES.PERSONNEL
 
     case 'program_coordinator':

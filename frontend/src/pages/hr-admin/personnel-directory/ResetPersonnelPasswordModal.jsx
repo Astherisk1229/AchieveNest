@@ -56,7 +56,7 @@ export default function ResetPersonnelPasswordModal({
   }
 
   const initial = personnel.full_name?.charAt(0) || 'P'
-  const deptOrCollege = personnel.department || personnel.college || 'CEAC - College of Engineering, Architecture, and Computing'
+  const affiliation = personnel.college_name || personnel.administrative_unit_name || personnel.college_code || 'Institutional affiliation unavailable'
   const empId = personnel.employee_id || 'EMP-2026-1042'
   const email = personnel.email || 'faculty@ndmu.edu.ph'
 
@@ -110,7 +110,7 @@ export default function ResetPersonnelPasswordModal({
               <div className="min-w-0 flex-1">
                 <p className="font-extrabold text-xs text-slate-900 dark:text-white truncate">{personnel.full_name}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  ID: {empId} • {deptOrCollege}
+                  ID: {empId} • {affiliation}
                 </p>
                 <p className="text-[11px] text-[#16834a] dark:text-emerald-400 font-semibold truncate">{email}</p>
               </div>

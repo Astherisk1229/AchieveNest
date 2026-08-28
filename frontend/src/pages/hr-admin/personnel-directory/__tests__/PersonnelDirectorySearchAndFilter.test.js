@@ -16,9 +16,11 @@ const samplePersonnel = [
     full_name: 'Dr. Maria Clara Santos',
     email: 'faculty@ndmu.edu.ph',
     institutional_email: 'maria.santos@ndmu.edu.ph',
-    college: 'CEAC - College of Engineering, Architecture, and Computing',
-    department: 'Department of Computer Studies',
-    department_code: 'CSD',
+    college: 'CEAC - College of Engineering, Architecture, and Technology',
+    college_code: 'CEAC',
+    program: 'Bachelor of Science in Computer Science',
+    program_code: 'BSCS',
+    program_affiliations: [{ code: 'BSCS', name: 'Bachelor of Science in Computer Science' }],
     academic_rank: 'Associate Professor II',
     employment_status: 'Full-Time Permanent',
     tenure_years: 9
@@ -33,9 +35,11 @@ const samplePersonnel = [
     full_name: 'Prof. Ricardo Bayan Gomez',
     email: 'coordinator@ndmu.edu.ph',
     institutional_email: 'ricardo.gomez@ndmu.edu.ph',
-    college: 'CEAC - College of Engineering, Architecture, and Computing',
-    department: 'Department of Engineering',
-    department_code: 'ENG',
+    college: 'CEAC - College of Engineering, Architecture, and Technology',
+    college_code: 'CEAC',
+    program: 'Bachelor of Science in Civil Engineering',
+    program_code: 'BSCE',
+    program_affiliations: [{ code: 'BSCE', name: 'Bachelor of Science in Civil Engineering' }],
     academic_rank: 'Assistant Professor IV',
     employment_status: 'Full-Time Permanent',
     tenure_years: 11
@@ -51,8 +55,10 @@ const samplePersonnel = [
     email: 'moderator@ndmu.edu.ph',
     institutional_email: 'ana.reyes@ndmu.edu.ph',
     college: 'CBA - College of Business Administration',
-    department: 'Department of Business Management',
-    department_code: 'DBM',
+    college_code: 'CBA',
+    program: 'Bachelor of Science in Business Administration',
+    program_code: 'BSBA',
+    program_affiliations: [{ code: 'BSBA', name: 'Bachelor of Science in Business Administration' }],
     academic_rank: 'Associate Professor I',
     employment_status: 'Full-Time Probationary',
     tenure_years: 7
@@ -68,8 +74,11 @@ const samplePersonnel = [
     email: 'hr.admin01@ndmu.edu.ph',
     institutional_email: 'evelyn.mercado@ndmu.edu.ph',
     college: 'CAS - College of Arts and Sciences',
-    department: 'Department of Languages & Humanities',
-    department_code: 'DLH',
+    college_code: 'CAS',
+    administrative_unit: 'Human Resource Management Office',
+    program: 'Bachelor of Arts in English Language',
+    program_code: 'BAENG',
+    program_affiliations: [{ code: 'BAENG', name: 'Bachelor of Arts in English Language' }],
     academic_rank: 'Assistant Professor II',
     employment_status: 'Part-Time Lecturer',
     tenure_years: 3
@@ -101,10 +110,11 @@ const matchesPersonnelSearch = (person, query) => {
     person.institutional_id,
     person.email,
     person.institutional_email,
-    person.department,
-    person.department_name,
-    person.department_code,
-    person.college
+    person.program,
+    person.program_code,
+    person.administrative_unit,
+    person.college,
+    person.college_code
   ].filter(Boolean).map(normalizeSearchValue)
 
   // Direct full substring match
@@ -174,12 +184,12 @@ describe('PersonnelDirectorySearchAndFilter', () => {
       expect(domain.length).toBe(4)
     })
 
-    it('matches personnel by department name or code', () => {
-      const byDept = samplePersonnel.filter(p => matchesPersonnelSearch(p, 'Computer Studies'))
-      expect(byDept.length).toBe(1)
-      expect(byDept[0].first_name).toBe('Maria')
+    it('matches personnel by academic program name or code', () => {
+      const byProgram = samplePersonnel.filter(p => matchesPersonnelSearch(p, 'Computer Science'))
+      expect(byProgram.length).toBe(1)
+      expect(byProgram[0].first_name).toBe('Maria')
 
-      const byCode = samplePersonnel.filter(p => matchesPersonnelSearch(p, 'CSD'))
+      const byCode = samplePersonnel.filter(p => matchesPersonnelSearch(p, 'BSCS'))
       expect(byCode.length).toBe(1)
       expect(byCode[0].first_name).toBe('Maria')
     })

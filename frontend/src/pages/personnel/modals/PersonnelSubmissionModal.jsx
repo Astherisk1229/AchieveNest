@@ -307,7 +307,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
     if (category.startsWith('B.2')) return { title: pubTitle || 'Publication Work', issuer: publisherIssn || 'Publisher' }
     if (category.startsWith('B.3')) return { title: researchTitle || 'Research Project', issuer: fundingStatus }
     if (category.startsWith('B.4')) return { title: awardTitle || 'Recognition/Award', issuer: conferringBody || 'Conferring Org' }
-    if (category.startsWith('B.5')) return { title: materialTitle || 'Instructional Material', issuer: courseUsedIn || 'Department' }
+    if (category.startsWith('B.5')) return { title: materialTitle || 'Instructional Material', issuer: courseUsedIn || 'Academic Program' }
     if (category.startsWith('B.6')) return { title: creativeTitle || 'Creative Output', issuer: exhibitionVenue || 'Exhibition Venue' }
     return { title: serviceTitle || 'Service Project', issuer: sponsoringOrg || 'LGU/Parish' }
   }

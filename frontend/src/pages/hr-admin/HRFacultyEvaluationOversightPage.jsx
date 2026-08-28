@@ -1,13 +1,14 @@
 import React from 'react'
 import { Search, ShieldCheck, Award, Building, Download, CheckCircle2, TrendingUp } from 'lucide-react'
 import PersonnelPortfolioModel from '../../models/PersonnelPortfolioModel'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 
 export function HRFacultyEvaluationOversightPage({
   portfolios = [],
   searchQuery,
   setSearchQuery,
-  departmentFilter,
-  setDepartmentFilter,
+  affiliationFilter,
+  setAffiliationFilter,
   statusFilter,
   setStatusFilter,
   onSelectAuditPortfolio,
@@ -65,16 +66,16 @@ export function HRFacultyEvaluationOversightPage({
             />
           </div>
 
-          {/* Department Filter */}
+          {/* College affiliation filter */}
           <select
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter && setDepartmentFilter(e.target.value)}
+            value={affiliationFilter}
+            onChange={(e) => setAffiliationFilter && setAffiliationFilter(e.target.value)}
             className="w-full sm:w-auto px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
           >
-            <option value="All">All Departments</option>
-            <option value="DEP-CEAC">CEAC - Engineering &amp; Computing</option>
-            <option value="DEP-CABM">CABM - Business &amp; Management</option>
-            <option value="DEP-CAS">CAS - Arts &amp; Sciences</option>
+            <option value="All">All Colleges</option>
+            <option value="CEAC">CEAC - Engineering &amp; Computing</option>
+            <option value="CBA">CBA - Business &amp; Management</option>
+            <option value="CAS">CAS - Arts &amp; Sciences</option>
           </select>
 
           {/* Generate Report Button */}
@@ -100,7 +101,7 @@ export function HRFacultyEvaluationOversightPage({
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                 <th className="py-3.5 px-4">Faculty Member</th>
-                <th className="py-3.5 px-4">Department</th>
+                <th className="py-3.5 px-4">Institutional Affiliation</th>
                 <th className="py-3.5 px-4">Current Rank</th>
                 <th className="py-3.5 px-4 text-center">Final Score</th>
                 <th className="py-3.5 px-4 text-center">Area Scores</th>
@@ -120,7 +121,7 @@ export function HRFacultyEvaluationOversightPage({
                 const facultyName = p?.personnel_name || p?.full_name || p?.faculty_name || 'Faculty Member'
                 const facultyId = p?.personnel_id || p?.employee_id || 'EMP-2026'
                 const rank = p?.academic_rank || 'Associate Professor I'
-                const deptName = p?.department_name || p?.department || 'Computer Studies'
+                const affiliation = formatPersonnelPlacement(p || {})
 
                 return (
                   <tr key={p?.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
@@ -137,11 +138,11 @@ export function HRFacultyEvaluationOversightPage({
                       </div>
                     </td>
 
-                    {/* Department */}
+                    {/* Institutional affiliation */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
                         <Building className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="truncate max-w-[160px] font-bold text-xs">{deptName}</span>
+                        <span className="truncate max-w-[190px] font-bold text-xs">{affiliation}</span>
                       </div>
                     </td>
 

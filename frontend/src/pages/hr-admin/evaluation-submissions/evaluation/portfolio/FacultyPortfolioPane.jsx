@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { FileSpreadsheet, Images, CheckCircle2, AlertCircle } from 'lucide-react'
+import { formatPersonnelPlacement } from '../../../../../utils/personnelPlacement'
 
 export default function FacultyPortfolioPane({
   submission,
@@ -36,7 +37,7 @@ export default function FacultyPortfolioPane({
               {submission.faculty_name}
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">
-              {submission.department} · {submission.employee_id}
+              {formatPersonnelPlacement(submission)} · {submission.employee_id}
             </p>
           </div>
         </div>

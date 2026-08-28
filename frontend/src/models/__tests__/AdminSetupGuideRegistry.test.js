@@ -54,7 +54,7 @@ describe('AdminSetupGuideRegistry', () => {
       'hr_step_1_personnel',
       'hr_step_2_college_placement',
       'hr_step_3_deans',
-      'hr_step_4_secretaries'
+      'hr_step_4_qualifications'
     ])
   })
 })

@@ -218,7 +218,7 @@ export default function CandidatePortfolioReviewDrawer({
                     className="px-4 py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                    <span>Advance to Interview</span>
+                    <span>Mark Eligible for Interview</span>
                   </button>
                 </>
               )}

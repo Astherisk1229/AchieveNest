@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatPersonnelPlacement, isAcademicPersonnel } from '../../../utils/personnelPlacement'
 import { X, Building2, Award, ShieldCheck, KeyRound, Edit3, CheckCircle2 } from 'lucide-react'
 
 export default function FacultyDossierDrawer({
@@ -85,8 +86,8 @@ export default function FacultyDossierDrawer({
                 <p className="font-extrabold text-slate-900 dark:text-white">{personnel.college || 'N/A'}</p>
               </div>
               <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] uppercase font-extrabold text-slate-400">Department</p>
-                <p className="font-extrabold text-slate-900 dark:text-white">{personnel.department || 'N/A'}</p>
+                <p className="text-[10px] uppercase font-extrabold text-slate-400">{isAcademicPersonnel(personnel) ? 'College & Academic Programs' : 'Administrative Unit'}</p>
+                <p className="font-extrabold text-slate-900 dark:text-white">{formatPersonnelPlacement(personnel)}</p>
               </div>
             </div>
           </div>

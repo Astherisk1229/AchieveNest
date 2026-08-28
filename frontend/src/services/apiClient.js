@@ -33,7 +33,8 @@ apiClient.interceptors.request.use(
       }
 
       // 2. Hosted Supabase fallback only if no local token and not explicitly local-defense
-      if (!token && import.meta.env.VITE_AUTH_MODE !== 'local-defense') {
+      const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
+      if (!token && authMode !== 'local-defense') {
         try {
           const { supabase } = await import('../config/supabase')
           const { data: { session } } = await supabase.auth.getSession()
@@ -69,7 +70,9 @@ apiClient.interceptors.response.use(
         sessionStorage.removeItem('achievenest_current_user')
         localStorage.removeItem('achievenest_access_token')
         sessionStorage.removeItem('achievenest_access_token')
-        window.dispatchEvent(new Event('storage'))
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('storage'))
+        }
       }
       return Promise.reject(error.response.data || error.response)
     }

@@ -52,7 +52,7 @@ export default function OSADStudentOrganizationsPage({
       {/* Scope Filter Bar */}
       <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center gap-2 shadow-2xs">
         <span className="text-xs font-black text-slate-500 mr-2">Filter Scope:</span>
-        {['all', 'university', 'college', 'department', 'degree_program'].map((scope) => (
+          {['all', 'university', 'college'].map((scope) => (
           <button
             key={scope}
             type="button"

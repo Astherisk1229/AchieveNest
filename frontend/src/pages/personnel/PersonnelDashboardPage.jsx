@@ -5,7 +5,6 @@ import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
 import OrganizationModeratorDashboardPage from './organization-moderator/OrganizationModeratorDashboardPage'
-import DepartmentSecretaryDashboardPage from './department-secretary/DepartmentSecretaryDashboardPage'
 
 import {
   Award,
@@ -30,6 +29,7 @@ import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import PersonnelDashboardController from '../../controllers/PersonnelDashboardController'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 
 export default function PersonnelDashboardPage({ currentUser: propUser, onRoleChange }) {
   const navigate = useNavigate()
@@ -90,8 +90,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
         <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
         <OrganizationModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
-      ) : (activeRoleContext === 'dean' || activeRoleContext === 'department_secretary') && activeTabParam !== 'faculty_view' ? (
-        <DepartmentSecretaryDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
 
@@ -108,7 +106,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                     <h1 className="text-2xl font-extrabold text-[#17663B] tracking-tight">Personnel Professional Portfolio</h1>
                   </div>
                   <p className="text-xs text-[#245F42] font-medium mt-0.5">
-                    {profile.full_name} • {profile.employee_id} • {profile.department}
+                    {profile.full_name} • {profile.employee_id} • {formatPersonnelPlacement(profile)}
                   </p>
                 </div>
               </div>

@@ -17,13 +17,14 @@ import {
 import useOSAD from '../../hooks/useOSAD'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
-import CreateDepartmentModal from './modals/CreateDepartmentModal'
 import CreateProgramModal from './modals/CreateProgramModal'
+import roleService from '../../services/roleService'
 import OSADCommandCenterPage from './OSADCommandCenterPage'
 import OSADStudentAccountsPage from './OSADStudentAccountsPage'
-import OSADDepartmentsProgramsPage from './OSADDepartmentsProgramsPage'
+import OSADAcademicProgramsPage from './OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
 import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
+import OSADAwardCategoriesPage from './OSADAwardCategoriesPage'
 import OSADAwardCandidateReviewPage from './OSADAwardCandidateReviewPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
@@ -32,12 +33,13 @@ import OSADPasswordResetRequestsPage from './OSADPasswordResetRequestsPage'
 export default function OSADDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') || 'overview'
-  const activeTab = rawTab === 'awardees' ? 'candidate-review' : rawTab
+  const activeTab = rawTab === 'awardees'
+    ? 'candidate-review'
+    : rawTab === 'academic-structure' ? 'academic-programs' : rawTab
 
   const {
     metrics,
     colleges,
-    departments,
     degreePrograms,
     organizations,
     clubs,
@@ -48,12 +50,11 @@ export default function OSADDashboardPage({ currentUser }) {
     getUsers,
     getPersonnelList,
     getStudentPortfolios,
-    createDepartment,
+    createDegreeProgram,
     createOrganization,
     createClub,
     getStudentLeaderboards,
     getAccreditationReportDetails,
-    assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,
     createAwardCategory,
@@ -76,10 +77,9 @@ export default function OSADDashboardPage({ currentUser }) {
 
   // Modal States
   const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
-  const [isAddDeptOpen, setIsAddDeptOpen] = useState(false)
   const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
-  const [newOrgData, setNewOrgData] = useState({ name: '', category: 'CEAC — Department Organization' })
+  const [newOrgData, setNewOrgData] = useState({ name: '', category: 'College Academic Organization' })
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
   const [isAddAwardOpen, setIsAddAwardOpen] = useState(false)
@@ -106,13 +106,9 @@ export default function OSADDashboardPage({ currentUser }) {
     showToast(`Created Academic College: [${collegeData.code}] ${collegeData.name}`)
   }
 
-  const handleCreateDepartmentSubmit = async (deptData) => {
-    const result = createDepartment({ name: deptData.name, code: deptData.code, college_id: deptData.college_id })
-    showToast(`Created Department: [${deptData.code}] ${deptData.name}`)
-  }
-
   const handleCreateProgramSubmit = async (progData) => {
-    showToast(`Created Degree Program: [${progData.code}] ${progData.name}`)
+    createDegreeProgram(progData)
+    showToast(`Created Academic Program: [${progData.code}] ${progData.name}`)
   }
 
   // Handle Create Organization
@@ -121,7 +117,7 @@ export default function OSADDashboardPage({ currentUser }) {
     if (!newOrgData.name) return
     createOrganization(newOrgData)
     setIsAddOrgOpen(false)
-    setNewOrgData({ name: '', category: departments[0] ? `${departments[0].code} — Department Organization` : 'Non-Academic Club & Extra-Curricular' })
+    setNewOrgData({ name: '', category: 'Academic Student Organization' })
     showToast(`Created Student Organization: [${newOrgData.name}]`)
   }
 
@@ -191,13 +187,11 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'departments' && (
-        <OSADDepartmentsProgramsPage
+      {activeTab === 'academic-programs' && (
+        <OSADAcademicProgramsPage
           colleges={colleges}
-          departments={departments}
-          degreePrograms={degreePrograms}
+          academicPrograms={degreePrograms}
           setIsAddCollegeOpen={setIsAddCollegeOpen}
-          setIsAddDeptOpen={setIsAddDeptOpen}
           setIsAddProgramOpen={setIsAddProgramOpen}
           setPersonnelSelectorTarget={setPersonnelSelectorTarget}
         />
@@ -270,10 +264,14 @@ export default function OSADDashboardPage({ currentUser }) {
           roleType={personnelSelectorTarget.roleType}
           personnelList={getPersonnelList()}
           onClose={() => setPersonnelSelectorTarget(null)}
-          onSelectPersonnel={(personnel) => {
+          onSelectPersonnel={async (personnel) => {
             if (personnelSelectorTarget.roleType === 'coordinator') {
-              assignProgramCoordinator(personnel.id, personnelSelectorTarget.targetName)
-              showToast(`Assigned ${personnel.full_name} as Department Coordinator for [${personnelSelectorTarget.targetName}]`)
+              await roleService.assignSpecializedRole(personnel.id, {
+                roleKey: 'program_coordinator',
+                scopeType: 'academic_program',
+                scopeId: personnelSelectorTarget.targetId
+              })
+              showToast(`Assigned ${personnel.full_name} as Program Coordinator for [${personnelSelectorTarget.targetName}]`)
             } else if (personnelSelectorTarget.roleType === 'moderator') {
               assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
               showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
@@ -290,18 +288,11 @@ export default function OSADDashboardPage({ currentUser }) {
         onSubmit={handleCreateCollegeSubmit}
       />
 
-      <CreateDepartmentModal
-        isOpen={isAddDeptOpen}
-        onClose={() => setIsAddDeptOpen(false)}
-        onSubmit={handleCreateDepartmentSubmit}
-        colleges={[{ id: 'col_ceac', code: 'CEAC', name: 'College of Engineering, Architecture, and Computing' }]}
-      />
-
       <CreateProgramModal
         isOpen={isAddProgramOpen}
         onClose={() => setIsAddProgramOpen(false)}
         onSubmit={handleCreateProgramSubmit}
-        departments={departments}
+        colleges={colleges}
       />
 
       {/* Create Organization Modal */}

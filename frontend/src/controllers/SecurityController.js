@@ -180,7 +180,7 @@ export default class SecurityController {
       const logs = JSON.parse(localStorage.getItem(SecurityController.AUDIT_LOGS_KEY) || '[]')
       if (logs.length === 0) {
         const seedLogs = [
-          { id: 'aud_1', timestamp: new Date().toISOString(), action_type: 'PORTFOLIO_ENDORSED', actor_name: 'Dept. Secretary', role_context: 'department_secretary', details: 'Endorsed faculty ranking portfolio for Dr. Maria Santos to HR.', ip_address: '192.168.1.104' },
+          { id: 'aud_1', timestamp: new Date().toISOString(), action_type: 'PORTFOLIO_ENDORSED', actor_name: 'Dean Roberto Gomez', role_context: 'college_dean', details: 'Endorsed faculty ranking portfolio for Dr. Maria Santos to HR.', ip_address: '192.168.1.104' },
           { id: 'aud_2', timestamp: new Date(Date.now() - 3600000).toISOString(), action_type: 'SCORE_LOCKED', actor_name: 'Director Evelyn Tan', role_context: 'hr_staff', details: 'Official HR score locked at 148/160 for Associate Professor ranking.', ip_address: '192.168.1.102' },
           { id: 'aud_3', timestamp: new Date(Date.now() - 7200000).toISOString(), action_type: 'ACHIEVEMENT_VERIFIED', actor_name: 'Dr. Ana Reyes', role_context: 'program_coordinator', details: 'Verified National AI Summit research award for BS Computer Science.', ip_address: '192.168.1.110' }
         ]

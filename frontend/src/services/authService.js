@@ -23,6 +23,13 @@ function dispatchStorageEvent() {
   }
 }
 
+function clearStoredSession() {
+  localStorage.removeItem(STORAGE_KEY_USER)
+  sessionStorage.removeItem(STORAGE_KEY_USER)
+  localStorage.removeItem(STORAGE_KEY_TOKEN)
+  sessionStorage.removeItem(STORAGE_KEY_TOKEN)
+}
+
 /**
  * Authenticates user via local-defense API or hosted Supabase Auth based on environment configuration.
  */
@@ -73,6 +80,8 @@ export async function authenticateUser(email, password, rememberMe = true) {
  * Resolves profile from backend /api/v1/auth/me using the provided access token.
  */
 export async function fetchProfileAndCreateSession(accessToken, emailFallback = '', rememberMe = true) {
+  clearStoredSession()
+
   // Store token first so apiClient interceptor picks it up immediately
   if (rememberMe) {
     localStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
@@ -80,14 +89,23 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     sessionStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
   }
 
-  const backendResponse = await apiClient.get('/auth/me', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
-  })
+  let backendResponse
+  try {
+    backendResponse = await apiClient.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    })
+  } catch (error) {
+    clearStoredSession()
+    dispatchStorageEvent()
+    throw error
+  }
 
   const user = backendResponse?.data?.user || backendResponse?.user || null
   if (!user) {
+    clearStoredSession()
+    dispatchStorageEvent()
     throw new Error('Authenticated session is valid, but the backend profile could not be resolved.')
   }
 
@@ -242,13 +260,11 @@ export async function logoutUser() {
     // Ignore network/server errors during logout
   }
 
-  localStorage.removeItem(STORAGE_KEY_USER)
-  sessionStorage.removeItem(STORAGE_KEY_USER)
-  localStorage.removeItem(STORAGE_KEY_TOKEN)
-  sessionStorage.removeItem(STORAGE_KEY_TOKEN)
+  clearStoredSession()
 
   try {
-    if (import.meta.env.VITE_AUTH_MODE !== 'local-defense') {
+    const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
+    if (authMode !== 'local-defense') {
       await supabase.auth.signOut().catch(() => {})
     }
   } catch {

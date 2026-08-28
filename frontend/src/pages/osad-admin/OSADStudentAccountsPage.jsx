@@ -157,66 +157,67 @@ export default function OSADStudentAccountsPage({
   return (
     <div className="space-y-6 font-sans">
 
-      {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-2xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#16834a] dark:text-emerald-400" />
-              Student Accounts Directory
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Manage Student accounts, Degree Program placement, portfolio access, and password-reset requests.
-            </p>
-          </div>
-
-          {/* Sub-Tab Navigation & Onboard Action */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => showToast && showToast('Add Student Account Modal Opened')}
-              className="px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Add Student Account</span>
-            </button>
-
-            <div className="flex items-center gap-2 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveAccountTab('directory')}
-                className={`px-4 py-2 rounded-lg text-xs font-extrabold transition cursor-pointer ${activeAccountTab === 'directory'
-                    ? 'bg-[#176B43] text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-              >
-                Student Directory
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveAccountTab('requests')}
-                className={`px-4 py-2 rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer ${activeAccountTab === 'requests'
-                    ? 'bg-[#176B43] text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                  }`}
-              >
-                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                <span>Password Reset Requests</span>
-                {pendingRequests.length > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">
-                    {pendingRequests.length}
-                  </span>
-                )}
-              </button>
-            </div>
-          </div>
+      {/* Compact Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+            <Users className="w-5 h-5 text-[#16834a] dark:text-emerald-400" />
+            <span>Student Accounts Directory</span>
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
+            Manage Student accounts, Academic Program placement, portfolio access, and password-reset requests.
+          </p>
         </div>
 
-        {/* Search & Filter Toolbar */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+        <button
+          type="button"
+          onClick={() => showToast && showToast('Add Student Account Modal Opened')}
+          className="px-3.5 py-2 rounded-lg bg-[#1B4D3E] hover:bg-[#143B30] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer self-start sm:self-auto shrink-0"
+        >
+          <UserPlus className="w-4 h-4" />
+          <span>Add Student Account</span>
+        </button>
+      </div>
+
+      {/* Structured Toolbar: Sub-Tabs + Search & Filter */}
+      <div className="bg-white dark:bg-[#131E2E] p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Sub-Tab Navigation */}
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shrink-0 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => setActiveAccountTab('directory')}
+            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer ${
+              activeAccountTab === 'directory'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            Student Directory
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveAccountTab('requests')}
+            className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+              activeAccountTab === 'requests'
+                ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+            <span>Password Reset Requests</span>
+            {pendingRequests.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold">
+                {pendingRequests.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Search & Filter Inputs */}
+        <div className="flex items-center gap-2.5 flex-1 max-w-xl">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               value={userSearchTerm}
@@ -226,80 +227,78 @@ export default function OSADStudentAccountsPage({
                   ? 'Search by student name or student ID...'
                   : 'Search reset requests by name, ID, or email...'
               }
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white focus:outline-none focus:border-[#16834a]"
+              className="w-full pl-9 pr-3.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-normal text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-[#16834a]"
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {activeAccountTab === 'directory' ? (
-              /* College Filter */
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsCollegeDropdownOpen(!isCollegeDropdownOpen)}
-                  className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer"
-                >
-                  <span>College: {selectedCollege.toUpperCase()}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                </button>
-                {isCollegeDropdownOpen && (
-                  <div className="absolute right-0 mt-1 w-40 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-xl z-20 p-1">
-                    {['all', 'CEAC', 'CBA', 'CAS', 'CED'].map(c => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => { setSelectedCollege(c); setIsCollegeDropdownOpen(false); }}
-                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#16834a]"
-                      >
-                        {c.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Reset Requests Status Filter */
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                  className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 flex items-center gap-2 cursor-pointer"
-                >
-                  <Filter className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Status: {requestStatusFilter.toUpperCase()}</span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                </button>
-                {isStatusDropdownOpen && (
-                  <div className="absolute right-0 mt-1 w-44 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-xl z-20 p-1">
-                    {[
-                      { key: 'all', label: 'All Statuses' },
-                      { key: 'pending', label: 'Pending Only' },
-                      { key: 'approved', label: 'Approved Only' }
-                    ].map(st => (
-                      <button
-                        key={st.key}
-                        type="button"
-                        onClick={() => { setRequestStatusFilter(st.key); setIsStatusDropdownOpen(false); }}
-                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:text-amber-700"
-                      >
-                        {st.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          {activeAccountTab === 'directory' ? (
+            /* College Filter */
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCollegeDropdownOpen(!isCollegeDropdownOpen)}
+                className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <span>College: {selectedCollege.toUpperCase()}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+              {isCollegeDropdownOpen && (
+                <div className="absolute right-0 mt-1 w-36 rounded-lg bg-white dark:bg-[#131E2E] border border-slate-200 dark:border-slate-800 shadow-lg z-20 p-1">
+                  {['all', 'CEAC', 'CBA', 'CAS', 'CED'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => { setSelectedCollege(c); setIsCollegeDropdownOpen(false); }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-[#16834a]"
+                    >
+                      {c.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Reset Requests Status Filter */
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                className="px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                <Filter className="w-3.5 h-3.5 text-amber-500" />
+                <span>Status: {requestStatusFilter.toUpperCase()}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+              {isStatusDropdownOpen && (
+                <div className="absolute right-0 mt-1 w-40 rounded-lg bg-white dark:bg-[#131E2E] border border-slate-200 dark:border-slate-800 shadow-lg z-20 p-1">
+                  {[
+                    { key: 'all', label: 'All Statuses' },
+                    { key: 'pending', label: 'Pending Only' },
+                    { key: 'approved', label: 'Approved Only' }
+                  ].map(st => (
+                    <button
+                      key={st.key}
+                      type="button"
+                      onClick={() => { setRequestStatusFilter(st.key); setIsStatusDropdownOpen(false); }}
+                      className="w-full text-left px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:text-amber-700"
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Directory View */}
       {activeAccountTab === 'directory' && (
-        <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
+        <div className="rounded-xl bg-white dark:bg-[#131E2E] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-extrabold uppercase tracking-wider select-none">
+                <tr className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold select-none">
                   <th className="p-4">
                     <button
                       type="button"
@@ -444,18 +443,18 @@ export default function OSADStudentAccountsPage({
 
       {/* Pending Reset Requests Inbox View */}
       {activeAccountTab === 'requests' && (
-        <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs space-y-4 p-5">
+        <div className="rounded-xl bg-white dark:bg-[#131E2E] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs space-y-4 p-5">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-amber-500" />
                 Student Password Reset Request Inbox
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                 Review locked-out student reset requests submitted from the login screen and issue temporary credentials.
               </p>
             </div>
-            <span className="px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 text-xs font-extrabold">
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 text-xs font-medium">
               {pendingRequests.length} Pending Requests
             </span>
           </div>
@@ -469,13 +468,13 @@ export default function OSADStudentAccountsPage({
               filteredRequests.map((req) => (
                 <div key={req.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 flex items-center justify-center shrink-0 font-bold">
-                      <KeyRound className="w-5 h-5" />
+                    <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/50 flex items-center justify-center shrink-0">
+                      <KeyRound className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-extrabold text-xs text-slate-900 dark:text-white">{req.student_name || 'Student Account'}</p>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${req.status === 'approved'
+                        <p className="font-semibold text-xs text-slate-900 dark:text-white">{req.student_name || 'Student Account'}</p>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize ${req.status === 'approved'
                             ? 'bg-emerald-100 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400'
                             : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                           }`}>

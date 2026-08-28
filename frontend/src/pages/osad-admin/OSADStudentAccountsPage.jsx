@@ -92,7 +92,7 @@ export default function OSADStudentAccountsPage({
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
     } else {
       if (setSelectedSort) setSelectedSort(colKey)
-      setSortDirection(colKey === 'points' ? 'desc' : 'asc')
+      setSortDirection('asc')
     }
   }
 
@@ -339,32 +339,13 @@ export default function OSADStudentAccountsPage({
                   </th>
                   <th className="p-4">College</th>
                   <th className="p-4">Academic Program</th>
-                  <th className="p-4">
-                    <button
-                      type="button"
-                      onClick={() => handleSortColumnClick('points')}
-                      className="flex items-center gap-1.5 hover:text-[#16834a] transition cursor-pointer group"
-                      title="Click to sort by Verified Points and Evidence"
-                    >
-                      <span>Verified Points and Evidence</span>
-                      {selectedSort === 'points' ? (
-                        sortDirection === 'asc' ? (
-                          <ArrowUp className="w-3.5 h-3.5 text-[#16834a]" />
-                        ) : (
-                          <ArrowDown className="w-3.5 h-3.5 text-[#16834a]" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100" />
-                      )}
-                    </button>
-                  </th>
-                  <th className="p-4 pr-6 text-right w-16"></th>
+                  <th className="p-4 pr-6 text-right w-16">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200 font-medium">
                 {usersList.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-slate-400">
+                    <td colSpan="5" className="p-8 text-center text-slate-400">
                       No student accounts found matching the filter criteria.
                     </td>
                   </tr>
@@ -386,10 +367,6 @@ export default function OSADStudentAccountsPage({
                       </td>
                       <td className="p-4">
                         <p className="text-xs font-medium text-slate-800 dark:text-slate-200">{user.program || 'BS Computer Science'}</p>
-                      </td>
-                      <td className="p-4">
-                        <p className="text-xs font-bold text-[#16834a]">{user.total_points || 30} pts</p>
-                        <p className="text-[11px] text-slate-400 font-normal">{user.verified_count || 3} verified proofs</p>
                       </td>
                       <td className="p-4 pr-6 text-right relative">
                         <div className="relative inline-block text-left">

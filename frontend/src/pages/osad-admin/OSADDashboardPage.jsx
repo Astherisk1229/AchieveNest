@@ -165,8 +165,11 @@ export default function OSADDashboardPage({ currentUser }) {
         <OSADCommandCenterPage 
           setSearchParams={setSearchParams} 
           awardees={awardees} 
+          candidateDecisions={awardees}
           currentUser={currentUser}
           metrics={metrics}
+          awardCategories={awardCategories}
+          getUsers={getUsers}
         />
       )}
 

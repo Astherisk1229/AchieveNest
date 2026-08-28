@@ -226,23 +226,23 @@ export default function OSADAwardCandidateReviewPage({
   return (
     <div className="space-y-6 font-sans animate-in fade-in duration-200">
       
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-            <Trophy className="w-5.5 h-5.5" />
+      {/* Compact Page Header */}
+      <div className="bg-white dark:bg-[#131E2E] rounded-xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
+            <Trophy className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                Award Candidate Review & Stage 1 Evaluation
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                Award Candidate Review
               </h1>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 text-[10px] font-black uppercase">
-                Stage 1 Portfolio Review
+              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 text-xs font-medium border border-emerald-200/60">
+                Stage 1 Review • {academicYearFilter}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              Category-specific portfolio review for NDMU Araw ng Parangal and Dean's Honor Roll ({academicYearFilter})
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
+              Review potential candidates and decide who advances to interview.
             </p>
           </div>
         </div>
@@ -258,20 +258,20 @@ export default function OSADAwardCandidateReviewPage({
       </div>
 
       {/* Navigation Toolbar (Category Pills & College Dropdown) */}
-      <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+      <div className="bg-white dark:bg-[#131E2E] rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
         
         {/* Category Pills Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
             onClick={() => setSelectedAward('all')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
               selectedAward === 'all'
-                ? 'bg-[#16834a] text-white shadow-2xs'
+                ? 'bg-[#1B4D3E] text-white shadow-xs'
                 : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
             }`}
           >
-            All Categories (Overview)
+            All Categories
           </button>
 
           {['Dean\'s List', 'Leadership', 'Sports', 'Research'].map(cat => (
@@ -279,9 +279,9 @@ export default function OSADAwardCandidateReviewPage({
               key={cat}
               type="button"
               onClick={() => setSelectedAward(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 selectedAward === cat
-                  ? 'bg-[#16834a] text-white shadow-2xs'
+                  ? 'bg-[#1B4D3E] text-white shadow-xs'
                   : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
               }`}
             >
@@ -292,24 +292,24 @@ export default function OSADAwardCandidateReviewPage({
 
         {/* Filter Dropdown & Search */}
         {selectedAward !== 'all' && (
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-60">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search candidates..."
-                className="w-full pl-9 pr-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-normal text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
               />
             </div>
 
-            <div className="flex items-center gap-1 px-3 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 shrink-0">
+            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 shrink-0">
               <Filter className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={collegeFilter}
                 onChange={(e) => setCollegeFilter(e.target.value)}
-                className="bg-transparent focus:outline-none cursor-pointer"
+                className="bg-transparent focus:outline-none cursor-pointer text-xs"
               >
                 <option value="all">All Colleges</option>
                 <option value="CEAC">CEAC</option>
@@ -329,75 +329,75 @@ export default function OSADAwardCandidateReviewPage({
         />
       ) : (
         /* VIEW MODE B: SPECIFIC CATEGORY CANDIDATE REVIEW */
-        <div className="space-y-6">
+        <div className="space-y-5">
           
           {/* Category Highest Stage 1 Scores */}
           {top3Candidates.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5 text-amber-500" />
-                  <span>{selectedAward} — Potential Candidates</span>
+            <div className="bg-white dark:bg-[#131E2E] rounded-xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <span>{selectedAward} — Top Stage 1 Candidates</span>
                 </h3>
-                <span className="text-[11px] font-bold text-slate-400">
-                  Highest Stage 1 Portfolio Scores (#1 – #{top3Candidates.length})
+                <span className="text-xs text-slate-400 font-normal">
+                  Highest scores (#1 – #{top3Candidates.length})
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-lg border border-slate-200/80 dark:border-slate-800 overflow-hidden">
                 {top3Candidates.map((candidate, idx) => {
-                  const rankLabel = idx === 0 ? 'Highest Score (#1)' : idx === 1 ? 'Rank #2' : 'Rank #3'
-                  const borderClass = idx === 0 ? 'border-emerald-300 dark:border-emerald-800/60' : 'border-slate-200/80 dark:border-slate-800'
+                  const rankLabel = idx === 0 ? '⭐ #1' : idx === 1 ? '#2' : '#3'
                   const isAdvanced = candidate.osadDecision === 'ADVANCED_TO_INTERVIEW' || candidate.confirmed
 
                   return (
                     <div
                       key={candidate.candidacyId || candidate.id || candidate.studentId}
-                      className={`bg-white dark:bg-[#131e2e] rounded-3xl p-6 border ${borderClass} shadow-2xs space-y-4 flex flex-col justify-between hover:shadow-md transition`}
+                      className="p-3.5 bg-white dark:bg-[#131E2E] hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                     >
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-[#16834a] dark:text-emerald-400 tracking-wider uppercase flex items-center gap-1">
-                            <span>⭐</span> {rankLabel}
-                          </span>
-                          <span className="text-base font-black text-slate-900 dark:text-white">
-                            {candidate.stage1_score ?? candidate.score} <span className="text-xs text-slate-400 font-medium">/ 100</span>
-                          </span>
-                        </div>
-
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold shrink-0">
+                          {rankLabel}
+                        </span>
                         <div
                           onClick={() => setSelectedCandidateForAudit(candidate)}
-                          className="cursor-pointer group"
+                          className="cursor-pointer group min-w-0"
                         >
-                          <h4 className="font-extrabold text-base text-slate-900 dark:text-white group-hover:text-[#16834a] transition">
+                          <h4 className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-[#16834a] transition truncate">
                             {candidate.student_name}
                           </h4>
-                          <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-0.5">
-                            {candidate.program} • <span className="text-slate-400">{candidate.college}</span>
+                          <p className="text-xs text-slate-500 truncate font-normal">
+                            {candidate.program} • {candidate.college}
                           </p>
                         </div>
                       </div>
 
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">
+                            {candidate.stage1_score ?? candidate.score}
+                          </span>
+                          <span className="text-xs text-slate-400 font-normal"> / 100</span>
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => setSelectedCandidateForAudit(candidate)}
-                          className="text-[11px] text-slate-500 hover:text-[#16834a] font-semibold transition cursor-pointer"
+                          className="text-xs text-slate-500 hover:text-[#16834a] font-medium transition cursor-pointer"
                         >
                           Review Evidence &rarr;
                         </button>
 
                         {isAdvanced ? (
-                          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 text-xs font-semibold flex items-center gap-1 border border-emerald-200/80">
                             <CheckCircle2 className="w-3.5 h-3.5" /> Advanced
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleAdvanceSingleCandidate(candidate.candidacyId || candidate.id || candidate.studentId)}
-                            className="px-3 py-1 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs"
+                            className="px-3 py-1 rounded-lg bg-[#1B4D3E] hover:bg-[#143B30] text-white text-xs font-semibold transition cursor-pointer shadow-xs"
                           >
-                            Mark Eligible for Interview
+                            Mark Eligible
                           </button>
                         )}
                       </div>
@@ -409,19 +409,19 @@ export default function OSADAwardCandidateReviewPage({
           )}
 
           {/* Directory Candidate Table */}
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#131E2E] rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-[#16834a]" />
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>{selectedAward} Candidate Review List</span>
                 </h3>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                   Calculated from verified student achievements and minimum threshold ({activeCategoryObj?.minPoints || 50} pts)
                 </p>
               </div>
-              <span className="text-[11px] font-bold text-slate-400">
-                {filteredCandidates.length} Potential Candidates Reviewed ({advancedCount} Eligible for Interview)
+              <span className="text-xs text-slate-400 font-normal">
+                {filteredCandidates.length} Potential Candidates ({advancedCount} Eligible)
               </span>
             </div>
 

@@ -7,13 +7,35 @@
  */
 
 import { spawn } from 'node:child_process'
-import { mkdirSync, rmSync, existsSync } from 'node:fs'
+import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
 const USER_DATA_DIR = 'C:\\Users\\Admin\\Documents\\AchieveNest\\scratch\\chrome-test-profile'
 const APP_URL = 'http://localhost:5173'
-const DEMO_PASSWORD = 'Ndmu#Defense2026!Demo'
 const CDP_PORT = 9222
+
+// Strict Environment-Only Credential Resolution
+function resolveDemoPassword() {
+  if (process.env.ACHIEVENEST_DEMO_PASSWORD && process.env.ACHIEVENEST_DEMO_PASSWORD.trim() !== '') {
+    return process.env.ACHIEVENEST_DEMO_PASSWORD.trim()
+  }
+
+  // Fallback to reading ignored local backend/.env file if available
+  const envPath = join(process.cwd(), '..', 'backend', '.env')
+  if (existsSync(envPath)) {
+    const envContent = readFileSync(envPath, 'utf8')
+    const match = envContent.match(/^ACHIEVENEST_DEMO_PASSWORD\s*=\s*(.+)$/m)
+    if (match && match[1].trim() !== '') {
+      return match[1].trim()
+    }
+  }
+
+  console.error('ACHIEVENEST_DEMO_PASSWORD is required for browser validation.')
+  process.exit(1)
+}
+
+const DEMO_PASSWORD = resolveDemoPassword()
 
 if (existsSync(USER_DATA_DIR)) {
   try {

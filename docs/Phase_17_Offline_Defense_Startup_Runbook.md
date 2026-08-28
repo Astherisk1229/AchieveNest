@@ -92,7 +92,7 @@ npm run dev
    ```text
    http://localhost:5173
    ```
-2. Log in with any of the 10 pre-seeded defense demo accounts using the demo password (`Ndmu#Defense2026!Demo`).
+2. Log in with any of the 10 pre-seeded defense demo accounts using the defense demo credential from the team's secured local credential source / ignored local environment (`ACHIEVENEST_DEMO_PASSWORD`).
 
 ---
 
@@ -111,7 +111,8 @@ npm run dev
 | 9 | **Program Coordinator B** | `demo.coordinator.b@ndmu.edu.ph` | Personnel Portal (BSBA-FM Coordinator Scope) |
 | 10 | **Organization Moderator** | `demo.moderator@ndmu.edu.ph` | Personnel Portal (DEMO_JPIA Moderator Scope) |
 
-**Demo Password for all accounts:** `Ndmu#Defense2026!Demo`
+> [!NOTE]
+> **Demo Account Credential Source:** Passwords are maintained exclusively outside Git in the local ignored environment configuration (`backend/.env` `ACHIEVENEST_DEMO_PASSWORD`) or on the defense team's physical printed credential sheet. They are never committed to repository tracking.
 
 ---
 

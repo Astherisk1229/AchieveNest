@@ -44,17 +44,24 @@
 
 ---
 
-## 3. Automated Quality Gates Summary
+## 3. Credential Exposure Remediation
+
+A tracked Phase 17 validation artifact initially contained a reusable defense demo credential. The credential was completely removed from tracked source and documentation, rotated in the local-defense environment, all ten demo accounts were reseeded with the rotated credential, the previously exposed value was invalidated and verified to fail authentication, and static secret-regression checks were added. No replacement credential is stored in Git. All test suites and automation scripts consume `ACHIEVENEST_DEMO_PASSWORD` strictly from the ignored local environment.
+
+---
+
+## 4. Automated Quality Gates Summary
 
 - **Vitest Full Suite:** 29 test files / 190 of 190 tests PASSED (0 failures, 0 skipped).
 - **ESLint Gate:** 0 errors.
 - **Production Build:** Vite production build PASSED (`vite v8.1.5`, 2088 modules transformed, built in 3.43s).
 - **Terminology Audit:** 0 Department Secretary hits, 0 prohibited Potential Award visible-text hits.
 - **Department Occurrence Audit:** `ACTIVE-UI: 0`, `ACTIVE-LOGIC: 0`, 0 open blockers (8 allowlisted entries).
+- **Static Secret Audit:** `scripts/phase17-secret-audit.ps1` PASSED (0 literal secrets, 0 compromised hash matches).
 - **`git diff --check`:** Clean diff (0 whitespace errors, 0 conflict markers).
 
 ---
 
-## 4. Final Conclusion
+## 5. Final Conclusion
 
 Phase 17 Offline Defense Validation is **COMPLETE AND FULLY PASSED**. The application is verified to start up from cold state, operate all 10 defense personas, persist data, and execute all workflows on the defense laptop with zero internet connection and zero remote dependencies.

@@ -9,9 +9,27 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest'
+import { readFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 const BASE_URL = 'http://localhost:8080/api/v1'
-const DEMO_PASSWORD = 'Ndmu#Defense2026!Demo'
+
+function resolveDemoPassword() {
+  if (process.env.ACHIEVENEST_DEMO_PASSWORD && process.env.ACHIEVENEST_DEMO_PASSWORD.trim() !== '') {
+    return process.env.ACHIEVENEST_DEMO_PASSWORD.trim()
+  }
+  const envPath = join(process.cwd(), '..', 'backend', '.env')
+  if (existsSync(envPath)) {
+    const envContent = readFileSync(envPath, 'utf8')
+    const match = envContent.match(/^ACHIEVENEST_DEMO_PASSWORD\s*=\s*(.+)$/m)
+    if (match && match[1].trim() !== '') {
+      return match[1].trim()
+    }
+  }
+  return ''
+}
+
+const DEMO_PASSWORD = resolveDemoPassword()
 
 const PERSONAS = [
   {

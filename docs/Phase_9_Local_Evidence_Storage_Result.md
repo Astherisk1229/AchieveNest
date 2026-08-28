@@ -1,0 +1,49 @@
+# Phase 9 Result
+
+- Branch: defense/wamp-local
+- Starting commit: b68b38fdc3b5fa53f22b934757fcfeff3d94ca13
+- Final commit: 541c3abbce39551852c8ab350fb22850590bf909
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- Evidence root: backend/writable/uploads/evidence/
+- Public web root storage: NO (stored in backend/writable/uploads/evidence/, completely outside public root)
+- Storage service: App\Services\LocalEvidenceStorageService
+- Student upload endpoint: POST /api/v1/portfolio/{id}/evidence (multipart/form-data)
+- Student download endpoint: GET /api/v1/evidence/student/{id}/download
+- Personnel upload endpoint: POST /api/v1/personnel/accomplishments/{id}/evidence (multipart/form-data)
+- Personnel download endpoint: GET /api/v1/evidence/personnel/{id}/download
+- Multipart upload: YES
+- Server MIME detection: YES (finfo_open/finfo_file)
+- Extension/MIME validation: YES (PDF, JPEG, PNG strict mapping)
+- Max file size: 10485760 bytes (10 MiB)
+- Zero-byte rejection: YES
+- Stored filename strategy: Opaque UUIDv4 + normalized extension
+- Original filename metadata: YES (Persisted in database original_filename column only)
+- SHA-256: YES (Calculated on physical stored file via hash_file)
+- Student ownership authorization: YES (Enforced via EvidencePolicy::canUploadStudentEvidence / canReadStudentEvidence)
+- Coordinator evidence authorization: YES (Enforced via EvidencePolicy & StudentPortfolioPolicy for assigned program scope)
+- Dean evidence authorization: YES (Enforced for students in assigned college and personnel in affiliated college)
+- HR evidence authorization: YES (Enforced via EvidencePolicy for personnel evaluations)
+- OSAD evidence boundary: YES (Denied from viewing HR-only personnel evidence; permitted for student award evaluations)
+- Anonymous denial: YES (401 Unauthorized)
+- Cross-Student denial: YES (403 Forbidden)
+- Direct public path denial: YES (Inaccessible outside CodeIgniter runtime)
+- Physical path exposed in API: NO (Physical paths stripped from API responses; safe download endpoints provided)
+- DB orphan rows: 0
+- Filesystem orphan files: 0
+- Offline upload: YES (Pure local filesystem and MySQL)
+- Offline download: YES (Pure local streaming with security headers)
+- Supabase Storage required locally: NO
+- Phase 7 regression: 27 / 27 PASSED
+- Phase 8 regression: 36 / 36 PASSED
+- Phase 9 tests: 28 / 28 PASSED
+- Backend routes: PASSED (0 errors)
+- PHP syntax: PASSED (0 errors)
+- Frontend build: PASSED (0 errors)
+- Malware scanning active: NO (interim truthful security_status = 'pending')
+- Hosted Supabase Storage preserved: YES
+- PostgreSQL/Supabase migrations modified: NO
+- Production Supabase modified: NO
+- Real secrets committed: NO
+- Phase 9: PASSED
+- Blocking issues: None

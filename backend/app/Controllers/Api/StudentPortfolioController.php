@@ -3,7 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
-use App\Services\AuthorizationService;
+use App\Services\LocalEvidenceStorageService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -13,10 +13,14 @@ class StudentPortfolioController extends Controller
     use ResponseTrait;
 
     protected AuthorizationService $authz;
+    protected LocalEvidenceStorageService $storage;
 
-    public function __construct(?AuthorizationService $authz = null)
-    {
+    public function __construct(
+        ?AuthorizationService $authz = null,
+        ?LocalEvidenceStorageService $storage = null
+    ) {
         $this->authz = $authz ?? new AuthorizationService();
+        $this->storage = $storage ?? new LocalEvidenceStorageService();
     }
 
     public function options(): mixed
@@ -180,6 +184,10 @@ class StudentPortfolioController extends Controller
             ->where('portfolio_record_id', $id)
             ->get()->getResultArray();
 
+        $safeEvidence = array_map(function ($ev) {
+            return $this->storage->formatSafeEvidence($ev, 'student');
+        }, $evidence);
+
         $events = $db->table('student_portfolio_verification_events ve')
             ->select(['ve.*', 'p.full_name AS actor_name'])
             ->join('profiles p', 'p.id = ve.actor_profile_id', 'left')
@@ -190,7 +198,7 @@ class StudentPortfolioController extends Controller
         return $this->respond([
             'data' => [
                 'record'   => $record,
-                'evidence' => $evidence,
+                'evidence' => $safeEvidence,
                 'events'   => $events,
             ],
         ], 200);
@@ -347,13 +355,17 @@ class StudentPortfolioController extends Controller
 
     /**
      * POST /api/v1/portfolio/{id}/evidence
-     * Attaches evidence file metadata to a portfolio record.
+     * Student uploads multipart evidence file for a portfolio record.
      */
     public function addEvidence(string $id): mixed
     {
         $actor = $this->resolveActor();
         if ($actor === null) {
-            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+
+        if (! ValidationHelper::validateUuid($id)) {
+            return $this->respond(['error' => ['code' => 'INVALID_RECORD_ID', 'message' => 'Invalid portfolio record UUID.']], 422);
         }
 
         $db = db_connect();
@@ -363,57 +375,77 @@ class StudentPortfolioController extends Controller
         }
 
         if (! $this->authz->evidence()->canUploadStudentEvidence($actor, $record)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Can only attach evidence to your own draft or revision-requested record.']], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not authorized to upload evidence for this record.']], 403);
         }
 
-        $json = $this->request->getJSON(true) ?? [];
-        $storagePath = trim((string) ($json['storage_path'] ?? ''));
-        $origFilename = trim((string) ($json['original_filename'] ?? ''));
-        $mimeType = trim((string) ($json['mime_type'] ?? 'application/pdf'));
-        $byteSize = (int) ($json['byte_size'] ?? 0);
-        $evidenceType = trim((string) ($json['evidence_type'] ?? 'certificate'));
-
-        if ($storagePath === '' || $origFilename === '') {
-            return $this->respond(['error' => ['code' => 'MISSING_FILE_INFO', 'message' => 'storage_path and original_filename are required.']], 422);
+        $file = $this->request->getFile('file') ?? $this->request->getFile('evidence_file');
+        if ($file === null || ! $file->isValid()) {
+            return $this->respond(['error' => ['code' => 'FILE_REQUIRED', 'message' => 'A valid evidence file is required in multipart/form-data.']], 400);
         }
 
-        // Allowed MIME validation
-        $allowedMimes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-        if (! in_array(strtolower($mimeType), $allowedMimes, true)) {
-            return $this->respond(['error' => ['code' => 'INVALID_MIME_TYPE', 'message' => 'Unsupported evidence file type.']], 422);
+        $val = $this->storage->validateFile($file->getTempName(), $file->getClientName());
+        if (! $val['success']) {
+            $status = $val['error_code'] === 'FILE_TOO_LARGE' ? 413 : ($val['error_code'] === 'UNSUPPORTED_FILE_TYPE' ? 415 : 422);
+            return $this->respond(['error' => ['code' => $val['error_code'], 'message' => $val['error_message']]], $status);
         }
 
-        if ($byteSize <= 0 || $byteSize > 10485760) {
-            return $this->respond(['error' => ['code' => 'INVALID_FILE_SIZE', 'message' => 'Evidence file size must be between 1 byte and 10MB.']], 422);
+        $evidenceType = trim((string) ($this->request->getPost('evidence_type') ?? 'certificate'));
+        if ($evidenceType === '') {
+            $evidenceType = 'certificate';
+        }
+
+        try {
+            $stored = $this->storage->storeFile(
+                $file->getTempName(),
+                'student',
+                $actor['profile']['id'],
+                $id,
+                $val['extension'],
+                true
+            );
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'STORAGE_FAILED', 'message' => 'Failed to store uploaded file.']], 500);
         }
 
         $evidenceId = $this->genUuid();
         $now = date('Y-m-d H:i:s');
-        $sha256 = hash('sha256', $storagePath . $origFilename . $now);
+        $evidenceRow = [
+            'id'                  => $evidenceId,
+            'portfolio_record_id' => $id,
+            'storage_path'        => $stored['storage_path'],
+            'original_filename'   => $file->getClientName(),
+            'mime_type'           => $val['detected_mime'],
+            'detected_mime_type'  => $val['detected_mime'],
+            'byte_size'           => $stored['byte_size'],
+            'checksum'            => $stored['sha256'],
+            'sha256'              => $stored['sha256'],
+            'evidence_type'       => $evidenceType,
+            'uploaded_by'         => $actor['profile']['id'],
+            'uploaded_at'         => $now,
+            'security_status'     => 'pending',
+            'malware_scanner'     => 'backend_local_v1',
+            'status'              => 'active',
+        ];
 
-        $db->table('student_portfolio_evidence')->insert([
-            'id'                     => $evidenceId,
-            'portfolio_record_id'    => $id,
-            'storage_path'           => $storagePath,
-            'original_filename'      => $origFilename,
-            'mime_type'              => $mimeType,
-            'detected_mime_type'     => $mimeType,
-            'byte_size'              => $byteSize,
-            'checksum'               => $sha256,
-            'sha256'                 => $sha256,
-            'evidence_type'          => $evidenceType,
-            'uploaded_by'            => $actor['profile']['id'],
-            'uploaded_at'            => $now,
-            'security_status'        => 'clean',
-            'malware_scanner'        => 'backend_clamav_v1',
-            'security_validated_at'  => $now,
-            'status'                 => 'active',
-        ]);
+        $db->transStart();
+        try {
+            $db->table('student_portfolio_evidence')->insert($evidenceRow);
+            $db->transComplete();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            $this->storage->deletePhysicalFile($stored['storage_path']);
+            return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
+        }
+
+        if ($db->transStatus() === false) {
+            $this->storage->deletePhysicalFile($stored['storage_path']);
+            return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
+        }
 
         return $this->respondCreated([
             'data' => [
-                'message'     => 'Evidence attached successfully.',
-                'evidence_id' => $evidenceId,
+                'message'  => 'Evidence uploaded and secured successfully.',
+                'evidence' => $this->storage->formatSafeEvidence($evidenceRow, 'student'),
             ],
         ]);
     }

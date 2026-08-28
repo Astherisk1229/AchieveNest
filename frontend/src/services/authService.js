@@ -1,6 +1,6 @@
 /**
  * AchieveNest Authentication Service
- * Real Supabase Auth + backend-authoritative identity resolution.
+ * Dual-mode: Local-Defense authentication (WAMP MySQL) & Hosted Supabase Auth.
  */
 
 import { supabase } from '../config/supabase'
@@ -15,6 +15,7 @@ import {
 } from '../utils/roleContext'
 
 const STORAGE_KEY_USER = 'achievenest_current_user'
+const STORAGE_KEY_TOKEN = 'achievenest_access_token'
 
 function dispatchStorageEvent() {
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
@@ -23,7 +24,7 @@ function dispatchStorageEvent() {
 }
 
 /**
- * Authenticate user with Supabase Auth and resolve profile + roles from CodeIgniter backend.
+ * Authenticates user via local-defense API or hosted Supabase Auth based on environment configuration.
  */
 export async function authenticateUser(email, password, rememberMe = true) {
   const cleanEmail = String(email || '').trim().toLowerCase()
@@ -32,6 +33,25 @@ export async function authenticateUser(email, password, rememberMe = true) {
     throw new Error('Please enter a valid NDMU institutional email (@ndmu.edu.ph).')
   }
 
+  const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
+
+  // 1. Local-Defense Track (Direct CodeIgniter JWT authentication)
+  if (authMode === 'local-defense') {
+    const res = await apiClient.post('/auth/login', {
+      institutional_email: cleanEmail,
+      password,
+      remember_me: rememberMe
+    })
+
+    const accessToken = res?.data?.access_token || res?.access_token
+    if (!accessToken) {
+      throw new Error('Login succeeded but no access token was returned.')
+    }
+
+    return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
+  }
+
+  // 2. Hosted Supabase Auth Track
   const { data, error } = await supabase.auth.signInWithPassword({
     email: cleanEmail,
     password
@@ -53,6 +73,13 @@ export async function authenticateUser(email, password, rememberMe = true) {
  * Resolves profile from backend /api/v1/auth/me using the provided access token.
  */
 export async function fetchProfileAndCreateSession(accessToken, emailFallback = '', rememberMe = true) {
+  // Store token first so apiClient interceptor picks it up immediately
+  if (rememberMe) {
+    localStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+  } else {
+    sessionStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+  }
+
   const backendResponse = await apiClient.get('/auth/me', {
     headers: {
       Authorization: `Bearer ${accessToken}`
@@ -65,18 +92,16 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
   }
 
   if (user.status === 'suspended') {
-    await supabase.auth.signOut()
     await logoutUser()
     throw new Error('This account has been suspended. Please contact administrative support.')
   }
 
   if (user.status === 'archived') {
-    await supabase.auth.signOut()
     await logoutUser()
     throw new Error('This account has been archived and cannot access application features.')
   }
 
-  const cleanEmail = user.institutional_email || emailFallback
+  const cleanEmail = user.institutional_email || user.email || emailFallback
 
   // Determine authoritative account type & assigned roles
   const userRoles = (user.roles || []).map(r => (typeof r === 'object' ? r.role_key : r)).map(r => normalizeRoleContext(r))
@@ -88,8 +113,8 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     ...user,
     id: user.id,
     institutional_id: user.institutional_id,
-    institutional_email: user.institutional_email || cleanEmail,
-    email: user.institutional_email || cleanEmail,
+    institutional_email: cleanEmail,
+    email: cleanEmail,
     full_name: user.full_name || cleanEmail,
     account_type: accountType,
     user_type: accountType,
@@ -106,6 +131,7 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     year_level: user.year_level || null,
     must_change_password: Boolean(user.must_change_password),
     token: accessToken,
+    access_token: accessToken,
     logged_in_at: new Date().toISOString(),
     rememberMe
   }
@@ -207,16 +233,28 @@ export function updateUserRoleContext(newRoleContext) {
 }
 
 /**
- * Logs out the user by clearing storage and Supabase auth session.
+ * Logs out the user by clearing storage and notifying the backend for server revocation.
  */
 export async function logoutUser() {
+  try {
+    await apiClient.post('/auth/logout')
+  } catch {
+    // Ignore network/server errors during logout
+  }
+
   localStorage.removeItem(STORAGE_KEY_USER)
   sessionStorage.removeItem(STORAGE_KEY_USER)
+  localStorage.removeItem(STORAGE_KEY_TOKEN)
+  sessionStorage.removeItem(STORAGE_KEY_TOKEN)
+
   try {
-    await supabase.auth.signOut()
-  } catch (err) {
-    console.warn('Supabase signOut notice:', err)
+    if (import.meta.env.VITE_AUTH_MODE !== 'local-defense') {
+      await supabase.auth.signOut().catch(() => {})
+    }
+  } catch {
+    // Ignore in local-defense mode
   }
+
   dispatchStorageEvent()
 }
 
@@ -245,7 +283,7 @@ export async function requestPasswordReset(email) {
  */
 export async function submitPasswordChange(newPassword, confirmPassword) {
   const currentUser = getCurrentUser()
-  const token = currentUser?.token
+  const token = currentUser?.token || currentUser?.access_token
 
   const response = await apiClient.post('/auth/change-password', {
     new_password: newPassword,
@@ -267,4 +305,3 @@ export async function submitPasswordChange(newPassword, confirmPassword) {
 
   return response?.data || response
 }
-

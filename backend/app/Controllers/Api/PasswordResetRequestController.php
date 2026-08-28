@@ -4,6 +4,8 @@ namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
+use App\Services\LocalAuthService;
+use App\Services\LocalTokenService;
 use App\Services\SupabaseAdminAuthService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
@@ -14,14 +16,22 @@ class PasswordResetRequestController extends Controller
     use ResponseTrait;
 
     protected AuthenticatedActorService $actorService;
+    protected LocalAuthService $localAuthService;
     protected SupabaseAdminAuthService $adminAuthService;
+    protected LocalTokenService $localTokenService;
+    protected bool $isLocalDefense;
 
     public function __construct(
         ?AuthenticatedActorService $actorService = null,
-        ?SupabaseAdminAuthService $adminAuthService = null
+        ?LocalAuthService $localAuthService = null,
+        ?SupabaseAdminAuthService $adminAuthService = null,
+        ?LocalTokenService $localTokenService = null
     ) {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
+        $this->localAuthService = $localAuthService ?? new LocalAuthService();
         $this->adminAuthService = $adminAuthService ?? new SupabaseAdminAuthService();
+        $this->localTokenService = $localTokenService ?? new LocalTokenService();
+        $this->isLocalDefense = (env('AUTH_MODE') === 'local-defense' || env('ACHIEVENEST_ENV') === 'local-defense');
     }
 
     public function options()
@@ -35,29 +45,19 @@ class PasswordResetRequestController extends Controller
     }
 
     /**
-     * Generates a cryptographically secure temporary password.
-     */
-    protected function generateTemporaryPassword(): string
-    {
-        $prefix = 'Ndmu#';
-        $random = bin2hex(random_bytes(4)); // 8 hex characters
-        return $prefix . $random;
-    }
-
-    /**
      * POST /api/v1/password-reset-requests
      * Public endpoint to submit an institutional password reset request.
      */
     public function submit()
     {
         $json = $this->request->getJSON(true) ?? [];
-        $rawEmail = (string) ($json['institutional_email'] ?? '');
+        $rawEmail = (string) ($json['institutional_email'] ?? ($json['email'] ?? ''));
         $cleanEmail = strtolower(trim($rawEmail));
 
         if ($cleanEmail === '' || ! str_ends_with($cleanEmail, '@ndmu.edu.ph')) {
             return $this->respond([
                 'error' => [
-                    'code' => 'INVALID_INSTITUTIONAL_EMAIL',
+                    'code'    => 'INVALID_INSTITUTIONAL_EMAIL',
                     'message' => 'Please provide a valid @ndmu.edu.ph institutional email address.',
                 ],
             ], 422);
@@ -67,7 +67,7 @@ class PasswordResetRequestController extends Controller
 
         $db = db_connect();
         $profile = $db->table('profiles')
-            ->where('institutional_email', $cleanEmail)
+            ->where('email', $cleanEmail)
             ->get()
             ->getRowArray();
 
@@ -81,7 +81,6 @@ class PasswordResetRequestController extends Controller
         }
 
         $accountType = $profile['account_type'] ?? '';
-        // Only student and personnel can request password resets via this workflow
         if (! in_array($accountType, ['student', 'personnel'], true)) {
             return $this->respond([
                 'data' => [
@@ -90,13 +89,11 @@ class PasswordResetRequestController extends Controller
             ], 200);
         }
 
-        $assignedOffice = ($accountType === 'student') ? 'osad' : 'hr';
-
-        // Rate-limit: reject if a pending request exists within the last 24 hours (generic response — no account disclosure)
+        // Rate-limit: reject if a pending request exists within the last 24 hours
         $existingPending = $db->table('password_reset_requests')
-            ->where('user_id', $profile['id'])
+            ->where('institutional_email', $cleanEmail)
             ->where('status', 'pending')
-            ->where('requested_at >=', date('Y-m-d H:i:s', strtotime('-24 hours')))
+            ->where('created_at >=', date('Y-m-d H:i:s', strtotime('-24 hours')))
             ->get()
             ->getRowArray();
 
@@ -108,54 +105,29 @@ class PasswordResetRequestController extends Controller
             ], 200);
         }
 
-        $requestId = null;
-        $db->transStart();
+        $requestId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
 
         $db->table('password_reset_requests')->insert([
-            'user_id'             => $profile['id'],
-            'institutional_email' => $profile['institutional_email'],
-            'account_type'        => $accountType,
-            'assigned_office'     => $assignedOffice,
+            'id'                  => $requestId,
+            'institutional_email' => $cleanEmail,
+            'reason'              => (string) ($json['reason'] ?? 'User submitted password reset request'),
             'status'              => 'pending',
-            'requested_at'        => date('Y-m-d H:i:s'),
+            'ip_address'          => $this->request->getIPAddress(),
+            'user_agent'          => $this->request->getUserAgent()->getAgentString(),
             'created_at'          => date('Y-m-d H:i:s'),
-            'updated_at'          => date('Y-m-d H:i:s'),
         ]);
-
-        $createdReq = $db->table('password_reset_requests')
-            ->where('user_id', $profile['id'])
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->getRowArray();
-
-        $requestId = $createdReq['id'] ?? null;
-
-        $db->table('password_reset_events')->insert([
-            'request_id'     => $requestId,
-            'actor_user_id'  => null,
-            'target_user_id' => $profile['id'],
-            'action'         => 'password_reset_request_submitted',
-            'metadata'       => json_encode([
-                'assigned_office' => $assignedOffice,
-                'account_type'    => $accountType,
-                'ip_address'      => $this->request->getIPAddress(),
-            ]),
-            'occurred_at'    => date('Y-m-d H:i:s'),
-        ]);
-
-        $db->transComplete();
 
         return $this->respond([
             'data' => [
-                'message' => $genericSuccessMessage,
+                'message'    => $genericSuccessMessage,
+                'request_id' => $requestId,
             ],
         ], 200);
     }
 
     /**
      * GET /api/v1/password-reset-requests
-     * Lists password reset requests scoped strictly to the authenticated admin's office.
+     * Administrative listing endpoint scoped strictly to the caller's office.
      */
     public function list()
     {
@@ -167,37 +139,40 @@ class PasswordResetRequestController extends Controller
         $accountType = $actor['profile']['account_type'] ?? '';
         $roles = $actor['roles'] ?? [];
 
-        $assignedOffice = null;
+        $office = null;
+        $targetAccountType = null;
         if ($accountType === 'osad_admin' && in_array('osad_staff', $roles, true)) {
-            $assignedOffice = 'osad';
+            $office = 'osad';
+            $targetAccountType = 'student';
         } elseif ($accountType === 'hr_admin' && in_array('hr_staff', $roles, true)) {
-            $assignedOffice = 'hr';
+            $office = 'hr';
+            $targetAccountType = 'personnel';
+        } else {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR or OSAD administrators may view password reset requests.']], 403);
         }
 
-        if ($assignedOffice === null) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only dedicated OSAD or HR administrators may view password reset requests.']], 403);
+        $statusFilter = (string) ($this->request->getGet('status') ?? 'pending');
+        if (! in_array($statusFilter, ['pending', 'completed', 'rejected', 'all'], true)) {
+            $statusFilter = 'pending';
         }
-
-        $statusFilter = strtolower(trim((string) $this->request->getGet('status')));
 
         $db = db_connect();
         $builder = $db->table('password_reset_requests prr')
-            ->select('prr.*, p.institutional_id, p.full_name, p.department_id, p.degree_program_id, p.designation, p.status as profile_status, handler.full_name as handler_name')
-            ->join('profiles p', 'p.id = prr.user_id', 'inner')
-            ->join('profiles handler', 'handler.id = prr.handled_by', 'left')
-            ->where('prr.assigned_office', $assignedOffice);
+            ->select('prr.*, p.id as user_id, p.full_name, p.account_type, p.status as profile_status')
+            ->join('profiles p', 'p.email = prr.institutional_email', 'inner')
+            ->where('p.account_type', $targetAccountType);
 
-        if ($statusFilter !== '' && in_array($statusFilter, ['pending', 'completed', 'rejected'], true)) {
+        if ($statusFilter !== 'all') {
             $builder->where('prr.status', $statusFilter);
         }
 
-        $requests = $builder->orderBy('prr.requested_at', 'DESC')->get()->getResultArray();
+        $requests = $builder->orderBy('prr.created_at', 'DESC')->get()->getResultArray();
 
         return $this->respond([
             'data' => [
-                'office' => $assignedOffice,
+                'office'   => $office,
                 'requests' => $requests,
-                'count' => count($requests),
+                'count'    => count($requests),
             ],
         ], 200);
     }
@@ -218,8 +193,8 @@ class PasswordResetRequestController extends Controller
 
         $db = db_connect();
         $request = $db->table('password_reset_requests prr')
-            ->select('prr.*, p.full_name, p.status as profile_status')
-            ->join('profiles p', 'p.id = prr.user_id', 'inner')
+            ->select('prr.*, p.id as user_id, p.full_name, p.account_type, p.status as profile_status')
+            ->join('profiles p', 'p.email = prr.institutional_email', 'inner')
             ->where('prr.id', $requestId)
             ->get()
             ->getRowArray();
@@ -233,66 +208,72 @@ class PasswordResetRequestController extends Controller
         }
 
         // Office authority validation
-        if ($request['assigned_office'] === 'osad') {
+        if ($request['account_type'] === 'student') {
             if (! ($accountType === 'osad_admin' && in_array('osad_staff', $roles, true))) {
                 return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may process student password reset requests.']], 403);
             }
-        } elseif ($request['assigned_office'] === 'hr') {
+        } elseif ($request['account_type'] === 'personnel') {
             if (! ($accountType === 'hr_admin' && in_array('hr_staff', $roles, true))) {
                 return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may process personnel password reset requests.']], 403);
             }
         } else {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Unrecognized assigned office.']], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Unrecognized target account type.']], 403);
         }
 
-        $temporaryPassword = $this->generateTemporaryPassword();
+        $targetUserId = $request['user_id'];
+        $ip = $this->request->getIPAddress();
 
-        try {
-            $this->adminAuthService->updateUserPassword($request['user_id'], $temporaryPassword);
-        } catch (Throwable $e) {
-            return $this->respond([
-                'error' => [
-                    'code' => 'AUTH_UPDATE_FAILED',
-                    'message' => 'Failed to update user password in authentication provider: ' . $e->getMessage(),
-                ],
-            ], 500);
+        if ($this->isLocalDefense) {
+            $result = $this->localAuthService->adminResetPassword($actor['profile']['id'], $targetUserId, $ip);
+            if (! $result['success']) {
+                return $this->respond(['error' => $result['error']], $result['status']);
+            }
+
+            $temporaryPassword = $result['data']['temporary_password'];
+
+            $db->table('password_reset_requests')->where('id', $requestId)->update([
+                'status'       => 'completed',
+                'processed_by' => $actor['profile']['id'],
+                'processed_at' => date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
+            ]);
+        } else {
+            $temporaryPassword = 'Temp_' . bin2hex(random_bytes(6)) . '!A1';
+            try {
+                $this->adminAuthService->updateUserPassword($targetUserId, $temporaryPassword);
+            } catch (Throwable $e) {
+                return $this->respond([
+                    'error' => [
+                        'code'    => 'AUTH_UPDATE_FAILED',
+                        'message' => 'Failed to update user password in authentication provider: ' . $e->getMessage(),
+                    ],
+                ], 500);
+            }
+
+            $db->transStart();
+
+            $db->table('profiles')->where('id', $targetUserId)->update([
+                'must_change_password' => 1,
+                'updated_at'           => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->table('password_reset_requests')->where('id', $requestId)->update([
+                'status'       => 'completed',
+                'processed_by' => $actor['profile']['id'],
+                'processed_at' => date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
+            ]);
+
+            $db->transComplete();
         }
-
-        $db->transStart();
-
-        $db->table('profiles')->where('id', $request['user_id'])->update([
-            'must_change_password' => true,
-            'updated_at'           => date('Y-m-d H:i:s'),
-        ]);
-
-        $db->table('password_reset_requests')->where('id', $requestId)->update([
-            'status'       => 'completed',
-            'completed_at' => date('Y-m-d H:i:s'),
-            'handled_by'   => $actor['profile']['id'],
-            'updated_at'   => date('Y-m-d H:i:s'),
-        ]);
-
-        $db->table('password_reset_events')->insert([
-            'request_id'     => $requestId,
-            'actor_user_id'  => $actor['profile']['id'],
-            'target_user_id' => $request['user_id'],
-            'action'         => 'temporary_password_reset_executed',
-            'metadata'       => json_encode([
-                'assigned_office' => $request['assigned_office'],
-                'handled_by'      => $actor['profile']['id'],
-            ]),
-            'occurred_at'    => date('Y-m-d H:i:s'),
-        ]);
-
-        $db->transComplete();
 
         return $this->respond([
             'data' => [
-                'message'            => 'Password reset executed successfully.',
-                'request_id'         => $requestId,
-                'temporary_password' => $temporaryPassword,
-                'institutional_email'=> $request['institutional_email'],
-                'full_name'          => $request['full_name'],
+                'message'             => 'Password reset executed successfully.',
+                'request_id'          => $requestId,
+                'temporary_password'  => $temporaryPassword,
+                'institutional_email' => $request['institutional_email'],
+                'full_name'           => $request['full_name'],
             ],
         ], 200);
     }
@@ -312,7 +293,12 @@ class PasswordResetRequestController extends Controller
         $roles = $actor['roles'] ?? [];
 
         $db = db_connect();
-        $request = $db->table('password_reset_requests')->where('id', $requestId)->get()->getRowArray();
+        $request = $db->table('password_reset_requests prr')
+            ->select('prr.*, p.account_type')
+            ->join('profiles p', 'p.email = prr.institutional_email', 'inner')
+            ->where('prr.id', $requestId)
+            ->get()
+            ->getRowArray();
 
         if ($request === null) {
             return $this->respond(['error' => ['code' => 'REQUEST_NOT_FOUND', 'message' => 'Password reset request not found.']], 404);
@@ -322,53 +308,28 @@ class PasswordResetRequestController extends Controller
             return $this->respond(['error' => ['code' => 'REQUEST_ALREADY_PROCESSED', 'message' => 'This password reset request has already been processed.']], 422);
         }
 
-        // Office authority validation
-        if ($request['assigned_office'] === 'osad') {
+        if ($request['account_type'] === 'student') {
             if (! ($accountType === 'osad_admin' && in_array('osad_staff', $roles, true))) {
-                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may process student password reset requests.']], 403);
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may reject student password reset requests.']], 403);
             }
-        } elseif ($request['assigned_office'] === 'hr') {
+        } elseif ($request['account_type'] === 'personnel') {
             if (! ($accountType === 'hr_admin' && in_array('hr_staff', $roles, true))) {
-                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may process personnel password reset requests.']], 403);
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR administrators may reject personnel password reset requests.']], 403);
             }
         } else {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Unrecognized assigned office.']], 403);
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Unrecognized target account type.']], 403);
         }
-
-        $json = $this->request->getJSON(true) ?? [];
-        $reason = trim((string) ($json['reason'] ?? 'Rejected by administrator'));
-        // Bound rejection reason to prevent abuse
-        if (strlen($reason) > ValidationHelper::MAX_REASON_LENGTH) {
-            return $this->respond(['error' => ['code' => 'REASON_TOO_LONG', 'message' => 'Rejection reason must not exceed ' . ValidationHelper::MAX_REASON_LENGTH . ' characters.']], 422);
-        }
-
-        $db->transStart();
 
         $db->table('password_reset_requests')->where('id', $requestId)->update([
-            'status'           => 'rejected',
-            'completed_at'     => date('Y-m-d H:i:s'),
-            'handled_by'       => $actor['profile']['id'],
-            'rejection_reason' => $reason,
-            'updated_at'       => date('Y-m-d H:i:s'),
+            'status'       => 'rejected',
+            'processed_by' => $actor['profile']['id'],
+            'processed_at' => date('Y-m-d H:i:s'),
+            'updated_at'   => date('Y-m-d H:i:s'),
         ]);
-
-        $db->table('password_reset_events')->insert([
-            'request_id'     => $requestId,
-            'actor_user_id'  => $actor['profile']['id'],
-            'target_user_id' => $request['user_id'],
-            'action'         => 'password_reset_request_rejected',
-            'metadata'       => json_encode([
-                'assigned_office'  => $request['assigned_office'],
-                'rejection_reason' => $reason,
-            ]),
-            'occurred_at'    => date('Y-m-d H:i:s'),
-        ]);
-
-        $db->transComplete();
 
         return $this->respond([
             'data' => [
-                'message'    => 'Password reset request has been rejected.',
+                'message'    => 'Password reset request rejected.',
                 'request_id' => $requestId,
             ],
         ], 200);

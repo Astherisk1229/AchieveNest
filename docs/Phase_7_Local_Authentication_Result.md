@@ -1,0 +1,46 @@
+# Phase 7 Result
+
+- **Branch**: `defense/wamp-local`
+- **Phase**: Phase 7 — Temporary Local Authentication for the WAMP Defense Build
+- **MySQL version**: `8.4.7`
+- **Database**: `achievenest_local`
+- **DB host**: `127.0.0.1` / `localhost:3306`
+- **DB driver**: `MySQLi`
+- **Additive Migration**: `000011_local_auth_sessions.sql` applied to `achievenest_local`
+- **Tables created**: `local_auth_credentials`, `local_auth_sessions` with complete indexing and foreign keys
+- **Local Token Service**: `App\Services\LocalTokenService` (HS256 JWT issuance, validation, server-side revocation tracking)
+- **Local Auth Service**: `App\Services\LocalAuthService` (Password verify, mandatory change-password, administrative reset)
+- **Authenticated Actor Service**: `App\Services\AuthenticatedActorService` (Environment-aware dual-mode actor resolver)
+- **Auth Endpoints Implemented**:
+  - `POST /api/v1/auth/login` (Status 200, JWT token + `must_change_password` flag)
+  - `GET /api/v1/auth/me` (Status 200, complete profile identity, roles, academic placement, personnel affiliations, governance assignments)
+  - `POST /api/v1/auth/logout` (Status 200, server-side session invalidation)
+  - `POST /api/v1/auth/change-password` (Status 200, mandatory password change, session revocation)
+  - `POST /api/v1/password-reset-requests` (Status 200, public submission with generic confirmation)
+  - `POST /api/v1/password-reset-requests/{id}/reset` (Status 200, administrative password reset)
+  - `POST /api/v1/provisioning/manual-student` (Status 201, local credentials generated)
+  - `POST /api/v1/provisioning/manual-personnel` (Status 201, local credentials generated)
+- **Frontend Integration**:
+  - `frontend/src/services/apiClient.js` (Attaches local Bearer JWT token from storage; 401 interceptor)
+  - `frontend/src/services/authService.js` (Dual-track support: local-defense endpoint vs hosted Supabase)
+  - `frontend/src/context/AuthContext.jsx` (Local token restoration without remote Supabase network call)
+- **Offline / Zero Remote Dependency**: `YES` (Functions 100% offline against local WAMP MySQL)
+- **Hosted Supabase Track Preserved**: `YES` (Controlled by `AUTH_MODE=local-defense` / `VITE_AUTH_MODE=local-defense`)
+- **Real JWT Secrets Committed**: `NO` (Kept in ignored `backend/.env` with template in `backend/.env.example`)
+- **Server-Side Revocation Verified**: `YES` (Logged-out and expired tokens return HTTP 401)
+- **Role & Governance Scopes Verified**:
+  - Student: BSCS placement resolved
+  - Personnel: CET college affiliation resolved
+  - HR Admin: `hr_staff` role resolved
+  - OSAD Admin: `osad_staff` role resolved
+  - Dean: Dean assignment with CET college scope resolved
+  - Program Coordinator: Coordinator assignment with BSCS scope resolved
+  - Organization Moderator: Moderator assignment with CSS organization scope resolved
+- **Lifecycle Status Guards Verified**:
+  - Suspended account: HTTP 403 `ACCOUNT_SUSPENDED`
+  - Archived account: HTTP 403 `ACCOUNT_ARCHIVED`
+  - Disabled credential: HTTP 403 `CREDENTIAL_DISABLED`
+- **Validation Test Suite (`test:phase7-auth`)**: `27 / 27 PASSED`
+- **Frontend Build**: `PASS` (`vite build` finished in 7.12s with 0 errors)
+- **Phase 7**: **`PASSED`**
+- **Blocking issues**: `None`

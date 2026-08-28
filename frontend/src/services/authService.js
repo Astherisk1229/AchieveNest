@@ -124,6 +124,15 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
   // Determine authoritative account type & assigned roles
   const userRoles = (user.roles || []).map(r => (typeof r === 'object' ? r.role_key : r)).map(r => normalizeRoleContext(r))
   const accountType = normalizeAccountType(user.account_type || (userRoles.includes('student') ? 'student' : 'personnel'))
+  if (accountType === 'student' && !userRoles.includes('student')) {
+    userRoles.push('student')
+  }
+  if (accountType === 'hr_admin' && !userRoles.includes('hr_staff')) {
+    userRoles.push('hr_staff')
+  }
+  if (accountType === 'osad_admin' && !userRoles.includes('osad_staff')) {
+    userRoles.push('osad_staff')
+  }
   const authoritativeAssignedRoles = normalizeAssignedRoles(userRoles, accountType)
   const activeRoleContext = resolveDefaultActiveRole(accountType, authoritativeAssignedRoles)
 

@@ -1,12 +1,12 @@
 # Phase 16 Department Scan Baseline
-# Generated: 2026-08-28 16:57:10 +08:00
+# Generated: 2026-08-28 17:17:34 +08:00
 # Matching source lines: 8
 # Pattern:
 # Department Secretary|Department|department_id|departmentId|department_name|departments|departmentCode|departmentLabel|departmentName|department_secretary|departmentSecretary
 
 frontend/src/models/__tests__/OSADAcademicHierarchy.test.js:22:expect(StudentOrganizationModel.validateScope({ scopeType: 'department', collegeId: 'col-ceac' }, colleges, programs).isValid).toBe(false)
 frontend/src/pages/osad-admin/__tests__/OSADAcademicHeaderActions.test.js:29:expect(['department', 'degree_program']).not.toContain(getRecommendedCreationAction({ collegeCount: 1, academicProgramCount: 0 }))
-frontend/src/services/authService.js:147:department_id: user.department_id || null,
+frontend/src/services/authService.js:156:department_id: user.department_id || null,
 frontend/src/utils/__tests__/personnelPlacement.test.js:22:it('formats Academic affiliation without a Department fallback', () => expect(formatPersonnelPlacement({ personnel_classification: 'academic', college_code: 'CEAC', program_affiliations: [{ code: 'BSCS' }] })).toBe('CEAC • BSCS'))
 frontend/src/utils/__tests__/roleContext.test.js:34:expect(normalizeRoleContext('department_secretary')).toBe(CANONICAL_ROLES.DEAN)
 frontend/src/utils/roleContext.js:76:// Transitional aliases only. Department Secretary is no longer a valid

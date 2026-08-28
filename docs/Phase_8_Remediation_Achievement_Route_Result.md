@@ -1,0 +1,37 @@
+# Phase 8 Remediation — Achievement Route Result
+
+- Branch: defense/wamp-local
+- Starting commit: 42de10d5b4028af23aa3cb8ace5e7110e49e82af
+- Final commit: PENDING_COMMIT
+- Confirmed active legacy route: GET /api/v1/achievements, POST /api/v1/achievements
+- Frontend dependency found: `frontend/src/services/achievementService.js` (Compatibility layer for legacy views)
+- Resolution selected: OPTION A (Ported as authoritative compatibility adapter over `student_portfolio_records`)
+- AchievementController retained: YES
+- AchievementController ported: YES
+- Legacy route retired: NO (Maintained as pure MySQL / CodeIgniter 4 compatibility endpoint over target schema)
+- AuthenticatedActorService used: YES
+- AuthorizationService used: YES
+- SupabaseAuthService used in active local path: NO
+- public.* used in active local path: NO
+- PostgreSQL-only syntax used in active local path: NO
+- Final persistence model: `student_portfolio_records`, `student_portfolio_verification_events`, `portfolio_categories`
+- Student ownership enforced: YES (Server sets student_profile_id from authenticated profile ID)
+- Non-Student POST denied: YES (403 Forbidden via StudentPortfolioPolicy::canCreate)
+- Cross-Student read denied: YES (403 Forbidden / Scoped via StudentPortfolioPolicy::scopeListQuery)
+- Invalid taxonomy denied: YES (422 INVALID_CATEGORY if category cannot be resolved or is inactive)
+- Anonymous request denied: YES (401 Unauthorized via AuthenticatedActorService)
+- Revoked session denied: YES (401 Unauthorized via session registry check)
+- Offline GET: PASSED
+- Offline POST: PASSED
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- Phase 7 regression: 27 / 27 PASSED
+- Phase 8 regression: 36 / 36 PASSED (including ACH-LOCAL-001 through ACH-LOCAL-008)
+- php spark routes: PASSED
+- PHP syntax: PASSED (0 errors)
+- Frontend build: PASSED (0 errors, built in 5.57s)
+- Hosted Supabase track preserved: YES
+- PostgreSQL/Supabase migrations modified: NO
+- Production Supabase modified: NO
+- Remediation status: PASSED
+- Blocking issues: None

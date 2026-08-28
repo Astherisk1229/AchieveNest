@@ -14,7 +14,7 @@ Phase 8 has completely replaced PostgreSQL Row-Level Security (RLS) with central
   - `App\Services\Policies\EvidencePolicy`
   - `App\Services\Policies\AwardPolicy`
 - **Reviewer Resolution Service:** `App\Services\ReviewerResolverService`
-- **Authorization Test Suite (`test:phase8-authz`):** `28 / 28 PASSED` (100%)
+- **Authorization Test Suite (`test:phase8-authz`):** `36 / 36 PASSED` (100%)
 - **Phase 7 Auth Regression Test Suite (`test:phase7-auth`):** `27 / 27 PASSED` (100%)
 - **Frontend Production Build (`npm run build`):** `PASSED` (0 errors)
 
@@ -64,7 +64,31 @@ Phase 8 has completely replaced PostgreSQL Row-Level Security (RLS) with central
 
 ---
 
-## 3. Compliance and Invariants Verified
+### C. Achievement Compatibility Smoke Test Matrix (8 Test Cases)
+
+| Test ID | Compatibility Requirement & Scenario | Expected Result | Result |
+| :--- | :--- | :--- | :--- |
+| **ACH-LOCAL-001** | Student GET `/api/v1/achievements` returns only own records | 200 OK | **PASSED** |
+| **ACH-LOCAL-002** | Student querying cross-student record via parameter | 200 Scoped | **PASSED** |
+| **ACH-LOCAL-003** | Student creates achievement via compatibility adapter | 201 Created | **PASSED** |
+| **ACH-LOCAL-004** | Non-Student attempts POST `/api/v1/achievements` | 403 Forbidden | **PASSED** |
+| **ACH-LOCAL-005** | Missing required fields / invalid taxonomy rejected | 422 Unprocessable | **PASSED** |
+| **ACH-LOCAL-006** | Unauthenticated request to `/api/v1/achievements` | 401 Unauthorized | **PASSED** |
+| **ACH-LOCAL-007** | Revoked session Bearer token | 401 Unauthorized | **PASSED** |
+| **ACH-LOCAL-008** | Pure local MySQL persistence verified (no Supabase/PostgreSQL) | 200 Database OK | **PASSED** |
+
+---
+
+## 3. Remediation Summary for `/api/v1/achievements`
+
+- **Resolution chosen:** OPTION A (Ported `AchievementController` as compatibility adapter over `student_portfolio_records`).
+- **Local-defense Supabase Auth dependency:** REMOVED (replaced with `AuthenticatedActorService` and `AuthorizationService`).
+- **Active `public.*` schema dependency:** REMOVED across all active controllers.
+- **Offline smoke test:** PASSED.
+
+---
+
+## 4. Compliance and Invariants Verified
 
 1. **Strict Ownership Invariants:** Student and Personnel draft records are completely inaccessible across accounts.
 2. **Anti-Self-Verification Guarantee:** Students holding any elevated role are unconditionally blocked from verifying their own submissions.

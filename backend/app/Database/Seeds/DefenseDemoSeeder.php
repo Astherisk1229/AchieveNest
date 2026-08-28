@@ -34,14 +34,24 @@ class DefenseDemoSeeder extends Seeder
         // Delete in foreign-key dependency order
         $db->table('notifications')->like('id', $demoPrefix)->delete();
         $db->table('student_portfolio_verification_events')->like('id', $demoPrefix)->delete();
+        $db->table('student_award_score_evidence')->emptyTable();
+        $db->table('student_award_criterion_scores')->emptyTable();
+        $db->table('award_interview_eligibilities')->emptyTable();
+        $db->table('student_award_evaluations')->emptyTable();
+        $db->table('dean_student_nominations')->emptyTable();
         $db->table('student_portfolio_evidence')->like('id', $demoPrefix)->delete();
         $db->table('student_portfolio_records')->like('id', $demoPrefix)->delete();
-        $db->table('award_interview_eligibilities')->like('id', $demoPrefix)->delete();
-        $db->table('dean_student_nominations')->like('id', $demoPrefix)->delete();
-        $db->table('student_award_evaluations')->like('id', $demoPrefix)->delete();
         $db->table('award_cycles')->like('id', $demoPrefix)->delete();
+        $db->table('personnel_evaluation_reports')->emptyTable();
+        $db->table('personnel_evaluation_deficiency_requests')->emptyTable();
+        $db->table('personnel_evaluation_events')->emptyTable();
+        $db->table('personnel_evaluation_items')->emptyTable();
+        $db->table('personnel_evaluations')->emptyTable();
+        $db->table('personnel_qualification_reviews')->emptyTable();
         $db->table('personnel_accomplishment_evidence')->like('id', $demoPrefix)->delete();
         $db->table('personnel_accomplishments')->like('id', $demoPrefix)->delete();
+        $db->table('password_reset_requests')->like('id', $demoPrefix)->delete();
+        $db->table('audit_logs')->like('id', $demoPrefix)->delete();
         $db->table('organization_moderator_assignments')->like('id', $demoPrefix)->delete();
         $db->table('program_coordinator_assignments')->like('id', $demoPrefix)->delete();
         $db->table('dean_assignments')->like('id', $demoPrefix)->delete();

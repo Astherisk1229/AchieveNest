@@ -1,0 +1,41 @@
+# Phase 14 Award Evaluation Result
+
+- Branch: defense/wamp-local
+- Starting commit: 1f26afe1636651d515ac51198ae2ad7a46425568
+- Final commit: b633bbd3fdabc3be1b90adfd8f890088befe893e
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- AwardEvaluationService: `backend/app/Services/AwardEvaluationService.php`
+- Run endpoint: `POST /api/v1/osad/awards/{awardId}/evaluate`
+- Active cycle: `CYCLE_2025_2026_S2` (`d0000000-0000-0000-0008-000000000001`)
+- Award definitions: 15 active awards in reference table
+- Criteria: Authoritative rubrics from `award_criteria`
+- Scoring rules: Granular rubric scoring and point caps
+- Portfolio mappings: Explicit taxonomy category/subcategory matching
+- Verified-only scoring: PROVEN (Only `status = 'verified'` records scored)
+- Draft ignored: PROVEN (Zero score effect from draft records)
+- Submitted ignored: PROVEN (Zero score effect from unverified submissions)
+- Rejected ignored: PROVEN (Zero score effect from rejected records)
+- Duplicate contribution prevented: PROVEN (Single record counted once per criterion)
+- Criterion max enforcement: PROVEN (Earned points strictly capped at `max_points`)
+- Potential score: PROVEN (Sum of criterion awarded points)
+- Potential percent: PROVEN (Calculated against maximum computable score)
+- Candidate threshold: 80.00% default invariant
+- Potential Candidate classification: PROVEN (`Potential Candidate / Eligible for Interview` or `Not Qualified for Interview`)
+- Student own-result view: PROVEN (Student A authorized to view own evaluation)
+- Cross-Student denial: PROVEN (Student A denied Student B evaluation with 403 Forbidden)
+- OSAD run authorization: PROVEN (Active OSAD staff authorized to execute evaluation)
+- Dean automated-run denial: PROVEN (Dean denied running automated evaluation with 403 Forbidden)
+- Explainable basis: PROVEN (`student_award_score_evidence` traces exact verified items)
+- Idempotent recalculation: PROVEN (Single evaluation record persisted, no duplicate rows)
+- Dean nomination: PROVEN (Dean submits nomination with justification, creates `dean_nomination` eligibility)
+- Cross-College nomination: PROVEN (Active College Dean may nominate any university student)
+- Nomination fake score: PROVEN (Nomination creates NO fake 80% score; `potential_score IS NULL`)
+- Nomination eligibility source: `dean_nomination` (pathway distinct from `portfolio_based`)
+- Invalid cycle handling: PROVEN (Missing/inactive cycle rejected with zero random UUID generation)
+- Invalid award handling: PROVEN (Invalid/archived award rejected)
+- Raw exception exposure: PROVEN (Zero raw SQL exception messages exposed in responses)
+- Audit events: PROVEN (Administrative evaluations and threshold updates auditable)
+- Notifications: PROVEN (Persistent notifications delivered for verified milestones)
+- Phase 14 award suite: 46 / 46 PASSED (`php spark test:phase14-awards`)
+- Blocking issues: None

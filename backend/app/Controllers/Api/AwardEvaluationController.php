@@ -2,8 +2,8 @@
 
 namespace App\Controllers\Api;
 
-use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
+use App\Services\AwardEvaluationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -13,10 +13,12 @@ class AwardEvaluationController extends Controller
     use ResponseTrait;
 
     protected AuthorizationService $authz;
+    protected AwardEvaluationService $awardService;
 
-    public function __construct(?AuthorizationService $authz = null)
+    public function __construct(?AuthorizationService $authz = null, ?AwardEvaluationService $awardService = null)
     {
         $this->authz = $authz ?? new AuthorizationService();
+        $this->awardService = $awardService ?? new AwardEvaluationService();
     }
 
     public function options(): mixed
@@ -70,6 +72,60 @@ class AwardEvaluationController extends Controller
     }
 
     /**
+     * POST /api/v1/osad/awards/{awardId}/evaluate
+     * Executes automated evaluation for an award (all eligible students or a single student).
+     * Rule: Active OSAD Administrator ONLY.
+     */
+    public function evaluateAward(string $awardId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        if (! $this->authz->award()->canRunAwardEvaluation($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Active OSAD administrator authorization required.']], 403);
+        }
+
+        $db = db_connect();
+        $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
+        if ($award === null || $award['status'] !== 'active') {
+            return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Active award definition not found.']], 404);
+        }
+
+        $payload = $this->request->getJSON(true) ?? [];
+        $cycleId = trim((string) ($payload['cycle_id'] ?? ''));
+        $studentId = trim((string) ($payload['student_profile_id'] ?? ''));
+
+        $cycle = $this->awardService->resolveActiveCycle($cycleId !== '' ? $cycleId : null);
+        if ($cycle === null || ! in_array($cycle['status'], ['active', 'evaluating'], true)) {
+            return $this->respond(['error' => ['code' => 'ACTIVE_CYCLE_REQUIRED', 'message' => 'Active award cycle not found.']], 422);
+        }
+
+        try {
+            if ($studentId !== '') {
+                $eval = $this->awardService->evaluateStudentAward(
+                    $cycle['id'],
+                    $awardId,
+                    $studentId,
+                    $actor['profile']['id']
+                );
+                return $this->respond(['data' => $eval], 200);
+            }
+
+            $bulk = $this->awardService->evaluateAwardForAllStudents(
+                $cycle['id'],
+                $awardId,
+                $actor['profile']['id']
+            );
+            return $this->respond(['data' => $bulk], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::evaluateAward] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'EVALUATION_FAILED', 'message' => 'Failed to complete award evaluation.']], 500);
+        }
+    }
+
+    /**
      * PATCH /api/v1/osad/awards/{awardId}/candidate-threshold
      */
     public function updateCandidateThreshold(string $awardId): mixed
@@ -83,6 +139,12 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Active OSAD administrator authorization required.']], 403);
         }
 
+        $db = db_connect();
+        $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
+        if ($award === null || $award['status'] !== 'active') {
+            return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Active award definition not found.']], 404);
+        }
+
         $payload = $this->request->getJSON(true) ?? [];
         $rawThreshold = $payload['candidate_threshold_percent'] ?? null;
         if (! is_numeric($rawThreshold)) {
@@ -94,7 +156,6 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_THRESHOLD', 'message' => 'candidate_threshold_percent must be between 0 and 100.']], 422);
         }
 
-        $db = db_connect();
         $db->table('award_definitions')
             ->where('id', $awardId)
             ->update([
@@ -255,35 +316,25 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'student_profile_id, award_definition_id, and justification are required.']], 422);
         }
 
-        // If cycle_id not supplied, use default active cycle
-        if ($cycleId === '') {
-            $activeCycle = $db->table('award_cycles')->where('is_active', 1)->get()->getRowArray();
-            $cycleId = $activeCycle['id'] ?? $this->genUuid();
-        }
-
-        $nominationId = $this->genUuid();
-        $now = date('Y-m-d H:i:s');
-
         try {
-            $db->table('dean_student_nominations')->insert([
-                'id'                  => $nominationId,
-                'cycle_id'            => $cycleId,
-                'award_definition_id' => $awardId,
-                'student_profile_id'  => $studentId,
-                'dean_assignment_id'  => $deanAssignment['id'],
-                'justification'       => $justification,
-                'status'              => 'active',
-                'nominated_at'        => $now,
+            $result = $this->awardService->createDeanNomination(
+                $actor['profile']['id'],
+                $deanAssignment['id'],
+                $studentId,
+                $awardId,
+                $cycleId !== '' ? $cycleId : null,
+                $justification
+            );
+
+            return $this->respondCreated([
+                'data' => [
+                    'message'       => 'Dean nomination submitted successfully.',
+                    'nomination_id' => $result['nomination_id'],
+                ],
             ]);
         } catch (Throwable $e) {
-            return $this->respond(['error' => ['code' => 'NOMINATION_FAILED', 'message' => 'Failed to record nomination: ' . $e->getMessage()]], 500);
+            log_message('error', '[AwardEvaluationController::createDeanNomination] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'NOMINATION_FAILED', 'message' => 'Failed to record nomination.']], 422);
         }
-
-        return $this->respondCreated([
-            'data' => [
-                'message'       => 'Dean nomination submitted successfully.',
-                'nomination_id' => $nominationId,
-            ],
-        ]);
     }
 }

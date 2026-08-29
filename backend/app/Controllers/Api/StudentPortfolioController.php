@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
+use App\Services\AuthorizationService;
 use App\Services\LocalEvidenceStorageService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;

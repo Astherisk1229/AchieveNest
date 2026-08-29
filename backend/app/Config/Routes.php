@@ -172,6 +172,17 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('program-coordinator/verification-queue', 'Api\StudentPortfolioController::coordinatorQueue');
     $routes->options('program-coordinator/verification-queue', 'Api\StudentPortfolioController::options');
 
+    // OSAD Student Organizations (Phase E)
+    $routes->get('osad/organizations', 'Api\OrganizationController::index');
+    $routes->post('osad/organizations', 'Api\OrganizationController::create');
+    $routes->options('osad/organizations', 'Api\OrganizationController::options');
+    $routes->get('osad/organizations/(:segment)', 'Api\OrganizationController::show/$1');
+    $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
+    $routes->get('osad/organizations/(:segment)/logo', 'Api\OrganizationController::logo/$1');
+    $routes->post('osad/organizations/(:segment)/logo', 'Api\OrganizationController::updateLogo/$1');
+    $routes->delete('osad/organizations/(:segment)/logo', 'Api\OrganizationController::deleteLogo/$1');
+    $routes->options('osad/organizations/(:segment)/logo', 'Api\OrganizationController::options');
+
     // OSAD Awards & Explainable Scoring Basis
     $routes->get('osad/awards', 'Api\AwardEvaluationController::listAwards');
     $routes->options('osad/awards', 'Api\AwardEvaluationController::options');

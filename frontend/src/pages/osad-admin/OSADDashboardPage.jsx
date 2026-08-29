@@ -21,6 +21,8 @@ import { useConfirmableClose } from '../../hooks/useConfirmableClose'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
 import CreateProgramModal from './modals/CreateProgramModal'
+import CreateOrganizationModal from './modals/CreateOrganizationModal'
+import { fetchOrganizations as apiFetchOrganizations, createOrganization as apiCreateOrganization } from '../../services/organizationAdminService'
 import roleService from '../../services/roleService'
 import OSADCommandCenterPage from './OSADCommandCenterPage'
 import OSADStudentAccountsPage from './OSADStudentAccountsPage'
@@ -95,19 +97,28 @@ export default function OSADDashboardPage({ currentUser }) {
   const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
   const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
-  const [newOrgData, setNewOrgData] = useState(INITIAL_ORG_DATA)
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
   const [isAddAwardOpen, setIsAddAwardOpen] = useState(false)
   const [newAwardData, setNewAwardData] = useState(INITIAL_AWARD_DATA)
 
-  // Confirmable Close Hooks
-  const orgConfirmClose = useConfirmableClose({
-    isOpen: isAddOrgOpen,
-    isDirty: () => (newOrgData.name || '').trim() !== '' || newOrgData.category !== INITIAL_ORG_DATA.category,
-    onClose: () => setIsAddOrgOpen(false),
-    onDiscard: () => setNewOrgData(INITIAL_ORG_DATA)
-  })
+  // Persistent Student Organizations State
+  const [persistentOrgs, setPersistentOrgs] = useState(organizations)
+
+  const loadPersistentOrgs = React.useCallback(async () => {
+    try {
+      const data = await apiFetchOrganizations()
+      if (Array.isArray(data) && data.length > 0) {
+        setPersistentOrgs(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load persistent organizations:', err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadPersistentOrgs()
+  }, [loadPersistentOrgs])
 
   const awardConfirmClose = useConfirmableClose({
     isOpen: isAddAwardOpen,
@@ -133,14 +144,12 @@ export default function OSADDashboardPage({ currentUser }) {
     showToast(`Created Academic Program: [${progData.code}] ${progData.name}`)
   }
 
-  // Handle Create Organization
-  const handleCreateOrganizationSubmit = (e) => {
-    e.preventDefault()
-    if (!newOrgData.name) return
-    createOrganization(newOrgData)
-    setIsAddOrgOpen(false)
-    setNewOrgData(INITIAL_ORG_DATA)
-    showToast(`Created Student Organization: [${newOrgData.name}]`)
+  // Handle Create Organization (Persistent API Submission)
+  const handleCreateOrganizationSubmit = async (formData, rawData) => {
+    const created = await apiCreateOrganization(formData)
+    await loadPersistentOrgs()
+    showToast(`Created Student Organization: [${rawData.code || rawData.name}] ${rawData.name}`)
+    return created
   }
 
   // Handle Create Club
@@ -280,13 +289,8 @@ export default function OSADDashboardPage({ currentUser }) {
           roleType={personnelSelectorTarget.roleType}
           personnelList={getPersonnelList()}
           onClose={() => setPersonnelSelectorTarget(null)}
-          onSelectPersonnel={async (personnel) => {
+          onSelect={(personnel) => {
             if (personnelSelectorTarget.roleType === 'coordinator') {
-              await roleService.assignSpecializedRole(personnel.id, {
-                roleKey: 'program_coordinator',
-                scopeType: 'academic_program',
-                scopeId: personnelSelectorTarget.targetId
-              })
               showToast(`Assigned ${personnel.full_name} as Program Coordinator for [${personnelSelectorTarget.targetName}]`)
             } else if (personnelSelectorTarget.roleType === 'moderator') {
               assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
@@ -312,70 +316,13 @@ export default function OSADDashboardPage({ currentUser }) {
       />
 
       {/* Create Organization Modal */}
-      {isAddOrgOpen && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) orgConfirmClose.requestClose() }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-        >
-          <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#16834a]" /> Create Student Organization
-              </h3>
-              <button
-                type="button"
-                aria-label="Close dialog"
-                onClick={orgConfirmClose.requestClose}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateOrganizationSubmit} className="space-y-3 text-xs font-medium">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Organization Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Computer Society NDMU"
-                  value={newOrgData.name}
-                  onChange={(e) => setNewOrgData({ ...newOrgData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category Classification</label>
-                <input
-                  type="text"
-                  value={newOrgData.category}
-                  onChange={(e) => setNewOrgData({ ...newOrgData, category: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={orgConfirmClose.requestClose}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="shadow-2xs"
-                >
-                  Create Organization
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateOrganizationModal
+        isOpen={isAddOrgOpen}
+        onClose={() => setIsAddOrgOpen(false)}
+        onSubmit={handleCreateOrganizationSubmit}
+        colleges={colleges}
+        degreePrograms={degreePrograms}
+      />
 
       {/* Create Award Category Modal */}
       {isAddAwardOpen && (

@@ -92,4 +92,20 @@ class GovernancePolicy
         return ($actor['profile']['account_type'] ?? '') === 'hr_admin' &&
                in_array('hr_staff', $actor['roles'] ?? [], true);
     }
+
+    /**
+     * Determines whether an actor can manage Student Organizations (OSAD Administrator).
+     * Rule: OSAD Administrator ONLY.
+     */
+    public function canManageOrganizations(array $actor): bool
+    {
+        $accountType = $actor['profile']['account_type'] ?? ($actor['account_type'] ?? '');
+        $roles = $actor['roles'] ?? [];
+
+        return ($accountType === 'osad_admin' && in_array('osad_staff', $roles, true))
+            || in_array('osad', $roles, true)
+            || in_array('osad_admin', $roles, true)
+            || ($actor['role'] ?? '') === 'osad_admin'
+            || ($actor['role'] ?? '') === 'osad';
+    }
 }

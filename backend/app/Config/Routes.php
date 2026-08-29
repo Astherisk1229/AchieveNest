@@ -186,6 +186,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // OSAD Awards & Explainable Scoring Basis
     $routes->get('osad/awards', 'Api\AwardEvaluationController::listAwards');
     $routes->options('osad/awards', 'Api\AwardEvaluationController::options');
+    $routes->get('osad/candidates', 'Api\AwardEvaluationController::listAllCandidates');
+    $routes->options('osad/candidates', 'Api\AwardEvaluationController::options');
     $routes->post('osad/awards/(:segment)/evaluate', 'Api\AwardEvaluationController::evaluateAward/$1');
     $routes->options('osad/awards/(:segment)/evaluate', 'Api\AwardEvaluationController::options');
     $routes->patch('osad/awards/(:segment)/candidate-threshold', 'Api\AwardEvaluationController::updateCandidateThreshold/$1');

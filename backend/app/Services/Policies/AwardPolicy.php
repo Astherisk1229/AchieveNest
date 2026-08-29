@@ -16,8 +16,7 @@ class AwardPolicy
 
     /**
      * Determines whether an actor can submit a Dean Award Nomination.
-     * Approved rule: Active College Dean may nominate ANY eligible student across the university
-     * (cross-College nomination allowed for this specific workflow).
+     * Rule: Active College Dean may nominate eligible students enrolled in their assigned College.
      */
     public function canNominateStudent(array $actor): bool
     {

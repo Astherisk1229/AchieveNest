@@ -126,6 +126,36 @@ class AwardEvaluationController extends Controller
     }
 
     /**
+     * Helper to validate active OSAD administrator for threshold mutation.
+     */
+    protected function isAuthorizedThresholdActor(array $actor): bool
+    {
+        $accountType = $actor['profile']['account_type'] ?? '';
+        $status = $actor['profile']['status'] ?? '';
+        $roles = (array) ($actor['roles'] ?? []);
+        return $accountType === 'osad_admin' && $status === 'active' && in_array('osad_staff', $roles, true);
+    }
+
+    /**
+     * Helper to extract server-bound actor ID and valid candidate threshold argument.
+     */
+    protected function thresholdMutationArguments(array $actor, string $awardId, array $payload): ?array
+    {
+        $actorId = (string) ($actor['profile']['id'] ?? '');
+        $rawThreshold = $payload['candidate_threshold_percent'] ?? null;
+        if (! is_numeric($rawThreshold)) {
+            return null;
+        }
+
+        $threshold = (float) $rawThreshold;
+        if ($threshold < 0 || $threshold > 100) {
+            return null;
+        }
+
+        return [$actorId, $awardId, (string) $rawThreshold];
+    }
+
+    /**
      * PATCH /api/v1/osad/awards/{awardId}/candidate-threshold
      */
     public function updateCandidateThreshold(string $awardId): mixed
@@ -135,7 +165,7 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
-        if (! $this->authz->award()->canRunAwardEvaluation($actor)) {
+        if (! $this->isAuthorizedThresholdActor($actor)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Active OSAD administrator authorization required.']], 403);
         }
 
@@ -177,6 +207,16 @@ class AwardEvaluationController extends Controller
      */
     public function listCandidates(string $awardId): mixed
     {
+        $_GET['award_id'] = $awardId;
+        return $this->listAllCandidates();
+    }
+
+    /**
+     * GET /api/v1/osad/candidates
+     * Lists all potential award candidates and dean-nominated candidates across awards.
+     */
+    public function listAllCandidates(): mixed
+    {
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
@@ -186,45 +226,167 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Access denied to award candidates.']], 403);
         }
 
+        $awardFilter = trim((string) ($this->request->getGet('award_id') ?? ''));
+        $collegeFilter = trim((string) ($this->request->getGet('college_id') ?? ''));
+        $sourceFilter = trim((string) ($this->request->getGet('source') ?? ''));
+
         $db = db_connect();
-        $evaluations = $db->table('student_award_evaluations sae')
+
+        // 1. Portfolio-based evaluations
+        $evalBuilder = $db->table('student_award_evaluations sae')
             ->select([
-                'sae.*',
+                'sae.id AS evaluation_id',
+                'sae.cycle_id',
+                'sae.award_definition_id',
+                'ad.code AS award_code',
+                'ad.name AS award_name',
+                'ad.candidate_threshold_percent',
+                'sae.student_profile_id',
                 'p.full_name AS student_name',
                 'p.institutional_id AS student_id_number',
                 'p.email AS student_email',
+                'ap.id AS program_id',
                 'ap.code AS program_code',
                 'ap.name AS program_name',
+                'c.id AS college_id',
                 'c.code AS college_code',
+                'c.name AS college_name',
+                'sae.raw_score',
+                'sae.potential_score',
+                'sae.outcome',
+                'sae.verified_evidence_count',
+                'sae.evaluated_at',
             ])
+            ->join('award_definitions ad', 'ad.id = sae.award_definition_id')
             ->join('profiles p', 'p.id = sae.student_profile_id')
             ->join('student_program_enrollments spe', 'spe.student_profile_id = p.id AND spe.is_active = 1', 'left')
             ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
             ->join('colleges c', 'c.id = ap.college_id', 'left')
-            ->where('sae.award_definition_id', $awardId)
-            ->orderBy('sae.potential_score', 'DESC')
-            ->get()->getResultArray();
+            ->orderBy('sae.potential_score', 'DESC');
 
-        // Also fetch Dean nominations for this award
-        $nominations = $db->table('dean_student_nominations dsn')
+        if ($awardFilter !== '' && $awardFilter !== 'all') {
+            $evalBuilder->where('sae.award_definition_id', $awardFilter);
+        }
+        if ($collegeFilter !== '' && $collegeFilter !== 'all') {
+            $evalBuilder->where('c.id', $collegeFilter);
+        }
+
+        $evaluations = ($sourceFilter === 'dean_nomination') ? [] : $evalBuilder->get()->getResultArray();
+
+        // 2. Dean nominations
+        $nomBuilder = $db->table('dean_student_nominations dsn')
             ->select([
-                'dsn.*',
+                'dsn.id AS nomination_id',
+                'dsn.cycle_id',
+                'dsn.award_definition_id',
+                'ad.code AS award_code',
+                'ad.name AS award_name',
+                'ad.candidate_threshold_percent',
+                'dsn.student_profile_id',
                 'p.full_name AS student_name',
                 'p.institutional_id AS student_id_number',
                 'p.email AS student_email',
+                'ap.id AS program_id',
+                'ap.code AS program_code',
+                'ap.name AS program_name',
+                'c.id AS college_id',
+                'c.code AS college_code',
+                'c.name AS college_name',
+                'dsn.justification',
+                'dsn.status AS nomination_status',
+                'dsn.nominated_at',
                 'dean_p.full_name AS nominator_name',
             ])
+            ->join('award_definitions ad', 'ad.id = dsn.award_definition_id')
             ->join('profiles p', 'p.id = dsn.student_profile_id')
+            ->join('student_program_enrollments spe', 'spe.student_profile_id = p.id AND spe.is_active = 1', 'left')
+            ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
+            ->join('colleges c', 'c.id = ap.college_id', 'left')
             ->join('dean_assignments da', 'da.id = dsn.dean_assignment_id')
             ->join('profiles dean_p', 'dean_p.id = da.personnel_profile_id')
-            ->where('dsn.award_definition_id', $awardId)
             ->where('dsn.status', 'active')
-            ->get()->getResultArray();
+            ->orderBy('dsn.nominated_at', 'DESC');
+
+        if ($awardFilter !== '' && $awardFilter !== 'all') {
+            $nomBuilder->where('dsn.award_definition_id', $awardFilter);
+        }
+        if ($collegeFilter !== '' && $collegeFilter !== 'all') {
+            $nomBuilder->where('c.id', $collegeFilter);
+        }
+
+        $nominations = ($sourceFilter === 'portfolio_evaluation') ? [] : $nomBuilder->get()->getResultArray();
+
+        // Format unified candidate list
+        $candidates = [];
+
+        foreach ($evaluations as $e) {
+            $candidates[] = [
+                'candidate_id'              => 'eval-' . $e['evaluation_id'],
+                'student_profile_id'        => $e['student_profile_id'],
+                'student_name'              => $e['student_name'],
+                'student_id_number'         => $e['student_id_number'],
+                'student_email'             => $e['student_email'],
+                'program_id'                => $e['program_id'],
+                'program_code'              => $e['program_code'],
+                'program_name'              => $e['program_name'],
+                'college_id'                => $e['college_id'],
+                'college_code'              => $e['college_code'],
+                'college_name'              => $e['college_name'],
+                'award_definition_id'       => $e['award_definition_id'],
+                'award_code'                => $e['award_code'],
+                'award_name'                => $e['award_name'],
+                'candidate_threshold_percent' => $e['candidate_threshold_percent'],
+                'eligibility_source'        => 'portfolio_evaluation',
+                'evaluation_id'             => $e['evaluation_id'],
+                'nomination_id'             => null,
+                'nominator_name'            => null,
+                'justification'             => null,
+                'raw_score'                 => (float) $e['raw_score'],
+                'potential_score'           => (float) $e['potential_score'],
+                'verified_evidence_count'   => (int) $e['verified_evidence_count'],
+                'is_candidate'              => (float) $e['potential_score'] >= (float) ($e['candidate_threshold_percent'] ?? 80.0),
+                'outcome'                   => $e['outcome'],
+                'evaluated_at'              => $e['evaluated_at'],
+                'nominated_at'              => null,
+            ];
+        }
+
+        foreach ($nominations as $n) {
+            $candidates[] = [
+                'candidate_id'              => 'nom-' . $n['nomination_id'],
+                'student_profile_id'        => $n['student_profile_id'],
+                'student_name'              => $n['student_name'],
+                'student_id_number'         => $n['student_id_number'],
+                'student_email'             => $n['student_email'],
+                'program_id'                => $n['program_id'],
+                'program_code'              => $n['program_code'],
+                'program_name'              => $n['program_name'],
+                'college_id'                => $n['college_id'],
+                'college_code'              => $n['college_code'],
+                'college_name'              => $n['college_name'],
+                'award_definition_id'       => $n['award_definition_id'],
+                'award_code'                => $n['award_code'],
+                'award_name'                => $n['award_name'],
+                'candidate_threshold_percent' => $n['candidate_threshold_percent'],
+                'eligibility_source'        => 'dean_nomination',
+                'evaluation_id'             => null,
+                'nomination_id'             => $n['nomination_id'],
+                'nominator_name'            => $n['nominator_name'],
+                'justification'             => $n['justification'],
+                'raw_score'                 => null,
+                'potential_score'           => null,
+                'verified_evidence_count'   => null,
+                'is_candidate'              => true,
+                'outcome'                   => 'Dean-Nominated Candidate',
+                'evaluated_at'              => null,
+                'nominated_at'              => $n['nominated_at'],
+            ];
+        }
 
         return $this->respond([
             'data' => [
-                'evaluations'      => $evaluations,
-                'dean_nominations' => $nominations,
+                'candidates' => $candidates,
+                'total'      => count($candidates),
             ],
         ], 200);
     }

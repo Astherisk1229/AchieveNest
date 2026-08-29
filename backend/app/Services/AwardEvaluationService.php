@@ -110,18 +110,26 @@ class AwardEvaluationService
                 $critCode = strtoupper($criterion['code']);
                 $targetCatCodes = [];
 
-                if (str_contains($critCode, 'LEAD')) {
-                    $targetCatCodes = ['LEADERSHIP_POSITION', 'ORG_MEMBERSHIP_PARTICIPATION'];
-                } elseif (str_contains($critCode, 'COMMUNITY') || str_contains($critCode, 'SERVICE')) {
-                    $targetCatCodes = ['COMMUNITY_SERVICE_VOLUNTEERISM', 'CHURCH_MINISTRY_INVOLVEMENT'];
-                } elseif (str_contains($critCode, 'DEVELOPMENT') || str_contains($critCode, 'SEMINAR') || str_contains($critCode, 'GROWTH')) {
-                    $targetCatCodes = ['SEMINAR_TRAINING', 'CITATION_RECOGNITION'];
-                } elseif (str_contains($critCode, 'SPORT') || str_contains($critCode, 'ATHL')) {
-                    $targetCatCodes = ['SPORTS'];
-                } elseif (str_contains($critCode, 'CULT') || str_contains($critCode, 'ART')) {
-                    $targetCatCodes = ['SOCIO_CULTURAL_PERFORMING_ARTS'];
+                if (str_contains($critCode, 'JOURN_PUB')) {
+                    $targetCatCodes = ['CAMPUS_JOURNALISM', 'CITATION_RECOGNITION'];
                 } elseif (str_contains($critCode, 'JOURN') || str_contains($critCode, 'PUB')) {
-                    $targetCatCodes = ['CAMPUS_JOURNALISM'];
+                    $targetCatCodes = ['CAMPUS_JOURNALISM', 'LEADERSHIP_POSITION', 'CITATION_RECOGNITION'];
+                } elseif (str_contains($critCode, 'SPORT') || str_contains($critCode, 'ATHL')) {
+                    $targetCatCodes = ['SPORTS', 'CITATION_RECOGNITION'];
+                } elseif (str_contains($critCode, 'CULT') || str_contains($critCode, 'ART') || str_contains($critCode, 'PERF')) {
+                    $targetCatCodes = ['SOCIO_CULTURAL_PERFORMING_ARTS', 'CITATION_RECOGNITION'];
+                } elseif (str_contains($critCode, 'MINISTRY')) {
+                    $targetCatCodes = ['CHURCH_MINISTRY_INVOLVEMENT', 'COMMUNITY_SERVICE_VOLUNTEERISM'];
+                } elseif (str_contains($critCode, 'COMMUNITY') || str_contains($critCode, 'SERVICE') || str_contains($critCode, 'VOL') || str_contains($critCode, 'COMM')) {
+                    $targetCatCodes = ['COMMUNITY_SERVICE_VOLUNTEERISM', 'CHURCH_MINISTRY_INVOLVEMENT'];
+                } elseif (str_contains($critCode, 'COCURR') || str_contains($critCode, 'EXTR') || str_contains($critCode, 'MEM') || str_contains($critCode, 'CONTRIB')) {
+                    $targetCatCodes = ['ORG_MEMBERSHIP_PARTICIPATION', 'LEADERSHIP_POSITION', 'SEMINAR_TRAINING'];
+                } elseif (str_contains($critCode, 'ACAD') || str_contains($critCode, 'RES') || str_contains($critCode, 'SCHOLASTIC') || str_contains($critCode, 'INNOVATION') || str_contains($critCode, 'RECOG') || str_contains($critCode, 'MERIT') || str_contains($critCode, 'HOLISTIC')) {
+                    $targetCatCodes = ['CITATION_RECOGNITION', 'SEMINAR_TRAINING'];
+                } elseif (str_contains($critCode, 'DEVELOPMENT') || str_contains($critCode, 'SEMINAR') || str_contains($critCode, 'GROWTH') || str_contains($critCode, 'CONF') || str_contains($critCode, 'COMPETITION') || str_contains($critCode, 'TRAINING')) {
+                    $targetCatCodes = ['SEMINAR_TRAINING', 'CITATION_RECOGNITION'];
+                } elseif (str_contains($critCode, 'LEAD') || str_contains($critCode, 'GOV')) {
+                    $targetCatCodes = ['LEADERSHIP_POSITION', 'ORG_MEMBERSHIP_PARTICIPATION'];
                 } else {
                     $targetCatCodes = ['LEADERSHIP_POSITION', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'SEMINAR_TRAINING'];
                 }
@@ -446,6 +454,19 @@ class AwardEvaluationService
             ->get()->getRowArray();
         if ($student === null) {
             throw new RuntimeException('Target student profile not found or inactive.');
+        }
+
+        // Validate that student is actively enrolled in the Dean's assigned College
+        $deanCollegeId = (string) $deanAssignment['college_id'];
+        $studentEnrollment = $this->db->table('student_program_enrollments spe')
+            ->select('ap.college_id')
+            ->join('academic_programs ap', 'ap.id = spe.academic_program_id')
+            ->where('spe.student_profile_id', $studentProfileId)
+            ->where('spe.is_active', 1)
+            ->get()->getRowArray();
+
+        if ($studentEnrollment === null || (string) ($studentEnrollment['college_id'] ?? '') !== $deanCollegeId) {
+            throw new RuntimeException('Dean may only nominate students actively enrolled in their assigned College.');
         }
 
         $award = $this->db->table('award_definitions')

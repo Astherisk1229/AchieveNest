@@ -5,7 +5,7 @@
 
 ## Baseline
 - **Branch:** `audit/project-architecture-linkage`
-- **Starting HEAD:** `94324e8832a8231c4f52f829aa87e584f3eb5420`
+- **Starting HEAD:** `f8f2c567825d19db2f57a3e792e3be7c87c0a6b7`
 - **Phase 0 Status:** `PASSED / COMPLETED` (`docs/audit/PHASE_0_FREEZE_AND_SAFETY_BASELINE.md`)
 - **Phase 1 Status:** `PASSED / COMPLETED` (`docs/audit/PHASE_1_REPOSITORY_INVENTORY.md`)
 - **Phase 2 Status:** `PASSED / COMPLETED` (`docs/audit/PHASE_2_FRONTEND_ROUTE_REACHABILITY.md`)
@@ -19,60 +19,55 @@
 
 ---
 
-## Documentation & Artifact Inventory Summary
-- **Root-Level Files:** 12 files (9 tracked historical reports/dumps + 1 untracked runbook + 2 config files)
-- **Active Audit Reports (`docs/audit/`):** 9 authoritative phase audit reports (`PHASE_0` through `PHASE_8`)
-- **Current Runbooks:** 1 operator runbook (`STARTUP_COMMANDS.md`)
-- **Architecture References:** 1 active UX/architecture document (`USER_WORKFLOW_AND_IMPROVEMENTS.md`)
-- **Historical Implementation Reports:** 7 root-level Markdown reports
-- **Tracked Database Dumps:** 1 root dump (`AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump`, 579 KB)
-- **Tracked Generated Dependency Clutter:** 1,144 tracked files in `backend/development/node_modules/`
-- **Disaster Recovery Backups:** 4 automated timestamped mysqldump backups in `backend/writable/backups/`
+## Reconciled Documentation & Clutter Universe
+
+### Artifact Counts Summary
+- **Total Registered Entities in Register:** **24 entities** (across 25 schema columns)
+- **Active Audit Reports (`docs/audit/`):** **9 authoritative phase reports** (`PHASE_0` through `PHASE_8`)
+- **Authoritative Current Runbooks:** **1 operator runbook** (`STARTUP_COMMANDS.md`)
+- **Authoritative Architecture References:** **1 design document** (`USER_WORKFLOW_AND_IMPROVEMENTS.md`)
+- **Historical Implementation Reports:** **7 root-level milestone reports** (`IMPLEMENTATION-HISTORY`)
+- **Root-Level Files:** **12 files** (9 historical reports/dumps + 1 runbook + 2 configuration files)
+- **Tracked Generated Dependency Locations:** **2 locations** (`backend/development/node_modules/` and `node_modules/.vite/deps/`)
+- **Total Tracked Generated Files:** **1,123 files** (27.29 MB)
+- **Disaster Recovery Backups:** **4 automated mysqldump snapshots** in `backend/writable/backups/`
 
 ---
 
-## Root-Level Inventory & Misplaced Candidates
-The repository root contains 9 historical reports and dump files that are functional clutter candidates for relocation in Phase 14:
-1. `AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` -> Recommend moving to `archive/` or secure backup store
-2. `AchieveNest_Phase_2_Pre_Execution_Migration_Code_Review.md` -> Recommend moving to `docs/history/`
-3. `AchieveNest_Phase_4_Fresh_Disposable_Database_Build_Report.md` -> Recommend moving to `docs/reports/`
-4. `AchieveNest_Phase_5_Reset_and_Replay_Validation_Report.md` -> Recommend moving to `docs/reports/`
-5. `AchieveNest_Phase_6_Fresh_Build_vs_Current_Test_Reconciliation_Report.md` -> Recommend moving to `docs/reports/`
-6. `AchieveNest_Phase_7_Test_Reconciliation_Report.md` -> Recommend moving to `docs/reports/`
-7. `AchieveNest_Phase_8_Application_Security_and_Role_Based_E2E_Validation_Report.md` -> Recommend moving to `docs/reports/`
-8. `AchieveNest_Phase_8_E2E_Test_Matrix.md` -> Recommend moving to `docs/reports/`
-9. `USER_WORKFLOW_AND_IMPROVEMENTS.md` -> Recommend moving to `docs/architecture/`
+## Root-Level Inventory & Misplaced Candidates (8 Candidates)
+1. `AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` (579 KB) -> Relocate to `archive/` or secure backup store
+2. `AchieveNest_Phase_2_Pre_Execution_Migration_Code_Review.md` -> Relocate to `docs/history/`
+3. `AchieveNest_Phase_4_Fresh_Disposable_Database_Build_Report.md` -> Relocate to `docs/reports/`
+4. `AchieveNest_Phase_5_Reset_and_Replay_Validation_Report.md` -> Relocate to `docs/reports/`
+5. `AchieveNest_Phase_6_Fresh_Build_vs_Current_Test_Reconciliation_Report.md` -> Relocate to `docs/reports/`
+6. `AchieveNest_Phase_7_Test_Reconciliation_Report.md` -> Relocate to `docs/reports/`
+7. `AchieveNest_Phase_8_Application_Security_and_Role_Based_E2E_Validation_Report.md` -> Relocate to `docs/reports/`
+8. `AchieveNest_Phase_8_E2E_Test_Matrix.md` -> Relocate to `docs/reports/`
 
 ---
 
-## Technology Reference Audit
-- **Supabase / PostgreSQL References:** Pre-Phase 8 historical reports describe early Supabase RLS and PostgreSQL schemas. These references are historically accurate snapshots and should remain preserved in place as audit trail records rather than being edited.
-- **WAMP / MySQL References:** All current audit documents (Phases 0–8) and `STARTUP_COMMANDS.md` accurately describe the active local WAMP PHP 8.2 and MySQL 8.4 runtime.
+## Tracked Generated Dependencies (2 Candidates)
+1. `backend/development/node_modules/`: **1,108 tracked files** (20.47 MB) -> Candidate for `git rm -r --cached` in Phase 14
+2. `node_modules/.vite/deps/`: **15 tracked files** (6.82 MB) -> Candidate for `git rm -r --cached` in Phase 14
 
 ---
 
-## Terminology Reference Audit
-- Older root-level reports reference historical `department` and `depsec` terminology. These remain valuable historical evidence and are catalogued for non-destructive retention.
-- All current active documentation and runbooks adhere strictly to institutional `College`, `Program`, and `Administrative Unit` taxonomy.
-
----
-
-## Tracked Generated Dependency Clutter (`backend/development/node_modules/`)
-- **Finding:** 1,144 generated dependency files under `backend/development/node_modules/` are currently tracked in the Git repository index.
-- **Recommendation:** In Phase 14, execute `git rm -r --cached backend/development/node_modules` and ensure `node_modules` is ignored via `.gitignore` to eliminate repository bloat without affecting local execution.
+## Technology Reference Findings
+- **Supabase/PostgreSQL:** Early historical reports document PostgreSQL/Supabase setup milestones. These remain preserved intact as audit trail records.
+- **WAMP/MySQL:** Active runtime and audit trail operate 100% on local WAMP PHP 8.2 and MySQL 8.4.
 
 ---
 
 ## Sensitive Artifact Review
-- **Credentials & Keys:** Zero plaintext production credentials, live Supabase service keys, or private certificates exist in documentation.
-- **Runbooks:** `STARTUP_COMMANDS.md` references demo credentials dynamically via environment variables without hardcoded secrets.
+- Zero plaintext production credentials, live cloud keys, or private certificates exist in documentation.
 
 ---
 
 ## Audit Artifacts Generated
-1. **Documentation Artifact Register CSV:** `docs/audit/PHASE_9_DOCUMENTATION_ARTIFACT_REGISTER.csv` (24 lines across 25 columns)
-2. **Cleanup Review Candidates CSV:** `docs/audit/PHASE_9_CLEANUP_REVIEW_CANDIDATES.csv` (10 lines, 9 candidates across 10 columns)
+1. **Documentation Artifact Register CSV:** `docs/audit/PHASE_9_DOCUMENTATION_ARTIFACT_REGISTER.csv` (25 lines, 24 records across 25 columns)
+2. **Cleanup Review Candidates CSV:** `docs/audit/PHASE_9_CLEANUP_REVIEW_CANDIDATES.csv` (11 lines, 10 records across 10 columns)
 3. **Audit Narrative Report:** `docs/audit/PHASE_9_DOCUMENTATION_REPORTS_ROOT_CLUTTER_AUDIT.md`
+4. **Reconciliation Addendum:** `docs/audit/PHASE_9_GENERATED_DEPENDENCY_RECONCILIATION_ADDENDUM.md`
 
 ---
 
@@ -80,4 +75,4 @@ The repository root contains 9 historical reports and dump files that are functi
 `PASS / COMPLETED`
 
 ## Safety Confirmation
-No documentation, report, root-level artifact, backup, dump, generated dependency, source file, script, route, schema, API, UI, auth, or business-logic cleanup was performed in Phase 9.
+No documentation, report, root-level artifact, generated dependency/cache, backup, dump, runbook, source file, script, route, schema, API, UI, auth, or business-logic cleanup was performed during the Phase 9 reconciliation.

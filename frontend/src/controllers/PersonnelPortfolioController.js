@@ -234,10 +234,6 @@ export default class PersonnelPortfolioController {
     return portfolioModel
   }
 
-  static submitToDepSec(portfolioModel, actorName = 'Personnel') {
-    return PersonnelPortfolioController.submitToDean(portfolioModel, actorName)
-  }
-
   /**
    * 1-Click Auto-Populates Portfolio from Personnel Vault repository.
    * Maps Vault items into Area A, Area B, or Area C based on category classification.

@@ -59,9 +59,9 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001') {
     }
   }, [portfolio, refreshPortfolio])
 
-  const submitToDepSec = useCallback(() => {
+  const submitToDean = useCallback(() => {
     try {
-      const updated = PersonnelPortfolioController.submitToDepSec(portfolio, portfolio.personnel_name)
+      const updated = PersonnelPortfolioController.submitToDean(portfolio, portfolio.personnel_name)
       refreshPortfolio(updated)
       return { success: true }
     } catch (err) {
@@ -100,7 +100,7 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001') {
     removeItem,
     updateItem,
     updateYearsOfService,
-    submitToDepSec,
+    submitToDean,
     autoPopulateFromVault,
     reload
   }

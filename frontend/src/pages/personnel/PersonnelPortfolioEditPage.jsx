@@ -53,7 +53,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     addItem,
     removeItem,
     updateItem,
-    submitToDepSec,
+    submitToDean,
     autoPopulateFromVault
   } = usePersonnelPortfolio(activeUser.employee_id || 'EMP-2021-0842')
 
@@ -266,11 +266,11 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     const missingProofItems = allItems.filter(i => !i.proof_file_name || !i.proof_file_name.trim())
 
     if (missingProofItems.length > 0) {
-      setSubmitError(`Validation Error: ${missingProofItems.length} accomplishment record(s) are missing documentary proof attachments. Please upload proof before submitting to DepSec.`)
+      setSubmitError(`Validation Error: ${missingProofItems.length} accomplishment record(s) are missing documentary proof attachments. Please upload proof before submitting to Dean.`)
       return
     }
 
-    const res = submitToDepSec()
+    const res = submitToDean()
     if (res.success) {
       showToast('Portfolio draft submitted to HR for verification!')
     } else {

@@ -2,11 +2,11 @@ import React from 'react'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { Award, CheckCircle2, AlertCircle, Send, FileText, ShieldCheck, Sparkles, Clock, AlertTriangle } from 'lucide-react'
 
-export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepSec, error }) {
+export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDean, error }) {
   if (!portfolio || !totals) return null
 
   const isDraft = portfolio.status === 'DRAFT' || portfolio.status === 'RETURNED_TO_PERSONNEL'
-  const isSubmitted = portfolio.status === 'SUBMITTED_TO_DEP_SEC' || portfolio.status === 'UNDER_DEP_SEC_REVIEW'
+  const isSubmitted = portfolio.status === 'SUBMITTED_TO_DEAN' || portfolio.status === 'UNDER_DEAN_REVIEW'
   const isEndorsed = portfolio.status === 'ENDORSED_TO_HR'
   const isApproved = portfolio.status === 'HR_APPROVED'
 
@@ -28,7 +28,7 @@ export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepS
     if (isSubmitted) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-          <Clock className="w-3.5 h-3.5" /> Under Dept. Sec Review
+          <Clock className="w-3.5 h-3.5" /> Under Dean Review
         </span>
       )
     }
@@ -68,10 +68,10 @@ export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepS
         {/* Action Button */}
         {isDraft && (
           <button
-            onClick={onSubmitToDepSec}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-md hover:shadow-emerald-600/20"
+            onClick={onSubmitToDean}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-md hover:shadow-emerald-600/20 cursor-pointer"
           >
-            <Send className="w-4 h-4" /> Submit to Dept. Secretary
+            <Send className="w-4 h-4" /> Submit to Dean
           </button>
         )}
       </div>

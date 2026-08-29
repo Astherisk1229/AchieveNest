@@ -1,7 +1,7 @@
 # Phase 13A — AchieveNest Naming Standard & Conventions
 
 ## Overview
-This document defines the canonical naming standards and terminology rules derived directly from the working AchieveNest codebase. It establishes rules for frontend components, backend classes, API endpoints, routes, business domains, and historical artifact preservation.
+This document defines the canonical naming standards and terminology rules derived directly from the working AchieveNest codebase. It establishes rules for frontend components, backend classes, API endpoints, routes, business domains, database artifacts, and historical artifact preservation.
 
 ---
 
@@ -14,7 +14,7 @@ This document defines the canonical naming standards and terminology rules deriv
 | **Administrative Structure** | `Administrative Unit` | `College` / `Program` | Non-academic support units (e.g. HR, OSAD, Athletics, CES). |
 | **College Leadership** | `Dean` | `Department Secretary`, `depsec` | College-level academic executive and evaluator. |
 | **Program Leadership** | `Program Coordinator` | `Department Head`, `Department Chair` | Degree program academic coordinator and reviewer. |
-| **Student Organization Leadership** | `Organization Moderator` | `Faculty Adviser`, `DepSec` | Faculty moderator assigned to a student organization. |
+| **Student Organization Leadership** | `Organization Moderator` | `Faculty Adviser`, `DepSec` | Faculty moderator assigned to a recognized student organization. |
 | **Award Eligibility Pipeline** | `Potential Award Candidates` / `Award Candidates` | `Potential Awardees`, `Generated Awardees` | System identifies candidate eligibility based on 80% benchmark or Dean nomination; final awardee selection is an institutional OSAD decision. |
 | **Dean Award Pathway** | `Dean Nominations` | N/A | Authoritative dual-pathway feature allowing Deans to nominate candidates for interview eligibility. |
 | **Institutional Identity** | `NDMU` / `Notre Dame of Marbel University` | N/A | Official institutional branding, seal, and email validation domain (`@ndmu.edu.ph`). |
@@ -48,8 +48,11 @@ This document defines the canonical naming standards and terminology rules deriv
 ## 3. Backend Naming Conventions (CodeIgniter 4)
 
 ### A. Controllers (`backend/app/Controllers/`)
-- **Convention:** PascalCase ending with `Controller.php` (e.g. `AccountLifecycleController.php`, `AwardEvaluationController.php`, `HREvaluationController.php`).
-- **Rule:** Extends `BaseController` or `ResourceController`.
+- **Inventory Standard:** Exactly **18 controllers total**:
+  - **17 API Controllers** under `backend/app/Controllers/Api/` (e.g. `AccountLifecycleController.php`, `AwardEvaluationController.php`, `HREvaluationController.php`).
+  - **1 Home Controller** (`Home.php`) under `backend/app/Controllers/`.
+  - **1 Base Abstract Controller** (`BaseController.php`).
+- **Convention:** PascalCase ending with `Controller.php`. Extends `BaseController` or `ResourceController`.
 
 ### B. Services & Policy Classes (`backend/app/Services/`, `backend/app/Services/Policies/`)
 - **Convention:** PascalCase ending with `Service.php` or `Policy.php` (e.g. `AwardEvaluationService.php`, `AwardPolicy.php`, `GovernancePolicy.php`).
@@ -63,9 +66,13 @@ This document defines the canonical naming standards and terminology rules deriv
 - **Convention:** PascalCase describing command action (e.g. `CheckDatabaseHealth.php`, `VerifyPhase14Awards.php`, `GenerateDailyMetrics.php`).
 - **Rule:** Command group names follow `test:*`, `setup:*`, `health:*`, or `system:*`.
 
-### E. Database Migrations & Seeds (`backend/app/Database/`, `backend/database/mysql-defense/`)
-- **Convention:** Chronological prefixes followed by snake_case descriptor (e.g. `000001_initial_schema.sql`, `000006_award_scoring_and_eligibility.sql`, `001_roles_seeder.sql`).
-- **Protection:** Historical migration filenames must never be modified to preserve immutable schema lineage.
+### E. Database Artifact Families
+The repository maintains three distinct database artifact families that must not be conflated:
+1. **CodeIgniter Migrations (26 PHP Classes):** Located in `backend/app/Database/Migrations/` with chronological timestamp prefixes (e.g. `2026-08-21-000001_CreateIdentityAndAcademicFoundation.php` to `2026-08-27-000026_HardenEvidenceUploadSecurity.php`). Protected from renaming.
+2. **CodeIgniter Seeders (5 PHP Classes):** Located in `backend/app/Database/Seeds/` (`DefenseDemoPersonaSeeder.php`, `DefenseDemoScenarioSeeder.php`, `DefenseDemoSeeder.php`, `DemoAcademicStructureSeeder.php`, `LocalDefenseAuthSeeder.php`).
+3. **MySQL Defense SQL Package (11 .sql Files):** Located in `backend/database/mysql-defense/migrations/`:
+   - 10 replay migration SQL files (`000001_identity_and_institutional.sql` to `000010_constraints_indexes_reference_seeds.sql`).
+   - 1 permanent reference-data / session defense SQL file (`000011_local_auth_sessions.sql`).
 
 ---
 
@@ -80,7 +87,15 @@ This document defines the canonical naming standards and terminology rules deriv
 
 ---
 
-## 5. Case-Sensitivity & Platform Safety Rules
+## 5. Internal Symbol Modernization: `submitToDepSec` Finalization
+Internal methods and props carrying obsolete `DepSec` references are mapped to exactly one canonical name matching actual Dean academic evaluation:
+- `PersonnelPortfolioController.js::submitToDepSec` → **`submitToDean`** (unifying with canonical static method `submitToDean`).
+- `usePersonnelPortfolio.js::submitToDepSec` → **`submitToDean`**.
+- `PortfolioSummaryCard.jsx::onSubmitToDepSec` → **`onSubmitToDean`**.
+
+---
+
+## 6. Case-Sensitivity & Platform Safety Rules
 1. **Windows vs Linux/Git Portability:** Windows file systems are case-insensitive, while Linux/CI systems are case-sensitive. 
 2. **Two-Step Case Renames:** Any case-only filename modification in Phase 14 MUST be executed via a two-step rename (e.g. `git mv file.jsx temp.jsx && git mv temp.jsx File.jsx`) to ensure Git index accuracy across operating systems.
 3. **No In-Place Migration Renaming:** Migration filenames are immutable framework keys; do not rename them for stylistic reasons.

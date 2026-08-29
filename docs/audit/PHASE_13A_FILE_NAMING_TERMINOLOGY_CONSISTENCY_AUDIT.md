@@ -6,6 +6,7 @@
 ## Baseline
 - **Branch:** `audit/project-architecture-linkage`
 - **Starting HEAD:** `1038fca61d7ad16b036d74736008a43b49396acb`
+- **Reconciliation Baseline HEAD:** `efff7fd0626df152f790295c73e52d8124625136`
 - **Working tree:** Clean (only pre-existing untracked `STARTUP_COMMANDS.md` present)
 
 ---
@@ -37,7 +38,7 @@ The AchieveNest business domain operates under the following canonical terminolo
 ---
 
 ## Frontend Naming Findings
-1. **Pages (`frontend/src/pages/`):** All 28 route-bound pages adhere strictly to `PascalCasePage.jsx` naming and match their default export components.
+1. **Pages (`frontend/src/pages/`):** All 28 route-bound pages adhere strictly to `PascalCasePage.jsx` and match their default export components.
 2. **Components & Modals:** Component filenames match default export names. Modals consistently use `*Modal.jsx` or `*Drawer.jsx`.
 3. **Hooks & Controllers:** Custom hooks follow `useCamelCase.js`. Controllers follow `PascalCaseController.js`.
 4. **Services & Models:** Models follow `PascalCaseModel.js`. Services follow `camelCase.js` or `PascalCaseService.js`.
@@ -45,7 +46,10 @@ The AchieveNest business domain operates under the following canonical terminolo
 ---
 
 ## Backend Naming Findings
-1. **Controllers (`backend/app/Controllers/`):** 12 API controllers conform strictly to CodeIgniter 4 PascalCase conventions (`*Controller.php`).
+1. **Controllers (`backend/app/Controllers/`):** Exactly **18 controllers total**:
+   - **17 API Controllers** in `backend/app/Controllers/Api/` (`AccountLifecycleController`, `AchievementController`, `AuthController`, `AwardEvaluationController`, `EventController`, `EvidenceController`, `HealthController`, `HREvaluationController`, `HRPersonnelController`, `PasswordResetRequestController`, `PersonnelAccomplishmentController`, `PersonnelRoleController`, `ProvisioningController`, `StudentPortfolioController`, `TargetHRPersonnelController`, `TargetProvisioningController`, `VerificationQueueController`).
+   - **1 Home Controller** (`Home.php` under `backend/app/Controllers/`).
+   - **1 Base Abstract Controller** (`BaseController.php`).
 2. **Services & Policies (`backend/app/Services/`):** Exactly **5 policy classes** (`AwardPolicy.php`, `EvidencePolicy.php`, `GovernancePolicy.php`, `PersonnelPolicy.php`, `StudentPortfolioPolicy.php`) are orchestrated by `AuthorizationService.php`.
 3. **Models (`backend/app/Models/`):** 18 models adhere to CodeIgniter 4 `*Model.php` standards.
 4. **Commands (`backend/app/Commands/`):** 10 Spark CLI commands follow action-oriented PascalCase names under `test:*`, `setup:*`, and `system:*`.
@@ -61,8 +65,10 @@ The AchieveNest business domain operates under the following canonical terminolo
 ## department-secretary / depsec
 - **`frontend/src/pages/personnel/department-secretary/`:** Empty directory → `FOLDER-RETIREMENT-CANDIDATE` (Retire in Phase 14).
 - **`/depsec` Route Redirect (`frontend/src/App.jsx:195`):** `<Route path="/depsec" element={<Navigate to="/personnel/dashboard" replace />} />` → `KEEP-COMPATIBILITY` (Retain redirect for deep-link compatibility).
-- **`submitToDepSec` Method:** Found in `PersonnelPortfolioController.js` and `usePersonnelPortfolio.js` → `TERMINOLOGY-UPDATE-CANDIDATE` / `RENAME-WITH-COMPATIBILITY` (Modernize to `submitForVerification` / `submitToEndorsement` in Phase 14).
-- **`onSubmitToDepSec` Prop:** In `PortfolioSummaryCard.jsx` → `RENAME` (Modernize to `onSubmitForVerification` in Phase 14).
+- **`submitToDepSec` Method Modernization:**
+  - `PersonnelPortfolioController.js::submitToDepSec` → **`submitToDean`** (unifying with canonical static method `submitToDean`).
+  - `usePersonnelPortfolio.js::submitToDepSec` → **`submitToDean`**.
+  - `PortfolioSummaryCard.jsx::onSubmitToDepSec` → **`onSubmitToDean`**.
 - **`roleContext.js` Fallback:** `normalizeRoleContext('department_secretary')` maps to `CANONICAL_ROLES.DEAN` → `KEEP-COMPATIBILITY` (Prevent session lockout).
 - **Superseded Components:** `HRScoreAuditModal.jsx` and `PersonnelPortfolioForm.jsx` contain legacy `depsec` props → `REMOVE-INSTEAD-OF-RENAME` (Phase 12 dead code candidates).
 
@@ -113,8 +119,13 @@ The AchieveNest business domain operates under the following canonical terminolo
 
 ---
 
-## Database / Migration Naming
-- All 26 migration files (`000001_initial_schema.sql` to `000026_*.sql`) and 15 seeders (`001_roles_seeder.sql` to `015_*.sql`) are protected from renaming to preserve schema lineage (`KEEP-FRAMEWORK-REQUIRED` / `KEEP-HISTORICAL`).
+## Database / Migration Naming & Distinction
+The repository maintains three distinct database artifact families:
+1. **CodeIgniter Migrations (26 PHP Classes):** Located in `backend/app/Database/Migrations/` (`2026-08-21-000001_CreateIdentityAndAcademicFoundation.php` through `2026-08-27-000026_HardenEvidenceUploadSecurity.php`). Protected from renaming (`KEEP-FRAMEWORK-REQUIRED` / `KEEP-HISTORICAL`).
+2. **CodeIgniter Seeders (5 PHP Classes):** Located in `backend/app/Database/Seeds/` (`DefenseDemoPersonaSeeder.php`, `DefenseDemoScenarioSeeder.php`, `DefenseDemoSeeder.php`, `DemoAcademicStructureSeeder.php`, `LocalDefenseAuthSeeder.php`).
+3. **MySQL Defense SQL Package (11 .sql Files):** Located in `backend/database/mysql-defense/migrations/`:
+   - 10 replay migration SQL files (`000001_identity_and_institutional.sql` to `000010_constraints_indexes_reference_seeds.sql`).
+   - 1 permanent reference-data / session defense SQL file (`000011_local_auth_sessions.sql`).
 
 ---
 
@@ -140,18 +151,35 @@ The AchieveNest business domain operates under the following canonical terminolo
 
 ---
 
+## Phase 13A Reconciliation Summary
+
+### 1. Controller Inventory Alignment
+- 18 controllers total: 17 API controllers + 1 Home controller (plus BaseController parent class).
+- Preliminary 12-controller figure documented as an audited naming sample.
+
+### 2. Database Artifact Alignment
+- 26 CodeIgniter PHP migration classes.
+- 5 CodeIgniter PHP seeder classes.
+- 11 MySQL defense SQL files (10 replay migrations + 1 permanent reference dataset).
+
+### 3. `submitToDepSec` Finalization
+- `PersonnelPortfolioController.js::submitToDepSec` → `submitToDean`
+- `usePersonnelPortfolio.js::submitToDepSec` → `submitToDean`
+- `PortfolioSummaryCard.jsx::onSubmitToDepSec` → `onSubmitToDean`
+
+---
+
 ## Phase 14 Rename / Retire Plan
+- **RENAME:** 3 symbols (`submitToDepSec` in controller & hook → `submitToDean`, `onSubmitToDepSec` in card → `onSubmitToDean`).
 - **RETIRE-FOLDER:** 1 empty folder (`frontend/src/pages/personnel/department-secretary/`).
-- **RENAME-WITH-COMPATIBILITY:** 2 methods (`submitToDepSec` in controller and hook modernized to `submitForVerification`).
-- **RENAME:** 1 prop (`onSubmitToDepSec` in `PortfolioSummaryCard.jsx` modernized to `onSubmitForVerification`).
-- **REMOVE-INSTEAD-OF-RENAME:** 22 dead code candidates (including `NDMURatingPane.jsx`, `AcademicStructureModel.js`, `ProtectedRoute.jsx`, `OSADQuickActions.jsx`).
+- **REMOVE-INSTEAD-OF-RENAME:** 22 dead code candidates (including `NDMURatingPane.jsx`, `AcademicStructureModel.js`, `ProtectedRoute.jsx`).
 - **INTENTIONAL-FEATURE-REMOVAL:** 1 component (`DigitalBarcodeIDCardModal.jsx` + 2 dashboard callers).
 - **KEEP / KEEP-COMPATIBILITY / KEEP-HISTORICAL:** All active routes, APIs, Supabase stubs, migrations, seeders, and NDMU branding.
 
 ---
 
 ## Phase 15 Validation Mapping
-1. **Frontend Test Suite:** Execute `npm test` (190 Vitest assertions) and verify modernized method/prop names.
+1. **Frontend Test Suite:** Execute `npm test` (190 Vitest assertions) and verify modernized `submitToDean` invocations.
 2. **Backend Regression:** Run `spark test:phase14-awards` (46 assertions) and `spark test:phase15-backend`.
 3. **Route Smoke Tests:** Verify `/depsec` redirects cleanly to `/personnel/dashboard` and `?tab=awardees` resolves to candidate review.
 4. **Terminology Grep:** Verify 0 active source files contain stale `Department Secretary` UI strings.
@@ -162,6 +190,7 @@ The AchieveNest business domain operates under the following canonical terminolo
 - **Rename Candidate Register CSV:** `docs/audit/PHASE_13A_RENAME_CANDIDATE_REGISTER.csv` (14 records across 25 columns)
 - **Terminology Register CSV:** `docs/audit/PHASE_13A_TERMINOLOGY_REGISTER.csv` (11 records across 13 columns)
 - **Naming Standard Specification:** `docs/audit/PHASE_13A_NAMING_STANDARD.md`
+- **Reconciliation Addendum:** `docs/audit/PHASE_13A_RECONCILIATION_ADDENDUM.md`
 - **Audit Narrative Report:** `docs/audit/PHASE_13A_FILE_NAMING_TERMINOLOGY_CONSISTENCY_AUDIT.md`
 
 ---
@@ -188,11 +217,12 @@ Audit documentation only:
 - `docs/audit/PHASE_13A_RENAME_CANDIDATE_REGISTER.csv`
 - `docs/audit/PHASE_13A_TERMINOLOGY_REGISTER.csv`
 - `docs/audit/PHASE_13A_NAMING_STANDARD.md`
+- `docs/audit/PHASE_13A_RECONCILIATION_ADDENDUM.md`
 
 ---
 
 ## Limitations
-- None. Complete terminology universe cross-referenced across codebase, routes, APIs, database migrations, and historical documentation.
+- None. Complete reconciliation of controllers, migrations, seeders, SQL replay packages, and symbol modernizations achieved.
 
 ---
 
@@ -202,4 +232,4 @@ Audit documentation only:
 ---
 
 ## Safety Confirmation
-No source filename, folder, class, component, route, API endpoint, database object, migration, seeder, command, script, UI label, role identifier, or business logic was renamed, moved, deleted, or refactored in Phase 13A.
+No source filename, folder, class, component, method, prop, route, API endpoint, database object, migration, seeder, command, script, UI label, role identifier, or business logic was renamed, moved, deleted, or refactored in Phase 13A.

@@ -1,0 +1,2 @@
+CandidateID,CandidateType,ArtifactOrTable,Evidence,Risk,RecommendedFuturePhase,Notes
+"REV-DB-001","LEGACY_SCHEMA_ARTIFACT","AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump","Root level SQL dump tracked in repository root for local instant recovery.","LOW","Phase 9 (Database Dump & Backup Governance)","Preserved safely as baseline recovery snapshot."

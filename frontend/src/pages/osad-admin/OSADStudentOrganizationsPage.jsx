@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Users, Plus, ShieldCheck, Globe } from 'lucide-react'
+import { Button } from '../../components/ui/button'
 
 export default function OSADStudentOrganizationsPage({ 
   organizations = [], 
@@ -38,14 +39,13 @@ export default function OSADStudentOrganizationsPage({
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-auto">
-          <button
-            type="button"
+          <Button
             onClick={() => setIsAddOrgOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="gap-1.5 shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Student Organization</span>
-          </button>
+          </Button>
         </div>
       </div>
 

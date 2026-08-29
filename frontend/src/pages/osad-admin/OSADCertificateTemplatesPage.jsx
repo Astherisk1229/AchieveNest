@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Sparkles, Plus, Search, Eye, Power, CheckCircle2, FileSpreadsheet, Tag } from 'lucide-react'
 import { useCertificateTemplates } from '../../hooks/useCertificateTemplates'
+import { Button } from '../../components/ui/button'
 import CertificateTemplateEditorModal from '../../components/osad/CertificateTemplateEditorModal'
 
 export default function OSADCertificateTemplatesPage() {
@@ -39,14 +40,13 @@ export default function OSADCertificateTemplatesPage() {
           </div>
         </div>
 
-        <button
-          type="button"
+        <Button
           onClick={() => setIsEditorOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
+          className="gap-2 shadow-md self-start md:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Create Certificate Template</span>
-        </button>
+        </Button>
       </div>
 
       {/* Metric Cards & Filter Bar */}

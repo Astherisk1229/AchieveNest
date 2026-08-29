@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 
 import useOSAD from '../../hooks/useOSAD'
+import { Button } from '../../components/ui/button'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
 import CreateProgramModal from './modals/CreateProgramModal'
@@ -343,12 +344,13 @@ export default function OSADDashboardPage({ currentUser }) {
                 >
                   Cancel
                 </button>
-                <button
+                <Button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#EFF7F0] hover:bg-[#143326] shadow-2xs cursor-pointer"
+                  size="sm"
+                  className="shadow-2xs"
                 >
                   Create Organization
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -436,12 +438,14 @@ export default function OSADDashboardPage({ currentUser }) {
                 >
                   Cancel
                 </button>
-                <button
+                {/* Temporary accessibility correction. Feature is scheduled for replacement during Awards Alignment. */}
+                <Button
                   type="submit"
-                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#EFF7F0] hover:bg-[#143326] shadow-2xs cursor-pointer"
+                  size="sm"
+                  className="shadow-2xs"
                 >
                   Create Category
-                </button>
+                </Button>
               </div>
             </form>
           </div>

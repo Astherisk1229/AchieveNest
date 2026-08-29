@@ -4,6 +4,7 @@ import {
   Download,
   ShieldCheck
 } from 'lucide-react'
+import { Button } from '../../components/ui/button'
 
 export default function OSADAccreditationReportsPage({ accreditationReports, _getAccreditationReportDetails }) {
   const reportsList = accreditationReports || [
@@ -41,14 +42,13 @@ export default function OSADAccreditationReportsPage({ accreditationReports, _ge
               <p className="text-xs text-slate-500 font-medium">{report.date} • {report.count} Verified Records</p>
             </div>
 
-            <button
-              type="button"
+            <Button
               onClick={() => window.print()}
-              className="w-full py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white text-xs font-extrabold flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full gap-2 shadow-2xs"
             >
-              <Download className="w-4 h-4 text-[#245F42]" />
+              <Download className="w-4 h-4" />
               <span>Print or Save as PDF</span>
-            </button>
+            </Button>
           </div>
         ))}
       </div>

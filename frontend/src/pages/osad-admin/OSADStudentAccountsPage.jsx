@@ -25,6 +25,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react'
 import { formatLastNameFirst } from '../../utils/nameFormatter'
+import { Button } from '../../components/ui/button'
 
 export default function OSADStudentAccountsPage({
   userSearchTerm,
@@ -465,7 +466,7 @@ export default function OSADStudentAccountsPage({
 
                   <div className="flex items-center gap-2 self-end sm:self-center">
                     {req.status === 'pending' ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => {
                           const targetStudent = usersList.find(u => u.email?.toLowerCase() === req.user_email?.toLowerCase()) || {
@@ -482,11 +483,12 @@ export default function OSADStudentAccountsPage({
                             setResetRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved' } : r))
                           }
                         }}
-                        className="px-3.5 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        size="sm"
+                        className="gap-1.5 shadow-2xs"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#245F42]" />
+                        <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Approve Request and Issue Temporary Password</span>
-                      </button>
+                      </Button>
                     ) : (
                       <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -690,13 +692,14 @@ export default function OSADStudentAccountsPage({
                   Cancel
                 </button>
 
-                <button
+                <Button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  size="sm"
+                  className="gap-1.5 shadow-2xs"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-amber-300" />
                   <span>Confirm Password Reset</span>
-                </button>
+                </Button>
               </div>
 
             </form>

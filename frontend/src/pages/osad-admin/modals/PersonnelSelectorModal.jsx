@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { formatPersonnelPlacement } from '../../../utils/personnelPlacement'
 import { Search, UserCheck, Check, X } from 'lucide-react'
+import { Button } from '../../../components/ui/button'
 
 export default function PersonnelSelectorModal({
   isOpen,
@@ -114,18 +115,15 @@ export default function PersonnelSelectorModal({
                       )}
                     </div>
 
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
                       disabled={isCurrentlyAssigned}
                       onClick={() => {
                         onSelectPersonnel(person)
                         onClose()
                       }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shrink-0 shadow-2xs flex items-center gap-1.5 ${
-                        isCurrentlyAssigned
-                          ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-                          : 'bg-[#EFF7F0] hover:bg-[#143326] text-white'
-                      }`}
+                      variant={isCurrentlyAssigned ? 'secondary' : 'default'}
+                      className="shrink-0 shadow-2xs gap-1.5"
                     >
                       {isCurrentlyAssigned ? (
                         <>
@@ -135,7 +133,7 @@ export default function PersonnelSelectorModal({
                       ) : (
                         <span>Select Personnel</span>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 )
               })

@@ -29,7 +29,7 @@ import OSADStudentAccountsPage from './OSADStudentAccountsPage'
 import OSADAcademicProgramsPage from './OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
 import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
-import OSADAwardCategoriesPage from './OSADAwardCategoriesPage'
+import OSADAwardsAndCriteriaPage from './OSADAwardsAndCriteriaPage'
 import OSADAwardCandidateReviewPage from './OSADAwardCandidateReviewPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
@@ -82,16 +82,6 @@ export default function OSADDashboardPage({ currentUser }) {
 
   // Initial Form Constants
   const INITIAL_ORG_DATA = { name: '', category: 'College Academic Organization' }
-  const INITIAL_AWARD_DATA = {
-    title: '',
-    category_type: 'Academic Excellence',
-    description: '',
-    min_points: 200,
-    weight_multiplier: 1.5,
-    required_prerequisites: 'Program Coordinator Verification',
-    attached_template_id: 'OSAD-TPL-01',
-    attached_template_name: 'Official NDMU Certificate of Participation'
-  }
 
   // Modal States
   const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
@@ -99,8 +89,6 @@ export default function OSADDashboardPage({ currentUser }) {
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
-  const [isAddAwardOpen, setIsAddAwardOpen] = useState(false)
-  const [newAwardData, setNewAwardData] = useState(INITIAL_AWARD_DATA)
 
   // Persistent Student Organizations State
   const [persistentOrgs, setPersistentOrgs] = useState(organizations)
@@ -119,13 +107,6 @@ export default function OSADDashboardPage({ currentUser }) {
   React.useEffect(() => {
     loadPersistentOrgs()
   }, [loadPersistentOrgs])
-
-  const awardConfirmClose = useConfirmableClose({
-    isOpen: isAddAwardOpen,
-    isDirty: () => (newAwardData.title || '').trim() !== '' || (newAwardData.description || '').trim() !== '' || newAwardData.category_type !== INITIAL_AWARD_DATA.category_type || newAwardData.min_points !== INITIAL_AWARD_DATA.min_points || newAwardData.weight_multiplier !== INITIAL_AWARD_DATA.weight_multiplier,
-    onClose: () => setIsAddAwardOpen(false),
-    onDiscard: () => setNewAwardData(INITIAL_AWARD_DATA)
-  })
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState(null)
@@ -160,16 +141,6 @@ export default function OSADDashboardPage({ currentUser }) {
     setIsAddClubOpen(false)
     setNewClubData({ name: '', parent_org: organizations[0]?.name || 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
     showToast(`Created Student Club: [${newClubData.name}]`)
-  }
-
-  // Handle Create Award Category
-  const handleCreateAwardSubmit = (e) => {
-    e.preventDefault()
-    if (!newAwardData.title) return
-    createAwardCategory(newAwardData)
-    setIsAddAwardOpen(false)
-    setNewAwardData(INITIAL_AWARD_DATA)
-    showToast(`Created Award Category: [${newAwardData.title}]`)
   }
 
   return (
@@ -233,10 +204,7 @@ export default function OSADDashboardPage({ currentUser }) {
       )}
 
       {activeTab === 'awards' && (
-        <OSADAwardCategoriesPage
-          awardCategories={awardCategories}
-          setIsAddAwardOpen={setIsAddAwardOpen}
-        />
+        <OSADAwardsAndCriteriaPage />
       )}
 
       {activeTab === 'certificate-templates' && (
@@ -261,7 +229,7 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'reports' && (
+      {activeTab === 'accreditation-reports' && (
         <OSADAccreditationReportsPage
           accreditationReports={accreditationReports}
           getAccreditationReportDetails={getAccreditationReportDetails}
@@ -269,7 +237,7 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'audit' && (
+      {activeTab === 'system-logs' && (
         <OSADSystemAuditLogsPage
           auditLogs={auditLogs}
           refreshAuditLogs={refreshAuditLogs}
@@ -324,109 +292,6 @@ export default function OSADDashboardPage({ currentUser }) {
         degreePrograms={degreePrograms}
       />
 
-      {/* Create Award Category Modal */}
-      {isAddAwardOpen && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) awardConfirmClose.requestClose() }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-        >
-          <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Award className="w-4 h-4 text-[#16834a]" /> Create Award Category
-              </h3>
-              <button
-                type="button"
-                aria-label="Close dialog"
-                onClick={awardConfirmClose.requestClose}
-                className="text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateAwardSubmit} className="space-y-3 text-xs font-medium">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Award Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Most Outstanding Student Researcher"
-                  value={newAwardData.title}
-                  onChange={(e) => setNewAwardData({ ...newAwardData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category Type</label>
-                <select
-                  value={newAwardData.category_type}
-                  onChange={(e) => setNewAwardData({ ...newAwardData, category_type: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                >
-                  <option value="Academic Excellence">Academic Excellence</option>
-                  <option value="Student Leadership">Student Leadership</option>
-                  <option value="Community Involvement">Community Involvement</option>
-                  <option value="Athletics & Sports">Athletics & Sports</option>
-                  <option value="Culture & Arts">Culture & Arts</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Description</label>
-                <textarea
-                  rows="2"
-                  value={newAwardData.description}
-                  onChange={(e) => setNewAwardData({ ...newAwardData, description: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Min. Points</label>
-                  <input
-                    type="number"
-                    value={newAwardData.min_points}
-                    onChange={(e) => setNewAwardData({ ...newAwardData, min_points: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Weight Multiplier</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newAwardData.weight_multiplier}
-                    onChange={(e) => setNewAwardData({ ...newAwardData, weight_multiplier: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={awardConfirmClose.requestClose}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                {/* Temporary accessibility correction. Feature is scheduled for replacement during Awards Alignment. */}
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="shadow-2xs"
-                >
-                  Create Category
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Discard Confirmation Dialogs */}
       <ConfirmDialog
         open={orgConfirmClose.isConfirmOpen}
@@ -436,16 +301,6 @@ export default function OSADDashboardPage({ currentUser }) {
         cancelLabel="Continue Editing"
         onConfirm={orgConfirmClose.confirmDiscard}
         onCancel={orgConfirmClose.cancelDiscard}
-      />
-
-      <ConfirmDialog
-        open={awardConfirmClose.isConfirmOpen}
-        title="Discard Award Category Changes?"
-        message="Are you sure you want to close? Your unsaved category details will be lost."
-        confirmLabel="Discard Changes"
-        cancelLabel="Continue Editing"
-        onConfirm={awardConfirmClose.confirmDiscard}
-        onCancel={awardConfirmClose.cancelDiscard}
       />
 
     </div>

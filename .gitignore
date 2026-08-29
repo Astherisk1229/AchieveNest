@@ -1,2 +1,11 @@
 # Local disposable validation/runtime artifacts
 /scratch/
+
+# Database Dumps and Local Binary Archives
+*.dump
+archive/database/*.dump
+
+# Generated Dependencies and Build Caches
+backend/development/node_modules/
+node_modules/.vite/
+frontend/node_modules/.vite/

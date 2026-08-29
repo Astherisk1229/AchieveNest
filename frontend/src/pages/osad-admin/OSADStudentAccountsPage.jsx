@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   Users,
   Search,
@@ -26,6 +26,8 @@ import {
 } from 'lucide-react'
 import { formatLastNameFirst } from '../../utils/nameFormatter'
 import { Button } from '../../components/ui/button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { useConfirmableClose } from '../../hooks/useConfirmableClose'
 
 export default function OSADStudentAccountsPage({
   userSearchTerm,
@@ -53,8 +55,34 @@ export default function OSADStudentAccountsPage({
   const [activeAccountTab, setActiveAccountTab] = useState('directory') // 'directory' | 'requests'
   const [resetRequests, setResetRequests] = useState(() => getPasswordResetRequests ? getPasswordResetRequests() : [])
 
+  // Portfolio Inspector Escape Handler
+  useEffect(() => {
+    if (!viewingStudent) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setViewingStudent(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [viewingStudent])
+
+  // Reset Password Confirmable Close
+  const resetPasswordConfirmClose = useConfirmableClose({
+    isOpen: Boolean(resetPasswordStudent),
+    isDirty: () => Boolean(tempPasswordInput),
+    onClose: () => {
+      setResetPasswordStudent(null)
+      setTempPasswordInput('NDMU-Student2026!')
+    },
+    onDiscard: () => {
+      setTempPasswordInput('NDMU-Student2026!')
+    }
+  })
+
   // Sync reset requests on custom event
-  React.useEffect(() => {
+  useEffect(() => {
     const handleSyncRequests = () => {
       if (getPasswordResetRequests) {
         setResetRequests([...getPasswordResetRequests()])
@@ -115,6 +143,7 @@ export default function OSADStudentAccountsPage({
     }
 
     setResetPasswordStudent(null)
+    setTempPasswordInput('NDMU-Student2026!')
   }
 
   const handleCopyPassword = () => {
@@ -505,8 +534,14 @@ export default function OSADStudentAccountsPage({
 
       {/* OSAD Student Portfolio Inspector Modal */}
       {viewingStudent && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setViewingStudent(null) }}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans"
+          >
 
             {/* Modal Header */}
             <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
@@ -529,6 +564,7 @@ export default function OSADStudentAccountsPage({
 
               <button
                 type="button"
+                aria-label="Close dialog"
                 onClick={() => setViewingStudent(null)}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
               >
@@ -603,8 +639,14 @@ export default function OSADStudentAccountsPage({
 
       {/* OSAD Reset Student Password Modal */}
       {resetPasswordStudent && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) resetPasswordConfirmClose.requestClose() }}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 font-sans"
+          >
 
             {/* Modal Header */}
             <div className="p-6 bg-[#EFF7F0] border-b border-[#69A97C] text-[#17663B] flex items-center justify-between">
@@ -620,7 +662,8 @@ export default function OSADStudentAccountsPage({
 
               <button
                 type="button"
-                onClick={() => setResetPasswordStudent(null)}
+                aria-label="Close dialog"
+                onClick={resetPasswordConfirmClose.requestClose}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -686,7 +729,7 @@ export default function OSADStudentAccountsPage({
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setResetPasswordStudent(null)}
+                  onClick={resetPasswordConfirmClose.requestClose}
                   className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-extrabold hover:bg-slate-200 transition cursor-pointer"
                 >
                   Cancel
@@ -707,6 +750,17 @@ export default function OSADStudentAccountsPage({
           </div>
         </div>
       )}
+
+      {/* Discard Confirmation Dialog */}
+      <ConfirmDialog
+        open={resetPasswordConfirmClose.isConfirmOpen}
+        title="Discard Password Reset?"
+        message="Are you sure you want to close? The generated temporary password will be discarded."
+        confirmLabel="Discard Changes"
+        cancelLabel="Continue Editing"
+        onConfirm={resetPasswordConfirmClose.confirmDiscard}
+        onCancel={resetPasswordConfirmClose.cancelDiscard}
+      />
 
     </div>
   )

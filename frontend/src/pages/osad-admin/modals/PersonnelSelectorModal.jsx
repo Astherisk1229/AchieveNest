@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { formatPersonnelPlacement } from '../../../utils/personnelPlacement'
 import { Search, UserCheck, Check, X } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
@@ -13,6 +13,20 @@ export default function PersonnelSelectorModal({
   roleType = 'coordinator' // 'coordinator' | 'moderator'
 }) {
   const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
 
   if (!isOpen) return null
 
@@ -31,9 +45,20 @@ export default function PersonnelSelectorModal({
     )
   })
 
+  const handleCloseModal = () => {
+    setSearchQuery('')
+    onClose()
+  }
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans">
-      <div className="bg-white dark:bg-[#131e2e] rounded-2xl max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden my-6">
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal() }}
+      className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#131e2e] rounded-2xl max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden my-6"
+      >
         
         {/* Modal Header */}
         <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
@@ -50,7 +75,9 @@ export default function PersonnelSelectorModal({
           </div>
 
           <button
-            onClick={onClose}
+            type="button"
+            aria-label="Close dialog"
+            onClick={handleCloseModal}
             className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -120,7 +147,7 @@ export default function PersonnelSelectorModal({
                       disabled={isCurrentlyAssigned}
                       onClick={() => {
                         onSelectPersonnel(person)
-                        onClose()
+                        handleCloseModal()
                       }}
                       variant={isCurrentlyAssigned ? 'secondary' : 'default'}
                       className="shrink-0 shadow-2xs gap-1.5"
@@ -145,7 +172,8 @@ export default function PersonnelSelectorModal({
         {/* Modal Footer */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-end">
           <button
-            onClick={onClose}
+            type="button"
+            onClick={handleCloseModal}
             className="px-5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-extrabold hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
           >
             Cancel

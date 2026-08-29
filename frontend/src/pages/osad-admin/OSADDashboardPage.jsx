@@ -16,6 +16,8 @@ import {
 
 import useOSAD from '../../hooks/useOSAD'
 import { Button } from '../../components/ui/button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { useConfirmableClose } from '../../hooks/useConfirmableClose'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
 import CreateProgramModal from './modals/CreateProgramModal'
@@ -76,15 +78,9 @@ export default function OSADDashboardPage({ currentUser }) {
   const [userSearchTerm, setUserSearchTerm] = useState('')
   const [personnelSelectorTarget, setPersonnelSelectorTarget] = useState(null)
 
-  // Modal States
-  const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
-  const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
-  const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
-  const [newOrgData, setNewOrgData] = useState({ name: '', category: 'College Academic Organization' })
-  const [isAddClubOpen, setIsAddClubOpen] = useState(false)
-  const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
-  const [isAddAwardOpen, setIsAddAwardOpen] = useState(false)
-  const [newAwardData, setNewAwardData] = useState({
+  // Initial Form Constants
+  const INITIAL_ORG_DATA = { name: '', category: 'College Academic Organization' }
+  const INITIAL_AWARD_DATA = {
     title: '',
     category_type: 'Academic Excellence',
     description: '',
@@ -93,6 +89,31 @@ export default function OSADDashboardPage({ currentUser }) {
     required_prerequisites: 'Program Coordinator Verification',
     attached_template_id: 'OSAD-TPL-01',
     attached_template_name: 'Official NDMU Certificate of Participation'
+  }
+
+  // Modal States
+  const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
+  const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
+  const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
+  const [newOrgData, setNewOrgData] = useState(INITIAL_ORG_DATA)
+  const [isAddClubOpen, setIsAddClubOpen] = useState(false)
+  const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
+  const [isAddAwardOpen, setIsAddAwardOpen] = useState(false)
+  const [newAwardData, setNewAwardData] = useState(INITIAL_AWARD_DATA)
+
+  // Confirmable Close Hooks
+  const orgConfirmClose = useConfirmableClose({
+    isOpen: isAddOrgOpen,
+    isDirty: () => (newOrgData.name || '').trim() !== '' || newOrgData.category !== INITIAL_ORG_DATA.category,
+    onClose: () => setIsAddOrgOpen(false),
+    onDiscard: () => setNewOrgData(INITIAL_ORG_DATA)
+  })
+
+  const awardConfirmClose = useConfirmableClose({
+    isOpen: isAddAwardOpen,
+    isDirty: () => (newAwardData.title || '').trim() !== '' || (newAwardData.description || '').trim() !== '' || newAwardData.category_type !== INITIAL_AWARD_DATA.category_type || newAwardData.min_points !== INITIAL_AWARD_DATA.min_points || newAwardData.weight_multiplier !== INITIAL_AWARD_DATA.weight_multiplier,
+    onClose: () => setIsAddAwardOpen(false),
+    onDiscard: () => setNewAwardData(INITIAL_AWARD_DATA)
   })
 
   // Toast Notification
@@ -118,7 +139,7 @@ export default function OSADDashboardPage({ currentUser }) {
     if (!newOrgData.name) return
     createOrganization(newOrgData)
     setIsAddOrgOpen(false)
-    setNewOrgData({ name: '', category: 'Academic Student Organization' })
+    setNewOrgData(INITIAL_ORG_DATA)
     showToast(`Created Student Organization: [${newOrgData.name}]`)
   }
 
@@ -138,16 +159,7 @@ export default function OSADDashboardPage({ currentUser }) {
     if (!newAwardData.title) return
     createAwardCategory(newAwardData)
     setIsAddAwardOpen(false)
-    setNewAwardData({
-      title: '',
-      category_type: 'Student Leadership',
-      description: '',
-      min_points: 200,
-      weight_multiplier: 1.5,
-      required_prerequisites: 'Program Coordinator Verification',
-      attached_template_id: 'OSAD-TPL-01',
-      attached_template_name: 'Official NDMU Certificate of Participation'
-    })
+    setNewAwardData(INITIAL_AWARD_DATA)
     showToast(`Created Award Category: [${newAwardData.title}]`)
   }
 
@@ -301,13 +313,21 @@ export default function OSADDashboardPage({ currentUser }) {
 
       {/* Create Organization Modal */}
       {isAddOrgOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) orgConfirmClose.requestClose() }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+        >
           <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#16834a]" /> Create Student Organization
               </h3>
-              <button onClick={() => setIsAddOrgOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button
+                type="button"
+                aria-label="Close dialog"
+                onClick={orgConfirmClose.requestClose}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -339,7 +359,7 @@ export default function OSADDashboardPage({ currentUser }) {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsAddOrgOpen(false)}
+                  onClick={orgConfirmClose.requestClose}
                   className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
                 >
                   Cancel
@@ -359,13 +379,21 @@ export default function OSADDashboardPage({ currentUser }) {
 
       {/* Create Award Category Modal */}
       {isAddAwardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) awardConfirmClose.requestClose() }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+        >
           <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                 <Award className="w-4 h-4 text-[#16834a]" /> Create Award Category
               </h3>
-              <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+              <button
+                type="button"
+                aria-label="Close dialog"
+                onClick={awardConfirmClose.requestClose}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -433,7 +461,7 @@ export default function OSADDashboardPage({ currentUser }) {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsAddAwardOpen(false)}
+                  onClick={awardConfirmClose.requestClose}
                   className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
                 >
                   Cancel
@@ -451,6 +479,27 @@ export default function OSADDashboardPage({ currentUser }) {
           </div>
         </div>
       )}
+
+      {/* Discard Confirmation Dialogs */}
+      <ConfirmDialog
+        open={orgConfirmClose.isConfirmOpen}
+        title="Discard Organization Changes?"
+        message="Are you sure you want to close? Your unsaved organization details will be lost."
+        confirmLabel="Discard Changes"
+        cancelLabel="Continue Editing"
+        onConfirm={orgConfirmClose.confirmDiscard}
+        onCancel={orgConfirmClose.cancelDiscard}
+      />
+
+      <ConfirmDialog
+        open={awardConfirmClose.isConfirmOpen}
+        title="Discard Award Category Changes?"
+        message="Are you sure you want to close? Your unsaved category details will be lost."
+        confirmLabel="Discard Changes"
+        cancelLabel="Continue Editing"
+        onConfirm={awardConfirmClose.confirmDiscard}
+        onCancel={awardConfirmClose.cancelDiscard}
+      />
 
     </div>
   )

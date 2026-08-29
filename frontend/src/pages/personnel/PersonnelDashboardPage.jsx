@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import DigitalBarcodeIDCardModal from '../student/modals/DigitalBarcodeIDCardModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
@@ -42,7 +41,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || 'EMP-2021-0842')
 
   // Modals state
-  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false)
   const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState('All')
@@ -110,16 +108,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsBarcodeOpen(true)}
-                className="px-3 py-2 rounded-2xl bg-[#149653] hover:bg-[#125536] border border-[#149653] text-white flex items-center gap-2 transition text-xs font-bold shadow-xs group shrink-0"
-                title="Click to expand Faculty Digital ID Barcode"
-              >
-                <QrCode className="w-4 h-4 text-white group-hover:scale-110 transition" />
-                <span className="hidden sm:inline">Digital ID Barcode</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 relative z-10 w-full">
@@ -349,12 +337,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       )}
 
       {/* MODALS */}
-      <DigitalBarcodeIDCardModal
-        user={profile}
-        isOpen={isBarcodeOpen}
-        onClose={() => setIsBarcodeOpen(false)}
-      />
-
       <EditBasicInfoModal
         isOpen={isEditInfoOpen}
         onClose={() => setIsEditInfoOpen(false)}

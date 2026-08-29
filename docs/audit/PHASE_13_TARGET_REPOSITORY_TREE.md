@@ -9,8 +9,8 @@ This document specifies the intended post-cleanup repository architecture for Ac
 
 ```text
 AchieveNest/
-├── AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump  [Database snapshot]
-├── AchieveNest_Phase_2_Pre_Execution_Migration_Code_Review.md  [Milestone report]
+├── AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump  [Database snapshot (579 KB)]
+├── AchieveNest_Phase_2_Pre_Execution_Migration_Code_Review.md  [Milestone review]
 ├── AchieveNest_Phase_4_Fresh_Disposable_Database_Build_Report.md  [Milestone report]
 ├── AchieveNest_Phase_5_Reset_and_Replay_Validation_Report.md  [Milestone report]
 ├── AchieveNest_Phase_6_Fresh_Build_vs_Current_Test_Reconciliation_Report.md  [Milestone report]
@@ -75,7 +75,7 @@ AchieveNest/
 ├── package.json / package-lock.json / vitest.config.js / vite.config.js / README.md / LICENSE
 ├── archive/
 │   └── database/
-│       └── AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump
+│       └── AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump  [UNTRACKED / IGNORED in Git]
 ├── backend/
 │   ├── app/
 │   │   ├── Commands/
@@ -161,6 +161,9 @@ AchieveNest/
     └── runbooks/
         └── STARTUP_COMMANDS.md
 ```
+
+> **Note on Phase 3 Historical Documentation:**  
+> During the early milestone sequence, Phase 3 frontend dependency analysis was integrated into the audit architecture rather than authored as a standalone root report. Phase 3 authoritative findings are preserved in `docs/audit/PHASE_3_FRONTEND_DEPENDENCY_AUDIT.md`. All seven existing root historical milestone documents are explicitly mapped above (Phase 2, Phase 4, Phase 5, Phase 6, Phase 7, Phase 8 Part 1, Phase 8 Part 2).
 
 ---
 
@@ -598,6 +601,7 @@ docs/
 │   ├── PHASE_13_TARGET_FILE_ORGANIZATION_REVIEW.md
 │   ├── PHASE_13_TARGET_ORGANIZATION_MAP.csv
 │   ├── PHASE_13_MOVE_REVIEW_CANDIDATES.csv
+│   ├── PHASE_13_ORGANIZATION_RECONCILIATION_ADDENDUM.md
 │   └── PHASE_13_TARGET_REPOSITORY_TREE.md
 ├── history/
 │   └── AchieveNest_Phase_2_Pre_Execution_Migration_Code_Review.md

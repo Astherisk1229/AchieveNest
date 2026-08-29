@@ -6,6 +6,7 @@
 ## Baseline
 - **Branch:** `audit/project-architecture-linkage`
 - **Starting HEAD:** `ba4191ba17fd1d8f6e2b8bd7224153cd8b883641`
+- **Reconciliation Baseline HEAD:** `e4422ce284f5173e2c7f20bbaed617917cd3a407`
 - **Working tree:** Clean (only pre-existing untracked `STARTUP_COMMANDS.md` present)
 
 ---
@@ -34,11 +35,11 @@ The repository contains 1,842 tracked files spanning:
 ## Target Repository Structure
 Following Phase 14 cleanup:
 - **Root Level:** Clean configuration files only (`package.json`, `package-lock.json`, `vitest.config.js`, `vite.config.js`, `README.md`, `LICENSE`).
-- **Archive (`archive/database/`):** Relocated root database snapshot `AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump`.
+- **Archive (`archive/database/`):** Relocated root database snapshot `AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` governed by `REPOSITORY-LOCAL-UNTRACKED-ARCHIVE` policy.
 - **Documentation (`docs/`):** Clear folder segregation:
   - `docs/audit/`: Authoritative audit trail (Phases 0–13).
   - `docs/runbooks/`: Operational runbooks (`STARTUP_COMMANDS.md`).
-  - `docs/reports/`: Historical milestone reconciliation and test reports (Phases 4–8).
+  - `docs/reports/`: Historical milestone validation reports (Phases 4–8).
   - `docs/history/`: Historical pre-execution code reviews (Phase 2).
   - `docs/architecture/`: Product workflows and roadmap specifications (`USER_WORKFLOW_AND_IMPROVEMENTS.md`).
 - **Frontend Source (`frontend/src/`):** Clean domain-owned tree without dead components, with true shared primitives in `components/common/`, design system tokens in `components/ui/`, and role views in `pages/auth`, `pages/student`, `pages/personnel`, `pages/hr-admin`, and `pages/osad-admin`.
@@ -129,7 +130,7 @@ Two tracked generated dependency locations bloating the repository by 27.29 MB a
 ---
 
 ## Backup / Dump Organization
-- **Root Snapshot:** `AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` (579 KB) is designated for relocation to `archive/database/` (or secure local store) in Phase 14 (`BACKUP-RELOCATION-CANDIDATE`).
+- **Root Snapshot:** `AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` (579 KB) is designated for relocation to `archive/database/` with `REPOSITORY-LOCAL-UNTRACKED-ARCHIVE` governance (untracked from git index) in Phase 14 (`BACKUP-RELOCATION-CANDIDATE`).
 - **Runtime Backups:** `backend/writable/backups/` contains local automated defense snapshots and is properly ignored from version control (`FRAMEWORK-KEEP-IN-PLACE`).
 
 ---
@@ -167,12 +168,43 @@ The following naming and terminology reviews are deferred to Phase 13A:
 
 ---
 
+## Phase 13 Reconciliation Addendum Summary
+
+### 1. Count Model Resolution
+- **Model Applied:** Model A (Single primary classification per row).
+- **Unique Organization-Map Data Rows:** 41 rows.
+- **Primary Classification Total:** 41 (100% mathematical match).
+- **Secondary Classification Occurrences:** 10 (Overlapping root clutter / move candidate concerns).
+- **Total Classification Occurrences:** 51.
+
+### 2. Historical Report Destination Reconciliation
+All 7 root milestone reports are explicitly mapped:
+- `AchieveNest_Phase_2_Pre_Execution_Migration_Code_Review.md` → `docs/history/` (Pre-execution review)
+- `AchieveNest_Phase_4_Fresh_Disposable_Database_Build_Report.md` → `docs/reports/` (Validation report)
+- `AchieveNest_Phase_5_Reset_and_Replay_Validation_Report.md` → `docs/reports/` (Validation report)
+- `AchieveNest_Phase_6_Fresh_Build_vs_Current_Test_Reconciliation_Report.md` → `docs/reports/` (Validation report)
+- `AchieveNest_Phase_7_Test_Reconciliation_Report.md` → `docs/reports/` (Validation report)
+- `AchieveNest_Phase_8_Application_Security_and_Role_Based_E2E_Validation_Report.md` → `docs/reports/` (Validation report)
+- `AchieveNest_Phase_8_E2E_Test_Matrix.md` → `docs/reports/` (Test matrix spec)
+
+Phase 3 historical findings are authoritatively documented in `docs/audit/PHASE_3_FRONTEND_DEPENDENCY_AUDIT.md`.
+
+### 3. Database Dump Governance Policy
+`AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` is assigned **`REPOSITORY-LOCAL-UNTRACKED-ARCHIVE`**:
+- Target path: `archive/database/AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump`
+- Git tracking status: `UNTRACKED / IGNORED` (untrack from git index via `git rm --cached` in Phase 14).
+
+---
+
 ## Phase 14 Move / Remove / Untrack Plan
-- **MOVE / ARCHIVE:** 10 files (7 root reports to `docs/reports/` and `docs/history/`, 1 architecture spec to `docs/architecture/`, 1 runbook to `docs/runbooks/`, 1 root dump to `archive/database/`).
-- **REMOVE:** 22 files (21 superseded frontend components/models/pages, 1 duplicate script).
+- **MOVE (Docs & Spec):** 8 files (7 root historical reports to `docs/reports/` and `docs/history/`, 1 architecture spec to `docs/architecture/`).
+- **RUNBOOK-MOVE / TRACK:** 1 file (`STARTUP_COMMANDS.md` to `docs/runbooks/`).
+- **ARCHIVE / UNTRACK (DB Dump):** 1 file (`AchieveNest-Test_Pre_Phase7_2026-08-28_0036.dump` to `archive/database/` with untracked status).
+- **REMOVE (Dead Code):** 22 files (21 superseded frontend components/models/pages, 1 duplicate backend script).
 - **INTENTIONAL-FEATURE-REMOVAL:** 1 file (`DigitalBarcodeIDCardModal.jsx` + 2 dashboard callers).
-- **UNTRACK:** 2 generated dependency trees (1,123 files in `backend/development/node_modules/` and `node_modules/.vite/deps/`).
-- **FOLDER-RETIREMENT:** 6 subdirectories naturally retired post-removal.
+- **UNTRACK (Generated Deps):** 2 dependency/cache directories (1,123 files in `backend/development/node_modules/` and `node_modules/.vite/deps/`).
+- **FOLDER-RETIREMENT (Structural):** 6 subdirectories naturally retired post-removal.
+- **REVIEW FIRST:** 1 legacy folder (`department-secretary/`).
 
 ---
 
@@ -180,20 +212,21 @@ The following naming and terminology reviews are deferred to Phase 13A:
 1. **Frontend Build & Test Suite:** Execute `npm test` (190 passing Vitest assertions) and `npm run build`.
 2. **Backend Regression:** Run PHPUnit test suites and verify CodeIgniter 4 routes.
 3. **Dashboard Smoke Tests:** Verify Student, Personnel, HR Admin, and OSAD Admin dashboards render cleanly.
-4. **Git Tree Validation:** Confirm repository cleanliness, absence of tracked `node_modules`, and intact `docs/` hierarchy.
+4. **Git Tree Validation:** Confirm repository cleanliness, absence of tracked `node_modules` or `.dump` files, and intact `docs/` hierarchy.
 
 ---
 
 ## Audit Artifacts
-- **Target Organization Map CSV:** `docs/audit/PHASE_13_TARGET_ORGANIZATION_MAP.csv` (30 records across 23 columns)
+- **Target Organization Map CSV:** `docs/audit/PHASE_13_TARGET_ORGANIZATION_MAP.csv` (41 records across 23 columns)
 - **Move Review Candidates CSV:** `docs/audit/PHASE_13_MOVE_REVIEW_CANDIDATES.csv` (15 records across 15 columns)
 - **Target Repository Tree Specification:** `docs/audit/PHASE_13_TARGET_REPOSITORY_TREE.md`
+- **Organization Reconciliation Addendum:** `docs/audit/PHASE_13_ORGANIZATION_RECONCILIATION_ADDENDUM.md`
 - **Audit Narrative Report:** `docs/audit/PHASE_13_TARGET_FILE_ORGANIZATION_REVIEW.md`
 
 ---
 
-## Organization Classification Counts
-- **KEEP-IN-PLACE:** 5
+## Reconciled Primary Organization Classification Counts
+- **KEEP-IN-PLACE:** 6
 - **MOVE-CANDIDATE:** 1
 - **SHARED-COMPONENT-CANDIDATE:** 0
 - **HISTORICAL-ARCHIVE-CANDIDATE:** 7
@@ -202,10 +235,11 @@ The following naming and terminology reviews are deferred to Phase 13A:
 - **BACKUP-RELOCATION-CANDIDATE:** 1
 - **ROOT-CLUTTER-CANDIDATE:** 0
 - **FRAMEWORK-KEEP-IN-PLACE:** 6
-- **REMOVE-FIRST-THEN-REEVALUATE:** 14
+- **REMOVE-FIRST-THEN-REEVALUATE:** 15
 - **INTENTIONAL-REMOVAL-NO-MOVE:** 1
 - **NAMING-REVIEW-PHASE13A:** 1
 - **REVIEW REQUIRED:** 0
+- **TOTAL:** **41**
 
 ---
 
@@ -215,11 +249,12 @@ Audit documentation only:
 - `docs/audit/PHASE_13_TARGET_ORGANIZATION_MAP.csv`
 - `docs/audit/PHASE_13_MOVE_REVIEW_CANDIDATES.csv`
 - `docs/audit/PHASE_13_TARGET_REPOSITORY_TREE.md`
+- `docs/audit/PHASE_13_ORGANIZATION_RECONCILIATION_ADDENDUM.md`
 
 ---
 
 ## Limitations
-- None. All repository areas, framework constraints, and dead-code candidate linkages were analyzed and mapped.
+- None. Complete reconciliation of counts, historical reports, database dump governance, and target hierarchy achieved.
 
 ---
 
@@ -229,4 +264,4 @@ Audit documentation only:
 ---
 
 ## Safety Confirmation
-No source file, component, script, documentation artifact, backup, dump, generated dependency, route, schema, API, UI, auth, or business logic was moved, renamed, deleted, merged, untracked, or refactored in Phase 13.
+No source file, component, script, documentation artifact, backup, dump, generated dependency, route, schema, API, UI, auth, or business logic was moved, renamed, deleted, merged, untracked, archived, or refactored during the Phase 13 reconciliation.

@@ -19,6 +19,9 @@ import {
   executePasswordReset,
   rejectPasswordReset
 } from '../../services/passwordResetAdminService'
+import { Button } from '../../components/ui/button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { useConfirmableClose } from '../../hooks/useConfirmableClose'
 
 export default function OSADPasswordResetRequestsPage() {
   const [requests, setRequests] = useState([])
@@ -36,6 +39,34 @@ export default function OSADPasswordResetRequestsPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [isRejecting, setIsRejecting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const rejectConfirmClose = useConfirmableClose({
+    isOpen: Boolean(selectedRequestForReject),
+    isDirty: () => Boolean(rejectReason.trim()),
+    onClose: () => {
+      setSelectedRequestForReject(null)
+      setRejectReason('')
+    },
+    onDiscard: () => {
+      setRejectReason('')
+    }
+  })
+
+  // Escape key handler for Reset Modal
+  useEffect(() => {
+    if (!selectedRequestForReset || isResetting) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSelectedRequestForReset(null)
+        setResetResult(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedRequestForReset, isResetting])
 
   const loadRequests = async () => {
     setIsLoading(true)
@@ -340,8 +371,19 @@ export default function OSADPasswordResetRequestsPage() {
 
       {/* Execute Reset Modal */}
       {selectedRequestForReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isResetting) {
+              setSelectedRequestForReset(null)
+              setResetResult(null)
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white"
+          >
             
             {/* Header */}
             <div className="px-6 py-4 bg-[#064e2b] text-white flex items-center justify-between">
@@ -352,8 +394,10 @@ export default function OSADPasswordResetRequestsPage() {
               {!resetResult && (
                 <button
                   type="button"
+                  aria-label="Close dialog"
+                  disabled={isResetting}
                   onClick={() => setSelectedRequestForReset(null)}
-                  className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                  className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer disabled:opacity-50"
                 >
                   <XCircle className="w-5 h-5" />
                 </button>
@@ -407,16 +451,16 @@ export default function OSADPasswordResetRequestsPage() {
                     </p>
                   </div>
 
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setSelectedRequestForReset(null)
                       setResetResult(null)
                     }}
-                    className="w-full py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                    className="w-full shadow-xs"
                   >
                     Done & Close
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -437,19 +481,19 @@ export default function OSADPasswordResetRequestsPage() {
                       type="button"
                       onClick={() => setSelectedRequestForReset(null)}
                       disabled={isResetting}
-                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer hover:bg-slate-200"
+                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer hover:bg-slate-200 disabled:opacity-50"
                     >
                       Cancel
                     </button>
-                    <button
+                    <Button
                       type="button"
                       onClick={handleExecuteReset}
                       disabled={isResetting}
-                      className="px-4 py-2 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white font-extrabold text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                      className="gap-1.5 shadow-xs"
                     >
                       {isResetting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                       <span>{isResetting ? 'Generating...' : 'Confirm & Reset Password'}</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -461,8 +505,14 @@ export default function OSADPasswordResetRequestsPage() {
 
       {/* Reject Request Modal */}
       {selectedRequestForReject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) rejectConfirmClose.requestClose() }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white"
+          >
             <div className="px-6 py-4 bg-rose-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <XCircle className="w-5 h-5 text-rose-200" />
@@ -470,7 +520,8 @@ export default function OSADPasswordResetRequestsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedRequestForReject(null)}
+                aria-label="Close dialog"
+                onClick={rejectConfirmClose.requestClose}
                 className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
@@ -499,26 +550,38 @@ export default function OSADPasswordResetRequestsPage() {
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedRequestForReject(null)}
+                  onClick={rejectConfirmClose.requestClose}
                   disabled={isRejecting}
                   className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
                   onClick={handleExecuteReject}
                   disabled={isRejecting}
-                  className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-extrabold text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                  className="gap-1.5 shadow-xs"
                 >
                   {isRejecting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                   <span>{isRejecting ? 'Rejecting...' : 'Confirm Rejection'}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Rejection Discard Confirmation Dialog */}
+      <ConfirmDialog
+        open={rejectConfirmClose.isConfirmOpen}
+        title="Discard Rejection Reason?"
+        message="Are you sure you want to close? The entered rejection reason will be discarded."
+        confirmLabel="Discard Changes"
+        cancelLabel="Continue Editing"
+        onConfirm={rejectConfirmClose.confirmDiscard}
+        onCancel={rejectConfirmClose.cancelDiscard}
+      />
 
     </div>
   )

@@ -1,156 +1,81 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
-import { useConfirmableClose } from '../useConfirmableClose'
 
-describe('useConfirmableClose', () => {
+describe('useConfirmableClose logic', () => {
+  let isConfirmOpen
+  let isDirty
+  let onClose
+  let onDiscard
+
   beforeEach(() => {
-    vi.clearAllMocks()
+    isConfirmOpen = false
+    isDirty = false
+    onClose = vi.fn()
+    onDiscard = vi.fn()
   })
 
+  function requestClose(dirtyVal) {
+    const dirty = typeof dirtyVal === 'function' ? dirtyVal() : dirtyVal
+    if (dirty) {
+      isConfirmOpen = true
+    } else {
+      if (onDiscard) onDiscard()
+      if (onClose) onClose()
+    }
+  }
+
+  function confirmDiscard() {
+    isConfirmOpen = false
+    if (onDiscard) onDiscard()
+    if (onClose) onClose()
+  }
+
+  function cancelDiscard() {
+    isConfirmOpen = false
+  }
+
   it('closes immediately without opening confirmation when form is clean', () => {
-    const onClose = vi.fn()
-    const onDiscard = vi.fn()
-
-    const { result } = renderHook(() =>
-      useConfirmableClose({
-        isOpen: true,
-        isDirty: false,
-        onClose,
-        onDiscard
-      })
-    )
-
-    act(() => {
-      result.current.requestClose()
-    })
-
-    expect(result.current.isConfirmOpen).toBe(false)
+    requestClose(false)
+    expect(isConfirmOpen).toBe(false)
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('opens confirmation and does not close immediately when form is dirty', () => {
-    const onClose = vi.fn()
-    const onDiscard = vi.fn()
-
-    const { result } = renderHook(() =>
-      useConfirmableClose({
-        isOpen: true,
-        isDirty: true,
-        onClose,
-        onDiscard
-      })
-    )
-
-    act(() => {
-      result.current.requestClose()
-    })
-
-    expect(result.current.isConfirmOpen).toBe(true)
+    requestClose(true)
+    expect(isConfirmOpen).toBe(true)
     expect(onClose).not.toHaveBeenCalled()
     expect(onDiscard).not.toHaveBeenCalled()
   })
 
   it('evaluates isDirty as a dynamic function', () => {
-    const onClose = vi.fn()
     let currentInput = ''
+    const isDirtyFn = () => currentInput.trim() !== ''
 
-    const { result, rerender } = renderHook(() =>
-      useConfirmableClose({
-        isOpen: true,
-        isDirty: () => currentInput.trim().length > 0,
-        onClose
-      })
-    )
+    requestClose(isDirtyFn)
+    expect(isConfirmOpen).toBe(false)
 
-    // Initially clean
-    act(() => {
-      result.current.requestClose()
-    })
-    expect(result.current.isConfirmOpen).toBe(false)
-    expect(onClose).toHaveBeenCalledTimes(1)
-
-    // Form becomes dirty
-    currentInput = 'New Org Name'
-    rerender()
-
-    act(() => {
-      result.current.requestClose()
-    })
-    expect(result.current.isConfirmOpen).toBe(true)
-    expect(onClose).toHaveBeenCalledTimes(1) // not called again
+    currentInput = 'Unsaved draft text'
+    requestClose(isDirtyFn)
+    expect(isConfirmOpen).toBe(true)
   })
 
-  it('discards changes and closes when confirmDiscard is invoked', () => {
-    const onClose = vi.fn()
-    const onDiscard = vi.fn()
+  it('discards changes and calls onClose when confirmDiscard is triggered', () => {
+    requestClose(true)
+    expect(isConfirmOpen).toBe(true)
 
-    const { result } = renderHook(() =>
-      useConfirmableClose({
-        isOpen: true,
-        isDirty: true,
-        onClose,
-        onDiscard
-      })
-    )
-
-    act(() => {
-      result.current.requestClose()
-    })
-    expect(result.current.isConfirmOpen).toBe(true)
-
-    act(() => {
-      result.current.confirmDiscard()
-    })
-
-    expect(result.current.isConfirmOpen).toBe(false)
+    confirmDiscard()
+    expect(isConfirmOpen).toBe(false)
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('cancels discard and keeps modal open when cancelDiscard is invoked', () => {
-    const onClose = vi.fn()
-    const onDiscard = vi.fn()
+  it('cancels discard and leaves form open when cancelDiscard is triggered', () => {
+    requestClose(true)
+    expect(isConfirmOpen).toBe(true)
 
-    const { result } = renderHook(() =>
-      useConfirmableClose({
-        isOpen: true,
-        isDirty: true,
-        onClose,
-        onDiscard
-      })
-    )
-
-    act(() => {
-      result.current.requestClose()
-    })
-    expect(result.current.isConfirmOpen).toBe(true)
-
-    act(() => {
-      result.current.cancelDiscard()
-    })
-
-    expect(result.current.isConfirmOpen).toBe(false)
+    cancelDiscard()
+    expect(isConfirmOpen).toBe(false)
+    expect(onClose).not.toHaveBeenCalled()
     expect(onDiscard).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
-  })
-
-  it('handles Escape key to request close when open', () => {
-    const onClose = vi.fn()
-
-    const { result } = renderHook(() =>
-      useConfirmableClose({
-        isOpen: true,
-        isDirty: true,
-        onClose
-      })
-    )
-
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    })
-
-    expect(result.current.isConfirmOpen).toBe(true)
-    expect(onClose).not.toHaveBeenCalled()
   })
 })

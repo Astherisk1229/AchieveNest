@@ -71,8 +71,9 @@ The repository maintains three distinct database artifact families that must not
 1. **CodeIgniter Migrations (26 PHP Classes):** Located in `backend/app/Database/Migrations/` with chronological timestamp prefixes (e.g. `2026-08-21-000001_CreateIdentityAndAcademicFoundation.php` to `2026-08-27-000026_HardenEvidenceUploadSecurity.php`). Protected from renaming.
 2. **CodeIgniter Seeders (5 PHP Classes):** Located in `backend/app/Database/Seeds/` (`DefenseDemoPersonaSeeder.php`, `DefenseDemoScenarioSeeder.php`, `DefenseDemoSeeder.php`, `DemoAcademicStructureSeeder.php`, `LocalDefenseAuthSeeder.php`).
 3. **MySQL Defense SQL Package (11 .sql Files):** Located in `backend/database/mysql-defense/migrations/`:
-   - 10 replay migration SQL files (`000001_identity_and_institutional.sql` to `000010_constraints_indexes_reference_seeds.sql`).
-   - 1 permanent reference-data / session defense SQL file (`000011_local_auth_sessions.sql`).
+   - **10 Schema Replay Migrations:** `000001_identity_and_institutional.sql` through `000009_audit_and_file_security.sql`, and `000011_local_auth_sessions.sql`.
+   - **1 Mixed Replay + Permanent Reference Seed File:** `000010_constraints_indexes_reference_seeds.sql` (contains active-history unique constraints, high-value indexes, and authoritative permanent reference seed inserts).
+   - **Rule:** SQL artifact classification must be based on actual file content semantics rather than filename patterns alone. A single SQL replay file may legitimately carry both migration and permanent reference-data responsibilities.
 
 ---
 

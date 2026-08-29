@@ -6,7 +6,7 @@
 ## Baseline
 - **Branch:** `audit/project-architecture-linkage`
 - **Starting HEAD:** `1038fca61d7ad16b036d74736008a43b49396acb`
-- **Reconciliation Baseline HEAD:** `efff7fd0626df152f790295c73e52d8124625136`
+- **Reconciliation Baseline HEAD:** `124025b9915b42ea320de51077fed3a2fa125db9`
 - **Working tree:** Clean (only pre-existing untracked `STARTUP_COMMANDS.md` present)
 
 ---
@@ -124,8 +124,8 @@ The repository maintains three distinct database artifact families:
 1. **CodeIgniter Migrations (26 PHP Classes):** Located in `backend/app/Database/Migrations/` (`2026-08-21-000001_CreateIdentityAndAcademicFoundation.php` through `2026-08-27-000026_HardenEvidenceUploadSecurity.php`). Protected from renaming (`KEEP-FRAMEWORK-REQUIRED` / `KEEP-HISTORICAL`).
 2. **CodeIgniter Seeders (5 PHP Classes):** Located in `backend/app/Database/Seeds/` (`DefenseDemoPersonaSeeder.php`, `DefenseDemoScenarioSeeder.php`, `DefenseDemoSeeder.php`, `DemoAcademicStructureSeeder.php`, `LocalDefenseAuthSeeder.php`).
 3. **MySQL Defense SQL Package (11 .sql Files):** Located in `backend/database/mysql-defense/migrations/`:
-   - 10 replay migration SQL files (`000001_identity_and_institutional.sql` to `000010_constraints_indexes_reference_seeds.sql`).
-   - 1 permanent reference-data / session defense SQL file (`000011_local_auth_sessions.sql`).
+   - **10 Schema Replay Migrations:** `000001_identity_and_institutional.sql` through `000009_audit_and_file_security.sql`, and `000011_local_auth_sessions.sql`.
+   - **1 Mixed Replay + Permanent Reference Seed File:** `000010_constraints_indexes_reference_seeds.sql` (contains active-history unique constraints, high-value indexes, and authoritative permanent reference seed inserts).
 
 ---
 
@@ -160,7 +160,7 @@ The repository maintains three distinct database artifact families:
 ### 2. Database Artifact Alignment
 - 26 CodeIgniter PHP migration classes.
 - 5 CodeIgniter PHP seeder classes.
-- 11 MySQL defense SQL files (10 replay migrations + 1 permanent reference dataset).
+- 11 MySQL defense SQL files (10 schema replay migrations + 1 mixed replay and permanent reference dataset).
 
 ### 3. `submitToDepSec` Finalization
 - `PersonnelPortfolioController.js::submitToDepSec` → `submitToDean`
@@ -174,7 +174,7 @@ The repository maintains three distinct database artifact families:
 - **RETIRE-FOLDER:** 1 empty folder (`frontend/src/pages/personnel/department-secretary/`).
 - **REMOVE-INSTEAD-OF-RENAME:** 22 dead code candidates (including `NDMURatingPane.jsx`, `AcademicStructureModel.js`, `ProtectedRoute.jsx`).
 - **INTENTIONAL-FEATURE-REMOVAL:** 1 component (`DigitalBarcodeIDCardModal.jsx` + 2 dashboard callers).
-- **KEEP / KEEP-COMPATIBILITY / KEEP-HISTORICAL:** All active routes, APIs, Supabase stubs, migrations, seeders, and NDMU branding.
+- **KEEP / KEEP-COMPATIBILITY / KEEP-HISTORICAL:** All active routes, APIs, Supabase stubs, migrations, seeders, MySQL defense SQL files, and NDMU branding.
 
 ---
 
@@ -190,7 +190,8 @@ The repository maintains three distinct database artifact families:
 - **Rename Candidate Register CSV:** `docs/audit/PHASE_13A_RENAME_CANDIDATE_REGISTER.csv` (14 records across 25 columns)
 - **Terminology Register CSV:** `docs/audit/PHASE_13A_TERMINOLOGY_REGISTER.csv` (11 records across 13 columns)
 - **Naming Standard Specification:** `docs/audit/PHASE_13A_NAMING_STANDARD.md`
-- **Reconciliation Addendum:** `docs/audit/PHASE_13A_RECONCILIATION_ADDENDUM.md`
+- **General Reconciliation Addendum:** `docs/audit/PHASE_13A_RECONCILIATION_ADDENDUM.md`
+- **MySQL Defense SQL Classification Addendum:** `docs/audit/PHASE_13A_MYSQL_DEFENSE_SQL_RECONCILIATION_ADDENDUM.md`
 - **Audit Narrative Report:** `docs/audit/PHASE_13A_FILE_NAMING_TERMINOLOGY_CONSISTENCY_AUDIT.md`
 
 ---
@@ -218,6 +219,7 @@ Audit documentation only:
 - `docs/audit/PHASE_13A_TERMINOLOGY_REGISTER.csv`
 - `docs/audit/PHASE_13A_NAMING_STANDARD.md`
 - `docs/audit/PHASE_13A_RECONCILIATION_ADDENDUM.md`
+- `docs/audit/PHASE_13A_MYSQL_DEFENSE_SQL_RECONCILIATION_ADDENDUM.md`
 
 ---
 

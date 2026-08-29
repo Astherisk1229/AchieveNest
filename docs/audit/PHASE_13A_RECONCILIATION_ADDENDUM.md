@@ -4,7 +4,7 @@
 ## 1. Status & Baseline
 - **Status:** `PASS / COMPLETED`
 - **Branch:** `audit/project-architecture-linkage`
-- **Baseline HEAD:** `efff7fd0626df152f790295c73e52d8124625136`
+- **Baseline HEAD:** `124025b9915b42ea320de51077fed3a2fa125db9`
 - **Scope:** Documentation-only reconciliation of Phase 13A controller counts, migration and seeder inventories, SQL replay package separation, and `submitToDepSec` symbol modernization.
 
 ---
@@ -69,21 +69,10 @@ Located in `backend/app/Database/Seeds/`:
 
 ### C. MySQL Defense SQL Package (11 .sql Files)
 Located in `backend/database/mysql-defense/migrations/`:
-- **Format:** Raw SQL DDL/DML scripts for local offline defense provisioning and testing.
+- **Format:** Raw SQL scripts for local offline defense provisioning and testing.
 - **Count:** **11 SQL files**:
-  - **10 Replay Migration Representations:**
-    1. `000001_identity_and_institutional.sql`
-    2. `000002_student_personnel_affiliations.sql`
-    3. `000003_governance_and_organizations.sql`
-    4. `000004_student_portfolio_verification.sql`
-    5. `000005_events_and_certificates.sql`
-    6. `000006_award_scoring_and_eligibility.sql`
-    7. `000007_notifications.sql`
-    8. `000008_personnel_ranking.sql`
-    9. `000009_audit_and_file_security.sql`
-    10. `000010_constraints_indexes_reference_seeds.sql`
-  - **1 Permanent Reference-Data / Session Defense SQL File:**
-    11. `000011_local_auth_sessions.sql`
+  - **10 Schema Replay Migrations:** `000001_identity_and_institutional.sql` through `000009_audit_and_file_security.sql`, and `000011_local_auth_sessions.sql`.
+  - **1 Mixed Replay + Permanent Reference Seed File:** `000010_constraints_indexes_reference_seeds.sql` (41,082 bytes; contains active-history unique constraints, high-value indexes, and authoritative permanent reference seed inserts).
 
 ---
 

@@ -5,7 +5,7 @@
 
 ## Baseline
 - **Branch:** `audit/project-architecture-linkage`
-- **Starting HEAD:** `45480bdbf086787bf05834770cea52242427dbda`
+- **Starting HEAD:** `7aeb4bd4ef558db60a8a65eb26d24660eb335490`
 - **Phase 0 Status:** `PASSED / COMPLETED` (`docs/audit/PHASE_0_FREEZE_AND_SAFETY_BASELINE.md`)
 - **Phase 1 Status:** `PASSED / COMPLETED` (`docs/audit/PHASE_1_REPOSITORY_INVENTORY.md`)
 - **Phase 2 Status:** `PASSED / COMPLETED` (`docs/audit/PHASE_2_FRONTEND_ROUTE_REACHABILITY.md`)
@@ -18,23 +18,25 @@
 
 ---
 
-## Inventory Summary
-- **Custom CodeIgniter Spark Commands (`backend/app/Commands/`):** 13 commands
-- **PowerShell Automation & Verification Scripts:** 9 scripts
-- **Frontend Automation & Offline Validation Scripts (`frontend/scripts/`):** 2 scripts
-- **Historical Development / Testing Node Scripts:** 2 scripts
+## Reconciled Non-HTTP Entry-Point Inventory (27 Unique Entry Points)
+
+### Physical Source Breakdown
+- **Custom CodeIgniter Spark Command Classes (`backend/app/Commands/`):** 13 command classes
+- **PowerShell Scripts & CLI Wrappers (`backend/scripts/`, `frontend/scripts/`):** 9 scripts
+- **Frontend Automation & Offline Validation Scripts (`frontend/scripts/`):** 2 Node scripts
+- **Historical Development / Testing Node Scripts:** 2 Node scripts
 - **Operator Runbooks:** 1 runbook (`STARTUP_COMMANDS.md`)
-- **Total Non-HTTP Entry Points Catalogued:** **27 entry points**
+- **Total Registered Non-HTTP Entry Points:** **27 entry points** (100% accounted)
 
 ---
 
-## Operational Classification Breakdown
+## Authoritative Classification Breakdown (27 Entry Points)
 | Classification | Count | Description / Key Examples |
 | :--- | :---: | :--- |
-| **ACTIVE-TEST** | **9** | `test:phase15-backend`, `test:phase7-auth`, `test:phase9-storage`, `test:phase11-reference`, `test:phase12-demo`, `test:phase13-step4`, `test:phase14-awards`, `test:phase14-workflows`, `phase16-frontend-regression.ps1` |
+| **ACTIVE-TEST** | **10** | `test:phase15-backend`, `test:phase7-auth`, `test:phase9-storage`, `test:phase11-reference`, `test:phase12-demo`, `test:phase13-step4`, `test:phase14-awards`, `test:phase14-workflows`, `phase15-backend-regression.ps1`, `phase16-frontend-regression.ps1` |
 | **ACTIVE-VALIDATION** | **5** | `db:verify-defense`, `test:health`, `phase16-department-audit.ps1`, `phase16-terminology-audit.ps1`, `run-phase16-browser-evidence.js` |
 | **ACTIVE-OFFLINE-DEFENSE** | **3** | `test:phase8-authz`, `phase17-secret-audit.ps1`, `run-phase17-offline-validation.js` |
-| **ACTIVE-OPERATIONAL** | **2** | `backend/scripts/php.ps1`, `backend/scripts/spark.ps1` (WAMP PHP CLI shortcuts) |
+| **ACTIVE-OPERATIONAL** | **2** | `backend/scripts/php.ps1`, `backend/scripts/spark.ps1` (WAMP PHP & Spark PowerShell CLI wrappers) |
 | **ACTIVE-DEMO** | **1** | `demo:reset` (Instant demo persona and scenario fixture reset) |
 | **ACTIVE-BACKUP** | **1** | `backend/scripts/phase18-verify-backup.ps1` (Backup snapshot hash integrity validator) |
 | **ACTIVE-RECOVERY** | **1** | `test:phase18-dr` (Automated mysqldump backup & restore disaster recovery gate) |
@@ -42,14 +44,19 @@
 | **DOCUMENTATION-RUNBOOK** | **1** | `STARTUP_COMMANDS.md` (Accurate developer and defense operator startup guide) |
 | **HISTORICAL** | **1** | `backend/scripts/verify-admin-bootstrap-full.mjs` (Historical Supabase bootstrap verification) |
 | **DUPLICATE-CANDIDATE** | **1** | `backend/development/verify-admin-bootstrap-full.mjs` (Duplicate copy of historical script) |
+| **ACTIVE-MIGRATION-REPLAY** | **0** | Framework-native `spark migrate` / SQL files (no custom wrapper rows) |
+| **ACTIVE-COMPATIBILITY** | **0** | No active compatibility aliases in custom scripts |
 | **NO INVOCATION PROVEN YET** | **0** | All 27 entry points have verified callers, test roles, or runbook purposes |
+| **SUPERSEDED-CANDIDATE** | **0** | Historical duplicate categorized under `DUPLICATE-CANDIDATE` |
+| **REVIEW REQUIRED** | **0** | All classifications resolved with concrete evidence |
+| **TOTAL** | **27** | **100% Reconciled** |
 
 ---
 
 ## Detailed Subsystem Findings
 
 ### 1. Master Regression & Sub-Phase Verification Commands
-- The primary regression gate is `spark test:phase15-backend`, which sequentially executes test verification commands across Authentication (`test:phase7-auth`), RBAC Authorization (`test:phase8-authz`), Evidence Storage Isolation (`test:phase9-storage`), Permanent Reference Data (`test:phase11-reference`), Demo Personas (`test:phase12-demo`), Student Portfolio E2E (`test:phase13-step4`), OSAD Awards (`test:phase14-awards`), and HR Workflows (`test:phase14-workflows`).
+- Primary backend regression gate is `spark test:phase15-backend`, which sequentially executes test verification commands across Authentication (`test:phase7-auth`), RBAC Authorization (`test:phase8-authz`), Evidence Storage Isolation (`test:phase9-storage`), Permanent Reference Data (`test:phase11-reference`), Demo Personas (`test:phase12-demo`), Student Portfolio E2E (`test:phase13-step4`), OSAD Awards (`test:phase14-awards`), and HR Workflows (`test:phase14-workflows`).
 
 ### 2. Disaster Recovery & Backup Tooling
 - `spark test:phase18-dr` executes an automated end-to-end backup, database truncation, and restore procedure, validating that mysqldump snapshots restore 100% of tables with zero data loss.
@@ -82,8 +89,9 @@
 
 ## Audit Artifacts Generated
 1. **Non-HTTP Entry Point Register CSV:** `docs/audit/PHASE_8_NON_HTTP_ENTRY_POINT_REGISTER.csv` (28 lines, 27 entry points across 25 columns)
-2. **Review Candidates CSV:** `docs/audit/PHASE_8_SCRIPT_REVIEW_CANDIDATES.csv` (3 lines, 2 records)
+2. **Review Candidates CSV:** `docs/audit/PHASE_8_SCRIPT_REVIEW_CANDIDATES.csv` (2 records)
 3. **Audit Narrative Report:** `docs/audit/PHASE_8_SCRIPTS_COMMANDS_NON_HTTP_ENTRY_POINTS.md`
+4. **Reconciliation Addendum:** `docs/audit/PHASE_8_ENTRY_POINT_RECONCILIATION_ADDENDUM.md`
 
 ---
 
@@ -91,4 +99,4 @@
 `PASS / COMPLETED`
 
 ## Safety Confirmation
-No script, command, runbook, test runner, backup/recovery tool, migration/replay tool, setup utility, route, schema, API, UI, auth, or business-logic changes were performed in Phase 8.
+No script, command, package script, runbook, backup/recovery tool, migration/replay tool, setup utility, route, schema, API, UI, auth, or business-logic changes were performed during the Phase 8 reconciliation.

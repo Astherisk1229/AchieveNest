@@ -1,0 +1,6 @@
+Test Files  151 passed (151)
+      Tests  1551 passed (1551)
+   Start at  14:51:10
+   Duration  132.61s (transform 31.93s, setup 2.08s, collect 118.67s, tests 19.43s, environment 91ms, prepare 84.29s)
+
+JSON report written to C:/Users/Admin/Documents/AchieveNest/frontend/vitest-results-j4.json

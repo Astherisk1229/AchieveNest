@@ -1,40 +1,52 @@
 import React from 'react'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { Award, CheckCircle2, AlertCircle, Send, FileText, ShieldCheck, Sparkles, Clock, AlertTriangle } from 'lucide-react'
 
-export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepSec, error }) {
+export default function PortfolioSummaryCard({ portfolio, totals, onSubmitPortfolio, onSubmitToDean, error }) {
   if (!portfolio || !totals) return null
 
-  const isDraft = portfolio.status === 'DRAFT' || portfolio.status === 'RETURNED_TO_PERSONNEL'
-  const isSubmitted = portfolio.status === 'SUBMITTED_TO_DEP_SEC' || portfolio.status === 'UNDER_DEP_SEC_REVIEW'
-  const isEndorsed = portfolio.status === 'ENDORSED_TO_HR'
-  const isApproved = portfolio.status === 'HR_APPROVED'
+  const handleSubmit = onSubmitPortfolio || onSubmitToDean
+  const normalizedStatus = (portfolio.status || 'draft').toLowerCase()
+
+  const isDraft = normalizedStatus === 'draft' || normalizedStatus === 'returned_for_revision' || normalizedStatus === 'returned_to_personnel'
+  const isSubmitted = normalizedStatus === 'submitted'
+  const isInEvaluation = normalizedStatus === 'in_evaluation' || normalizedStatus === 'endorsed_to_hr'
+  const isReady = normalizedStatus === 'ready_for_finalization'
+  const isApproved = normalizedStatus === 'completed' || normalizedStatus === 'hr_approved'
 
   const getStatusBadge = () => {
     if (isApproved) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-          <CheckCircle2 className="w-3.5 h-3.5" /> HR Approved & Locked
+          <CheckCircle2 className="w-3.5 h-3.5" /> Completed
         </span>
       )
     }
-    if (isEndorsed) {
+    if (isReady) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <ShieldCheck className="w-3.5 h-3.5" /> Ready for Finalization
+        </span>
+      )
+    }
+    if (isInEvaluation) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-          <ShieldCheck className="w-3.5 h-3.5" /> Endorsed to HR
+          <Clock className="w-3.5 h-3.5" /> In Evaluation
         </span>
       )
     }
     if (isSubmitted) {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-          <Clock className="w-3.5 h-3.5" /> Under Dept. Sec Review
+          <Clock className="w-3.5 h-3.5" /> Submitted (Locked)
         </span>
       )
     }
-    if (portfolio.status === 'RETURNED_TO_PERSONNEL') {
+    if (normalizedStatus === 'returned_for_revision' || normalizedStatus === 'returned_to_personnel') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-          <AlertTriangle className="w-3.5 h-3.5" /> Revision Requested
+          <AlertTriangle className="w-3.5 h-3.5" /> Returned for Revision
         </span>
       )
     }
@@ -60,17 +72,17 @@ export default function PortfolioSummaryCard({ portfolio, totals, onSubmitToDepS
             {getStatusBadge()}
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {portfolio.academic_rank} • {portfolio.department_name} ({portfolio.academic_year})
+            {portfolio.academic_rank} • {formatPersonnelPlacement(portfolio)} ({portfolio.academic_year})
           </p>
         </div>
 
         {/* Action Button */}
-        {isDraft && (
+        {isDraft && handleSubmit && (
           <button
-            onClick={onSubmitToDepSec}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-md hover:shadow-emerald-600/20"
+            onClick={handleSubmit}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-md hover:shadow-emerald-600/20 cursor-pointer"
           >
-            <Send className="w-4 h-4" /> Submit to Dept. Secretary
+            <Send className="w-4 h-4" /> Submit Portfolio
           </button>
         )}
       </div>

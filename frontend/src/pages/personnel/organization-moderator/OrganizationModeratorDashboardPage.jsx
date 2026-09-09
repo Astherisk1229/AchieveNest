@@ -95,7 +95,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   const [profileData, setProfileData] = useState({
     name: 'Computer Society NDMU',
     code: 'CEAC',
-    department: 'CEAC - College of Engineering, Architecture, and Computing',
+    college: 'CEAC - College of Engineering, Architecture, and Computing',
     academic_year: 'AY 2025-2026',
     moderator_name: 'Dr. Ana Reyes',
     description: 'The premier technology organization of Notre Dame of Marbel University, dedicated to fostering excellence in computing, innovation, and leadership among its members.',
@@ -112,7 +112,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
         ...prev,
         name: orgInfo.name || prev.name,
         code: orgInfo.code || prev.code,
-        department: orgInfo.department || prev.department,
+        college: orgInfo.college || prev.college,
         academic_year: orgInfo.academic_year || prev.academic_year,
         moderator_name: orgInfo.moderator_name || prev.moderator_name,
         description: orgInfo.description || prev.description,
@@ -1299,10 +1299,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 )}
               </div>
 
-              {/* College / Department */}
+              {/* College */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  College / Department
+                  College
                 </label>
                 {isEditingProfile ? (
                   <input
@@ -1489,7 +1489,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     {orgInfo.name}
                   </h1>
                   <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
-                    {orgInfo.department} • {orgInfo.academic_year}
+                    {orgInfo.college} • {orgInfo.academic_year}
                   </p>
                 </div>
               </div>

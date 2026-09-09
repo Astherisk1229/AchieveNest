@@ -122,18 +122,19 @@ export default function PersonnelActionsMenu({
           </button>
         )}
 
-        {typeof onEditAssignment === 'function' && (
+        {(typeof onEditMasterData === 'function' || typeof onEditAssignment === 'function') && (
           <button
             type="button"
             role="menuitem"
             onClick={() => {
               onClose()
-              onEditAssignment(personnel)
+              if (onEditMasterData) onEditMasterData(personnel)
+              else onEditAssignment(personnel)
             }}
             className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
           >
-            <Edit3 className="w-4 h-4 text-slate-600 dark:text-slate-300 shrink-0" />
-            <span>Edit assignment</span>
+            <Edit3 className="w-4 h-4 text-[#064e2b] dark:text-emerald-400 shrink-0" />
+            <span>Edit Master Data (Plan D2)</span>
           </button>
         )}
       </div>

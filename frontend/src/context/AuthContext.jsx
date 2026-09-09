@@ -7,7 +7,6 @@ import {
   logoutUser
 } from '../services/authService'
 import { resolveDefaultActiveRole } from '../utils/roleContext'
-import { supabase } from '../config/supabase'
 
 const AuthContext = createContext(null)
 
@@ -21,36 +20,42 @@ export function AuthProvider({ children }) {
     setUser(current)
   }, [])
 
-  // Initial session restoration from Supabase + backend /auth/me
+  // Initial session restoration
   useEffect(() => {
     let isMounted = true
 
     async function initializeSession() {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error || !session?.access_token) {
-          if (isMounted) {
-            await logoutUser()
-            setUser(null)
+        const persistentToken = localStorage.getItem('achievenest_access_token')
+        const sessionToken = sessionStorage.getItem('achievenest_access_token')
+        const localToken = persistentToken ||
+          sessionToken ||
+          getCurrentUser()?.token ||
+          getCurrentUser()?.access_token
+
+        // Restore a locally issued CodeIgniter session token.
+        if (localToken) {
+          try {
+            const resolvedUser = await fetchProfileAndCreateSession(
+              localToken,
+              getCurrentUser()?.institutional_email || getCurrentUser()?.email || '',
+              Boolean(persistentToken)
+            )
+            if (isMounted) {
+              setUser(resolvedUser)
+            }
+          } catch (apiErr) {
+            console.warn('Local session profile revalidation failed:', apiErr)
+            if (isMounted) {
+              await logoutUser()
+              setUser(null)
+            }
           }
           return
         }
 
-        // Revalidate token & resolve authoritative profile from CodeIgniter API
-        try {
-          const resolvedUser = await fetchProfileAndCreateSession(
-            session.access_token,
-            session.user?.email || ''
-          )
-          if (isMounted) {
-            setUser(resolvedUser)
-          }
-        } catch (apiErr) {
-          console.warn('Session profile revalidation failed:', apiErr)
-          if (isMounted) {
-            await logoutUser()
-            setUser(null)
-          }
+        if (isMounted) {
+          setUser(null)
         }
       } catch (err) {
         console.error('Session initialization error:', err)
@@ -67,27 +72,6 @@ export function AuthProvider({ children }) {
 
     initializeSession()
 
-    // Listen to Supabase auth state changes (token refresh, sign out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        if (isMounted) {
-          setUser(null)
-        }
-      } else if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
-        try {
-          const resolvedUser = await fetchProfileAndCreateSession(
-            session.access_token,
-            session.user?.email || ''
-          )
-          if (isMounted) {
-            setUser(resolvedUser)
-          }
-        } catch (e) {
-          console.warn('AuthStateChange profile sync warning:', e)
-        }
-      }
-    })
-
     const handleStorageChange = () => {
       syncUserFromStorage()
     }
@@ -95,7 +79,6 @@ export function AuthProvider({ children }) {
 
     return () => {
       isMounted = false
-      subscription?.unsubscribe()
       window.removeEventListener('storage', handleStorageChange)
     }
   }, [syncUserFromStorage])

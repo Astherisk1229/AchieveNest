@@ -319,6 +319,7 @@ export const NAVIGATION_CATALOG = [
   // ==========================================
   // 7. OSAD STAFF NAVIGATION
   // ==========================================
+  // Group 1: Overview
   {
     id: 'osad-dashboard',
     label: 'OSAD Dashboard',
@@ -326,10 +327,13 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard',
     tab: 'overview',
     portal: 'osad',
+    workflowFamily: 'overview',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   },
+
+  // Group 2: Student & Institutional Setup
   {
     id: 'osad-academic-structure',
     label: 'Academic Structure',
@@ -337,6 +341,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=academic-structure',
     tab: 'academic-structure',
     portal: 'osad',
+    workflowFamily: 'setup',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
@@ -348,6 +353,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=accounts',
     tab: 'accounts',
     portal: 'osad',
+    workflowFamily: 'setup',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
@@ -359,61 +365,7 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=organizations',
     tab: 'organizations',
     portal: 'osad',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.academic_structure.manage']
-  },
-  {
-    id: 'osad-award-categories',
-    label: 'Award Categories',
-    icon: Award,
-    path: '/osad/dashboard?tab=awards',
-    tab: 'awards',
-    portal: 'osad',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.award_candidate.review']
-  },
-  {
-    id: 'osad-certificate-templates',
-    label: 'Certificate Templates',
-    icon: Sparkles,
-    path: '/osad/dashboard?tab=certificate-templates',
-    tab: 'certificate-templates',
-    portal: 'osad',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.certificate_template.manage']
-  },
-  {
-    id: 'osad-award-candidate-review',
-    label: 'Award Candidate Review',
-    icon: Trophy,
-    path: '/osad/dashboard?tab=candidate-review',
-    tab: 'candidate-review',
-    portal: 'osad',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.award_candidate.review']
-  },
-  {
-    id: 'osad-accreditation-reports',
-    label: 'Accreditation Reports',
-    icon: FileSpreadsheet,
-    path: '/osad/dashboard?tab=reports',
-    tab: 'reports',
-    portal: 'osad',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
-    requiredPermissions: ['osad.academic_structure.manage']
-  },
-  {
-    id: 'osad-activity-log',
-    label: 'OSAD Activity Log',
-    icon: ShieldCheck,
-    path: '/osad/dashboard?tab=audit',
-    tab: 'audit',
-    portal: 'osad',
+    workflowFamily: 'setup',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
@@ -425,8 +377,76 @@ export const NAVIGATION_CATALOG = [
     path: '/osad/dashboard?tab=password-resets',
     tab: 'password-resets',
     portal: 'osad',
+    workflowFamily: 'setup',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
+    requiredPermissions: ['osad.academic_structure.manage']
+  },
+
+  // Group 3: Portfolio & Evaluation
+  {
+    id: 'osad-award-categories',
+    label: 'Awards & Scoring Criteria',
+    icon: Award,
+    path: '/osad/dashboard?tab=awards',
+    tab: 'awards',
+    portal: 'osad',
+    workflowFamily: 'evaluation',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
+    requiredPermissions: ['osad.award_candidate.review']
+  },
+  {
+    id: 'osad-award-candidate-review',
+    label: 'Award Candidate Review',
+    icon: Trophy,
+    path: '/osad/dashboard?tab=candidate-review',
+    tab: 'candidate-review',
+    portal: 'osad',
+    workflowFamily: 'evaluation',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
+    requiredPermissions: ['osad.award_candidate.review']
+  },
+
+  // Group 4: Events & Certificates
+  {
+    id: 'osad-certificate-templates',
+    label: 'Certificate Templates',
+    icon: Sparkles,
+    path: '/osad/dashboard?tab=certificate-templates',
+    tab: 'certificate-templates',
+    portal: 'osad',
+    workflowFamily: 'credentials',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
+    requiredPermissions: ['osad.certificate_template.manage']
+  },
+
+  // Group 5: Governance & Reports
+  {
+    id: 'osad-accreditation-reports',
+    label: 'Accreditation Reports',
+    icon: FileSpreadsheet,
+    path: '/osad/dashboard?tab=reports',
+    tab: 'reports',
+    portal: 'osad',
+    workflowFamily: 'governance',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
+    requiredPermissions: ['osad.academic_structure.manage']
+  },
+  {
+    id: 'osad-activity-log',
+    label: 'OSAD Activity Log',
+    icon: ShieldCheck,
+    path: '/osad/dashboard?tab=audit',
+    tab: 'audit',
+    portal: 'osad',
+    workflowFamily: 'governance',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.OSAD_STAFF],
     requiredPermissions: ['osad.academic_structure.manage']
   }
 ]
+

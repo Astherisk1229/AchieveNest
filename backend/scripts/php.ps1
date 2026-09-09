@@ -3,13 +3,12 @@ param(
     [string[]] $PhpArguments
 )
 
-$previousIniScanDir = $env:PHP_INI_SCAN_DIR
-$env:PHP_INI_SCAN_DIR = $PSScriptRoot
+$phpBinary = "C:\wamp64\bin\php\php8.3.28\php.exe"
 
-try {
-    & php @PhpArguments
-} finally {
-    $env:PHP_INI_SCAN_DIR = $previousIniScanDir
+if (-not (Test-Path $phpBinary)) {
+    Write-Error "Required AchieveNest PHP runtime not found: $phpBinary"
+    exit 1
 }
 
+& $phpBinary @PhpArguments
 exit $LASTEXITCODE

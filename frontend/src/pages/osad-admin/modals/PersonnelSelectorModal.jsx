@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
-import { Search, UserCheck, Check, Building2, Shield, X } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { formatPersonnelPlacement } from '../../../utils/personnelPlacement'
+import { Search, UserCheck, Check, X } from 'lucide-react'
+import { Button } from '../../../components/ui/button'
 
 export default function PersonnelSelectorModal({
   isOpen,
@@ -12,6 +14,20 @@ export default function PersonnelSelectorModal({
 }) {
   const [searchQuery, setSearchQuery] = useState('')
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   const cleanQuery = searchQuery.toLowerCase().trim().replace(/-/g, '')
@@ -22,14 +38,27 @@ export default function PersonnelSelectorModal({
     return (
       p.full_name.toLowerCase().includes(cleanQuery) ||
       cleanEmpId.includes(cleanQuery) ||
-      (p.department && p.department.toLowerCase().includes(cleanQuery)) ||
+      (p.college && p.college.toLowerCase().includes(cleanQuery)) ||
+      (p.college_code && p.college_code.toLowerCase().includes(cleanQuery)) ||
+      (p.administrative_unit && p.administrative_unit.toLowerCase().includes(cleanQuery)) ||
       (p.email && p.email.toLowerCase().includes(cleanQuery))
     )
   })
 
+  const handleCloseModal = () => {
+    setSearchQuery('')
+    onClose()
+  }
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans">
-      <div className="bg-white dark:bg-[#131e2e] rounded-2xl max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden my-6">
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal() }}
+      className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200 font-sans"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#131e2e] rounded-2xl max-w-xl w-full border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden my-6"
+      >
         
         {/* Modal Header */}
         <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
@@ -46,7 +75,9 @@ export default function PersonnelSelectorModal({
           </div>
 
           <button
-            onClick={onClose}
+            type="button"
+            aria-label="Close dialog"
+            onClick={handleCloseModal}
             className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -61,7 +92,7 @@ export default function PersonnelSelectorModal({
             <input
               type="text"
               autoFocus
-              placeholder="Search eligible personnel by name, Employee ID (e.g. EMP7491), or department..."
+              placeholder="Search eligible personnel by name, Employee ID, or institutional affiliation..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-[#16834a] placeholder:text-slate-400"
@@ -78,7 +109,7 @@ export default function PersonnelSelectorModal({
               filteredList.map(person => {
                 const cleanEmpId = (person.employee_id || 'EMP7491').replace(/-/g, '')
                 const isCurrentlyAssigned = 
-                  roleType === 'coordinator' ? (person.coordinator_department === targetName || person.coordinator_program === targetName) :
+                  roleType === 'coordinator' ? person.coordinator_program === targetName :
                   person.moderator_org === targetName
 
                 return (
@@ -94,7 +125,7 @@ export default function PersonnelSelectorModal({
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                        {person.academic_rank || 'Personnel'} • {person.department}
+                        {person.academic_rank || 'Personnel'} • {formatPersonnelPlacement(person)}
                       </p>
                       
                       {/* Current Assigned Roles Badges */}
@@ -103,7 +134,7 @@ export default function PersonnelSelectorModal({
                           {person.assigned_roles.map(r => (
                             <span key={r} className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800/60">
                               {r === 'college_dean' ? `College Dean (${person.dean_college})` :
-                               r === 'program_coordinator' ? `Program Coordinator (${person.coordinator_department || person.coordinator_program})` :
+                               r === 'program_coordinator' ? `Program Coordinator (${person.coordinator_program})` :
                                r === 'organization_moderator' ? `Organization Moderator (${person.moderator_org})` : r}
                             </span>
                           ))}
@@ -111,18 +142,15 @@ export default function PersonnelSelectorModal({
                       )}
                     </div>
 
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
                       disabled={isCurrentlyAssigned}
                       onClick={() => {
                         onSelectPersonnel(person)
-                        onClose()
+                        handleCloseModal()
                       }}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer shrink-0 shadow-2xs flex items-center gap-1.5 ${
-                        isCurrentlyAssigned
-                          ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
-                          : 'bg-[#EFF7F0] hover:bg-[#143326] text-white'
-                      }`}
+                      variant={isCurrentlyAssigned ? 'secondary' : 'default'}
+                      className="shrink-0 shadow-2xs gap-1.5"
                     >
                       {isCurrentlyAssigned ? (
                         <>
@@ -132,7 +160,7 @@ export default function PersonnelSelectorModal({
                       ) : (
                         <span>Select Personnel</span>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 )
               })
@@ -144,7 +172,8 @@ export default function PersonnelSelectorModal({
         {/* Modal Footer */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-end">
           <button
-            onClick={onClose}
+            type="button"
+            onClick={handleCloseModal}
             className="px-5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-extrabold hover:bg-slate-300 dark:hover:bg-slate-700 transition cursor-pointer"
           >
             Cancel

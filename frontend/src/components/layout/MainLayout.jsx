@@ -12,7 +12,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   const location = useLocation()
   const { user: authUser, setUser, switchRoleContext } = useAuth()
   const currentUser = authUser || getCurrentUser()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const mainRef = useRef(null)
 
@@ -86,25 +86,40 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
     }
   }
 
+  // Keyboard Escape listener to dismiss mobile drawer in overlay mode (< lg)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && mobileOpen) {
+        setMobileOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mobileOpen])
+
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-[#F8FAF7] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#16834a] selection:text-white relative transition-colors duration-200">
       
       {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
-      {isSidebarOpen && (
+      {mobileOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Sidebar Component (Off-canvas drawer on mobile < 1024px, permanent sidebar on >= 1024px) */}
-      <div className={`fixed inset-y-0 left-0 z-50 lg:static lg:z-auto transition-transform duration-300 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'
-      }`}>
+      {/* Sidebar Component (Off-canvas drawer on mobile < 1024px, persistent sidebar on >= 1024px) */}
+      <div 
+        id="main-sidebar"
+        className={`fixed inset-y-0 left-0 z-50 lg:static lg:z-auto transition-transform duration-300 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
         <Sidebar
           currentUser={currentUser}
           onRoleChange={handleRoleChange}
+          onCloseMobile={() => setMobileOpen(false)}
         />
       </div>
 
@@ -114,7 +129,8 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         {/* Stationary Fixed Header Bar / Topbar */}
         <Topbar
           currentUser={currentUser}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isSidebarOpen={mobileOpen}
+          onToggleSidebar={() => setMobileOpen(prev => !prev)}
           onRoleChange={handleRoleChange}
         />
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Search, ShieldCheck, UserCheck, Building2, CheckCircle2, UserPlus } from 'lucide-react'
 import { assignDeanRole } from '../../../services/hrAdminService'
+import { isAcademicPersonnel } from '../../../utils/personnelPlacement'
 
 const COLLEGES = [
   { id: 'col_ceac', code: 'CEAC', name: 'College of Engineering, Architecture, and Computing' },
@@ -22,7 +23,8 @@ export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [
 
   // Dean must be Academic personnel affiliated with the selected College
   const eligiblePersonnel = personnelList.filter(p => {
-    const isAcademic = p.personnel_classification === 'academic'
+    if (!p) return false
+    const isAcademic = isAcademicPersonnel(p)
     const matchesCollege = !p.college_code || p.college_code === selectedCollege.code || (p.college && p.college.includes(selectedCollege.code))
     const query = searchQuery.toLowerCase().trim()
     const matchesQuery = !query ||

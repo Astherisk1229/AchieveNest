@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { Sparkles, Plus, Search, Eye, Power, CheckCircle2, FileSpreadsheet, Tag } from 'lucide-react'
 import { useCertificateTemplates } from '../../hooks/useCertificateTemplates'
+import { Button } from '../../components/ui/button'
 import CertificateTemplateEditorModal from '../../components/osad/CertificateTemplateEditorModal'
+import OSADPageHeader from '../../components/osad/OSADPageHeader'
+import { OSADEmptyState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 
 export default function OSADCertificateTemplatesPage() {
   const { templateFamilies, publishedTemplates, createTemplate, toggleStatus } = useCertificateTemplates('all')
@@ -23,31 +26,21 @@ export default function OSADCertificateTemplatesPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-200 font-sans">
       
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              OSAD Certificate Template Studio
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Centralized OSAD template registry for Awards and Organization Moderator Events.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setIsEditorOpen(true)}
-          className="px-4 py-2.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-md flex items-center gap-2 cursor-pointer self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create Certificate Template</span>
-        </button>
-      </div>
+      {/* Standardized Page Header */}
+      <OSADPageHeader
+        title="OSAD Certificate Template Studio"
+        description="Centralized OSAD template registry for Awards and Organization Moderator Events."
+        icon={Sparkles}
+        primaryAction={
+          <Button
+            onClick={() => setIsEditorOpen(true)}
+            className="gap-2 shadow-md self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Certificate Template</span>
+          </Button>
+        }
+      />
 
       {/* Metric Cards & Filter Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -112,9 +105,28 @@ export default function OSADCertificateTemplatesPage() {
         </div>
       </div>
 
-      {/* Template Family Gallery Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredFamilies.map(fam => {
+      {/* Template Family Gallery Grid or State Block */}
+      {templateFamilies.length === 0 ? (
+        <OSADEmptyState
+          icon={Sparkles}
+          title="No Certificate Templates"
+          description="No certificate templates have been registered yet in the OSAD template studio. Create your first template."
+          actionLabel="Create Certificate Template"
+          onAction={() => setIsEditorOpen(true)}
+        />
+      ) : filteredFamilies.length === 0 ? (
+        <OSADSearchEmptyState
+          title="No Matching Templates"
+          description="No certificate templates match your selected context or search query."
+          onReset={() => {
+            setContextFilter('all')
+            setSearchTerm('')
+          }}
+          resetLabel="Reset Filter & Search"
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredFamilies.map(fam => {
           const published = publishedTemplates.find(p => p.familyId === fam.id)
           return (
             <div
@@ -169,7 +181,8 @@ export default function OSADCertificateTemplatesPage() {
             </div>
           )
         })}
-      </div>
+        </div>
+      )}
 
       {/* Template Editor Modal */}
       <CertificateTemplateEditorModal

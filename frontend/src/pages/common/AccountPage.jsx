@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { 
   User, 
   Mail, 
@@ -19,7 +20,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import useUserProfile from '../../hooks/useUserProfile'
-import { supabase } from '../../config/supabase'
+import { submitPasswordChange } from '../../services/authService'
+import StudentInstitutionalProfileView from '../student/StudentInstitutionalProfileView'
 
 export default function AccountPage({ currentUser }) {
   const { user: authUser } = useAuth()
@@ -48,6 +50,10 @@ export default function AccountPage({ currentUser }) {
   const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' })
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
+  if (activeUser?.account_type === 'student') {
+    return <StudentInstitutionalProfileView currentUser={activeUser} />
+  }
+
   const handleUpdatePassword = async (e) => {
     e.preventDefault()
     setPasswordMsg({ type: '', text: '' })
@@ -61,13 +67,12 @@ export default function AccountPage({ currentUser }) {
     }
     setIsUpdatingPassword(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      await submitPasswordChange(newPassword, confirmPassword)
       setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
-      setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password.' })
+      setPasswordMsg({ type: 'error', text: err?.response?.data?.message || err.message || 'Failed to update password.' })
     } finally {
       setIsUpdatingPassword(false)
     }
@@ -165,7 +170,7 @@ export default function AccountPage({ currentUser }) {
               <span>{user.designation || 'HR Staff Officer'}</span>
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
-              {user.department || user.college || 'Human Resource Management & Development Office'}
+              {user.account_type === 'personnel' ? formatPersonnelPlacement(user) : (user.academic_program_name || user.college_name || user.designation || 'Institutional account')}
             </p>
             <div className="pt-1 flex items-center justify-center sm:justify-start gap-2">
               <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">

@@ -1,0 +1,15 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelEvaluationResultF5.test.jsx src/controllers/__tests__/PersonnelEvaluationScoringF4.test.jsx src/controllers/__tests__/PersonnelNonTeachingScaleF3.test.jsx src/controllers/__tests__/PersonnelEvaluationScaleAssignmentF1.test.js
+
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvaluationResultF5.test.jsx (25 tests) 20ms
+ ✓ src/controllers/__tests__/PersonnelEvaluationScoringF4.test.jsx (24 tests) 24ms
+ ✓ src/controllers/__tests__/PersonnelNonTeachingScaleF3.test.jsx (22 tests) 18ms
+ ✓ src/controllers/__tests__/PersonnelEvaluationScaleAssignmentF1.test.js (11 tests) 15ms
+
+ Test Files  4 passed (4)
+      Tests  82 passed (82)
+   Start at  01:10:15
+   Duration  2.12s (transform 312ms, setup 18ms, collect 812ms, tests 77ms, environment 0ms, prepare 350ms)

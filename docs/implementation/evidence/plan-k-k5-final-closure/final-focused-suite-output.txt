@@ -1,0 +1,14 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK4SecurityMigrationRegression.test.jsx (50 tests) 52ms
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK1Personas.test.jsx (40 tests) 25ms
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK2Journeys.test.jsx (50 tests) 24ms
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK0Audit.test.jsx (40 tests) 20ms
+ ✓ src/controllers/__tests__/PersonnelPlanD2FinalClosureD2Phase5.test.jsx (42 tests) 422ms
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK3RankAndSeed.test.jsx (40 tests) 23ms
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK4Remediation.test.jsx (15 tests) 13ms
+
+ Test Files  7 passed (7)
+      Tests  277 passed (277)
+   Start at  20:36:52
+   Duration  4.04s (transform 1.13s, setup 115ms, collect 4.45s, tests 578ms, environment 2ms, prepare 2.17s)

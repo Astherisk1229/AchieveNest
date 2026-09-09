@@ -13,20 +13,34 @@ const apiClient = axios.create({
   timeout: 15000
 })
 
-// Request Interceptor: Attach JWT Bearer Token from the current Supabase session
+// Request Interceptor: Attach JWT Bearer Token from local storage or session storage
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      const { data: { session } } = await import('../config/supabase').then(({ supabase }) => supabase.auth.getSession())
-      const token = session?.access_token
+      // 1. Direct local token check (local-defense mode or authenticated session)
+      let token = localStorage.getItem('achievenest_access_token') || sessionStorage.getItem('achievenest_access_token')
+
+      if (!token) {
+        const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
+        if (rawUser) {
+          try {
+            const parsed = JSON.parse(rawUser)
+            token = parsed?.token || parsed?.access_token
+          } catch {
+            token = null
+          }
+        }
+      }
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
-      } else {
+      } else if (!config.headers.Authorization) {
         delete config.headers.Authorization
       }
     } catch {
-      delete config.headers.Authorization
+      if (!config.headers.Authorization) {
+        delete config.headers.Authorization
+      }
     }
     return config
   },
@@ -42,7 +56,30 @@ apiClient.interceptors.response.use(
         console.warn('API Unauthenticated (401). Redirecting to login session.')
         localStorage.removeItem('achievenest_current_user')
         sessionStorage.removeItem('achievenest_current_user')
-        window.dispatchEvent(new Event('storage'))
+        localStorage.removeItem('achievenest_access_token')
+        sessionStorage.removeItem('achievenest_access_token')
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('storage'))
+        }
+      } else if (error.response.status === 403 && error.response.data?.error?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        console.warn('Mandatory password change required (403). Restricting session.')
+        const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
+        if (rawUser) {
+          try {
+            const user = JSON.parse(rawUser)
+            user.must_change_password = true
+            user.account_lifecycle_status = 'pending_first_login'
+            user.required_next_action = 'change_password'
+            user.can_access_protected_portal = false
+            localStorage.setItem('achievenest_current_user', JSON.stringify(user))
+            sessionStorage.setItem('achievenest_current_user', JSON.stringify(user))
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(new Event('storage'))
+            }
+          } catch {
+            // Ignore parse error
+          }
+        }
       }
       return Promise.reject(error.response.data || error.response)
     }

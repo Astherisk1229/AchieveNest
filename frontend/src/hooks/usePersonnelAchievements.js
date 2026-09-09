@@ -7,6 +7,8 @@ import PersonnelAchievementController from '../controllers/PersonnelAchievementC
  */
 export default function usePersonnelAchievements() {
   const [achievements, setAchievements] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
@@ -17,15 +19,31 @@ export default function usePersonnelAchievements() {
   const [previewItem, setPreviewItem] = useState(null)
   const [popoverState, setPopoverState] = useState({ id: null, x: 0, y: 0 })
 
-  // Initial load
-  useEffect(() => {
-    const loaded = PersonnelAchievementController.loadAchievements()
-    setAchievements(loaded)
+  // Refresh achievements from backend
+  const refreshAchievements = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const loaded = await PersonnelAchievementController.loadAchievements()
+      setAchievements(loaded)
+    } catch (err) {
+      console.error('Error fetching accomplishments:', err)
+      setError(err?.message || 'Failed to fetch accomplishments')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
+  // Initial load
+  useEffect(() => {
+    refreshAchievements()
+  }, [refreshAchievements])
+
   // Action wrappers
-  const addAchievement = useCallback((newEntry) => {
-    setAchievements(prev => PersonnelAchievementController.addAchievement(prev, newEntry))
+  const addAchievement = useCallback(async (newEntry, file = null) => {
+    const savedModel = await PersonnelAchievementController.addAchievement(newEntry, file)
+    setAchievements(prev => [savedModel, ...prev])
+    return savedModel
   }, [])
 
   const updateAchievement = useCallback((targetId, updateData) => {
@@ -34,13 +52,14 @@ export default function usePersonnelAchievements() {
       setPreviewItem(prev => {
         if (!prev) return null
         const json = prev.toJSON()
-        return PersonnelAchievementController.loadAchievements().find(a => a.id === targetId) || prev
+        return { ...json, ...updateData }
       })
     }
   }, [previewItem])
 
-  const deleteAchievement = useCallback((targetId) => {
-    setAchievements(prev => PersonnelAchievementController.deleteAchievement(prev, targetId))
+  const deleteAchievement = useCallback(async (targetId) => {
+    await PersonnelAchievementController.deleteAchievement(targetId)
+    setAchievements(prev => prev.filter(item => item.id !== targetId))
     if (previewItem && previewItem.id === targetId) {
       setPreviewItem(null)
     }
@@ -85,6 +104,9 @@ export default function usePersonnelAchievements() {
 
   return {
     achievements,
+    loading,
+    error,
+    refreshAchievements,
     filteredAchievements,
     searchSuggestions,
     stats,

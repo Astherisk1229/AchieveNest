@@ -14,8 +14,8 @@ export const ADMIN_SETUP_GUIDES = {
       {
         id: 'osad_step_1_structure',
         title: 'Academic Structure',
-        description: 'Create Colleges, Departments, and Degree Programs.',
-        destination: '/osad/dashboard?tab=departments',
+        description: 'Create Colleges and Academic Programs.',
+        destination: '/osad/dashboard?tab=academic-programs',
         actionLabel: 'Open Structure',
         evaluatorKey: 'evalOSADAcademicStructure'
       },
@@ -30,10 +30,10 @@ export const ADMIN_SETUP_GUIDES = {
       {
         id: 'osad_step_3_coordinators',
         title: 'Program Coordinators',
-        description: 'Assign one Program Coordinator to each Department.',
-        destination: '/osad/dashboard?tab=departments',
+        description: 'Assign one Program Coordinator to each Academic Program.',
+        destination: '/osad/dashboard?tab=academic-programs',
         actionLabel: 'Open Coordinators',
-        evaluatorKey: 'evalOSADDepartmentCoordinators'
+        evaluatorKey: 'evalOSADProgramCoordinators'
       },
       {
         id: 'osad_step_4_organizations',
@@ -64,7 +64,7 @@ export const ADMIN_SETUP_GUIDES = {
         id: 'hr_step_2_college_placement',
         title: 'College Placement',
         description: 'Assign active Personnel to Academic Colleges.',
-        destination: '/hr/personnel-directory?tab=departments',
+        destination: '/hr/personnel-directory',
         actionLabel: 'Open Placement',
         evaluatorKey: 'evalHRCollegePlacement'
       },
@@ -72,17 +72,17 @@ export const ADMIN_SETUP_GUIDES = {
         id: 'hr_step_3_deans',
         title: 'College Deans',
         description: 'Designate HR-assigned Deans for each College.',
-        destination: '/hr/personnel-directory?tab=departments',
+        destination: '/hr/personnel-directory',
         actionLabel: 'Open Deans',
         evaluatorKey: 'evalHRCollegeDeans'
       },
       {
-        id: 'hr_step_4_secretaries',
-        title: 'Department Secretaries',
-        description: 'Assign College-based Department Secretaries for personnel verification.',
-        destination: '/hr/personnel-directory?tab=departments',
-        actionLabel: 'Open Secretaries',
-        evaluatorKey: 'evalHRDepartmentSecretaries'
+        id: 'hr_step_4_qualifications',
+        title: 'Qualification Reviews',
+        description: 'Review Personnel qualifications before evaluation finalization.',
+        destination: '/hr/personnel-directory',
+        actionLabel: 'Open Personnel',
+        evaluatorKey: 'evalHRQualificationReviews'
       }
     ]
   }

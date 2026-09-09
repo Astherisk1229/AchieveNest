@@ -1,0 +1,33 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelEvaluatorScoringG3.test.jsx
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvaluatorScoringG3.test.jsx (22 tests) 21ms
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 1. Reviewer Authorization & Scoping > allows assigned Dean within same college to score evaluation
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 1. Reviewer Authorization & Scoping > denies cross-college Dean from submitting accepted points (403)
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 1. Reviewer Authorization & Scoping > allows assigned HR evaluator to score HR-routed evaluation
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 1. Reviewer Authorization & Scoping > denies Department Secretary from submitting evaluator points (403)
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 1. Reviewer Authorization & Scoping > denies self-review when candidate attempts to score own evaluation (403)
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 1. Reviewer Authorization & Scoping > denies scoring when evaluation is not in an active review state (400)
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 2. Judgment Criteria Range & Semantic Null Handling > Admin B.3 accepts numeric 0 to 40.0 points
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 2. Judgment Criteria Range & Semantic Null Handling > Admin B.3 rejects value exceeding maximum (e.g. 45.0)
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 2. Judgment Criteria Range & Semantic Null Handling > Admin B.6 accepts numeric 0 to 20.0 points and rejects values > 20
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 2. Judgment Criteria Range & Semantic Null Handling > Non-Teaching B.5 accepts numeric 0 to 30.0 points and rejects values > 30
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 2. Judgment Criteria Range & Semantic Null Handling > rejects negative accepted points
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 2. Judgment Criteria Range & Semantic Null Handling > differentiates null (unresolved) from explicit 0.0 (resolved)
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 3. Deterministic Criteria Protection > rejects arbitrary manual override on deterministic criterion
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 3. Deterministic Criteria Protection > permits confirmation of calculated Plan F value on deterministic criterion
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 4. Non-Teaching Area A Evaluator Inputs > accepts valid Area A rating inputs by authorized HR evaluator
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 4. Non-Teaching Area A Evaluator Inputs > rejects Area A input when component exceeds maximum
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 4. Non-Teaching Area A Evaluator Inputs > rejects submitting Area A ratings on Administrators scale
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 5. Totals Recalculation, Area Caps & Idempotency > recalculates Area totals and overall totals respecting Plan F caps
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 5. Totals Recalculation, Area Caps & Idempotency > preserves idempotency on repeated save with identical values
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 6. Plan F Result Integration & Completion State > keeps Plan F result status pending while judgment criteria remain unresolved
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 6. Plan F Result Integration & Completion State > determines Retained outcome when scoring complete but total below passing score
+   ✓ Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-Point Entry, Area A Ratings & Scoring Completion > 6. Plan F Result Integration & Completion State > Non-Teaching scoring completion requires both Area A and Area B complete
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  08:23:14
+   Duration  966ms (transform 154ms, setup 13ms, collect 204ms, tests 21ms, environment 0ms, prepare 218ms)

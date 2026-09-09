@@ -1,0 +1,47 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelMasterDataDropdownsD2Phase1.test.jsx (40 tests) 486ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 1. Full-Time Rank Catalog Integration & Prevention of Free-Text (Req 1–4) > 1. Full-Time rank dropdown loads Plan E catalog 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 1. Full-Time Rank Catalog Integration & Prevention of Free-Text (Req 1–4) > 2. Full-Time rank input is a structured catalog dropdown and not free-text 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 1. Full-Time Rank Catalog Integration & Prevention of Free-Text (Req 1–4) > 3. canonical rank code/ID retained 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 1. Full-Time Rank Catalog Integration & Prevention of Free-Text (Req 1–4) > 4. invalid Full-Time rank rejected server-side 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 2. Part-Time Title Catalog Integration & Isolation (Req 5–8) > 5. Part-Time title dropdown loads only Part-Time titles 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 2. Part-Time Title Catalog Integration & Isolation (Req 5–8) > 6. Full-Time ranks absent in Part-Time mode 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 2. Part-Time Title Catalog Integration & Isolation (Req 5–8) > 7. Part-Time titles absent in Full-Time mode 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 2. Part-Time Title Catalog Integration & Isolation (Req 5–8) > 8. invalid Part-Time title rejected server-side 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 3. Full-Time / Part-Time Catalog Switching & Incompatible Selection Clearing (Req 9–11) > 9. switching Full-Time → Part-Time changes catalog 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 3. Full-Time / Part-Time Catalog Switching & Incompatible Selection Clearing (Req 9–11) > 10. incompatible unsaved selection clears when switching engagement 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 3. Full-Time / Part-Time Catalog Switching & Incompatible Selection Clearing (Req 9–11) > 11. saved compatible edit value remains selected 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17) > 12. College dropdown loads from institutional API 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17) > 13. College dropdown works when personnelList = [] (D2-RISK-02 regression fix) 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17) > 14. College stable ID persisted 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17) > 15. arbitrary College name rejected without valid ID 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17) > 16. College API failure shows controlled error 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17) > 17. zero College rows shows explicit empty state 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 5. Non-Academic Department Master Data & Terminology Update (Req 18–21) > 18. visible label is Department in provisioning UI 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 5. Non-Academic Department Master Data & Terminology Update (Req 18–21) > 19. Non-Academic Department dropdown loads persisted units 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 5. Non-Academic Department Master Data & Terminology Update (Req 18–21) > 20. Department stable ID persisted 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 5. Non-Academic Department Master Data & Terminology Update (Req 18–21) > 21. arbitrary office string rejected where ID is required 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 6. Organizational Side & Personnel Group Guard Combinations (Req 22–27) > 22. Academic mode uses College assignment 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 6. Organizational Side & Personnel Group Guard Combinations (Req 22–27) > 23. Non-Academic mode requires Department 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 6. Organizational Side & Personnel Group Guard Combinations (Req 22–27) > 24. Faculty + Academic accepted 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 6. Organizational Side & Personnel Group Guard Combinations (Req 22–27) > 25. Non-Teaching Faculty + Academic accepted 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 6. Organizational Side & Personnel Group Guard Combinations (Req 22–27) > 26. Non-Teaching Faculty + Non-Academic accepted 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 6. Organizational Side & Personnel Group Guard Combinations (Req 22–27) > 27. Faculty + Non-Academic rejected 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 7. Provisioning Whitelist & Persistence Integrity (Req 28–32) > 28. create endpoint accepts canonical rank field 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 7. Provisioning Whitelist & Persistence Integrity (Req 28–32) > 29. create endpoint persists qualification field if supported 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 7. Provisioning Whitelist & Persistence Integrity (Req 28–32) > 30. create endpoint persists Faculty Status 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 7. Provisioning Whitelist & Persistence Integrity (Req 28–32) > 31. create endpoint persists Employment Status 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 7. Provisioning Whitelist & Persistence Integrity (Req 28–32) > 32. edit endpoint preserves saved current rank 1ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 33. qualification change does not yet auto-recommend rank (deferred to D2-2) 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 34. Position / Job Title remains unresolved 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 35. evaluation-summary projection remains deferred to D2-4 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 36. D2-0 focused suite baseline verified 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 37. Plan E rank tests remain aligned with canonical 26-rank catalog 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 38. Plan D classification tests formatting remains accurate 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 39. faculty engagement and employment status formatters remain accurate 0ms
+   ✓ Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite > 8. Boundaries, Deferrals & Regressions (Req 33–40) > 40. confirms full Phase D2-1 master data dropdown integration and catalog isolation 0ms
+
+ Test Files  1 passed (1)
+      Tests  40 passed (40)
+   Duration  2.27s

@@ -1,0 +1,12 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelPromotionDecisionH3.test.jsx
+
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPromotionDecisionH3.test.jsx (23 tests) 29ms
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  09:18:32
+   Duration  1.21s (transform 214ms, setup 14ms, collect 298ms, tests 29ms, environment 0ms, prepare 195ms)

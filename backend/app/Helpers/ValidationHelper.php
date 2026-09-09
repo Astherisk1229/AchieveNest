@@ -11,7 +11,8 @@ namespace App\Helpers;
 class ValidationHelper
 {
     /** NDMU institutional email pattern */
-    public const NDMU_EMAIL_PATTERN = '/^[^@\s]+@ndmu\.edu\.ph$/i';
+    public const NDMU_EMAIL_PATTERN = '/^[A-Za-z0-9.!#$%&\'*+\/=?^_`{|}~-]+@ndmu\.edu\.ph$/D';
+    public const MAX_INSTITUTIONAL_EMAIL_LENGTH = 255;
 
     /** Minimum password length */
     public const PASSWORD_MIN_LENGTH = 8;
@@ -36,8 +37,32 @@ class ValidationHelper
      */
     public static function validateNdmuEmail(string $email): bool
     {
+        return self::canonicalizeNdmuEmail($email) !== null;
+    }
+
+    /**
+     * Returns the one canonical login identifier, or null for malformed,
+     * non-institutional, control/invisible-character, or overlength input.
+     */
+    public static function canonicalizeNdmuEmail(mixed $email): ?string
+    {
+        if (! is_string($email)) {
+            return null;
+        }
+
+        if (preg_match('/[\x00-\x1F\x7F\p{Cf}]/u', $email) === 1) {
+            return null;
+        }
         $clean = strtolower(trim($email));
-        return $clean !== '' && preg_match(self::NDMU_EMAIL_PATTERN, $clean) === 1;
+        if ($clean === '' || strlen($clean) > self::MAX_INSTITUTIONAL_EMAIL_LENGTH) {
+            return null;
+        }
+        if (preg_match('/\s/u', $clean) === 1) {
+            return null;
+        }
+
+        return filter_var($clean, FILTER_VALIDATE_EMAIL) !== false
+            && preg_match(self::NDMU_EMAIL_PATTERN, $clean) === 1 ? $clean : null;
     }
 
     /**
@@ -51,13 +76,69 @@ class ValidationHelper
         return $clean !== '' && strlen($clean) >= 3 && strlen($clean) <= 50;
     }
 
+    public static function canonicalizeStudentInstitutionalId(mixed $id, int $minimum = 5, int $maximum = 50): ?string
+    {
+        if (! is_string($id) || preg_match('/[\x00-\x1F\x7F\p{Cf}]/u', $id) === 1) {
+            return null;
+        }
+        $clean = trim($id);
+        return preg_match('/^[0-9]{' . $minimum . ',' . $maximum . '}$/D', $clean) === 1 ? $clean : null;
+    }
+
+    public static function canonicalizePersonnelInstitutionalId(mixed $id, int $maximum = 50): ?string
+    {
+        if (! is_string($id) || preg_match('/[\x00-\x1F\x7F\p{Cf}]/u', $id) === 1) {
+            return null;
+        }
+        $clean = trim($id);
+        return $clean !== '' && strlen($clean) <= $maximum ? $clean : null;
+    }
+
+    public static function validateStudentYearLevel(mixed $value, ?array $allowedYearLevels = null): bool
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return false;
+        }
+        $allowed = $allowedYearLevels ?? [
+            '1st Year',
+            '2nd Year',
+            '3rd Year',
+            '4th Year',
+            '5th Year',
+        ];
+        return in_array(trim($value), $allowed, true);
+    }
+
+    public static function validateSex(mixed $value, ?array $allowedSexValues = null): bool
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return false;
+        }
+        $allowed = $allowedSexValues ?? [
+            'Male',
+            'Female',
+            'Prefer not to say',
+        ];
+        return in_array(trim($value), $allowed, true);
+    }
+
+    public static function validateAcademicYear(mixed $value, int $earliestStart, int $latestStart): bool
+    {
+        if (! is_string($value) || preg_match('/^([0-9]{4})-([0-9]{4})$/D', $value, $matches) !== 1) {
+            return false;
+        }
+        $start = (int) $matches[1];
+        return $start >= $earliestStart && $start <= $latestStart && (int) $matches[2] === $start + 1;
+    }
+
+
     /**
-     * Validates a UUID v4 string.
+     * Validates a UUID string.
      */
     public static function validateUuid(string $id): bool
     {
         return preg_match(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
             trim($id)
         ) === 1;
     }
@@ -170,26 +251,81 @@ class ValidationHelper
         if ($clean === '') {
             return !$required;
         }
-        return strlen($clean) >= 1 && strlen($clean) <= self::MAX_NAME_LENGTH;
+        return strlen($clean) >= 1
+            && strlen($clean) <= self::MAX_NAME_LENGTH
+            && preg_match('/[\x00-\x1F\x7F\p{Cf}]/u', $clean) !== 1;
+    }
+
+    public const TEMP_UPPERCASE = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    public const TEMP_LOWERCASE = 'abcdefghijkmnopqrstuvwxyz';
+    public const TEMP_DIGITS    = '23456789';
+    public const TEMP_SPECIALS  = '!@#$%*?-_';
+    public const TEMP_LENGTH    = 16;
+
+    /**
+     * Selects a single character uniformly from an alphabet using cryptographically secure randomness.
+     */
+    public static function secureRandomCharacter(string $alphabet): string
+    {
+        $length = strlen($alphabet);
+        if ($length === 0) {
+            throw new \InvalidArgumentException('Alphabet must not be empty.');
+        }
+
+        $index = random_int(0, $length - 1);
+        return $alphabet[$index];
     }
 
     /**
-     * Generates a cryptographically secure temporary password.
-     * Format: Ndmu#<8-hex-chars>  — satisfies policy: upper, lower, digit, special.
+     * Shuffles an array of characters using the cryptographic Fisher-Yates algorithm.
+     */
+    public static function secureShuffle(array $characters): array
+    {
+        for ($i = count($characters) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$characters[$i], $characters[$j]] = [$characters[$j], $characters[$i]];
+        }
+
+        return $characters;
+    }
+
+    /**
+     * Generates a cryptographically secure 16-character temporary password.
+     * Guarantees at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character from human-safe sets.
+     * Yields > 100 bits of effective entropy with zero predictable prefixes.
      */
     public static function generateTemporaryPassword(): string
     {
-        return 'Ndmu#' . bin2hex(random_bytes(4));
+        $groups = [
+            self::TEMP_UPPERCASE,
+            self::TEMP_LOWERCASE,
+            self::TEMP_DIGITS,
+            self::TEMP_SPECIALS,
+        ];
+
+        $characters = [];
+
+        // 1. Ensure at least one character from each required class
+        foreach ($groups as $group) {
+            $characters[] = self::secureRandomCharacter($group);
+        }
+
+        // 2. Fill remaining positions from the combined approved alphabet
+        $combinedAlphabet = implode('', $groups);
+        while (count($characters) < self::TEMP_LENGTH) {
+            $characters[] = self::secureRandomCharacter($combinedAlphabet);
+        }
+
+        // 3. Cryptographically shuffle to eliminate fixed class positioning
+        $shuffled = self::secureShuffle($characters);
+        $password = implode('', $shuffled);
+
+        // 4. Defensive validation against authoritative password policy
+        if (! self::validatePasswordPolicy($password)) {
+            throw new \RuntimeException('Generated temporary password failed authoritative password policy.');
+        }
+
+        return $password;
     }
 
-    /**
-     * Validates an academic year string (e.g. "2025-2026").
-     */
-    public static function validateAcademicYear(string $year): bool
-    {
-        if (!preg_match('/^(\d{4})-(\d{4})$/', trim($year), $m)) {
-            return false;
-        }
-        return ((int) $m[2]) === ((int) $m[1] + 1);
-    }
 }

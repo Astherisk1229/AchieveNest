@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { Button } from '../ui/button'
 
 export function BatchInterviewAdvancementModal({
   selectedCandidates = [],
@@ -9,6 +10,18 @@ export function BatchInterviewAdvancementModal({
 }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [batchResults, setBatchResults] = useState(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isProcessing) {
+        e.preventDefault()
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose, isProcessing])
 
   const handleExecute = onAdvanceBatch || onConfirmBatch
 
@@ -31,9 +44,21 @@ export function BatchInterviewAdvancementModal({
     }, 600)
   }
 
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget && !isProcessing) {
+      onClose()
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans">
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white">
+    <div
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-lg bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white"
+      >
         
         {/* Modal Header */}
         <div className="px-6 py-4 bg-[#064e2b] text-white flex items-center justify-between">
@@ -43,8 +68,10 @@ export function BatchInterviewAdvancementModal({
           </div>
           <button
             type="button"
+            aria-label="Close dialog"
+            disabled={isProcessing}
             onClick={onClose}
-            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+            className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -95,33 +122,33 @@ export function BatchInterviewAdvancementModal({
         {/* Modal Footer */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
           {batchResults ? (
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-[#064e2b] text-white font-extrabold text-xs transition cursor-pointer"
+              className="shadow-xs"
             >
               Done
-            </button>
+            </Button>
           ) : (
             <>
               <button
                 type="button"
                 onClick={onClose}
                 disabled={isProcessing}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer hover:bg-slate-200"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer hover:bg-slate-200 disabled:opacity-50"
               >
                 Cancel
               </button>
 
-              <button
+              <Button
                 type="button"
                 onClick={handleExecuteBatch}
                 disabled={eligibleCandidates.length === 0 || isProcessing}
-                className="px-4 py-2 rounded-xl bg-[#064e2b] hover:bg-[#16834a] disabled:opacity-50 text-white font-extrabold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                className="gap-1.5 shadow-xs"
               >
                 {isProcessing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Advance Selected ({eligibleCandidates.length})</span>
-              </button>
+              </Button>
             </>
           )}
         </div>

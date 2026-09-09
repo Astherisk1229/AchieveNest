@@ -13,12 +13,12 @@ import {
 import { useHR } from '../../hooks/useHR'
 import HRModel from '../../models/HRModel'
 import DeanAssignmentModal from './modals/DeanAssignmentModal'
-import CreatePersonnelAccountModal from './modals/CreatePersonnelAccountModal'
 import HRPersonnelDirectory from './HRPersonnelDirectoryPage'
 import HREvaluationSubmissions from './HREvaluationSubmissionsPage'
 import HRFacultyEvaluationAndRanking from './HRFacultyEvaluationOversightPage'
 import HRAuditTrail from './HRAuditTrailPage'
 import HRPasswordResetRequests from './HRPasswordResetRequestsPage'
+import { formatPersonnelPlacement, isAcademicPersonnel } from '../../utils/personnelPlacement'
 
 export function HRDashboard({ currentUser }) {
   const hrUser = currentUser || { full_name: 'Director Evelyn Tan', email: 'hr@ndmu.edu.ph', employee_id: 'HR-2010-001' }
@@ -45,7 +45,7 @@ export function HRDashboard({ currentUser }) {
     stats,
     handleCreatePersonnelAccount,
     handleUpdateRank,
-    handleAssignDepartmentSecretary,
+    handleAssignDean,
     handleSealVerification,
     handleReturnAccomplishment,
     handleApprovePasswordReset
@@ -66,8 +66,7 @@ export function HRDashboard({ currentUser }) {
   }
 
   // Modal Form State
-  const [isAssignDeptSecModalOpen, setIsAssignDeptSecModalOpen] = useState(false)
-  const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false)
+  const [isDeanAssignmentModalOpen, setIsDeanAssignmentModalOpen] = useState(false)
   const [employmentFilter, setEmploymentFilter] = useState('ALL')
   const [newRank, setNewRank] = useState('Assistant Professor I')
   const [newStatus, setNewStatus] = useState('Full-Time Permanent')
@@ -77,7 +76,7 @@ export function HRDashboard({ currentUser }) {
 
   // Ranking Masterboard Filters
   const [masterboardSearch, setMasterboardSearch] = useState('')
-  const [masterboardDept, setMasterboardDept] = useState('All')
+  const [masterboardAffiliation, setMasterboardAffiliation] = useState('All')
   const [masterboardStatus, setMasterboardStatus] = useState('All')
 
   const showToast = (msg) => {
@@ -97,9 +96,11 @@ export function HRDashboard({ currentUser }) {
   }
 
   const handleExportFacultyMatrix = () => {
-    const headers = ['Employee ID', 'Full Name', 'College', 'Department', 'Academic Rank', 'Status', 'Tenure Years', 'Verified Accomplishments']
+    const headers = ['Employee ID', 'Full Name', 'Personnel Type', 'College', 'Academic Program(s)', 'Administrative Unit', 'Academic Rank', 'Status', 'Tenure Years', 'Verified Accomplishments']
     const dataRows = filteredPersonnel.map(p => [
-      p.employee_id, p.full_name, p.college, p.department, p.academic_rank, p.employment_status, p.tenure_years, p.verified_accomplishments_count
+      p.employee_id, p.full_name, isAcademicPersonnel(p) ? 'Academic' : 'Non-Academic', p.college_name || p.college_code || '',
+      (p.program_affiliations || []).map(program => program.code || program.name).join('; '),
+      p.administrative_unit_name || '', p.academic_rank, p.employment_status, p.tenure_years, p.verified_accomplishments_count
     ])
     exportCSV('NDMU_Faculty_CHEd_PACUCOA_Matrix.csv', [headers, ...dataRows])
   }
@@ -179,7 +180,7 @@ export function HRDashboard({ currentUser }) {
                 </div>
                 <div className="mt-3.5">
                   <p className="text-3xl font-bold text-[#634300] dark:text-amber-100 leading-tight">{stats.pendingEndorsements}</p>
-                  <p className="text-sm font-normal text-[#805600] dark:text-amber-300/90 leading-normal mt-1">Department-forwarded evaluations</p>
+                  <p className="text-sm font-normal text-[#805600] dark:text-amber-300/90 leading-normal mt-1">Personnel evaluations awaiting HR review</p>
                 </div>
               </button>
 
@@ -196,7 +197,7 @@ export function HRDashboard({ currentUser }) {
                     <>
                       <div>
                         <p className="text-base font-bold text-[#064e2b] dark:text-[#245F42] leading-tight">{stats.activeReview.faculty_name || 'Dr. Maria Santos'}</p>
-                        <p className="text-xs font-medium text-[#346538] dark:text-[#245F42]/80">{stats.activeReview.department || 'Department of Computer Studies'}</p>
+                        <p className="text-xs font-medium text-[#346538] dark:text-[#245F42]/80">{formatPersonnelPlacement(stats.activeReview)}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex justify-between text-xs font-semibold text-[#064e2b] dark:text-[#245F42]">
@@ -279,13 +280,22 @@ export function HRDashboard({ currentUser }) {
                   <p className="text-xs text-slate-500 dark:text-slate-400">Faculty and administrative personnel directory across university colleges.</p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleTabChange('personnel')}
-                className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
-              >
-                View Directory →
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeanAssignmentModalOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#176B43] text-white font-semibold hover:bg-[#145C39] transition cursor-pointer shrink-0"
+                >
+                  Assign Dean
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('personnel')}
+                  className="px-3.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer shrink-0"
+                >
+                  View Directory →
+                </button>
+              </div>
             </div>
           </div>
 
@@ -447,8 +457,6 @@ export function HRDashboard({ currentUser }) {
           employmentFilter={employmentFilter}
           setEmploymentFilter={setEmploymentFilter}
           openRankModal={openRankModal}
-          setIsCreateAccountModalOpen={setIsCreateAccountModalOpen}
-          setIsAssignDeptSecModalOpen={setIsAssignDeptSecModalOpen}
           handleApprovePasswordReset={handleApprovePasswordReset}
           showToast={showToast}
           hrUser={hrUser}
@@ -471,8 +479,8 @@ export function HRDashboard({ currentUser }) {
           portfolios={accomplishments}
           searchQuery={masterboardSearch}
           setSearchQuery={setMasterboardSearch}
-          departmentFilter={masterboardDept}
-          setDepartmentFilter={setMasterboardDept}
+          affiliationFilter={masterboardAffiliation}
+          setAffiliationFilter={setMasterboardAffiliation}
           statusFilter={masterboardStatus}
           setStatusFilter={setMasterboardStatus}
           onSelectAuditPortfolio={openProofModal}
@@ -577,7 +585,7 @@ export function HRDashboard({ currentUser }) {
 
               {selectedAccomplishment.secretary_remarks && (
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Department Secretary Remarks</label>
+                  <label className="block font-bold text-slate-700 mb-1">Reviewer Remarks</label>
                   <p className="p-3 rounded-xl bg-slate-50 text-slate-700 italic border border-slate-200">
                     "{selectedAccomplishment.secretary_remarks}"
                   </p>
@@ -634,22 +642,12 @@ export function HRDashboard({ currentUser }) {
 
       {/* DEAN ROLE ASSIGNMENT MODAL */}
       <DeanAssignmentModal
-        isOpen={isAssignDeptSecModalOpen}
-        onClose={() => setIsAssignDeptSecModalOpen(false)}
+        isOpen={isDeanAssignmentModalOpen}
+        onClose={() => setIsDeanAssignmentModalOpen(false)}
         personnelList={personnelList}
-        onAssign={(id, role) => {
-          handleAssignDepartmentSecretary(id, role)
+        onAssign={async (id, collegeId) => {
+          await handleAssignDean(id, collegeId)
           showToast('Updated Dean governance role.')
-        }}
-      />
-
-      {/* CREATE PERSONNEL ACCOUNT MODAL */}
-      <CreatePersonnelAccountModal
-        isOpen={isCreateAccountModalOpen}
-        onClose={() => setIsCreateAccountModalOpen(false)}
-        onSave={(accData) => {
-          handleCreatePersonnelAccount(accData)
-          showToast(`Created account for ${accData.full_name}`)
         }}
       />
 

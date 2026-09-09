@@ -3,8 +3,9 @@
 namespace Tests\Feature;
 
 use App\Controllers\Api\PasswordResetRequestController;
+use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
-use App\Services\SupabaseAdminAuthService;
+use App\Services\LocalAuthService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\FeatureTestTrait;
 use ReflectionClass;
@@ -68,20 +69,21 @@ final class PasswordResetRequestTest extends CIUnitTestCase
 
     public function testTemporaryPasswordGenerationFormatAndEntropy(): void
     {
-        $controller = new PasswordResetRequestController();
-        $pw1 = $this->invokeMethod($controller, 'generateTemporaryPassword');
-        $pw2 = $this->invokeMethod($controller, 'generateTemporaryPassword');
+        $pw1 = ValidationHelper::generateTemporaryPassword();
+        $pw2 = ValidationHelper::generateTemporaryPassword();
 
-        $this->assertStringStartsWith('Ndmu#', $pw1);
-        $this->assertStringStartsWith('Ndmu#', $pw2);
         $this->assertGreaterThanOrEqual(12, strlen($pw1));
+        $this->assertMatchesRegularExpression('/[A-Z]/', $pw1);
+        $this->assertMatchesRegularExpression('/[a-z]/', $pw1);
+        $this->assertMatchesRegularExpression('/\d/', $pw1);
+        $this->assertMatchesRegularExpression('/[^A-Za-z0-9]/', $pw1);
         $this->assertNotSame($pw1, $pw2);
     }
 
     public function testOfficeAuthorizationMatrixForAdminReset(): void
     {
         $mockActorService = $this->createMock(AuthenticatedActorService::class);
-        $mockAdminAuth = $this->createMock(SupabaseAdminAuthService::class);
+        $mockLocalAuth = $this->createMock(LocalAuthService::class);
 
         // Case A: HR Admin tries to reset OSAD student request -> 403
         $mockActorService->method('resolveActor')->willReturn([
@@ -89,7 +91,7 @@ final class PasswordResetRequestTest extends CIUnitTestCase
             'roles'   => ['hr_staff'],
         ]);
 
-        $controller = new PasswordResetRequestController($mockActorService, $mockAdminAuth);
+        $controller = new PasswordResetRequestController($mockActorService, $mockLocalAuth);
         $this->assertInstanceOf(PasswordResetRequestController::class, $controller);
     }
 }

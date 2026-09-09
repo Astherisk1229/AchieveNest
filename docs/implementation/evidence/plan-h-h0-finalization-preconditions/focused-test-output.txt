@@ -1,0 +1,35 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelFinalizationReadinessH0.test.jsx
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelFinalizationReadinessH0.test.jsx (24 tests) 15ms
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 1. Valid Finalization Readiness Gate > declares complete Passed evaluation ready for Plan H finalization
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 1. Valid Finalization Readiness Gate > declares complete Retained evaluation ready for Plan H finalization
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 2. Evaluation Identity & Cycle Verification > blocks when evaluation ID is missing
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 2. Evaluation Identity & Cycle Verification > blocks when personnel profile ID is missing
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 2. Evaluation Identity & Cycle Verification > blocks when evaluation cycle is missing or invalid
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 2. Evaluation Identity & Cycle Verification > blocks when duplicate active cycle evaluation exists
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 3. Reviewer Authorization & Completion > blocks when reviewer assignment is missing
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 3. Reviewer Authorization & Completion > blocks when self-review is detected (evaluator ID matches candidate)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 3. Reviewer Authorization & Completion > blocks when evaluation is in draft state
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 4. Unresolved Revision Request Guard > blocks when evaluation is returned_for_revision
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 4. Unresolved Revision Request Guard > blocks when evaluation has unresolved revision request flag
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 5. Scoring Completeness & Score Integrity > blocks when judgment criteria remain unresolved (accepted_points = null)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 5. Scoring Completeness & Score Integrity > blocks Non-Teaching evaluation when Area A inputs are incomplete
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 5. Scoring Completeness & Score Integrity > blocks when negative accepted score is detected
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 5. Scoring Completeness & Score Integrity > blocks when accepted score exceeds criterion maximum (e.g. B.3 > 40.0)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 6. Plan F Recomputation & Rule Version > ignores client-supplied totals and recomputes authoritatively using Plan F
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 6. Plan F Recomputation & Rule Version > blocks when rule version is missing or unsupported
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 7. Promotion & Rank Mutation Boundary > verifies Passed result does not mutate candidate rank (Passed != Promoted)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 7. Promotion & Rank Mutation Boundary > verifies Readiness DTO contains zero Plan H promotion decision fields
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 8. HR Authorization & Access Controls > allows authorized HR staff to perform finalization readiness checks
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 8. HR Authorization & Access Controls > denies Department Secretary from triggering finalization (403)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 8. HR Authorization & Access Controls > denies Candidate from triggering finalization on own evaluation (403)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 8. HR Authorization & Access Controls > denies College Dean from triggering HR finalization (403)
+   ✓ Personnel Evaluation Track — Plan H — Phase H0: Finalization Preconditions, Plan F Recomputation & Readiness Gate > 9. Idempotency of Readiness Gate > returns stable identical readiness DTO on repeated execution
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  08:41:34
+   Duration  866ms (transform 139ms, setup 10ms, collect 186ms, tests 15ms, environment 0ms, prepare 214ms)

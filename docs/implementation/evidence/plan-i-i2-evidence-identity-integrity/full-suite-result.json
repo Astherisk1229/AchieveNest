@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-09-09T10:02:25+08:00",
+  "command": "npx vitest run --reporter=verbose",
+  "numTotalTestSuites": 142,
+  "numPassedTestSuites": 142,
+  "numFailedTestSuites": 0,
+  "numTotalTests": 1276,
+  "numPassedTests": 1276,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "durationSeconds": 80.66,
+  "success": true,
+  "phase": "Plan I — Phase I2: Evidence Identity, Integrity, Snapshot Linkage & Duplicate Advisory",
+  "plansCovered": [
+    "Plan A: Accomplishment Classification & Claim Persistence (Phases A0-A4)",
+    "Plan B: Portfolio Reflection & Submission Invariants (Phases B0-B4)",
+    "Plan C: Submission, Versioning & Return Workflows (Phases C0-C4)",
+    "Plan D: Faculty & Staff Track Partitioning & Eligibility (Phases D0-D4)",
+    "Plan E: Rank & Title Progression Rules (Phases E0-E4)",
+    "Plan F: Rating Scales, Ceiling Rules & Scoring Engine (Phases F0-F4)",
+    "Plan G: Reviewer Routing, Deliberation & Scoring (Phases G0-G4)",
+    "Plan H: Finalization, Deliberation & Promotion Decision (Phases H0-H4)",
+    "Plan I: Storage Audit (I0), Secure Upload Pipeline (I1), Evidence Identity & Integrity (I2)"
+  ],
+  "i0_risk_closures": {
+    "RISK-I0-03": "CLOSED - personnel_evaluation_items explicitly stores evidence_id UUID FK",
+    "RISK-I0-04": "CLOSED - SHA-256 duplicate advisory detection implemented with privacy protections",
+    "RISK-I0-01": "OPEN (Deferred to Phase I3) - Reviewer preview URL rewiring and tokenized access",
+    "RISK-I0-02": "OPEN (Deferred to Phase I4/I6) - Evidence replacement and physical unlink lifecycle"
+  }
+}

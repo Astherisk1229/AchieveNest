@@ -1,0 +1,12 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPromotionDecisionH3.test.jsx (23 tests) 28ms
+ ✓ src/controllers/__tests__/PersonnelEvaluationPrintH2.test.jsx (25 tests) 31ms
+ ✓ src/controllers/__tests__/PersonnelPlanHEndToEndH4.test.jsx (18 tests) 29ms
+ ✓ src/controllers/__tests__/PersonnelEvaluationResultH1.test.jsx (28 tests) 33ms
+ ✓ src/controllers/__tests__/PersonnelFinalizationReadinessH0.test.jsx (24 tests) 28ms
+
+ Test Files  5 passed (5)
+      Tests  118 passed (118)
+   Start at  09:29:47
+   Duration  3.10s (transform 1.11s, setup 37ms, collect 2.27s, tests 150ms, environment 2ms, prepare 1.58s)

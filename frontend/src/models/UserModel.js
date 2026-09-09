@@ -10,7 +10,10 @@ export default class UserModel {
   #role
   #active_role_context
   #program_scope
-  #department
+  #college
+  #college_code
+  #administrative_unit
+  #program_affiliations
   #designation
   #avatar_url
 
@@ -22,7 +25,10 @@ export default class UserModel {
     this.#role = data.role || 'personnel'
     this.#active_role_context = data.active_role_context || data.role || 'personnel'
     this.#program_scope = data.program_scope || 'BS Computer Science'
-    this.#department = data.department || 'College of Engineering & Architecture'
+    this.#college = data.college || 'College of Engineering & Architecture'
+    this.#college_code = data.college_code || 'CEAC'
+    this.#administrative_unit = data.administrative_unit || ''
+    this.#program_affiliations = Array.isArray(data.program_affiliations) ? data.program_affiliations : []
     this.#designation = data.designation || 'Program Coordinator & Associate Professor'
     this.#avatar_url = data.avatar_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
   }
@@ -35,7 +41,10 @@ export default class UserModel {
   get role() { return this.#role }
   get active_role_context() { return this.#active_role_context }
   get program_scope() { return this.#program_scope }
-  get department() { return this.#department }
+  get college() { return this.#college }
+  get college_code() { return this.#college_code }
+  get administrative_unit() { return this.#administrative_unit }
+  get program_affiliations() { return [...this.#program_affiliations] }
   get designation() { return this.#designation }
   get avatar_url() { return this.#avatar_url }
 
@@ -64,7 +73,10 @@ export default class UserModel {
       role: this.#role,
       active_role_context: this.#active_role_context,
       program_scope: this.#program_scope,
-      department: this.#department,
+      college: this.#college,
+      college_code: this.#college_code,
+      administrative_unit: this.#administrative_unit,
+      program_affiliations: this.#program_affiliations,
       designation: this.#designation,
       avatar_url: this.#avatar_url
     }

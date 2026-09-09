@@ -47,7 +47,8 @@ export class PersonnelOnboardingDraftModel {
       personnelCategory: typeof empData.personnelCategory === 'string' ? empData.personnelCategory : 'Faculty Member',
       positionTitle: typeof empData.positionTitle === 'string' ? empData.positionTitle : 'Faculty Member',
       college: typeof empData.college === 'string' ? empData.college : '',
-      department: typeof empData.department === 'string' ? empData.department : '',
+      academicPrograms: Array.isArray(empData.academicPrograms) ? empData.academicPrograms : [],
+      administrativeUnit: typeof empData.administrativeUnit === 'string' ? empData.administrativeUnit : '',
       academicRank: typeof empData.academicRank === 'string' ? empData.academicRank : 'Assistant Professor I',
       employmentClassification: typeof empData.employmentClassification === 'string' ? empData.employmentClassification : 'Full-Time Permanent',
       hireDate: typeof empData.hireDate === 'string' ? empData.hireDate : new Date().toISOString().split('T')[0]
@@ -86,7 +87,8 @@ export class PersonnelOnboardingDraftModel {
       this.#identity.lastName.trim() ||
       (this.#identity.email.trim() && !this.#identity.email.endsWith('@ndmu.edu.ph')) ||
       this.#employment.college ||
-      this.#employment.department
+      (this.#employment.academicPrograms && this.#employment.academicPrograms.length > 0) ||
+      this.#employment.administrativeUnit
     )
   }
 

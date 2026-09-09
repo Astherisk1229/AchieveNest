@@ -54,7 +54,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   const user = currentUser || {
     full_name: 'Dr. Ana Reyes',
     program_scope: 'BS Computer Science',
-    department: 'Department of Computer Studies'
+    academic_program_name: 'BS Computer Science'
   }
 
   // Active Workspace Tab driven by URL query parameter: 'overview' | 'workspace' | 'students'

@@ -12,7 +12,7 @@ const DEFAULT_RANK_LOGS = [
     employee_id: 'EMP-2021-0842',
     faculty_name: 'Dr. Maria Santos',
     avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-    department: 'Department of Computer Studies',
+    affiliation_snapshot: 'CEAC • BSCS',
     college: 'CEAC',
     action_type: 'Promotion',
     previous_rank: 'Associate Professor I',
@@ -28,7 +28,7 @@ const DEFAULT_RANK_LOGS = [
     employee_id: 'EMP-2015-0120',
     faculty_name: 'Prof. Ricardo Gomez',
     avatar_url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150',
-    department: 'Department of Engineering',
+    affiliation_snapshot: 'CEAC • BSCE',
     college: 'CEAC',
     action_type: 'Promotion',
     previous_rank: 'Assistant Professor III',
@@ -44,7 +44,7 @@ const DEFAULT_RANK_LOGS = [
     employee_id: 'EMP-2019-0881',
     faculty_name: 'Dr. Ana Reyes',
     avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
-    department: 'Department of Computer Studies',
+    affiliation_snapshot: 'CEAC • BSCS',
     college: 'CEAC',
     action_type: 'Reclassification',
     previous_rank: 'Assistant Professor IV',
@@ -60,7 +60,7 @@ const DEFAULT_RANK_LOGS = [
     employee_id: 'EMP-2018-0412',
     faculty_name: 'Dr. Gabriel Mendoza',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    department: 'Department of Business Management',
+    affiliation_snapshot: 'CBA • BSBA',
     college: 'CBA',
     action_type: 'Promotion',
     previous_rank: 'Associate Professor III',
@@ -76,7 +76,7 @@ const DEFAULT_RANK_LOGS = [
     employee_id: 'EMP-2022-0901',
     faculty_name: 'Engr. Sarah Cruz',
     avatar_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
-    department: 'Department of Physical Sciences',
+    affiliation_snapshot: 'CAS • BSPHY',
     college: 'CAS',
     action_type: 'Initial Placement',
     previous_rank: 'Instructor I',
@@ -103,7 +103,7 @@ export function HRRankAssignmentLogsPage(props) {
           employee_id: log.target_personnel?.match(/\(EMP-[^)]+\)/)?.[0]?.replace(/[()]/g, '') || 'EMP-2026',
           faculty_name: log.target_personnel?.split(' (')[0] || 'Personnel Member',
           avatar_url: null,
-          department: 'Academic Department',
+          affiliation_snapshot: 'Academic affiliation recorded at decision time',
           college: 'NDMU',
           action_type: 'Promotion',
           previous_rank: 'Previous Rank',
@@ -121,7 +121,7 @@ export function HRRankAssignmentLogsPage(props) {
 
   // Filter & Search State
   const [search, setSearch] = useState('')
-  const [deptFilter, setDeptFilter] = useState('ALL')
+  const [collegeFilter, setCollegeFilter] = useState('ALL')
   const [actionFilter, setActionFilter] = useState('ALL')
   const [selectedLog, setSelectedLog] = useState(null)
 
@@ -139,12 +139,12 @@ export function HRRankAssignmentLogsPage(props) {
         (log.conferred_rank && log.conferred_rank.toLowerCase().includes(q)) ||
         (log.previous_rank && log.previous_rank.toLowerCase().includes(q))
       )
-      const matchesDept = deptFilter === 'ALL' || log.department === deptFilter || log.college === deptFilter
+      const matchesCollege = collegeFilter === 'ALL' || log.college === collegeFilter
       const matchesAction = actionFilter === 'ALL' || log.action_type === actionFilter
 
-      return matchesSearch && matchesDept && matchesAction
+      return matchesSearch && matchesCollege && matchesAction
     })
-  }, [combinedRankLogs, search, deptFilter, actionFilter])
+  }, [combinedRankLogs, search, collegeFilter, actionFilter])
 
   // Pagination Calculations
   const totalItems = filteredLogs.length
@@ -158,12 +158,12 @@ export function HRRankAssignmentLogsPage(props) {
   // CSV Export Handler
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) return
-    const headers = ['Employee ID', 'Faculty Name', 'Department', 'Action Type', 'Previous Rank', 'Conferred Rank', 'Effective Date', 'Authorized By', 'Resolution No', 'Remarks']
+    const headers = ['Employee ID', 'Faculty Name', 'Historical Affiliation Snapshot', 'Action Type', 'Previous Rank', 'Conferred Rank', 'Effective Date', 'Authorized By', 'Resolution No', 'Remarks']
     const escapeCSV = (val) => `"${String(val || '').replace(/"/g, '""')}"`
     const rows = filteredLogs.map(l => [
       escapeCSV(l.employee_id),
       escapeCSV(l.faculty_name),
-      escapeCSV(l.department),
+      escapeCSV(l.affiliation_snapshot),
       escapeCSV(l.action_type),
       escapeCSV(l.previous_rank),
       escapeCSV(l.conferred_rank),
@@ -276,17 +276,16 @@ export function HRRankAssignmentLogsPage(props) {
             )}
           </div>
 
-          {/* Department Filter */}
+          {/* College filter */}
           <select
-            value={deptFilter}
-            onChange={e => setDeptFilter(e.target.value)}
+            value={collegeFilter}
+            onChange={e => setCollegeFilter(e.target.value)}
             className="w-full md:w-56 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-700 dark:text-slate-300 font-medium focus:outline-none focus:border-[#69A97C]"
           >
-            <option value="ALL">All Departments</option>
-            <option value="Department of Computer Studies">Computer Studies</option>
-            <option value="Department of Engineering">Engineering</option>
-            <option value="Department of Business Management">Business Management</option>
-            <option value="Department of Physical Sciences">Physical Sciences</option>
+            <option value="ALL">All Colleges</option>
+            <option value="CEAC">CEAC</option>
+            <option value="CBA">CBA</option>
+            <option value="CAS">CAS</option>
           </select>
 
           {/* Action Type Filter */}
@@ -347,7 +346,7 @@ export function HRRankAssignmentLogsPage(props) {
                         )}
                         <div className="min-w-0">
                           <p className="font-bold text-slate-900 dark:text-white truncate">{log.faculty_name}</p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{log.department}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{log.affiliation_snapshot}</p>
                           <p className="text-[10px] font-mono text-slate-400">{log.employee_id}</p>
                         </div>
                       </div>
@@ -462,7 +461,7 @@ export function HRRankAssignmentLogsPage(props) {
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 space-y-1">
                 <p className="text-xs font-extrabold text-slate-900 dark:text-white">{selectedLog.faculty_name}</p>
-                <p className="text-slate-500 dark:text-slate-400">{selectedLog.department} • {selectedLog.employee_id}</p>
+                <p className="text-slate-500 dark:text-slate-400">{selectedLog.affiliation_snapshot} • {selectedLog.employee_id}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

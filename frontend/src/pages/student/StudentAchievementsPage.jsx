@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getCurrentUser } from '../../services/authService'
 import AchievementSubmissionModal from './modals/AchievementSubmissionModal'
 import StudentAchievementPopoverMenu from './StudentAchievementPopoverMenu'
 import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewModal'
@@ -34,7 +36,10 @@ import {
 } from 'lucide-react'
 
 export default function StudentAchievementsPage({ currentUser }) {
-  const user = currentUser || { full_name: 'Maria Santos', student_id: 'STU-2024-01234', program: 'BS Information Technology' }
+  const outletCtx = useOutletContext()
+  const { user: authUser } = useAuth()
+  const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
+  const user = activeUser || { full_name: 'Maria Santos', student_id: 'STU-2024-01234', program: 'BS Information Technology' }
   const location = useLocation()
 
   // Use custom Student Achievements MVC bridge hook

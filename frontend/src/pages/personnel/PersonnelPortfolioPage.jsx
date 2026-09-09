@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ExportPortfolioPreviewModal from '../student/modals/ExportPortfolioPreviewModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 
 export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
@@ -53,8 +54,9 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     full_name: 'Dr. Maria Santos',
     student_id: 'EMP-2021-0842',
     employee_id: 'EMP-2021-0842',
-    program: 'Department of Computer Studies',
-    department: 'Department of Computer Studies',
+    personnel_classification: 'academic',
+    college_name: 'College of Engineering, Architecture, and Computing',
+    program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
     designation: 'Associate Professor & Research Coordinator',
     year_level: '8 Years Service',
     age: 38,
@@ -77,7 +79,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     {
       id: 2,
       role: 'Associate Professor',
-      organization: 'Department of Computer Studies – NDMU',
+      organization: 'BS Computer Science Program – NDMU',
       period: 'AY 2022–Present',
       icon: GraduationCap
     },
@@ -113,33 +115,22 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     { name: 'Faculty Mentorship', level: 3, label: 'Expert' }
   ])
 
-  // Verified Accomplishments State
-  const [verifiedAccomplishments] = useState([
-    {
-      id: 1,
-      title: 'Machine Learning Frameworks in Education Analytics',
-      category: 'Research & Publications',
-      date: 'Apr 15, 2026',
-      icon: BookOpen,
-      status: 'Verified'
-    },
-    {
-      id: 2,
-      title: 'NDMU Outstanding Research Faculty of the Year',
-      category: 'Institutional Awards',
-      date: 'Jan 10, 2026',
-      icon: Award,
-      status: 'Verified'
-    },
-    {
-      id: 3,
-      title: 'CHED Regional Training on AI Curriculum',
-      category: 'Seminars & Workshops',
-      date: 'Mar 20, 2026',
-      icon: Users,
-      status: 'Verified'
-    }
-  ])
+  // Dynamically derive Featured Accomplishments from Canonical Portfolio Reflection Model
+  const featuredAccomplishments = useMemo(() => {
+    const all = [
+      ...(portfolio?.area_a_items || []),
+      ...(portfolio?.area_b_items || []),
+      ...(portfolio?.area_c_items || [])
+    ]
+    return all.slice(0, 4).map(item => ({
+      id: item.id,
+      title: item.title,
+      category: item.category,
+      date: item.date || item.date_achieved || 'AY 2025-2026',
+      icon: (item.category || '').startsWith('A') ? GraduationCap : (item.category || '').startsWith('B') ? BookOpen : Heart,
+      status: item.proof_file_name ? 'Proof Attached' : 'Advisory Record'
+    }))
+  }, [portfolio])
 
   // Share Profile Handler
   const handleShareProfile = () => {
@@ -256,13 +247,16 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {personnel.department || 'College of IT'}</p>
+              <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {formatPersonnelPlacement(personnel)}</p>
 
                   {/* Compact Credential Chips Row */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
-                      {personnel.department || 'College of Information Technology'}
+                      {formatPersonnelPlacement(personnel)}
+                    </span>
+
+                    <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
                     </span>
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
@@ -379,36 +373,44 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                   <Trophy className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
                   <span>Featured Accomplishments</span>
                 </h3>
-                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{verifiedAccomplishments.length} verified</span>
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{featuredAccomplishments.length} recorded</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {verifiedAccomplishments.map((item) => {
-                  const ItemIcon = item.icon
-                  return (
-                    <div key={item.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
-                            {item.category}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                            <span>Verified</span>
-                          </span>
+              {featuredAccomplishments.length === 0 ? (
+                <div className="p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
+                  <FileText className="w-8 h-8 text-slate-400 mx-auto" />
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">No accomplishments recorded yet</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Add achievements to your portfolio to feature them here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {featuredAccomplishments.map((item) => {
+                    const ItemIcon = item.icon
+                    return (
+                      <div key={item.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
+                              {item.category}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                              <span>{item.status}</span>
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-2">{item.title}</h4>
                         </div>
 
-                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-2">{item.title}</h4>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
+                          <span>{item.date}</span>
+                          <ItemIcon className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
+                        </div>
                       </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
-                        <span>{item.date}</span>
-                        <ItemIcon className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
 
             </div>
 

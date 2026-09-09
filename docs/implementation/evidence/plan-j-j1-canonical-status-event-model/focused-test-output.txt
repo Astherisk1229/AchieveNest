@@ -1,0 +1,9 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelWorkflowEventModelJ1.test.jsx (31 tests) 22ms
+ ✓ src/controllers/__tests__/PersonnelWorkflowEventAuditJ0.test.jsx (24 tests) 16ms
+
+ Test Files  2 passed (2)
+      Tests  55 passed (55)
+   Start at  11:02:01
+   Duration  1.03s (transform 254ms, setup 35ms, collect 454ms, tests 38ms, environment 1ms, prepare 443ms)

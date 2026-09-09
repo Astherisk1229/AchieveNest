@@ -1,0 +1,10 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ Test Files  145 passed (145)
+      Tests  1356 passed (1356)
+   Start at  10:34:23
+   Duration  70.63s (transform 8.10s, setup 823ms, collect 51.11s, tests 13.12s, environment 54ms, prepare 46.08s)
+
+All 145 test suites completed with 0 failures.
+Baseline: PASS
+Regressions: 0

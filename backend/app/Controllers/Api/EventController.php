@@ -2,7 +2,7 @@
 
 namespace App\Controllers\Api;
 
-use App\Services\SupabaseAuthService;
+use App\Services\AuthorizationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -11,6 +11,13 @@ class EventController extends Controller
 {
     use ResponseTrait;
 
+    protected AuthorizationService $authz;
+
+    public function __construct(?AuthorizationService $authz = null)
+    {
+        $this->authz = $authz ?? new AuthorizationService();
+    }
+
     public function options()
     {
         return $this->respond(null, 204);
@@ -18,46 +25,19 @@ class EventController extends Controller
 
     protected function resolveActor(): ?array
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
-        if ($authorization === '' || ! preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
-            return null;
-        }
+        return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+    }
 
-        $token = trim($matches[1]);
-
-        try {
-            $claims = (new SupabaseAuthService())->verifyAccessToken($token);
-        } catch (Throwable) {
-            return null;
-        }
-
-        $authUserId = (string) ($claims->sub ?? '');
-        if ($authUserId === '') {
-            return null;
-        }
-
-        $db = db_connect();
-        $profile = $db->table('public.profiles')
-            ->where('id', $authUserId)
-            ->get()
-            ->getRowArray();
-
-        if ($profile === null || ($profile['status'] ?? '') !== 'active') {
-            return null;
-        }
-
-        $roles = $db->query(
-            'SELECT r.role_key
-             FROM public.profile_roles pr
-             JOIN public.roles r ON r.id = pr.role_id
-             WHERE pr.profile_id = ? AND pr.is_active = true',
-            [$authUserId]
-        )->getResultArray();
-
-        return [
-            'profile' => $profile,
-            'roles'   => array_column($roles, 'role_key'),
-        ];
+    private function genUuid(): string
+    {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000,
+            random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+        );
     }
 
     /**
@@ -74,9 +54,9 @@ class EventController extends Controller
 
         $events = $db->query(
             'SELECT e.*, p.full_name AS organizer_name
-             FROM public.events e
-             JOIN public.profiles p ON p.id = e.organizer_id
-             ORDER BY e.event_date DESC'
+             FROM events e
+             LEFT JOIN profiles p ON p.id = e.organizer_profile_id
+             ORDER BY e.start_time DESC'
         )->getResultArray();
 
         return $this->respond([
@@ -96,8 +76,8 @@ class EventController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'dean', 'osad_staff'];
-        $hasRole = count(array_intersect($allowedOrganizerRoles, $actor['roles'])) > 0;
+        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'dean', 'osad_staff', 'hr_staff'];
+        $hasRole = count(array_intersect($allowedOrganizerRoles, $actor['roles'] ?? [])) > 0;
 
         if (! $hasRole) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Authorized organizer role required to create official events.']], 403);
@@ -106,8 +86,9 @@ class EventController extends Controller
         $json = $this->request->getJSON(true) ?? [];
         $title = trim((string) ($json['title'] ?? ''));
         $description = trim((string) ($json['description'] ?? ''));
-        $category = trim((string) ($json['category'] ?? 'Institutional'));
-        $eventDate = ! empty($json['event_date']) ? trim((string) $json['event_date']) : date('Y-m-d');
+        $eventType = trim((string) ($json['event_type'] ?? $json['category'] ?? 'institutional'));
+        $startTime = ! empty($json['start_time']) ? trim((string) $json['start_time']) : (! empty($json['event_date']) ? trim((string) $json['event_date']) . ' 08:00:00' : date('Y-m-d H:i:s'));
+        $endTime = ! empty($json['end_time']) ? trim((string) $json['end_time']) : (! empty($json['event_date']) ? trim((string) $json['event_date']) . ' 17:00:00' : date('Y-m-d H:i:s', time() + 3600 * 4));
         $venue = trim((string) ($json['venue'] ?? 'NDMU Campus'));
 
         if ($title === '') {
@@ -115,18 +96,21 @@ class EventController extends Controller
         }
 
         $db = db_connect();
-        $eventId = (string) service('uuid')->uuid4();
+        $eventId = $this->genUuid();
+        $now = date('Y-m-d H:i:s');
 
-        $db->table('public.events')->insert([
-            'id'           => $eventId,
-            'title'        => $title,
-            'description'  => $description,
-            'category'     => $category,
-            'event_date'   => $eventDate,
-            'venue'        => $venue,
-            'organizer_id' => $actor['profile']['id'],
-            'status'       => 'published',
-            'created_at'   => date('Y-m-d H:i:s'),
+        $db->table('events')->insert([
+            'id'                   => $eventId,
+            'organizer_profile_id' => $actor['profile']['id'],
+            'title'                => $title,
+            'description'          => $description !== '' ? $description : null,
+            'event_type'           => $eventType,
+            'start_time'           => $startTime,
+            'end_time'             => $endTime,
+            'venue'                => $venue,
+            'status'               => 'published',
+            'created_at'           => $now,
+            'updated_at'           => $now,
         ]);
 
         return $this->respondCreated([
@@ -134,14 +118,13 @@ class EventController extends Controller
                 'message'    => 'Official event created successfully.',
                 'id'         => $eventId,
                 'title'      => $title,
-                'event_date' => $eventDate,
+                'start_time' => $startTime,
             ],
         ]);
     }
 
     /**
      * POST /api/v1/events/{id}/participants
-     * Records event participants and generates verified achievements & certificates.
      */
     public function addParticipants(string $eventId)
     {
@@ -150,15 +133,15 @@ class EventController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'dean', 'osad_staff'];
-        $hasRole = count(array_intersect($allowedOrganizerRoles, $actor['roles'])) > 0;
+        $allowedOrganizerRoles = ['organization_moderator', 'program_coordinator', 'dean', 'osad_staff', 'hr_staff'];
+        $hasRole = count(array_intersect($allowedOrganizerRoles, $actor['roles'] ?? [])) > 0;
 
         if (! $hasRole) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Authorized organizer role required.']], 403);
         }
 
         $db = db_connect();
-        $event = $db->table('public.events')->where('id', $eventId)->get()->getRowArray();
+        $event = $db->table('events')->where('id', $eventId)->get()->getRowArray();
         if ($event === null) {
             return $this->respond(['error' => ['code' => 'EVENT_NOT_FOUND', 'message' => 'Event not found.']], 404);
         }
@@ -170,46 +153,41 @@ class EventController extends Controller
             return $this->respond(['error' => ['code' => 'EMPTY_PARTICIPANTS', 'message' => 'At least one participant required.']], 422);
         }
 
+        $category = $db->table('portfolio_categories')
+            ->where('status', 'active')
+            ->orderBy('sort_order', 'ASC')
+            ->get()->getRowArray();
+        $catId = $category['id'] ?? '11111111-1111-1111-1111-111111111111';
+
         $createdCount = 0;
-        $db->transBegin();
+        $now = date('Y-m-d H:i:s');
+        $db->transStart();
         try {
             foreach ($participants as $p) {
                 $studentId = $p['student_id'] ?? null;
                 $award = $p['award'] ?? 'Certificate of Participation';
-                $role = $p['role'] ?? 'Participant';
 
                 if (! $studentId) continue;
 
-                // Create participant record
-                $db->table('public.event_participants')->insert([
-                    'id'               => (string) service('uuid')->uuid4(),
-                    'event_id'         => $eventId,
-                    'student_id'       => $studentId,
-                    'role'             => $role,
-                    'result_award'     => $award,
-                    'is_verified'      => true,
-                    'created_at'       => date('Y-m-d H:i:s'),
-                ]);
-
-                // Automatically generate verified achievement attached to student's portfolio
-                $db->table('public.achievements')->insert([
-                    'id'                => (string) service('uuid')->uuid4(),
-                    'student_id'        => $studentId,
-                    'official_event_id' => $eventId,
-                    'title'             => sprintf('%s — %s', $event['title'], $award),
-                    'category'          => $event['category'] ?? 'Institutional Event',
-                    'description'       => sprintf('Awarded %s in %s held on %s.', $award, $event['title'], $event['event_date']),
-                    'date_awarded'      => $event['event_date'],
-                    'venue'             => $event['venue'] ?? 'NDMU Campus',
-                    'status'            => 'verified',
-                    'created_at'        => date('Y-m-d H:i:s'),
-                    'updated_at'        => date('Y-m-d H:i:s'),
+                $recordId = $this->genUuid();
+                $db->table('student_portfolio_records')->insert([
+                    'id'                  => $recordId,
+                    'student_profile_id'  => $studentId,
+                    'category_id'         => $catId,
+                    'title'               => sprintf('%s — %s', $event['title'], $award),
+                    'organizer_or_body'   => $event['venue'] ?? 'NDMU Campus',
+                    'occurrence_date'     => substr($event['start_time'], 0, 10),
+                    'description'         => sprintf('Awarded %s in %s held on %s.', $award, $event['title'], substr($event['start_time'], 0, 10)),
+                    'status'              => 'verified',
+                    'verified_at'         => $now,
+                    'created_at'          => $now,
+                    'updated_at'          => $now,
                 ]);
 
                 $createdCount++;
             }
 
-            $db->transCommit();
+            $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
             return $this->respond(['error' => ['code' => 'BATCH_FAILED', 'message' => 'Failed to record participants: ' . $e->getMessage()]], 500);
@@ -217,7 +195,7 @@ class EventController extends Controller
 
         return $this->respondCreated([
             'data' => [
-                'message'            => sprintf('Successfully added %d participants and generated verified portfolio achievements.', $createdCount),
+                'message'            => sprintf('Successfully added %d participants and generated verified portfolio records.', $createdCount),
                 'event_id'           => $eventId,
                 'participants_count' => $createdCount,
             ],

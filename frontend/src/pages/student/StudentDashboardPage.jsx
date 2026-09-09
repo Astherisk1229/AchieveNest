@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import DigitalBarcodeIDCardModal from './modals/DigitalBarcodeIDCardModal'
+import { useNavigate, Link, useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getCurrentUser } from '../../services/authService'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
@@ -29,11 +30,13 @@ import {
 
 export default function StudentDashboardPage({ currentUser }) {
   const navigate = useNavigate()
-  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false)
+  const outletCtx = useOutletContext()
+  const { user: authUser } = useAuth()
+  const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
   const [activeStatFilter, setActiveStatFilter] = useState('all') // 'all' | 'verified' | 'pending' | 'returned' | 'proofs'
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All')
 
-  const student = currentUser || {
+  const student = activeUser || {
     full_name: 'Maria Santos',
     student_id: '2024-01234',
     program: 'BS Information Technology',
@@ -99,7 +102,7 @@ export default function StudentDashboardPage({ currentUser }) {
       status: 'Returned',
       statusType: 'returned',
       category: 'Academic',
-      issuer: 'NDMU CITE Department',
+        issuer: 'NDMU BSCS Academic Program',
       hasProof: false,
       icon: RotateCcw
     }
@@ -188,17 +191,6 @@ export default function StudentDashboardPage({ currentUser }) {
                 </p>
               </div>
             </div>
-
-            {/* Digital ID Barcode Button */}
-            <button
-              type="button"
-              onClick={() => setIsBarcodeModalOpen(true)}
-              className="p-3 rounded-xl bg-[#176B43] hover:bg-[#125536] border border-[#176B43] text-white flex items-center gap-2 transition text-xs font-extrabold shadow-2xs group shrink-0 self-start sm:self-auto cursor-pointer"
-              title="Click to expand Student Digital ID Barcode"
-            >
-              <QrCode className="w-4 h-4 text-white group-hover:scale-105 transition" />
-              <span className="hidden sm:inline">Digital ID Barcode</span>
-            </button>
           </div>
 
           {/* 5 CLICKABLE INTERACTIVE BENTO STAT CARDS (Uniform CSS Grid) */}
@@ -406,13 +398,6 @@ export default function StudentDashboardPage({ currentUser }) {
         </div>
 
       </div>
-
-      {/* DIGITAL BARCODE ID MODAL */}
-      <DigitalBarcodeIDCardModal
-        user={student}
-        isOpen={isBarcodeModalOpen}
-        onClose={() => setIsBarcodeModalOpen(false)}
-      />
     </>
   )
 }

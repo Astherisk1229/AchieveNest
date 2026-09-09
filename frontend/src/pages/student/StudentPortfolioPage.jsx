@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getCurrentUser } from '../../services/authService'
 import ExportPortfolioPreviewModal from './modals/ExportPortfolioPreviewModal'
 import EditStudentInfoModal from './modals/EditStudentInfoModal'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
@@ -37,12 +39,15 @@ import {
 
 export default function StudentPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
+  const outletCtx = useOutletContext()
+  const { user: authUser } = useAuth()
+  const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
 
   // Student Profile State
-  const [student, setStudent] = useState(currentUser || {
+  const [student, setStudent] = useState(activeUser || {
     full_name: 'Maria Santos',
     student_id: '2024-01234',
     program: 'BS Computer Science',
@@ -54,6 +59,20 @@ export default function StudentPortfolioPage({ currentUser }) {
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     about_me: 'I am a dedicated and driven 3rd Year student enrolled in BS Computer Science at Notre Dame of Marbel University. With a strong passion for technology, community service, and academic excellence, I actively seek opportunities to grow both personally and professionally.'
   })
+
+  useEffect(() => {
+    if (activeUser) {
+      setStudent(prev => ({
+        ...prev,
+        ...activeUser,
+        full_name: activeUser.full_name || prev.full_name,
+        student_id: activeUser.student_id || activeUser.institutional_id || prev.student_id,
+        program: activeUser.program || prev.program,
+        email: activeUser.email || activeUser.institutional_email || prev.email,
+        avatar_url: activeUser.avatar_url || prev.avatar_url
+      }))
+    }
+  }, [activeUser])
 
   // Experience & Involvement List State
   const [experiences, setExperiences] = useState([

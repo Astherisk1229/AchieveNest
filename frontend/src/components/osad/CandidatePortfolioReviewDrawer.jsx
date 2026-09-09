@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   X,
   Award,
@@ -22,6 +22,20 @@ export default function CandidatePortfolioReviewDrawer({
   onConfirmAwardee,
   onUndoConfirmation
 }) {
+  useEffect(() => {
+    if (!candidate) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [candidate, onClose])
+
   if (!candidate) return null
 
   const isAdvanced = candidate.osadDecision === 'ADVANCED_TO_INTERVIEW' || candidate.confirmed || candidate.confirmationStatus === 'confirmed'
@@ -91,6 +105,7 @@ export default function CandidatePortfolioReviewDrawer({
 
             <button
               type="button"
+              aria-label="Close drawer"
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
             >
@@ -218,7 +233,7 @@ export default function CandidatePortfolioReviewDrawer({
                     className="px-4 py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white text-xs font-extrabold transition cursor-pointer shadow-2xs flex items-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                    <span>Advance to Interview</span>
+                    <span>Mark Eligible for Interview</span>
                   </button>
                 </>
               )}

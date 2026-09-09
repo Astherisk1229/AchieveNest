@@ -1,0 +1,8 @@
+Test Files  154 passed (154)
+      Tests  1657 passed (1657)
+   Start at  16:00:47
+   Duration  90.68s (transform 15.07s, setup 1.08s, collect 67.03s, tests 19.56s, environment 62ms, prepare 57.79s)
+
+JSON report written to C:/Users/Admin/Documents/AchieveNest/frontend/vitest-results-d2-0.json
+Exit Code: 0
+Status: 100% SUCCESS — 0 FAILURES

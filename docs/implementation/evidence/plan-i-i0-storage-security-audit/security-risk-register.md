@@ -1,0 +1,9 @@
+# Security Risk Register — Plan I Phase I0
+
+| Risk ID | Area | Current Behavior | Risk Description | Severity | Affected Phase | Recommended Treatment | Status |
+|---|---|---|---|---|---|---|---|
+| **RISK-I0-01** | Reviewer Preview | Evaluator workspace constructs preview URLs with filenames (`/api/v1/evidence/preview/${fileName}`) | Reviewer preview path does not directly bind to backend evidence UUID streaming | Medium | Phase I3 / I5 | Rewire preview endpoints to use authenticated evidence ID streaming (`/api/v1/evidence/personnel/{id}/download`) | Documented for I3 |
+| **RISK-I0-02** | Deletion Purge | Portfolio `purge` endpoint deletes DB evidence rows without deleting physical files from disk | Storage bloat / orphaned files on disk after owner-authorized complete deletion | Medium | Phase I4 / I6 | Enhance `purge` handler to iterate over storage paths and unlink physical files prior to DB row deletion | Documented for I4/I6 |
+| **RISK-I0-03** | Snapshot Reference | `personnel_evaluation_items` stores relative storage path string rather than explicit foreign key to evidence table | Harder to trace provenance if storage paths change or are restructured | Low-Medium | Phase I2 / I4 | Add `evidence_id` column to evaluation item snapshots | Documented for I2 |
+| **RISK-I0-04** | Deduplication | Content SHA-256 hash is computed and stored, but duplicate content uploads are not flagged | Users may unknowingly upload identical files across multiple portfolio entries | Low | Phase I2 | Add advisory duplicate content warning during upload pre-flight | Documented for I2 |
+| **RISK-I0-05** | Malware Scanning | Backend schema records `malware_scanner: none_deferred` | Files are validated by MIME and Magic Bytes, but full anti-virus daemon is not attached | Low | Phase I1 | Maintain strict MIME/Magic Byte inspection and prepare clean hook for asynchronous AV scanning | Documented for I1 |

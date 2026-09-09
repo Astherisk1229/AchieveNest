@@ -1,0 +1,82 @@
+# Allowed Selectable Values Matrix — Administrators Scale
+
+## Area A
+- **`A1_DEGREES` (`classification`)**:
+  - `phd_degree`: "Ph.D. Degree Holder" (40 pts)
+  - `phd_units`: "Ph.D. Units (2 pts per 3 units, max 10)"
+  - `ma_degree`: "MA Degree Holder" (20 pts)
+  - `ma_units`: "MA Units (1 pt per 3 units, max 10)"
+- **`A2_PROFESSIONAL_ORGANIZATION_MEMBERSHIP` (`membership_role`)**:
+  - `member`: "Member" (5 pts)
+  - `officer`: "Officer" (10 pts)
+- **`A3_SEMINARS_TRAININGS` (`seminar_scope`)**:
+  - `in_house`: "In-house" (3 pts)
+  - `city_provincial`: "City/Provincial" (4 pts)
+  - `regional`: "Regional" (6 pts)
+  - `national`: "National" (8 pts)
+  - `international`: "International" (10 pts)
+
+## Area B
+- **`B1_GUEST_LECTURER_CONSULTANT_JUDGE_RESOURCE_PERSON`**:
+  - `sponsoring_org_type`:
+    - `ndmu`: "NDMU" (1 pt)
+    - `external`: "External Agencies/Other Schools" (2 pts)
+  - `extent_of_talk`:
+    - `one_hour`: "1 hour" (1 pt)
+    - `half_day`: "Half day" (2 pts)
+    - `one_day`: "1 day" (3 pts)
+    - `two_days`: "2 days" (4 pts)
+    - `more_days`: "More days" (5 pts)
+  - `participant_reach`:
+    - `local`: "Local" (1 pt)
+    - `regional`: "Regional" (2 pts)
+    - `national`: "National" (3 pts)
+    - `international`: "International" (4 pts)
+  - `activity_role`:
+    - `judge`: "Judge" (3 pts)
+    - `reactor`: "Reactor" (5 pts)
+    - `resource_person`: "Resource Person" (5 pts)
+    - `facilitator`: "Facilitator" (5 pts)
+    - `consultant`: "Consultant" (5 pts)
+    - `speaker`: "Speaker" (5 pts)
+    - `organizer`: "Organizer" (5 pts)
+- **`B2_PUBLICATION`**:
+  - `publication_scope`:
+    - `local`: "Local" (3 pts)
+    - `regional`: "Regional" (4 pts)
+    - `national`: "National" (6 pts)
+    - `international`: "International" (8 pts)
+  - `publication_type`:
+    - `commentary`: "Commentary" (2 pts)
+    - `reviews`: "Reviews" (4 pts)
+    - `compilation`: "Compilation" (5 pts)
+    - `article`: "Article" (5 pts)
+    - `scholarly_paper`: "Scholarly Paper" (8 pts)
+    - `monograph`: "Monograph" (8 pts)
+    - `research_output`: "Research Output" (10 pts)
+    - `book`: "Book" (10 pts)
+- **`B4_PROFESSIONAL_RECOGNITION_AWARDS`**:
+  - `recognition_status`:
+    - `nominee`: "Nominee"
+    - `awardee`: "Awardee"
+  - `award_scope`:
+    - `local`: "Local"
+    - `provincial_regional`: "Provincial/Regional"
+    - `national`: "National"
+    - `international`: "International"
+- **`B5_INSTRUCTIONAL_MATERIALS` (`material_type`)**:
+  - `audio_visual`: "Audio-Visual Aids" (10 pts)
+  - `modules`: "Modules" (10 pts)
+  - `reviewers`: "Reviewers (Bound)" (10 pts)
+  - `others`: "Others (Bound Workbook, Exercises, Lectures)" (20 pts)
+
+## Area C
+- **`C1_EXTRA_CURRICULAR_ORGANIZATIONS` (`c1_subcategory`)**:
+  - `moderator`: "Moderator of Clubs/Organizations" (20 pts)
+  - `coach_trainer`: "Coach/Trainer" (20 pts)
+  - `working_committee`: "Membership in Working Committees" (20 pts)
+  - `rendered_service`: "Rendered Service during intramurals, etc., others" (10 pts)
+- **`C2_COMMUNITY_INVOLVEMENT` (`c2_category`)**:
+  - `church_activities`: "Active involvement in church activities" (25 pts)
+  - `community_civic`: "Active involvement in community/civic activities" (25 pts)
+  - `charity_projects`: "Support to charity and community projects" (5 pts)

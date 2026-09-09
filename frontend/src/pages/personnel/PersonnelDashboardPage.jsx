@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import DigitalBarcodeIDCardModal from '../student/modals/DigitalBarcodeIDCardModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
 import OrganizationModeratorDashboardPage from './organization-moderator/OrganizationModeratorDashboardPage'
-import DepartmentSecretaryDashboardPage from './department-secretary/DepartmentSecretaryDashboardPage'
 
 import {
   Award,
@@ -30,6 +28,7 @@ import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import PersonnelDashboardController from '../../controllers/PersonnelDashboardController'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 
 export default function PersonnelDashboardPage({ currentUser: propUser, onRoleChange }) {
   const navigate = useNavigate()
@@ -42,7 +41,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || 'EMP-2021-0842')
 
   // Modals state
-  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false)
   const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState('All')
@@ -90,8 +88,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
         <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
         <OrganizationModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
-      ) : (activeRoleContext === 'dean' || activeRoleContext === 'department_secretary') && activeTabParam !== 'faculty_view' ? (
-        <DepartmentSecretaryDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : (
         <div className="space-y-8 font-sans">
 
@@ -108,20 +104,10 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                     <h1 className="text-2xl font-extrabold text-[#17663B] tracking-tight">Personnel Professional Portfolio</h1>
                   </div>
                   <p className="text-xs text-[#245F42] font-medium mt-0.5">
-                    {profile.full_name} • {profile.employee_id} • {profile.department}
+                    {profile.full_name} • {profile.employee_id} • {formatPersonnelPlacement(profile)}
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsBarcodeOpen(true)}
-                className="px-3 py-2 rounded-2xl bg-[#149653] hover:bg-[#125536] border border-[#149653] text-white flex items-center gap-2 transition text-xs font-bold shadow-xs group shrink-0"
-                title="Click to expand Faculty Digital ID Barcode"
-              >
-                <QrCode className="w-4 h-4 text-white group-hover:scale-110 transition" />
-                <span className="hidden sm:inline">Digital ID Barcode</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 relative z-10 w-full">
@@ -205,19 +191,20 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="flex items-center z-10 relative">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${portfolio?.status === 'HR_APPROVED' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-[#245F42]' :
-                    portfolio?.status === 'ENDORSED_TO_HR' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
-                      portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-[#245F42]' :
+                    (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
+                      (portfolio?.status === 'SUBMITTED_TO_DEP_SEC' || portfolio?.status === 'submitted' || portfolio?.status === 'in_evaluation') ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
                         'border-amber-400 bg-amber-50/80 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                     }`}>
-                    <span className={`w-2 h-2 rounded-full ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#16834a]' :
-                      portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-500' :
+                    <span className={`w-2 h-2 rounded-full ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'bg-[#16834a]' :
+                      (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'bg-blue-500' :
                         'bg-amber-500 animate-pulse'
                       }`}></span>
                     <span className="truncate">
-                      {portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
-                        portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
-                          portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
+                      {(portfolio?.status === 'submitted' || portfolio?.status === 'SUBMITTED_TO_DEP_SEC') ? 'Submitted' :
+                        portfolio?.status === 'in_evaluation' ? 'In Evaluation' :
+                          (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'Ready for Finalization' :
+                            (portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'Approved' : 'Draft Portfolio'}
                     </span>
                   </span>
                 </div>
@@ -351,12 +338,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       )}
 
       {/* MODALS */}
-      <DigitalBarcodeIDCardModal
-        user={profile}
-        isOpen={isBarcodeOpen}
-        onClose={() => setIsBarcodeOpen(false)}
-      />
-
       <EditBasicInfoModal
         isOpen={isEditInfoOpen}
         onClose={() => setIsEditInfoOpen(false)}

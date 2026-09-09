@@ -10,7 +10,10 @@ export class PersonnelEntity {
   #full_name
   #email
   #college
-  #department
+  #college_code
+  #program
+  #program_affiliations
+  #administrative_unit
   #academic_rank
   #employment_status
   #tenure_years
@@ -24,8 +27,11 @@ export class PersonnelEntity {
     this.#employee_id = data.employee_id || 'EMP-2021-0000'
     this.#full_name = data.full_name || 'Dr. Personnel'
     this.#email = data.email || 'personnel@ndmu.edu.ph'
-    this.#college = data.college || 'College of Engineering, Architecture, and Computing (CEAC)'
-    this.#department = data.department || 'Department of Computer Studies'
+    this.#college = data.college || 'College of Engineering, Architecture, and Technology'
+    this.#college_code = data.college_code || 'CEAC'
+    this.#program = data.program || 'Bachelor of Science in Computer Science'
+    this.#program_affiliations = Array.isArray(data.program_affiliations) ? data.program_affiliations : []
+    this.#administrative_unit = data.administrative_unit || ''
     this.#academic_rank = data.academic_rank || 'Assistant Professor I'
     this.#employment_status = data.employment_status || 'Full-Time Permanent'
     this.#tenure_years = typeof data.tenure_years === 'number' ? data.tenure_years : 5
@@ -40,7 +46,10 @@ export class PersonnelEntity {
   get full_name() { return this.#full_name }
   get email() { return this.#email }
   get college() { return this.#college }
-  get department() { return this.#department }
+  get college_code() { return this.#college_code }
+  get program() { return this.#program }
+  get program_affiliations() { return [...this.#program_affiliations] }
+  get administrative_unit() { return this.#administrative_unit }
   get academic_rank() { return this.#academic_rank }
   get employment_status() { return this.#employment_status }
   get tenure_years() { return this.#tenure_years }
@@ -78,7 +87,10 @@ export class PersonnelEntity {
       full_name: this.#full_name,
       email: this.#email,
       college: this.#college,
-      department: this.#department,
+      college_code: this.#college_code,
+      program: this.#program,
+      program_affiliations: this.#program_affiliations,
+      administrative_unit: this.#administrative_unit,
       academic_rank: this.#academic_rank,
       employment_status: this.#employment_status,
       tenure_years: this.#tenure_years,
@@ -96,13 +108,13 @@ export class FacultyAccomplishmentEntity {
   #faculty_id
   #faculty_name
   #college
-  #department
+  #program
   #category
   #date_completed
   #publisher_or_issuer
   #status
-  #secretary_endorsement_date
-  #secretary_remarks
+  #endorsement_date
+  #endorsement_remarks
   #hr_verification_date
   #hr_verification_seal
   #proof_url
@@ -113,13 +125,13 @@ export class FacultyAccomplishmentEntity {
     this.#faculty_id = data.faculty_id || 'EMP-2021-0000'
     this.#faculty_name = data.faculty_name || 'Faculty Member'
     this.#college = data.college || 'CEAC'
-    this.#department = data.department || 'Computer Studies'
+    this.#program = data.program || 'BS Computer Science'
     this.#category = data.category || 'Research Publication'
     this.#date_completed = data.date_completed || new Date().toISOString().split('T')[0]
     this.#publisher_or_issuer = data.publisher_or_issuer || 'IEEE Xplore Journal'
-    this.#status = data.status || 'dept_endorsed'
-    this.#secretary_endorsement_date = data.secretary_endorsement_date || new Date().toISOString().split('T')[0]
-    this.#secretary_remarks = data.secretary_remarks || 'Endorsed for HR verification & promotion credit.'
+    this.#status = data.status || 'endorsed'
+    this.#endorsement_date = data.endorsement_date || data.secretary_endorsement_date || new Date().toISOString().split('T')[0]
+    this.#endorsement_remarks = data.endorsement_remarks || data.secretary_remarks || 'Endorsed for HR verification & promotion credit.'
     this.#hr_verification_date = data.hr_verification_date || null
     this.#hr_verification_seal = data.hr_verification_seal || null
     this.#proof_url = data.proof_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
@@ -130,13 +142,15 @@ export class FacultyAccomplishmentEntity {
   get faculty_id() { return this.#faculty_id }
   get faculty_name() { return this.#faculty_name }
   get college() { return this.#college }
-  get department() { return this.#department }
+  get program() { return this.#program }
   get category() { return this.#category }
   get date_completed() { return this.#date_completed }
   get publisher_or_issuer() { return this.#publisher_or_issuer }
   get status() { return this.#status }
-  get secretary_endorsement_date() { return this.#secretary_endorsement_date }
-  get secretary_remarks() { return this.#secretary_remarks }
+  get endorsement_date() { return this.#endorsement_date }
+  get secretary_endorsement_date() { return this.#endorsement_date }
+  get endorsement_remarks() { return this.#endorsement_remarks }
+  get secretary_remarks() { return this.#endorsement_remarks }
   get hr_verification_date() { return this.#hr_verification_date }
   get hr_verification_seal() { return this.#hr_verification_seal }
   get proof_url() { return this.#proof_url }
@@ -149,7 +163,7 @@ export class FacultyAccomplishmentEntity {
 
   returnToFaculty(remarks) {
     this.#status = 'returned'
-    this.#secretary_remarks = remarks
+    this.#endorsement_remarks = remarks
   }
 
   toJSON() {
@@ -159,13 +173,15 @@ export class FacultyAccomplishmentEntity {
       faculty_id: this.#faculty_id,
       faculty_name: this.#faculty_name,
       college: this.#college,
-      department: this.#department,
+      program: this.#program,
       category: this.#category,
       date_completed: this.#date_completed,
       publisher_or_issuer: this.#publisher_or_issuer,
       status: this.#status,
-      secretary_endorsement_date: this.#secretary_endorsement_date,
-      secretary_remarks: this.#secretary_remarks,
+      endorsement_date: this.#endorsement_date,
+      secretary_endorsement_date: this.#endorsement_date,
+      endorsement_remarks: this.#endorsement_remarks,
+      secretary_remarks: this.#endorsement_remarks,
       hr_verification_date: this.#hr_verification_date,
       hr_verification_seal: this.#hr_verification_seal,
       proof_url: this.#proof_url
@@ -318,12 +334,12 @@ export default class HRModel {
     'CON - College of Nursing'
   ]
 
-  static ACADEMIC_DEPARTMENTS = [
-    { code: 'CS', name: 'Department of Computer Studies', college: 'CEAC' },
-    { code: 'ENG', name: 'Department of Engineering & Architecture', college: 'CEAC' },
-    { code: 'BUS', name: 'Department of Business Administration & Accountancy', college: 'CBA' },
-    { code: 'LANG', name: 'Department of Languages & Humanities', college: 'CAS' },
-    { code: 'SCI', name: 'Department of Natural Sciences & Mathematics', college: 'CAS' },
-    { code: 'EDUC', name: 'Department of Teacher Education', college: 'CED' }
+  static ACADEMIC_PROGRAMS = [
+    { code: 'BSCS', name: 'Bachelor of Science in Computer Science', college: 'CEAC' },
+    { code: 'BSIT', name: 'Bachelor of Science in Information Technology', college: 'CEAC' },
+    { code: 'BSCE', name: 'Bachelor of Science in Civil Engineering', college: 'CEAC' },
+    { code: 'BSBA', name: 'Bachelor of Science in Business Administration', college: 'CBA' },
+    { code: 'BAENG', name: 'Bachelor of Arts in English Language', college: 'CAS' },
+    { code: 'BSED', name: 'Bachelor of Secondary Education', college: 'CED' }
   ]
 }

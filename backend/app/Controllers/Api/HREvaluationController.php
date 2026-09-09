@@ -85,7 +85,7 @@ class HREvaluationController extends Controller
     private function validateTransition(string $from, string $to): ?string
     {
         $allowed = [
-            'submitted'              => ['in_evaluation'],
+            'submitted'              => ['in_evaluation', 'returned_for_revision'],
             'in_evaluation'          => ['returned_for_revision', 'ready_for_finalization'],
             'returned_for_revision'  => ['submitted'],
             'ready_for_finalization' => ['completed'],

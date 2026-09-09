@@ -15,15 +15,29 @@ import {
 } from 'lucide-react'
 
 import useOSAD from '../../hooks/useOSAD'
+import { Button } from '../../components/ui/button'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
-import CreateDepartmentModal from './modals/CreateDepartmentModal'
 import CreateProgramModal from './modals/CreateProgramModal'
+import CreateOrganizationModal from './modals/CreateOrganizationModal'
+import {
+  fetchOrganizations as apiFetchOrganizations,
+  createOrganization as apiCreateOrganization,
+  assignOrganizationModerator as apiAssignOrganizationModerator
+} from '../../services/organizationAdminService'
+import {
+  fetchColleges as apiFetchColleges,
+  createCollege as apiCreateCollege,
+  fetchAcademicPrograms as apiFetchAcademicPrograms,
+  createAcademicProgram as apiCreateAcademicProgram
+} from '../../services/collegeAdminService'
+import roleService from '../../services/roleService'
 import OSADCommandCenterPage from './OSADCommandCenterPage'
 import OSADStudentAccountsPage from './OSADStudentAccountsPage'
-import OSADDepartmentsProgramsPage from './OSADDepartmentsProgramsPage'
+import OSADAcademicProgramsPage from './OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
 import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
+import OSADAwardsAndCriteriaPage from './OSADAwardsAndCriteriaPage'
 import OSADAwardCandidateReviewPage from './OSADAwardCandidateReviewPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
@@ -32,12 +46,13 @@ import OSADPasswordResetRequestsPage from './OSADPasswordResetRequestsPage'
 export default function OSADDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') || 'overview'
-  const activeTab = rawTab === 'awardees' ? 'candidate-review' : rawTab
+  const activeTab = rawTab === 'awardees'
+    ? 'candidate-review'
+    : rawTab === 'academic-structure' ? 'academic-programs' : rawTab
 
   const {
     metrics,
     colleges,
-    departments,
     degreePrograms,
     organizations,
     clubs,
@@ -48,12 +63,11 @@ export default function OSADDashboardPage({ currentUser }) {
     getUsers,
     getPersonnelList,
     getStudentPortfolios,
-    createDepartment,
+    createDegreeProgram,
     createOrganization,
     createClub,
     getStudentLeaderboards,
     getAccreditationReportDetails,
-    assignProgramCoordinator,
     assignOrganizationModerator,
     revokeRole,
     createAwardCategory,
@@ -74,25 +88,59 @@ export default function OSADDashboardPage({ currentUser }) {
   const [userSearchTerm, setUserSearchTerm] = useState('')
   const [personnelSelectorTarget, setPersonnelSelectorTarget] = useState(null)
 
+  // Initial Form Constants
+  const INITIAL_ORG_DATA = { name: '', category: 'College Academic Organization' }
+
   // Modal States
   const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
-  const [isAddDeptOpen, setIsAddDeptOpen] = useState(false)
   const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
-  const [newOrgData, setNewOrgData] = useState({ name: '', category: 'CEAC — Department Organization' })
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
-  const [isAddAwardOpen, setIsAddAwardOpen] = useState(false)
-  const [newAwardData, setNewAwardData] = useState({
-    title: '',
-    category_type: 'Academic Excellence',
-    description: '',
-    min_points: 200,
-    weight_multiplier: 1.5,
-    required_prerequisites: 'Program Coordinator Verification',
-    attached_template_id: 'OSAD-TPL-01',
-    attached_template_name: 'Official NDMU Certificate of Participation'
-  })
+
+  // Persistent Student Organizations & Academic Structure State
+  const [persistentOrgs, setPersistentOrgs] = useState(organizations)
+  const [persistentColleges, setPersistentColleges] = useState(colleges)
+  const [persistentPrograms, setPersistentPrograms] = useState(degreePrograms)
+
+  const loadPersistentOrgs = React.useCallback(async () => {
+    try {
+      const data = await apiFetchOrganizations()
+      if (Array.isArray(data) && data.length > 0) {
+        setPersistentOrgs(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load persistent organizations:', err)
+    }
+  }, [])
+
+  const loadPersistentColleges = React.useCallback(async () => {
+    try {
+      const data = await apiFetchColleges()
+      if (Array.isArray(data) && data.length > 0) {
+        setPersistentColleges(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load persistent colleges:', err)
+    }
+  }, [])
+
+  const loadPersistentPrograms = React.useCallback(async () => {
+    try {
+      const data = await apiFetchAcademicPrograms()
+      if (Array.isArray(data) && data.length > 0) {
+        setPersistentPrograms(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load persistent academic programs:', err)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadPersistentOrgs()
+    loadPersistentColleges()
+    loadPersistentPrograms()
+  }, [loadPersistentOrgs, loadPersistentColleges, loadPersistentPrograms])
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState(null)
@@ -102,27 +150,44 @@ export default function OSADDashboardPage({ currentUser }) {
   }
 
   // Hierarchy Creation Handlers
-  const handleCreateCollegeSubmit = async (collegeData) => {
-    showToast(`Created Academic College: [${collegeData.code}] ${collegeData.name}`)
-  }
-
-  const handleCreateDepartmentSubmit = async (deptData) => {
-    const result = createDepartment({ name: deptData.name, code: deptData.code, college_id: deptData.college_id })
-    showToast(`Created Department: [${deptData.code}] ${deptData.name}`)
+  const handleCreateCollegeSubmit = async (payload) => {
+    try {
+      const created = await apiCreateCollege(payload)
+      await loadPersistentColleges()
+      await loadPersistentPrograms()
+      const code = created?.college?.code || (payload instanceof FormData ? payload.get('code') : payload.code)
+      const name = created?.college?.name || (payload instanceof FormData ? payload.get('name') : payload.name)
+      showToast(`Created Academic College: [${code}] ${name}`)
+      return created
+    } catch (err) {
+      createCollege(payload)
+      const code = payload instanceof FormData ? payload.get('code') : payload.code
+      const name = payload instanceof FormData ? payload.get('name') : payload.name
+      showToast(`Created Academic College: [${code || 'SUCCESS'}] ${name || ''}`)
+    }
   }
 
   const handleCreateProgramSubmit = async (progData) => {
-    showToast(`Created Degree Program: [${progData.code}] ${progData.name}`)
+    try {
+      const created = await apiCreateAcademicProgram(progData)
+      await loadPersistentColleges()
+      await loadPersistentPrograms()
+      const code = created?.program?.code || progData.code
+      const name = created?.program?.name || progData.name
+      showToast(`Created Academic Program: [${code}] ${name}`)
+      return created
+    } catch (err) {
+      createDegreeProgram(progData)
+      showToast(`Created Academic Program: [${progData.code}] ${progData.name}`)
+    }
   }
 
-  // Handle Create Organization
-  const handleCreateOrganizationSubmit = (e) => {
-    e.preventDefault()
-    if (!newOrgData.name) return
-    createOrganization(newOrgData)
-    setIsAddOrgOpen(false)
-    setNewOrgData({ name: '', category: departments[0] ? `${departments[0].code} — Department Organization` : 'Non-Academic Club & Extra-Curricular' })
-    showToast(`Created Student Organization: [${newOrgData.name}]`)
+  // Handle Create Organization (Persistent API Submission)
+  const handleCreateOrganizationSubmit = async (formData, rawData) => {
+    const created = await apiCreateOrganization(formData)
+    await loadPersistentOrgs()
+    showToast(`Created Student Organization: [${rawData.code || rawData.name}] ${rawData.name}`)
+    return created
   }
 
   // Handle Create Club
@@ -133,25 +198,6 @@ export default function OSADDashboardPage({ currentUser }) {
     setIsAddClubOpen(false)
     setNewClubData({ name: '', parent_org: organizations[0]?.name || 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
     showToast(`Created Student Club: [${newClubData.name}]`)
-  }
-
-  // Handle Create Award Category
-  const handleCreateAwardSubmit = (e) => {
-    e.preventDefault()
-    if (!newAwardData.title) return
-    createAwardCategory(newAwardData)
-    setIsAddAwardOpen(false)
-    setNewAwardData({
-      title: '',
-      category_type: 'Student Leadership',
-      description: '',
-      min_points: 200,
-      weight_multiplier: 1.5,
-      required_prerequisites: 'Program Coordinator Verification',
-      attached_template_id: 'OSAD-TPL-01',
-      attached_template_name: 'Official NDMU Certificate of Participation'
-    })
-    showToast(`Created Award Category: [${newAwardData.title}]`)
   }
 
   return (
@@ -169,8 +215,11 @@ export default function OSADDashboardPage({ currentUser }) {
         <OSADCommandCenterPage 
           setSearchParams={setSearchParams} 
           awardees={awardees} 
+          candidateDecisions={awardees}
           currentUser={currentUser}
           metrics={metrics}
+          awardCategories={awardCategories}
+          getUsers={getUsers}
         />
       )}
 
@@ -188,25 +237,28 @@ export default function OSADDashboardPage({ currentUser }) {
           getPasswordResetRequests={getPasswordResetRequests}
           approvePasswordResetRequest={approvePasswordResetRequest}
           showToast={showToast}
+          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+          degreePrograms={persistentPrograms.length > 0 ? persistentPrograms : degreePrograms}
         />
       )}
 
-      {activeTab === 'departments' && (
-        <OSADDepartmentsProgramsPage
-          colleges={colleges}
-          departments={departments}
-          degreePrograms={degreePrograms}
+      {activeTab === 'academic-programs' && (
+        <OSADAcademicProgramsPage
+          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+          academicPrograms={persistentPrograms.length > 0 ? persistentPrograms : degreePrograms}
           setIsAddCollegeOpen={setIsAddCollegeOpen}
-          setIsAddDeptOpen={setIsAddDeptOpen}
           setIsAddProgramOpen={setIsAddProgramOpen}
-          setPersonnelSelectorTarget={setPersonnelSelectorTarget}
         />
       )}
 
       {activeTab === 'organizations' && (
         <OSADStudentOrganizationsPage
-          organizations={organizations}
+          organizations={persistentOrgs.length > 0 ? persistentOrgs : organizations}
+          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
           clubs={clubs}
+          selectedOrganizationId={searchParams.get('orgId') || null}
+          onSelectOrganization={(orgId) => setSearchParams({ tab: 'organizations', orgId })}
+          onBackToOrganizations={() => setSearchParams({ tab: 'organizations' })}
           setIsAddOrgOpen={setIsAddOrgOpen}
           setIsAddClubOpen={setIsAddClubOpen}
           setPersonnelSelectorTarget={setPersonnelSelectorTarget}
@@ -214,10 +266,7 @@ export default function OSADDashboardPage({ currentUser }) {
       )}
 
       {activeTab === 'awards' && (
-        <OSADAwardCategoriesPage
-          awardCategories={awardCategories}
-          setIsAddAwardOpen={setIsAddAwardOpen}
-        />
+        <OSADAwardsAndCriteriaPage />
       )}
 
       {activeTab === 'certificate-templates' && (
@@ -242,7 +291,7 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'reports' && (
+      {activeTab === 'accreditation-reports' && (
         <OSADAccreditationReportsPage
           accreditationReports={accreditationReports}
           getAccreditationReportDetails={getAccreditationReportDetails}
@@ -250,7 +299,7 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'audit' && (
+      {activeTab === 'system-logs' && (
         <OSADSystemAuditLogsPage
           auditLogs={auditLogs}
           refreshAuditLogs={refreshAuditLogs}
@@ -261,7 +310,7 @@ export default function OSADDashboardPage({ currentUser }) {
         <OSADPasswordResetRequestsPage />
       )}
 
-      {/* Personnel Selector Modal */}
+      {/* Personnel Selector Modal for Organization Moderation */}
       {personnelSelectorTarget && (
         <PersonnelSelectorModal
           isOpen={Boolean(personnelSelectorTarget)}
@@ -270,13 +319,20 @@ export default function OSADDashboardPage({ currentUser }) {
           roleType={personnelSelectorTarget.roleType}
           personnelList={getPersonnelList()}
           onClose={() => setPersonnelSelectorTarget(null)}
-          onSelectPersonnel={(personnel) => {
-            if (personnelSelectorTarget.roleType === 'coordinator') {
-              assignProgramCoordinator(personnel.id, personnelSelectorTarget.targetName)
-              showToast(`Assigned ${personnel.full_name} as Department Coordinator for [${personnelSelectorTarget.targetName}]`)
-            } else if (personnelSelectorTarget.roleType === 'moderator') {
-              assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
-              showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+          onSelect={async (personnel) => {
+            if (personnelSelectorTarget.roleType === 'moderator') {
+              if (personnelSelectorTarget.organizationId) {
+                try {
+                  await apiAssignOrganizationModerator(personnelSelectorTarget.organizationId, personnel.id)
+                  await loadPersistentOrgs()
+                  showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+                } catch (err) {
+                  showToast(`Failed to assign moderator: ${err?.message || 'Server error'}`)
+                }
+              } else {
+                assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
+                showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+              }
             }
             setPersonnelSelectorTarget(null)
           }}
@@ -290,169 +346,22 @@ export default function OSADDashboardPage({ currentUser }) {
         onSubmit={handleCreateCollegeSubmit}
       />
 
-      <CreateDepartmentModal
-        isOpen={isAddDeptOpen}
-        onClose={() => setIsAddDeptOpen(false)}
-        onSubmit={handleCreateDepartmentSubmit}
-        colleges={[{ id: 'col_ceac', code: 'CEAC', name: 'College of Engineering, Architecture, and Computing' }]}
-      />
-
       <CreateProgramModal
-        isOpen={isAddProgramOpen}
+        isOpen={Boolean(isAddProgramOpen)}
         onClose={() => setIsAddProgramOpen(false)}
         onSubmit={handleCreateProgramSubmit}
-        departments={departments}
+        colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+        initialCollegeId={typeof isAddProgramOpen === 'string' ? isAddProgramOpen : (isAddProgramOpen?.collegeId || null)}
       />
 
       {/* Create Organization Modal */}
-      {isAddOrgOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-[#16834a]" /> Create Student Organization
-              </h3>
-              <button onClick={() => setIsAddOrgOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateOrganizationSubmit} className="space-y-3 text-xs font-medium">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Organization Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Computer Society NDMU"
-                  value={newOrgData.name}
-                  onChange={(e) => setNewOrgData({ ...newOrgData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category Classification</label>
-                <input
-                  type="text"
-                  value={newOrgData.category}
-                  onChange={(e) => setNewOrgData({ ...newOrgData, category: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddOrgOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#EFF7F0] hover:bg-[#143326] shadow-2xs cursor-pointer"
-                >
-                  Create Organization
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Create Award Category Modal */}
-      {isAddAwardOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 max-w-md w-full shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Award className="w-4 h-4 text-[#16834a]" /> Create Award Category
-              </h3>
-              <button onClick={() => setIsAddAwardOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateAwardSubmit} className="space-y-3 text-xs font-medium">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Award Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Most Outstanding Student Researcher"
-                  value={newAwardData.title}
-                  onChange={(e) => setNewAwardData({ ...newAwardData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Category Type</label>
-                <select
-                  value={newAwardData.category_type}
-                  onChange={(e) => setNewAwardData({ ...newAwardData, category_type: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                >
-                  <option value="Academic Excellence">Academic Excellence</option>
-                  <option value="Student Leadership">Student Leadership</option>
-                  <option value="Community Involvement">Community Involvement</option>
-                  <option value="Athletics & Sports">Athletics & Sports</option>
-                  <option value="Culture & Arts">Culture & Arts</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Description</label>
-                <textarea
-                  rows="2"
-                  value={newAwardData.description}
-                  onChange={(e) => setNewAwardData({ ...newAwardData, description: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Min. Points</label>
-                  <input
-                    type="number"
-                    value={newAwardData.min_points}
-                    onChange={(e) => setNewAwardData({ ...newAwardData, min_points: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Weight Multiplier</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={newAwardData.weight_multiplier}
-                    onChange={(e) => setNewAwardData({ ...newAwardData, weight_multiplier: Number(e.target.value) })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddAwardOpen(false)}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold text-white bg-[#EFF7F0] hover:bg-[#143326] shadow-2xs cursor-pointer"
-                >
-                  Create Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateOrganizationModal
+        isOpen={isAddOrgOpen}
+        onClose={() => setIsAddOrgOpen(false)}
+        onSubmit={handleCreateOrganizationSubmit}
+        colleges={colleges}
+        degreePrograms={degreePrograms}
+      />
 
     </div>
   )

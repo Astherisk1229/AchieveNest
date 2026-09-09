@@ -1,0 +1,39 @@
+CodeIgniter v4.7.4 Command Line Tool - Server Time: 2026-09-09 20:37:11 UTC+08:00
+
+================================================================
+ Personnel Evaluation Track — Plan K — Phase K4 Remediation Runner
+================================================================
+Runtime Target : k4-test
+Active Database: achievenest_k4_test.sqlite
+[PASS] Hard Safety Guard: Running against disposable test database.
+[PASS] Isolated Storage Configured: C:\Users\Admin\Documents\AchieveNest\backend\writable\k4-test-storage\
+
+--- Workstream A: Legacy Classification Migration Safety ---
+ [PASS] Check 01: validatePair() strictly rejects active "non_teaching_personnel"
+ [PASS] Check 02: Supported Admin Unit legacy record -> NTF + Non-Academic
+ [PASS] Check 03: Supported College legacy record -> NTF + Academic
+ [PASS] Check 04: Ambiguous legacy record without placement remains strictly UNRESOLVED
+ [PASS] Check 05: Conflicting legacy record remains strictly UNRESOLVED
+ [PASS] Check 06: Position / Job Title string does not determine classification authority
+ [PASS] Check 07: Legacy placement resolution is 100% idempotent
+ [PASS] Check 08: Legacy unmatched rank is preserved without coercion
+
+--- Workstream B: Disposable Environment Security & Deletion ---
+ [PASS] Check 09: Locked V1 evaluation mutation is strictly rejected
+ [PASS] Check 10: Cross-user portfolio access is denied (403)
+ [PASS] Check 11: Cross-college Dean evaluation access is denied
+ [PASS] Check 12: Department Secretary (P-SEC) evaluator scoring rejected
+ [PASS] Check 13: Direct evaluation result score tampering rejected
+ [PASS] Check 14: Direct rank promotion bypass without approval rejected
+ [PASS] Check 15: Invalid lifecycle skip (draft -> finalized) rejected
+ [PASS] Check 16: Owner self-deletion cleans up physical evidence and DB links
+ [PASS] Check 17: HR-assisted deletion with owner authorization succeeds
+ [PASS] Check 18: HR-assisted deletion without owner authorization is denied (403)
+ [PASS] Check 19: Deletion transaction rolls back cleanly on exception
+ [PASS] Check 20: Orphan integrity query verification: 0 orphan evaluations, 0 orphan items, 0 orphan files
+ [PASS] Check 21: Observed audit state captured & UNRESOLVED AUDIT RETENTION policy preserved
+
+================================================================
+ K4 Remediation Checks Passed: 21 / 21
+ Status: REMEDIATION COMPLETED & VERIFIED
+================================================================

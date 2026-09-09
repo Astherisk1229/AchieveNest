@@ -1,0 +1,22 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelInstitutionalProjectionAndModalDesignD2Phase4.test.jsx (41 tests) 248ms
+ ✓ src/controllers/__tests__/PersonnelHROverrideAndEditSafetyD2Phase3.test.jsx (40 tests) 308ms
+ ✓ src/controllers/__tests__/PersonnelRankRecommendationD2Phase2.test.jsx (40 tests) 243ms
+ ✓ src/controllers/__tests__/PersonnelPlanD2Phase0Audit.test.jsx (24 tests) 25ms
+ ✓ src/controllers/__tests__/PersonnelPlanD2FinalClosureD2Phase5.test.jsx (42 tests) 240ms
+ ✓ src/controllers/__tests__/PersonnelMasterDataDropdownsD2Phase1.test.jsx (40 tests) 382ms
+
+ Test Files  6 passed (6)
+      Tests  227 passed (227)
+   Start at  18:19:21
+   Duration  4.27s (transform 1.14s, setup 35ms, collect 6.19s, tests 1.45s, environment 2ms, prepare 1.67s)
+
+All 6 D2 focused test suites passed with 0 failures:
+- Phase D2-0: 24/24 passed
+- Phase D2-1: 40/40 passed
+- Phase D2-2: 40/40 passed
+- Phase D2-3: 40/40 passed
+- Phase D2-4: 41/41 passed
+- Phase D2-5: 42/42 passed
+Total: 227/227 passed (0 failures)

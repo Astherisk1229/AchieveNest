@@ -13,7 +13,7 @@ class OrganizationController {
     this.#organization = new OrganizationModel({
       id: 'org-cs-ndmu',
       name: 'Computer Society NDMU',
-      department: 'College of Computer Studies',
+      college: 'College of Engineering, Architecture, and Technology',
       academic_year: 'AY 2025-2026',
       moderator_name: 'Dr. Ana Reyes',
       active_members: 45

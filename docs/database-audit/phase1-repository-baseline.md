@@ -1,0 +1,304 @@
+# AchieveNest — Phase 1: Repository Baseline
+
+> **Audit Phase:** Phase 1 — Full Database Inventory  
+> **Date:** September 1, 2026  
+
+---
+
+## Git Environment Snapshot
+
+- **Current Branch:** `audit/project-architecture-linkage`
+- **Current HEAD SHA:** `ea987bf32c208cc99ebe1a60b989c0c09ca83e98`
+
+### Recent 5 Commits
+```text
+ea987bf docs(audit): close osad refinement regression and replay
+f32fc1c docs(audit): record phase f awards alignment and candidate workflow report
+f0faf2c test(awards): add candidate and dean scope regression tests
+7acc99c feat(osad): add awards and criteria view and candidate workflow alignment
+2d16a04 feat(backend): enforce dean nomination college scope and expose candidates endpoint
+```
+
+### Working Tree Status
+```text
+M backend/app/Commands/VerifyPhase11ReferenceData.php
+ M backend/app/Commands/VerifyPhase12Demo.php
+ M backend/app/Commands/VerifyPhase13Step4Local.php
+ M backend/app/Commands/VerifyPhase14Awards.php
+ M backend/app/Commands/VerifyPhase14Workflows.php
+ M backend/app/Commands/VerifyPhase15BackendRegression.php
+ M backend/app/Config/Autoload.php
+ M backend/app/Config/Database.php
+ M backend/app/Config/Routes.php
+ M backend/app/Controllers/Api/AwardEvaluationController.php
+ M backend/app/Controllers/Api/StudentPortfolioController.php
+ M backend/app/Services/AwardEvaluationService.php
+ M backend/app/Services/OrganizationService.php
+ M backend/app/Services/Policies/GovernancePolicy.php
+ M frontend/src/components/osad/PotentialAwardCandidatesPreview.jsx
+ M frontend/src/config/navigationCatalog.js
+ M frontend/src/controllers/AcademicStructureController.js
+ M frontend/src/models/CollegeModel.js
+ M frontend/src/models/DegreeProgramModel.js
+ M frontend/src/pages/osad-admin/OSADAcademicProgramsPage.jsx
+ M frontend/src/pages/osad-admin/OSADAwardCandidateReviewPage.jsx
+ M frontend/src/pages/osad-admin/OSADAwardsAndCriteriaPage.jsx
+ M frontend/src/pages/osad-admin/OSADDashboardPage.jsx
+ M frontend/src/pages/osad-admin/modals/CreateCollegeModal.jsx
+ M frontend/src/pages/osad-admin/modals/CreateProgramModal.jsx
+ M frontend/src/services/awardAdminService.js
+?? backend/app/Commands/VerifyAwardsPhase1.php
+?? backend/app/Commands/VerifyAwardsPhase10.php
+?? backend/app/Commands/VerifyAwardsPhase11.php
+?? backend/app/Commands/VerifyAwardsPhase12.php
+?? backend/app/Commands/VerifyAwardsPhase13.php
+?? backend/app/Commands/VerifyAwardsPhase14.php
+?? backend/app/Commands/VerifyAwardsPhase15.php
+?? backend/app/Commands/VerifyAwardsPhase16.php
+?? backend/app/Commands/VerifyAwardsPhase1A.php
+?? backend/app/Commands/VerifyAwardsPhase1B.php
+?? backend/app/Commands/VerifyAwardsPhase2.php
+?? backend/app/Commands/VerifyAwardsPhase3.php
+?? backend/app/Commands/VerifyAwardsPhase4.php
+?? backend/app/Commands/VerifyAwardsPhase5.php
+?? backend/app/Commands/VerifyAwardsPhase6.php
+?? backend/app/Commands/VerifyAwardsPhase7.php
+?? backend/app/Commands/VerifyAwardsPhase8.php
+?? backend/app/Commands/VerifyAwardsPhase9.php
+?? backend/app/Commands/VerifyAwardsPhaseC.php
+?? backend/app/Commands/VerifyAwardsPhaseD.php
+?? backend/app/Commands/VerifyAwardsPhaseE.php
+?? backend/app/Commands/VerifyAwardsPhaseF.php
+?? backend/app/Commands/VerifyAwardsPhaseG.php
+?? backend/app/Commands/VerifyAwardsPhaseI.php
+?? backend/app/Commands/VerifyAwardsPhaseJ.php
+?? backend/app/Commands/VerifyMigrationDialect.php
+?? backend/app/Commands/VerifyPhase17MFreshReplay.php
+?? backend/app/Commands/VerifyPhaseCCollegeIdentity.php
+?? backend/app/Commands/VerifyPhaseDAcademicProgramFlow.php
+?? backend/app/Commands/VerifyPhaseECollegeDetails.php
+?? backend/app/Commands/VerifyPhaseFCoordinatorAssignment.php
+?? backend/app/Commands/VerifyPhaseGRegressionReplayClosure.php
+?? backend/app/Controllers/Api/CollegeController.php
+?? backend/app/Database/Migrations/2026-08-30-000029_AddCollegeBrandingMetadata.php
+?? backend/app/Database/Migrations/2026-08-30-000030_AddAwardConfigurationAndAuthorityMetadata.php
+?? backend/app/Database/Migrations/2026-08-30-000031_AddAwardEvidenceMappingRules.php
+?? backend/app/Database/Migrations/2026-08-30-000032_AddAwardScoringEngineRules.php
+?? backend/app/Database/Migrations/2026-08-30-000033_AddAwardStudentEvaluationSummaries.php
+?? backend/app/Database/Migrations/2026-08-30-000034_AddAwardCandidateManualDecisions.php
+?? backend/app/Database/Migrations/2026-08-30-000035_RemediateNotreDameAward.php
+?? backend/app/Database/Migrations/2026-08-30-000036_AwardCatalogRuntimeCleanupAndQuarantine.php
+?? backend/app/Database/Migrations/2026-08-30-000037_RemediateSMCAward.php
+?? backend/app/Database/Migrations/2026-08-30-000038_RemediateLeadershipAward.php
+?? backend/app/Database/Migrations/2026-08-30-000039_RemediateCampusJournalismAward.php
+?? backend/app/Database/Migrations/2026-08-30-000041_RemediateSportsFemaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000043_RemediateSportsMaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000044_RemediateSocioCulturalFemaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000045_RemediateSocioCulturalMaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000046_RemediateStudentLeaderAward.php
+?? backend/app/Database/Migrations/2026-08-30-000047_RemediateMemberOfTheYearAward.php
+?? backend/app/Database/Migrations/2026-08-30-000048_RemediateVolunteerOfTheYearAward.php
+?? backend/app/Database/Migrations/2026-08-30-000049_RemediateAthleteOfTheYearFemaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000050_RemediateAthleteOfTheYearMaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000051_RemediatePerformerOfTheYearFemaleAward.php
+?? backend/app/Database/Migrations/2026-08-30-000052_RemediatePerformerOfTheYearMaleAward.php
+?? backend/app/Phase17Canonical/
+?? backend/app/Services/AwardCandidateGenerationService.php
+?? backend/app/Services/AwardEligibilityService.php
+?? backend/app/Services/AwardEvaluationSummaryService.php
+?? backend/app/Services/AwardEvidenceMappingService.php
+?? backend/app/Services/AwardPotentialCandidateService.php
+?? backend/app/Services/AwardReviewService.php
+?? backend/app/Services/AwardScoringRuleEngine.php
+?? backend/app/Services/AwardScoringService.php
+?? backend/app/Services/CampusJournalismEligibilityService.php
+?? backend/app/Services/CampusJournalismScoringService.php
+?? backend/app/Services/CollegeService.php
+?? backend/app/Services/EvidenceMappingService.php
+?? backend/audit_database.php
+?? backend/database/codeigniter-canonical-baseline/
+?? backend/database/mysql-defense/achievenest_local_osad_awards_phase_17_final_closure_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_10_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_11_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_12_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_13_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_14_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_15_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_16_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_17_closure_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_1_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_1a_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_1b_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_2_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_3_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_4_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_5_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_6_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_7_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_8_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_9_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_c_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_d_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_e_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_f_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_g_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_i_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_osad_awards_phase_j_closure_backup.sql
+?? backend/database/mysql-defense/achievenest_local_pre_phase_g_backup.sql
+?? backend/database/mysql-defense/migrations/000013_college_branding_metadata.sql
+?? backend/database/mysql-defense/migrations/000014_award_configuration_and_authority_metadata.sql
+?? backend/database/mysql-defense/migrations/000015_award_evidence_mapping_rules.sql
+?? backend/database/mysql-defense/migrations/000016_award_scoring_engine_rules.sql
+?? backend/database/mysql-defense/migrations/000017_award_student_evaluation_summaries.sql
+?? backend/database/mysql-defense/migrations/000018_award_candidate_manual_decisions.sql
+?? backend/database/mysql-defense/migrations/000019_notre_dame_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000020_award_catalog_runtime_cleanup_and_quarantine.sql
+?? backend/database/mysql-defense/migrations/000021_smc_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000022_leadership_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000023_campus_journalism_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000024_sports_female_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000025_sports_male_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000026_socio_cultural_female_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000027_socio_cultural_male_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000028_student_leader_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000029_member_of_the_year_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000030_volunteer_of_the_year_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000031_athlete_of_the_year_female_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000032_athlete_of_the_year_male_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000033_performer_of_the_year_female_award_remediation.sql
+?? backend/database/mysql-defense/migrations/000034_performer_of_the_year_male_award_remediation.sql
+?? backend/database/mysql-defense/validation/
+?? backend/execute_phase1_audit.php
+?? backend/generate_audit_docs.php
+?? backend/inspect_db.php
+?? backend/run_phase5_tests.php
+?? backend/run_phase6_compliance_suite.php
+?? backend/run_phase6_tests.php
+?? backend/run_phase7_tests.php
+?? backend/run_phase8_tests.php
+?? backend/test_api_awards.php
+?? backend/tests/Phase3EligibilityEngineTest.php
+?? backend/verify_awards_endpoint.php
+?? backend/verify_columns.php
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_A_CURRENT_STATE_RECONCILIATION_REPORT.md
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_B_DATABASE_SAFETY_COLLEGE_BRANDING_MIGRATION_REPORT.md
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_C_COLLEGE_IDENTITY_CREATE_COLLEGE_UX_REPORT.md
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_D_ACADEMIC_PROGRAM_FLOW_REFINEMENT_REPORT.md
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_E_CLICKABLE_COLLEGE_CARDS_COLLEGE_DETAILS_REPORT.md
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_F_PROGRAM_COORDINATOR_ASSIGNMENT_REPORT.md
+?? docs/audit/ACADEMIC_STRUCTURE_PHASE_G_REGRESSION_REPLAY_CLOSURE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_0_AUTHORITATIVE_MASTER_BASELINE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_10_OUTSTANDING_MEMBER_OF_THE_YEAR_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_11_OUTSTANDING_VOLUNTEER_OF_THE_YEAR_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_12_OUTSTANDING_ATHLETE_OF_THE_YEAR_FEMALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_13_OUTSTANDING_ATHLETE_OF_THE_YEAR_MALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_14_OUTSTANDING_PERFORMER_OF_THE_YEAR_FEMALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_15_OUTSTANDING_PERFORMER_OF_THE_YEAR_MALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_16_CROSS_AWARD_MAPPING_AND_INTERACTION_AUDIT_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_17M_CODEIGNITER_MIGRATION_DIALECT_RECONCILIATION_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_17M_MIGRATION_DIALECT_CLASSIFICATION_MATRIX.md
+?? docs/audit/OSAD_AWARDS_PHASE_17R_POSTGRESQL_CODEIGNITER_REPLAY_ENVIRONMENT_REMEDIATION_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_17_FINAL_15_AWARD_REPLAY_PARITY_AND_CLOSURE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_1A_CATALOG_RUNTIME_CLEANUP_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_1B_NOTRE_DAME_AWARD_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_1_NOTRE_DAME_AWARD_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_2_SMC_AWARD_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_3_LEADERSHIP_AWARD_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_4_CAMPUS_JOURNALISM_AWARD_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_5_OUTSTANDING_PERFORMANCE_SPORTS_FEMALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_6_OUTSTANDING_PERFORMANCE_SPORTS_MALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_7_OUTSTANDING_PERFORMANCE_SOCIO_CULTURAL_FEMALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_8_OUTSTANDING_PERFORMANCE_SOCIO_CULTURAL_MALE_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_9_OUTSTANDING_STUDENT_LEADER_OF_THE_YEAR_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_A_CURRENT_STATE_AUDIT_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_B_DOMAIN_GOVERNANCE_DECISIONS.md
+?? docs/audit/OSAD_AWARDS_PHASE_C_AWARD_CONFIGURATION_SCHEMA_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_D_EVIDENCE_MAPPING_RULES_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_E_SCORING_ENGINE_EXPLAINABILITY_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_F_POTENTIAL_CANDIDATE_GENERATION_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_G_EVALUATION_SUMMARY_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_H_OSAD_UX_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_H_RUNTIME_UI_RECONCILIATION_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_I_AUTHORIZATION_AUDIT_REPORT.md
+?? docs/audit/OSAD_AWARDS_PHASE_J_REGRESSION_REPLAY_CLOSURE_REPORT.md
+?? docs/audits/
+?? docs/database-audit/
+?? docs/reports/Campus_Journalism_Phase_0_Source_of_Truth_Audit.md
+?? docs/reports/Campus_Journalism_Phase_1_Data_Model_Report.md
+?? docs/reports/Campus_Journalism_Phase_2_Portfolio_Metadata_Report.md
+?? docs/reports/Campus_Journalism_Phase_3_Verification_Gate_Report.md
+?? docs/reports/Campus_Journalism_Phase_3_Verification_Workflow_Report.md
+?? docs/reports/Campus_Journalism_Phase_4_Eligibility_Engine_Report.md
+?? docs/reports/Campus_Journalism_Phase_4_Scoring_Engine_Report.md
+?? docs/reports/Campus_Journalism_Phase_5_Candidate_UI_Report.md
+?? docs/reports/Campus_Journalism_Phase_5_Publication_Scoring_Report.md
+?? docs/reports/Campus_Journalism_Phase_6_Award_Cycle_Snapshot_Report.md
+?? docs/reports/Campus_Journalism_Phase_7_Final_Acceptance_Report.md
+?? docs/reports/Phase_1A_Existing_Schema_and_Code_Audit.md
+?? docs/reports/Phase_1B_Campus_Journalism_Configuration_Map.md
+?? docs/reports/Phase_1D_Metadata_Field_Mapping.md
+?? docs/reports/Phase_1_Fresh_Replay_Evidence.md
+?? docs/reports/Phase_1_Migration_Specification.sql
+?? docs/reports/Phase_1_Validation.sql
+?? docs/reports/Phase_2A_Portfolio_Flow_Audit.md
+?? docs/reports/Phase_2B_Metadata_Classification_Map.md
+?? docs/reports/Phase_2C_Form_and_API_Field_Map.md
+?? docs/reports/Phase_2_Legacy_Data_Compatibility_Report.md
+?? docs/reports/Phase_2_Validation_Test_Report.md
+?? docs/reports/Phase_3A_Verification_Workflow_Audit.md
+?? docs/reports/Phase_3B_Verifier_Authorization_Map.md
+?? docs/reports/Phase_3C_Status_Transition_Matrix.md
+?? docs/reports/Phase_3D_Verified_Eligibility_Rules.md
+?? docs/reports/Phase_3_Audit_Log_Report.md
+?? docs/reports/Phase_3_Security_Test_Report.md
+?? docs/reports/Phase_3_Validation_Test_Report.md
+?? docs/reports/Phase_3_Verification_API_Map.md
+?? docs/reports/Phase_4A_Scoring_Architecture_Audit.md
+?? docs/reports/Phase_4B_Scoring_Rule_Map.md
+?? docs/reports/Phase_4C_Leadership_Distinctness_Rules.md
+?? docs/reports/Phase_4D_Explainability_Payload_Spec.md
+?? docs/reports/Phase_4E_Scoring_API_Map.md
+?? docs/reports/Phase_4_Performance_Report.md
+?? docs/reports/Phase_4_Scoring_Test_Report.md
+?? docs/reports/Phase_5A_Candidate_UI_Audit.md
+?? docs/reports/Phase_5B_Candidate_API_Map.md
+?? docs/reports/Phase_5C_Scoring_Accordion_Spec.md
+?? docs/reports/Phase_5D_OSAD_Deliberation_UI_Map.md
+?? docs/reports/Phase_5E_Accessibility_Checklist.md
+?? docs/reports/Phase_5_Validation_Test_Report.md
+?? docs/reports/Phase_6A_Award_Cycle_and_Snapshot_Audit.md
+?? docs/reports/Phase_6B_Award_Cycle_Data_Map.md
+?? docs/reports/Phase_6C_Candidate_Snapshot_Schema.md
+?? docs/reports/Phase_6D_Generation_and_Regeneration_Flow.md
+?? docs/reports/Phase_6E_Deliberation_State_Matrix.md
+?? docs/reports/Phase_6F_Historical_Comparison_Spec.md
+?? docs/reports/Phase_6_Validation_Test_Report.md
+?? docs/reports/Phase_7A_Reporting_and_Export_Audit.md
+?? docs/reports/Phase_7B_Report_Data_Source_Map.md
+?? docs/reports/Phase_7C_Report_and_Export_Spec.md
+?? docs/reports/Phase_7D_Access_Control_Report.md
+?? docs/reports/Phase_7E_End_to_End_Regression_Report.md
+?? docs/reports/Phase_7F_Security_Regression_Report.md
+?? docs/reports/Phase_7G_Accessibility_Regression_Report.md
+?? docs/reports/Phase_7H_Performance_Regression_Report.md
+?? docs/reports/Phase_7I_Cross_Phase_Integrity_Report.md
+?? docs/reports/Phase_7_Final_Test_Report.md
+?? frontend/src/pages/osad-admin/OSADCollegeDetailsView.jsx
+?? frontend/src/pages/osad-admin/OSADCoordinatorManagerView.jsx
+?? frontend/src/pages/osad-admin/OSADPotentialCandidatesView.jsx
+?? frontend/src/pages/osad-admin/OSADStudentAwardReviewWorkspace.jsx
+?? frontend/src/pages/osad-admin/OSADStudentsForEvaluationView.jsx
+?? frontend/src/pages/osad-admin/__tests__/CreateCollegeModal.test.jsx
+?? frontend/src/pages/osad-admin/__tests__/CreateProgramModal.test.jsx
+?? frontend/src/pages/osad-admin/__tests__/OSADAwardsUX.test.jsx
+?? frontend/src/pages/osad-admin/__tests__/OSADCollegeDetails.test.jsx
+?? frontend/src/pages/osad-admin/__tests__/OSADCoordinatorManager.test.jsx
+?? frontend/src/pages/osad-admin/modals/AwardEvaluationSummaryModal.jsx
+?? frontend/src/pages/osad-admin/modals/CampusJournalismScoringBasisModal.jsx
+?? frontend/src/pages/osad-admin/modals/ManagePersonnelProgramsModal.jsx
+?? frontend/src/services/collegeAdminService.js
+?? frontend/src/utils/__tests__/colorContrast.test.js
+?? frontend/src/utils/__tests__/scrollIntoComfortableView.test.js
+?? frontend/src/utils/colorContrast.js
+?? frontend/src/utils/scrollIntoComfortableView.js
+```

@@ -1,102 +1,52 @@
 import { describe, it, expect } from 'vitest'
 import CollegeModel from '../CollegeModel'
-import DepartmentModel from '../DepartmentModel'
 import DegreeProgramModel from '../DegreeProgramModel'
 import StudentOrganizationModel from '../StudentOrganizationModel'
 import ProgramCoordinatorAssignmentModel from '../ProgramCoordinatorAssignmentModel'
 import OrganizationModeratorAssignmentModel from '../OrganizationModeratorAssignmentModel'
 
-describe('OSAD Academic Hierarchy & Student Organization Rules', () => {
-  const mockColleges = [
-    new CollegeModel({ id: 'col-ceac', code: 'CEAC', name: 'College of Engineering', status: 'active' })
-  ]
+describe('OSAD Academic Structure and governance rules', () => {
+  const colleges = [new CollegeModel({ id: 'col-ceac', code: 'CEAC', name: 'College of Engineering', status: 'active' })]
+  const programs = [new DegreeProgramModel({ id: 'prog-bscs', collegeId: 'col-ceac', code: 'BSCS', name: 'BS Computer Science', status: 'active' })]
+  const personnel = [{ id: 'pers-101', full_name: 'Prof. Marco Valdez', role: 'personnel' }]
+  const organizations = [new StudentOrganizationModel({ id: 'org-cs', name: 'Computer Society', code: 'COMSOC', scopeType: 'college', collegeId: 'col-ceac', academicProgramIds: ['prog-bscs'], status: 'active' })]
 
-  const mockDepartments = [
-    new DepartmentModel({ id: 'dept-cs', collegeId: 'col-ceac', code: 'DEPT-CS', name: 'Department of Computer Studies', status: 'active' })
-  ]
-
-  const mockPrograms = [
-    new DegreeProgramModel({ id: 'prog-bscs', departmentId: 'dept-cs', code: 'BSCS', name: 'BS Computer Science', status: 'active' })
-  ]
-
-  const mockPersonnel = [
-    { id: 'pers-101', full_name: 'Prof. Marco Valdez', role: 'personnel' }
-  ]
-
-  const mockOrganizations = [
-    new StudentOrganizationModel({ id: 'org-cs', name: 'Computer Society', code: 'COMSOC', scopeType: 'department', collegeId: 'col-ceac', departmentId: 'dept-cs', status: 'active' })
-  ]
-
-  it('validates College creation with required code and name', () => {
-    const valid = CollegeModel.validate({ code: 'CBA', name: 'College of Business' }, mockColleges)
-    expect(valid.isValid).toBe(true)
-
-    const invalid = CollegeModel.validate({ code: 'CEAC', name: 'Duplicate' }, mockColleges)
-    expect(invalid.isValid).toBe(false)
-    expect(invalid.errors[0]).toContain('already exists')
+  it('places Academic Programs directly under Colleges', () => {
+    expect(DegreeProgramModel.validate({ collegeId: 'col-ceac', code: 'BSIT', name: 'BS IT' }, colleges, programs).isValid).toBe(true)
+    expect(DegreeProgramModel.validate({ code: 'BSIT', name: 'BS IT' }, colleges, programs).isValid).toBe(false)
   })
 
-  it('rejects Department creation if parent College is missing or archived', () => {
-    const invalidNoCollege = DepartmentModel.validate({ code: 'DEPT-[#16834a]', name: 'No College Dept' }, mockColleges, [])
-    expect(invalidNoCollege.isValid).toBe(false)
-    expect(invalidNoCollege.errors[0]).toContain('parent College must be selected')
-
-    const validDept = DepartmentModel.validate({ collegeId: 'col-ceac', code: 'DEPT-[#16834a]', name: 'Valid Dept' }, mockColleges, [])
-    expect(validDept.isValid).toBe(true)
+  it('allows university or college organization scope with optional Program coverage', () => {
+    expect(StudentOrganizationModel.validateScope({ scopeType: 'university' }, colleges, programs).isValid).toBe(true)
+    expect(StudentOrganizationModel.validateScope({ scopeType: 'college', collegeId: 'col-ceac', academicProgramIds: ['prog-bscs'] }, colleges, programs).isValid).toBe(true)
+    expect(StudentOrganizationModel.validateScope({ scopeType: 'department', collegeId: 'col-ceac' }, colleges, programs).isValid).toBe(false)
   })
 
-  it('rejects Degree Program creation if parent Department is missing', () => {
-    const invalidNoDept = DegreeProgramModel.validate({ code: 'BSIT', name: 'BS IT' }, mockDepartments, [])
-    expect(invalidNoDept.isValid).toBe(false)
-
-    const validProg = DegreeProgramModel.validate({ departmentId: 'dept-cs', code: 'BSIT', name: 'BS IT' }, mockDepartments, [])
-    expect(validProg.isValid).toBe(true)
+  it('scopes coordinators to Academic Programs and moderators to Organizations', () => {
+    expect(ProgramCoordinatorAssignmentModel.validate({ academicProgramId: 'prog-bscs', personnelId: 'pers-101' }, programs, personnel).isValid).toBe(true)
+    expect(OrganizationModeratorAssignmentModel.validate({ organizationId: 'org-cs', personnelId: 'pers-101' }, organizations, personnel).isValid).toBe(true)
   })
 
-  it('validates Student Organization Scope rules accurately', () => {
-    // University Scope
-    const uniScope = StudentOrganizationModel.validateScope({ scopeType: 'university' })
-    expect(uniScope.isValid).toBe(true)
-
-    // Department Scope without Department ID
-    const invalidDeptOrg = StudentOrganizationModel.validateScope(
-      { scopeType: 'department', collegeId: 'col-ceac' },
-      mockColleges,
-      mockDepartments,
-      mockPrograms
-    )
-    expect(invalidDeptOrg.isValid).toBe(false)
-    expect(invalidDeptOrg.errors[0]).toContain('Department-based organization requires a Department')
-
-    // Valid Department Scope
-    const validDeptOrg = StudentOrganizationModel.validateScope(
-      { scopeType: 'department', collegeId: 'col-ceac', departmentId: 'dept-cs' },
-      mockColleges,
-      mockDepartments,
-      mockPrograms
-    )
-    expect(validDeptOrg.isValid).toBe(true)
+  it('blocks deletion of a College with active Academic Programs', () => {
+    const result = CollegeModel.isDeletable('col-ceac', programs, [])
+    expect(result.canDelete).toBe(false)
+    expect(result.activeAcademicProgramCount).toBe(1)
   })
 
-  it('assigns Program Coordinator to a Department and Organization Moderator to an Organization', () => {
-    const coordinatorVal = ProgramCoordinatorAssignmentModel.validate(
-      { departmentId: 'dept-cs', personnelId: 'pers-101' },
-      mockDepartments,
-      mockPersonnel
-    )
-    expect(coordinatorVal.isValid).toBe(true)
-
-    const moderatorVal = OrganizationModeratorAssignmentModel.validate(
-      { organizationId: 'org-cs', personnelId: 'pers-101' },
-      mockOrganizations,
-      mockPersonnel
-    )
-    expect(moderatorVal.isValid).toBe(true)
+  it('rejects Program coverage outside the selected College', () => {
+    const otherProgram = new DegreeProgramModel({ id: 'prog-other', collegeId: 'col-other', code: 'OTHER', name: 'Other', status: 'active' })
+    expect(StudentOrganizationModel.validateScope({ scopeType: 'college', collegeId: 'col-ceac', academicProgramIds: ['prog-other'] }, colleges, [otherProgram]).isValid).toBe(false)
   })
 
-  it('blocks deletion of a College with active Departments', () => {
-    const deleteCheck = CollegeModel.isDeletable('col-ceac', mockDepartments, [])
-    expect(deleteCheck.canDelete).toBe(false)
-    expect(deleteCheck.activeDepartmentCount).toBe(1)
+  it('rejects a coordinator assignment without an Academic Program', () => {
+    expect(ProgramCoordinatorAssignmentModel.validate({ personnelId: 'pers-101' }, programs, personnel).isValid).toBe(false)
+  })
+
+  it('rejects an unknown coordinator', () => {
+    expect(ProgramCoordinatorAssignmentModel.validate({ academicProgramId: 'prog-bscs', personnelId: 'missing' }, programs, personnel).isValid).toBe(false)
+  })
+
+  it('allows deletion of an empty College', () => {
+    expect(CollegeModel.isDeletable('col-empty', programs, organizations).canDelete).toBe(true)
   })
 })

@@ -11,7 +11,7 @@ Target production stack requested by the team:
 - GitHub as source control and deployment source
 - No Supabase dependency in the final production architecture
 
-> IMPORTANT: The current repository is not yet Hostinger/MySQL-only. It actively uses Supabase Auth and PostgreSQL-specific schema/migrations. Do not deploy the current `main` branch as a MySQL application until the migration phases below are completed and verified.
+> IMPORTANT: Phase B is complete on `deployment/hostinger-readiness`, not on `main`. The branch now uses local CodeIgniter/MySQL authentication, centralized authorization, and protected local evidence storage. Do not deploy `main` as the Hostinger baseline until the remaining deployment phases are completed and this branch is intentionally reconciled.
 
 ---
 
@@ -72,20 +72,22 @@ Hostinger-only authentication controlled by the PHP backend.
 
 ## Required work
 
-- [ ] Add/verify a password hash field suitable for PHP `password_hash()` / `password_verify()`.
-- [ ] Add CodeIgniter login endpoint.
-- [ ] Replace Supabase token validation with application JWT validation.
-- [ ] Replace Supabase admin account provisioning with MySQL + backend account provisioning.
-- [ ] Replace Supabase password changes with backend password update logic.
-- [ ] Replace Supabase sign-out/session calls in React.
-- [ ] Replace/reset the current password-reset workflow without exposing passwords.
-- [ ] Preserve institutional-email restrictions and current account lifecycle rules.
-- [ ] Preserve role-switching authorization rules.
+- [x] Add/verify a password hash field suitable for PHP `password_hash()` / `password_verify()`.
+- [x] Add CodeIgniter login endpoint.
+- [x] Replace Supabase token validation with application JWT validation.
+- [x] Replace Supabase admin account provisioning with MySQL + backend account provisioning.
+- [x] Replace Supabase password changes with backend password update logic.
+- [x] Replace Supabase sign-out/session calls in React.
+- [x] Replace/reset the current password-reset workflow without exposing passwords.
+- [x] Preserve institutional-email restrictions and current account lifecycle rules.
+- [x] Preserve role-switching authorization rules.
 - [ ] Add brute-force/rate-limit controls to login/reset endpoints.
-- [ ] Add tests for login, suspended account, archived account, first-login password change, role assignment, role switching, and logout.
+- [x] Add tests for login, suspended account, archived account, first-login password change, role assignment, role switching, and logout.
 
 ## Exit Gate
 No runtime code imports Supabase Auth and all authentication tests pass locally against MySQL.
+
+**Exit gate passed on 2026-09-10.** See `docs/HOSTINGER_MIGRATION_LEDGER.md` for the commit mapping, conflict resolutions, disposable-database replay, and test results. Login/reset rate-limit hardening remains explicitly open for a later security pass; it was not invented or claimed as part of the tested source port.
 
 ---
 

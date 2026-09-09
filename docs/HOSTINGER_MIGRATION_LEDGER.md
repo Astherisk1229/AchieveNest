@@ -6,41 +6,89 @@ This ledger records controlled ports from `reconcile/wamp-current` into `deploym
 
 - Target branch baseline: `8c753cd` (`deployment/hostinger-readiness`)
 - Source branch: `reconcile/wamp-current`
-- Policy: no wholesale branch merge; no restoration of active Supabase/PostgreSQL runtime architecture
+- Verification database: `achievenest_hostinger_phaseb_verify_20260910` only
+- Policy: no wholesale branch merge; no active Supabase/PostgreSQL runtime architecture
 
-## Port group B1 — MySQL migration and CodeIgniter configuration foundation
-
-| Field | Record |
-|---|---|
-| Source commits | `e2f1361`, `1d55064`, `5cd1f30`, `265e2ef` |
-| Target commits | `1a0b01a`, `9ffe43e`, `1bfb08e`, `cbcea29` |
-| Purpose | Add deterministic MySQL migrations 000001–000010, apply verified FK/generated-column corrections, configure CodeIgniter MySQLi, and add DB/health verification commands |
-| Dependency review | Migration package is self-contained; configuration commit depends on it only for validation expectations |
-| Unrelated work | None found in the selected source commits |
-| Conflicts | None |
-| Resolution | Cherry-picked commits without modification |
-| Verification | PHP syntax; CodeIgniter route boot; `db:verify-defense` against configured WAMP MySQL |
-| Result | **PARTIAL PASS / NOT ACCEPTED** — syntax, framework boot, and live connection passed. Fresh replay is blocked because the configured DB user cannot create a disposable database. |
-
-Observed connection verification: MySQLi, MySQL 8.4.7, database `achievenest_local`, application user, UTF-8 connection, and reference-table reads passed. The populated database was not modified.
-
-## Port group B2 — Local credentials, sessions, JWT, and frontend auth integration
+## B1 — MySQL migration and configuration foundation
 
 | Field | Record |
 |---|---|
-| Source commit | `52c21aa` |
-| Target commit | `2d85a16` |
-| Purpose | Add migration 000011, credential/session seed support, `LocalAuthService`, `LocalTokenService`, login/logout/current-user/password-change endpoints, authenticated actor integration, and frontend JWT session flow |
-| Dependency review | Requires B1 migrations 000001–000010 and configuration; migration 000011 supplies local credential/session tables |
-| Unrelated work | No later application-feature commits included |
-| Conflicts | `backend/app/Config/Routes.php` differed because the Hostinger branch retained the original escaped controller notation |
-| Resolution | Preserved every existing route and added only `auth/login` and `auth/logout` plus OPTIONS routes; retained the branch's established controller-string style |
-| Verification | PHP syntax passed for all changed PHP files. Phase 7 auth verification was attempted against the existing configured DB. |
-| Result | **BLOCKED / NOT ACCEPTED** — the existing DB is from a later reconciled schema where `must_change_password` no longer resides on `profiles`; the source Phase 7 verifier correctly requires a clean 000001–000011 replay. The configured DB user cannot create that disposable database. |
+| Source | `e2f1361`, `1d55064`, `5cd1f30`, `265e2ef`; selected MySQL-only configuration from `48e7b87` |
+| Target | `1a0b01a`, `9ffe43e`, `1bfb08e`, `cbcea29`, `72d7f89` |
+| Purpose | Deterministic MySQL migrations 000001–000011, FK/generated-column corrections, MySQLi runtime configuration, and connection verification |
+| Dependencies | MySQL 8.4; application account scoped to the disposable database |
+| Unrelated work excluded | PostgreSQL replay, Phase 17M, and K4 SQLite configuration from `48e7b87` |
+| Conflicts/resolution | No cherry-pick conflicts. Configuration was manually scoped to the default, development, test, and local-defense MySQL groups. |
+| Verification | Empty database confirmed; all 11 SQL files replayed in order; 57 tables created; `db:verify-defense` confirmed the exact runtime DB and expected reference counts. |
+| Result | **PASS / ACCEPTED** |
 
-No authorization or storage group will be ported until B1/B2 pass against a clean disposable schema.
+## B2 — Local credentials, JWT sessions, and authentication flow
 
-## Required unblock
+| Field | Record |
+|---|---|
+| Source | `52c21aa`; compatible local-only portions of `48e7b87` |
+| Target | `2d85a16`, `2de1939`, `72d7f89` |
+| Purpose | Local credential/session schema, `LocalAuthService`, `LocalTokenService`, login/current-user/logout/password-change/reset/provisioning, and authenticated actor resolution |
+| Dependencies | B1 migration 000011 and MySQL runtime |
+| Unrelated work excluded | Later account-lifecycle and provisioning features that require post-Phase-B schema |
+| Conflicts/resolution | Routes conflict preserved all Hostinger routes and added only local auth routes. Mixed reconciliation files were ported selectively instead of cherry-picking the whole commit. Generated credentials/tokens were redacted from verifier output. |
+| Verification | PHP syntax; CodeIgniter boot through Spark; Phase 7 authentication suite 27/27; logout/revocation, password change, reset, and provisioning included. |
+| Result | **PASS / ACCEPTED** |
 
-Create an empty disposable MySQL database named `achievenest_hostinger_phaseb_verify_20260910` and grant the configured `achievenest_app` user full privileges on that database, or provide the name of another empty disposable database already granted to that user. No production or populated database should be supplied.
+## B3 — Centralized authorization and protected API behavior
 
+| Field | Record |
+|---|---|
+| Source | `42de10d`, `d683659` |
+| Target | `d2f8c11`, `74dab59` |
+| Purpose | Authenticated actor resolution, authorization service/policies, controller enforcement, and removal of legacy Supabase achievement-route behavior |
+| Dependencies | B1 and B2 |
+| Unrelated work excluded | Candidate-threshold endpoint embedded in `42de10d` |
+| Conflicts/resolution | `StudentPortfolioController` used the tested source authorization implementation. `AwardEvaluationController` retained the authorization changes but omitted the unrelated threshold endpoint. |
+| Verification | PHP syntax; Phase 7 remained 27/27; Phase 8 authorization suite 36/36, including negative cross-user/scope checks and protected achievement API smoke tests. |
+| Result | **PASS / ACCEPTED** |
+
+## B4 — Frontend local JWT integration and Supabase removal
+
+| Field | Record |
+|---|---|
+| Source | Selected frontend files from `48e7b87`; local password-change behavior from current `reconcile/wamp-current` |
+| Target | `72d7f89` |
+| Purpose | Remove Supabase Auth client/session/password flows and package dependency; use CodeIgniter local JWT login, session hydration, logout, and password change |
+| Dependencies | B2 API endpoints |
+| Unrelated work excluded | Later UI/application feature changes |
+| Conflicts/resolution | Removed obsolete recovery page/route and Supabase client; updated the existing account page only at its password-change integration point. Updated the regression expectation for the canonical local API payload. |
+| Verification | Production Vite build PASS; Vitest 23 files and 139 tests PASS; no active Supabase import/package reference remains in frontend runtime code. |
+| Result | **PASS / ACCEPTED** |
+
+## B5 — Protected local evidence storage
+
+| Field | Record |
+|---|---|
+| Source | `37d4251` |
+| Target | `ddac0b5` |
+| Purpose | Private local evidence storage, server-side validation, metadata/download endpoints, and access-control enforcement |
+| Dependencies | B2 authentication and B3 authorization |
+| Unrelated work | None identified |
+| Conflicts/resolution | Routes conflict preserved the target branch's controller-string convention and added only Phase 9 evidence routes. |
+| Verification | PHP syntax; Phase 9 storage suite 28/28, including MIME/size rejection, opaque names, path non-disclosure, authorization, rollback, and orphan integrity. |
+| Result | **PASS / ACCEPTED** |
+
+## Final Phase B replay and regression gate
+
+The approved disposable database was dropped and recreated. `achievenest_app@localhost` was granted privileges only on that database. Migrations 000001–000011 replayed successfully from empty and produced 57 tables.
+
+Final results against the freshly replayed database:
+
+- CodeIgniter/MySQL connection and reference data: **PASS**
+- Phase 7 authentication: **27/27 PASS**
+- Phase 8 authorization: **36/36 PASS**
+- Phase 9 protected storage: **28/28 PASS**
+- Frontend production build: **PASS**
+- Frontend regression suite: **139/139 PASS**
+
+The Phase 8/9 command banner still says `achievenest_local`; that text is a static legacy label. `db:verify-defense` immediately before the suites confirmed both configured and runtime database names were `achievenest_hostinger_phaseb_verify_20260910`.
+
+## Phase B disposition
+
+**COMPLETE / ACCEPTED.** No populated database was migrated or modified. Phase C may proceed from this branch.

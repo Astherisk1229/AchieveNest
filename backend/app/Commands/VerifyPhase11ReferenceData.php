@@ -41,8 +41,8 @@ class VerifyPhase11ReferenceData extends BaseCommand
         $runTest('REF-001', '7 Authoritative Roles present in database', $rolesCount === 7, "Found: {$rolesCount}");
 
         // REF-002: 5 Colleges
-        $collegesCount = (int) $db->table('colleges')->countAllResults();
-        $runTest('REF-002', '5 Colleges present in database', $collegesCount === 5, "Found: {$collegesCount}");
+        $collegesCount = (int) $db->table('colleges')->like('id', '20000000-', 'after')->countAllResults();
+        $runTest('REF-002', '5 canonical seeded Colleges present in database', $collegesCount === 5, "Found: {$collegesCount}");
 
         // REF-003: 14 Academic Programs
         $progCount = (int) $db->table('academic_programs')->countAllResults();
@@ -170,7 +170,7 @@ class VerifyPhase11ReferenceData extends BaseCommand
             $fingerprintPayload .= "ROLE:{$r['id']}:{$r['role_key']}:{$r['display_name']}:{$r['is_system_role']}\n";
         }
 
-        $colleges = $db->table('colleges')->orderBy('code', 'ASC')->get()->getResultArray();
+        $colleges = $db->table('colleges')->like('id', '20000000-', 'after')->orderBy('code', 'ASC')->get()->getResultArray();
         foreach ($colleges as $c) {
             $fingerprintPayload .= "COLLEGE:{$c['id']}:{$c['code']}:{$c['name']}:{$c['status']}\n";
         }

@@ -613,7 +613,7 @@ class VerifyPhase13Step4Local extends BaseCommand
             $fingerprintPayload .= "ROLE:{$r['id']}:{$r['role_key']}:{$r['display_name']}:{$r['is_system_role']}\n";
         }
 
-        $colleges = $db->table('colleges')->orderBy('code', 'ASC')->get()->getResultArray();
+        $colleges = $db->table('colleges')->like('id', '20000000-', 'after')->orderBy('code', 'ASC')->get()->getResultArray();
         foreach ($colleges as $c) {
             $fingerprintPayload .= "COLLEGE:{$c['id']}:{$c['code']}:{$c['name']}:{$c['status']}\n";
         }

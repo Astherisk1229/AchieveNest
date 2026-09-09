@@ -243,13 +243,17 @@ class AwardEligibilityService
 
         // 3. Query enrollment table if not in profile array
         if ($yearLevel === null && ! empty($student['id']) && isset($this->db) && $this->db !== null) {
-            $enrollment = $this->db->table('student_program_enrollments')
-                ->where('student_profile_id', $student['id'])
-                ->orderBy('created_at', 'DESC')
-                ->get()->getRowArray();
+            try {
+                $enrollment = $this->db->table('student_program_enrollments')
+                    ->where('student_profile_id', $student['id'])
+                    ->orderBy('created_at', 'DESC')
+                    ->get()->getRowArray();
 
-            if ($enrollment !== null) {
-                $yearLevel = $enrollment['year_level'] ?? null;
+                if ($enrollment !== null) {
+                    $yearLevel = $enrollment['year_level'] ?? null;
+                }
+            } catch (\Throwable) {
+                // Missing optional enrollment data must resolve as unknown, not crash eligibility evaluation.
             }
         }
 

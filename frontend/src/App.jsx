@@ -40,7 +40,6 @@ const HRPasswordResetRequestsPage = lazy(() => import('./pages/hr-admin/HRPasswo
 const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
 const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
 const PublicCertificateVerificationPage = lazy(() => import('./pages/common/PublicCertificateVerificationPage'))
-const ResetPasswordPage = lazy(() => import('./pages/common/ResetPasswordPage'))
 const ChangePasswordPage = lazy(() => import('./pages/common/ChangePasswordPage'))
 
 class ErrorBoundary extends React.Component {
@@ -139,7 +138,6 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/reset-password" element={<Suspense fallback={<RouteLoadingFallback />}><ResetPasswordPage /></Suspense>} />
             <Route path="/change-password" element={<Suspense fallback={<RouteLoadingFallback />}><ChangePasswordPage /></Suspense>} />
             <Route path="/403" element={<ForbiddenPage />} />
             <Route path="/verify/certificate/:publicId" element={<Suspense fallback={<RouteLoadingFallback />}><PublicCertificateVerificationPage /></Suspense>} />

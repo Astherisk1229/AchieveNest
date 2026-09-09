@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Services\AuthenticatedActorService;
-use App\Services\SupabaseAuthService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\FeatureTestTrait;
 

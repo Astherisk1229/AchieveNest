@@ -32,18 +32,6 @@ apiClient.interceptors.request.use(
         }
       }
 
-      // 2. Hosted Supabase fallback only if no local token and not explicitly local-defense
-      const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
-      if (!token && authMode !== 'local-defense') {
-        try {
-          const { supabase } = await import('../config/supabase')
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token
-        } catch {
-          token = null
-        }
-      }
-
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       } else if (!config.headers.Authorization) {

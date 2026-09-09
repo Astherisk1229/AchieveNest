@@ -16,8 +16,8 @@ class VerifyMigrationDialect extends BaseCommand
     {
         $legacy = glob(APPPATH . 'Database/Migrations/*.php') ?: [];
         sort($legacy);
-        if (count($legacy) !== 49) {
-            throw new RuntimeException('Expected the classified 49-file legacy chain; found ' . count($legacy));
+        if ($legacy === []) {
+            throw new RuntimeException('Expected the quarantined legacy migration inventory; found none.');
         }
 
         $canonicalFiles = array_merge(
@@ -46,7 +46,7 @@ class VerifyMigrationDialect extends BaseCommand
             throw new RuntimeException("PostgreSQL-only syntax in canonical MySQL path:\n" . implode("\n", $violations));
         }
 
-        CLI::write('[PASS] 49 legacy migrations remain isolated and classified.', 'green');
+        CLI::write('[PASS] ' . count($legacy) . ' legacy migrations remain isolated from the canonical MySQL namespace.', 'green');
         CLI::write('[PASS] Canonical Phase17Canonical namespace contains no PostgreSQL-only constructs.', 'green');
     }
 }

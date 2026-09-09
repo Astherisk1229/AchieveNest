@@ -5,7 +5,6 @@ namespace App\Controllers\Api;
 use App\Helpers\ValidationHelper;
 use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
-use App\Services\SupabaseAdminAuthService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -16,17 +15,11 @@ class TargetProvisioningController extends Controller
     use ResponseTrait;
 
     protected AuthenticatedActorService $actorService;
-    protected SupabaseAdminAuthService $adminAuthService;
-    protected bool $isLocalDefense;
     protected ProvisioningValidation $provisioningConfig;
 
-    public function __construct(
-        ?AuthenticatedActorService $actorService = null,
-        ?SupabaseAdminAuthService $adminAuthService = null
-    ) {
+    public function __construct(?AuthenticatedActorService $actorService = null)
+    {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
-        $this->adminAuthService = $adminAuthService ?? new SupabaseAdminAuthService();
-        $this->isLocalDefense = (env('AUTH_MODE') === 'local-defense' || env('ACHIEVENEST_ENV') === 'local-defense');
         $this->provisioningConfig = config('ProvisioningValidation');
     }
 
@@ -317,9 +310,6 @@ class TargetProvisioningController extends Controller
             $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
-            if ($createdInAuth) {
-                $this->adminAuthService->deleteUser($authUserId);
-            }
             $this->logProvisioningFailure($db, $actor['profile']['id'], 'student', 'Student provisioning failed: ' . $e->getMessage());
             $conflict = $this->identityConflict($db, $instId, $email);
             if ($conflict !== null) return $conflict;
@@ -802,9 +792,6 @@ class TargetProvisioningController extends Controller
             $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
-            if ($createdInAuth) {
-                $this->adminAuthService->deleteUser($authUserId);
-            }
             $this->logProvisioningFailure($db, $actor['profile']['id'], 'personnel', 'Personnel provisioning failed: ' . $e->getMessage());
             $conflict = $this->identityConflict($db, $instId, $email);
             if ($conflict !== null) return $conflict;
@@ -922,28 +909,7 @@ SQL;
 
     private function createAuthIdentity(string $email, string $password, string $fullName, string $institutionalId, string $accountType): array
     {
-        if ($this->isLocalDefense) {
-            return [$this->genUuid(), false, null];
-        }
-
-        try {
-            if ($this->adminAuthService->isConfigured()) {
-                $authUser = $this->adminAuthService->createUser($email, $password, [
-                    'full_name'        => $fullName,
-                    'institutional_id' => $institutionalId,
-                    'account_type'     => $accountType,
-                ]);
-                $id = (string) ($authUser['id'] ?? '');
-                if ($id === '') {
-                    return [null, false, 'Supabase Auth did not return a valid user UUID.'];
-                }
-                return [$id, true, null];
-            }
-
-            return [$this->genUuid(), false, null];
-        } catch (Throwable $e) {
-            return [null, false, 'Failed to create Supabase Auth identity: ' . $e->getMessage()];
-        }
+        return [$this->genUuid(), false, null];
     }
 
     private function recordLifecycle($db, string $profileId, string $performedBy, string $eventType, string $reason): void

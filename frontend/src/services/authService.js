@@ -1,9 +1,8 @@
 /**
  * AchieveNest Authentication Service
- * Dual-mode: Local-Defense authentication (WAMP MySQL) & Hosted Supabase Auth.
+ * Local authentication backed by CodeIgniter and WAMP MySQL.
  */
 
-import { supabase } from '../config/supabase'
 import apiClient from './apiClient'
 import AuthController from '../controllers/AuthController'
 import {
@@ -31,7 +30,7 @@ function clearStoredSession() {
 }
 
 /**
- * Authenticates user via local-defense API or hosted Supabase Auth based on environment configuration.
+ * Authenticates a user through the local CodeIgniter API.
  */
 export async function authenticateUser(email, password, rememberMe = true) {
   const cleanEmail = String(email || '').trim().toLowerCase()
@@ -40,37 +39,15 @@ export async function authenticateUser(email, password, rememberMe = true) {
     throw new Error('Please enter a valid NDMU institutional email (@ndmu.edu.ph).')
   }
 
-  const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
-
-  // 1. Local-Defense Track (Direct CodeIgniter JWT authentication)
-  if (authMode === 'local-defense') {
-    const res = await apiClient.post('/auth/login', {
-      institutional_email: cleanEmail,
-      password,
-      remember_me: rememberMe
-    })
-
-    const accessToken = res?.data?.access_token || res?.access_token
-    if (!accessToken) {
-      throw new Error('Login succeeded but no access token was returned.')
-    }
-
-    return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
-  }
-
-  // 2. Hosted Supabase Auth Track
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: cleanEmail,
-    password
+  const res = await apiClient.post('/auth/login', {
+    institutional_email: cleanEmail,
+    password,
+    remember_me: rememberMe
   })
 
-  if (error) {
-    throw new Error(error.message || 'Supabase authentication failed.')
-  }
-
-  const accessToken = data?.session?.access_token
+  const accessToken = res?.data?.access_token || res?.access_token
   if (!accessToken) {
-    throw new Error('Supabase login succeeded but no access token was returned.')
+    throw new Error('Login succeeded but no access token was returned.')
   }
 
   return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
@@ -279,15 +256,6 @@ export async function logoutUser() {
   }
 
   clearStoredSession()
-
-  try {
-    const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
-    if (authMode !== 'local-defense') {
-      await supabase.auth.signOut().catch(() => {})
-    }
-  } catch {
-    // Ignore in local-defense mode
-  }
 
   dispatchStorageEvent()
 }

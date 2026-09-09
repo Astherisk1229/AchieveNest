@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Services\AuthenticatedActorService;
-use App\Services\SupabaseAuthService;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\FeatureTestTrait;
 use PDO;
 
+#[\PHPUnit\Framework\Attributes\Group('legacy-postgres')]
 final class Phase8Step3GovernanceE2ETest extends CIUnitTestCase
 {
     use FeatureTestTrait;

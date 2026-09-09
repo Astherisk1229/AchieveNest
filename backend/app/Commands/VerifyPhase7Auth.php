@@ -363,8 +363,10 @@ class VerifyPhase7Auth extends BaseCommand
             'institutional_email' => $newStudentEmail,
             'first_name'          => 'Alex',
             'last_name'           => 'Reyes',
+            'sex'                 => 'Female',
             'academic_program_id' => $bscsId,
             'year_level'          => '1st Year',
+            'academic_year'       => '2026-2027',
         ], $osadToken);
         $provController->initController($req, response(), service('logger'));
         $resp = $provController->manualStudent();

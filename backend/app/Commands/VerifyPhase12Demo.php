@@ -21,7 +21,7 @@ class VerifyPhase12Demo extends BaseCommand
         foreach ($db->table('roles')->orderBy('role_key', 'ASC')->get()->getResultArray() as $r) {
             $payload .= "ROLE:{$r['id']}:{$r['role_key']}:{$r['display_name']}:{$r['is_system_role']}\n";
         }
-        foreach ($db->table('colleges')->orderBy('code', 'ASC')->get()->getResultArray() as $c) {
+        foreach ($db->table('colleges')->like('id', '20000000-', 'after')->orderBy('code', 'ASC')->get()->getResultArray() as $c) {
             $payload .= "COLLEGE:{$c['id']}:{$c['code']}:{$c['name']}:{$c['status']}\n";
         }
         foreach ($db->table('academic_programs')->orderBy('code', 'ASC')->get()->getResultArray() as $p) {

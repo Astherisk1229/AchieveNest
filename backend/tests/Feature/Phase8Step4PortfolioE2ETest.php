@@ -17,6 +17,7 @@ use PDO;
  * - AUD-PORT-001 to AUD-PORT-003: Verification events audit trail
  * - Zero orphan evidence & permanent invariants check
  */
+#[\PHPUnit\Framework\Attributes\Group('legacy-postgres')]
 final class Phase8Step4PortfolioE2ETest extends CIUnitTestCase
 {
     protected static ?PDO $pdo = null;

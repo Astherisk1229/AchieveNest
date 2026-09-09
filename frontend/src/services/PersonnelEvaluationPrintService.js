@@ -20,6 +20,7 @@
 import PersonnelEvaluationFinalizationReadinessService from './PersonnelEvaluationFinalizationReadinessService.js'
 import { EVALUATION_SCALE_CODES, EVALUATION_RULE_VERSION } from './evaluationInstrumentRegistry.js'
 import { RESULT_VOCABULARY } from './PersonnelEvaluationResultPersistenceService.js'
+import { resolveEvaluationDepartmentLabel } from '../utils/personnelPlacement.js'
 
 export const OUTPUT_TYPES = Object.freeze({
   DELIBERATION_SUMMARY: 'deliberation_summary',
@@ -202,10 +203,12 @@ export default class PersonnelEvaluationPrintService {
     ))
 
     // 3. Personnel Identity Section (Official Form Fields Only)
+    const deptDisplay = String(evaluationRecord.department_display || resolveEvaluationDepartmentLabel(evaluationRecord))
+
     const personnelIdentity = {
       full_name: String(evaluationRecord.personnel_name || evaluationRecord.faculty_name || 'Candidate Name'),
       employee_id: String(evaluationRecord.employee_id || evaluationRecord.personnel_profile_id || 'EMP-001'),
-      department: String(evaluationRecord.department_name || evaluationRecord.department || 'Department'),
+      department: deptDisplay,
       college_or_unit: String(evaluationRecord.college_name || evaluationRecord.target_college_id || 'College/Unit'),
       designation: String(evaluationRecord.designation || 'Faculty Member'),
       evaluated_current_rank: currentRank,

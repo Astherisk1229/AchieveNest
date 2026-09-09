@@ -305,13 +305,53 @@ class Database extends Config
         'dateFormat' => ['date' => 'Y-m-d', 'datetime' => 'Y-m-d H:i:s', 'time' => 'H:i:s'],
     ];
 
+    /**
+     * Disposable isolated validation database for Plan K — Phase K4 remediation.
+     * Hard-guarded against targeting protected achievenest_local.
+     *
+     * @var array<string, mixed>
+     */
+    public array $k4_test = [
+        'DSN'         => '',
+        'hostname'    => '127.0.0.1',
+        'username'    => '',
+        'password'    => '',
+        'database'    => 'k4_test.sqlite',
+        'DBDriver'    => 'SQLite3',
+        'DBPrefix'    => '',
+        'pConnect'    => false,
+        'DBDebug'     => true,
+        'charset'     => 'utf8',
+        'DBCollat'    => '',
+        'swapPre'     => '',
+        'encrypt'     => false,
+        'compress'    => false,
+        'strictOn'    => true,
+        'failover'    => [],
+        'port'        => 3306,
+        'foreignKeys' => true,
+        'busyTimeout' => 1000,
+        'synchronous' => null,
+        'dateFormat'  => [
+            'date'     => 'Y-m-d',
+            'datetime' => 'Y-m-d H:i:s',
+            'time'     => 'H:i:s',
+        ],
+    ];
+
     public function __construct()
     {
         parent::__construct();
 
         // Keep local defense, hosted development, and automated tests isolated.
         $runtimeTarget = getenv('ACHIEVENEST_ENV') ?: env('ACHIEVENEST_ENV');
-        if ($runtimeTarget === 'phase17m-replay') {
+        if ($runtimeTarget === 'k4-test') {
+            $this->k4_test['database'] = (string) (getenv('K4_TEST_DATABASE') ?: 'k4_test.sqlite');
+            if ($this->k4_test['database'] === 'achievenest_local' || ! str_contains($this->k4_test['database'], 'test')) {
+                throw new \RuntimeException('K4 test target must be a disposable test database and must never target protected achievenest_local.');
+            }
+            $this->defaultGroup = 'k4_test';
+        } elseif ($runtimeTarget === 'phase17m-replay') {
             $this->phase17m_replay['hostname'] = (string) (getenv('PHASE17M_REPLAY_HOST') ?: '127.0.0.1');
             $this->phase17m_replay['database'] = (string) (getenv('PHASE17M_REPLAY_DATABASE') ?: 'achievenest_phase17m_replay');
             $this->phase17m_replay['username'] = (string) (getenv('PHASE17M_REPLAY_USERNAME') ?: 'root');

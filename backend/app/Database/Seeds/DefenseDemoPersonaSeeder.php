@@ -203,7 +203,8 @@ class DefenseDemoPersonaSeeder extends Seeder
                 $db->table('personnel_profiles')->upsert([
                     'profile_id'               => $p['id'],
                     'personnel_classification' => $p['personnel_type'] ?? 'non_academic',
-                    'employment_status'        => 'full_time',
+                    'employment_status'        => 'permanent',
+                    'faculty_engagement'       => ($p['personnel_type'] ?? '') === 'academic' ? 'full_time_faculty' : null,
                     'created_at'               => $now,
                     'updated_at'               => $now,
                 ]);

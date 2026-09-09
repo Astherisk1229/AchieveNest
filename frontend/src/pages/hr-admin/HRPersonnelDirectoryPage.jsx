@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
@@ -11,8 +11,9 @@ import EditMasterDataModal from './personnel-directory/EditMasterDataModal'
 import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
 import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
-import { collectPersonnelPlacementOptions } from '../../utils/personnelPlacement'
+import { collectPersonnelPlacementOptions, mergePlacementMasterData } from '../../utils/personnelPlacement'
 import { updatePersonnelMasterData } from '../../services/hrAdminService'
+import { personnelMasterDataService } from '../../services/personnelMasterDataService'
 
 export function HRPersonnelDirectoryPage(props) {
   const hrHook = useHR()
@@ -23,6 +24,41 @@ export function HRPersonnelDirectoryPage(props) {
   const handleApprovePasswordReset = props.handleApprovePasswordReset || hrHook.handleApprovePasswordReset
   const handleCreatePersonnelAccount = props.handleCreatePersonnelAccount || hrHook.handleCreatePersonnelAccount
   const handleUpdateRank = props.handleUpdateRank || hrHook.handleUpdateRank
+
+  // Master Data Placement Options State (Institutional API backed)
+  const [institutionalMasterData, setInstitutionalMasterData] = useState({
+    colleges: [],
+    academicPrograms: [],
+    administrativeUnits: []
+  })
+
+  useEffect(() => {
+    let isMounted = true
+    Promise.all([
+      personnelMasterDataService.getColleges(),
+      personnelMasterDataService.getAcademicPrograms(),
+      personnelMasterDataService.getDepartments()
+    ]).then(([colleges, programs, departments]) => {
+      if (isMounted) {
+        setInstitutionalMasterData({
+          colleges: colleges || [],
+          academicPrograms: programs || [],
+          administrativeUnits: departments || []
+        })
+      }
+    }).catch(err => {
+      console.warn('Failed to load institutional placement master data:', err?.message)
+    })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const placementOptions = useMemo(() => {
+    const scraped = collectPersonnelPlacementOptions(personnelList)
+    return mergePlacementMasterData(scraped, institutionalMasterData)
+  }, [personnelList, institutionalMasterData])
 
   // Tab State: 'directory' | 'resets'
   const tabQuery = searchParams.get('tab')
@@ -236,7 +272,7 @@ export function HRPersonnelDirectoryPage(props) {
         isOpen={Boolean(editingMasterDataPersonnel)}
         onClose={() => setEditingMasterDataPersonnel(null)}
         onSave={handleSaveMasterData}
-        placementOptions={collectPersonnelPlacementOptions(personnelList)}
+        placementOptions={placementOptions}
       />
 
       {/* Edit Organizational Assignment Modal */}
@@ -245,7 +281,7 @@ export function HRPersonnelDirectoryPage(props) {
         isOpen={Boolean(editingAssignmentPersonnel)}
         onClose={() => setEditingAssignmentPersonnel(null)}
         onSave={handleSaveAssignment}
-        placementOptions={collectPersonnelPlacementOptions(personnelList)}
+        placementOptions={placementOptions}
       />
 
       {/* Reset Personnel Password Modal */}
@@ -262,7 +298,7 @@ export function HRPersonnelDirectoryPage(props) {
         evaluatorContext={{ evaluatorId: 'HR-2010-001', role: 'hr_staff' }}
         onClose={() => setIsOnboardingOpen(false)}
         onSubmit={handleOnboardSubmit}
-        placementOptions={collectPersonnelPlacementOptions(personnelList)}
+        placementOptions={placementOptions}
       />
     </div>
   )

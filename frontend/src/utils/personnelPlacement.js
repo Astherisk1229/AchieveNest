@@ -58,6 +58,34 @@ export function collectPersonnelPlacementOptions(personnelList = []) {
   }
 }
 
+export function mergePlacementMasterData(scrapedOptions = {}, masterData = {}) {
+  const collegesMap = new Map()
+  const programsMap = new Map()
+  const unitsMap = new Map()
+
+  // Add master data first
+  ;(masterData.colleges || []).forEach(c => collegesMap.set(c.id, c))
+  ;(masterData.academicPrograms || []).forEach(p => programsMap.set(p.id, p))
+  ;(masterData.administrativeUnits || masterData.departments || []).forEach(u => unitsMap.set(u.id, u))
+
+  // Merge any scraped options
+  ;(scrapedOptions.colleges || []).forEach(c => {
+    if (!collegesMap.has(c.id)) collegesMap.set(c.id, c)
+  })
+  ;(scrapedOptions.academicPrograms || []).forEach(p => {
+    if (!programsMap.has(p.id)) programsMap.set(p.id, p)
+  })
+  ;(scrapedOptions.administrativeUnits || []).forEach(u => {
+    if (!unitsMap.has(u.id)) unitsMap.set(u.id, u)
+  })
+
+  return {
+    colleges: [...collegesMap.values()],
+    academicPrograms: [...programsMap.values()],
+    administrativeUnits: [...unitsMap.values()]
+  }
+}
+
 export function validatePersonnelPlacement({ classification, group, side, collegeId, academicProgramIds = [], administrativeUnitId }, options) {
   const errors = {}
 
@@ -81,7 +109,7 @@ export function validatePersonnelPlacement({ classification, group, side, colleg
       if (academicProgramIds.some(id => !validIds.has(id))) errors.academicProgramIds = 'Every Academic Program must belong to the selected College.'
     }
   } else if (!administrativeUnitId) {
-    errors.administrativeUnitId = 'Select an Administrative Unit.'
+    errors.administrativeUnitId = 'Select a Department.'
   }
   return { isValid: Object.keys(errors).length === 0, errors }
 }
@@ -137,4 +165,67 @@ export function validatePersonnelMasterData({
     errors
   }
 }
+
+/**
+ * Resolves the downstream Evaluation Summary Department label (Plan D2 — Phase D2-4).
+ *
+ * Canonical Rules:
+ * - Academic (Faculty + Academic or Non-Teaching Faculty + Academic):
+ *   Projects the selected College name into the summary 'Department' display field.
+ * - Non-Academic (Non-Teaching Faculty + Non-Academic):
+ *   Projects the selected Department / Administrative Unit name into the same field.
+ *
+ * Distinct persisted identities (college_id vs administrative_unit_id) remain uncollapsed.
+ *
+ * @param {Object} record - Personnel record or evaluation summary context
+ * @returns {string} The projected Department display label
+ */
+export function resolveEvaluationDepartmentLabel(record = {}) {
+  if (!record || typeof record !== 'object') return 'Not assigned'
+
+  const group = (record.personnel_group || '').toLowerCase()
+  const side = (record.organizational_side || record.personnel_classification || record.personnel_category || '').toLowerCase()
+
+  const isAcademic = side === 'academic' || group === 'faculty'
+  const isNonAcademic = side === 'non_academic'
+
+  if (isAcademic) {
+    const college = record.college_name || record.college || record.target_college_name || null
+    if (college) return college
+    if (record.college_id) return `College ${record.college_id}`
+    return record.department_name || record.department || 'College unassigned'
+  }
+
+  if (isNonAcademic) {
+    const unit = record.administrative_unit_name || record.department_name || record.administrative_unit_code || record.department || null
+    if (unit) return unit
+    return 'Department unassigned'
+  }
+
+  // Fallback for legacy fixtures without explicit organizational_side
+  if (record.college_name && !record.administrative_unit_name && !record.department_name) {
+    return record.college_name
+  }
+
+  return record.department_name || record.department || record.administrative_unit_name || record.college_name || 'Department'
+}
+
+/**
+ * Resolves the evaluation summary department metadata with source provenance.
+ *
+ * @param {Object} record
+ * @returns {{ department_display: string, department_source: 'college'|'administrative_unit' }}
+ */
+export function resolveEvaluationDepartmentMetadata(record = {}) {
+  const label = resolveEvaluationDepartmentLabel(record)
+  const side = (record.organizational_side || record.personnel_classification || '').toLowerCase()
+  const group = (record.personnel_group || '').toLowerCase()
+  const isAcademic = side === 'academic' || group === 'faculty'
+
+  return {
+    department_display: label,
+    department_source: isAcademic ? 'college' : 'administrative_unit'
+  }
+}
+
 

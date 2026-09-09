@@ -498,7 +498,26 @@ class TargetProvisioningController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $allowedFields = ['institutional_id','institutional_email','first_name','middle_name','last_name','suffix','designation','personnel_classification','personnel_group','organizational_side','college_id','academic_program_ids','administrative_unit_id'];
+        $allowedFields = [
+            'institutional_id',
+            'institutional_email',
+            'first_name',
+            'middle_name',
+            'last_name',
+            'suffix',
+            'designation',
+            'personnel_classification',
+            'personnel_group',
+            'organizational_side',
+            'college_id',
+            'academic_program_ids',
+            'administrative_unit_id',
+            'faculty_engagement',
+            'employment_status',
+            'position_title',
+            'current_rank_title',
+            'qualification_summary',
+        ];
         if (! is_array($json) || array_diff(array_keys($json), $allowedFields) !== []) {
             return $this->validationError(['request' => 'Request contains unsupported fields.']);
         }
@@ -533,6 +552,62 @@ class TargetProvisioningController extends Controller
         $clsValidation = $clsService->validatePair($rawGroup, $rawSide);
         if (! $clsValidation['valid']) {
             return $this->respond(['error' => $clsValidation['error']], 422);
+        }
+
+        // Master Data Validation (Engagement, Employment Status, Rank Title, Position, Qualification)
+        $facultyStatusService = new \App\Services\FacultyStatusService();
+        $rawEngagement = $json['faculty_engagement'] ?? 'full_time_faculty';
+        $engagementValidation = $facultyStatusService->validateEngagement($rawEngagement, false);
+        if (! $engagementValidation['valid']) {
+            return $this->respond(['error' => $engagementValidation['error']], 422);
+        }
+        $facultyEngagement = $engagementValidation['engagement'] ?? 'full_time_faculty';
+
+        $rawEmploymentStatus = $json['employment_status'] ?? 'permanent';
+        $employmentStatusValidation = $facultyStatusService->validateEmploymentStatus($rawEmploymentStatus, true);
+        if (! $employmentStatusValidation['valid']) {
+            return $this->respond(['error' => $employmentStatusValidation['error']], 422);
+        }
+        $employmentStatus = $employmentStatusValidation['status'];
+
+        $positionTitle = ! empty($json['position_title']) ? trim((string) $json['position_title']) : (! empty($json['designation']) ? trim((string) $json['designation']) : 'Personnel');
+        $qualificationSummary = ! empty($json['qualification_summary']) ? trim((string) $json['qualification_summary']) : null;
+        $currentRankTitle = ! empty($json['current_rank_title']) ? trim((string) $json['current_rank_title']) : null;
+
+        // Rank / Title Catalog & Crossover Validation
+        if ($currentRankTitle !== null) {
+            $ptTitles = [
+                'professorial lecturer',
+                'assistant professorial lecturer',
+                'senior lecturer',
+                'lecturer',
+                'pt_professorial_lecturer',
+                'pt_assistant_professorial_lecturer',
+                'pt_senior_lecturer',
+                'pt_lecturer'
+            ];
+            $normalizedRank = strtolower($currentRankTitle);
+            $isPartTimeTitle = in_array($normalizedRank, $ptTitles, true);
+
+            if ($facultyEngagement === 'full_time_faculty' && $isPartTimeTitle) {
+                return $this->respond([
+                    'error' => [
+                        'code'    => 'CATALOG_CROSSOVER_REJECTED',
+                        'message' => 'Part-Time faculty title cannot be assigned to Full-Time faculty.',
+                    ]
+                ], 422);
+            }
+
+            if ($facultyEngagement === 'part_time_faculty') {
+                if (! $isPartTimeTitle) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'CATALOG_CROSSOVER_REJECTED',
+                            'message' => 'Full-Time academic rank cannot be assigned to Part-Time faculty. Only Part-Time titles are allowed.',
+                        ]
+                    ], 422);
+                }
+            }
         }
 
         $classification = $clsValidation['side'];
@@ -615,7 +690,7 @@ class TargetProvisioningController extends Controller
                 'last_name'            => $lastName,
                 'full_name'            => $fullName,
                 'account_type'         => 'personnel',
-                'designation_title'    => $designation,
+                'designation_title'    => $positionTitle ?: $designation,
                 'status'               => 'active',
                 'password_hash'        => $passwordHash,
                 'created_at'           => $now,
@@ -625,13 +700,31 @@ class TargetProvisioningController extends Controller
             $personnelProfileData = [
                 'profile_id'               => $authUserId,
                 'personnel_classification' => $clsValidation['side'],
-                'employment_status'        => 'full_time',
+                'employment_status'        => $employmentStatus,
             ];
             if ($db->fieldExists('personnel_group', 'personnel_profiles')) {
                 $personnelProfileData['personnel_group'] = $clsValidation['group'];
             }
             if ($db->fieldExists('organizational_side', 'personnel_profiles')) {
                 $personnelProfileData['organizational_side'] = $clsValidation['side'];
+            }
+            if ($db->fieldExists('faculty_engagement', 'personnel_profiles')) {
+                $personnelProfileData['faculty_engagement'] = $facultyEngagement;
+            }
+            if ($db->fieldExists('position_title', 'personnel_profiles')) {
+                $personnelProfileData['position_title'] = $positionTitle;
+            }
+            if ($db->fieldExists('current_rank_title', 'personnel_profiles')) {
+                $personnelProfileData['current_rank_title'] = $currentRankTitle;
+            }
+            if ($db->fieldExists('qualification_summary', 'personnel_profiles')) {
+                $personnelProfileData['qualification_summary'] = $qualificationSummary;
+            }
+            if ($db->fieldExists('college_id', 'personnel_profiles')) {
+                $personnelProfileData['college_id'] = $collegeId;
+            }
+            if ($db->fieldExists('administrative_unit_id', 'personnel_profiles')) {
+                $personnelProfileData['administrative_unit_id'] = $administrativeUnitId;
             }
 
             $db->table('personnel_profiles')->insert($personnelProfileData);

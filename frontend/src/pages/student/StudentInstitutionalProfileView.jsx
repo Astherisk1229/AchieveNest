@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import { getApiBaseUrl } from '../../config/api'
+import apiClient from '../../services/apiClient'
 
 export default function StudentInstitutionalProfileView({ currentUser }) {
   const [profileData, setProfileData] = useState(null)
@@ -26,21 +26,12 @@ export default function StudentInstitutionalProfileView({ currentUser }) {
     setIsLoading(true)
     setError(null)
     try {
-      const token = localStorage.getItem('achievenest_local_token') || localStorage.getItem('token') || ''
-      const res = await fetch(`${getApiBaseUrl()}/api/v1/student/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      })
-
-      if (!res.ok) {
-        throw new Error(`Failed to load student profile (${res.status})`)
-      }
-
-      const json = await res.json()
-      if (json.data) {
+      const response = await apiClient.get('/student/profile')
+      const json = response.data
+      if (json?.data) {
         setProfileData(json.data)
+      } else if (json) {
+        setProfileData(json)
       } else {
         throw new Error('Invalid response structure received from server.')
       }

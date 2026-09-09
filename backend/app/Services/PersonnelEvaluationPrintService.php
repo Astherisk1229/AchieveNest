@@ -232,10 +232,23 @@ class PersonnelEvaluationPrintService
         ));
 
         // 3. Personnel Identity Section (Official Form Fields Only)
+        $side = strtolower((string) ($evaluationRecord['organizational_side'] ?? $evaluationRecord['personnel_classification'] ?? ''));
+        $group = strtolower((string) ($evaluationRecord['personnel_group'] ?? ''));
+        $isAcademic = ($side === 'academic' || $group === 'faculty');
+
+        $deptDisplay = (string) ($evaluationRecord['department_display'] ?? ($evaluationRecord['department_name'] ?? ($evaluationRecord['department'] ?? '')));
+        if ($deptDisplay === '' || $deptDisplay === 'Department') {
+            if ($isAcademic) {
+                $deptDisplay = (string) ($evaluationRecord['college_name'] ?? ($evaluationRecord['target_college_id'] ?? 'College unassigned'));
+            } else {
+                $deptDisplay = (string) ($evaluationRecord['administrative_unit_name'] ?? 'Department');
+            }
+        }
+
         $personnelIdentity = [
             'full_name' => (string) ($evaluationRecord['personnel_name'] ?? $evaluationRecord['faculty_name'] ?? 'Candidate Name'),
             'employee_id' => (string) ($evaluationRecord['employee_id'] ?? $evaluationRecord['personnel_profile_id'] ?? 'EMP-001'),
-            'department' => (string) ($evaluationRecord['department_name'] ?? $evaluationRecord['department'] ?? 'Department'),
+            'department' => $deptDisplay,
             'college_or_unit' => (string) ($evaluationRecord['college_name'] ?? $evaluationRecord['target_college_id'] ?? 'College/Unit'),
             'designation' => (string) ($evaluationRecord['designation'] ?? 'Faculty Member'),
             'evaluated_current_rank' => $currentRank,

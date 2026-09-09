@@ -55,7 +55,11 @@ class ErrorBoundary extends React.Component {
       this.setState({ hasError: false, error: null })
     }
   }
-  handleReset = () => { localStorage.clear(); sessionStorage.clear(); window.location.href = '/personnel/dashboard' }
+  handleReset = () => { 
+    localStorage.clear()
+    sessionStorage.clear()
+    window.location.href = '/login'
+  }
   render() {
     if (this.state.hasError) {
       return (

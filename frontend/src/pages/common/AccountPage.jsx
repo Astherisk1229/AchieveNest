@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import useUserProfile from '../../hooks/useUserProfile'
-import { supabase } from '../../config/supabase'
+import { submitPasswordChange } from '../../services/authService'
 import StudentInstitutionalProfileView from '../student/StudentInstitutionalProfileView'
 
 export default function AccountPage({ currentUser }) {
@@ -67,13 +67,12 @@ export default function AccountPage({ currentUser }) {
     }
     setIsUpdatingPassword(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      await submitPasswordChange(newPassword, confirmPassword)
       setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
-      setPasswordMsg({ type: 'error', text: err.message || 'Failed to update password.' })
+      setPasswordMsg({ type: 'error', text: err?.response?.data?.message || err.message || 'Failed to update password.' })
     } finally {
       setIsUpdatingPassword(false)
     }

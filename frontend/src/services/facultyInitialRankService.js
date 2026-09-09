@@ -130,7 +130,7 @@ export const facultyInitialRankService = {
     const qual = (context.qualification_code || context.qualification_title || context.qualification || '').toLowerCase()
     const isLicensureVerified = !!(context.licensure_verified || context.has_verified_licensure || context.board_passer)
 
-    if (/\b(phd|ph\.d|edd|ed\.d|doctorate)\b/i.test(qual)) {
+    if (/\b(phd|ph\.d|edd|ed\.d|doctor of philosophy|doctor of education|doctorate|doctor)\b/i.test(qual)) {
       return {
         status: 'OK',
         seed_action: 'seed_initial_rank',
@@ -140,7 +140,7 @@ export const facultyInitialRankService = {
       }
     }
 
-    if (/\b(ma|m\.a|ms|m\.s|mat|md|llb|ll\.b|master|priest)\b/i.test(qual)) {
+    if (/\b(ma|m\.a|ms|m\.s|mat|md|llb|ll\.b|master|priest|doctor of medicine|bachelor of laws)\b/i.test(qual)) {
       return {
         status: 'OK',
         seed_action: 'seed_initial_rank',
@@ -150,7 +150,7 @@ export const facultyInitialRankService = {
       }
     }
 
-    if (/\b(cpa|engr|engr\.|engineer|engineering|medtech|chemist|chemistry|nurse|nursing|rn|dvm|veterinary|architect|architecture|dmd|ddm|dentist|dentistry|social worker|rsw)\b/i.test(qual)) {
+    if (/\b(cpa|engr|engr\.|engineer|engineering|medtech|chemist|chemistry|nurse|nursing|rn|dvm|veterinary|architect|architecture|dmd|ddm|dentist|dentistry|social worker|rsw|board passer|licensed)\b/i.test(qual)) {
       if (!isLicensureVerified) {
         return {
           status: 'OK',
@@ -169,7 +169,7 @@ export const facultyInitialRankService = {
       }
     }
 
-    if (/\b(ab|bse|bs|bachelor)\b/i.test(qual)) {
+    if (/\b(ab|bse|bs|bachelor|baccalaureate|accountancy)\b/i.test(qual)) {
       return {
         status: 'OK',
         seed_action: 'seed_initial_rank',

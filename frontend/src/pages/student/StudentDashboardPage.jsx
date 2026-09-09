@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getCurrentUser } from '../../services/authService'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
@@ -28,10 +30,13 @@ import {
 
 export default function StudentDashboardPage({ currentUser }) {
   const navigate = useNavigate()
+  const outletCtx = useOutletContext()
+  const { user: authUser } = useAuth()
+  const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
   const [activeStatFilter, setActiveStatFilter] = useState('all') // 'all' | 'verified' | 'pending' | 'returned' | 'proofs'
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All')
 
-  const student = currentUser || {
+  const student = activeUser || {
     full_name: 'Maria Santos',
     student_id: '2024-01234',
     program: 'BS Information Technology',

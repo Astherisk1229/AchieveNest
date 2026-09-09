@@ -153,6 +153,42 @@ class FacultyStatusService
             ];
         }
 
+        // Rank / Title Catalog Crossover Check
+        if ($rankTitle !== null && $rankTitle !== '' && $rankTitle !== 'Faculty Member') {
+            $ptTitles = [
+                'professorial lecturer',
+                'assistant professorial lecturer',
+                'senior lecturer',
+                'lecturer',
+                'pt_professorial_lecturer',
+                'pt_assistant_professorial_lecturer',
+                'pt_senior_lecturer',
+                'pt_lecturer'
+            ];
+            $normalizedRank = strtolower($rankTitle);
+            $isPartTimeTitle = in_array($normalizedRank, $ptTitles, true);
+
+            $effectiveEngagement = $engagementValidation['engagement'] ?? null;
+            if ($effectiveEngagement === self::ENGAGEMENT_FULL_TIME && $isPartTimeTitle) {
+                return [
+                    'valid' => false,
+                    'error' => [
+                        'code'    => 'CATALOG_CROSSOVER_REJECTED',
+                        'message' => 'Part-Time faculty title cannot be assigned to Full-Time faculty.',
+                    ],
+                ];
+            }
+            if ($effectiveEngagement === self::ENGAGEMENT_PART_TIME && ! $isPartTimeTitle) {
+                return [
+                    'valid' => false,
+                    'error' => [
+                        'code'    => 'CATALOG_CROSSOVER_REJECTED',
+                        'message' => 'Full-Time academic rank cannot be assigned to Part-Time faculty. Only Part-Time titles are allowed.',
+                    ],
+                ];
+            }
+        }
+
         // 5. Qualification Summary
         $qualSummary = isset($payload['qualification_summary']) ? trim((string) $payload['qualification_summary']) : null;
         if ($qualSummary !== null && mb_strlen($qualSummary) > 255) {

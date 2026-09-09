@@ -1,0 +1,8 @@
+RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK1Personas.test.jsx (40 tests) 21ms
+
+ Test Files  1 passed (1)
+      Tests  40 passed (40)
+   Start at  19:02:18
+   Duration  987ms

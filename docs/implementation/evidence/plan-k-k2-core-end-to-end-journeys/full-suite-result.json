@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-09-09T19:12:14+08:00",
+  "suite": "Master Frontend Regression Suite with Plan K Phase K2",
+  "totalFiles": 160,
+  "passedFiles": 160,
+  "failedFiles": 0,
+  "totalTests": 1933,
+  "passedTests": 1933,
+  "failedTests": 0,
+  "durationSeconds": 72.15,
+  "exitCode": 0,
+  "k2FocusedPassed": 50
+}

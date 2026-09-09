@@ -1,0 +1,9 @@
+K4 focused suite
+Test Files: 1 passed (1)
+Tests: 50 passed (50)
+Duration: 856ms
+
+K0-K4 plus D2 pack
+Test Files: 6 passed (6)
+Tests: 262 passed (262)
+Duration: 4.78s

@@ -112,7 +112,7 @@ export const partTimeFacultyTitleService = {
 
     const qual = (context.qualification_code || context.qualification_title || context.qualification || '').toLowerCase()
 
-    if (/\b(phd|ph\.d|edd|ed\.d|doctorate)\b/i.test(qual)) {
+    if (/\b(phd|ph\.d|edd|ed\.d|doctor of philosophy|doctor of education|doctorate|doctor)\b/i.test(qual)) {
       return {
         status: 'OK',
         reason_code: 'resolved_doctoral',
@@ -121,7 +121,7 @@ export const partTimeFacultyTitleService = {
       }
     }
 
-    if (/\b(ma|m\.a|ms|m\.s|mat|md|llb|ll\.b|master|priest)\b/i.test(qual)) {
+    if (/\b(ma|m\.a|ms|m\.s|mat|md|llb|ll\.b|master|priest|doctor of medicine|bachelor of laws)\b/i.test(qual)) {
       return {
         status: 'OK',
         reason_code: 'resolved_masters_professional',
@@ -130,7 +130,7 @@ export const partTimeFacultyTitleService = {
       }
     }
 
-    if (/\b(cpa|engr|engr\.|engineer|engineering|medtech|chemist|chemistry|nurse|nursing|rn|dvm|veterinary|architect|architecture|dmd|ddm|dentist|dentistry|social worker|rsw)\b/i.test(qual)) {
+    if (/\b(cpa|engr|engr\.|engineer|engineering|medtech|chemist|chemistry|nurse|nursing|rn|dvm|veterinary|architect|architecture|dmd|ddm|dentist|dentistry|social worker|rsw|board passer|licensed)\b/i.test(qual)) {
       return {
         status: 'OK',
         reason_code: 'resolved_licensed_professional',
@@ -139,7 +139,7 @@ export const partTimeFacultyTitleService = {
       }
     }
 
-    if (/\b(ab|bse|bs|bachelor)\b/i.test(qual)) {
+    if (/\b(ab|bse|bs|bachelor|baccalaureate|hotel|accountancy)\b/i.test(qual)) {
       return {
         status: 'OK',
         reason_code: 'resolved_baccalaureate',

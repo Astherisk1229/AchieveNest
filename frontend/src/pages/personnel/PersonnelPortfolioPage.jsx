@@ -257,61 +257,6 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     </span>
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
-                      <CreditCard className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
-                      ID: {personnel.employee_id || 'EMP-2021-0842'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Primary Portfolio Actions */}
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                {/* Action: Portfolio Booklet View */}
-                <button
-                  type="button"
-                  onClick={() => setIsCanvaModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-[#245F42] hover:bg-[#1B4731] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-[0.98]"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Portfolio Booklet View</span>
-                  <Sparkles className="w-3 h-3 text-amber-300" />
-                </button>
-
-                {/* Action 1: Edit Profile */}
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DCE6DF] dark:border-slate-700 text-[#183B2A] dark:text-slate-200 hover:bg-[#F1F7F2] dark:hover:bg-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                >
-                  <Edit3 className="w-3.5 h-3.5 text-[#159552]" />
-                  <span>Edit Profile</span>
-                </button>
-
-                {/* Action 2: Manage Portfolio Draft */}
-                <button
-                  type="button"
-                  onClick={() => navigate('/personnel/portfolio/edit')}
-                  className="px-4 py-2 rounded-xl bg-[#159552] hover:bg-[#117A43] active:scale-[0.99] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4 text-white" />
-                  <span>Manage Portfolio Draft</span>
-                </button>
-
-                {/* Action 3: Share */}
-                <button
-                  type="button"
-                  onClick={handleShareProfile}
-                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DCE6DF] dark:border-slate-700 text-[#183B2A] dark:text-slate-200 hover:bg-[#F1F7F2] dark:hover:bg-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-[#159552]" />
-                  <span>Share</span>
-                </button>
-              </div>
-
-            </div>
-
-          </div>
-
                     </span>
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">

@@ -1,0 +1,22 @@
+# Canonical Audit Event Registry Evidence
+
+### 19 Canonical Audit Events
+1. `achievement_uploaded` -> "Evidence Upload Saved"
+2. `portfolio_submitted` -> "Portfolio Submitted for Review"
+3. `reviewer_assigned` -> "Evaluator Assigned"
+4. `review_started` -> "Evaluation Scoring Started"
+5. `qualification_state_changed` -> "Qualification State Changed"
+6. `score_decision_recorded` -> "Score Decision Recorded"
+7. `revision_requested` -> "Portfolio Returned for Revision"
+8. `portfolio_resubmitted` -> "Revised Portfolio Resubmitted"
+9. `evaluation_scale_overridden` -> "Evaluation Ranking Scale Overridden"
+10. `evaluation_result_recorded` -> "Evaluation Result Recorded"
+11. `evaluation_ready_for_finalization` -> "Evaluation Ready for Finalization"
+12. `evaluation_print_generated` -> "Evaluation Summary Document Printed"
+13. `promotion_decision_recorded` -> "Promotion Decision Recorded"
+14. `approved_rank_applied` -> "Approved Faculty Rank Applied"
+15. `evaluation_finalized` -> "Personnel Evaluation Finalized"
+16. `evaluation_locked` -> "Evaluation Record Locked"
+17. `summary_generated` -> "Official Summary Report Generated"
+18. `owner_deletion_requested` -> "Owner-Authorized Data Deletion Requested"
+19. `owner_deletion_executed` -> "Owner-Authorized Data Deletion Executed"

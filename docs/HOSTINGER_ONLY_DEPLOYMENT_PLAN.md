@@ -43,12 +43,12 @@ Create a complete inventory before replacing infrastructure-specific behavior.
 - [x] Confirm current database configuration is PostgreSQL.
 - [x] Confirm current authentication is Supabase-based.
 - [x] Confirm database migrations contain PostgreSQL/Supabase-specific SQL.
-- [ ] Inventory all Supabase frontend calls.
-- [ ] Inventory all Supabase backend services.
-- [ ] Inventory all PostgreSQL-specific SQL in migrations/services/models/controllers.
-- [ ] Inventory Storage usage and uploaded-file persistence.
-- [ ] Inventory Realtime usage, if any.
-- [ ] Inventory password reset / provisioning / admin account workflows that currently depend on Supabase Auth.
+- [x] Inventory all Supabase frontend calls. See `docs/HOSTINGER_PHASE_A_DEPENDENCY_AUDIT.md`.
+- [x] Inventory all Supabase backend services.
+- [x] Inventory all PostgreSQL-specific SQL in migrations/services/models/controllers.
+- [x] Inventory Storage usage and uploaded-file persistence.
+- [x] Inventory Realtime usage, if any. No active Supabase Realtime use was found.
+- [x] Inventory password reset / provisioning / admin account workflows that currently depend on Supabase Auth.
 
 ## Exit Gate
 No MySQL conversion begins until all active Supabase/PostgreSQL dependencies are mapped to replacement components.

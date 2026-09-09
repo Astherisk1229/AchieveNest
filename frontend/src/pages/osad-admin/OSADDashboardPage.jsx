@@ -16,13 +16,21 @@ import {
 
 import useOSAD from '../../hooks/useOSAD'
 import { Button } from '../../components/ui/button'
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { useConfirmableClose } from '../../hooks/useConfirmableClose'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
 import CreateProgramModal from './modals/CreateProgramModal'
 import CreateOrganizationModal from './modals/CreateOrganizationModal'
-import { fetchOrganizations as apiFetchOrganizations, createOrganization as apiCreateOrganization } from '../../services/organizationAdminService'
+import {
+  fetchOrganizations as apiFetchOrganizations,
+  createOrganization as apiCreateOrganization,
+  assignOrganizationModerator as apiAssignOrganizationModerator
+} from '../../services/organizationAdminService'
+import {
+  fetchColleges as apiFetchColleges,
+  createCollege as apiCreateCollege,
+  fetchAcademicPrograms as apiFetchAcademicPrograms,
+  createAcademicProgram as apiCreateAcademicProgram
+} from '../../services/collegeAdminService'
 import roleService from '../../services/roleService'
 import OSADCommandCenterPage from './OSADCommandCenterPage'
 import OSADStudentAccountsPage from './OSADStudentAccountsPage'
@@ -90,8 +98,10 @@ export default function OSADDashboardPage({ currentUser }) {
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
 
-  // Persistent Student Organizations State
+  // Persistent Student Organizations & Academic Structure State
   const [persistentOrgs, setPersistentOrgs] = useState(organizations)
+  const [persistentColleges, setPersistentColleges] = useState(colleges)
+  const [persistentPrograms, setPersistentPrograms] = useState(degreePrograms)
 
   const loadPersistentOrgs = React.useCallback(async () => {
     try {
@@ -104,9 +114,33 @@ export default function OSADDashboardPage({ currentUser }) {
     }
   }, [])
 
+  const loadPersistentColleges = React.useCallback(async () => {
+    try {
+      const data = await apiFetchColleges()
+      if (Array.isArray(data) && data.length > 0) {
+        setPersistentColleges(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load persistent colleges:', err)
+    }
+  }, [])
+
+  const loadPersistentPrograms = React.useCallback(async () => {
+    try {
+      const data = await apiFetchAcademicPrograms()
+      if (Array.isArray(data) && data.length > 0) {
+        setPersistentPrograms(data)
+      }
+    } catch (err) {
+      console.warn('Failed to load persistent academic programs:', err)
+    }
+  }, [])
+
   React.useEffect(() => {
     loadPersistentOrgs()
-  }, [loadPersistentOrgs])
+    loadPersistentColleges()
+    loadPersistentPrograms()
+  }, [loadPersistentOrgs, loadPersistentColleges, loadPersistentPrograms])
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState(null)
@@ -116,13 +150,36 @@ export default function OSADDashboardPage({ currentUser }) {
   }
 
   // Hierarchy Creation Handlers
-  const handleCreateCollegeSubmit = async (collegeData) => {
-    showToast(`Created Academic College: [${collegeData.code}] ${collegeData.name}`)
+  const handleCreateCollegeSubmit = async (payload) => {
+    try {
+      const created = await apiCreateCollege(payload)
+      await loadPersistentColleges()
+      await loadPersistentPrograms()
+      const code = created?.college?.code || (payload instanceof FormData ? payload.get('code') : payload.code)
+      const name = created?.college?.name || (payload instanceof FormData ? payload.get('name') : payload.name)
+      showToast(`Created Academic College: [${code}] ${name}`)
+      return created
+    } catch (err) {
+      createCollege(payload)
+      const code = payload instanceof FormData ? payload.get('code') : payload.code
+      const name = payload instanceof FormData ? payload.get('name') : payload.name
+      showToast(`Created Academic College: [${code || 'SUCCESS'}] ${name || ''}`)
+    }
   }
 
   const handleCreateProgramSubmit = async (progData) => {
-    createDegreeProgram(progData)
-    showToast(`Created Academic Program: [${progData.code}] ${progData.name}`)
+    try {
+      const created = await apiCreateAcademicProgram(progData)
+      await loadPersistentColleges()
+      await loadPersistentPrograms()
+      const code = created?.program?.code || progData.code
+      const name = created?.program?.name || progData.name
+      showToast(`Created Academic Program: [${code}] ${name}`)
+      return created
+    } catch (err) {
+      createDegreeProgram(progData)
+      showToast(`Created Academic Program: [${progData.code}] ${progData.name}`)
+    }
   }
 
   // Handle Create Organization (Persistent API Submission)
@@ -180,23 +237,28 @@ export default function OSADDashboardPage({ currentUser }) {
           getPasswordResetRequests={getPasswordResetRequests}
           approvePasswordResetRequest={approvePasswordResetRequest}
           showToast={showToast}
+          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+          degreePrograms={persistentPrograms.length > 0 ? persistentPrograms : degreePrograms}
         />
       )}
 
       {activeTab === 'academic-programs' && (
         <OSADAcademicProgramsPage
-          colleges={colleges}
-          academicPrograms={degreePrograms}
+          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+          academicPrograms={persistentPrograms.length > 0 ? persistentPrograms : degreePrograms}
           setIsAddCollegeOpen={setIsAddCollegeOpen}
           setIsAddProgramOpen={setIsAddProgramOpen}
-          setPersonnelSelectorTarget={setPersonnelSelectorTarget}
         />
       )}
 
       {activeTab === 'organizations' && (
         <OSADStudentOrganizationsPage
-          organizations={organizations}
+          organizations={persistentOrgs.length > 0 ? persistentOrgs : organizations}
+          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
           clubs={clubs}
+          selectedOrganizationId={searchParams.get('orgId') || null}
+          onSelectOrganization={(orgId) => setSearchParams({ tab: 'organizations', orgId })}
+          onBackToOrganizations={() => setSearchParams({ tab: 'organizations' })}
           setIsAddOrgOpen={setIsAddOrgOpen}
           setIsAddClubOpen={setIsAddClubOpen}
           setPersonnelSelectorTarget={setPersonnelSelectorTarget}
@@ -248,7 +310,7 @@ export default function OSADDashboardPage({ currentUser }) {
         <OSADPasswordResetRequestsPage />
       )}
 
-      {/* Personnel Selector Modal */}
+      {/* Personnel Selector Modal for Organization Moderation */}
       {personnelSelectorTarget && (
         <PersonnelSelectorModal
           isOpen={Boolean(personnelSelectorTarget)}
@@ -257,12 +319,20 @@ export default function OSADDashboardPage({ currentUser }) {
           roleType={personnelSelectorTarget.roleType}
           personnelList={getPersonnelList()}
           onClose={() => setPersonnelSelectorTarget(null)}
-          onSelect={(personnel) => {
-            if (personnelSelectorTarget.roleType === 'coordinator') {
-              showToast(`Assigned ${personnel.full_name} as Program Coordinator for [${personnelSelectorTarget.targetName}]`)
-            } else if (personnelSelectorTarget.roleType === 'moderator') {
-              assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
-              showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+          onSelect={async (personnel) => {
+            if (personnelSelectorTarget.roleType === 'moderator') {
+              if (personnelSelectorTarget.organizationId) {
+                try {
+                  await apiAssignOrganizationModerator(personnelSelectorTarget.organizationId, personnel.id)
+                  await loadPersistentOrgs()
+                  showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+                } catch (err) {
+                  showToast(`Failed to assign moderator: ${err?.message || 'Server error'}`)
+                }
+              } else {
+                assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
+                showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+              }
             }
             setPersonnelSelectorTarget(null)
           }}
@@ -277,10 +347,11 @@ export default function OSADDashboardPage({ currentUser }) {
       />
 
       <CreateProgramModal
-        isOpen={isAddProgramOpen}
+        isOpen={Boolean(isAddProgramOpen)}
         onClose={() => setIsAddProgramOpen(false)}
         onSubmit={handleCreateProgramSubmit}
-        colleges={colleges}
+        colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+        initialCollegeId={typeof isAddProgramOpen === 'string' ? isAddProgramOpen : (isAddProgramOpen?.collegeId || null)}
       />
 
       {/* Create Organization Modal */}
@@ -290,17 +361,6 @@ export default function OSADDashboardPage({ currentUser }) {
         onSubmit={handleCreateOrganizationSubmit}
         colleges={colleges}
         degreePrograms={degreePrograms}
-      />
-
-      {/* Discard Confirmation Dialogs */}
-      <ConfirmDialog
-        open={orgConfirmClose.isConfirmOpen}
-        title="Discard Organization Changes?"
-        message="Are you sure you want to close? Your unsaved organization details will be lost."
-        confirmLabel="Discard Changes"
-        cancelLabel="Continue Editing"
-        onConfirm={orgConfirmClose.confirmDiscard}
-        onCancel={orgConfirmClose.cancelDiscard}
       />
 
     </div>

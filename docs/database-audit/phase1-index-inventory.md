@@ -1,0 +1,242 @@
+# AchieveNest — Phase 1: Index Inventory
+
+> **Database:** `achievenest_local`  
+
+---
+
+| Table Name | Index Name | Uniqueness | Column(s) | Index Type |
+|---|---|---|---|---|
+| `academic_programs` | `code` | UNIQUE | `code` | BTREE |
+| `academic_programs` | `idx_academic_programs_college` | NON-UNIQUE | `college_id` | BTREE |
+| `academic_programs` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `account_lifecycle_events` | `fk_account_lifecycle_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `account_lifecycle_events` | `fk_account_lifecycle_profile` | NON-UNIQUE | `profile_id` | BTREE |
+| `account_lifecycle_events` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `administrative_units` | `code` | UNIQUE | `code` | BTREE |
+| `administrative_units` | `idx_administrative_units_college` | NON-UNIQUE | `college_id` | BTREE |
+| `administrative_units` | `name` | UNIQUE | `name` | BTREE |
+| `administrative_units` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `attendance_records` | `fk_attendance_records_scanner` | NON-UNIQUE | `scanned_by` | BTREE |
+| `attendance_records` | `idx_attendance_records_attendee` | NON-UNIQUE | `attendee_profile_id` | BTREE |
+| `attendance_records` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `attendance_records` | `uq_session_attendee` | UNIQUE | `session_id`, `attendee_profile_id` | BTREE |
+| `attendance_sessions` | `fk_attendance_sessions_event` | NON-UNIQUE | `event_id` | BTREE |
+| `attendance_sessions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `audit_logs` | `idx_audit_logs_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `audit_logs` | `idx_audit_logs_created_at` | NON-UNIQUE | `created_at` | BTREE |
+| `audit_logs` | `idx_audit_logs_event_code` | NON-UNIQUE | `event_code` | BTREE |
+| `audit_logs` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_candidate_manual_decisions` | `idx_acmd_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `award_candidate_manual_decisions` | `idx_acmd_cycle` | NON-UNIQUE | `cycle_id` | BTREE |
+| `award_candidate_manual_decisions` | `idx_acmd_decided_by` | NON-UNIQUE | `decided_by` | BTREE |
+| `award_candidate_manual_decisions` | `idx_acmd_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `award_candidate_manual_decisions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_criteria` | `idx_award_criteria_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `award_criteria` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_criteria` | `uq_award_criterion_code` | UNIQUE | `award_definition_id`, `code` | BTREE |
+| `award_criterion_components` | `idx_acc_criterion` | NON-UNIQUE | `criterion_id` | BTREE |
+| `award_criterion_components` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_cycles` | `code` | UNIQUE | `code` | BTREE |
+| `award_cycles` | `fk_award_cycles_creator` | NON-UNIQUE | `created_by` | BTREE |
+| `award_cycles` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_definitions` | `code` | UNIQUE | `code` | BTREE |
+| `award_definitions` | `name` | UNIQUE | `name` | BTREE |
+| `award_definitions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_evaluation_summary_reports` | `fk_summary_reports_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `award_evaluation_summary_reports` | `fk_summary_reports_college` | NON-UNIQUE | `college_id` | BTREE |
+| `award_evaluation_summary_reports` | `fk_summary_reports_cycle` | NON-UNIQUE | `cycle_id` | BTREE |
+| `award_evaluation_summary_reports` | `fk_summary_reports_generator` | NON-UNIQUE | `generated_by` | BTREE |
+| `award_evaluation_summary_reports` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_evidence_mapping_conditions` | `idx_aemc_field` | NON-UNIQUE | `field_key` | BTREE |
+| `award_evidence_mapping_conditions` | `idx_aemc_rule` | NON-UNIQUE | `mapping_rule_id` | BTREE |
+| `award_evidence_mapping_conditions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_evidence_mapping_rules` | `idx_aemr_active` | NON-UNIQUE | `is_active` | BTREE |
+| `award_evidence_mapping_rules` | `idx_aemr_category` | NON-UNIQUE | `portfolio_category_id` | BTREE |
+| `award_evidence_mapping_rules` | `idx_aemr_component` | NON-UNIQUE | `criterion_component_id` | BTREE |
+| `award_evidence_mapping_rules` | `idx_aemr_criterion` | NON-UNIQUE | `criterion_id` | BTREE |
+| `award_evidence_mapping_rules` | `idx_aemr_subcategory` | NON-UNIQUE | `portfolio_subcategory_id` | BTREE |
+| `award_evidence_mapping_rules` | `idx_aemr_version` | NON-UNIQUE | `scoring_model_version_id` | BTREE |
+| `award_evidence_mapping_rules` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_interview_eligibilities` | `fk_interview_eligibility_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `award_interview_eligibilities` | `fk_interview_eligibility_evaluation` | NON-UNIQUE | `evaluation_id` | BTREE |
+| `award_interview_eligibilities` | `fk_interview_eligibility_nomination` | NON-UNIQUE | `dean_nomination_id` | BTREE |
+| `award_interview_eligibilities` | `fk_interview_eligibility_revoker` | NON-UNIQUE | `revoked_by` | BTREE |
+| `award_interview_eligibilities` | `idx_interview_eligibility_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `award_interview_eligibilities` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_interview_eligibilities` | `uq_cycle_award_student_source` | UNIQUE | `cycle_id`, `award_definition_id`, `student_profile_id`, `eligibility_source` | BTREE |
+| `award_portfolio_mappings` | `fk_award_mappings_category` | NON-UNIQUE | `portfolio_category_id` | BTREE |
+| `award_portfolio_mappings` | `fk_award_mappings_subcategory` | NON-UNIQUE | `portfolio_subcategory_id` | BTREE |
+| `award_portfolio_mappings` | `idx_award_mappings_rule` | NON-UNIQUE | `scoring_rule_id` | BTREE |
+| `award_portfolio_mappings` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_scoring_model_versions` | `idx_asmv_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `award_scoring_model_versions` | `idx_asmv_cycle` | NON-UNIQUE | `award_cycle_id` | BTREE |
+| `award_scoring_model_versions` | `idx_asmv_status` | NON-UNIQUE | `status` | BTREE |
+| `award_scoring_model_versions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_scoring_rules` | `fk_scoring_rules_parent` | NON-UNIQUE | `parent_rule_id` | BTREE |
+| `award_scoring_rules` | `idx_asr_active` | NON-UNIQUE | `is_active` | BTREE |
+| `award_scoring_rules` | `idx_asr_component` | NON-UNIQUE | `criterion_component_id` | BTREE |
+| `award_scoring_rules` | `idx_asr_version` | NON-UNIQUE | `scoring_model_version_id` | BTREE |
+| `award_scoring_rules` | `idx_award_scoring_rules_criterion` | NON-UNIQUE | `criterion_id` | BTREE |
+| `award_scoring_rules` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_scoring_rules` | `uq_criterion_rule_code` | UNIQUE | `criterion_id`, `code` | BTREE |
+| `award_student_evaluation_summaries` | `idx_ases_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `award_student_evaluation_summaries` | `idx_ases_cycle` | NON-UNIQUE | `cycle_id` | BTREE |
+| `award_student_evaluation_summaries` | `idx_ases_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `award_student_evaluation_summaries` | `idx_ases_version` | NON-UNIQUE | `scoring_model_version_id` | BTREE |
+| `award_student_evaluation_summaries` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `award_student_evaluation_summaries` | `uq_ases_eval` | UNIQUE | `evaluation_id` | BTREE |
+| `certificate_issuance_batches` | `fk_issuance_batches_event` | NON-UNIQUE | `event_id` | BTREE |
+| `certificate_issuance_batches` | `fk_issuance_batches_issuer` | NON-UNIQUE | `issuer_profile_id` | BTREE |
+| `certificate_issuance_batches` | `fk_issuance_batches_template` | NON-UNIQUE | `template_version_id` | BTREE |
+| `certificate_issuance_batches` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `certificate_template_families` | `code` | UNIQUE | `code` | BTREE |
+| `certificate_template_families` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `certificate_template_versions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `certificate_template_versions` | `uq_family_version` | UNIQUE | `family_id`, `version_number` | BTREE |
+| `colleges` | `code` | UNIQUE | `code` | BTREE |
+| `colleges` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `dean_assignments` | `fk_dean_assign_assigner` | NON-UNIQUE | `assigned_by` | BTREE |
+| `dean_assignments` | `idx_dean_assignments_college` | NON-UNIQUE | `college_id` | BTREE |
+| `dean_assignments` | `idx_dean_assignments_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `dean_assignments` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `dean_assignments` | `uq_active_college_dean` | UNIQUE | `active_college_dean_guard` | BTREE |
+| `dean_assignments` | `uq_active_personnel_dean` | UNIQUE | `active_personnel_dean_guard` | BTREE |
+| `dean_student_nominations` | `fk_dean_nominations_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `dean_student_nominations` | `fk_dean_nominations_college` | NON-UNIQUE | `college_id` | BTREE |
+| `dean_student_nominations` | `fk_dean_nominations_dean_assignment` | NON-UNIQUE | `dean_assignment_id` | BTREE |
+| `dean_student_nominations` | `fk_dean_nominations_dean_profile` | NON-UNIQUE | `dean_profile_id` | BTREE |
+| `dean_student_nominations` | `idx_dean_nominations_cycle_award` | NON-UNIQUE | `cycle_id`, `award_definition_id` | BTREE |
+| `dean_student_nominations` | `idx_dean_nominations_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `dean_student_nominations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `events` | `fk_events_admin_unit` | NON-UNIQUE | `administrative_unit_id` | BTREE |
+| `events` | `fk_events_college` | NON-UNIQUE | `college_id` | BTREE |
+| `events` | `fk_events_organization` | NON-UNIQUE | `organization_id` | BTREE |
+| `events` | `idx_events_organizer` | NON-UNIQUE | `organizer_profile_id` | BTREE |
+| `events` | `idx_events_start_time` | NON-UNIQUE | `start_time` | BTREE |
+| `events` | `idx_events_status` | NON-UNIQUE | `status` | BTREE |
+| `events` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `file_security_audit_events` | `fk_file_security_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `file_security_audit_events` | `idx_file_security_evidence` | NON-UNIQUE | `evidence_domain`, `evidence_id` | BTREE |
+| `file_security_audit_events` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `issued_certificates` | `certificate_code` | UNIQUE | `certificate_code` | BTREE |
+| `issued_certificates` | `fk_issued_certificates_batch` | NON-UNIQUE | `batch_id` | BTREE |
+| `issued_certificates` | `idx_issued_certificates_code` | NON-UNIQUE | `certificate_code` | BTREE |
+| `issued_certificates` | `idx_issued_certificates_recipient` | NON-UNIQUE | `recipient_profile_id` | BTREE |
+| `issued_certificates` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `local_auth_credentials` | `PRIMARY` | UNIQUE | `profile_id` | BTREE |
+| `local_auth_sessions` | `idx_local_auth_sessions_expires` | NON-UNIQUE | `expires_at` | BTREE |
+| `local_auth_sessions` | `idx_local_auth_sessions_profile` | NON-UNIQUE | `profile_id` | BTREE |
+| `local_auth_sessions` | `idx_local_auth_sessions_revoked` | NON-UNIQUE | `revoked_at` | BTREE |
+| `local_auth_sessions` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `local_auth_sessions` | `token_hash` | UNIQUE | `token_hash` | BTREE |
+| `migrations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `notification_preferences` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `notification_preferences` | `uq_profile_notif_category` | UNIQUE | `profile_id`, `category` | BTREE |
+| `notifications` | `fk_notifications_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `notifications` | `idx_notifications_recipient` | NON-UNIQUE | `recipient_profile_id`, `read_at` | BTREE |
+| `notifications` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `organization_moderator_assignments` | `fk_org_mod_assigner` | NON-UNIQUE | `assigned_by` | BTREE |
+| `organization_moderator_assignments` | `idx_org_mod_organization` | NON-UNIQUE | `organization_id` | BTREE |
+| `organization_moderator_assignments` | `idx_org_mod_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `organization_moderator_assignments` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `organization_moderator_assignments` | `uq_active_org_moderator` | UNIQUE | `active_org_moderator_guard` | BTREE |
+| `organization_program_affiliations` | `fk_org_prog_program` | NON-UNIQUE | `academic_program_id` | BTREE |
+| `organization_program_affiliations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `organization_program_affiliations` | `uq_org_program` | UNIQUE | `organization_id`, `academic_program_id` | BTREE |
+| `organizations` | `code` | UNIQUE | `code` | BTREE |
+| `organizations` | `idx_organizations_college` | NON-UNIQUE | `college_id` | BTREE |
+| `organizations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `password_reset_requests` | `fk_password_resets_processor` | NON-UNIQUE | `processed_by` | BTREE |
+| `password_reset_requests` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_accomplishment_evidence` | `fk_personnel_evidence_accomplishment` | NON-UNIQUE | `accomplishment_id` | BTREE |
+| `personnel_accomplishment_evidence` | `fk_personnel_evidence_uploader` | NON-UNIQUE | `uploaded_by` | BTREE |
+| `personnel_accomplishment_evidence` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_accomplishments` | `idx_personnel_accomplishments_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `personnel_accomplishments` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_administrative_unit_affiliations` | `idx_personnel_unit_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `personnel_administrative_unit_affiliations` | `idx_personnel_unit_unit` | NON-UNIQUE | `administrative_unit_id` | BTREE |
+| `personnel_administrative_unit_affiliations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_administrative_unit_affiliations` | `uq_active_personnel_admin_unit` | UNIQUE | `active_personnel_unit_guard` | BTREE |
+| `personnel_college_affiliations` | `idx_personnel_college_college` | NON-UNIQUE | `college_id` | BTREE |
+| `personnel_college_affiliations` | `idx_personnel_college_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `personnel_college_affiliations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_college_affiliations` | `uq_active_personnel_college` | UNIQUE | `active_personnel_guard` | BTREE |
+| `personnel_evaluation_deficiency_requests` | `fk_deficiency_requests_evaluation` | NON-UNIQUE | `evaluation_id` | BTREE |
+| `personnel_evaluation_deficiency_requests` | `fk_deficiency_requests_item` | NON-UNIQUE | `item_id` | BTREE |
+| `personnel_evaluation_deficiency_requests` | `fk_deficiency_requests_requester` | NON-UNIQUE | `requested_by` | BTREE |
+| `personnel_evaluation_deficiency_requests` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_evaluation_events` | `fk_evaluation_events_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `personnel_evaluation_events` | `fk_evaluation_events_evaluation` | NON-UNIQUE | `evaluation_id` | BTREE |
+| `personnel_evaluation_events` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_evaluation_items` | `fk_evaluation_items_accomplishment` | NON-UNIQUE | `accomplishment_id` | BTREE |
+| `personnel_evaluation_items` | `fk_evaluation_items_evaluation` | NON-UNIQUE | `evaluation_id` | BTREE |
+| `personnel_evaluation_items` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_evaluation_reports` | `fk_evaluation_reports_evaluation` | NON-UNIQUE | `evaluation_id` | BTREE |
+| `personnel_evaluation_reports` | `fk_evaluation_reports_generator` | NON-UNIQUE | `generated_by` | BTREE |
+| `personnel_evaluation_reports` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_evaluations` | `fk_personnel_evaluations_finalizer` | NON-UNIQUE | `finalized_by` | BTREE |
+| `personnel_evaluations` | `idx_personnel_evaluations_evaluator` | NON-UNIQUE | `evaluator_profile_id` | BTREE |
+| `personnel_evaluations` | `idx_personnel_evaluations_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `personnel_evaluations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_profiles` | `PRIMARY` | UNIQUE | `profile_id` | BTREE |
+| `personnel_program_affiliations` | `idx_personnel_program_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `personnel_program_affiliations` | `idx_personnel_program_program` | NON-UNIQUE | `academic_program_id` | BTREE |
+| `personnel_program_affiliations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `personnel_qualification_reviews` | `fk_qualification_reviews_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `personnel_qualification_reviews` | `fk_qualification_reviews_reviewer` | NON-UNIQUE | `reviewer_profile_id` | BTREE |
+| `personnel_qualification_reviews` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `portfolio_categories` | `code` | UNIQUE | `code` | BTREE |
+| `portfolio_categories` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `portfolio_subcategories` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `portfolio_subcategories` | `uq_cat_subcat_code` | UNIQUE | `category_id`, `code` | BTREE |
+| `profile_roles` | `fk_profile_roles_assigner` | NON-UNIQUE | `assigned_by` | BTREE |
+| `profile_roles` | `idx_profile_roles_profile` | NON-UNIQUE | `profile_id` | BTREE |
+| `profile_roles` | `idx_profile_roles_role` | NON-UNIQUE | `role_id` | BTREE |
+| `profile_roles` | `idx_profile_roles_scope` | NON-UNIQUE | `scope_type`, `scope_id` | BTREE |
+| `profile_roles` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `profiles` | `email` | UNIQUE | `email` | BTREE |
+| `profiles` | `idx_profiles_account_type_status` | NON-UNIQUE | `account_type`, `status` | BTREE |
+| `profiles` | `idx_profiles_email` | NON-UNIQUE | `email` | BTREE |
+| `profiles` | `institutional_id` | UNIQUE | `institutional_id` | BTREE |
+| `profiles` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `profiles` | `uq_profiles_one_active_hr_admin` | UNIQUE | `active_hr_guard` | BTREE |
+| `program_coordinator_assignments` | `fk_prog_coord_assigner` | NON-UNIQUE | `assigned_by` | BTREE |
+| `program_coordinator_assignments` | `idx_prog_coord_personnel` | NON-UNIQUE | `personnel_profile_id` | BTREE |
+| `program_coordinator_assignments` | `idx_prog_coord_program` | NON-UNIQUE | `academic_program_id` | BTREE |
+| `program_coordinator_assignments` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `program_coordinator_assignments` | `uq_active_program_coordinator` | UNIQUE | `active_program_coord_guard` | BTREE |
+| `role_assignment_events` | `fk_role_events_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `role_assignment_events` | `fk_role_events_target` | NON-UNIQUE | `target_profile_id` | BTREE |
+| `role_assignment_events` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `roles` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `roles` | `role_key` | UNIQUE | `role_key` | BTREE |
+| `student_award_criterion_scores` | `fk_criterion_scores_criterion` | NON-UNIQUE | `criterion_id` | BTREE |
+| `student_award_criterion_scores` | `idx_award_criterion_scores_eval` | NON-UNIQUE | `evaluation_id` | BTREE |
+| `student_award_criterion_scores` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_award_criterion_scores` | `uq_eval_criterion` | UNIQUE | `evaluation_id`, `criterion_id` | BTREE |
+| `student_award_evaluations` | `fk_student_evaluations_evaluator` | NON-UNIQUE | `evaluator_profile_id` | BTREE |
+| `student_award_evaluations` | `idx_award_evaluations_award` | NON-UNIQUE | `award_definition_id` | BTREE |
+| `student_award_evaluations` | `idx_award_evaluations_cycle` | NON-UNIQUE | `cycle_id` | BTREE |
+| `student_award_evaluations` | `idx_award_evaluations_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `student_award_evaluations` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_award_score_evidence` | `fk_score_evidence_scoring_rule` | NON-UNIQUE | `scoring_rule_id` | BTREE |
+| `student_award_score_evidence` | `idx_award_score_evidence_port` | NON-UNIQUE | `portfolio_record_id` | BTREE |
+| `student_award_score_evidence` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_award_score_evidence` | `uq_critscore_portrec` | UNIQUE | `criterion_score_id`, `portfolio_record_id` | BTREE |
+| `student_portfolio_evidence` | `idx_portfolio_evidence_record` | NON-UNIQUE | `portfolio_record_id` | BTREE |
+| `student_portfolio_evidence` | `idx_portfolio_evidence_uploader` | NON-UNIQUE | `uploaded_by` | BTREE |
+| `student_portfolio_evidence` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_portfolio_records` | `idx_portfolio_records_category` | NON-UNIQUE | `category_id` | BTREE |
+| `student_portfolio_records` | `idx_portfolio_records_status` | NON-UNIQUE | `status` | BTREE |
+| `student_portfolio_records` | `idx_portfolio_records_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `student_portfolio_records` | `idx_portfolio_records_subcategory` | NON-UNIQUE | `subcategory_id` | BTREE |
+| `student_portfolio_records` | `idx_portfolio_records_submitted` | NON-UNIQUE | `submitted_at` | BTREE |
+| `student_portfolio_records` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_portfolio_verification_events` | `idx_verification_events_actor` | NON-UNIQUE | `actor_profile_id` | BTREE |
+| `student_portfolio_verification_events` | `idx_verification_events_record` | NON-UNIQUE | `portfolio_record_id` | BTREE |
+| `student_portfolio_verification_events` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_profiles` | `PRIMARY` | UNIQUE | `profile_id` | BTREE |
+| `student_program_enrollments` | `idx_student_enrollments_program` | NON-UNIQUE | `academic_program_id` | BTREE |
+| `student_program_enrollments` | `idx_student_enrollments_student` | NON-UNIQUE | `student_profile_id` | BTREE |
+| `student_program_enrollments` | `PRIMARY` | UNIQUE | `id` | BTREE |
+| `student_program_enrollments` | `uq_active_student_enrollment` | UNIQUE | `active_student_guard` | BTREE |

@@ -1,0 +1,58 @@
+=== Phase I3 Focused Test Suite Output ===
+Command: npx vitest run src/controllers/__tests__/PersonnelAuthorizedEvidenceAccessI3.test.jsx src/controllers/__tests__/PersonnelEvidenceIdentityI2.test.jsx src/controllers/__tests__/PersonnelSecureUploadPipelineI1.test.jsx src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx src/controllers/__tests__/PersonnelEvaluatorWorkspaceG2.test.jsx
+Timestamp: 2026-09-09T10:16:38+08:00
+Environment: Node.js / Vitest v3.2.7
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelAuthorizedEvidenceAccessI3.test.jsx (30 tests) 23ms
+   ✓ Personnel Evaluation Track — Plan I — Phase I3: Authorized Preview & Download Suite
+     ✓ 1. Personnel Owner Access
+       ✓ 1.1 allows Personnel owner to preview their own evidence
+       ✓ 1.2 allows Personnel owner to download their own evidence
+       ✓ 1.3 denies access when another Personnel member attempts to access evidence
+       ✓ 1.4 ignores client attempts to forge owner ID in request metadata
+     ✓ 2. College Dean Access & Scope Enforcement
+       ✓ 2.1 allows assigned College Dean to preview submitted evidence within college scope
+       ✓ 2.2 allows assigned College Dean to download submitted evidence within college scope
+       ✓ 2.3 denies cross-college Dean from accessing evidence of another college
+       ✓ 2.4 denies College Dean from accessing HR-routed evaluation evidence
+       ✓ 2.5 denies unassigned Dean or non-reviewer role without valid assignment
+       ✓ 2.6 strictly denies Dean self-review when candidate is the Dean
+     ✓ 3. HR Institutional Oversight Access
+       ✓ 3.1 allows authorized HR staff to access governed evaluation evidence
+       ✓ 3.2 prevents non-HR actors from forging HR role in client payload
+     ✓ 4. Identity-Based Retrieval & Anti-Filename Reliance
+       ✓ 4.1 constructs canonical ID-based preview URL using evidence UUID
+       ✓ 4.2 constructs canonical ID-based download URL using evidence UUID
+       ✓ 4.3 rejects invalid or missing evidence_id during URL construction
+       ✓ 4.4 verifies filename alone is never treated as authoritative retrieval key
+     ✓ 5. Protected Storage & Directory Traversal Defense
+       ✓ 5.1 ensures sanitized header filename removes path traversal sequences
+       ✓ 5.2 neutralizes CRLF and header injection characters in download filename
+     ✓ 6. Reviewer Workspace Integration (RISK-I0-01 Closure)
+       ✓ 6.1 generates canonical evidence-ID preview URL in evaluator workspace (RISK-I0-01 Closure)
+       ✓ 6.2 handles missing evidence cleanly without generating preview URL
+     ✓ 7. Security, Lifecycle & Privacy Safeguards
+       ✓ 7.1 blocks access to deleted evidence according to lifecycle status
+       ✓ 7.2 denies Department Secretary role from evaluator evidence access
+       ✓ 7.3 guarantees unauthorized error responses leak zero private metadata
+       ✓ 7.4 verifies RISK-I0-01 is closed while RISK-I0-02 remains deferred to I4/I6
+     ✓ 8. Missing Storage Object & Controlled Error Handling
+       ✓ 8.1 returns controlled error when evidence record exists but storage file is missing
+     ✓ 9. MIME Response Safety & Header Integrity
+       ✓ 9.1 validates supported preview MIME types (application/pdf, image/jpeg, image/png)
+       ✓ 9.2 constructs safe metadata URL with canonical evidence_id
+     ✓ 10. Direct URL Tampering Denial & Audit Logging
+       ✓ 10.1 denies direct URL tampering when an unauthenticated actor sends no token
+       ✓ 10.2 ensures audit log structure preserves confidentiality without logging file bytes or paths
+     ✓ 11. Historical Snapshot Immutability vs Live Replacement
+       ✓ 11.1 preserves historical snapshot evidence_id even when live accomplishment evidence changes
+ ✓ src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx (24 tests) 21ms
+ ✓ src/controllers/__tests__/PersonnelSecureUploadPipelineI1.test.jsx (33 tests) 37ms
+ ✓ src/controllers/__tests__/PersonnelEvaluatorWorkspaceG2.test.jsx (12 tests) 22ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceIdentityI2.test.jsx (29 tests) 13ms
+
+ Test Files  5 passed (5)
+      Tests  128 passed (128)
+   Duration  2.34s

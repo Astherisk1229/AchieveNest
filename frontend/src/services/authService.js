@@ -136,8 +136,8 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
   const authoritativeAssignedRoles = normalizeAssignedRoles(userRoles, accountType)
   const activeRoleContext = resolveDefaultActiveRole(accountType, authoritativeAssignedRoles)
 
+  // Explicitly allowlisted session payload: never spreads raw response and never persists temporary_password
   const sessionPayload = {
-    ...user,
     id: user.id,
     institutional_id: user.institutional_id,
     institutional_email: cleanEmail,
@@ -146,6 +146,10 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     account_type: accountType,
     user_type: accountType,
     status: user.status || 'active',
+    administrative_status: user.administrative_status || user.status || 'active',
+    account_lifecycle_status: user.account_lifecycle_status || (user.must_change_password ? 'pending_first_login' : (user.must_change_password === false ? 'active' : 'unknown')),
+    credential_integrity_status: user.credential_integrity_status || (user.must_change_password !== null && user.must_change_password !== undefined ? 'valid' : 'missing'),
+    required_next_action: user.required_next_action || (user.must_change_password ? 'change_password' : (user.must_change_password === false ? 'none' : 'contact_administrator')),
     active_role_context: activeRoleContext,
     roles: user.roles || [],
     role_assignments: user.role_assignments || [],
@@ -156,12 +160,17 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     department_id: user.department_id || null,
     designation: user.designation || null,
     year_level: user.year_level || null,
-    must_change_password: Boolean(user.must_change_password),
+    must_change_password: user.must_change_password !== null && user.must_change_password !== undefined ? Boolean(user.must_change_password) : null,
     token: accessToken,
     access_token: accessToken,
     logged_in_at: new Date().toISOString(),
     rememberMe
   }
+
+  // Defense-in-depth: explicitly ensure ephemeral credentials are never stored
+  delete sessionPayload.temporary_password
+  delete sessionPayload.password
+  delete sessionPayload.password_hash
 
   if (rememberMe) {
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sessionPayload))
@@ -306,26 +315,48 @@ export async function requestPasswordReset(email) {
 /**
  * Submits a mandatory password change for the authenticated user and clears must_change_password flag.
  */
-export async function submitPasswordChange(newPassword, confirmPassword) {
+export async function submitPasswordChange(newPassword, confirmPassword, currentPassword = '') {
   const currentUser = getCurrentUser()
   const token = currentUser?.token || currentUser?.access_token
 
   const response = await apiClient.post('/auth/change-password', {
+    current_password: currentPassword,
     new_password: newPassword,
-    confirm_password: confirmPassword
+    confirm_password: confirmPassword,
+    new_password_confirmation: confirmPassword
   }, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   })
 
-  // Update local session to clear must_change_password
+  // Update stored token if fresh session returned
+  const sessionData = response?.data?.session || response?.session
+  if (sessionData?.access_token) {
+    setStoredToken(sessionData.access_token)
+  }
+
+  // Update local session to clear must_change_password and set active lifecycle
   if (currentUser) {
     currentUser.must_change_password = false
+    currentUser.account_lifecycle_status = 'active'
+    currentUser.required_next_action = 'none'
+    currentUser.can_access_protected_portal = true
+    if (sessionData?.access_token) {
+      currentUser.token = sessionData.access_token
+      currentUser.access_token = sessionData.access_token
+    }
     const local = localStorage.getItem(STORAGE_KEY_USER)
     const session = sessionStorage.getItem(STORAGE_KEY_USER)
     if (local) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
     if (session) sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
     if (!local && !session) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
     dispatchStorageEvent()
+  }
+
+  // Rehydrate canonical server session
+  try {
+    await getAuthUser()
+  } catch {
+    // Proceed with locally updated user
   }
 
   return response?.data || response

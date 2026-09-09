@@ -9,3 +9,9 @@ archive/database/*.dump
 backend/development/node_modules/
 node_modules/.vite/
 frontend/node_modules/.vite/
+
+# Temporary diagnostic and test runner outputs
+pre_j4_*.txt
+frontend/test-results.json
+frontend/vitest-results-*.json
+

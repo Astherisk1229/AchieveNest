@@ -38,10 +38,10 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   const affiliation = formatPersonnelPlacement({ ...portfolio, ...user })
   const academicRank = user.rank || user.academic_rank || portfolio?.academic_rank || 'Associate Professor II'
   const academicYear = portfolio?.academic_year || 'AY 2025-2026'
-  const status = portfolio?.status || 'HR APPROVED'
+  const status = portfolio?.status || 'DRAFT'
   const yearsOfService = portfolio?.years_of_service || 10
 
-  // Combine items from props or standard fallback list
+  // Combine items directly from portfolio reflection model
   const rawItems = useMemo(() => {
     if (portfolio?.items && portfolio.items.length > 0) return portfolio.items
 
@@ -56,161 +56,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
       portfolio.area_c_items.forEach(i => combined.push({ ...i, area_key: 'C' }))
     }
 
-    if (combined.length > 0) return combined
-
-    // Default Comprehensive Fallback Items adhering strictly to NDMU Spec
-    return [
-      { 
-        id: 1, area_key: 'A', category_code: 'A.1',
-        category_name: 'A.1 Educational Qualifications / Degrees',
-        title: 'Ph.D. in Computer Science', issuer: 'Ateneo de Manila University', 
-        date: '2024-05-20', date_display: 'May 20, 2024', status: 'Verified', points: 30,
-        tailored_fields: [
-          { label: 'Degree Level', value: 'Ph.D. Degree Holder' },
-          { label: 'Specialization / Field', value: 'Artificial Intelligence & Educational Data Mining' },
-          { label: 'Conferring University', value: 'Ateneo de Manila University' },
-          { label: 'Date Conferred', value: 'May 20, 2024' }
-        ],
-        description: 'Doctor of Philosophy degree completed with distinction. Dissertation focused on predictive AI models for student learning analytics.',
-        proof_file: 'phd_diploma_ateneo_santos.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 2, area_key: 'A', category_code: 'A.2',
-        category_name: 'A.2 Active Membership in Professional Orgs',
-        title: 'Philippine Computer Society (PCS)', issuer: 'PCS National Executive Board', 
-        date: '2025-08-15', date_display: 'AY 2025-2026', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Organization Name', value: 'Philippine Computer Society (PCS)' },
-          { label: 'Position / Role Held', value: 'Vice President for External Affairs' },
-          { label: 'Scope', value: 'National Organization' },
-          { label: 'Period Covered', value: 'AY 2025-2026' }
-        ],
-        description: 'Active national officer coordinating IT industry linkage and regional computer science symposiums.',
-        proof_file: 'pcs_officer_appointment_letter.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 3, area_key: 'A', category_code: 'A.3',
-        category_name: 'A.3 Attendance to Seminars & Workshops',
-        title: 'CHED Regional Training on AI Curriculum Integration', issuer: 'CHED Region XII / NDMU Campus', 
-        date: '2026-03-20', date_display: 'Mar 20, 2026', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Seminar / Workshop Title', value: 'CHED Regional Training on AI Curriculum Integration' },
-          { label: 'Organizer & Venue', value: 'CHED Region XII / NDMU CITE Lab' },
-          { label: 'Geographic Scope', value: 'Regional (Region XII)' },
-          { label: 'Date Conducted', value: 'Mar 20, 2026 (40 Hours Training)' }
-        ],
-        description: 'Completed 40-hour intensive faculty development workshop on integrating generative AI tools into IT outcome-based syllabi.',
-        proof_file: 'ched_ai_workshop_certificate.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 4, area_key: 'B', category_code: 'B.1',
-        category_name: 'B.1 Guest Lecturer / Resource Person / Consultant',
-        title: 'Keynote Speaker: Regional AI in Education Summit', issuer: 'DOST Region XII & Mindanao State University', 
-        date: '2026-02-28', date_display: 'Feb 28, 2026', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Event / Activity Title', value: 'Keynote Address on Machine Learning in Higher Ed' },
-          { label: 'Role Played', value: 'Keynote Speaker' },
-          { label: 'Sponsoring Agency / Venue', value: 'DOST Region XII / MSU General Santos' },
-          { label: 'Scope / Level', value: 'Regional' }
-        ],
-        description: 'Delivered keynote lecture to over 300 faculty delegates on ethical AI deployment in university assessments.',
-        proof_file: 'dost_keynote_certificate_invitation.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 5, area_key: 'B', category_code: 'B.2',
-        category_name: 'B.2 Publication (Scholarly Papers, Books, Articles)',
-        title: 'Machine Learning Frameworks in Higher Education Analytics', issuer: 'IEEE Access Journal (Scopus Indexed)', 
-        date: '2026-04-15', date_display: 'Apr 15, 2026', status: 'Verified', points: 20,
-        tailored_fields: [
-          { label: 'Title of Published Work', value: 'Machine Learning Frameworks in Higher Education Analytics' },
-          { label: 'Publication Type', value: 'Scholarly Paper / Journal Article' },
-          { label: 'Publisher & ISSN', value: 'IEEE Access Journal / ISSN 2169-3536' },
-          { label: 'Reach / Scope', value: 'International / Scopus Indexed' }
-        ],
-        description: 'Peer-reviewed research publication investigating predictive analytics frameworks for student retention and early academic warning systems.',
-        proof_file: 'ieee_access_publication_santos.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 6, area_key: 'B', category_code: 'B.3',
-        category_name: 'B.3 Conduct of Research Projects',
-        title: 'AI-Driven Student Retention Framework for NDMU', issuer: 'NDMU University Research Office', 
-        date: '2025-12-15', date_display: 'Dec 15, 2025', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Research Project Title', value: 'AI-Driven Student Retention Framework for NDMU' },
-          { label: 'Research Role', value: 'Lead Researcher' },
-          { label: 'Funding Status / Source', value: 'Completed Institutional Grant (NDMU URO)' },
-          { label: 'Completion Date', value: 'Dec 15, 2025' }
-        ],
-        description: 'Completed 1-year institutional research project developing automated intervention alerts for at-risk students.',
-        proof_file: 'ndmu_research_completion_report.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 7, area_key: 'B', category_code: 'B.4',
-        category_name: 'B.4 Professional Recognition or Awards',
-        title: 'NDMU Outstanding Research Faculty of the Year', issuer: 'Notre Dame of Marbel University', 
-        date: '2026-01-10', date_display: 'Jan 10, 2026', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Award Title / Honor Received', value: 'NDMU Outstanding Research Faculty of the Year' },
-          { label: 'Conferring Institution', value: 'Notre Dame of Marbel University' },
-          { label: 'Recognition Type', value: 'Awardee' },
-          { label: 'Award Scope', value: 'Institutional Award' }
-        ],
-        description: 'Conferred during NDMU University Foundation Day in recognition of highest Scopus publication output and research citations.',
-        proof_file: 'outstanding_faculty_award_2026.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 8, area_key: 'B', category_code: 'B.5',
-        category_name: 'B.5 Production of Instructional Materials',
-          title: 'Laboratory Workbook for Applied Data Structures', issuer: 'NDMU BSCS Academic Program',
-        date: '2025-07-10', date_display: 'Jul 10, 2025', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Title of Material', value: 'Laboratory Workbook for Applied Data Structures & Algorithms' },
-          { label: 'Material Type', value: 'Workbooks / Exercises (Bound)' },
-          { label: 'Subject / Course Code', value: 'ITE 311 - Data Structures' },
-          { label: 'Implementation Date', value: 'First Semester AY 2025-2026' }
-        ],
-        description: 'Bound 120-page laboratory manual complete with hands-on coding exercises and rubric scoring guides.',
-        proof_file: 'data_structures_workbook_isbn.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 9, area_key: 'C', category_code: 'C.1',
-        category_name: 'C.1 School Involvement & Leadership',
-        title: 'Faculty Adviser: NDMU Computer Society', issuer: 'Student Affairs Office (SAO)', 
-        date: '2025-09-01', date_display: 'AY 2025-2026', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Service Sub-Type', value: 'C.1.1 Moderator of Clubs / Organizations' },
-          { label: 'Name of Organization', value: 'NDMU Computer Society (CS Student Org)' },
-          { label: 'Period Covered', value: 'AY 2025-2026' },
-          { label: 'Role', value: 'Official Faculty Moderator' }
-        ],
-        description: 'Supervised student org activities, hackathons, and community IT outreach initiatives throughout the school year.',
-        proof_file: 'club_moderator_appointment_sao.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 10, area_key: 'C', category_code: 'C.2',
-        category_name: 'C.2 Community & Civic Involvement',
-        title: 'Koronadal City LGU Digital Governance Project', issuer: 'City Government of Koronadal', 
-        date: '2026-02-14', date_display: 'Feb 14, 2026', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Service Sub-Type', value: 'C.2.2 Community / Civic Extension Project' },
-          { label: 'Project Description', value: 'Barangay Smart Digital Literacy Program' },
-          { label: 'Sponsoring LGU / NGO', value: 'City Government of Koronadal' },
-          { label: 'Period Covered', value: 'Jan – Mar 2026' }
-        ],
-        description: 'Project Lead for community IT extension program training local barangay secretaries on digital document management.',
-        proof_file: 'lgu_extension_project_mou.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80'
-      }
-    ]
+    return combined
   }, [portfolio])
 
   // REVERSE CHRONOLOGICAL SORTING FOR ATTACHED PROOF CERTIFICATES (Pages 3+)
@@ -267,8 +113,6 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   }, [proofItemsSortedReverseChrono])
 
   const totalPages = slides.length
-
-  // Filter slides dynamically for left sidebar search
   const filteredSlides = useMemo(() => {
     if (!sidebarQuery.trim()) return slides
     const q = sidebarQuery.toLowerCase()

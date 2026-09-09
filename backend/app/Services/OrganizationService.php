@@ -91,11 +91,21 @@ class OrganizationService
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
                  LIMIT 1) AS moderator_name,
-                (SELECT p.institutional_email
+                (SELECT p.email
                  FROM organization_moderator_assignments oma
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
-                 LIMIT 1) AS moderator_email
+                 LIMIT 1) AS moderator_email,
+                (SELECT p.institutional_id
+                 FROM organization_moderator_assignments oma
+                 JOIN profiles p ON p.id = oma.personnel_profile_id
+                 WHERE oma.organization_id = o.id AND oma.is_active = 1
+                 LIMIT 1) AS moderator_employee_id,
+                (SELECT p.designation_title
+                 FROM organization_moderator_assignments oma
+                 JOIN profiles p ON p.id = oma.personnel_profile_id
+                 WHERE oma.organization_id = o.id AND oma.is_active = 1
+                 LIMIT 1) AS moderator_designation
             ')
             ->join('colleges c', 'c.id = o.college_id', 'left')
             ->orderBy('o.name', 'ASC');
@@ -116,18 +126,53 @@ class OrganizationService
         }
 
         $orgIds = array_column($rows, 'id');
-        $affiliations = $this->db->table('organization_program_affiliations')
-            ->whereIn('organization_id', $orgIds)
+        $affiliations = $this->db->table('organization_program_affiliations opa')
+            ->select('opa.organization_id, opa.academic_program_id, ap.code AS program_code, ap.name AS program_name, ap.college_id, c.code AS college_code, c.name AS college_name')
+            ->join('academic_programs ap', 'ap.id = opa.academic_program_id')
+            ->join('colleges c', 'c.id = ap.college_id', 'left')
+            ->whereIn('opa.organization_id', $orgIds)
             ->get()
             ->getResultArray();
 
         $affMap = [];
+        $affObjectsMap = [];
         foreach ($affiliations as $aff) {
             $affMap[$aff['organization_id']][] = $aff['academic_program_id'];
+            $affObjectsMap[$aff['organization_id']][] = [
+                'id'           => $aff['academic_program_id'],
+                'code'         => $aff['program_code'],
+                'name'         => $aff['program_name'],
+                'college_id'   => $aff['college_id'],
+                'college_code' => $aff['college_code'],
+                'college_name' => $aff['college_name'],
+            ];
         }
 
-        return array_map(function (array $row) use ($affMap): array {
-            $row['program_ids'] = $affMap[$row['id']] ?? [];
+        return array_map(function (array $row) use ($affMap, $affObjectsMap): array {
+            $pIds = $affMap[$row['id']] ?? [];
+            $row['program_ids'] = $pIds;
+            $row['programs'] = $affObjectsMap[$row['id']] ?? [];
+            
+            $hasModerator = ! empty($row['moderator_profile_id']);
+            if ($hasModerator) {
+                $row['current_moderator'] = [
+                    'profile_id'   => $row['moderator_profile_id'],
+                    'full_name'    => $row['moderator_name'] ?: 'Unknown Personnel',
+                    'email'        => $row['moderator_email'],
+                    'employee_id'  => $row['moderator_employee_id'],
+                    'designation'  => $row['moderator_designation'],
+                ];
+            } else {
+                $row['current_moderator'] = null;
+            }
+
+            // Derive configuration status
+            if ($row['scope'] === 'program') {
+                $row['configuration_status'] = (count($pIds) > 0 && $hasModerator) ? 'COMPLETE' : 'PARTIALLY_CONFIGURED';
+            } else {
+                $row['configuration_status'] = $hasModerator ? 'COMPLETE' : 'PARTIALLY_CONFIGURED';
+            }
+
             return $row;
         }, $rows);
     }
@@ -164,11 +209,21 @@ class OrganizationService
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
                  LIMIT 1) AS moderator_name,
-                (SELECT p.institutional_email
+                (SELECT p.email
                  FROM organization_moderator_assignments oma
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
-                 LIMIT 1) AS moderator_email
+                 LIMIT 1) AS moderator_email,
+                (SELECT p.institutional_id
+                 FROM organization_moderator_assignments oma
+                 JOIN profiles p ON p.id = oma.personnel_profile_id
+                 WHERE oma.organization_id = o.id AND oma.is_active = 1
+                 LIMIT 1) AS moderator_employee_id,
+                (SELECT p.designation_title
+                 FROM organization_moderator_assignments oma
+                 JOIN profiles p ON p.id = oma.personnel_profile_id
+                 WHERE oma.organization_id = o.id AND oma.is_active = 1
+                 LIMIT 1) AS moderator_designation
             ')
             ->join('colleges c', 'c.id = o.college_id', 'left')
             ->where('o.id', $id)
@@ -179,20 +234,77 @@ class OrganizationService
             return null;
         }
 
-        $affiliations = $this->db->table('organization_program_affiliations')
-            ->where('organization_id', $id)
+        $affiliations = $this->db->table('organization_program_affiliations opa')
+            ->select('opa.academic_program_id, ap.code AS program_code, ap.name AS program_name, ap.college_id, c.code AS college_code, c.name AS college_name')
+            ->join('academic_programs ap', 'ap.id = opa.academic_program_id')
+            ->join('colleges c', 'c.id = ap.college_id', 'left')
+            ->where('opa.organization_id', $id)
             ->get()
             ->getResultArray();
 
         $row['program_ids'] = array_column($affiliations, 'academic_program_id');
+        $row['programs'] = array_map(function ($aff) {
+            return [
+                'id'           => $aff['academic_program_id'],
+                'code'         => $aff['program_code'],
+                'name'         => $aff['program_name'],
+                'college_id'   => $aff['college_id'],
+                'college_code' => $aff['college_code'],
+                'college_name' => $aff['college_name'],
+            ];
+        }, $affiliations);
+
+        $hasModerator = ! empty($row['moderator_profile_id']);
+        if ($hasModerator) {
+            $row['current_moderator'] = [
+                'profile_id'   => $row['moderator_profile_id'],
+                'full_name'    => $row['moderator_name'] ?: 'Unknown Personnel',
+                'email'        => $row['moderator_email'],
+                'employee_id'  => $row['moderator_employee_id'],
+                'designation'  => $row['moderator_designation'],
+            ];
+        } else {
+            $row['current_moderator'] = null;
+        }
+
+        $history = $this->db->table('organization_moderator_assignments oma')
+            ->select('oma.id, oma.personnel_profile_id, oma.effective_from, oma.effective_until, oma.is_active, oma.assigned_at, p.first_name, p.last_name, p.email, p.institutional_id, p.designation_title')
+            ->join('profiles p', 'p.id = oma.personnel_profile_id')
+            ->where('oma.organization_id', $id)
+            ->orderBy('oma.is_active', 'DESC')
+            ->orderBy('oma.effective_from', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $row['moderator_history'] = array_map(function ($h) {
+            return [
+                'assignment_id'  => $h['id'],
+                'profile_id'     => $h['personnel_profile_id'],
+                'full_name'      => trim(($h['first_name'] ?? '') . ' ' . ($h['last_name'] ?? '')) ?: 'Unknown Personnel',
+                'email'          => $h['email'],
+                'employee_id'    => $h['institutional_id'],
+                'designation'    => $h['designation_title'],
+                'effective_from' => $h['effective_from'],
+                'effective_until'=> $h['effective_until'],
+                'is_active'      => (bool) $h['is_active'],
+                'status'         => ((int) $h['is_active'] === 1) ? 'Active' : 'Ended',
+            ];
+        }, $history);
+
+        if ($row['scope'] === 'program') {
+            $row['configuration_status'] = (count($row['program_ids']) > 0 && $hasModerator) ? 'COMPLETE' : 'PARTIALLY_CONFIGURED';
+        } else {
+            $row['configuration_status'] = $hasModerator ? 'COMPLETE' : 'PARTIALLY_CONFIGURED';
+        }
 
         return $row;
     }
 
     /**
-     * Validates and creates a new Student Organization transactionally.
+     * Validates and creates a new Student Organization with full configuration atomically.
+     * Supports optional program scope affiliations and initial moderator assignment.
      */
-    public function createOrganization(array $data, ?array $logoFile = null): array
+    public function createOrganization(array $data, ?array $logoFile = null, ?string $actorProfileId = null): array
     {
         $name = trim((string) ($data['name'] ?? ''));
         if ($name === '') {
@@ -221,9 +333,11 @@ class OrganizationService
         }
 
         $collegeId = ! empty($data['college_id']) ? trim((string) $data['college_id']) : null;
-        $programIds = is_array($data['program_ids'] ?? null)
+        $rawProgramIds = is_array($data['program_ids'] ?? null)
             ? array_values(array_filter(array_map('trim', $data['program_ids'])))
             : [];
+        // Deduplicate program IDs
+        $programIds = array_values(array_unique($rawProgramIds));
 
         // Scope relationship validation
         if ($scope === 'university') {
@@ -261,6 +375,13 @@ class OrganizationService
                 throw new InvalidArgumentException('One or more selected academic programs do not exist.');
             }
 
+            // Verify active status of programs
+            foreach ($programs as $prog) {
+                if (isset($prog['status']) && $prog['status'] !== 'active') {
+                    throw new InvalidArgumentException("Academic program '{$prog['name']}' is not active.");
+                }
+            }
+
             $progCollegeId = $programs[0]['college_id'] ?? null;
             if ($collegeId === null) {
                 $collegeId = $progCollegeId;
@@ -271,6 +392,39 @@ class OrganizationService
                     }
                 }
             }
+        }
+
+        // Moderator profile validation (if provided)
+        $moderatorProfileId = ! empty($data['moderator_profile_id'])
+            ? trim((string) $data['moderator_profile_id'])
+            : (! empty($data['moderator_id']) ? trim((string) $data['moderator_id']) : null);
+
+        if ($moderatorProfileId !== null && $moderatorProfileId !== '') {
+            $modProfile = $this->db->table('profiles')
+                ->select('id, account_type, status, first_name, last_name')
+                ->where('id', $moderatorProfileId)
+                ->get()
+                ->getRowArray();
+
+            if (! $modProfile) {
+                throw new InvalidArgumentException('Selected Organization Moderator profile does not exist.');
+            }
+
+            if (! in_array($modProfile['account_type'] ?? '', ['personnel', 'hr_admin', 'osad_admin'], true) || ($modProfile['status'] ?? '') !== 'active') {
+                throw new InvalidArgumentException('Selected Organization Moderator must be an active personnel account.');
+            }
+
+            if ($scope === 'college' && $collegeId !== null) {
+                $eligible = $this->db->query(
+                    "SELECT 1 FROM personnel_college_affiliations WHERE personnel_profile_id = ? AND college_id = ? AND is_active = 1",
+                    [$moderatorProfileId, $collegeId]
+                )->getRowArray();
+                if ($eligible === null) {
+                    throw new InvalidArgumentException('College-based Organization moderators must be affiliated with the Organization College.');
+                }
+            }
+        } else {
+            $moderatorProfileId = null;
         }
 
         $orgId = $this->genUuid();
@@ -313,6 +467,22 @@ class OrganizationService
                 ]);
             }
 
+            // Insert initial moderator assignment if provided
+            if ($moderatorProfileId !== null) {
+                $this->db->table('organization_moderator_assignments')->insert([
+                    'id'                   => $this->genUuid(),
+                    'organization_id'      => $orgId,
+                    'personnel_profile_id' => $moderatorProfileId,
+                    'effective_from'       => date('Y-m-d'),
+                    'effective_until'      => null,
+                    'is_active'            => 1,
+                    'assigned_by'          => $actorProfileId,
+                    'assigned_at'          => date('Y-m-d H:i:s.u'),
+                    'created_at'           => date('Y-m-d H:i:s.u'),
+                    'updated_at'           => date('Y-m-d H:i:s.u'),
+                ]);
+            }
+
             $this->db->transCommit();
         } catch (Throwable $e) {
             $this->db->transRollback();
@@ -324,6 +494,297 @@ class OrganizationService
         }
 
         return $this->getOrganization($orgId);
+    }
+
+    /**
+     * Updates an organization master data (name, code, category, scope, college_id, status, optional logo).
+     */
+    public function updateOrganization(string $id, array $data, ?array $logoFile = null): array
+    {
+        $org = $this->db->table('organizations')->where('id', $id)->get()->getRowArray();
+        if (! $org) {
+            throw new InvalidArgumentException('Organization not found.');
+        }
+
+        $name = isset($data['name']) ? trim((string) $data['name']) : $org['name'];
+        if ($name === '') {
+            throw new InvalidArgumentException('Organization name is required.');
+        }
+        if (mb_strlen($name) > 150) {
+            throw new InvalidArgumentException('Organization name may not exceed 150 characters.');
+        }
+
+        $code = isset($data['code']) ? strtoupper(trim((string) $data['code'])) : $org['code'];
+        if ($code === '') {
+            throw new InvalidArgumentException('Organization code / acronym is required.');
+        }
+        if (mb_strlen($code) > 30) {
+            throw new InvalidArgumentException('Organization code / acronym may not exceed 30 characters.');
+        }
+
+        // Check code uniqueness against other organizations
+        $dup = $this->db->table('organizations')->where('code', $code)->where('id !=', $id)->countAllResults();
+        if ($dup > 0) {
+            throw new InvalidArgumentException("Organization code '{$code}' is already used by another organization.");
+        }
+
+        $category = isset($data['category']) ? trim((string) $data['category']) : $org['category'];
+        if (! in_array($category, self::ALLOWED_CATEGORIES, true)) {
+            throw new InvalidArgumentException("Invalid organization category '{$category}'.");
+        }
+
+        $scope = isset($data['scope']) ? trim((string) $data['scope']) : $org['scope'];
+        if (! in_array($scope, self::ALLOWED_SCOPES, true)) {
+            throw new InvalidArgumentException("Invalid organization scope '{$scope}'.");
+        }
+
+        $collegeId = array_key_exists('college_id', $data)
+            ? (! empty($data['college_id']) ? trim((string) $data['college_id']) : null)
+            : $org['college_id'];
+
+        if ($scope === 'university') {
+            $collegeId = null;
+        } elseif ($scope === 'college' || $scope === 'program') {
+            if ($collegeId === null) {
+                throw new InvalidArgumentException('College selection is required for college- or program-scoped organizations.');
+            }
+            $collegeExists = $this->db->table('colleges')->where('id', $collegeId)->countAllResults();
+            if ($collegeExists === 0) {
+                throw new InvalidArgumentException('Selected college does not exist.');
+            }
+        }
+
+        $status = isset($data['status']) ? trim((string) $data['status']) : $org['status'];
+        if (! in_array($status, ['active', 'inactive', 'archived'], true)) {
+            $status = $org['status'];
+        }
+
+        // Scope integrity check: if changing scope to 'program', verify it has affiliated programs
+        if ($scope === 'program') {
+            $affCount = $this->db->table('organization_program_affiliations')->where('organization_id', $id)->countAllResults();
+            if ($affCount === 0 && empty($data['program_ids'])) {
+                throw new InvalidArgumentException('Program-scoped organizations must have at least one academic program affiliation.');
+            }
+        }
+
+        $updateData = [
+            'name'       => $name,
+            'code'       => $code,
+            'category'   => $category,
+            'scope'      => $scope,
+            'college_id' => $collegeId,
+            'status'     => $status,
+            'updated_at' => date('Y-m-d H:i:s.u'),
+        ];
+
+        // Process logo upload if provided
+        $stagedLogoMetadata = null;
+        $stagedFilePath = null;
+        if ($logoFile !== null && ! empty($logoFile['tmp_name'])) {
+            $stagedLogoMetadata = $this->validateAndStageLogo($id, $logoFile);
+            $stagedFilePath = $stagedLogoMetadata['absolute_path'] ?? null;
+            $updateData['logo_storage_key']   = $stagedLogoMetadata['logo_storage_key'];
+            $updateData['logo_original_name'] = $stagedLogoMetadata['logo_original_name'];
+            $updateData['logo_mime_type']     = $stagedLogoMetadata['logo_mime_type'];
+            $updateData['logo_updated_at']    = date('Y-m-d H:i:s.u');
+        }
+
+        $this->db->table('organizations')->where('id', $id)->update($updateData);
+
+        return $this->getOrganization($id);
+    }
+
+    /**
+     * Adds one or more academic programs to an organization's program scope.
+     */
+    public function addProgramAffiliations(string $organizationId, array $programIds): array
+    {
+        $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
+        if (! $org) {
+            throw new InvalidArgumentException('Organization not found.');
+        }
+
+        $rawProgramIds = array_values(array_filter(array_map('trim', $programIds)));
+        $uniqueProgramIds = array_values(array_unique($rawProgramIds));
+
+        if (empty($uniqueProgramIds)) {
+            throw new InvalidArgumentException('At least one academic program ID is required.');
+        }
+
+        // Validate program existence and college alignment
+        $programs = $this->db->table('academic_programs')
+            ->whereIn('id', $uniqueProgramIds)
+            ->get()
+            ->getResultArray();
+
+        if (count($programs) !== count($uniqueProgramIds)) {
+            throw new InvalidArgumentException('One or more selected academic programs do not exist.');
+        }
+
+        foreach ($programs as $prog) {
+            if (isset($prog['status']) && $prog['status'] !== 'active') {
+                throw new InvalidArgumentException("Academic program '{$prog['name']}' is not active.");
+            }
+            if (! empty($org['college_id']) && $prog['college_id'] !== $org['college_id']) {
+                throw new InvalidArgumentException('Affiliated programs must belong to the organization\'s college.');
+            }
+        }
+
+        // Query existing affiliations to prevent duplicate insert errors
+        $existingAffs = $this->db->table('organization_program_affiliations')
+            ->where('organization_id', $organizationId)
+            ->get()
+            ->getResultArray();
+        $existingProgIds = array_column($existingAffs, 'academic_program_id');
+
+        $this->db->transBegin();
+        try {
+            foreach ($uniqueProgramIds as $pId) {
+                if (! in_array($pId, $existingProgIds, true)) {
+                    $this->db->table('organization_program_affiliations')->insert([
+                        'id'                  => $this->genUuid(),
+                        'organization_id'     => $organizationId,
+                        'academic_program_id' => $pId,
+                        'created_at'          => date('Y-m-d H:i:s.u'),
+                    ]);
+                }
+            }
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            throw new RuntimeException('Failed to add program affiliations: ' . $e->getMessage(), 0, $e);
+        }
+
+        return $this->getOrganization($organizationId);
+    }
+
+    /**
+     * Removes an academic program from an organization's scope.
+     */
+    public function removeProgramAffiliation(string $organizationId, string $programId): array
+    {
+        $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
+        if (! $org) {
+            throw new InvalidArgumentException('Organization not found.');
+        }
+
+        $currentAffs = $this->db->table('organization_program_affiliations')
+            ->where('organization_id', $organizationId)
+            ->get()
+            ->getResultArray();
+
+        // Scope integrity check: program-scoped orgs must retain at least one program
+        if (($org['scope'] ?? '') === 'program' && count($currentAffs) <= 1) {
+            throw new InvalidArgumentException('Cannot remove the last academic program. Program-scoped organizations must maintain at least one program affiliation.');
+        }
+
+        $this->db->table('organization_program_affiliations')
+            ->where('organization_id', $organizationId)
+            ->where('academic_program_id', $programId)
+            ->delete();
+
+        return $this->getOrganization($organizationId);
+    }
+
+    /**
+     * Assigns or reassigns an Organization Moderator to an organization.
+     * Soft-deactivates any prior active moderator and records assignment tenure.
+     */
+    public function assignModerator(string $organizationId, string $personnelProfileId, ?string $actorProfileId = null): array
+    {
+        $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
+        if (! $org) {
+            throw new InvalidArgumentException('Organization not found.');
+        }
+
+        $personnel = $this->db->table('profiles')
+            ->select('id, account_type, status')
+            ->where('id', $personnelProfileId)
+            ->get()
+            ->getRowArray();
+
+        if (! $personnel) {
+            throw new InvalidArgumentException('Personnel profile not found.');
+        }
+
+        if (! in_array($personnel['account_type'] ?? '', ['personnel', 'hr_admin', 'osad_admin'], true) || ($personnel['status'] ?? '') !== 'active') {
+            throw new InvalidArgumentException('Personnel must be an active account to moderate an organization.');
+        }
+
+        if (($org['scope'] ?? '') === 'college' && ! empty($org['college_id'])) {
+            $eligible = $this->db->query(
+                "SELECT 1 FROM personnel_college_affiliations WHERE personnel_profile_id = ? AND college_id = ? AND is_active = 1",
+                [$personnelProfileId, $org['college_id']]
+            )->getRowArray();
+            if ($eligible === null) {
+                throw new InvalidArgumentException('College-based Organization moderators must be affiliated with the Organization College.');
+            }
+        }
+
+        $this->db->transBegin();
+        try {
+            // Deactivate any existing active moderator assignment
+            $this->db->table('organization_moderator_assignments')
+                ->where('organization_id', $organizationId)
+                ->where('is_active', 1)
+                ->update([
+                    'is_active'       => 0,
+                    'effective_until' => date('Y-m-d'),
+                    'updated_at'      => date('Y-m-d H:i:s.u'),
+                ]);
+
+            // Insert new active moderator assignment
+            $newAssignmentId = $this->genUuid();
+            $this->db->table('organization_moderator_assignments')->insert([
+                'id'                   => $newAssignmentId,
+                'organization_id'      => $organizationId,
+                'personnel_profile_id' => $personnelProfileId,
+                'effective_from'       => date('Y-m-d'),
+                'effective_until'      => null,
+                'is_active'            => 1,
+                'assigned_by'          => $actorProfileId,
+                'assigned_at'          => date('Y-m-d H:i:s.u'),
+                'created_at'           => date('Y-m-d H:i:s.u'),
+                'updated_at'           => date('Y-m-d H:i:s.u'),
+            ]);
+
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            throw new RuntimeException('Failed to assign organization moderator: ' . $e->getMessage(), 0, $e);
+        }
+
+        return $this->getOrganization($organizationId);
+    }
+
+    /**
+     * Removes / unassigns the active Organization Moderator, preserving assignment history.
+     */
+    public function removeModerator(string $organizationId, ?string $actorProfileId = null): array
+    {
+        $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
+        if (! $org) {
+            throw new InvalidArgumentException('Organization not found.');
+        }
+
+        $this->db->transBegin();
+        try {
+            $this->db->table('organization_moderator_assignments')
+                ->where('organization_id', $organizationId)
+                ->where('is_active', 1)
+                ->update([
+                    'is_active'       => 0,
+                    'effective_until' => date('Y-m-d'),
+                    'updated_at'      => date('Y-m-d H:i:s.u'),
+                ]);
+
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            throw new RuntimeException('Failed to remove organization moderator: ' . $e->getMessage(), 0, $e);
+        }
+
+        return $this->getOrganization($organizationId);
     }
 
     /**
@@ -467,7 +928,6 @@ class OrganizationService
     {
         // Prevent path traversal
         $cleanKey = str_replace(['../', '..\\'], '', $storageKey);
-        // storageKey is "organizations/<orgId>/logo_<uuid>.<ext>"
         // Strip leading "organizations/" prefix to match storageRoot
         $relPath = preg_replace('#^organizations[/\\\\]#', '', $cleanKey);
 

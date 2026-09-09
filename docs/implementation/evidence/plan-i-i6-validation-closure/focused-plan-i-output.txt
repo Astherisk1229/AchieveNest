@@ -1,0 +1,14 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPlanIFinalClosureI6.test.jsx (40 tests) 23ms
+ ✓ src/controllers/__tests__/PersonnelAuthorizedEvidenceAccessI3.test.jsx (30 tests) 28ms
+ ✓ src/controllers/__tests__/PersonnelSecureUploadPipelineI1.test.jsx (33 tests) 20ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceOcrIntegrationI5.test.jsx (33 tests) 22ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceVersioningI4.test.jsx (17 tests) 24ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx (24 tests) 21ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceIdentityI2.test.jsx (29 tests) 14ms
+
+ Test Files  7 passed (7)
+      Tests  206 passed (206)
+   Start at  10:41:50
+   Duration  2.91s (transform 760ms, setup 37ms, collect 1.87s, tests 151ms, environment 3ms, prepare 2.03s)

@@ -26,22 +26,29 @@ import {
 import RankingCriteriaModel from '../../../models/RankingCriteriaModel.js'
 import SecurityController from '../../../controllers/SecurityController.js'
 import OcrScanController from '../../../controllers/OcrScanController.js'
+import AchievementClassificationService from '../../../services/achievementClassificationService.js'
+import PersonnelAchievementController from '../../../controllers/PersonnelAchievementController.js'
 
 // Helper component for required field labels (Clean Auto-filled badge when OCR populated)
-const ReqLabel = ({ label, value, isOcrAutoFilled }) => {
+const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited }) => {
   const isFilled = value !== undefined && value !== null && String(value).trim() !== ''
   return (
     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
       <span className="flex items-center gap-1.5">
         <span>{label}</span>
-        {isOcrAutoFilled && (
+        {isOcrAutoFilled && !isManuallyEdited && (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200" title="Auto-filled from certificate text via AchieveNest OCR Engine">
             Auto-filled
           </span>
         )}
+        {isManuallyEdited && isFilled && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200" title="Manually edited by Personnel">
+            Manual
+          </span>
+        )}
       </span>
       {isFilled ? (
-        <span className="text-[#16834a] text-[11px] font-bold flex items-center gap-0.5" title="Field Requirement Completed">
+        <span className="text-[#16834a] text-[11px] font-bold flex items-center gap-0.5" title="Field Completed">
           <Check className="w-3.5 h-3.5 text-[#16834a] stroke-[3]" />
         </span>
       ) : (
@@ -51,11 +58,12 @@ const ReqLabel = ({ label, value, isOcrAutoFilled }) => {
   )
 }
 
-export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, initialCategory = '' }) {
+export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, initialCategory = '', editingItem = null, existingAchievements = [] }) {
   // Helper for Academic Year Infer
   const inferAcademicYear = (dateStr) => {
-    if (!dateStr) return 'AY 2025-2026'
+    if (!dateStr || String(dateStr).trim() === '') return ''
     const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
     const year = d.getFullYear()
     const month = d.getMonth() + 1 // 1..12
     const startYear = month >= 6 ? year : year - 1
@@ -64,49 +72,49 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
   // Active Category State
   const [category, setCategory] = useState(initialCategory || 'A.1 Degree/s')
-  const [dateAchieved, setDateAchieved] = useState(new Date().toISOString().split('T')[0])
-  const [academicYear, setAcademicYear] = useState(() => inferAcademicYear(new Date().toISOString().split('T')[0]))
+  const [dateAchieved, setDateAchieved] = useState('')
+  const [academicYear, setAcademicYear] = useState('')
 
-  // Tailored Category Fields
+  // Tailored Category Fields (Strict Zero-Fabrication initial state)
   // A.1 Degree/s
-  const [degreeLevel, setDegreeLevel] = useState('Ph.D. Degree Holder')
+  const [degreeLevel, setDegreeLevel] = useState('')
   const [degreeTitle, setDegreeTitle] = useState('')
   const [institution, setInstitution] = useState('')
-  const [unitsCompleted, setUnitsCompleted] = useState('18')
+  const [unitsCompleted, setUnitsCompleted] = useState('')
 
   // A.2 Membership
   const [orgName, setOrgName] = useState('')
-  const [orgPosition, setOrgPosition] = useState('Member')
+  const [orgPosition, setOrgPosition] = useState('')
   const [officeHeld, setOfficeHeld] = useState('')
 
   // A.3 Seminar
   const [seminarTitle, setSeminarTitle] = useState('')
   const [organizerVenue, setOrganizerVenue] = useState('')
-  const [scopeLevel, setScopeLevel] = useState('National')
+  const [scopeLevel, setScopeLevel] = useState('')
 
   // B.1 Speaker / Consultancy
   const [eventTitle, setEventTitle] = useState('')
-  const [speakerRole, setSpeakerRole] = useState('Keynote Speaker')
+  const [speakerRole, setSpeakerRole] = useState('')
   const [sponsoringAgency, setSponsoringAgency] = useState('')
 
   // B.2 Publication
   const [pubTitle, setPubTitle] = useState('')
-  const [pubType, setPubType] = useState('Scholarly Paper')
+  const [pubType, setPubType] = useState('')
   const [publisherIssn, setPublisherIssn] = useState('')
 
   // B.3 Conduct of Research
   const [researchTitle, setResearchTitle] = useState('')
-  const [researchRole, setResearchRole] = useState('Lead Researcher')
-  const [fundingStatus, setFundingStatus] = useState('Completed Institutional Research')
+  const [researchRole, setResearchRole] = useState('')
+  const [fundingStatus, setFundingStatus] = useState('')
 
   // B.4 Recognition or Awards
   const [awardTitle, setAwardTitle] = useState('')
   const [conferringBody, setConferringBody] = useState('')
-  const [awardType, setAwardType] = useState('Awardee')
+  const [awardType, setAwardType] = useState('')
 
   // B.5 Instructional Materials
   const [materialTitle, setMaterialTitle] = useState('')
-  const [matType, setMatType] = useState('Workbooks / Exercises / Lecture Notes (Bound)')
+  const [matType, setMatType] = useState('')
   const [courseUsedIn, setCourseUsedIn] = useState('')
 
   // B.6 Creative Work
@@ -116,11 +124,14 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   // C.1 / C.2 Service & Community
   const [serviceTitle, setServiceTitle] = useState('')
   const [sponsoringOrg, setSponsoringOrg] = useState('')
-  const [subType, setSubType] = useState('C.1.1 Moderator of Clubs / Organizations')
+  const [subType, setSubType] = useState('')
 
   // Proof Attachment & Remarks
   const [description, setDescription] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
+
+  // Tracking Manual Modifications (Manual overrides OCR and is never silently overwritten)
+  const [manuallyEdited, setManuallyEdited] = useState({})
 
   // System States & Security
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -133,17 +144,29 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   const [isScanModeActive, setIsScanModeActive] = useState(true)
 
   useEffect(() => {
-    if (initialCategory) {
+    if (editingItem) {
+      setCategory(editingItem.category || 'A.1 Degree/s')
+      setDateAchieved(editingItem.date_achieved || '')
+      setAcademicYear(editingItem.academic_year || inferAcademicYear(editingItem.date_achieved))
+      setDescription(editingItem.description || '')
+      setScopeLevel(editingItem.scope_level || '')
+    } else if (initialCategory) {
       setCategory(initialCategory)
     }
-  }, [initialCategory])
+  }, [initialCategory, editingItem])
+
+  // Helper to mark a field as manually edited
+  const markFieldEdited = (fieldName) => {
+    setManuallyEdited(prev => ({ ...prev, [fieldName]: true }))
+    setOcrBadges(prev => ({ ...prev, [fieldName]: false }))
+  }
 
   // Sync Academic Year automatically on Date Achieved change
   const handleDateChange = (e) => {
     const d = e.target.value
     setDateAchieved(d)
     setAcademicYear(inferAcademicYear(d))
-    setOcrBadges(prev => ({ ...prev, dateAchieved: false }))
+    markFieldEdited('dateAchieved')
   }
 
   // Perform Intelligent Document Scan & Auto-Fill
@@ -159,59 +182,66 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         setOcrResult(res)
         const fields = res.extractedFields
 
-        // Auto-select detected NDMU category
-        if (res.detectedCategory) {
+        // 1. Auto-select suggested NDMU category only if user hasn't manually chosen one
+        if (res.detectedCategory && !manuallyEdited.category) {
           setCategory(res.detectedCategory)
         }
 
-        // Set Date & Academic Year
-        if (fields.date) {
+        // 2. Set Date & Academic Year if detected and not manually edited
+        if (fields.date && !manuallyEdited.dateAchieved) {
           setDateAchieved(fields.date)
           setAcademicYear(fields.academicYear)
         }
 
-        // Map Category Specific Fields & Track Badges
-        const newBadges = { category: true, dateAchieved: true }
+        // 3. Map Category Specific Fields & Track Badges without overwriting manual user inputs
+        const newBadges = {
+          category: !manuallyEdited.category && !!res.detectedCategory,
+          dateAchieved: !manuallyEdited.dateAchieved && !!fields.date
+        }
 
-        if (res.detectedCategory.startsWith('A.1')) {
-          if (fields.title) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
-          if (fields.issuer) { setInstitution(fields.issuer); newBadges.institution = true }
-          if (fields.degreeLevel) { setDegreeLevel(fields.degreeLevel); newBadges.degreeLevel = true }
-        } else if (res.detectedCategory.startsWith('A.2')) {
-          if (fields.title) { setOrgName(fields.title); newBadges.orgName = true }
-          if (fields.issuer) { setOfficeHeld(fields.issuer); newBadges.officeHeld = true }
-        } else if (res.detectedCategory.startsWith('A.3')) {
-          if (fields.title) { setSeminarTitle(fields.title); newBadges.seminarTitle = true }
-          if (fields.issuer) { setOrganizerVenue(fields.issuer); newBadges.organizerVenue = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.1')) {
-          if (fields.title) { setEventTitle(fields.title); newBadges.eventTitle = true }
-          if (fields.issuer) { setSponsoringAgency(fields.issuer); newBadges.sponsoringAgency = true }
-          if (fields.specificRole) { setSpeakerRole(fields.specificRole); newBadges.speakerRole = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.2')) {
-          if (fields.title) { setPubTitle(fields.title); newBadges.pubTitle = true }
-          if (fields.issuer) { setPublisherIssn(fields.issuer); newBadges.publisherIssn = true }
-          if (fields.pubType) { setPubType(fields.pubType); newBadges.pubType = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.3')) {
-          if (fields.title) { setResearchTitle(fields.title); newBadges.researchTitle = true }
-          if (fields.fundingStatus) { setFundingStatus(fields.fundingStatus); newBadges.fundingStatus = true }
-        } else if (res.detectedCategory.startsWith('B.4')) {
-          if (fields.title) { setAwardTitle(fields.title); newBadges.awardTitle = true }
-          if (fields.issuer) { setConferringBody(fields.issuer); newBadges.conferringBody = true }
-          if (fields.awardType) { setAwardType(fields.awardType); newBadges.awardType = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.5')) {
-          if (fields.title) { setMaterialTitle(fields.title); newBadges.materialTitle = true }
-          if (fields.matType) { setMatType(fields.matType); newBadges.matType = true }
-        } else if (res.detectedCategory.startsWith('B.6')) {
-          if (fields.title) { setCreativeTitle(fields.title); newBadges.creativeTitle = true }
-          if (fields.issuer) { setExhibitionVenue(fields.issuer); newBadges.exhibitionVenue = true }
+        const catToApply = (!manuallyEdited.category && res.detectedCategory) ? res.detectedCategory : category
+
+        if (catToApply.startsWith('A.1')) {
+          if (fields.title && !manuallyEdited.degreeTitle) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
+          if (fields.issuer && !manuallyEdited.institution) { setInstitution(fields.issuer); newBadges.institution = true }
+          if (fields.degreeLevel && !manuallyEdited.degreeLevel) { setDegreeLevel(fields.degreeLevel); newBadges.degreeLevel = true }
+        } else if (catToApply.startsWith('A.2')) {
+          if (fields.title && !manuallyEdited.orgName) { setOrgName(fields.title); newBadges.orgName = true }
+          if (fields.issuer && !manuallyEdited.officeHeld) { setOfficeHeld(fields.issuer); newBadges.officeHeld = true }
+          if (fields.specificRole && !manuallyEdited.orgPosition) { setOrgPosition(fields.specificRole); newBadges.orgPosition = true }
+        } else if (catToApply.startsWith('A.3')) {
+          if (fields.title && !manuallyEdited.seminarTitle) { setSeminarTitle(fields.title); newBadges.seminarTitle = true }
+          if (fields.issuer && !manuallyEdited.organizerVenue) { setOrganizerVenue(fields.issuer); newBadges.organizerVenue = true }
+          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
+        } else if (catToApply.startsWith('B.1')) {
+          if (fields.title && !manuallyEdited.eventTitle) { setEventTitle(fields.title); newBadges.eventTitle = true }
+          if (fields.issuer && !manuallyEdited.sponsoringAgency) { setSponsoringAgency(fields.issuer); newBadges.sponsoringAgency = true }
+          if (fields.specificRole && !manuallyEdited.speakerRole) { setSpeakerRole(fields.specificRole); newBadges.speakerRole = true }
+          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
+        } else if (catToApply.startsWith('B.2')) {
+          if (fields.title && !manuallyEdited.pubTitle) { setPubTitle(fields.title); newBadges.pubTitle = true }
+          if (fields.issuer && !manuallyEdited.publisherIssn) { setPublisherIssn(fields.issuer); newBadges.publisherIssn = true }
+          if (fields.pubType && !manuallyEdited.pubType) { setPubType(fields.pubType); newBadges.pubType = true }
+          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
+        } else if (catToApply.startsWith('B.3')) {
+          if (fields.title && !manuallyEdited.researchTitle) { setResearchTitle(fields.title); newBadges.researchTitle = true }
+          if (fields.fundingStatus && !manuallyEdited.fundingStatus) { setFundingStatus(fields.fundingStatus); newBadges.fundingStatus = true }
+          if (fields.specificRole && !manuallyEdited.researchRole) { setResearchRole(fields.specificRole); newBadges.researchRole = true }
+        } else if (catToApply.startsWith('B.4')) {
+          if (fields.title && !manuallyEdited.awardTitle) { setAwardTitle(fields.title); newBadges.awardTitle = true }
+          if (fields.issuer && !manuallyEdited.conferringBody) { setConferringBody(fields.issuer); newBadges.conferringBody = true }
+          if (fields.awardType && !manuallyEdited.awardType) { setAwardType(fields.awardType); newBadges.awardType = true }
+          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
+        } else if (catToApply.startsWith('B.5')) {
+          if (fields.title && !manuallyEdited.materialTitle) { setMaterialTitle(fields.title); newBadges.materialTitle = true }
+          if (fields.matType && !manuallyEdited.matType) { setMatType(fields.matType); newBadges.matType = true }
+        } else if (catToApply.startsWith('B.6')) {
+          if (fields.title && !manuallyEdited.creativeTitle) { setCreativeTitle(fields.title); newBadges.creativeTitle = true }
+          if (fields.issuer && !manuallyEdited.exhibitionVenue) { setExhibitionVenue(fields.issuer); newBadges.exhibitionVenue = true }
         } else {
-          if (fields.title) { setServiceTitle(fields.title); newBadges.serviceTitle = true }
-          if (fields.issuer) { setSponsoringOrg(fields.issuer); newBadges.sponsoringOrg = true }
-          if (fields.subType) { setSubType(fields.subType); newBadges.subType = true }
+          if (fields.title && !manuallyEdited.serviceTitle) { setServiceTitle(fields.title); newBadges.serviceTitle = true }
+          if (fields.issuer && !manuallyEdited.sponsoringOrg) { setSponsoringOrg(fields.issuer); newBadges.sponsoringOrg = true }
+          if (fields.subType && !manuallyEdited.subType) { setSubType(fields.subType); newBadges.subType = true }
         }
 
         setOcrBadges(newBadges)
@@ -226,53 +256,25 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
   if (!isOpen) return null
 
-  // Live Points Calculation
-  const calculateEstimatedPoints = () => {
-    if (category.startsWith('A.1')) {
-      if (degreeLevel.includes('Ph.D. Degree Holder')) return 40
-      if (degreeLevel.includes('Ph.D. Units')) return Math.min(10, Math.floor(Number(unitsCompleted || 0) / 3) * 2)
-      if (degreeLevel.includes('Master') && degreeLevel.includes('Holder')) return 20
-      return Math.min(10, Math.floor(Number(unitsCompleted || 0) / 3) * 1)
-    }
-    if (category.startsWith('A.2')) return orgPosition === 'Officer' ? 10 : 5
-    if (category.startsWith('A.3')) {
-      if (scopeLevel.includes('In-House')) return 3
-      if (scopeLevel.includes('City')) return 4
-      if (scopeLevel.includes('Regional')) return 6
-      if (scopeLevel.includes('National')) return 8
-      return 10
-    }
-    if (category.startsWith('B.1')) {
-      if (speakerRole.includes('Keynote')) return 10
-      if (speakerRole.includes('Resource')) return 8
-      if (speakerRole.includes('Facilitator')) return 6
-      if (speakerRole.includes('Judge')) return 5
-      return 3
-    }
-    if (category.startsWith('B.2')) {
-      if (pubType.includes('Book')) return 5
-      if (pubType.includes('Article')) return 4
-      return 5
-    }
-    if (category.startsWith('B.3')) {
-      if (fundingStatus.includes('Externally')) return 20
-      if (fundingStatus.includes('Institutional')) return 15
-      return 10
-    }
-    if (category.startsWith('B.4')) {
-      if (awardType === 'Awardee') {
-        return scopeLevel.includes('National') || scopeLevel.includes('International') ? 40 : scopeLevel.includes('Regional') ? 30 : 10
-      }
-      return scopeLevel.includes('National') ? 20 : scopeLevel.includes('Regional') ? 15 : 5
-    }
-    if (category.startsWith('B.5')) return matType.includes('Workbook') ? 20 : 10
-    if (category.startsWith('B.6')) return 20
-    if (category.startsWith('C.1')) return 20
-    if (category.startsWith('C.2')) return subType.includes('Church') || subType.includes('Community') ? 25 : 5
-    return 5
-  }
+  // Advisory Classification & Suggested Points derived from Canonical Plan F Rules
+  const advisoryClassification = AchievementClassificationService.classifyAchievement({
+    category,
+    degreeLevel,
+    unitsCompleted,
+    orgPosition,
+    scopeLevel,
+    speakerRole,
+    pubType,
+    fundingStatus,
+    awardType,
+    matType,
+    subType
+  }, ocrResult)
 
-  const estimatedPts = calculateEstimatedPoints()
+  const estimatedPts = advisoryClassification.suggestedPoints !== null && !isNaN(advisoryClassification.suggestedPoints)
+    ? advisoryClassification.suggestedPoints
+    : 0
+
   const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, degreeLevel || subType || pubType)
 
   // Enhanced Security File Upload & Automatic OCR Trigger
@@ -323,50 +325,66 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
       setError('Please complete the primary title field for this category.')
       return
     }
-    if (!attachedFile) {
+    if (!attachedFile && !editingItem) {
       setError('Supporting Proof Document attachment (PDF/JPG/PNG) is required.')
       return
     }
 
     try {
       setIsSubmitting(true)
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      const formattedDate = new Date(dateAchieved).toLocaleDateString('en-US', {
+      const formattedDate = dateAchieved ? new Date(dateAchieved).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
-      })
+      }) : ''
 
       const newEntry = {
-        id: Date.now(),
         title: resolvedTitle.trim(),
         issuer: resolvedIssuer.trim(),
-        date: formattedDate,
-        academic_year: academicYear,
+        location: resolvedIssuer.trim(),
+        date: formattedDate || dateAchieved,
+        date_achieved: dateAchieved,
+        academic_year: academicYear || inferAcademicYear(dateAchieved),
         category: category,
         scope_level: scopeLevel,
         claimed_points: estimatedPts,
+        advisory_classification: {
+          suggested_category: advisoryClassification.suggestedCategory,
+          suggested_subcategory: advisoryClassification.suggestedSubcategory,
+          criterion_code: advisoryClassification.criterionCode,
+          suggested_points: advisoryClassification.suggestedPoints,
+          is_advisory: true,
+          is_ambiguous: advisoryClassification.isAmbiguous,
+          matched_reason: advisoryClassification.matchedReason,
+          rule_reference: advisoryClassification.ruleReference
+        },
         status: 'Pending Review',
         description: description.trim(),
-        attached_file_name: attachedFile ? attachedFile.name : 'proof_document.pdf'
+        attached_file_name: attachedFile ? attachedFile.name : (editingItem?.attached_file_name || 'proof_document.pdf'),
+        ocr_metadata: ocrResult ? {
+          extracted_category: ocrResult.detectedCategory,
+          confidence_score: ocrResult.confidenceScore,
+          matched_keywords: ocrResult.matchedKeywords,
+          fields: ocrResult.fields,
+          warnings: ocrResult.extractionWarnings
+        } : null
       }
 
       if (onSubmitAccomplishment) {
-        onSubmitAccomplishment(newEntry)
+        await onSubmitAccomplishment(newEntry, attachedFile)
       }
 
       setIsSubmitting(false)
       onClose()
     } catch (err) {
       setIsSubmitting(false)
-      setError('Failed to submit accomplishment. Please try again.')
+      console.error('Submission error:', err)
+      setError(err?.message || err?.error?.message || 'Failed to submit accomplishment. Please try again.')
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-
       <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* ================= MODAL HEADER WITH LIVE ESTIMATED POINTS BADGE ================= */}
@@ -377,13 +395,15 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Log New Accomplishment</h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#EFF7F0] text-amber-300 text-[11px] font-extrabold shadow-2xs border border-emerald-700/50">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                  {editingItem ? 'Edit Accomplishment' : 'Log New Accomplishment'}
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#EFF7F0] text-[#16834a] text-[11px] font-extrabold shadow-2xs border border-[#cbe6d2]">
                   NDMU Ranking Record
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Category-Tailored Fields • Auto Academic Year ({academicYear})
+                Category-Tailored Fields • {academicYear ? `Academic Year (${academicYear})` : 'Date-Derived Academic Year'}
               </p>
             </div>
           </div>
@@ -405,6 +425,24 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
           </div>
         )}
 
+        {/* Advisory Duplicate Warning Banner (Non-blocking) */}
+        {(() => {
+          const { title: curTitle, issuer: curIssuer } = getNormalizedTitleAndIssuer()
+          const dup = PersonnelAchievementController.checkDuplicateWarning(
+            { title: curTitle, date_achieved: dateAchieved, issuer: curIssuer },
+            existingAchievements
+          )
+          if (dup.isDuplicate && !editingItem) {
+            return (
+              <div className="mx-5 mt-4 p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2.5 shrink-0 animate-in fade-in duration-150">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                <span><strong>Advisory:</strong> {dup.warningMessage}</span>
+              </div>
+            )
+          }
+          return null
+        })()}
+
         {/* ================= OCR SCAN CONFIDENCE & STATUS BANNER ================= */}
         {isScanning && (
           <div className="mx-5 mt-4 p-4 rounded-2xl bg-[#E7F3E9] border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
@@ -417,7 +455,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                 <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-amber-300 text-[10px] font-extrabold">AI Processing</span>
               </div>
               <p className="text-[11px] text-emerald-800 font-medium mt-0.5">
-                Extracting text → Matching NDMU Category → Auto-filling fields...
+                Extracting text → Suggesting NDMU Category → Auto-filling fields without fabrication...
               </p>
             </div>
           </div>
@@ -437,8 +475,13 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-800 mt-0.5">
-                  Detected Category: <strong className="text-emerald-950">{ocrResult.detectedCategory}</strong> • Pre-filled form fields below. You can freely edit any value.
+                  Suggested Category: <strong className="text-emerald-950">{ocrResult.detectedCategory || 'Manual Selection Required'}</strong> • You can freely edit or clear any field.
                 </p>
+                {ocrResult.extractionWarnings?.length > 0 && (
+                  <p className="text-[10px] text-amber-800 mt-1 italic">
+                    ℹ {ocrResult.extractionWarnings[0]}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -454,823 +497,620 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             )}
           </div>
         )}
+
         {/* ================= CATEGORY-TAILORED ADAPTIVE FORM SCROLLABLE BODY ================= */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
 
-          {/* ================= STEP 1: UPLOAD & OCR SCAN CERTIFICATE (VERY TOP STEP) ================= */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-emerald-200/80 space-y-3">
+          {/* ================= STEP 1: UPLOAD & OCR SCAN CERTIFICATE ================= */}
+          <div className="p-4 rounded-3xl bg-slate-50 border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-[#16834a] text-white flex items-center justify-center text-xs font-black shadow-2xs">1</span>
-                <div>
-                  <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <span>Upload & Scan Certificate Document</span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-[#064e2b] text-[10px] font-extrabold border border-emerald-300/60 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-500 fill-amber-300" />
-                      <span>OCR Auto-Fill Active</span>
-                    </span>
-                  </h4>
-                  <p className="text-[11px] text-slate-500 font-medium">Attach your certificate first — system will auto-detect category & populate details.</p>
+                <div className="w-6 h-6 rounded-lg bg-[#16834a] text-white flex items-center justify-center font-extrabold text-[11px]">
+                  1
                 </div>
+                <span className="font-extrabold text-slate-800 text-xs">Supporting Proof Document</span>
               </div>
-              <span className="text-[11px] font-extrabold text-emerald-800 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">PDF / PNG / JPG</span>
+              <span className="text-[11px] font-bold text-slate-400">PDF, JPG, PNG (Max 10MB)</span>
             </div>
 
-            {/* Proof Hint Banner */}
-            <div className="p-2.5 rounded-xl bg-emerald-100/60 border border-emerald-200 text-[#064e2b] text-[11px] font-semibold flex items-center gap-2">
-              <Paperclip className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
-              <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
-            </div>
-
-            {/* Drag and Drop Zone */}
-            <div className="relative border-2 border-dashed border-emerald-300 hover:border-[#16834a] rounded-2xl p-4 text-center transition bg-white hover:bg-[#E7F3E9]/40 cursor-pointer group shadow-2xs">
+            <label className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition ${
+              attachedFile ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-300 hover:border-[#16834a] bg-white'
+            }`}>
               <input
                 type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
+                accept=".pdf,.jpg,.jpeg,.png"
                 onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                className="hidden"
               />
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#16834a] group-hover:scale-110 transition shadow-2xs">
-                  <UploadCloud className="w-5 h-5" />
-                </div>
-                {attachedFile ? (
-                  <div className="text-xs font-bold text-emerald-800 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Attached: <strong>{attachedFile.name}</strong> ({(attachedFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+              {attachedFile ? (
+                <div className="flex items-center gap-3 text-left w-full">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
                   </div>
-                ) : (
-                  <div>
-                    <p className="text-xs font-extrabold text-slate-900 flex items-center justify-center gap-1.5">
-                      <span>Click to upload certificate or drag & drop file here</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-slate-900 truncate">{attachedFile.name}</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      {(attachedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for secure backend persistence
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Scans document instantly using AchieveNest OCR Engine</p>
                   </div>
-                )}
-              </div>
+                  <span className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-[11px] shrink-0">
+                    Attached
+                  </span>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <UploadCloud className="w-8 h-8 text-slate-400 mx-auto stroke-[1.5]" />
+                  <p className="font-bold text-slate-700">Click to upload official certificate or evidence</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Automatic OCR will inspect text & suggest category</p>
+                </div>
+              )}
+            </label>
+            {requiredProofHint && (
+              <p className="text-[11px] text-slate-500 italic">
+                * Suggested proof: {requiredProofHint}
+              </p>
+            )}
+          </div>
+
+          {/* ================= STEP 2: CATEGORY SELECTION ================= */}
+          <div className="space-y-2">
+            <ReqLabel 
+              label="2. Select Evaluation Category" 
+              value={category} 
+              isOcrAutoFilled={ocrBadges.category}
+              isManuallyEdited={manuallyEdited.category}
+            />
+            <select
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value)
+                markFieldEdited('category')
+              }}
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
+            >
+              <optgroup label="Area A: Professional Development (70 Pts Max)">
+                <option value="A.1 Degree/s">A.1 Degrees & Advanced Units</option>
+                <option value="A.2 Active Membership to Prof Orgs">A.2 Active Membership to Professional Organizations</option>
+                <option value="A.3 Attendance to Seminars/Trainings">A.3 Attendance to Seminars & Trainings</option>
+              </optgroup>
+              <optgroup label="Area B: Productivity & Creative Work (50 Pts Max)">
+                <option value="B.1 Guest Lecturer / Consultant / Judge">B.1 Lectures, Speakerships & Consultancy</option>
+                <option value="B.2 Publication">B.2 Scholarly Publications (Journals, Books, Articles)</option>
+                <option value="B.3 Conduct of Research">B.3 Conduct of Research Projects</option>
+                <option value="B.4 Professional Recognition or Awards">B.4 Professional Recognitions & Awards</option>
+                <option value="B.5 Production of Instructional Materials">B.5 Instructional Materials / Manuals</option>
+                <option value="B.6 Creative Work">B.6 Creative Work & Exhibitions</option>
+              </optgroup>
+              <optgroup label="Area C: Service & Leadership (40 Pts Max)">
+                <option value="C.1 Extra-Curricular Activities">C.1 Institutional Service & Committees</option>
+                <option value="C.2 Community Involvement">C.2 Community & Extension Involvement</option>
+              </optgroup>
+            </select>
+          </div>
+
+          {/* ================= STEP 3: CATEGORY-SPECIFIC ADAPTIVE FIELDS ================= */}
+          <div className="p-4 rounded-3xl bg-slate-50/70 border border-slate-200/80 space-y-3.5">
+            <div className="font-extrabold text-slate-800 text-xs flex items-center justify-between">
+              <span>3. Fill Required Details ({category})</span>
+              <span className="text-[11px] font-semibold text-[#16834a]">
+                ~{estimatedPts} Provisional Pts (Advisory)
+              </span>
             </div>
 
-            {/* Live OCR Scanning Spinner Status */}
-            {isScanning && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 animate-in fade-in">
-                <RefreshCw className="w-4 h-4 text-[#16834a] animate-spin shrink-0" />
-                <span>Scanning document text & detecting NDMU category...</span>
+            {/* A.1 Degrees */}
+            {category.startsWith('A.1') && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <ReqLabel 
+                      label="Degree Level" 
+                      value={degreeLevel} 
+                      isOcrAutoFilled={ocrBadges.degreeLevel}
+                      isManuallyEdited={manuallyEdited.degreeLevel}
+                    />
+                    <select
+                      value={degreeLevel}
+                      onChange={(e) => { setDegreeLevel(e.target.value); markFieldEdited('degreeLevel') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Degree Level --</option>
+                      <option value="Ph.D. Degree Holder">Ph.D. / Doctoral Degree Holder (40 Pts)</option>
+                      <option value="Ph.D. Units">Ph.D. Completed Units (2 Pts / 3 Units)</option>
+                      <option value="Master's Degree Holder">Master's Degree Holder (20 Pts)</option>
+                      <option value="Master's Units">Master's Completed Units (1 Pt / 3 Units)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Units Completed" 
+                      value={unitsCompleted} 
+                      isManuallyEdited={manuallyEdited.unitsCompleted}
+                    />
+                    <input
+                      type="number"
+                      value={unitsCompleted}
+                      onChange={(e) => { setUnitsCompleted(e.target.value); markFieldEdited('unitsCompleted') }}
+                      placeholder="e.g. 18"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <ReqLabel 
+                    label="Official Degree Title" 
+                    value={degreeTitle} 
+                    isOcrAutoFilled={ocrBadges.degreeTitle}
+                    isManuallyEdited={manuallyEdited.degreeTitle}
+                  />
+                  <input
+                    type="text"
+                    value={degreeTitle}
+                    onChange={(e) => { setDegreeTitle(e.target.value); markFieldEdited('degreeTitle') }}
+                    placeholder="e.g. Doctor of Philosophy in Computer Science"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <ReqLabel 
+                    label="Conferring University / Institution" 
+                    value={institution} 
+                    isOcrAutoFilled={ocrBadges.institution}
+                    isManuallyEdited={manuallyEdited.institution}
+                  />
+                  <input
+                    type="text"
+                    value={institution}
+                    onChange={(e) => { setInstitution(e.target.value); markFieldEdited('institution') }}
+                    placeholder="e.g. Notre Dame of Marbel University"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
               </div>
             )}
 
-            {/* OCR Success Confidence Card */}
-            {ocrResult && !isScanning && (
-              <div className="p-3 rounded-xl bg-white border border-emerald-300 text-[#064e2b] text-xs font-semibold flex items-center justify-between gap-3 animate-in fade-in shadow-2xs">
-                <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-300 shrink-0" />
+            {/* A.2 Membership */}
+            {category.startsWith('A.2') && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <p className="font-extrabold text-slate-900">
-                      OCR Scan Complete • <span className="text-[#16834a]">{ocrResult.confidenceScore}% Match</span>
-                    </p>
-                    <p className="text-[11px] text-slate-600">
-                      Detected: <strong>{ocrResult.detectedCategory}</strong>
-                    </p>
+                    <ReqLabel 
+                      label="Organization Name" 
+                      value={orgName} 
+                      isOcrAutoFilled={ocrBadges.orgName}
+                      isManuallyEdited={manuallyEdited.orgName}
+                    />
+                    <input
+                      type="text"
+                      value={orgName}
+                      onChange={(e) => { setOrgName(e.target.value); markFieldEdited('orgName') }}
+                      placeholder="e.g. Philippine Computer Society (PCS)"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Position / Role" 
+                      value={orgPosition} 
+                      isOcrAutoFilled={ocrBadges.orgPosition}
+                      isManuallyEdited={manuallyEdited.orgPosition}
+                    />
+                    <select
+                      value={orgPosition}
+                      onChange={(e) => { setOrgPosition(e.target.value); markFieldEdited('orgPosition') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Role --</option>
+                      <option value="Officer">Officer / Board Member (10 Pts)</option>
+                      <option value="Member">Regular Active Member (5 Pts)</option>
+                    </select>
                   </div>
                 </div>
+              </div>
+            )}
 
-                {attachedFile && (
-                  <button
-                    type="button"
-                    onClick={() => performOcrScan(attachedFile)}
-                    className="px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#064e2b] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3 text-[#16834a]" />
-                    <span>Re-scan</span>
-                  </button>
-                )}
+            {/* A.3 Seminars */}
+            {category.startsWith('A.3') && (
+              <div className="space-y-3">
+                <div>
+                  <ReqLabel 
+                    label="Seminar / Training Title" 
+                    value={seminarTitle} 
+                    isOcrAutoFilled={ocrBadges.seminarTitle}
+                    isManuallyEdited={manuallyEdited.seminarTitle}
+                  />
+                  <input
+                    type="text"
+                    value={seminarTitle}
+                    onChange={(e) => { setSeminarTitle(e.target.value); markFieldEdited('seminarTitle') }}
+                    placeholder="e.g. Regional Training on AI Curriculum Integration"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <ReqLabel 
+                      label="Organizer / Venue" 
+                      value={organizerVenue} 
+                      isOcrAutoFilled={ocrBadges.organizerVenue}
+                      isManuallyEdited={manuallyEdited.organizerVenue}
+                    />
+                    <input
+                      type="text"
+                      value={organizerVenue}
+                      onChange={(e) => { setOrganizerVenue(e.target.value); markFieldEdited('organizerVenue') }}
+                      placeholder="e.g. CHED / NDMU CITE"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Scope Level" 
+                      value={scopeLevel} 
+                      isOcrAutoFilled={ocrBadges.scopeLevel}
+                      isManuallyEdited={manuallyEdited.scopeLevel}
+                    />
+                    <select
+                      value={scopeLevel}
+                      onChange={(e) => { setScopeLevel(e.target.value); markFieldEdited('scopeLevel') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Scope --</option>
+                      <option value="International">International (10 Pts)</option>
+                      <option value="National">National (8 Pts)</option>
+                      <option value="Regional">Regional (6 Pts)</option>
+                      <option value="City / Local">City / Local (4 Pts)</option>
+                      <option value="In-House">In-House / Institutional (3 Pts)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* B.1 Speaker / Talk */}
+            {category.startsWith('B.1') && (
+              <div className="space-y-3">
+                <div>
+                  <ReqLabel 
+                    label="Event / Lecture Title" 
+                    value={eventTitle} 
+                    isOcrAutoFilled={ocrBadges.eventTitle}
+                    isManuallyEdited={manuallyEdited.eventTitle}
+                  />
+                  <input
+                    type="text"
+                    value={eventTitle}
+                    onChange={(e) => { setEventTitle(e.target.value); markFieldEdited('eventTitle') }}
+                    placeholder="e.g. Keynote on Predictive Student Analytics"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <ReqLabel 
+                      label="Speaker / Engagement Role" 
+                      value={speakerRole} 
+                      isOcrAutoFilled={ocrBadges.speakerRole}
+                      isManuallyEdited={manuallyEdited.speakerRole}
+                    />
+                    <select
+                      value={speakerRole}
+                      onChange={(e) => { setSpeakerRole(e.target.value); markFieldEdited('speakerRole') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Role --</option>
+                      <option value="Keynote Speaker">Keynote Speaker (10 Pts)</option>
+                      <option value="Resource Person">Resource Person / Lecturer (8 Pts)</option>
+                      <option value="Facilitator">Facilitator / Trainer (6 Pts)</option>
+                      <option value="Judge">Judge / Panelist (5 Pts)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Sponsoring Agency" 
+                      value={sponsoringAgency} 
+                      isOcrAutoFilled={ocrBadges.sponsoringAgency}
+                      isManuallyEdited={manuallyEdited.sponsoringAgency}
+                    />
+                    <input
+                      type="text"
+                      value={sponsoringAgency}
+                      onChange={(e) => { setSponsoringAgency(e.target.value); markFieldEdited('sponsoringAgency') }}
+                      placeholder="e.g. DOST / CHED"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* B.2 Publication */}
+            {category.startsWith('B.2') && (
+              <div className="space-y-3">
+                <div>
+                  <ReqLabel 
+                    label="Publication / Paper Title" 
+                    value={pubTitle} 
+                    isOcrAutoFilled={ocrBadges.pubTitle}
+                    isManuallyEdited={manuallyEdited.pubTitle}
+                  />
+                  <input
+                    type="text"
+                    value={pubTitle}
+                    onChange={(e) => { setPubTitle(e.target.value); markFieldEdited('pubTitle') }}
+                    placeholder="e.g. Machine Learning Frameworks in Higher Education Analytics"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <ReqLabel 
+                      label="Publisher / Journal / ISSN" 
+                      value={publisherIssn} 
+                      isOcrAutoFilled={ocrBadges.publisherIssn}
+                      isManuallyEdited={manuallyEdited.publisherIssn}
+                    />
+                    <input
+                      type="text"
+                      value={publisherIssn}
+                      onChange={(e) => { setPublisherIssn(e.target.value); markFieldEdited('publisherIssn') }}
+                      placeholder="e.g. IEEE Access Journal (Scopus)"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Publication Type" 
+                      value={pubType} 
+                      isOcrAutoFilled={ocrBadges.pubType}
+                      isManuallyEdited={manuallyEdited.pubType}
+                    />
+                    <select
+                      value={pubType}
+                      onChange={(e) => { setPubType(e.target.value); markFieldEdited('pubType') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Type --</option>
+                      <option value="Scholarly Paper">Scholarly Paper / Journal Article (5 Pts)</option>
+                      <option value="Book">Published Book / Monograph (5 Pts)</option>
+                      <option value="Article">Professional / Trade Article (4 Pts)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* B.3 Research */}
+            {category.startsWith('B.3') && (
+              <div className="space-y-3">
+                <div>
+                  <ReqLabel 
+                    label="Research Project Title" 
+                    value={researchTitle} 
+                    isOcrAutoFilled={ocrBadges.researchTitle}
+                    isManuallyEdited={manuallyEdited.researchTitle}
+                  />
+                  <input
+                    type="text"
+                    value={researchTitle}
+                    onChange={(e) => { setResearchTitle(e.target.value); markFieldEdited('researchTitle') }}
+                    placeholder="e.g. Predictive Retention Modeling for Marist Scholars"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <ReqLabel 
+                      label="Funding / Completion Status" 
+                      value={fundingStatus} 
+                      isOcrAutoFilled={ocrBadges.fundingStatus}
+                      isManuallyEdited={manuallyEdited.fundingStatus}
+                    />
+                    <select
+                      value={fundingStatus}
+                      onChange={(e) => { setFundingStatus(e.target.value); markFieldEdited('fundingStatus') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Status --</option>
+                      <option value="Externally Funded Research Project">Externally Funded Project (20 Pts)</option>
+                      <option value="Completed Institutional Research">Completed Institutional Research (15 Pts)</option>
+                      <option value="Departmental Research">Departmental Research (10 Pts)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Research Role" 
+                      value={researchRole} 
+                      isManuallyEdited={manuallyEdited.researchRole}
+                    />
+                    <select
+                      value={researchRole}
+                      onChange={(e) => { setResearchRole(e.target.value); markFieldEdited('researchRole') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Role --</option>
+                      <option value="Lead Researcher">Lead Researcher / Principal Investigator</option>
+                      <option value="Co-Researcher">Co-Researcher</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* B.4 Awards */}
+            {category.startsWith('B.4') && (
+              <div className="space-y-3">
+                <div>
+                  <ReqLabel 
+                    label="Award / Recognition Title" 
+                    value={awardTitle} 
+                    isOcrAutoFilled={ocrBadges.awardTitle}
+                    isManuallyEdited={manuallyEdited.awardTitle}
+                  />
+                  <input
+                    type="text"
+                    value={awardTitle}
+                    onChange={(e) => { setAwardTitle(e.target.value); markFieldEdited('awardTitle') }}
+                    placeholder="e.g. Outstanding Research Faculty of the Year"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <ReqLabel 
+                      label="Conferring Body" 
+                      value={conferringBody} 
+                      isOcrAutoFilled={ocrBadges.conferringBody}
+                      isManuallyEdited={manuallyEdited.conferringBody}
+                    />
+                    <input
+                      type="text"
+                      value={conferringBody}
+                      onChange={(e) => { setConferringBody(e.target.value); markFieldEdited('conferringBody') }}
+                      placeholder="e.g. Notre Dame of Marbel University"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <ReqLabel 
+                      label="Scope Level" 
+                      value={scopeLevel} 
+                      isOcrAutoFilled={ocrBadges.scopeLevel}
+                      isManuallyEdited={manuallyEdited.scopeLevel}
+                    />
+                    <select
+                      value={scopeLevel}
+                      onChange={(e) => { setScopeLevel(e.target.value); markFieldEdited('scopeLevel') }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                    >
+                      <option value="">-- Select Scope --</option>
+                      <option value="National">National / International (40 Pts)</option>
+                      <option value="Regional">Regional (30 Pts)</option>
+                      <option value="Institutional">Institutional (10 Pts)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback Categories B.5, B.6, C.1, C.2 */}
+            {(category.startsWith('B.5') || category.startsWith('B.6') || category.startsWith('C.')) && (
+              <div className="space-y-3">
+                <div>
+                  <ReqLabel 
+                    label="Activity / Output Title" 
+                    value={serviceTitle || materialTitle || creativeTitle} 
+                    isManuallyEdited={manuallyEdited.serviceTitle || manuallyEdited.materialTitle || manuallyEdited.creativeTitle}
+                  />
+                  <input
+                    type="text"
+                    value={serviceTitle || materialTitle || creativeTitle}
+                    onChange={(e) => {
+                      setServiceTitle(e.target.value)
+                      setMaterialTitle(e.target.value)
+                      setCreativeTitle(e.target.value)
+                      markFieldEdited('serviceTitle')
+                    }}
+                    placeholder="e.g. Koronadal City LGU Digital Governance Extension Project"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
+                <div>
+                  <ReqLabel 
+                    label="Sponsoring / Beneficiary Entity" 
+                    value={sponsoringOrg || courseUsedIn || exhibitionVenue} 
+                    isManuallyEdited={manuallyEdited.sponsoringOrg}
+                  />
+                  <input
+                    type="text"
+                    value={sponsoringOrg || courseUsedIn || exhibitionVenue}
+                    onChange={(e) => {
+                      setSponsoringOrg(e.target.value)
+                      setCourseUsedIn(e.target.value)
+                      setExhibitionVenue(e.target.value)
+                      markFieldEdited('sponsoringOrg')
+                    }}
+                    placeholder="e.g. City Government of Koronadal"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
+                  />
+                </div>
               </div>
             )}
           </div>
 
-          {/* ================= STEP 2: REVIEW & EDIT EXTRACTED DETAILS ================= */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-              <span className="w-6 h-6 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-black">2</span>
-              <h4 className="font-extrabold text-slate-900 text-xs">Review & Edit Accomplishment Details</h4>
-            </div>
-
-            {/* CATEGORY SELECTOR */}
+          {/* ================= STEP 4: DATE ACHIEVED & ACADEMIC YEAR ================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <ReqLabel label="Category (NDMU Rating Sheet)" value={category} isOcrAutoFilled={ocrBadges.category} />
-              <select
-                value={category}
-                onChange={(e) => {
-                  setCategory(e.target.value)
-                  setOcrBadges(prev => ({ ...prev, category: false }))
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-emerald-50/40 text-xs font-bold text-[#064e2b] focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none transition"
-              >
-                <option value="A.1 Degree/s">Area A: A.1 Educational Qualifications / Degrees</option>
-                <option value="A.2 Active Membership to Prof Orgs">Area A: A.2 Active Membership in Professional Orgs</option>
-                <option value="A.3 Attendance to Seminars/Trainings">Area A: A.3 Attendance to Seminars / Trainings</option>
-                <option value="B.1 Guest Lecturer / Consultant / Judge">Area B: B.1 Guest Lecturer / Resource Person / Consultant</option>
-                <option value="B.2 Publication">Area B: B.2 Publication (Papers, Books, Articles)</option>
-                <option value="B.3 Conduct of Research">Area B: B.3 Conduct of Research</option>
-                <option value="B.4 Professional Recognition or Awards">Area B: B.4 Recognition or Awards</option>
-                <option value="B.5 Production of Instructional Materials">Area B: B.5 Instructional Materials</option>
-                <option value="B.6 Creative Work">Area B: B.6 Creative Work</option>
-                <option value="C.1 Extra-Curricular Activities">Area C: C.1 School Involvement (Extracurricular/Orgs)</option>
-                <option value="C.2 Community Involvement">Area C: C.2 Community & Civic Involvement</option>
-              </select>
-            </div>
-
-            {/* ================= 100% CATEGORY-TAILORED DYNAMIC INPUTS ================= */}
-
-            {/* A.1 DEGREE TAILORED INPUTS */}
-            {category.startsWith('A.1') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Degree Level" value={degreeLevel} isOcrAutoFilled={ocrBadges.degreeLevel} />
-                    <select
-                      value={degreeLevel}
-                      onChange={(e) => {
-                        setDegreeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, degreeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a]"
-                    >
-                      <option value="Ph.D. Degree Holder">Ph.D. Degree Holder</option>
-                      <option value="Ph.D. Units">Ph.D. Units Earned</option>
-                      <option value="Master's Degree Holder">Master's Degree Holder</option>
-                      <option value="Master's Units">Master's Units Earned</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Degree Program / Specialization" value={degreeTitle} isOcrAutoFilled={ocrBadges.degreeTitle} />
-                    <input
-                      type="text"
-                      value={degreeTitle}
-                      onChange={(e) => {
-                        setDegreeTitle(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, degreeTitle: false }))
-                      }}
-                      placeholder="e.g. Ph.D. in Computer Science / MA in Education"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className={degreeLevel.includes('Units') ? '' : 'sm:col-span-2'}>
-                    <ReqLabel label="University / Conferring Institution" value={institution} isOcrAutoFilled={ocrBadges.institution} />
-                    <input
-                      type="text"
-                      value={institution}
-                      onChange={(e) => {
-                        setInstitution(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, institution: false }))
-                      }}
-                      placeholder="e.g. Ateneo de Manila University"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  {degreeLevel.includes('Units') && (
-                    <div>
-                      <ReqLabel label="Units Completed" value={unitsCompleted} />
-                      <input
-                        type="number"
-                        value={unitsCompleted}
-                        onChange={(e) => setUnitsCompleted(e.target.value)}
-                        placeholder="e.g. 18"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* A.2 MEMBERSHIP TAILORED INPUTS */}
-            {category.startsWith('A.2') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Organization Name" value={orgName} isOcrAutoFilled={ocrBadges.orgName} />
-                    <input
-                      type="text"
-                      value={orgName}
-                      onChange={(e) => {
-                        setOrgName(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, orgName: false }))
-                      }}
-                      placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Membership Position" value={orgPosition} />
-                    <select
-                      value={orgPosition}
-                      onChange={(e) => setOrgPosition(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Member">Regular Member</option>
-                      <option value="Officer">Officer / Board Member</option>
-                    </select>
-                  </div>
-                </div>
-
-                {orgPosition === 'Officer' && (
-                  <div>
-                    <ReqLabel label="Specific Office Held" value={officeHeld} isOcrAutoFilled={ocrBadges.officeHeld} />
-                    <input
-                      type="text"
-                      value={officeHeld}
-                      onChange={(e) => {
-                        setOfficeHeld(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, officeHeld: false }))
-                      }}
-                      placeholder="e.g. Vice President for External Affairs"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* A.3 SEMINARS TAILORED INPUTS */}
-            {category.startsWith('A.3') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Seminar / Training Title" value={seminarTitle} isOcrAutoFilled={ocrBadges.seminarTitle} />
-                  <input
-                    type="text"
-                    value={seminarTitle}
-                    onChange={(e) => {
-                      setSeminarTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, seminarTitle: false }))
-                    }}
-                    placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <ReqLabel label="Organizer / Issuing Entity & Venue" value={organizerVenue} isOcrAutoFilled={ocrBadges.organizerVenue} />
-                    <input
-                      type="text"
-                      value={organizerVenue}
-                      onChange={(e) => {
-                        setOrganizerVenue(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, organizerVenue: false }))
-                      }}
-                      placeholder="e.g. CHED Region XII / NDMU Campus"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Geographic Scope" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="In-House">In-House (NDMU)</option>
-                      <option value="Local">City / Provincial</option>
-                      <option value="Regional">Regional</option>
-                      <option value="National">National</option>
-                      <option value="International">International</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.1 SPEAKER / CONSULTANCY TAILORED INPUTS */}
-            {category.startsWith('B.1') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Event / Activity Title" value={eventTitle} isOcrAutoFilled={ocrBadges.eventTitle} />
-                  <input
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => {
-                      setEventTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, eventTitle: false }))
-                    }}
-                    placeholder="e.g. Keynote Address on Machine Learning in Higher Ed Analytics"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <ReqLabel label="Role Played" value={speakerRole} isOcrAutoFilled={ocrBadges.speakerRole} />
-                    <select
-                      value={speakerRole}
-                      onChange={(e) => {
-                        setSpeakerRole(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, speakerRole: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Keynote Speaker">Keynote Speaker</option>
-                      <option value="Resource Person">Resource Person / Consultant</option>
-                      <option value="Facilitator">Facilitator / Organizer</option>
-                      <option value="Judge">Judge / Evaluator</option>
-                      <option value="Reactor">Reactor / Panelist</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Sponsoring Agency / Venue" value={sponsoringAgency} isOcrAutoFilled={ocrBadges.sponsoringAgency} />
-                    <input
-                      type="text"
-                      value={sponsoringAgency}
-                      onChange={(e) => {
-                        setSponsoringAgency(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, sponsoringAgency: false }))
-                      }}
-                      placeholder="e.g. DOST Region XII / Ateneo"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Scope Level" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Local">Local</option>
-                      <option value="Regional">Regional</option>
-                      <option value="National">National</option>
-                      <option value="International">International</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.2 PUBLICATION TAILORED INPUTS */}
-            {category.startsWith('B.2') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Title of Published Work / Book" value={pubTitle} isOcrAutoFilled={ocrBadges.pubTitle} />
-                  <input
-                    type="text"
-                    value={pubTitle}
-                    onChange={(e) => {
-                      setPubTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, pubTitle: false }))
-                    }}
-                    placeholder="e.g. Predictive Student Performance Modeling Using Deep Learning"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <ReqLabel label="Type of Publication" value={pubType} isOcrAutoFilled={ocrBadges.pubType} />
-                    <select
-                      value={pubType}
-                      onChange={(e) => {
-                        setPubType(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, pubType: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Book">Book (5 pts max)</option>
-                      <option value="Scholarly Paper">Scholarly Paper (5 pts max)</option>
-                      <option value="Research Output">Research Output (5 pts max)</option>
-                      <option value="Journal Article">Journal Article (4 pts max)</option>
-                      <option value="Monograph">Monograph (4 pts max)</option>
-                      <option value="Compilation">Compilation (5 pts max)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Publisher & ISSN/ISBN" value={publisherIssn} isOcrAutoFilled={ocrBadges.publisherIssn} />
-                    <input
-                      type="text"
-                      value={publisherIssn}
-                      onChange={(e) => {
-                        setPublisherIssn(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, publisherIssn: false }))
-                      }}
-                      placeholder="e.g. IEEE Access / ISSN: 2169-3536"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Publication Reach" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Local">Local</option>
-                      <option value="Regional">Regional</option>
-                      <option value="National">National</option>
-                      <option value="International">International / Scopus</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.3 CONDUCT OF RESEARCH TAILORED INPUTS */}
-            {category.startsWith('B.3') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Research Project Title" value={researchTitle} isOcrAutoFilled={ocrBadges.researchTitle} />
-                  <input
-                    type="text"
-                    value={researchTitle}
-                    onChange={(e) => {
-                      setResearchTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, researchTitle: false }))
-                    }}
-                    placeholder="e.g. AI-Driven Student Retention & Early Warning Analytics Framework"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Research Role" value={researchRole} />
-                    <select
-                      value={researchRole}
-                      onChange={(e) => setResearchRole(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Lead Researcher">Lead Researcher / Principal Investigator</option>
-                      <option value="Co-Researcher">Co-Researcher / Project Member</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Funding Status" value={fundingStatus} isOcrAutoFilled={ocrBadges.fundingStatus} />
-                    <select
-                      value={fundingStatus}
-                      onChange={(e) => {
-                        setFundingStatus(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, fundingStatus: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Completed Institutional Research">Completed Institutional Research (15 pts)</option>
-                      <option value="Externally Funded Research Project">Externally Funded Project (20 pts)</option>
-                      <option value="Ongoing Commissioned Research">Ongoing Commissioned Research (10 pts)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.4 RECOGNITION OR AWARDS TAILORED INPUTS */}
-            {category.startsWith('B.4') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Award Title / Honor Received" value={awardTitle} isOcrAutoFilled={ocrBadges.awardTitle} />
-                  <input
-                    type="text"
-                    value={awardTitle}
-                    onChange={(e) => {
-                      setAwardTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, awardTitle: false }))
-                    }}
-                    placeholder="e.g. NDMU Outstanding Research Faculty of the Year"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <ReqLabel label="Conferring Body / Institution" value={conferringBody} isOcrAutoFilled={ocrBadges.conferringBody} />
-                    <input
-                      type="text"
-                      value={conferringBody}
-                      onChange={(e) => {
-                        setConferringBody(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, conferringBody: false }))
-                      }}
-                      placeholder="e.g. Notre Dame of Marbel University"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Recognition Type" value={awardType} isOcrAutoFilled={ocrBadges.awardType} />
-                    <select
-                      value={awardType}
-                      onChange={(e) => {
-                        setAwardType(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, awardType: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Awardee">Awardee / Recipient</option>
-                      <option value="Nominee">Nominee</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Award Scope" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Local">Local (10 pts)</option>
-                      <option value="Regional">Provincial / Regional (30 pts)</option>
-                      <option value="National">National / International (40 pts)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.5 INSTRUCTIONAL MATERIALS TAILORED INPUTS */}
-            {category.startsWith('B.5') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Title of Material" value={materialTitle} isOcrAutoFilled={ocrBadges.materialTitle} />
-                  <input
-                    type="text"
-                    value={materialTitle}
-                    onChange={(e) => {
-                      setMaterialTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, materialTitle: false }))
-                    }}
-                    placeholder="e.g. Bound Laboratory Exercises Manual for Artificial Intelligence"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Material Type" value={matType} isOcrAutoFilled={ocrBadges.matType} />
-                    <select
-                      value={matType}
-                      onChange={(e) => {
-                        setMatType(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, matType: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Workbooks / Exercises / Lecture Notes (Bound)">Workbooks / Exercises / Notes (Bound - 20 pts)</option>
-                      <option value="Modules (Bound)">Modules (Bound - 10 pts)</option>
-                      <option value="Reviewers (Bound)">Reviewers (Bound - 10 pts)</option>
-                      <option value="Audio-Visual Aids">Audio-Visual Aids / Software (10 pts)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Subject / Course Code Used In" value={courseUsedIn} />
-                    <input
-                      type="text"
-                      value={courseUsedIn}
-                      onChange={(e) => setCourseUsedIn(e.target.value)}
-                      placeholder="e.g. ITE 311 - Machine Learning"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.6 CREATIVE WORK TAILORED INPUTS */}
-            {category.startsWith('B.6') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Description / Title of Creative Output" value={creativeTitle} isOcrAutoFilled={ocrBadges.creativeTitle} />
-                  <input
-                    type="text"
-                    value={creativeTitle}
-                    onChange={(e) => {
-                      setCreativeTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, creativeTitle: false }))
-                    }}
-                    placeholder="e.g. University Digital Archiving Software / Artistic Performance"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <ReqLabel label="Venue / Exhibition / Medium" value={exhibitionVenue} isOcrAutoFilled={ocrBadges.exhibitionVenue} />
-                  <input
-                    type="text"
-                    value={exhibitionVenue}
-                    onChange={(e) => {
-                      setExhibitionVenue(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, exhibitionVenue: false }))
-                    }}
-                    placeholder="e.g. NDMU CITE Gallery / GitHub Open Source Repository"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* C.1 / C.2 SERVICE TAILORED INPUTS */}
-            {(category.startsWith('C.1') || category.startsWith('C.2')) && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Service Sub-Type" value={subType} isOcrAutoFilled={ocrBadges.subType} />
-                  <select
-                    value={subType}
-                    onChange={(e) => {
-                      setSubType(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, subType: false }))
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                  >
-                    <option value="C.1.1 Moderator of Clubs / Organizations">C.1.1 Moderator of Clubs / Organizations (20 pts max)</option>
-                    <option value="C.1.2 Coach / Trainer">C.1.2 Coach / Trainer (20 pts max)</option>
-                    <option value="C.1.3 Membership in Working Committees">C.1.3 Membership in Working Committees (20 pts max)</option>
-                    <option value="C.2.1 Active Church Involvement">C.2.1 Active Church Involvement (25 pts max)</option>
-                    <option value="C.2.2 Community / Civic Involvement">C.2.2 Community / Civic Involvement (25 pts max)</option>
-                    <option value="C.2.3 Support to Charity / Projects">C.2.3 Support to Charity / Projects (5 pts max)</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Name of Club / Service Project" value={serviceTitle} isOcrAutoFilled={ocrBadges.serviceTitle} />
-                    <input
-                      type="text"
-                      value={serviceTitle}
-                      onChange={(e) => {
-                        setServiceTitle(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, serviceTitle: false }))
-                      }}
-                      placeholder="e.g. Computer Science Student Society / Barangay Smart Literacy Outreach"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Sponsoring LGU / NGO / Institution" value={sponsoringOrg} isOcrAutoFilled={ocrBadges.sponsoringOrg} />
-                    <input
-                      type="text"
-                      value={sponsoringOrg}
-                      onChange={(e) => {
-                        setSponsoringOrg(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, sponsoringOrg: false }))
-                      }}
-                      placeholder="e.g. Koronadal City LGU / Marist Parish"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SINGLE COMMON DATE FIELD */}
-            <div>
-              <ReqLabel label={`Date Achieved / Conferred (Auto AY: ${academicYear})`} value={dateAchieved} isOcrAutoFilled={ocrBadges.dateAchieved} />
+              <ReqLabel 
+                label="4. Date Achieved / Conferred" 
+                value={dateAchieved} 
+                isOcrAutoFilled={ocrBadges.dateAchieved}
+                isManuallyEdited={manuallyEdited.dateAchieved}
+              />
               <input
                 type="date"
                 value={dateAchieved}
                 onChange={handleDateChange}
-                required
+                className="w-full px-3 py-2 rounded-2xl bg-white border border-slate-200 font-medium text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
               />
             </div>
-          </div>
-
-          {/* INLINE PROOF ATTACHMENT BOX WITH OCR SCAN TOGGLE */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <ReqLabel label="Supporting Proof Attachment" value={attachedFile} />
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-emerald-700">PDF / JPG / PNG (Max 10MB)</span>
-                <label className="flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px] font-extrabold text-[#064e2b]" title="Automatically run OCR scan on attached certificate">
-                  <input
-                    type="checkbox"
-                    checked={isScanModeActive}
-                    onChange={(e) => setIsScanModeActive(e.target.checked)}
-                    className="rounded text-[#16834a] focus:ring-0 cursor-pointer"
-                  />
-                  <Scan className="w-3 h-3 text-[#16834a]" />
-                  <span>OCR Auto-Scan</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Proof Hint Banner */}
-            <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[#064e2b] text-[11px] font-semibold flex items-center gap-2">
-              <Paperclip className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
-              <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
-            </div>
-
-            <div className="relative border-2 border-dashed border-slate-200 hover:border-[#16834a] rounded-2xl p-4 text-center transition bg-slate-50/50 hover:bg-[#E7F3E9]/30 cursor-pointer group">
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#16834a] group-hover:scale-110 transition shadow-2xs">
-                  <UploadCloud className="w-5 h-5" />
-                </div>
-                {attachedFile ? (
-                  <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Attached: {attachedFile.name} ({(attachedFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
-                      <span>Drag & drop certificate here or click to browse</span>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-[#064e2b] rounded-md text-[10px] font-extrabold flex items-center gap-1 border border-emerald-300/60">
-                        <Sparkles className="w-3 h-3 text-amber-500 fill-amber-300" />
-                        <span>OCR Scanner Ready</span>
-                      </span>
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">PDF, PNG, JPG up to 10MB • Automatic Category & Field Auto-Fill</p>
-                  </div>
-                )}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Derived Academic Year
+              </label>
+              <div className="px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 font-bold text-slate-800 text-xs min-h-[38px] flex items-center">
+                {academicYear || <span className="text-slate-400 font-normal italic">Derived after date entry</span>}
               </div>
             </div>
           </div>
 
-          {/* OPTIONAL REMARKS */}
+          {/* ================= STEP 5: OPTIONAL NARRATIVE DESCRIPTION ================= */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Remarks / Executive Summary (Optional)
+              5. Brief Narrative / Impact Description (Optional)
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide additional details or publication DOI links if applicable..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 outline-none transition focus:border-[#16834a]"
+              placeholder="Provide context regarding outcomes, participants, or scope..."
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-medium text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden resize-none"
             />
           </div>
 
-          {/* ACTION BUTTONS FOOTER */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          {/* ================= MODAL FOOTER ================= */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition"
+              className="px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md disabled:opacity-50 cursor-pointer"
+              disabled={isSubmitting || (!attachedFile && !editingItem)}
+              className={`px-5 py-2.5 rounded-2xl text-white text-xs font-extrabold flex items-center gap-2 transition shadow-md cursor-pointer ${
+                isSubmitting || (!attachedFile && !editingItem)
+                  ? 'bg-slate-300 cursor-not-allowed'
+                  : 'bg-[#16834a] hover:bg-[#236e3e]'
+              }`}
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Saving...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Securing & Persisting...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Save Accomplishment</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{editingItem ? 'Save Changes' : 'Submit Accomplishment'}</span>
                 </>
               )}
             </button>
           </div>
-
         </form>
       </div>
     </div>

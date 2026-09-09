@@ -1,6 +1,8 @@
 import React from 'react'
 import { Building2, Users, Award, AlertTriangle, CheckCircle2 } from 'lucide-react'
 
+import OSADPageHeader from './OSADPageHeader'
+
 export default function OSADOperationalSummary({ metrics = {} }) {
   const {
     collegesCount = 3,
@@ -15,9 +17,11 @@ export default function OSADOperationalSummary({ metrics = {} }) {
 
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
-      {/* Compact & Quiet Operational Header */}
-      <div className="bg-white dark:bg-[#131E2E] p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
+      {/* Standardized Operational Header */}
+      <OSADPageHeader
+        title="OSAD Dashboard"
+        description="Manage academic structure, student accounts, organizations, and award reviews."
+        eyebrow={
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 text-xs font-semibold border border-emerald-200/80 dark:border-emerald-800/40">
               OSAD Admin Portal
@@ -26,14 +30,8 @@ export default function OSADOperationalSummary({ metrics = {} }) {
               AY 2025–2026 • Main Campus
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            OSAD Dashboard
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal">
-            Manage academic structure, student accounts, organizations, and award reviews.
-          </p>
-        </div>
-      </div>
+        }
+      />
 
       {/* Simplified Operational KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">

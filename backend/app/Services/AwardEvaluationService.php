@@ -91,6 +91,11 @@ class AwardEvaluationService
         $criterionEvaluations = [];
 
         foreach ($criteria as $criterion) {
+            $isComputable = (int) ($criterion['is_portfolio_computable'] ?? 1) === 1;
+            if (! $isComputable) {
+                continue;
+            }
+
             $critId = $criterion['id'];
             $critMaxPoints = (float) $criterion['max_points'];
             $totalMaxComputable += $critMaxPoints;
@@ -173,11 +178,18 @@ class AwardEvaluationService
                     $rulePoints = (float) ($rule['points'] ?? 10.0);
                     $ruleMaxPoints = $rule['max_points'] !== null ? (float) $rule['max_points'] : $critMaxPoints;
 
-                    // Load portfolio mappings for this rule
+                    // Load portfolio mappings for this rule or criterion
                     $mappings = $this->db->table('award_portfolio_mappings')
                         ->where('scoring_rule_id', $ruleId)
                         ->where('is_active', 1)
                         ->get()->getResultArray();
+
+                    if (empty($mappings)) {
+                        $mappings = $this->db->table('award_evidence_mapping_rules')
+                            ->where('criterion_id', $critId)
+                            ->where('is_active', 1)
+                            ->get()->getResultArray();
+                    }
 
                     $ruleEarned = 0.0;
 

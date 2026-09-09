@@ -94,6 +94,80 @@ export async function deleteOrganizationLogo(id) {
 }
 
 /**
+ * Updates an organization's master data.
+ * Accepts FormData (if uploading new logo) or plain Object.
+ * @param {string} id
+ * @param {FormData|Object} payload
+ */
+export async function updateOrganization(id, payload) {
+  const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData
+  const headers = getAuthHeaders(isFormData ? null : 'application/json')
+
+  const response = await apiClient.patch(`/osad/organizations/${id}`, payload, {
+    headers
+  })
+
+  return response?.data?.organization || response?.organization || response?.data || response
+}
+
+/**
+ * Adds academic programs to an organization's program scope.
+ * @param {string} id
+ * @param {string[]} programIds
+ */
+export async function addOrganizationPrograms(id, programIds) {
+  const response = await apiClient.post(
+    `/osad/organizations/${id}/programs`,
+    { program_ids: programIds },
+    { headers: getAuthHeaders('application/json') }
+  )
+
+  return response?.data?.organization || response?.organization || response?.data || response
+}
+
+/**
+ * Removes an academic program from an organization's program scope.
+ * @param {string} id
+ * @param {string} programId
+ */
+export async function removeOrganizationProgram(id, programId) {
+  const response = await apiClient.delete(
+    `/osad/organizations/${id}/programs/${programId}`,
+    { headers: getAuthHeaders() }
+  )
+
+  return response?.data?.organization || response?.organization || response?.data || response
+}
+
+/**
+ * Removes / unassigns the active Organization Moderator, preserving history.
+ * @param {string} id
+ */
+export async function removeOrganizationModerator(id) {
+  const response = await apiClient.delete(
+    `/osad/organizations/${id}/moderator`,
+    { headers: getAuthHeaders() }
+  )
+
+  return response?.data?.organization || response?.organization || response?.data || response
+}
+
+/**
+ * Assigns or reassigns an Organization Moderator to an organization.
+ * @param {string} organizationId
+ * @param {string} personnelProfileId
+ */
+export async function assignOrganizationModerator(organizationId, personnelProfileId) {
+  const response = await apiClient.post(
+    `/osad/organizations/${organizationId}/moderator`,
+    { personnel_profile_id: personnelProfileId },
+    { headers: getAuthHeaders('application/json') }
+  )
+
+  return response?.data?.organization || response?.organization || response?.data || response
+}
+
+/**
  * Returns the URL to view/fetch an organization's logo.
  * @param {string} id
  */
@@ -101,3 +175,5 @@ export function getOrganizationLogoUrl(id) {
   const baseURL = apiClient.defaults?.baseURL || '/api/v1'
   return `${baseURL}/osad/organizations/${id}/logo`
 }
+
+

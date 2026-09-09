@@ -27,6 +27,10 @@ import CategoryOverviewCards from '../../components/osad/CategoryOverviewCards'
 import CandidateReviewActions from '../../components/osad/CandidateReviewActions'
 import Stage1CandidateReportService from '../../services/Stage1CandidateReportService'
 import AwardPortfolioReviewService from '../../services/AwardPortfolioReviewService'
+import AwardEvaluationSummaryModal from './modals/AwardEvaluationSummaryModal'
+import CampusJournalismScoringBasisModal from './modals/CampusJournalismScoringBasisModal'
+import OSADPageHeader from '../../components/osad/OSADPageHeader'
+import { OSADEmptyState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 
 export default function OSADAwardCandidateReviewPage({
   awardCategories = [],
@@ -49,6 +53,7 @@ export default function OSADAwardCandidateReviewPage({
 
   // Modal / Drawer States
   const [selectedCandidateForAudit, setSelectedCandidateForAudit] = useState(null)
+  const [summaryTarget, setSummaryTarget] = useState(null)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState(new Set())
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false)
   const [correctionTarget, setCorrectionTarget] = useState(null)
@@ -79,12 +84,7 @@ export default function OSADAwardCandidateReviewPage({
 
   // 1. Compute Category Overview Summaries
   const categorySummaries = useMemo(() => {
-    const defaultCategories = awardCategories.length > 0 ? awardCategories : [
-      { id: 'cat-deans-list', title: "Dean's List", min_points: 50, weight_multiplier: 1.0, description: 'Academic Honor Roll Excellence' },
-      { id: 'cat-leadership', title: 'Leadership', min_points: 40, weight_multiplier: 1.2, description: 'Executive Student Governance' },
-      { id: 'cat-sports', title: 'Sports', min_points: 30, weight_multiplier: 1.0, description: 'Athletics & Intramurals Champions' },
-      { id: 'cat-research', title: 'Research', min_points: 45, weight_multiplier: 1.5, description: 'Scientific & Academic Publications' }
-    ]
+    const defaultCategories = awardCategories.length > 0 ? awardCategories : []
 
     return AwardPortfolioReviewService.getAwardCategorySummaries(
       defaultCategories,
@@ -226,36 +226,23 @@ export default function OSADAwardCandidateReviewPage({
   return (
     <div className="space-y-6 font-sans animate-in fade-in duration-200">
       
-      {/* Compact Page Header */}
-      <div className="bg-white dark:bg-[#131E2E] rounded-xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-            <Trophy className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Award Candidate Review
-              </h1>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 text-xs font-medium border border-emerald-200/60">
-                Stage 1 Review • {academicYearFilter}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
-              Review potential candidates and decide who advances to interview.
-            </p>
-          </div>
-        </div>
-
-        <CandidateReviewActions
-          cycleStatus={cycleStatus}
-          onPrintDraft={() => window.print()}
-          onExportCsv={handleExportSummaryReport}
-          onGenerateSummaryReport={handleExportSummaryReport}
-          onPublishRoster={() => setCycleStatus('published')}
-          onPrintOfficial={() => window.print()}
-        />
-      </div>
+      {/* Standardized Page Header */}
+      <OSADPageHeader
+        title="Award Candidate Review"
+        description="Review potential candidates and decide who advances to interview."
+        icon={Trophy}
+        badge={`Stage 1 Review • ${academicYearFilter}`}
+        primaryAction={
+          <CandidateReviewActions
+            cycleStatus={cycleStatus}
+            onPrintDraft={() => window.print()}
+            onExportCsv={handleExportSummaryReport}
+            onGenerateSummaryReport={handleExportSummaryReport}
+            onPublishRoster={() => setCycleStatus('published')}
+            onPrintOfficial={() => window.print()}
+          />
+        }
+      />
 
       {/* Navigation Toolbar (Category Pills & College Dropdown) */}
       <div className="bg-white dark:bg-[#131E2E] rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
@@ -426,9 +413,25 @@ export default function OSADAwardCandidateReviewPage({
             </div>
 
             <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-              {filteredCandidates.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs font-medium">
-                  No candidate portfolios match the current category and filter parameters.
+              {allCandidates.length === 0 ? (
+                <div className="p-6">
+                  <OSADEmptyState
+                    icon={Trophy}
+                    title="No Candidates Generated for this Category"
+                    description="No enrolled students meet the minimum portfolio threshold for this award category yet."
+                  />
+                </div>
+              ) : filteredCandidates.length === 0 ? (
+                <div className="p-6">
+                  <OSADSearchEmptyState
+                    title="No Matching Candidates"
+                    description="No candidates match your current search query or college filter."
+                    onReset={() => {
+                      setSearchTerm('')
+                      setCollegeFilter('all')
+                    }}
+                    resetLabel="Reset Search & Filters"
+                  />
                 </div>
               ) : (
                 filteredCandidates.map((candidate) => {
@@ -494,8 +497,15 @@ export default function OSADAwardCandidateReviewPage({
                       <div className="flex items-center justify-end gap-2.5 shrink-0 self-end md:self-auto">
                         <button
                           type="button"
+                          onClick={() => setSummaryTarget(candidate)}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-[#16834a] dark:text-emerald-300 text-xs font-extrabold transition cursor-pointer"
+                        >
+                          Scoring Summary
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setSelectedCandidateForAudit(candidate)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-300 hover:text-[#16834a] text-xs font-extrabold transition cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-extrabold transition cursor-pointer"
                         >
                           Review Evidence
                         </button>
@@ -580,6 +590,25 @@ export default function OSADAwardCandidateReviewPage({
           onClose={() => setCorrectionTarget(null)}
           onConfirmReverse={handleReverseDecision}
         />
+      )}
+
+      {/* Portfolio-Based Award Evaluation Summary Modal */}
+      {summaryTarget && (
+        summaryTarget.scoring_basis || activeCategoryObj?.code === 'CAMPUS_JOURNALISM_AWARD' || summaryTarget.award_code === 'CAMPUS_JOURNALISM_AWARD' ? (
+          <CampusJournalismScoringBasisModal
+            isOpen={Boolean(summaryTarget)}
+            scoringBasis={summaryTarget.scoring_basis || summaryTarget}
+            student={summaryTarget}
+            onClose={() => setSummaryTarget(null)}
+          />
+        ) : (
+          <AwardEvaluationSummaryModal
+            isOpen={Boolean(summaryTarget)}
+            candidate={summaryTarget}
+            award={activeCategoryObj}
+            onClose={() => setSummaryTarget(null)}
+          />
+        )
       )}
 
     </div>

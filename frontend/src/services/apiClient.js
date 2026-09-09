@@ -73,6 +73,25 @@ apiClient.interceptors.response.use(
         if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
           window.dispatchEvent(new Event('storage'))
         }
+      } else if (error.response.status === 403 && error.response.data?.error?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        console.warn('Mandatory password change required (403). Restricting session.')
+        const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
+        if (rawUser) {
+          try {
+            const user = JSON.parse(rawUser)
+            user.must_change_password = true
+            user.account_lifecycle_status = 'pending_first_login'
+            user.required_next_action = 'change_password'
+            user.can_access_protected_portal = false
+            localStorage.setItem('achievenest_current_user', JSON.stringify(user))
+            sessionStorage.setItem('achievenest_current_user', JSON.stringify(user))
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(new Event('storage'))
+            }
+          } catch {
+            // Ignore parse error
+          }
+        }
       }
       return Promise.reject(error.response.data || error.response)
     }

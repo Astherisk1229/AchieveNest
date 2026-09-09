@@ -228,7 +228,6 @@ class LocalDefenseAuthSeeder extends Seeder
                 'designation_title'    => $actor['designation'],
                 'status'               => $actor['status'],
                 'password_hash'        => $passwordHash,
-                'must_change_password' => $actor['must_change'],
             ];
 
             if ($existing === null) {
@@ -240,10 +239,11 @@ class LocalDefenseAuthSeeder extends Seeder
             // Insert/Update local_auth_credentials
             $existingCred = $db->table('local_auth_credentials')->where('profile_id', $actor['id'])->get()->getRowArray();
             $credData = [
-                'profile_id'          => $actor['id'],
-                'password_hash'       => $passwordHash,
-                'password_changed_at' => $now,
-                'status'              => $actor['credential_status'] ?? 'active',
+                'profile_id'           => $actor['id'],
+                'password_hash'        => $passwordHash,
+                'must_change_password' => $actor['must_change'],
+                'password_changed_at'  => $now,
+                'status'               => $actor['credential_status'] ?? 'active',
             ];
             if ($existingCred === null) {
                 $db->table('local_auth_credentials')->insert($credData);

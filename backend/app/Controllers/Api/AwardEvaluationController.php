@@ -4,8 +4,14 @@ namespace App\Controllers\Api;
 
 use App\Services\AuthorizationService;
 use App\Services\AwardEvaluationService;
+use App\Services\AwardEligibilityService;
+use App\Services\AwardEvidenceMappingService;
+use App\Services\AwardScoringService;
+use App\Services\AwardReviewService;
+use App\Services\AwardPotentialCandidateService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
+use InvalidArgumentException;
 use Throwable;
 
 class AwardEvaluationController extends Controller
@@ -14,11 +20,29 @@ class AwardEvaluationController extends Controller
 
     protected AuthorizationService $authz;
     protected AwardEvaluationService $awardService;
+    protected AwardEligibilityService $eligibilityService;
+    protected AwardEvidenceMappingService $mappingService;
+    protected AwardScoringService $scoringService;
+    protected AwardReviewService $reviewService;
 
-    public function __construct(?AuthorizationService $authz = null, ?AwardEvaluationService $awardService = null)
-    {
+    protected AwardPotentialCandidateService $candidateService;
+
+    public function __construct(
+        ?AuthorizationService $authz = null,
+        ?AwardEvaluationService $awardService = null,
+        ?AwardEligibilityService $eligibilityService = null,
+        ?AwardEvidenceMappingService $mappingService = null,
+        ?AwardScoringService $scoringService = null,
+        ?AwardReviewService $reviewService = null,
+        ?AwardPotentialCandidateService $candidateService = null
+    ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->awardService = $awardService ?? new AwardEvaluationService();
+        $this->eligibilityService = $eligibilityService ?? new AwardEligibilityService();
+        $this->mappingService = $mappingService ?? new AwardEvidenceMappingService(null, $this->eligibilityService);
+        $this->scoringService = $scoringService ?? new AwardScoringService(null, $this->eligibilityService, $this->mappingService);
+        $this->reviewService = $reviewService ?? new AwardReviewService(null, $this->eligibilityService, $this->mappingService, $this->scoringService);
+        $this->candidateService = $candidateService ?? new AwardPotentialCandidateService(null, $this->eligibilityService, $this->mappingService, $this->scoringService, $this->reviewService);
     }
 
     public function options(): mixed
@@ -57,14 +81,25 @@ class AwardEvaluationController extends Controller
         $db = db_connect();
         $awards = $db->table('award_definitions')
             ->where('status', 'active')
+            ->where('is_catalog_visible', 1)
             ->orderBy('name', 'ASC')
             ->get()->getResultArray();
 
         foreach ($awards as &$award) {
-            $award['criteria'] = $db->table('award_criteria')
+            $criteria = $db->table('award_criteria')
                 ->where('award_definition_id', $award['id'])
                 ->orderBy('sort_order', 'ASC')
                 ->get()->getResultArray();
+
+            foreach ($criteria as &$crit) {
+                $crit['components'] = $db->table('award_criterion_components')
+                    ->where('criterion_id', $crit['id'])
+                    ->orderBy('sort_order', 'ASC')
+                    ->get()->getResultArray();
+            }
+            unset($crit);
+
+            $award['criteria'] = $criteria;
         }
         unset($award);
 
@@ -227,10 +262,15 @@ class AwardEvaluationController extends Controller
         }
 
         $awardFilter = trim((string) ($this->request->getGet('award_id') ?? ''));
+        $cycleFilter = trim((string) ($this->request->getGet('cycle_id') ?? ''));
         $collegeFilter = trim((string) ($this->request->getGet('college_id') ?? ''));
         $sourceFilter = trim((string) ($this->request->getGet('source') ?? ''));
 
         $db = db_connect();
+        $cycle = $this->awardService->resolveActiveCycle($cycleFilter !== '' ? $cycleFilter : null);
+        if ($cycle === null) {
+            return $this->respond(['error' => ['code' => 'AWARD_CYCLE_REQUIRED', 'message' => 'A valid Award Cycle is required.']], 422);
+        }
 
         // 1. Portfolio-based evaluations
         $evalBuilder = $db->table('student_award_evaluations sae')
@@ -262,6 +302,7 @@ class AwardEvaluationController extends Controller
             ->join('student_program_enrollments spe', 'spe.student_profile_id = p.id AND spe.is_active = 1', 'left')
             ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
             ->join('colleges c', 'c.id = ap.college_id', 'left')
+            ->where('sae.cycle_id', $cycle['id'])
             ->orderBy('sae.potential_score', 'DESC');
 
         if ($awardFilter !== '' && $awardFilter !== 'all') {
@@ -304,6 +345,7 @@ class AwardEvaluationController extends Controller
             ->join('colleges c', 'c.id = ap.college_id', 'left')
             ->join('dean_assignments da', 'da.id = dsn.dean_assignment_id')
             ->join('profiles dean_p', 'dean_p.id = da.personnel_profile_id')
+            ->where('dsn.cycle_id', $cycle['id'])
             ->where('dsn.status', 'active')
             ->orderBy('dsn.nominated_at', 'DESC');
 
@@ -406,11 +448,17 @@ class AwardEvaluationController extends Controller
         }
 
         $db = db_connect();
+        $cycleId = trim((string) ($this->request->getGet('cycle_id') ?? ''));
+        $cycle = $this->awardService->resolveActiveCycle($cycleId !== '' ? $cycleId : null);
+        if ($cycle === null) {
+            return $this->respond(['error' => ['code' => 'AWARD_CYCLE_REQUIRED', 'message' => 'A valid Award Cycle is required.']], 422);
+        }
         $evaluation = $db->table('student_award_evaluations sae')
             ->select(['sae.*', 'ad.name AS award_name', 'ad.code AS award_code', 'p.full_name AS student_name', 'p.institutional_id AS student_id_number'])
             ->join('award_definitions ad', 'ad.id = sae.award_definition_id')
             ->join('profiles p', 'p.id = sae.student_profile_id')
             ->where('sae.award_definition_id', $awardId)
+            ->where('sae.cycle_id', $cycle['id'])
             ->where('sae.student_profile_id', $studentId)
             ->get()->getRowArray();
 
@@ -499,4 +547,418 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOMINATION_FAILED', 'message' => 'Failed to record nomination.']], 422);
         }
     }
+
+    /**
+     * GET /api/v1/awards/campus-journalism/students/{studentId}/score
+     * Computes authoritative 70-point score and explainability payload for Campus Journalism.
+     */
+    public function campusJournalismScore(string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $scoringService = new \App\Services\CampusJournalismScoringService();
+            $payload = $scoringService->calculateForStudent($studentId);
+
+            return $this->respond(['data' => $payload], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::campusJournalismScore] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'SCORING_FAILED', 'message' => 'Failed to calculate score: ' . $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/awards/campus-journalism/candidates
+     * Returns all qualifying potential candidates for the Campus Journalism Award.
+     */
+    public function campusJournalismCandidates(): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $scoringService = new \App\Services\CampusJournalismScoringService();
+            $candidates = $scoringService->listCampusJournalismCandidates();
+
+            return $this->respond([
+                'data' => [
+                    'award_code'                => 'CAMPUS_JOURNALISM_AWARD',
+                    'award_name'                => 'Campus Journalism Award',
+                    'total_candidates'          => count($candidates),
+                    'threshold_percent'         => 80.0,
+                    'threshold_raw'             => 56.0,
+                    'is_portfolio_computable'   => true,
+                    'official_rubric_max'       => 100.0,
+                    'computable_raw_max'        => 70.0,
+                    'human_evaluated_criteria'  => [
+                        [
+                            'criterion_code' => 'CRIT_JOURN_CHAR',
+                            'label'          => 'Moral Character / Exemplary Conduct',
+                            'max_points'     => 20.0,
+                            'status_label'   => 'Not automatically scored (OSAD Human Evaluation)',
+                        ],
+                        [
+                            'criterion_code' => 'CRIT_JOURN_INTV',
+                            'label'          => 'Panel Interview / Deliberation',
+                            'max_points'     => 10.0,
+                            'status_label'   => 'Not automatically scored (OSAD Human Evaluation)',
+                        ],
+                    ],
+                    'candidates'                => $candidates,
+                ],
+            ], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::campusJournalismCandidates] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'CANDIDATE_GENERATION_FAILED', 'message' => 'Failed to generate candidates: ' . $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students/{studentId}/eligibility
+     * Evaluates award-level eligibility gates (Graduation, Sex, Profile Active).
+     */
+    public function studentAwardEligibility(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $result = $this->eligibilityService->evaluateStudentEligibilityByIds($awardId, $studentId);
+            return $this->respond(['data' => $result], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::studentAwardEligibility] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'ELIGIBILITY_CHECK_FAILED', 'message' => 'Failed to evaluate award eligibility.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students-for-evaluation
+     * Lists all eligible students who possess at least one relevant verified portfolio record (Students for Evaluation).
+     */
+    public function studentsForEvaluation(string $awardId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $students = $this->mappingService->getStudentsForEvaluation($awardId);
+            return $this->respond([
+                'data' => [
+                    'award_id'          => $awardId,
+                    'total_students'    => count($students),
+                    'students'          => $students,
+                ],
+            ], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::studentsForEvaluation] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'STUDENTS_FOR_EVALUATION_FAILED', 'message' => 'Failed to retrieve students for evaluation.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students/{studentId}/evidence
+     * Returns the complete relevant verified evidence package for the student and award.
+     */
+    public function studentAwardEvidence(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $db = db_connect();
+            $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
+            $student = $db->table('profiles')->where('id', $studentId)->where('account_type', 'student')->get()->getRowArray();
+
+            if ($award === null) {
+                return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Award not found.']], 404);
+            }
+            if ($student === null) {
+                return $this->respond(['error' => ['code' => 'STUDENT_NOT_FOUND', 'message' => 'Student not found.']], 404);
+            }
+
+            $package = $this->mappingService->mapStudentEvidenceForAward($award, $student);
+            return $this->respond(['data' => $package], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::studentAwardEvidence] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'EVIDENCE_MAPPING_FAILED', 'message' => 'Failed to retrieve student award evidence package.']], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/osad/awards/{awardId}/students/{studentId}/score
+     * Scores a student for an award and returns full criterion score breakdown and evidence traceability.
+     */
+    public function scoreStudentAward(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $db = db_connect();
+            $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
+            $student = $db->table('profiles')->where('id', $studentId)->where('account_type', 'student')->get()->getRowArray();
+
+            if ($award === null) {
+                return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Award not found.']], 404);
+            }
+            if ($student === null) {
+                return $this->respond(['error' => ['code' => 'STUDENT_NOT_FOUND', 'message' => 'Student not found.']], 404);
+            }
+
+            $result = $this->scoringService->scoreStudentForAward($award, $student);
+            return $this->respond(['data' => $result], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::scoreStudentAward] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'SCORING_CALCULATION_FAILED', 'message' => 'Failed to calculate award score for student.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students/{studentId}/scoring-basis
+     * Returns the scoring basis and evidence traceability for a student and award.
+     */
+    public function studentScoringBasis(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $db = db_connect();
+            $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
+            $student = $db->table('profiles')->where('id', $studentId)->where('account_type', 'student')->get()->getRowArray();
+
+            if ($award === null) {
+                return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Award not found.']], 404);
+            }
+            if ($student === null) {
+                return $this->respond(['error' => ['code' => 'STUDENT_NOT_FOUND', 'message' => 'Student not found.']], 404);
+            }
+
+            $result = $this->scoringService->scoreStudentForAward($award, $student);
+            return $this->respond(['data' => $result], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::studentScoringBasis] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'SCORING_BASIS_FAILED', 'message' => 'Failed to retrieve scoring basis.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students/{studentId}/review
+     * Returns complete unified review workspace package for a student and award.
+     */
+    public function studentAwardReview(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile_id'] ?? null);
+            return $this->respond(['data' => $workspace], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::studentAwardReview] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'REVIEW_WORKSPACE_FAILED', 'message' => 'Failed to load review workspace. ' . $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * PATCH /api/v1/osad/awards/{awardId}/students/{studentId}/manual-criteria
+     * Saves draft or updates manual panel criteria with validation against official maximums.
+     */
+    public function saveManualCriteria(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        $payload = $this->request->getJSON(true) ?? [];
+        $manualScores = $payload['manual_scores'] ?? $payload['scores'] ?? [];
+        $notes = $payload['notes'] ?? null;
+        $finalize = (bool) ($payload['finalize'] ?? false);
+
+        try {
+            $result = $this->reviewService->saveManualCriteria(
+                $awardId,
+                $studentId,
+                $manualScores,
+                $notes,
+                $actor['profile_id'] ?? null,
+                $finalize
+            );
+            return $this->respond(['data' => $result], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'INVALID_MANUAL_SCORE', 'message' => $e->getMessage()]], 422);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::saveManualCriteria] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'MANUAL_SAVE_FAILED', 'message' => 'Failed to save manual criteria scores.']], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/osad/awards/{awardId}/students/{studentId}/finalize
+     * Validates that all required manual criteria are completed and sets evaluation state to EVALUATED.
+     */
+    public function finalizeStudentAwardEvaluation(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        $payload = $this->request->getJSON(true) ?? [];
+        $manualScores = $payload['manual_scores'] ?? $payload['scores'] ?? [];
+        $notes = $payload['notes'] ?? null;
+
+        try {
+            $result = $this->reviewService->saveManualCriteria(
+                $awardId,
+                $studentId,
+                $manualScores,
+                $notes,
+                $actor['profile_id'] ?? null,
+                true // Finalize
+            );
+            return $this->respond(['data' => $result], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'FINALIZATION_VALIDATION_FAILED', 'message' => $e->getMessage()]], 422);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::finalizeStudentAwardEvaluation] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'FINALIZATION_FAILED', 'message' => 'Failed to finalize evaluation.']], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/osad/awards/{awardId}/students/{studentId}/recalculate
+     * Recalculates Phase 5 portfolio scores for a student without wiping saved manual criteria.
+     */
+    public function recalculatePortfolioScore(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile_id'] ?? null);
+            return $this->respond([
+                'data' => [
+                    'award_id'          => $awardId,
+                    'student_id'        => $studentId,
+                    'portfolio_scoring' => $workspace['portfolio_scoring'],
+                    'message'           => 'Portfolio score recalculated successfully from verified master evidence.',
+                ],
+            ], 200);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::recalculatePortfolioScore] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'RECALCULATE_FAILED', 'message' => 'Failed to recalculate portfolio score.']], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/osad/awards/{awardId}/students/{studentId}/classify
+     * Evaluates and classifies a student against the 80% Potential Candidate threshold.
+     */
+    public function classifyPotentialCandidate(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $result = $this->candidateService->evaluatePotentialCandidateByIds($awardId, $studentId);
+            return $this->respond(['data' => $result], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'INVALID_ARGUMENT', 'message' => $e->getMessage()]], 422);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::classifyPotentialCandidate] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'CLASSIFICATION_FAILED', 'message' => 'Failed to classify potential candidate.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students/{studentId}/candidate-status
+     * Retrieves the current candidate classification status for a student.
+     */
+    public function studentCandidateStatus(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $result = $this->candidateService->evaluatePotentialCandidateByIds($awardId, $studentId);
+            return $this->respond(['data' => $result], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => $e->getMessage()]], 404);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::studentCandidateStatus] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'FETCH_STATUS_FAILED', 'message' => 'Failed to retrieve candidate status.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/potential-candidates
+     * Retrieves all students qualifying as Potential Candidates (>= 80% threshold).
+     */
+    public function listPotentialCandidates(string $awardId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $result = $this->candidateService->getPotentialCandidatesForAward($awardId);
+            return $this->respond(['data' => $result], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => $e->getMessage()]], 404);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::listPotentialCandidates] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'FETCH_CANDIDATES_FAILED', 'message' => 'Failed to list potential candidates.']], 500);
+        }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/evaluated-results
+     * Retrieves all evaluated student results (both Potential Candidates and Below Threshold).
+     */
+    public function listEvaluatedResults(string $awardId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        try {
+            $result = $this->candidateService->getEvaluatedResultsForAward($awardId);
+            return $this->respond(['data' => $result], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => $e->getMessage()]], 404);
+        } catch (Throwable $e) {
+            log_message('error', '[AwardEvaluationController::listEvaluatedResults] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'FETCH_RESULTS_FAILED', 'message' => 'Failed to list evaluated results.']], 500);
+        }
+    }
 }
+
+
+

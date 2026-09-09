@@ -110,6 +110,19 @@ class AccountLifecycleController extends Controller
             'occurred_at'      => date('Y-m-d H:i:s'),
         ]);
 
+        $db->table('audit_logs')->insert([
+            'id'               => $this->genUuid(),
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_code'       => 'ACCOUNT_SUSPENDED',
+            'category'         => 'lifecycle',
+            'target_type'      => 'profile',
+            'target_id'        => $targetId,
+            'outcome'          => 'success',
+            'ip_address'       => $this->request->getIPAddress(),
+            'details'          => sprintf('Account suspended by administrator. Reason: %s', $reason),
+            'safe_context'     => json_encode(['reason' => $reason, 'previous_status' => $currentStatus, 'new_status' => 'suspended']),
+        ]);
+
         return $this->respond([
             'data' => [
                 'message'    => 'Account suspended successfully.',
@@ -165,6 +178,19 @@ class AccountLifecycleController extends Controller
             'occurred_at'      => date('Y-m-d H:i:s'),
         ]);
 
+        $db->table('audit_logs')->insert([
+            'id'               => $this->genUuid(),
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_code'       => 'ACCOUNT_ARCHIVED',
+            'category'         => 'lifecycle',
+            'target_type'      => 'profile',
+            'target_id'        => $targetId,
+            'outcome'          => 'success',
+            'ip_address'       => $this->request->getIPAddress(),
+            'details'          => sprintf('Account archived by administrator. Reason: %s', $reason),
+            'safe_context'     => json_encode(['reason' => $reason, 'previous_status' => $currentStatus, 'new_status' => 'archived']),
+        ]);
+
         return $this->respond([
             'data' => [
                 'message'    => 'Account archived successfully.',
@@ -217,6 +243,19 @@ class AccountLifecycleController extends Controller
             'occurred_at'      => date('Y-m-d H:i:s'),
         ]);
 
+        $db->table('audit_logs')->insert([
+            'id'               => $this->genUuid(),
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_code'       => 'ACCOUNT_RESTORED',
+            'category'         => 'lifecycle',
+            'target_type'      => 'profile',
+            'target_id'        => $targetId,
+            'outcome'          => 'success',
+            'ip_address'       => $this->request->getIPAddress(),
+            'details'          => sprintf('Account restored to active status by %s', $actor['profile']['full_name']),
+            'safe_context'     => json_encode(['previous_status' => $currentStatus, 'new_status' => 'active']),
+        ]);
+
         return $this->respond([
             'data' => [
                 'message'    => 'Account restored successfully.',
@@ -224,6 +263,75 @@ class AccountLifecycleController extends Controller
                 'status'     => 'active',
             ],
         ], 200);
+    }
+
+    /**
+     * POST /api/v1/accounts/{id}/audit-delivery-action
+     * Audits credential copy or print events for administrative handoff tracking.
+     */
+    public function auditDeliveryAction(string $targetId)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+
+        $db = db_connect();
+        $target = $db->table('profiles')->where('id', $targetId)->get()->getRowArray();
+        if ($target === null) {
+            return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Target account not found.']], 404);
+        }
+
+        $authErr = $this->checkLifecycleAuthority($actor, $target);
+        if ($authErr !== null) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => $authErr]], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $action = trim((string) ($json['action'] ?? ''));
+
+        if (! in_array($action, ['credentials_copied', 'credential_slip_printed'], true)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ACTION', 'message' => 'Action must be credentials_copied or credential_slip_printed.']], 422);
+        }
+
+        $eventCode = ($action === 'credentials_copied') ? 'CREDENTIALS_COPIED' : 'CREDENTIAL_SLIP_PRINTED';
+        $details = ($action === 'credentials_copied')
+            ? 'One-time credentials copied to clipboard by administrator for delivery.'
+            : 'Credential slip generated and printed for physical handoff.';
+
+        $db->table('audit_logs')->insert([
+            'id'               => $this->genUuid(),
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_code'       => $eventCode,
+            'category'         => 'credential_delivery',
+            'target_type'      => 'profile',
+            'target_id'        => $targetId,
+            'outcome'          => 'success',
+            'ip_address'       => $this->request->getIPAddress(),
+            'details'          => $details,
+            'safe_context'     => json_encode([
+                'action'           => $action,
+                'institutional_id' => $target['institutional_id'] ?? '',
+                'target_role'      => $target['account_type'] ?? '',
+            ]),
+        ]);
+
+        $db->table('account_lifecycle_events')->insert([
+            'id'               => $this->genUuid(),
+            'profile_id'       => $targetId,
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_type'       => $action,
+            'previous_status'  => $target['status'] ?? 'active',
+            'new_status'       => $target['status'] ?? 'active',
+            'reason'           => $details,
+            'occurred_at'      => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['data' => [
+            'message'    => 'Delivery action recorded successfully.',
+            'event_code' => $eventCode,
+            'target_id'  => $targetId,
+        ]], 200);
     }
 
     /**
@@ -255,4 +363,60 @@ class AccountLifecycleController extends Controller
             ],
         ], 200);
     }
+
+    /**
+     * POST /api/v1/accounts/{id}/reset-temporary-password
+     * Direct Administrator-Initiated Password Reset for a Student or Personnel account.
+     */
+    public function resetTemporaryPassword(string $targetId)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+
+        $db = db_connect();
+        $target = $db->table('profiles')->where('id', $targetId)->get()->getRowArray();
+        if ($target === null) {
+            return $this->respond(['error' => ['code' => 'PROFILE_NOT_FOUND', 'message' => 'Target account not found.']], 404);
+        }
+
+        $authErr = $this->checkLifecycleAuthority($actor, $target);
+        if ($authErr !== null) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => $authErr]], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $verifiedIdentity = (bool) ($json['verified_identity'] ?? false);
+        if (! $verifiedIdentity) {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'IDENTITY_VERIFICATION_REQUIRED',
+                    'message' => 'You must confirm physical or authoritative institutional identity verification before executing a reset.',
+                ],
+            ], 422);
+        }
+
+        $ip = $this->request->getIPAddress();
+        $localAuth = new \App\Services\LocalAuthService();
+        $result = $localAuth->adminResetPassword($actor['profile']['id'], $targetId, $ip);
+
+        if (! $result['success']) {
+            return $this->respond(['error' => $result['error']], $result['status']);
+        }
+
+        $db->table('account_lifecycle_events')->insert([
+            'id'               => $this->genUuid(),
+            'profile_id'       => $targetId,
+            'actor_profile_id' => $actor['profile']['id'],
+            'event_type'       => 'temporary_password_reset',
+            'previous_status'  => $target['status'] ?? 'active',
+            'new_status'       => $target['status'] ?? 'active',
+            'reason'           => 'Administrative temporary password reset executed after identity verification',
+            'occurred_at'      => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['data' => $result['data']], 200);
+    }
 }
+

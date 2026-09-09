@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Users, X, Plus, Upload, Image as ImageIcon, Trash2, Info, AlertCircle, RefreshCw } from 'lucide-react'
+import { Users, X, Plus, Upload, Image as ImageIcon, Trash2, Info, AlertCircle, RefreshCw, Sparkles } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { useConfirmableClose } from '../../../hooks/useConfirmableClose'
+import { formatOrganizationNameSuggestion } from '../../../utils/nameFormatter'
 
 export const ORGANIZATION_CATEGORIES = [
   { value: 'academic_college', label: 'Academic / College-Based' },
@@ -248,6 +249,29 @@ export default function CreateOrganizationModal({
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
                   required
                 />
+                {(() => {
+                  const suggestion = formatOrganizationNameSuggestion(name)
+                  if (suggestion && suggestion !== name.trim() && name.trim().length > 0) {
+                    return (
+                      <div className="mt-1 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 flex items-center justify-between gap-2 text-[11px] animate-in fade-in duration-150">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Sparkles className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400 shrink-0" />
+                          <span className="text-slate-600 dark:text-slate-300 truncate">
+                            Suggested format: <strong className="text-emerald-800 dark:text-emerald-300 font-semibold">{suggestion}</strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setName(suggestion)}
+                          className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 text-[#16834a] dark:text-emerald-400 font-bold border border-emerald-200 dark:border-emerald-700 shadow-2xs hover:bg-emerald-50 transition cursor-pointer shrink-0"
+                        >
+                          Use Suggested Format
+                        </button>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
               </div>
 
               <div className="space-y-1">

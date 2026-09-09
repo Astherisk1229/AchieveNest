@@ -1,0 +1,15 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelReviewerRoutingG0.test.jsx src/controllers/__tests__/PersonnelReviewerAssignmentG1.test.jsx src/controllers/__tests__/PersonnelEvaluatorWorkspaceG2.test.jsx src/controllers/__tests__/PersonnelEvaluatorScoringG3.test.jsx src/controllers/__tests__/PersonnelPlanGEndToEndG4.test.jsx
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelReviewerAssignmentG1.test.jsx (17 tests) 17ms
+ ✓ src/controllers/__tests__/PersonnelEvaluatorWorkspaceG2.test.jsx (12 tests) 17ms
+ ✓ src/controllers/__tests__/PersonnelEvaluatorScoringG3.test.jsx (22 tests) 20ms
+ ✓ src/controllers/__tests__/PersonnelPlanGEndToEndG4.test.jsx (14 tests) 17ms
+ ✓ src/controllers/__tests__/PersonnelReviewerRoutingG0.test.jsx (15 tests) 12ms
+
+ Test Files  5 passed (5)
+      Tests  80 passed (80)
+   Start at  08:32:20
+   Duration  1.55s (transform 394ms, setup 76ms, collect 758ms, tests 83ms, environment 1ms, prepare 1.07s)

@@ -1,0 +1,21 @@
+# Phase G2 Evidence Package Checksum Manifest
+
+**Generated**: September 9, 2026
+**Algorithm**: SHA-256
+
+```
+da9159bdf5487535b900d61a062303d64a7681391472c6e09febe455659bb07d  administrators-workspace-verification.md
+4ebc524293ed1d0bf048aa71f3aa0ddcb6982299e57cf12a985768dc91b5d5eb  environment.md
+c6d9416cb082e54f7f6752538fbd603693b42b6f9ec60b78e63e8c695c585360  evidence-review-verification.md
+334534fb52ddf09725f734b7e64c7a311b44650e0e173f86d00c10641651c9fb  focused-test-output.txt
+1e32039eac3db7c1ff1b38556c6cb645b3d494f04bb5a9cae52f7427de2290c1  full-suite-output.txt
+b51cfda7319d09fa19ac85e0bec282f79c45ec872cc3c7176ec7dccda3a549b4  full-suite-result.json
+03919bb95ca3eea2c2326e04b82c397bd828ead613b7859af0effc75964f9cfa  judgment-item-display.md
+db4fbed0bfe175bbfbf6aaedf132a86ab8a381782ba68ee264d07e4e49ff763f  missing-evidence-state.md
+81ce0143db0a621ff2dc55bd47ba672d7738c183b48e7ab8caae1f3e50d42965  non-teaching-workspace-verification.md
+35c7b0fcb385648adb0d1b40fb625ea8fb0e427e08bc74e8558b2b8fc83ff450  plan-c-integration.md
+d6d31b5d2dcca579ba0e9f45c9b21955292939255bf9a3dda73cfca9a6b5a76d  plan-f-integration.md
+92a2672165f1c4aa688f3e0f2f38e7d7bfd83b6b5ef19d3c81e6fa4fc6466082  self-review-protection.md
+b4c37ec705151b894a6571761f0ed5ebdffdd57175733db9a88f9e1aa41b022f  snapshot-integrity-verification.md
+0b745fcbbea95bef139e83ea31e6305e1fedc9bafeb9dffd325b94762412da07  workspace-access-verification.md
+```

@@ -238,7 +238,7 @@ class PasswordResetRequestController extends Controller
                 'updated_at'   => date('Y-m-d H:i:s'),
             ]);
         } else {
-            $temporaryPassword = 'Temp_' . bin2hex(random_bytes(6)) . '!A1';
+            $temporaryPassword = ValidationHelper::generateTemporaryPassword();
             try {
                 $this->adminAuthService->updateUserPassword($targetUserId, $temporaryPassword);
             } catch (Throwable $e) {

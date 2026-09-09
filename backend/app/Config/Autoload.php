@@ -39,6 +39,7 @@ class Autoload extends AutoloadConfig
      */
     public $psr4 = [
         APP_NAMESPACE => APPPATH,
+        'Phase17Canonical' => APPPATH . 'Phase17Canonical',
     ];
 
     /**

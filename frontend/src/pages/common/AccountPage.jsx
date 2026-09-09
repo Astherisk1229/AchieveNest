@@ -21,10 +21,15 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import useUserProfile from '../../hooks/useUserProfile'
 import { supabase } from '../../config/supabase'
+import StudentInstitutionalProfileView from '../student/StudentInstitutionalProfileView'
 
 export default function AccountPage({ currentUser }) {
   const { user: authUser } = useAuth()
   const activeUser = currentUser || authUser
+
+  if (activeUser?.account_type === 'student') {
+    return <StudentInstitutionalProfileView currentUser={activeUser} />
+  }
 
   const {
     user,

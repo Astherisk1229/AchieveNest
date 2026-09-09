@@ -10,12 +10,7 @@ export default function PotentialAwardCandidatesPreview({
   onViewAll
 }) {
   const potentialCandidates = useMemo(() => {
-    const defaultCategories = awardCategories && awardCategories.length > 0 ? awardCategories : [
-      { id: 'cat-deans-list', title: "Dean's List", min_points: 50, weight_multiplier: 1.0 },
-      { id: 'cat-leadership', title: 'Leadership', min_points: 40, weight_multiplier: 1.2 },
-      { id: 'cat-sports', title: 'Sports', min_points: 30, weight_multiplier: 1.0 },
-      { id: 'cat-research', title: 'Research', min_points: 45, weight_multiplier: 1.5 }
-    ]
+    const defaultCategories = awardCategories && awardCategories.length > 0 ? awardCategories : []
 
     const activeDecisions = Array.isArray(candidateDecisions) && candidateDecisions.length > 0
       ? candidateDecisions

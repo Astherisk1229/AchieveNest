@@ -108,4 +108,20 @@ class GovernancePolicy
             || ($actor['role'] ?? '') === 'osad_admin'
             || ($actor['role'] ?? '') === 'osad';
     }
+
+    /**
+     * Determines whether an actor can manage Academic Structure (Colleges & Programs).
+     * Rule: OSAD Administrator ONLY.
+     */
+    public function canManageAcademicStructure(array $actor): bool
+    {
+        $accountType = $actor['profile']['account_type'] ?? ($actor['account_type'] ?? '');
+        $roles = $actor['roles'] ?? [];
+
+        return ($accountType === 'osad_admin' && in_array('osad_staff', $roles, true))
+            || in_array('osad', $roles, true)
+            || in_array('osad_admin', $roles, true)
+            || ($actor['role'] ?? '') === 'osad_admin'
+            || ($actor['role'] ?? '') === 'osad';
+    }
 }

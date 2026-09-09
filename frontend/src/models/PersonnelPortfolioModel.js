@@ -86,6 +86,18 @@ export default class PersonnelPortfolioModel {
   get hr_approved_date() { return this.#hr_approved_date }
   get audit_trail() { return [...this.#audit_trail] }
   get auditTrail() { return [...this.#audit_trail] }
+  get total_claimed_points() {
+    const rawA = this.#area_a_items.reduce((acc, i) => acc + (Number(i.claimed_points) || 0), 0)
+    const rawB = this.#area_b_items.reduce((acc, i) => acc + (Number(i.claimed_points) || 0), 0)
+    const rawC = this.#area_c_items.reduce((acc, i) => acc + (Number(i.claimed_points) || 0), 0)
+    return rawA + rawB + rawC
+  }
+  get total_verified_points() {
+    const rawA = this.#area_a_items.reduce((acc, i) => acc + (Number(i.verified_points) || 0), 0)
+    const rawB = this.#area_b_items.reduce((acc, i) => acc + (Number(i.verified_points) || 0), 0)
+    const rawC = this.#area_c_items.reduce((acc, i) => acc + (Number(i.verified_points) || 0), 0)
+    return rawA + rawB + rawC
+  }
 
   // Setters / Line Item Mutators
   set years_of_service(value) {
@@ -110,6 +122,12 @@ export default class PersonnelPortfolioModel {
     else if (areaKey === 'C') this.#area_c_items.push(newItem)
 
     return newItem
+  }
+
+  clearAllItems() {
+    this.#area_a_items = []
+    this.#area_b_items = []
+    this.#area_c_items = []
   }
 
   updateItemVerification(areaKey, itemId, verifiedPoints, isProofVerified, remarks = '') {

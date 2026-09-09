@@ -60,9 +60,9 @@ class VerifyPhase11ReferenceData extends BaseCommand
         $subcatCount = (int) $db->table('portfolio_subcategories')->countAllResults();
         $runTest('REF-006', '57 Portfolio Subcategories present in database', $subcatCount === 57, "Found: {$subcatCount}");
 
-        // REF-007: 15 Award Definitions
-        $awardCount = (int) $db->table('award_definitions')->countAllResults();
-        $runTest('REF-007', '15 Award Definitions present in database', $awardCount === 15, "Found: {$awardCount}");
+        // REF-007: 15 Active Award Definitions in Authoritative Baseline
+        $awardCount = (int) $db->table('award_definitions')->where('status', 'active')->countAllResults();
+        $runTest('REF-007', '15 Active Award Definitions present in database', $awardCount === 15, "Found: {$awardCount}");
 
         // REF-008: No Graduate School
         $gradColleges = (int) $db->table('colleges')->like('LOWER(name)', 'graduate')->countAllResults();
@@ -151,7 +151,7 @@ class VerifyPhase11ReferenceData extends BaseCommand
         $inactiveAdmin = (int) $db->table('administrative_units')->where('status !=', 'active')->countAllResults();
         $inactiveCats = (int) $db->table('portfolio_categories')->where('status !=', 'active')->countAllResults();
         $inactiveSubcats = (int) $db->table('portfolio_subcategories')->where('status !=', 'active')->countAllResults();
-        $inactiveAwards = (int) $db->table('award_definitions')->where('status !=', 'active')->countAllResults();
+        $inactiveAwards = (int) $db->table('award_definitions')->where('is_catalog_visible', 1)->where('status !=', 'active')->countAllResults();
 
         $allActive = ($inactiveColleges + $inactiveProgs + $inactiveAdmin + $inactiveCats + $inactiveSubcats + $inactiveAwards) === 0;
         $runTest('REF-018', 'All permanent reference rows operational and active', $allActive);

@@ -2,12 +2,15 @@ import React, { useState } from 'react'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { useNavigate } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
+import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import SubmissionVersionHistoryModal from './modals/SubmissionVersionHistoryModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
-import SecurityController from '../../controllers/SecurityController.js'
-import OcrScanController from '../../controllers/OcrScanController.js'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
+import PersonnelAchievementController from '../../controllers/PersonnelAchievementController'
+import personnelAccomplishmentService from '../../services/personnelAccomplishmentService'
+import portfolioConfigurationService from '../../services/portfolioConfigurationService'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 import {
   Plus,
@@ -33,7 +36,12 @@ import {
   UploadCloud,
   Scan,
   Share2,
-  User
+  User,
+  ExternalLink,
+  Award,
+  History,
+  GitCommit,
+  Lock
 } from 'lucide-react'
 
 export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
@@ -42,22 +50,62 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const activeUser = propUser || authUser || getCurrentUser() || {
     full_name: 'Dr. Maria Santos',
     employee_id: 'EMP-2021-0842',
-    personnel_classification: 'academic', college_name: 'College of Information Technology', program_affiliations: [{ code: 'BSIT' }],
+    personnel_classification: 'academic',
+    college_name: 'College of Information Technology',
+    program_affiliations: [{ code: 'BSIT' }],
     active_role_context: 'personnel'
   }
 
   const {
     portfolio,
     totals,
+    latestSubmission,
+    submissionHistory,
+    versionNumber,
+    returnFeedback,
+    isLocked,
+    submissionStatus,
+    loading,
     error,
-    addItem,
-    removeItem,
-    updateItem,
+    reload,
+    submitPortfolio,
+    resubmitPortfolio,
     submitToDean,
+    loadSubmissionHistory,
     autoPopulateFromVault
-  } = usePersonnelPortfolio(activeUser.employee_id || 'EMP-2021-0842')
+  } = usePersonnelPortfolio(activeUser.employee_id || 'EMP-2021-0842', {
+    personnel_name: activeUser.full_name,
+    academic_rank: activeUser.academic_rank || activeUser.designation,
+    college_id: activeUser.college_id || activeUser.college_code,
+    college_name: activeUser.college_name,
+    program_affiliations: activeUser.program_affiliations,
+    years_of_service: activeUser.years_of_service || activeUser.year_level
+  })
 
-  // Active Workspace Tab ('A' | 'B' | 'C' | 'INFO')
+  // Dynamic Workspace Rubric Configuration State
+  const [workspaceConfig, setWorkspaceConfig] = useState(null)
+  const [configLoading, setConfigLoading] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    async function loadConfig() {
+      try {
+        setConfigLoading(true)
+        const res = await portfolioConfigurationService.fetchWorkspaceConfiguration()
+        if (mounted && res?.data) {
+          setWorkspaceConfig(res.data)
+        }
+      } catch (err) {
+        console.warn('Could not load dynamic workspace configuration, using fallback rubric:', err.message)
+      } finally {
+        if (mounted) setConfigLoading(false)
+      }
+    }
+    loadConfig()
+    return () => { mounted = false }
+  }, [activeUser?.id, activeUser?.employee_id])
+
+  // Active Workspace Tab ('A' | 'B' | 'C')
   const [activeArea, setActiveArea] = useState('A')
 
   // Filter States
@@ -67,194 +115,100 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
   // Modals State
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState(null)
+  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [editingAccomplishment, setEditingAccomplishment] = useState(null)
+  const [initialSubmissionCategory, setInitialSubmissionCategory] = useState('A.1 Degree/s')
 
   // Feedback Toast & Error State
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [submitError, setSubmitError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Form Fields State
-  const [itemCategory, setItemCategory] = useState('')
-  const [itemSubCategory, setItemSubCategory] = useState('')
-  const [itemTitle, setItemTitle] = useState('')
-  const [itemScope, setItemScope] = useState('Local')
-  const [itemPoints, setItemPoints] = useState('5')
-  const [itemProofName, setItemProofName] = useState('')
-  const [modalFormError, setModalFormError] = useState('')
-
-  // Category Tailored Fields State for Portfolio Edit Modal
-  const [degreeLevel, setDegreeLevel] = useState('Ph.D. Degree Holder')
-  const [institution, setInstitution] = useState('')
-  const [orgPosition, setOrgPosition] = useState('Member')
-  const [organizerVenue, setOrganizerVenue] = useState('')
-  const [speakerRole, setSpeakerRole] = useState('Keynote Speaker')
-  const [publisherIssn, setPublisherIssn] = useState('')
-  const [itemDateAchieved, setItemDateAchieved] = useState('2023 - 2024')
-
-  // OCR Scan States for Add/Edit Modal
-  const [isModalScanning, setIsModalScanning] = useState(false)
-  const [modalOcrResult, setModalOcrResult] = useState(null)
-  const [modalOcrBadges, setModalOcrBadges] = useState({})
-  const [modalFileObj, setModalFileObj] = useState(null)
-
-  const handleModalFileScan = async (file) => {
-    if (!file) return
-    setModalFormError('')
-    const validation = await SecurityController.validateFileUpload(file)
-    if (!validation.isValid) {
-      setModalFormError(validation.error)
-      return
-    }
-    const cleanFile = new File([file], SecurityController.sanitizeFilename(file.name), { type: file.type })
-    setModalFileObj(cleanFile)
-    setItemProofName(cleanFile.name)
-
-    setIsModalScanning(true)
-    try {
-      const response = await OcrScanController.processDocumentScan(cleanFile)
-      setIsModalScanning(false)
-      if (response.success && response.result) {
-        const res = response.result
-        setModalOcrResult(res)
-        const fields = res.extractedFields
-
-        const newBadges = {}
-        if (res.detectedCategory) {
-          const targetArea = ['A', 'B', 'C'].includes(activeArea) ? activeArea : 'A'
-          const hierarchy = RankingCriteriaModel.CATEGORIES_HIERARCHY[targetArea]
-          const availableCats = hierarchy ? Object.keys(hierarchy.categories) : []
-          const matched = availableCats.find(c => c.toLowerCase().includes(res.detectedCategory.toLowerCase().substring(0, 3)))
-          if (matched) {
-            setItemCategory(matched)
-            newBadges.category = true
-          }
-        }
-
-        if (fields.title) {
-          setItemTitle(fields.title)
-          newBadges.title = true
-        }
-        if (fields.scopeLevel) {
-          setItemScope(fields.scopeLevel.includes('House') || fields.scopeLevel.includes('Local') ? 'Local' : fields.scopeLevel)
-          newBadges.scope = true
-        }
-
-        setModalOcrBadges(newBadges)
-      }
-    } catch (err) {
-      setIsModalScanning(false)
-      setModalFormError('Failed to scan document with OCR.')
-    }
-  }
-
-  const isEditable = portfolio?.status === 'DRAFT' || portfolio?.status === 'RETURNED_TO_PERSONNEL'
+  const activeStatus = (portfolio?.status || latestSubmission?.status || 'draft').toLowerCase()
+  const isReturnedForRevision = activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel'
+  const isCurrentlyLocked = !isReturnedForRevision && (isLocked || ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed'].includes(activeStatus))
+  const isEditable = !isCurrentlyLocked && (activeStatus === 'draft' || isReturnedForRevision)
 
   const showToast = (msg) => {
     setFeedbackMessage(msg)
     setTimeout(() => setFeedbackMessage(''), 3500)
   }
 
-  // Open Add Item Modal for targeted area
-  const handleOpenAddModal = (areaKey = activeArea) => {
-    const targetArea = ['A', 'B', 'C'].includes(areaKey) ? areaKey : 'A'
-    const hierarchy = RankingCriteriaModel.CATEGORIES_HIERARCHY[targetArea]
-    const mainCats = hierarchy ? Object.keys(hierarchy.categories) : []
-    const firstCat = mainCats[0] || ''
-    const firstSub = hierarchy?.categories[firstCat]?.subCategories[0] || { name: '', defaultPoints: 5 }
+  // Open Canonical Plan A Submission Modal for Targeted Area
+  const handleOpenAddAccomplishment = (areaKey = activeArea) => {
+    const defaultCat = areaKey === 'A'
+      ? 'A.1 Degree/s'
+      : areaKey === 'B'
+        ? 'B.1 Guest Lecturer / Consultant / Judge'
+        : 'C.1 Involvement in extra-curricular activities'
 
-    setEditingItem(null)
-    setItemCategory(firstCat)
-    setItemSubCategory(firstSub.name)
-    setItemTitle('')
-    setItemScope('Local')
-    setItemPoints(String(firstSub.defaultPoints))
-    setItemProofName('')
-    setModalFormError('')
-    setModalOcrResult(null)
-    setModalOcrBadges({})
-    setModalFileObj(null)
-    setIsAddModalOpen(true)
+    setEditingAccomplishment(null)
+    setInitialSubmissionCategory(defaultCat)
+    setIsSubmissionModalOpen(true)
   }
 
-  // Open Edit Item Modal
-  const handleOpenEditModal = (item) => {
-    setEditingItem(item)
-    setItemCategory(item.category || '')
-    setItemSubCategory('')
-    setItemTitle(item.title || '')
-    setItemScope(item.scope_level || 'Local')
-    setItemPoints(String(item.claimed_points || 5))
-    setItemProofName(item.proof_file_name || '')
-    setModalFormError('')
-    setIsAddModalOpen(true)
+
+  // Handle Canonical Achievement Save / Handoff
+  const handleSaveAccomplishment = async (newEntry, file) => {
+    try {
+      if (editingAccomplishment) {
+        await personnelAccomplishmentService.updateAccomplishment(editingAccomplishment.id, newEntry)
+        if (file) {
+          await personnelAccomplishmentService.uploadEvidence(editingAccomplishment.id, file)
+        }
+        showToast(`Accomplishment "${newEntry.title}" updated successfully!`)
+      } else {
+        await PersonnelAchievementController.addAchievement(newEntry, file)
+        showToast(`Accomplishment "${newEntry.title}" added to canonical repository and reflected in portfolio!`)
+      }
+      setIsSubmissionModalOpen(false)
+      reload()
+      return true
+    } catch (err) {
+      showToast(`Error: ${err.message || 'Failed to save accomplishment'}`)
+      return false
+    }
   }
 
-  const handleMainCategoryChange = (catName) => {
-    setItemCategory(catName)
-    const targetArea = ['A', 'B', 'C'].includes(activeArea) ? activeArea : 'A'
-    const hierarchy = RankingCriteriaModel.CATEGORIES_HIERARCHY[targetArea]
-    const firstSub = hierarchy?.categories[catName]?.subCategories[0] || { name: '', defaultPoints: 5 }
-    setItemSubCategory(firstSub.name)
-    setItemPoints(String(firstSub.defaultPoints))
+  // Handle Canonical Accomplishment Removal
+  const handleRemoveLineItem = async (itemId, itemTitleStr) => {
+    if (window.confirm(`Are you sure you want to remove "${itemTitleStr}" from your repository and portfolio draft?`)) {
+      try {
+        await personnelAccomplishmentService.deleteAccomplishment(itemId)
+        showToast(`Removed "${itemTitleStr}".`)
+        reload()
+      } catch (err) {
+        showToast(`Failed to remove accomplishment: ${err.message}`)
+      }
+    }
   }
 
-  const handleSaveItemSubmit = (e) => {
-    e.preventDefault()
-    if (!itemTitle.trim()) {
-      setModalFormError('Please enter an accomplishment title.')
+  const handleAutoPopulate = async () => {
+    const res = await autoPopulateFromVault()
+    if (res.success) {
+      showToast(`Vault Sync: Synced accomplishments from canonical repository into portfolio draft!`)
+    } else {
+      showToast(`Sync Notice: ${res.message || 'Vault already up to date.'}`)
+    }
+  }
+
+  // Handle Real Evidence Download
+  const handleDownloadEvidence = async (evidenceId, proofFileName) => {
+    if (!evidenceId) {
+      showToast('No electronic evidence ID linked to this record.')
       return
     }
-
-    const targetArea = ['A', 'B', 'C'].includes(activeArea) ? activeArea : 'A'
-    const fullCategoryLabel = itemSubCategory ? `${itemCategory} • ${itemSubCategory}` : itemCategory
-
-    if (editingItem) {
-      const ok = updateItem(targetArea, editingItem.id, {
-        category: fullCategoryLabel,
-        title: itemTitle.trim(),
-        scope_level: itemScope,
-        claimed_points: Number(itemPoints) || 0,
-        proof_file_name: itemProofName.trim()
-      })
-      if (ok) {
-        showToast(`Updated "${itemTitle.trim()}" successfully!`)
-        setIsAddModalOpen(false)
-      }
-    } else {
-      const ok = addItem(targetArea, {
-        category: fullCategoryLabel,
-        title: itemTitle.trim(),
-        scope_level: itemScope,
-        claimed_points: Number(itemPoints) || 0,
-        proof_file_name: itemProofName.trim()
-      })
-      if (ok) {
-        showToast(`Added "${itemTitle.trim()}" to Area ${targetArea}!`)
-        setIsAddModalOpen(false)
-      }
+    try {
+      showToast('Downloading evidence document...')
+      await personnelAccomplishmentService.downloadEvidenceBlob(evidenceId, proofFileName || 'evidence.pdf')
+    } catch (err) {
+      showToast(`Failed to download evidence: ${err.message}`)
     }
   }
 
-  const handleRemoveLineItem = (itemId, itemTitleStr) => {
-    if (window.confirm(`Are you sure you want to remove "${itemTitleStr}" from your portfolio draft?`)) {
-      const targetArea = ['A', 'B', 'C'].includes(activeArea) ? activeArea : 'A'
-      const ok = removeItem(targetArea, itemId)
-      if (ok) {
-        showToast(`Removed "${itemTitleStr}".`)
-      }
-    }
-  }
-
-  const handleAutoPopulate = () => {
-    const res = autoPopulateFromVault()
-    if (res.success) {
-      showToast('Vault Sync: Accomplishments imported from repository into portfolio draft!')
-    }
-  }
-
-  // Pre-submission validation: Check for missing proof attachments across all areas
-  const handleSubmitPortfolio = () => {
+  // Pre-submission validation: Check for missing proof attachments and execute real server submission or resubmission
+  const handleSubmitPortfolio = async () => {
     setSubmitError('')
 
     const allItems = [
@@ -263,18 +217,44 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       ...(portfolio?.area_c_items || [])
     ]
 
-    const missingProofItems = allItems.filter(i => !i.proof_file_name || !i.proof_file_name.trim())
-
-    if (missingProofItems.length > 0) {
-      setSubmitError(`Validation Error: ${missingProofItems.length} accomplishment record(s) are missing documentary proof attachments. Please upload proof before submitting to Dean.`)
+    if (allItems.length === 0) {
+      setSubmitError('Cannot submit an empty portfolio. Please add at least one accomplishment with proof.')
       return
     }
 
-    const res = submitToDean()
-    if (res.success) {
-      showToast('Portfolio draft submitted to HR for verification!')
-    } else {
-      setSubmitError(res.message || 'Submission failed.')
+    const missingProofItems = allItems.filter(i => !i.proof_file_name || !i.proof_file_name.trim())
+
+    if (missingProofItems.length > 0) {
+      setSubmitError(`Validation Error: ${missingProofItems.length} accomplishment record(s) are missing documentary proof attachments. Please upload proof before submitting.`)
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      let res
+      if (isReturnedForRevision) {
+        res = await resubmitPortfolio({
+          academicYear: '2025-2026',
+          tenureYears: activeUser.years_of_service || 8
+        })
+      } else {
+        res = await submitPortfolio({
+          academicYear: '2025-2026',
+          tenureYears: activeUser.years_of_service || 8
+        })
+      }
+
+      if (res.success) {
+        const vNum = res.version_number ? ` (Version ${res.version_number})` : ''
+        showToast(`Portfolio successfully ${isReturnedForRevision ? 'resubmitted' : 'submitted'} for evaluation!${vNum}`)
+        reload()
+      } else {
+        setSubmitError(res.message || 'Submission failed.')
+      }
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to submit portfolio.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -297,14 +277,10 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     return matchesCat && matchesScope && matchesSearch
   })
 
-  // Calculated Area Point Caps & Percentages
-  const areaAPts = totals?.areaA?.accepted || totals?.areaA?.claimed || 0
-  const areaBPts = totals?.areaB?.accepted || totals?.areaB?.claimed || 0
-  const areaCPts = totals?.areaC?.accepted || totals?.areaC?.claimed || 0
-
-  const areaAPct = Math.min(100, (areaAPts / 70) * 100)
-  const areaBPct = Math.min(100, (areaBPts / 50) * 100)
-  const areaCPct = Math.min(100, (areaCPts / 40) * 100)
+  // Calculated Area Point Caps & Percentages (Advisory Claimed Points)
+  const areaAPts = totals?.claimed?.rawA ?? (totals?.areaA?.claimed || 0)
+  const areaBPts = totals?.claimed?.rawB ?? (totals?.areaB?.claimed || 0)
+  const areaCPts = totals?.claimed?.rawC ?? (totals?.areaC?.claimed || 0)
 
   const isAMaxed = areaAPts >= 70
   const isBMaxed = areaBPts >= 50
@@ -334,6 +310,99 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{submitError}</span>
           </div>
+        )}        {/* Lock Notification Notice */}
+        {isCurrentlyLocked && (
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-bold text-xs flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <div className="font-extrabold text-sm">Portfolio Submitted & Locked Under Review</div>
+                <div className="text-xs font-medium text-amber-800 dark:text-amber-300 mt-0.5">
+                  Your portfolio snapshot is currently in <strong>{portfolio?.status || latestSubmission?.status || 'submitted'}</strong> state and is immutable. Personnel may view submitted records, but no changes can be made while under evaluation.
+                </div>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 shrink-0">
+              Read-Only
+            </span>
+          </div>
+        )}
+
+        {/* Returned for Revision Feedback Notice */}
+        {isReturnedForRevision && (
+          <div className="p-5 rounded-3xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-200 shadow-xs space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-black text-sm text-rose-900 dark:text-rose-100 flex items-center gap-2">
+                    <span>Portfolio Returned for Revision</span>
+                    {returnFeedback?.returned_at && (
+                      <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-400">
+                        • {new Date(returnFeedback.returned_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs font-semibold text-rose-800 dark:text-rose-300">
+                    Reviewer: <strong>{returnFeedback?.reviewer_name || 'Authorized Reviewer'}</strong>
+                  </div>
+                </div>
+              </div>
+              <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-100 shrink-0">
+                Revision Required
+              </span>
+            </div>
+
+            {/* Overall Reason */}
+            <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-rose-200 dark:border-rose-900 space-y-1">
+              <div className="text-[10px] font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
+                Overall Return Reason
+              </div>
+              <p className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                {returnFeedback?.reason || portfolio?.return_reason || 'Revisions requested by reviewer.'}
+              </p>
+            </div>
+
+            {/* Required Corrections */}
+            {returnFeedback?.required_corrections && (
+              <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-rose-200 dark:border-rose-900 space-y-1">
+                <div className="text-[10px] font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
+                  Required Corrections & Action Items
+                </div>
+                <p className="text-xs font-medium text-slate-800 dark:text-slate-200 whitespace-pre-line">
+                  {returnFeedback.required_corrections}
+                </p>
+              </div>
+            )}
+
+            {/* Item-Level Deficiencies */}
+            {Array.isArray(returnFeedback?.item_deficiencies) && returnFeedback.item_deficiencies.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="text-[10px] font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-wider">
+                  Item-Level Deficiency Remarks ({returnFeedback.item_deficiencies.length})
+                </div>
+                <div className="space-y-2">
+                  {returnFeedback.item_deficiencies.map((def, idx) => (
+                    <div key={def.evaluation_item_id || idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 text-xs">
+                      <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-mono text-[10px]">
+                          {def.criterion_code || 'Item'}
+                        </span>
+                        <span>{def.criterion_title || `Deficiency #${idx + 1}`}</span>
+                      </div>
+                      <div className="text-rose-700 dark:text-rose-300 font-medium mt-1">
+                        "{def.comment}"
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="text-[11px] text-rose-800 dark:text-rose-300 font-medium">
+              💡 <em>Your working portfolio draft below is reopened for editing. You may add, edit, or remove accomplishments and proof files as requested before resubmission.</em>
+            </div>
+          </div>
         )}
 
         {/* ================= 1. PAGE TOP SUMMARY & PORTFOLIO DOSSIER BANNER ================= */}
@@ -345,19 +414,42 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#E7F3E9] text-[#17663B] border border-[#69A97C]">
                 Personnel Dossier Workbench
               </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3]' :
-                  portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]' :
-                    portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]'
-                }`}>
-                STATUS: {portfolio?.status || 'DRAFT'}
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                activeStatus === 'completed' || activeStatus === 'hr_approved' ? 'bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3]' :
+                activeStatus === 'in_evaluation' || activeStatus === 'endorsed_to_hr' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                activeStatus === 'ready_for_finalization' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                activeStatus === 'submitted' ? 'bg-[#FFF8E7] text-[#B65F00] border border-[#E7A51D]' :
+                activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                'bg-slate-100 text-slate-700 border border-slate-300'
+              }`}>
+                STATUS: {portfolio?.status || latestSubmission?.status || 'DRAFT'}
               </span>
               <span className="text-xs font-bold text-[#245F42] hidden md:inline">
                 Evaluation Dossier • AY 2025-2026
               </span>
             </div>
 
-            {/* Three Primary Portfolio Actions */}
+            {/* Primary Portfolio Actions */}
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Submission History Action */}
+              <button
+                type="button"
+                onClick={() => {
+                  loadSubmissionHistory()
+                  setIsHistoryModalOpen(true)
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F1F7F2] text-[#183B2A] font-extrabold text-xs border border-[#DCE6DF] flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title="View point-in-time submission versions and feedback history"
+              >
+                <History className="w-3.5 h-3.5 text-[#159552]" />
+                <span>History</span>
+                {submissionHistory.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+                    v{versionNumber}
+                  </span>
+                )}
+              </button>
+
               {/* Action 1: Edit Profile */}
               <button
                 type="button"
@@ -368,15 +460,24 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 <span>Edit Profile</span>
               </button>
 
-              {/* Action 2: Manage Portfolio Draft */}
+              {/* Action 2: Manage Portfolio Draft / Resubmission */}
               {isEditable && (
                 <button
                   type="button"
                   onClick={handleSubmitPortfolio}
-                  className="px-4 py-1.5 rounded-xl bg-[#159552] hover:bg-[#117A43] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                  disabled={isSubmitting}
+                  className={`px-4 py-1.5 rounded-xl disabled:opacity-50 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer ${
+                    isReturnedForRevision
+                      ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400/50'
+                      : 'bg-[#159552] hover:bg-[#117A43]'
+                  }`}
                 >
                   <ShieldCheck className="w-4 h-4 text-white" />
-                  <span>Manage Portfolio Draft</span>
+                  <span>
+                    {isSubmitting
+                      ? (isReturnedForRevision ? 'Resubmitting...' : 'Submitting...')
+                      : (isReturnedForRevision ? `Resubmit Portfolio (v${versionNumber + 1})` : 'Submit Portfolio')}
+                  </span>
                 </button>
               )}
 
@@ -397,35 +498,67 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             </div>
           </div>
 
-          {/* Rebalanced Workflow Cards (No tenure / duplicate counters) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Workflow Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Attached Proof Certificates Card */}
             <div className="p-3.5 rounded-2xl bg-white border border-[#D9E5DC] space-y-1">
               <div className="text-[10px] font-extrabold text-[#245F42] uppercase tracking-wider">
-                Document Attachments
+                Canonical Achievements
               </div>
               <div className="text-xl font-black text-[#102A43]">
-                {[...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])].filter(i => i.proof_file_name).length} <span className="text-xs font-semibold text-[#64748B]">Proof PDFs Attached</span>
+                {[...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])].length} <span className="text-xs font-semibold text-[#64748B]">Records Reflected</span>
               </div>
               <div className="text-[10px] font-medium text-[#245F42]">
-                Verified scanned proof documents in Areas A, B & C
+                Reflecting live from Plan A achievement repository
+              </div>
+            </div>
+
+            {/* Advisory Claimed Points Card */}
+            <div className="p-3.5 rounded-2xl bg-white border border-[#D9E5DC] space-y-1">
+              <div className="text-[10px] font-extrabold text-[#245F42] uppercase tracking-wider">
+                Advisory Claimed Points
+              </div>
+              <div className="text-xl font-black text-[#102A43]">
+                {areaAPts + areaBPts + areaCPts} <span className="text-xs font-semibold text-[#64748B]">Claimed Pts</span>
+              </div>
+              <div className="text-[10px] font-medium text-amber-700">
+                Advisory only • Official scoring determined by Evaluator
               </div>
             </div>
 
             {/* Submission Status Card */}
-            <div className={`p-3.5 rounded-2xl border space-y-1 ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#E7F5EA] border-[#BBDCC3]' : 'bg-[#FFF8E7] border-[#E7A51D]'
+            <div className={`p-3.5 rounded-2xl border space-y-1 ${
+              activeStatus === 'completed' || activeStatus === 'hr_approved' ? 'bg-[#E7F5EA] border-[#BBDCC3]' :
+              activeStatus === 'in_evaluation' || activeStatus === 'endorsed_to_hr' ? 'bg-blue-50 border-blue-200' :
+              activeStatus === 'ready_for_finalization' ? 'bg-purple-50 border-purple-200' :
+              activeStatus === 'submitted' ? 'bg-[#FFF8E7] border-[#E7A51D]' :
+              activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel' ? 'bg-rose-50 border-rose-200' :
+              'bg-slate-50 border-slate-200'
+            }`}>
+              <div className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                activeStatus === 'completed' || activeStatus === 'hr_approved' ? 'text-[#17663B]' :
+                activeStatus === 'in_evaluation' || activeStatus === 'endorsed_to_hr' ? 'text-blue-700' :
+                activeStatus === 'ready_for_finalization' ? 'text-purple-700' :
+                activeStatus === 'submitted' ? 'text-[#B65F00]' :
+                activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel' ? 'text-rose-700' :
+                'text-slate-600'
               }`}>
-              <div className={`text-[10px] font-extrabold uppercase tracking-wider ${portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
-                }`}>
                 Submission Status
               </div>
-              <div className={`text-xl font-black truncate ${portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
-                }`}>
-                {portfolio?.status || 'DRAFT'}
+              <div className={`text-xl font-black truncate uppercase ${
+                activeStatus === 'completed' || activeStatus === 'hr_approved' ? 'text-[#17663B]' :
+                activeStatus === 'in_evaluation' || activeStatus === 'endorsed_to_hr' ? 'text-blue-700' :
+                activeStatus === 'ready_for_finalization' ? 'text-purple-700' :
+                activeStatus === 'submitted' ? 'text-[#B65F00]' :
+                activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel' ? 'text-rose-700' :
+                'text-slate-800'
+              }`}>
+                {portfolio?.status || latestSubmission?.status || 'DRAFT'}
               </div>
-              <div className={`text-[10px] font-medium ${portfolio?.status === 'HR_APPROVED' ? 'text-[#17663B]' : 'text-[#B65F00]'
-                }`}>
-                Formal Faculty Dossier State
+              <div className={`text-[10px] font-medium ${
+                isCurrentlyLocked ? 'text-amber-700 font-semibold' : 'text-slate-500'
+              }`}>
+                {isCurrentlyLocked ? 'Submitted & Locked Under Review' : 'Working Draft (Editable)'}
               </div>
             </div>
           </div>
@@ -459,151 +592,225 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           </button>
         </div>
 
+        {/* Backend Error State Banner */}
+        {error && (
+          <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>Failed to load achievements from repository: {error}</span>
+            </div>
+            <button
+              type="button"
+              onClick={reload}
+              className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-extrabold transition cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Dynamic Scale & Version Banner */}
+        {workspaceConfig?.scale && (
+          <div className="px-4 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-700 dark:text-slate-200">Official Rubric:</span>
+              <span className="font-extrabold text-[#17663B] dark:text-emerald-400">{workspaceConfig.scale.title}</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                v{workspaceConfig.version?.version_number} ({workspaceConfig.evaluation_cycle_id})
+              </span>
+            </div>
+            <div className="text-[11px] font-semibold text-slate-500">
+              Total Max: <strong>{workspaceConfig.scale.total_max_points} pts</strong> • Passing: <strong>{workspaceConfig.scale.passing_score} pts</strong>
+            </div>
+          </div>
+        )}
+
         {/* ================= 3. WORKSPACE CATEGORY TABS ================= */}
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-3 scrollbar-none">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeArea === 'A'}
-            onClick={() => { setActiveArea('A'); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-            className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer ${activeArea === 'A' ? 'is-active' : ''}`}
-          >
-            <GraduationCap className="w-4 h-4 area-tab-icon" />
-            <span>Area A: Prof. Development</span>
-            <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
-              {(portfolio?.area_a_items?.length || 3)} Entries
-            </span>
-          </button>
+          {(workspaceConfig?.areas || [
+            { area_code: 'A', name: 'Area A: Professional Development', max_points: 70 },
+            { area_code: 'B', name: 'Area B: Productivity', max_points: 50 },
+            { area_code: 'C', name: 'Area C: Service & Leadership', max_points: 40 }
+          ]).map((area) => {
+            const isSelected = activeArea === area.area_code
+            const itemCount = area.area_code === 'A'
+              ? (portfolio?.area_a_items?.length || 0)
+              : area.area_code === 'B'
+                ? (portfolio?.area_b_items?.length || 0)
+                : (portfolio?.area_c_items?.length || 0)
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeArea === 'B'}
-            onClick={() => { setActiveArea('B'); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-            className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer ${activeArea === 'B' ? 'is-active' : ''}`}
-          >
-            <BookOpen className="w-4 h-4 area-tab-icon" />
-            <span>Area B: Productivity</span>
-            <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
-              {(portfolio?.area_b_items?.length || 5)} Entries
-            </span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeArea === 'C'}
-            onClick={() => { setActiveArea('C'); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-            className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer ${activeArea === 'C' ? 'is-active' : ''}`}
-          >
-            <Heart className="w-4 h-4 area-tab-icon" />
-            <span>Area C: Service & Leadership</span>
-            <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
-              {(portfolio?.area_c_items?.length || 2)} Entries
-            </span>
-          </button>
+            return (
+              <button
+                key={area.area_code}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                onClick={() => { setActiveArea(area.area_code); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
+                className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer transition ${isSelected ? 'is-active' : ''}`}
+              >
+                {area.area_code === 'A' && <GraduationCap className="w-4 h-4 area-tab-icon" />}
+                {area.area_code === 'B' && <BookOpen className="w-4 h-4 area-tab-icon" />}
+                {area.area_code === 'C' && <Heart className="w-4 h-4 area-tab-icon" />}
+                <span>{area.name}</span>
+                {area.entry_policy === 'personnel_entry_disallowed_read_only' ? (
+                  <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-200 font-semibold">
+                    Read-Only
+                  </span>
+                ) : (
+                  <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
+                    {itemCount} Entries
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* ================= 4. ACTIVE TAB CONTENT WORKBENCH ================= */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-5">
+          {(() => {
+            const currentAreaConfig = (workspaceConfig?.areas || []).find(a => a.area_code === activeArea) || {
+              area_code: activeArea,
+              name: activeArea === 'A' ? 'Area A: Professional Development' : activeArea === 'B' ? 'Area B: Productivity & Creative Work' : 'Area C: Service & Leadership',
+              description: activeArea === 'A' ? 'Educational degrees, certifications, memberships, and seminars (Ceiling: 70 Max Points).' : activeArea === 'B' ? 'Publications, Scopus journal articles, keynote lectures, research grants (Ceiling: 50 Max Points).' : 'Committee leadership, faculty adviserships, and extension projects (Ceiling: 40 Max Points).',
+              max_points: activeArea === 'A' ? 70 : activeArea === 'B' ? 50 : 40,
+              is_personnel_entry_allowed: true,
+              entry_policy: 'personnel_entry_allowed'
+            }
 
-          {/* Section Toolbar & Title */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                  {activeArea === 'A' && 'Area A: Professional Development'}
-                  {activeArea === 'B' && 'Area B: Productivity & Creative Work'}
-                  {activeArea === 'C' && 'Area C: Service & Leadership'}
-                </h3>
-                {((activeArea === 'A' && isAMaxed) || (activeArea === 'B' && isBMaxed) || (activeArea === 'C' && isCMaxed)) && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950 uppercase">
-                    MAX CAP REACHED
-                  </span>
+            const isDisallowed = currentAreaConfig.entry_policy === 'personnel_entry_disallowed_read_only' || currentAreaConfig.is_personnel_entry_allowed === false
+
+            return (
+              <>
+                {/* Section Toolbar & Title */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                        {currentAreaConfig.name}
+                      </h3>
+                      {((activeArea === 'A' && isAMaxed) || (activeArea === 'B' && isBMaxed) || (activeArea === 'C' && isCMaxed)) && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950 uppercase">
+                          MAX CAP REACHED
+                        </span>
+                      )}
+                      {isDisallowed && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-200 uppercase">
+                          Evaluator Indicator Area
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      {currentAreaConfig.description} (Max Ceiling: {currentAreaConfig.max_points} Points)
+                    </p>
+                  </div>
+
+                  {/* Section Actions: Import from Vault & Add Accomplishment */}
+                  {isEditable && !isDisallowed && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleAutoPopulate}
+                        className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Sync Repository</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddAccomplishment(activeArea)}
+                        className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>+ Add Accomplishment to Area {activeArea}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {isDisallowed ? (
+                  <div className="p-8 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-center space-y-3">
+                    <div className="inline-flex items-center justify-center p-3 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                      <Lock className="w-6 h-6" />
+                    </div>
+                    <h4 className="font-extrabold text-sm text-amber-950 dark:text-amber-100">
+                      {currentAreaConfig.name}
+                    </h4>
+                    <p className="text-xs text-amber-800 dark:text-amber-300 max-w-xl mx-auto font-medium leading-relaxed">
+                      {currentAreaConfig.description || 'This section is evaluated directly by institutional leadership and supervisor performance assessments. Direct personnel accomplishment entry is not required or permitted.'}
+                    </p>
+                    <div className="inline-block px-3.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 mt-2">
+                      Official Non-Entry Section
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Filtering Control Toolbar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <select
+                          value={categoryFilter}
+                          onChange={(e) => setCategoryFilter(e.target.value)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
+                        >
+                          <option value="ALL">All Categories</option>
+                          {(currentAreaConfig.categories ? currentAreaConfig.categories.map(c => c.name) : availableCategories).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={scopeFilter}
+                          onChange={(e) => setScopeFilter(e.target.value)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
+                        >
+                          <option value="ALL">All Geographic Scopes</option>
+                          <option value="Local">Local / Institutional</option>
+                          <option value="Regional">Regional</option>
+                          <option value="National">National</option>
+                          <option value="International">International</option>
+                        </select>
+                      </div>
+
+                      <div className="relative w-full sm:w-64">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search accomplishments..."
+                          className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
-              </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                {activeArea === 'A' && 'Educational degrees, certifications, memberships, and seminars (Ceiling: 70 Max Points).'}
-                {activeArea === 'B' && 'Publications, Scopus journal articles, keynote lectures, research grants (Ceiling: 50 Max Points).'}
-                {activeArea === 'C' && 'Committee leadership, faculty adviserships, and extension projects (Ceiling: 40 Max Points).'}
+              </>
+            )
+          })()}
+
+
+          {/* Loading Skeleton */}
+          {loading ? (
+            <div className="p-12 text-center space-y-3">
+              <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
+              <p className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                Loading canonical accomplishments from repository...
               </p>
             </div>
-
-            {/* Section Actions: Import from Vault & Add Item */}
-            {isEditable && (
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleAutoPopulate}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Import Vault Entries</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenAddModal(activeArea)}
-                  className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Add Item to Area {activeArea}</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Filtering Control Toolbar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-950 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
-              >
-                <option value="ALL">All Categories</option>
-                {availableCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-
-              <select
-                value={scopeFilter}
-                onChange={(e) => setScopeFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
-              >
-                <option value="ALL">All Geographic Scopes</option>
-                <option value="Local">Local / Institutional</option>
-                <option value="Regional">Regional</option>
-                <option value="National">National</option>
-                <option value="International">International</option>
-              </select>
-            </div>
-
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search accomplishments..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Line-Item Dense Cards List */}
-          {currentAreaItems.length === 0 ? (
+          ) : currentAreaItems.length === 0 ? (
+            /* Genuine Empty State (No Mock Seeds) */
             <div className="p-12 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
                 <FileText className="w-6 h-6" />
               </div>
               <p className="text-sm font-extrabold text-slate-700 dark:text-slate-300">
-                No accomplishment line-items matching filter criteria
+                No accomplishment records reflected in Area {activeArea}
               </p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
-                Click "+ Add Item to Area {activeArea}" or adjust filter selection to review logged entries.
+                Click "+ Add Accomplishment to Area {activeArea}" to record a new achievement with documentary proof.
               </p>
             </div>
           ) : (
@@ -626,6 +833,16 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-slate-200 text-slate-700">
                           Scope: {item.scope_level || 'Local'}
                         </span>
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
+                          Claimed: {item.claimed_points || 0} pts (Advisory)
+                        </span>
+
+                        {/* Unresolved / Incomplete Classification Neutral Badge */}
+                        {item.is_unclassified && (
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300">
+                            Needs Classification
+                          </span>
+                        )}
 
                         {/* Proof Completeness Alert Badges */}
                         {hasProof ? (
@@ -645,33 +862,44 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         {item.title}
                       </h4>
 
-                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-                        <span className="flex items-center gap-1">
-                          <Paperclip className="w-3.5 h-3.5 text-slate-400" />
-                          {hasProof ? item.proof_file_name : 'No Proof Attached'}
-                        </span>
+                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium flex-wrap">
+                        {hasProof ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadEvidence(item.evidence_id, item.proof_file_name)}
+                            className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer underline hover:no-underline"
+                            title="Download/view authenticated evidence file"
+                          >
+                            <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{item.proof_file_name}</span>
+                            <ExternalLink className="w-3 h-3 text-emerald-600" />
+                          </button>
+                        ) : (
+                          <span className="flex items-center gap-1 text-rose-600 font-medium">
+                            <Paperclip className="w-3.5 h-3.5 text-rose-400" />
+                            <span>No Proof Attached</span>
+                          </span>
+                        )}
+                        {item.date && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            {item.date}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Interactive Actions for Personnel */}
                     <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/60 dark:border-slate-800">
-
                       {isEditable && (
                         <div className="flex items-center gap-1.5">
-                          {!hasProof && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditModal(item)}
-                              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1 transition cursor-pointer shadow-xs"
-                            >
-                              <Upload className="w-3.5 h-3.5" />
-                              <span>Upload Proof</span>
-                            </button>
-                          )}
-
                           <button
                             type="button"
-                            onClick={() => handleOpenEditModal(item)}
+                            onClick={() => {
+                              setEditingAccomplishment(item)
+                              setInitialSubmissionCategory(item.category || 'A.1 Degree/s')
+                              setIsSubmissionModalOpen(true)
+                            }}
                             className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1 transition cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -697,454 +925,15 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         </div>
       </div>
 
-      {/* Add / Edit Line-Item Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full flex flex-col max-h-[90vh] shadow-2xl animate-fade-in overflow-hidden">
-
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-slate-900">
-              <div>
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  {editingItem ? 'Edit Accomplishment' : 'Add Accomplishment'}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  Record an achievement in your personnel portfolio draft.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-sm p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Scrollable Body */}
-            <form onSubmit={handleSaveItemSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-              {modalFormError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
-                  {modalFormError}
-                </div>
-              )}
-
-              {/* 01 UPLOAD DOCUMENT SECTION */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">01</span>
-                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">Upload Document</h4>
-                </div>
-
-                {!modalFileObj && !itemProofName ? (
-                  /* Empty Upload Panel */
-                  <div className="relative border border-dashed border-emerald-300 dark:border-emerald-700/80 hover:border-[#16834a] rounded-xl p-5 text-center transition bg-[#f4fbf6] dark:bg-emerald-950/10 cursor-pointer group">
-                    <input
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg"
-                      onChange={(e) => {
-                        if (e.target.files[0]) handleModalFileScan(e.target.files[0])
-                      }}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                    <div className="flex flex-col items-center gap-1.5">
-                      <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-[#16834a] shadow-2xs">
-                        <UploadCloud className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100">Upload certificate / document</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">Drag & drop or click to browse files (PDF, PNG, JPG)</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Selected File Card */
-                  <div className="p-3.5 rounded-xl bg-[#f4fbf6] dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[#16834a] text-white flex items-center justify-center shrink-0">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
-                          {itemProofName || modalFileObj?.name}
-                        </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                          {modalFileObj ? `${(modalFileObj.size / (1024 * 1024)).toFixed(2)} MB` : 'Attached Documentary Proof'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setModalFileObj(null)
-                        setItemProofName('')
-                        setModalOcrResult(null)
-                        setModalOcrBadges({})
-                      }}
-                      className="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-
-                {/* OCR Processing Indicator */}
-                {isModalScanning && (
-                  <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-emerald-300 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <RefreshCw className="w-3.5 h-3.5 text-[#16834a] animate-spin shrink-0" />
-                    <span>Extracting document information...</span>
-                  </div>
-                )}
-
-                {/* OCR Success Message */}
-                {modalOcrResult && !isModalScanning && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-900 dark:text-[#245F42] flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Information extracted from document ({modalOcrResult.detectedCategory})</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 02 ACCOMPLISHMENT DETAILS SECTION */}
-              <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">02</span>
-                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">Accomplishment Details</h4>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Category Field */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                      <span>Main Category (Area {activeArea})</span>
-                      {modalOcrBadges.category && (
-                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                          Auto-filled
-                        </span>
-                      )}
-                    </label>
-                    <select
-                      value={itemCategory}
-                      onChange={(e) => {
-                        handleMainCategoryChange(e.target.value)
-                        setModalOcrBadges(prev => ({ ...prev, category: false }))
-                      }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                    >
-                      {availableCategories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Dates Field */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                      <span>Date(s) / Inclusive Dates</span>
-                      {modalOcrBadges.date && (
-                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                          Auto-filled
-                        </span>
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      value={itemDateAchieved}
-                      onChange={(e) => { setItemDateAchieved(e.target.value); setModalOcrBadges(prev => ({ ...prev, date: false })) }}
-                      placeholder="e.g. 2023 - 2024 or Oct 15, 2023"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  {/* Geographic Scope */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                      <span>Geographic Scope</span>
-                      {modalOcrBadges.scope && (
-                        <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                          Auto-filled
-                        </span>
-                      )}
-                    </label>
-                    <select
-                      value={itemScope}
-                      onChange={(e) => {
-                        setItemScope(e.target.value)
-                        setModalOcrBadges(prev => ({ ...prev, scope: false }))
-                      }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                    >
-                      <option value="Local">Local / Institutional</option>
-                      <option value="Regional">Regional (Region XII)</option>
-                      <option value="National">National</option>
-                      <option value="International">International</option>
-                    </select>
-                  </div>
-
-                  {/* Subcategory Fields */}
-                  {itemCategory.startsWith('A.1') && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Course / Degree</span>
-                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={itemTitle}
-                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
-                          placeholder="e.g. Ph.D. in Computer Science / MA in Education"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>School / University</span>
-                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={institution}
-                          onChange={(e) => { setInstitution(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
-                          placeholder="e.g. Ateneo de Manila University / NDMU"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {itemCategory.startsWith('A.2') && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Organization</span>
-                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={itemTitle}
-                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
-                          placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Conducted or Organized by</span>
-                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={organizerVenue}
-                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
-                          placeholder="e.g. National Board / Local Chapter"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {itemCategory.startsWith('A.3') && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Title</span>
-                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={itemTitle}
-                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
-                          placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Conducted or Organized by</span>
-                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={organizerVenue}
-                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
-                          placeholder="e.g. CHED Region XII / NDMU Campus"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {itemCategory.startsWith('B.1') && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Activity</span>
-                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={itemTitle}
-                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
-                          placeholder="e.g. Keynote Address on Educational Data Mining"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Conducted or Organized by</span>
-                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={organizerVenue}
-                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
-                          placeholder="e.g. DOST Region XII / MSU"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {(itemCategory.startsWith('B.2') || itemCategory.startsWith('B.3') || itemCategory.startsWith('B.4') || itemCategory.startsWith('B.5') || itemCategory.startsWith('B.6')) && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>
-                            {itemCategory.startsWith('B.2') ? 'Publications' :
-                              itemCategory.startsWith('B.3') ? 'Research' :
-                                itemCategory.startsWith('B.4') ? 'Recognition / Awards' :
-                                  itemCategory.startsWith('B.5') ? 'Materials' : 'Creative Work'}
-                          </span>
-                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={itemTitle}
-                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
-                          placeholder="e.g. Title of Work, Research, Award, Material, or Creative Work"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Granted by</span>
-                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={publisherIssn}
-                          onChange={(e) => { setPublisherIssn(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
-                          placeholder="e.g. IEEE Access / NDMU Research Office / Conferring Body"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {itemCategory.startsWith('C') && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>{itemCategory.includes('Moderator') ? 'Clubs / Organizations' : 'Activity'}</span>
-                          {modalOcrBadges.title && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={itemTitle}
-                          onChange={(e) => { setItemTitle(e.target.value); setModalOcrBadges(prev => ({ ...prev, title: false })) }}
-                          placeholder="e.g. Junior Philippine Computer Society / Outreach Activity"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                          <span>Conducted / Organized by</span>
-                          {modalOcrBadges.issuer && <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">Auto-filled</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={organizerVenue}
-                          onChange={(e) => { setOrganizerVenue(e.target.value); setModalOcrBadges(prev => ({ ...prev, issuer: false })) }}
-                          placeholder="e.g. OSAD / Parish Pastoral Council / Local Government Unit"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                          required
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Remarks Field (Full width on 2-col) */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Remarks / Additional Details
-                    </label>
-                    <input
-                      type="text"
-                      value={itemSubCategory}
-                      onChange={(e) => setItemSubCategory(e.target.value)}
-                      placeholder="e.g. Full-time Permanent / Officer / Volume 12 Issue 3"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                    />
-                  </div>
-
-                  {/* Documentary Proof File Attachment */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Documentary Proof File Attachment (.pdf / .png)
-                    </label>
-                    <input
-                      type="text"
-                      value={itemProofName}
-                      onChange={(e) => setItemProofName(e.target.value)}
-                      placeholder="e.g. certificate_proof_document.pdf"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-medium focus:outline-none focus:border-[#16834a] focus:ring-1 focus:ring-[#16834a]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Sticky Modal Footer */}
-              <div className="sticky bottom-0 bg-white dark:bg-slate-900 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-extrabold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] active:scale-[0.99] text-white font-extrabold text-xs shadow-md transition cursor-pointer"
-                >
-                  {editingItem ? 'Save Changes' : 'Add to Portfolio Draft'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* Canonical Plan A Accomplishment Submission & Edit Modal */}
+      {isSubmissionModalOpen && (
+        <PersonnelSubmissionModal
+          isOpen={isSubmissionModalOpen}
+          onClose={() => setIsSubmissionModalOpen(false)}
+          onSubmitAccomplishment={handleSaveAccomplishment}
+          initialCategory={initialSubmissionCategory}
+          editingItem={editingAccomplishment}
+        />
       )}
 
       {/* Edit Basic Info Modal */}
@@ -1157,6 +946,16 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             showToast('Profile basic information updated successfully!')
             setIsEditProfileOpen(false)
           }}
+        />
+      )}
+
+      {/* Multi-Version Submission History & Comparison Modal (Plan C Phase C4) */}
+      {isHistoryModalOpen && (
+        <SubmissionVersionHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          versions={submissionHistory}
+          personnelName={activeUser.full_name}
         />
       )}
     </>

@@ -121,6 +121,7 @@ class OSADController {
         year_level: '3rd Year',
         college: 'CEAC',
         email: 'juan.delacruz@ndmu.edu.ph',
+        sex: 'Male',
         total_points: 320,
         verified_count: 8,
         status: 'Active'
@@ -134,6 +135,7 @@ class OSADController {
         year_level: '4th Year',
         college: 'CEAC',
         email: 'maria.santos@ndmu.edu.ph',
+        sex: 'Female',
         total_points: 410,
         verified_count: 11,
         status: 'Active'
@@ -147,6 +149,7 @@ class OSADController {
         year_level: '2nd Year',
         college: 'CEAC',
         email: 'alex.gonzaga@ndmu.edu.ph',
+        sex: 'Female',
         total_points: 180,
         verified_count: 4,
         status: 'Active'
@@ -160,6 +163,7 @@ class OSADController {
         year_level: '4th Year',
         college: 'CBA',
         email: 'samantha.ray@ndmu.edu.ph',
+        sex: 'Female',
         total_points: 385,
         verified_count: 9,
         status: 'Active'
@@ -173,6 +177,7 @@ class OSADController {
         year_level: '3rd Year',
         college: 'CEAC',
         email: 'david.miller@ndmu.edu.ph',
+        sex: 'Male',
         total_points: 290,
         verified_count: 7,
         status: 'Active'

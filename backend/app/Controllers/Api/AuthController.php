@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Api;
 
+use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
 use App\Services\LocalAuthService;
 use App\Services\LocalTokenService;
@@ -182,27 +183,51 @@ class AuthController extends Controller
         $primaryProgramId = $studentPlacement['academic_program_id']
             ?? ($programAffiliations[0]['academic_program_id'] ?? null);
 
+        // Canonical credential flag lookup from local_auth_credentials
+        $credRow = $db->table('local_auth_credentials')
+            ->where('profile_id', $profile['id'])
+            ->get()
+            ->getRowArray();
+
+        $canonicalMustChange = $credRow !== null ? ($credRow['must_change_password'] ?? null) : null;
+        $lifecycle = AccountLifecycleResolver::resolve(
+            $profile['status'] ?? 'active',
+            $canonicalMustChange
+        );
+
+        if ($credRow === null || $lifecycle['can_authenticate'] !== true) {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'UNAUTHENTICATED',
+                    'message' => 'Your authentication credentials are missing or invalid.',
+                ],
+            ], 401);
+        }
+
         return $this->respond([
             'data' => [
                 'authenticated' => true,
                 'user'          => [
-                    'id'                    => $profile['id'],
-                    'institutional_id'      => $profile['institutional_id'],
-                    'institutional_email'   => $profile['email'] ?? ($profile['institutional_email'] ?? ''),
-                    'full_name'             => $profile['full_name'],
-                    'account_type'          => $profile['account_type'],
-                    'status'                => $profile['status'],
-                    'designation'           => $profile['designation'] ?? null,
-                    'year_level'            => $studentPlacement['year_level'] ?? ($profile['year_level'] ?? null),
-                    'must_change_password'  => (bool) ($profile['must_change_password'] ?? false),
-                    'academic_placement'    => $studentPlacement,
-                    'personnel_affiliation' => $personnelAffiliation,
-                    'program_affiliations'  => $programAffiliations,
-                    'roles'                 => array_values(array_unique(array_column($mappedRoles, 'role_key'))),
-                    'role_assignments'      => $mappedRoles,
+                    'id'                       => $profile['id'],
+                    'institutional_id'         => $profile['institutional_id'],
+                    'institutional_email'      => $profile['email'] ?? ($profile['institutional_email'] ?? ''),
+                    'full_name'                => $profile['full_name'],
+                    'account_type'             => $profile['account_type'],
+                    'status'                   => $profile['status'],
+                    'administrative_status'    => $lifecycle['administrative_status'],
+                    'account_lifecycle_status' => $lifecycle['account_lifecycle_status'],
+                    'required_next_action'     => $lifecycle['required_next_action'],
+                    'designation'              => $profile['designation'] ?? null,
+                    'year_level'               => $studentPlacement['year_level'] ?? ($profile['year_level'] ?? null),
+                    'must_change_password'     => $lifecycle['must_change_password'],
+                    'academic_placement'       => $studentPlacement,
+                    'personnel_affiliation'    => $personnelAffiliation,
+                    'program_affiliations'     => $programAffiliations,
+                    'roles'                    => array_values(array_unique(array_column($mappedRoles, 'role_key'))),
+                    'role_assignments'         => $mappedRoles,
                     // Compatibility aliases
-                    'department_id'         => null,
-                    'degree_program_id'     => $primaryProgramId,
+                    'department_id'            => null,
+                    'degree_program_id'        => $primaryProgramId,
                 ],
             ],
         ], 200);
@@ -257,9 +282,11 @@ class AuthController extends Controller
         $authUserId = $profile['id'];
 
         $json = $this->request->getJSON(true) ?? [];
+        $currentPassword = (string) ($json['current_password'] ?? '');
         $newPassword = (string) ($json['new_password'] ?? '');
-        $confirmPassword = (string) ($json['confirm_password'] ?? '');
+        $confirmPassword = (string) ($json['confirm_password'] ?? ($json['new_password_confirmation'] ?? ''));
         $ip = $this->request->getIPAddress();
+        $userAgent = $this->request->getUserAgent()->getAgentString();
 
         if (strlen($newPassword) < 8) {
             return $this->respond([
@@ -280,7 +307,7 @@ class AuthController extends Controller
         }
 
         if ($this->isLocalDefense) {
-            $result = $this->localAuthService->changePassword($authUserId, $newPassword, $ip);
+            $result = $this->localAuthService->changePassword($authUserId, $newPassword, $currentPassword, $ip, $userAgent);
             if (! $result['success']) {
                 return $this->respond(['error' => $result['error']], $result['status']);
             }

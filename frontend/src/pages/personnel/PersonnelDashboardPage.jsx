@@ -191,19 +191,20 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="flex items-center z-10 relative">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${portfolio?.status === 'HR_APPROVED' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-[#245F42]' :
-                    portfolio?.status === 'ENDORSED_TO_HR' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
-                      portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-[#245F42]' :
+                    (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
+                      (portfolio?.status === 'SUBMITTED_TO_DEP_SEC' || portfolio?.status === 'submitted' || portfolio?.status === 'in_evaluation') ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
                         'border-amber-400 bg-amber-50/80 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
                     }`}>
-                    <span className={`w-2 h-2 rounded-full ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#16834a]' :
-                      portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-500' :
+                    <span className={`w-2 h-2 rounded-full ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'bg-[#16834a]' :
+                      (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'bg-blue-500' :
                         'bg-amber-500 animate-pulse'
                       }`}></span>
                     <span className="truncate">
-                      {portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
-                        portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
-                          portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
+                      {(portfolio?.status === 'submitted' || portfolio?.status === 'SUBMITTED_TO_DEP_SEC') ? 'Submitted' :
+                        portfolio?.status === 'in_evaluation' ? 'In Evaluation' :
+                          (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'Ready for Finalization' :
+                            (portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'Approved' : 'Draft Portfolio'}
                     </span>
                   </span>
                 </div>

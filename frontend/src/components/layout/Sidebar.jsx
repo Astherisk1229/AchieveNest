@@ -3,12 +3,20 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import useTheme from '../../hooks/useTheme'
-import { Search, ShieldCheck } from 'lucide-react'
+import { Search, ShieldCheck, X } from 'lucide-react'
 import AdminOnboardingGuideWidget from '../common/AdminOnboardingGuideWidget'
 import { getAuthorizedNavigationForSession } from '../../config/personnelRoleNavigation'
 import { normalizeRoleContext } from '../../utils/roleContext'
 
-export default function Sidebar({ currentUser }) {
+const WORKFLOW_GROUP_LABELS = {
+  overview: 'Overview',
+  setup: 'Student & Institutional Setup',
+  evaluation: 'Portfolio & Evaluation',
+  credentials: 'Events & Certificates',
+  governance: 'Governance & Reports'
+}
+
+export default function Sidebar({ currentUser, onCloseMobile }) {
   const { isDark } = useTheme()
   const location = useLocation()
   const [searchParams] = useSearchParams()
@@ -40,7 +48,6 @@ export default function Sidebar({ currentUser }) {
   }
 
   const portalInfo = getPortalInfo()
-  const defaultTabForContext = 'overview'
   const isDashboardPage = location.pathname.includes('dashboard')
 
   // Pre-render authorization filtering: Exclude unauthorized items BEFORE JSX mapping
@@ -57,15 +64,48 @@ export default function Sidebar({ currentUser }) {
     return item.label.toLowerCase().includes(searchTerm.toLowerCase().trim())
   })
 
+  const isTabOrPathActive = (item) => {
+    const currentCleanPath = location.pathname.split('?')[0]
+    const itemCleanPath = item.path.split('?')[0]
+    
+    if (item.tab && isDashboardPage) {
+      const activeTab = (activeTabParam || 'overview').toLowerCase()
+      const itemTab = item.tab.toLowerCase()
+      if (activeTab === itemTab) return true
+      // Standard workflow aliases
+      if (itemTab === 'academic-structure' && ['colleges', 'programs'].includes(activeTab)) return true
+      if (itemTab === 'accounts' && ['students', 'student-accounts'].includes(activeTab)) return true
+      if (itemTab === 'organizations' && ['orgs', 'student-organizations'].includes(activeTab)) return true
+      if (itemTab === 'password-resets' && ['resets'].includes(activeTab)) return true
+      if (itemTab === 'awards' && ['criteria', 'award-categories'].includes(activeTab)) return true
+      if (itemTab === 'candidate-review' && ['awardees', 'candidates'].includes(activeTab)) return true
+      if (itemTab === 'certificate-templates' && ['templates'].includes(activeTab)) return true
+      if (itemTab === 'reports' && ['accreditation', 'compliance'].includes(activeTab)) return true
+      if (itemTab === 'audit' && ['activity-log', 'logs', 'audit-logs'].includes(activeTab)) return true
+      return false
+    }
+    
+    return currentCleanPath === itemCleanPath
+  }
+
+  let lastWorkflowFamily = null
+
   return (
-    <aside className="w-64 bg-white dark:bg-[#131e2e] border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between h-screen sticky top-0 font-sans z-30 shadow-2xs">
+    <aside 
+      className="w-64 bg-white dark:bg-[#131e2e] border-r border-slate-200/80 dark:border-slate-800 flex flex-col justify-between h-screen sticky top-0 font-sans z-30 shadow-2xs"
+      aria-label="Sidebar Navigation"
+    >
       
       {/* Scrollable Navigation Region */}
       <div className="flex-1 overflow-y-auto space-y-4 py-4">
         
         {/* Brand Header */}
         <div className="px-5 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link 
+            to="/" 
+            onClick={() => onCloseMobile?.()}
+            className="flex items-center gap-2.5"
+          >
             <div className="w-8 h-8 rounded-xl bg-[#176B43] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
               AN
             </div>
@@ -74,6 +114,18 @@ export default function Sidebar({ currentUser }) {
               <span className="text-[10px] font-extrabold text-[#176B43] dark:text-emerald-400 uppercase tracking-wider block">NDMU Portal</span>
             </div>
           </Link>
+
+          {/* Dismiss Drawer Button on Small Screens */}
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              aria-label="Close navigation drawer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Quick Search Bar */}
@@ -102,48 +154,50 @@ export default function Sidebar({ currentUser }) {
           </div>
         </div>
 
-        {/* Navigation Items */}
-        <div className="px-3 space-y-1">
-          <p className="px-3 text-[10px] uppercase font-extrabold tracking-wider mb-2 text-slate-400 dark:text-slate-400">
-            Navigation
-          </p>
-          {filteredNavItems.map((item) => {
-            const Icon = item.icon
-            const itemCleanPath = item.path.split('?')[0]
-            const currentCleanPath = location.pathname.split('?')[0]
-
-            let isActive = false
-            if (item.tab) {
-              if (isDashboardPage) {
-                const activeTab = activeTabParam || defaultTabForContext
-                isActive = (activeTab === item.tab)
-              } else {
-                isActive = (currentCleanPath === itemCleanPath)
+        {/* Navigation Landmark Region */}
+        <nav aria-label="Main Navigation" className="px-3 space-y-1">
+          {filteredNavItems.length === 0 ? (
+            <p className="px-3 py-4 text-center text-xs text-slate-400 font-medium">
+              No matching navigation items found.
+            </p>
+          ) : (
+            filteredNavItems.map((item) => {
+              const Icon = item.icon
+              const isActive = isTabOrPathActive(item)
+              const showGroupHeader = item.workflowFamily && item.workflowFamily !== lastWorkflowFamily
+              if (item.workflowFamily) {
+                lastWorkflowFamily = item.workflowFamily
               }
-            } else {
-              isActive = (currentCleanPath === itemCleanPath)
-            }
 
-            return (
-              <Link
-                key={item.label}
-                to={item.path}
-                className={`w-full px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${isActive
-                    ? 'bg-[#dcebdd] dark:bg-emerald-950/70 text-[#123D2A] dark:text-emerald-300 border border-[#dde6dd] dark:border-emerald-700/50 shadow-2xs'
-                    : 'text-[#3F6B52] dark:text-slate-300 hover:bg-[#f8faf7] dark:hover:bg-slate-800/60 hover:text-[#123D2A] dark:hover:text-white'
-                  }`}
-              >
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${isActive
-                    ? 'bg-[#176B43] dark:bg-emerald-500 text-white dark:text-slate-950'
-                    : 'bg-[#f8faf7] dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 border border-[#dde6dd] dark:border-emerald-800/50'
-                  }`}>
-                  <Icon className="w-3.5 h-3.5" />
-                </div>
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
-        </div>
+              return (
+                <React.Fragment key={item.id || item.label}>
+                  {showGroupHeader && (
+                    <p className="px-3 pt-3 pb-1 text-[10px] uppercase font-extrabold tracking-wider text-slate-400 dark:text-slate-500">
+                      {WORKFLOW_GROUP_LABELS[item.workflowFamily] || item.workflowFamily}
+                    </p>
+                  )}
+                  <Link
+                    to={item.path}
+                    onClick={() => onCloseMobile?.()}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`w-full min-h-[44px] px-3 py-2 rounded-xl font-extrabold text-xs flex items-center gap-3 transition cursor-pointer ${isActive
+                        ? 'bg-[#dcebdd] dark:bg-emerald-950/70 text-[#123D2A] dark:text-emerald-300 border border-[#dde6dd] dark:border-emerald-700/50 shadow-2xs'
+                        : 'text-[#3F6B52] dark:text-slate-300 hover:bg-[#f8faf7] dark:hover:bg-slate-800/60 hover:text-[#123D2A] dark:hover:text-white'
+                      }`}
+                  >
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${isActive
+                        ? 'bg-[#176B43] dark:bg-emerald-500 text-white dark:text-slate-950'
+                        : 'bg-[#f8faf7] dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 border border-[#dde6dd] dark:border-emerald-800/50'
+                      }`}>
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <span>{item.label}</span>
+                  </Link>
+                </React.Fragment>
+              )
+            })
+          )}
+        </nav>
 
       </div>
 

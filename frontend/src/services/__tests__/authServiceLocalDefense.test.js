@@ -253,7 +253,12 @@ describe('Phase 16 — AuthService Local-Defense Test Suite', () => {
 
     expect(apiClient.post).toHaveBeenCalledWith(
       '/auth/change-password',
-      { new_password: 'NewSecret123!', confirm_password: 'NewSecret123!' },
+      {
+        current_password: '',
+        new_password: 'NewSecret123!',
+        confirm_password: 'NewSecret123!',
+        new_password_confirmation: 'NewSecret123!'
+      },
       { headers: { Authorization: 'Bearer jwt.token' } }
     )
 

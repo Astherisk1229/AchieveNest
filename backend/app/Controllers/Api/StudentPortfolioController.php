@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
 use App\Services\LocalEvidenceStorageService;
+use App\Services\PortfolioStructuredMetadataValidator;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -15,13 +16,16 @@ class StudentPortfolioController extends Controller
 
     protected AuthorizationService $authz;
     protected LocalEvidenceStorageService $storage;
+    protected PortfolioStructuredMetadataValidator $metadataValidator;
 
     public function __construct(
         ?AuthorizationService $authz = null,
-        ?LocalEvidenceStorageService $storage = null
+        ?LocalEvidenceStorageService $storage = null,
+        ?PortfolioStructuredMetadataValidator $metadataValidator = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->storage = $storage ?? new LocalEvidenceStorageService();
+        $this->metadataValidator = $metadataValidator ?? new PortfolioStructuredMetadataValidator();
     }
 
     public function options(): mixed
@@ -235,33 +239,28 @@ class StudentPortfolioController extends Controller
         if ($title === '' || $categoryId === '') {
             return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'Title and category_id are required.']], 422);
         }
-        if (! ValidationHelper::validateUuid($categoryId)) {
-            return $this->respond(['error' => ['code' => 'INVALID_CATEGORY_ID', 'message' => 'category_id must be a valid UUID.']], 422);
+
+        $taxResult = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
+        if (! $taxResult['valid']) {
+            return $this->respond(['error' => $taxResult['error']], 422);
         }
+        $category = $taxResult['category'];
+        $subcat = $taxResult['subcategory'];
+
+        // Validate Structured Metadata & Controlled Vocabularies
+        $metaResult = $this->metadataValidator->validateMetadata($categoryId, $subcategoryId, $structuredMetadata, $submitNow);
+        if (! $metaResult['valid']) {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'INVALID_STRUCTURED_METADATA',
+                    'message' => 'Structured metadata validation failed.',
+                    'errors'  => $metaResult['errors'],
+                ],
+            ], 422);
+        }
+        $sanitizedMetadata = $metaResult['sanitized_metadata'];
 
         $db = db_connect();
-
-        // Validate Category exists
-        $category = $db->table('portfolio_categories')->where('id', $categoryId)->where('status', 'active')->get()->getRowArray();
-        if ($category === null) {
-            return $this->respond(['error' => ['code' => 'INVALID_CATEGORY', 'message' => 'Category does not exist or is inactive.']], 422);
-        }
-
-        // Validate Subcategory belongs to Category if provided
-        if ($subcategoryId !== null) {
-            if (! ValidationHelper::validateUuid($subcategoryId)) {
-                return $this->respond(['error' => ['code' => 'INVALID_SUBCATEGORY_ID', 'message' => 'subcategory_id must be a valid UUID.']], 422);
-            }
-            $subcat = $db->table('portfolio_subcategories')
-                ->where('id', $subcategoryId)
-                ->where('category_id', $categoryId)
-                ->where('status', 'active')
-                ->get()->getRowArray();
-
-            if ($subcat === null) {
-                return $this->respond(['error' => ['code' => 'INVALID_TAXONOMY_COMBINATION', 'message' => 'Subcategory does not belong to the selected category.']], 422);
-            }
-        }
 
         // Sports Metadata Rule
         $isSports = strtolower($category['code'] ?? '') === 'sports' || stripos($category['name'] ?? '', 'sport') !== false;
@@ -275,6 +274,85 @@ class StudentPortfolioController extends Controller
                         'message' => 'Sports achievements require at least an Event Date or Academic Year.',
                     ],
                 ], 422);
+            }
+        }
+
+        // Campus Journalism Metadata Validation (Phase 2 Source-Fidelity Rules)
+        $isJournalism = ($categoryId === '2b09cd61-7a23-4466-be58-889398e8f201')
+            || strtolower($category['code'] ?? '') === 'campus_journalism_publication'
+            || stripos($category['name'] ?? '', 'journalism') !== false;
+
+        if ($isJournalism && $submitNow) {
+            if (empty($subcategoryId)) {
+                return $this->respond([
+                    'error' => [
+                        'code'    => 'MISSING_PUBLICATION_TYPE',
+                        'message' => 'Campus Journalism achievements require a specific Publication Type or Role Subcategory before submission.',
+                    ],
+                ], 422);
+            }
+
+            // Publication Types (News, Literary, Column, Editorial)
+            $pubSubcategoryCodes = ['COMP_JOURN_NEWS', 'COMP_JOURN_LITERARY', 'COMP_JOURN_COLUMN', 'COMP_JOURN_EDITORIAL'];
+            $pubSubcategoryIds = [
+                '40000009-0001-0000-0000-000000000001',
+                '40000009-0001-0000-0000-000000000002',
+                '40000009-0001-0000-0000-000000000003',
+                '40000009-0001-0000-0000-000000000004',
+            ];
+
+            $isPubType = in_array($subcategoryId, $pubSubcategoryIds, true)
+                || in_array($subcat['code'] ?? '', $pubSubcategoryCodes, true)
+                || in_array(strtolower($subcat['name'] ?? ''), ['news item', 'literary', 'column', 'editorial', 'news item evidence', 'literary evidence', 'column evidence', 'editorial evidence'], true);
+
+            if ($isPubType) {
+                if (empty($organizer)) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'MISSING_PUBLICATION_OUTLET',
+                            'message' => 'Publication Outlet (organizer_or_body) is mandatory for Campus Journalism publication records.',
+                        ],
+                    ], 422);
+                }
+
+                if (empty($occurrenceDate) && empty($startDate)) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'MISSING_PUBLICATION_DATE',
+                            'message' => 'Publication Date is mandatory for Campus Journalism publication records.',
+                        ],
+                    ], 422);
+                }
+
+                $pubDateStr = $occurrenceDate ?? $startDate;
+                if ($pubDateStr !== null && strtotime($pubDateStr) > time()) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'INVALID_PUBLICATION_DATE',
+                            'message' => 'Publication Date cannot be a future date.',
+                        ],
+                    ], 422);
+                }
+
+                $role = $structuredMetadata['contribution_role'] ?? $structuredMetadata['role'] ?? null;
+                if (empty($role)) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'MISSING_CONTRIBUTION_ROLE',
+                            'message' => 'Student Contribution / Authorship Role (e.g., Writer, Editor, Contributor) is mandatory.',
+                        ],
+                    ], 422);
+                }
+
+                $evidenceList = (array) ($json['evidence'] ?? []);
+                if (empty($evidenceList)) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'MISSING_EVIDENCE_ATTACHMENT',
+                            'message' => 'At least one supporting evidence attachment is mandatory before submitting a Campus Journalism publication record.',
+                        ],
+                    ], 422);
+                }
             }
         }
 
@@ -295,7 +373,7 @@ class StudentPortfolioController extends Controller
                 'start_date'          => $startDate,
                 'end_date'            => $endDate,
                 'description'         => $description,
-                'structured_metadata' => json_encode($structuredMetadata),
+                'structured_metadata' => json_encode($sanitizedMetadata),
                 'status'              => $initialStatus,
                 'submitted_at'        => $submitNow ? $now : null,
                 'created_at'          => $now,
@@ -598,6 +676,17 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
         }
 
+        // Phase 3 Rule: Only reviewable states can be verified / transitioned
+        $reviewableStates = ['submitted', 'revisions_requested', 'under_review', 'revision_requested'];
+        if (! in_array($record['status'], $reviewableStates, true)) {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'INVALID_STATE_TRANSITION',
+                    'message' => "Records in '{$record['status']}' state cannot be decided upon. Must be in a reviewable state.",
+                ],
+            ], 422);
+        }
+
         // Centralized object-level verification policy check
         if (! $this->authz->portfolio()->canVerify($actor, $record)) {
             // Distinguish specific denial reasons for clear error reporting
@@ -609,6 +698,33 @@ class StudentPortfolioController extends Controller
 
         $json = $this->request->getJSON(true) ?? [];
         $remarks = trim((string) ($json['remarks'] ?? ''));
+
+        // Phase 3 Rules: VR-3.6 & VR-3.7 (Revision and Rejection require non-empty remarks)
+        if (in_array($targetStatus, ['revisions_requested', 'rejected', 'revision_requested'], true) && $remarks === '') {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'REMARKS_REQUIRED',
+                    'message' => "A specific explanation remark is mandatory when requesting revisions or rejecting a submission.",
+                ],
+            ], 422);
+        }
+
+        // Phase 3 Rule: VR-3.5 (Evidence must exist at verification time)
+        if ($targetStatus === 'verified') {
+            $evidenceCount = $db->table('student_portfolio_evidence')
+                ->where('portfolio_record_id', $id)
+                ->where('status', 'active')
+                ->countAllResults();
+
+            if ($evidenceCount === 0) {
+                return $this->respond([
+                    'error' => [
+                        'code'    => 'MISSING_EVIDENCE_FOR_VERIFICATION',
+                        'message' => 'Cannot verify a portfolio record without active supporting evidence attachments.',
+                    ],
+                ], 422);
+            }
+        }
         $now = date('Y-m-d H:i:s');
 
         $db->transStart();

@@ -5,6 +5,8 @@ import {
   ShieldCheck
 } from 'lucide-react'
 import { Button } from '../../components/ui/button'
+import OSADPageHeader from '../../components/osad/OSADPageHeader'
+import { OSADEmptyState } from '../../components/osad/OSADStateBlock'
 
 export default function OSADAccreditationReportsPage({ accreditationReports, _getAccreditationReportDetails }) {
   const reportsList = accreditationReports || [
@@ -16,19 +18,22 @@ export default function OSADAccreditationReportsPage({ accreditationReports, _ge
   return (
     <div className="space-y-6 font-sans">
       
-      {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-2 shadow-2xs">
-        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-          <FileSpreadsheet className="w-5 h-5 text-[#16834a] dark:text-emerald-400" />
-          Accreditation and Compliance Reports
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-          Generate reports from verified Student achievement and organization records.
-        </p>
-      </div>
+      {/* Standardized Page Header */}
+      <OSADPageHeader
+        title="Accreditation and Compliance Reports"
+        description="Generate reports from verified Student achievement and organization records."
+        icon={FileSpreadsheet}
+      />
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Reports Grid or Empty State */}
+      {reportsList.length === 0 ? (
+        <OSADEmptyState
+          icon={FileSpreadsheet}
+          title="No Accreditation Reports Available"
+          description="No verified compliance summaries or institutional accreditation records are currently available for generation."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {reportsList.map((report) => (
           <div
             key={report.id}
@@ -51,7 +56,8 @@ export default function OSADAccreditationReportsPage({ accreditationReports, _ge
             </Button>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
     </div>
   )

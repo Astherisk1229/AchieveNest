@@ -121,6 +121,21 @@ export default class AcademicStructureController {
   createCollege(payload) {
     const college = new CollegeModel(payload)
     this.colleges.push(college)
+
+    if (Array.isArray(payload.programs)) {
+      payload.programs.forEach((prog) => {
+        if (prog && prog.code && prog.name) {
+          this.createDegreeProgram({
+            collegeId: college.id,
+            code: prog.code,
+            name: prog.name,
+            degreeLevel: 'Bachelor',
+            status: 'active'
+          })
+        }
+      })
+    }
+
     return college
   }
 

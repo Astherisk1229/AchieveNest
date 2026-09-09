@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   X, 
   Download, 
@@ -18,8 +18,10 @@ import {
   Sparkles,
   Calendar,
   Building,
-  Award
+  Award,
+  RefreshCw
 } from 'lucide-react'
+import personnelAccomplishmentService from '../../../services/personnelAccomplishmentService.js'
 
 /**
  * AchievementPreviewModal.jsx
@@ -35,11 +37,44 @@ export default function AchievementPreviewModal({
 }) {
   const [zoomLevel, setZoomLevel] = useState(100)
   const [rotation, setRotation] = useState(0)
+  const [blobUrl, setBlobUrl] = useState(null)
+  const [loadingDoc, setLoadingDoc] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    let currentUrl = null
+    if (isOpen && achievement?.evidence_id) {
+      setLoadingDoc(true)
+      personnelAccomplishmentService.getEvidenceBlobUrl(achievement.evidence_id)
+        .then(url => {
+          if (active) {
+            currentUrl = url
+            setBlobUrl(url)
+            setLoadingDoc(false)
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load evidence blob:', err)
+          if (active) {
+            setLoadingDoc(false)
+          }
+        })
+    } else {
+      setBlobUrl(null)
+    }
+
+    return () => {
+      active = false
+      if (currentUrl) URL.revokeObjectURL(currentUrl)
+    }
+  }, [isOpen, achievement?.evidence_id])
 
   if (!isOpen || !achievement) return null
 
   const isEditable = achievement.canEdit ? achievement.canEdit() : achievement.status !== 'Verified'
   const isReturned = achievement.status === 'Returned'
+  const fileName = achievement.attached_file_name || 'proof_document.pdf'
+  const isImage = fileName.match(/\.(png|jpe?g|webp)$/i)
 
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 20, 200))
   const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 20, 60))
@@ -87,7 +122,7 @@ export default function AchievementPreviewModal({
             <div className="flex items-center justify-between bg-slate-800/80 backdrop-blur-md px-4 py-2 rounded-2xl text-slate-300 text-xs border border-slate-700/60 z-10">
               <span className="font-mono text-[11px] text-emerald-400 flex items-center gap-1.5 truncate max-w-[200px]">
                 <FileText className="w-3.5 h-3.5" />
-                {achievement.attached_file_name || 'proof_document.pdf'}
+                {fileName}
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -120,53 +155,56 @@ export default function AchievementPreviewModal({
               </div>
             </div>
 
-            {/* Simulated High-Fidelity PDF / Document Viewport */}
-            <div className="flex-1 flex items-center justify-center p-6 overflow-auto">
-              <div
-                style={{
-                  transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
-                  transition: 'transform 0.2s ease-in-out'
-                }}
-                className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-slate-200 text-slate-800 space-y-6 select-none"
-              >
-                <div className="text-center space-y-2 border-b border-slate-100 pb-6">
+            {/* Document Viewport */}
+            <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+              {loadingDoc ? (
+                <div className="text-center text-slate-300 space-y-2">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-400" />
+                  <p className="text-xs font-semibold">Streaming evidence from secure server storage...</p>
+                </div>
+              ) : blobUrl ? (
+                isImage ? (
+                  <img
+                    src={blobUrl}
+                    alt={achievement.title}
+                    style={{
+                      transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
+                      transition: 'transform 0.2s ease-in-out'
+                    }}
+                    className="max-h-[55vh] object-contain rounded-xl shadow-2xl border border-slate-700"
+                  />
+                ) : (
+                  <iframe
+                    src={blobUrl}
+                    title="Document Proof Preview"
+                    style={{
+                      transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`,
+                      transition: 'transform 0.2s ease-in-out'
+                    }}
+                    className="w-full h-[55vh] rounded-xl border border-slate-700 bg-white"
+                  />
+                )
+              ) : (
+                <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-slate-200 text-slate-800 space-y-4 text-center">
                   <div className="w-12 h-12 rounded-full bg-[#E7F3E9] border border-[#cbe6d2] text-[#16834a] mx-auto flex items-center justify-center font-bold">
                     <Award className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xs font-black tracking-widest uppercase text-emerald-800">
-                    Notre Dame of Marbel University
+                  <h3 className="text-xs font-black uppercase text-emerald-900">
+                    {achievement.title}
                   </h3>
-                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Official Accomplishment Proof Document</p>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Issuer: {achievement.location || achievement.issuer || 'NDMU'} • Conferred: {achievement.date}
+                  </p>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    File: {fileName}
+                  </p>
                 </div>
-
-                <div className="space-y-3 text-left">
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">Title</p>
-                    <p className="text-xs font-extrabold text-slate-900 mt-0.5">{achievement.title}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-left">
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Issuer / Journal</p>
-                      <p className="text-[11px] font-semibold text-slate-700 truncate">{achievement.location}</p>
-                    </div>
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Conferred Date</p>
-                      <p className="text-[11px] font-semibold text-slate-700">{achievement.date}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-dashed border-slate-200 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                  <span>REF: {achievement.id}</span>
-                  <span className="text-emerald-700 font-bold">VERIFIED DIGITAL STAMP</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Bottom Viewport Bar */}
             <div className="flex items-center justify-between text-xs text-slate-400 px-2 pt-2 border-t border-slate-800">
-              <span>Preview Mode: High Resolution Vector View</span>
+              <span className="text-[11px]">Authoritative Storage Stream</span>
               <button
                 type="button"
                 onClick={() => onDownload(achievement)}
@@ -284,25 +322,27 @@ export default function AchievementPreviewModal({
                 </button>
               )}
 
-              {isEditable && !isReturned && (
+              <div className="flex items-center gap-2">
+                {isEditable && (
+                  <button
+                    type="button"
+                    onClick={() => { onEdit(achievement); onClose() }}
+                    className="flex-1 py-2.5 rounded-2xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>Edit Details</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => { onEdit(achievement); onClose() }}
-                  className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md cursor-pointer"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
                 >
-                  <Edit3 className="w-4 h-4" />
-                  <span>Edit Accomplishment Details</span>
+                  <span>Close Preview</span>
                 </button>
-              )}
+              </div>
 
-              <button
-                type="button"
-                onClick={() => onDownload(achievement)}
-                className="w-full py-3 rounded-2xl bg-[#E7F3E9] hover:bg-[#e2f2e5] border border-[#cbe6d2] text-[#064e2b] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Proof Document</span>
-              </button>
             </div>
 
           </div>

@@ -1,0 +1,35 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelAdministratorsScaleF2.test.jsx (22 tests) 20ms
+   ✓ Personnel Administrators Ranking Scale Phase F2 Configuration Tests (22)
+     ✓ Scale Limits & Ceilings (1)
+       ✓ correctly exposes canonical limits for ADMINISTRATORS_RANKING_SCALE
+     ✓ Area A: Professional Development (5)
+       ✓ A.1: Ph.D. Degree awards 40 points flat and MA Degree awards 20 points flat
+       ✓ A.1: Ph.D. Units calculates 2 points per 3 units capped at 10 points
+       ✓ A.1: MA Units calculates 1 point per 3 units capped at 10 points
+       ✓ A.2: Active Membership correctly awards 5 pts for Member and 10 pts for Officer
+       ✓ A.3: Seminars correctly maps all scopes and enforces 20 points max ceiling
+     ✓ Area B: Productivity and Creative Work (8)
+       ✓ B.1: Correctly calculates 4-factor sum for all valid options
+       ✓ B.1: Evaluates minimum and maximum factor combinations accurately
+       ✓ B.2: Correctly calculates 2-factor sum (Scope + Publication Type)
+       ✓ B.2: Evaluates minimum and maximum publication combinations accurately
+       ✓ B.3: Conduct of Research enforces evaluator_judgment_required = true with max 40
+       ✓ B.4: Awards and Recognition matrix evaluates all 8 cells correctly
+       ✓ B.5: Instructional Materials assigns exact points for all 4 types
+       ✓ B.6: Creative Work enforces evaluator_judgment_required = true with max 20
+     ✓ Area C: Service and Leadership (4)
+       ✓ C.1: Extra-Curricular Activities maps all subcategories and 30 pts ceiling
+       ✓ C.2: Community Involvement maps all categories and 30 pts ceiling
+       ✓ C.3: Years of Service calculates 1 point per 2 completed years capped at 10 pts
+       ✓ C.3: Years of Service is server-derived and does not permit client scoring
+     ✓ Workspace UI & Reusability Boundaries (4)
+       ✓ Area filtering exposes only Area A, B, and C for Administrators Scale
+       ✓ Criterion metadata correctly flags proof requirements across all submittable items
+       ✓ B.1 and B.2 provide detailed factor breakdown metadata for user clarity
+       ✓ Validates that Non-Teaching categories are not present in Administrators scale
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Duration  888ms

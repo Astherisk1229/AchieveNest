@@ -37,6 +37,26 @@ export async function fetchQualificationReviews(profileId) {
   return response?.data || response
 }
 
+export async function updatePersonnelClassification(profileId, payload) {
+  const response = await apiClient.put(`/hr/personnel/${profileId}/classification`, payload)
+  return response?.data || response
+}
+
+export async function fetchPersonnelMasterData(profileId) {
+  const response = await apiClient.get(`/hr/personnel/${profileId}/master-data`)
+  return response?.data || response
+}
+
+export async function updatePersonnelMasterData(profileId, payload) {
+  const response = await apiClient.put(`/hr/personnel/${profileId}/master-data`, payload)
+  return response?.data || response
+}
+
+export async function updatePersonnelStatus(profileId, payload) {
+  const response = await apiClient.put(`/hr/personnel/${profileId}/status`, payload)
+  return response?.data || response
+}
+
 export default {
   fetchPersonnelDirectory,
   fetchHRDashboard,
@@ -44,5 +64,9 @@ export default {
   assignDeanRole,
   revokeDeanRole,
   recordQualificationReview,
-  fetchQualificationReviews
+  fetchQualificationReviews,
+  updatePersonnelClassification,
+  fetchPersonnelMasterData,
+  updatePersonnelMasterData,
+  updatePersonnelStatus
 }

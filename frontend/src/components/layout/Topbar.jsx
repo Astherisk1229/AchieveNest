@@ -25,7 +25,7 @@ import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } fr
 import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
 
-export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
+export default function Header({ currentUser, isSidebarOpen = true, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { isDark, toggleTheme } = useTheme()
@@ -111,6 +111,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
         <button
           type="button"
           onClick={onToggleSidebar}
+          aria-expanded={isSidebarOpen}
+          aria-controls="main-sidebar"
           className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           aria-label="Toggle Navigation Sidebar"
         >

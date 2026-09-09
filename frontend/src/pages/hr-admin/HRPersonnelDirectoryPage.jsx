@@ -7,10 +7,12 @@ import GovernanceTabs from './personnel-directory/GovernanceTabs'
 import PersonnelDirectoryTable from './personnel-directory/PersonnelDirectoryTable'
 import FacultyDossierDrawer from './personnel-directory/FacultyDossierDrawer'
 import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
+import EditMasterDataModal from './personnel-directory/EditMasterDataModal'
 import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
 import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
 import { collectPersonnelPlacementOptions } from '../../utils/personnelPlacement'
+import { updatePersonnelMasterData } from '../../services/hrAdminService'
 
 export function HRPersonnelDirectoryPage(props) {
   const hrHook = useHR()
@@ -42,6 +44,7 @@ export function HRPersonnelDirectoryPage(props) {
   const [selectedFaculty, setSelectedFaculty] = useState(null)
   const [isDossierOpen, setIsDossierOpen] = useState(false)
   const [editingAssignmentPersonnel, setEditingAssignmentPersonnel] = useState(null)
+  const [editingMasterDataPersonnel, setEditingMasterDataPersonnel] = useState(null)
   const [resetPasswordPersonnel, setResetPasswordPersonnel] = useState(null)
 
   // Modals & Toast State
@@ -88,9 +91,27 @@ export function HRPersonnelDirectoryPage(props) {
     setEditingAssignmentPersonnel(p)
   }
 
+  const handleOpenEditMasterData = (p) => {
+    setEditingMasterDataPersonnel(p)
+  }
+
   const handleSaveAssignment = (updatedData) => {
     showToast(`Updated administrative assignment for ${updatedData.full_name || 'personnel'}.`)
     setEditingAssignmentPersonnel(null)
+    hrHook.refreshData?.()
+  }
+
+  const handleSaveMasterData = async (profileId, payload) => {
+    try {
+      await updatePersonnelMasterData(profileId, payload)
+      showToast('HR Master Data updated successfully with audit trail.')
+      setEditingMasterDataPersonnel(null)
+      await hrHook.refreshData?.()
+    } catch (err) {
+      console.error('Failed to update master data:', err)
+      showToast('Failed to update master data. Please check authorization.')
+      throw err
+    }
   }
 
   const handlePromoteRank = (p, newRank, newStatus) => {
@@ -123,8 +144,8 @@ export function HRPersonnelDirectoryPage(props) {
       setActiveTab('directory')
       setDirectorySort({ column: 'created_at', direction: 'desc' })
       setRevealRequestKey(prev => prev + 1)
-      if (createdRecord && createdRecord.id) {
-        setNewlyCreatedId(createdRecord.id)
+      if (createdRecord && (createdRecord.id || createdRecord.data?.id)) {
+        setNewlyCreatedId(createdRecord.id || createdRecord.data?.id)
       }
 
       if (formData.action === 'save_pending' || formData.is_pending_placement) {
@@ -132,10 +153,11 @@ export function HRPersonnelDirectoryPage(props) {
       } else {
         showToast(`Personnel account created for ${formData.full_name || 'personnel'} and activation invitation sent.`)
       }
-      setIsOnboardingOpen(false)
+      return createdRecord
     } catch (err) {
       console.error('Onboarding failed:', err)
       showToast(`Failed to onboard personnel account. Please try again.`)
+      throw err
     }
   }
 
@@ -174,6 +196,7 @@ export function HRPersonnelDirectoryPage(props) {
           revealRequestKey={revealRequestKey}
           onSelectPersonnel={handleOpenDossier}
           onEditAssignment={handleOpenEditAssignment}
+          onEditMasterData={handleOpenEditMasterData}
           onPromoteRank={handleOpenDossier}
           onResetPassword={handleResetPassword}
           onManageRole={handleManageRole}
@@ -201,9 +224,19 @@ export function HRPersonnelDirectoryPage(props) {
         isOpen={isDossierOpen}
         onClose={() => setIsDossierOpen(false)}
         onEditAssignment={handleOpenEditAssignment}
+        onEditMasterData={handleOpenEditMasterData}
         onPromoteRank={handlePromoteRank}
         onResetPassword={handleResetPassword}
         onManageRole={handleManageRole}
+      />
+
+      {/* Edit Master Data Modal (Plan D2 HR Control) */}
+      <EditMasterDataModal
+        personnel={editingMasterDataPersonnel}
+        isOpen={Boolean(editingMasterDataPersonnel)}
+        onClose={() => setEditingMasterDataPersonnel(null)}
+        onSave={handleSaveMasterData}
+        placementOptions={collectPersonnelPlacementOptions(personnelList)}
       />
 
       {/* Edit Organizational Assignment Modal */}

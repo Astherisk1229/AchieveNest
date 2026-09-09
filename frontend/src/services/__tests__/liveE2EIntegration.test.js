@@ -102,7 +102,7 @@ const PERSONAS = [
   },
 ]
 
-describe('Phase 16 — Live Backend E2E Integration Suite', () => {
+describe('Phase 16 — Live Backend E2E Integration Suite', { timeout: 30000 }, () => {
   beforeAll(async () => {
     const healthRes = await fetch(`${BASE_URL}/health`)
     expect(healthRes.status).toBe(200)

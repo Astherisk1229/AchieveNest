@@ -1,0 +1,40 @@
+=== Phase I4 Focused Test Suite Output ===
+Command: npx vitest run src/controllers/__tests__/PersonnelEvidenceVersioningI4.test.jsx src/controllers/__tests__/PersonnelAuthorizedEvidenceAccessI3.test.jsx src/controllers/__tests__/PersonnelSecureUploadPipelineI1.test.jsx src/controllers/__tests__/PersonnelEvidenceIdentityI2.test.jsx src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx
+Timestamp: 2026-09-09T10:26:01+08:00
+Environment: Node.js / Vitest v3.2.7
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvidenceVersioningI4.test.jsx (17 tests) 17ms
+   ✓ Personnel Evaluation Track — Plan I — Phase I4: Evidence Versioning, Replacement & Deletion Suite
+     ✓ 1. Evidence Replacement in Editable Working Records
+       ✓ 1.1 allows evidence replacement on an editable draft accomplishment
+       ✓ 1.2 generates new evidence_id on replacement while updating working record
+       ✓ 1.3 ensures old evidence metadata remains completely immutable and unchanged
+       ✓ 1.4 rejects replacement attempt when portfolio submission is in locked/submitted status
+       ✓ 1.5 rejects replacement attempt when accomplishment is locked
+       ✓ 1.6 rejects replacement attempt by non-owner actor
+     ✓ 2. Multi-Version Historical Linkage (Version 1 vs Version 2)
+       ✓ 2.1 preserves Version 1 evidence_id when working draft replaces evidence for Version 2
+       ✓ 2.2 resolves Evidence A preview for Version 1 and Evidence B preview for Version 2
+     ✓ 3. Owner-Authorized Complete Deletion & Storage Cleanup
+       ✓ 3.1 builds valid complete deletion manifest for authentic owner
+       ✓ 3.2 blocks complete deletion attempted by unauthorized non-owner
+       ✓ 3.3 allows HR Admin to execute complete deletion with documented authorization reference
+       ✓ 3.4 rejects HR Admin execution of complete deletion when authorization reference is missing
+     ✓ 4. Stale-Link Prevention & Post-Deletion Access Denial
+       ✓ 4.1 denies preview access to deleted evidence across all roles
+       ✓ 4.2 denies download access to deleted evidence across all roles
+       ✓ 4.3 verifies RISK-I0-02 is closed with physical unlinking and complete cleanup
+     ✓ 5. Transaction Safety & Replacement Rollback Protection
+       ✓ 5.1 ensures old evidence remains active when replacement update fails
+     ✓ 6. Idempotency & Orphan Diagnostics
+       ✓ 6.1 ensures repeated deletion requests return consistent idempotent manifests
+ ✓ src/controllers/__tests__/PersonnelAuthorizedEvidenceAccessI3.test.jsx (30 tests) 30ms
+ ✓ src/controllers/__tests__/PersonnelSecureUploadPipelineI1.test.jsx (33 tests) 30ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceIdentityI2.test.jsx (29 tests) 13ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx (24 tests) 18ms
+
+ Test Files  5 passed (5)
+      Tests  133 passed (133)
+   Duration  2.52s

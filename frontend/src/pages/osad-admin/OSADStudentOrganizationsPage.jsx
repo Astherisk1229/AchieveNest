@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
-import { Users, Plus, ShieldCheck, Globe, Building2, Layers } from 'lucide-react'
+import { Users, Plus, ShieldCheck, Globe, Building2, GraduationCap } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { getOrganizationLogoUrl } from '../../services/organizationAdminService'
+import OSADOrganizationDetailsView from './OSADOrganizationDetailsView'
+import OSADPageHeader from '../../components/osad/OSADPageHeader'
+import { OSADEmptyState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 
 const CATEGORY_LABELS = {
   academic_college: 'Academic / College-Based',
@@ -15,11 +18,43 @@ const CATEGORY_LABELS = {
 
 export default function OSADStudentOrganizationsPage({ 
   organizations = [], 
+  colleges = [],
   setIsAddOrgOpen, 
-  setPersonnelSelectorTarget 
+  setPersonnelSelectorTarget,
+  selectedOrganizationId = null,
+  onSelectOrganization = () => {},
+  onBackToOrganizations = () => {},
+  onAssignModeratorFromDetails = null,
+  onEditOrganization = null
 }) {
   const [scopeFilter, setScopeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
+
+  // If viewing details of a specific organization
+  if (selectedOrganizationId) {
+    const selectedOrg = organizations.find((o) => o.id === selectedOrganizationId) || null
+    return (
+      <OSADOrganizationDetailsView
+        organizationId={selectedOrganizationId}
+        onBack={onBackToOrganizations}
+        fallbackOrganization={selectedOrg}
+        colleges={colleges}
+        onAssignModerator={(org) => {
+          if (typeof onAssignModeratorFromDetails === 'function') {
+            onAssignModeratorFromDetails(org)
+          } else if (typeof setPersonnelSelectorTarget === 'function') {
+            setPersonnelSelectorTarget({
+              title: 'Assign Organization Moderator',
+              targetName: org.name,
+              organizationId: org.id,
+              roleType: 'moderator'
+            })
+          }
+        }}
+        onEditOrganization={onEditOrganization}
+      />
+    )
+  }
 
   const filteredOrgs = organizations.filter(o => {
     const orgScope = o.scope || o.scopeType || 'university'
@@ -33,28 +68,13 @@ export default function OSADStudentOrganizationsPage({
   return (
     <div className="space-y-6 animate-in fade-in duration-200 font-sans">
       
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                Student Organizations
-              </h1>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 text-[10px] font-black uppercase">
-                Persistent & Validated
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              Manage recognized Student Organizations, logos, and assign Organization Moderators.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start md:self-auto">
+      {/* Standardized Page Header */}
+      <OSADPageHeader
+        title="Student Organizations"
+        description="Manage recognized Student Organizations, logos, and assign Organization Moderators."
+        icon={Users}
+        badge="Persistent & Validated"
+        primaryAction={
           <Button
             onClick={() => setIsAddOrgOpen(true)}
             className="gap-1.5 shadow-xs"
@@ -62,8 +82,8 @@ export default function OSADStudentOrganizationsPage({
             <Plus className="w-3.5 h-3.5" />
             <span>Create Student Organization</span>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filter Bar */}
       <div className="bg-white dark:bg-[#131e2e] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
@@ -103,13 +123,27 @@ export default function OSADStudentOrganizationsPage({
       </div>
 
       {/* Student Organization Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredOrgs.length === 0 ? (
-          <div className="col-span-full p-8 bg-white dark:bg-[#131e2e] rounded-2xl border border-slate-200/80 dark:border-slate-800 text-center text-slate-400 text-xs font-semibold">
-            No Student Organizations match the selected filters.
-          </div>
-        ) : (
-          filteredOrgs.map(org => {
+      {organizations.length === 0 ? (
+        <OSADEmptyState
+          icon={Users}
+          title="No Student Organizations Found"
+          description="No recognized student organizations have been registered in the system yet. Click 'Create Student Organization' to establish one."
+          actionLabel="Create Student Organization"
+          onAction={() => setIsAddOrgOpen(true)}
+        />
+      ) : filteredOrgs.length === 0 ? (
+        <OSADSearchEmptyState
+          title="No Matching Organizations"
+          description="No student organizations match the selected scope and category filters."
+          onReset={() => {
+            setScopeFilter('all')
+            setCategoryFilter('all')
+          }}
+          resetLabel="Reset Scope & Category Filters"
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredOrgs.map(org => {
             const orgScope = org.scope || org.scopeType || 'university'
             const scopeLabel = orgScope.replace('_', ' ')
             const categoryLabel = CATEGORY_LABELS[org.category] || org.category || 'Academic / College-Based'
@@ -117,11 +151,21 @@ export default function OSADStudentOrganizationsPage({
             const hasLogo = Boolean(org.logo_storage_key)
             const logoUrl = hasLogo ? getOrganizationLogoUrl(org.id) : null
             const acronym = org.code || org.name.substring(0, 4).toUpperCase()
+            const programCount = org.program_ids?.length ?? org.programs?.length ?? 0
 
             return (
               <div
                 key={org.id}
-                className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4 flex flex-col justify-between hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectOrganization(org.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onSelectOrganization(org.id)
+                  }
+                }}
+                className="bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-4 flex flex-col justify-between hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700/60 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#16834a]"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
@@ -170,6 +214,16 @@ export default function OSADStudentOrganizationsPage({
                 </div>
 
                 <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1 font-medium">
+                      <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
+                      {orgScope === 'program' ? `${programCount} Programs` : `${scopeLabel} Scope`}
+                    </span>
+                    <span className="font-bold text-[#16834a] dark:text-emerald-400">
+                      View Details →
+                    </span>
+                  </div>
+
                   <div className="bg-slate-50 dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div>
                       <span className="text-[9px] font-extrabold text-slate-400 uppercase block">Organization Moderator</span>
@@ -178,11 +232,13 @@ export default function OSADStudentOrganizationsPage({
 
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         if (typeof setPersonnelSelectorTarget === 'function') {
                           setPersonnelSelectorTarget({
                             title: 'Assign Organization Moderator',
                             targetName: org.name,
+                            organizationId: org.id,
                             roleType: 'moderator'
                           })
                         }
@@ -190,15 +246,15 @@ export default function OSADStudentOrganizationsPage({
                       className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-emerald-50 text-[#064e2b] dark:text-[#245F42] font-extrabold text-[11px] border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1 shadow-2xs"
                     >
                       <ShieldCheck className="w-3 h-3 text-[#16834a]" />
-                      <span>Assign</span>
+                      <span>{moderatorName !== 'Unassigned' ? 'Reassign' : 'Assign'}</span>
                     </button>
                   </div>
                 </div>
               </div>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
     </div>
   )

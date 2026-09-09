@@ -1,19 +1,42 @@
-import React from 'react'
+import React, { useState, useMemo } from 'react'
 import { Search, ShieldCheck, Award, Building, Download, CheckCircle2, TrendingUp } from 'lucide-react'
 import PersonnelPortfolioModel from '../../models/PersonnelPortfolioModel'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
+import { useHR } from '../../hooks/useHR'
 
-export function HRFacultyEvaluationOversightPage({
-  portfolios = [],
-  searchQuery,
-  setSearchQuery,
-  affiliationFilter,
-  setAffiliationFilter,
-  statusFilter,
-  setStatusFilter,
-  onSelectAuditPortfolio,
-  selectedAuditPortfolio
-}) {
+export function HRFacultyEvaluationOversightPage(props) {
+  const hrHook = useHR()
+
+  const [localSearchQuery, setLocalSearchQuery] = useState('')
+  const [localAffiliationFilter, setLocalAffiliationFilter] = useState('All')
+  const [localStatusFilter, setLocalStatusFilter] = useState('All')
+
+  const searchQuery = props.searchQuery !== undefined ? props.searchQuery : localSearchQuery
+  const setSearchQuery = props.setSearchQuery || setLocalSearchQuery
+  const affiliationFilter = props.affiliationFilter !== undefined ? props.affiliationFilter : localAffiliationFilter
+  const setAffiliationFilter = props.setAffiliationFilter || setLocalAffiliationFilter
+  const statusFilter = props.statusFilter !== undefined ? props.statusFilter : localStatusFilter
+  const setStatusFilter = props.setStatusFilter || setLocalStatusFilter
+  const onSelectAuditPortfolio = props.onSelectAuditPortfolio
+
+  const rawPortfolios = props.portfolios || hrHook.personnelList || []
+
+  // Filtered portfolios pipeline
+  const portfolios = useMemo(() => {
+    return (rawPortfolios || []).filter(p => {
+      if (!p) return false
+      const q = (searchQuery || '').toLowerCase().trim()
+      const facultyName = (p.personnel_name || p.full_name || p.faculty_name || '').toLowerCase()
+      const facultyId = (p.personnel_id || p.employee_id || p.institutional_id || '').toLowerCase()
+      const matchesSearch = !q || facultyName.includes(q) || facultyId.includes(q)
+
+      const collegeCode = (p.college_code || p.college || '').toUpperCase()
+      const matchesAffiliation = affiliationFilter === 'All' || collegeCode.includes(affiliationFilter.toUpperCase())
+
+      return matchesSearch && matchesAffiliation
+    })
+  }, [rawPortfolios, searchQuery, affiliationFilter])
+
   const handleGenerateReport = () => {
     alert("System-generated report: Faculty Evaluation & Ranking Summary (CSV/PDF) generated successfully.")
   }

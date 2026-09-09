@@ -1,0 +1,18 @@
+{
+  "test_suites": {
+    "total": 123,
+    "passed": 123,
+    "failed": 0
+  },
+  "tests": {
+    "total": 868,
+    "passed": 868,
+    "failed": 0
+  },
+  "focused_tests": {
+    "EvaluationInstrumentSourceMatrixF0.test.js": { "tests": 28, "passed": 28, "failed": 0 }
+  },
+  "timestamp": "2026-09-09T00:14:01Z",
+  "status": "PASS",
+  "baseline": "123 test files / 868 tests passed / 0 failures"
+}

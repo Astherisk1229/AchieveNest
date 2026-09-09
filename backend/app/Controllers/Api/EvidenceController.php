@@ -148,10 +148,27 @@ class EvidenceController extends Controller
     }
 
     /**
+     * GET /api/v1/evidence/personnel/{id}/preview
+     * Authenticated inline file streaming for preview.
+     */
+    public function personnelPreview(string $evidenceId): mixed
+    {
+        return $this->streamPersonnelEvidence($evidenceId, 'inline');
+    }
+
+    /**
      * GET /api/v1/evidence/personnel/{id}/download
-     * Authenticated file streaming with security headers.
+     * Authenticated attachment file streaming for download.
      */
     public function personnelDownload(string $evidenceId): mixed
+    {
+        return $this->streamPersonnelEvidence($evidenceId, 'attachment');
+    }
+
+    /**
+     * Internal helper for streaming personnel evidence with Content-Disposition control.
+     */
+    protected function streamPersonnelEvidence(string $evidenceId, string $disposition = 'inline'): mixed
     {
         $actor = $this->resolveActor();
         if ($actor === null) {
@@ -161,8 +178,9 @@ class EvidenceController extends Controller
         $db = db_connect();
         $evidence = $db->table('personnel_accomplishment_evidence pae')
             ->select(['pae.*', 'pa.personnel_profile_id'])
-            ->join('personnel_accomplishments pa', 'pa.id = pae.accomplishment_id')
-            ->where('pae.id', $evidenceId)
+            ->join('personnel_accomplishments pa', 'pa.id = pae.accomplishment_id', 'left')
+            ->where('pae.evidence_id', $evidenceId)
+            ->orWhere('pae.id', $evidenceId)
             ->get()->getRowArray();
 
         if ($evidence === null) {
@@ -173,13 +191,15 @@ class EvidenceController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Access denied to this personnel evidence.']], 403);
         }
 
-        $absPath = $this->storage->resolveAbsolutePath($evidence['storage_path']);
+        $storagePath = $evidence['storage_key'] ?? $evidence['storage_path'] ?? '';
+        $absPath = $this->storage->resolveAbsolutePath($storagePath);
         if ($absPath === null || ! file_exists($absPath)) {
-            return $this->respond(['error' => ['code' => 'FILE_NOT_FOUND', 'message' => 'Evidence physical file not found on server storage.']], 404);
+            return $this->respond(['error' => ['code' => 'STORAGE_OBJECT_MISSING', 'message' => 'Evidence physical file not found on server storage.']], 404);
         }
 
         $mimeType = $evidence['detected_mime_type'] ?: ($evidence['mime_type'] ?: 'application/octet-stream');
         $safeFilename = basename($evidence['original_filename'] ?: 'accomplishment_evidence.pdf');
+        $safeFilename = str_replace(["\r", "\n", '"', "'", "\0", ';'], '', $safeFilename);
         $safeFilename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $safeFilename);
 
         $fileContent = file_get_contents($absPath);
@@ -187,11 +207,15 @@ class EvidenceController extends Controller
             return $this->respond(['error' => ['code' => 'STREAM_ERROR', 'message' => 'Could not read evidence file content.']], 500);
         }
 
+        $dispositionHeader = ($disposition === 'attachment')
+            ? sprintf('attachment; filename="%s"', $safeFilename)
+            : sprintf('inline; filename="%s"', $safeFilename);
+
         return $this->response
             ->setHeader('Content-Type', $mimeType)
             ->setHeader('Content-Length', (string) filesize($absPath))
             ->setHeader('X-Content-Type-Options', 'nosniff')
-            ->setHeader('Content-Disposition', sprintf('inline; filename="%s"', $safeFilename))
+            ->setHeader('Content-Disposition', $dispositionHeader)
             ->setHeader('Cache-Control', 'private, no-store, must-revalidate')
             ->setBody($fileContent);
     }

@@ -181,7 +181,6 @@ class DefenseDemoPersonaSeeder extends Seeder
                 'account_type'         => $p['account_type'],
                 'designation_title'    => $p['designation'] ?? null,
                 'status'               => 'active',
-                'must_change_password' => 0,
                 'password_hash'        => $passwordHash,
                 'created_at'           => $now,
                 'updated_at'           => $now,
@@ -212,11 +211,12 @@ class DefenseDemoPersonaSeeder extends Seeder
 
             // Local Auth Credentials table
             $credData = [
-                'profile_id'    => $p['id'],
-                'password_hash' => $passwordHash,
-                'status'        => 'active',
-                'created_at'    => $now,
-                'updated_at'    => $now,
+                'profile_id'           => $p['id'],
+                'password_hash'        => $passwordHash,
+                'must_change_password' => 0,
+                'status'               => 'active',
+                'created_at'           => $now,
+                'updated_at'           => $now,
             ];
             $db->table('local_auth_credentials')->upsert($credData);
 

@@ -370,7 +370,7 @@ class VerifyPhase7Auth extends BaseCommand
         $resp = $provController->manualStudent();
         $body = json_decode($resp->getBody(), true);
         $newStudentTempPass = $body['data']['temporary_password'] ?? null;
-        $check('24a. Manual Student Provisioning', $resp->getStatusCode() === 201 && !empty($newStudentTempPass), 'Status: ' . $resp->getStatusCode() . ' Body: ' . json_encode($body));
+        $check('24a. Manual Student Provisioning', $resp->getStatusCode() === 201 && !empty($newStudentTempPass), 'Status 201, temporary credential generated and retained only in memory');
 
         // Verify newly provisioned student can login
         $req = $this->makeRequest('POST', 'http://localhost:8080/api/v1/auth/login', [
@@ -380,7 +380,7 @@ class VerifyPhase7Auth extends BaseCommand
         $authController->initController($req, response(), service('logger'));
         $resp = $authController->login();
         $body = json_decode($resp->getBody(), true);
-        $check('24b. Newly Provisioned Student Login', $resp->getStatusCode() === 200, 'Status: ' . $resp->getStatusCode() . ' Body: ' . json_encode($body));
+        $check('24b. Newly Provisioned Student Login', $resp->getStatusCode() === 200, 'Status 200, JWT returned without logging token material');
 
         CLI::write("\n------------------------------------------------------------", 'white');
         CLI::write("TEST RESULTS: $passCount / $testCount PASSED (" . ($allPassed ? "ALL PASS" : "SOME FAILED") . ")", $allPassed ? 'green' : 'red');

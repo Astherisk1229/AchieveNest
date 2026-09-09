@@ -68,33 +68,49 @@ export const REQUIRED_EVENT_METADATA = Object.freeze({
   [CANONICAL_EVENT_KEYS.PORTFOLIO_PURGED]: ['target_profile_id', 'purged_by_role']
 });
 
+export const EVENT_DISPLAY_LABELS = Object.freeze({
+  [CANONICAL_EVENT_KEYS.ACHIEVEMENT_UPLOAD_SAVED]: 'Achievement Upload Saved',
+  [CANONICAL_EVENT_KEYS.PORTFOLIO_SUBMITTED]: 'Portfolio Submitted',
+  [CANONICAL_EVENT_KEYS.REVIEW_STARTED]: 'Review Started',
+  [CANONICAL_EVENT_KEYS.QUALIFICATION_STATE_CHANGED]: 'Qualification State Changed',
+  [CANONICAL_EVENT_KEYS.REVISION_REQUESTED]: 'Revision Requested',
+  [CANONICAL_EVENT_KEYS.PORTFOLIO_RESUBMITTED]: 'Portfolio Resubmitted',
+  [CANONICAL_EVENT_KEYS.EVALUATION_RESULT_RECORDED]: 'Evaluation Result Recorded',
+  [CANONICAL_EVENT_KEYS.EVALUATION_READY_FOR_FINALIZATION]: 'Ready for Finalization',
+  [CANONICAL_EVENT_KEYS.EVALUATION_FINALIZED]: 'Evaluation Finalized',
+  [CANONICAL_EVENT_KEYS.SUMMARY_AVAILABLE]: 'Summary Available',
+  [CANONICAL_EVENT_KEYS.REVIEWER_ASSIGNED]: 'Reviewer Assigned',
+  [CANONICAL_EVENT_KEYS.EVALUATION_SCALE_OVERRIDDEN]: 'Evaluation Scale Overridden',
+  [CANONICAL_EVENT_KEYS.PROMOTION_DECISION_RECORDED]: 'Promotion Decision Recorded',
+  [CANONICAL_EVENT_KEYS.APPROVED_RANK_APPLIED]: 'Approved Rank Applied',
+  [CANONICAL_EVENT_KEYS.PORTFOLIO_PURGED]: 'Portfolio Purged'
+});
+
 export default class PersonnelWorkflowEventRegistry {
-  /**
-   * Validates if a status string is one of the 5 canonical statuses.
-   */
   static isValidStatus(status) {
     return Object.values(CANONICAL_STATUSES).includes(status);
   }
 
-  /**
-   * Resolves human-friendly display label for a status key.
-   */
-  static getStatusDisplayLabel(status) {
-    if (STATUS_DISPLAY_LABELS[status]) {
-      return STATUS_DISPLAY_LABELS[status];
+  static getStatusDisplayLabel(statusOrEvent) {
+    if (STATUS_DISPLAY_LABELS[statusOrEvent]) {
+      return STATUS_DISPLAY_LABELS[statusOrEvent];
     }
-    if (typeof status === 'string') {
-      const clean = status.replace(/_/g, ' ');
+    if (EVENT_DISPLAY_LABELS[statusOrEvent]) {
+      return EVENT_DISPLAY_LABELS[statusOrEvent];
+    }
+    if (typeof statusOrEvent === 'string') {
+      const clean = statusOrEvent.replace(/_/g, ' ');
       return clean.charAt(0).toUpperCase() + clean.slice(1);
     }
-    return String(status || 'Unknown');
+    return String(statusOrEvent || 'Unknown');
   }
 
-  /**
-   * Validates if an event key is recognized.
-   */
   static isValidEventKey(eventKey) {
     return Object.values(CANONICAL_EVENT_KEYS).includes(eventKey);
+  }
+
+  static isValidEvent(eventKey) {
+    return this.isValidEventKey(eventKey);
   }
 
   /**

@@ -32,17 +32,6 @@ apiClient.interceptors.request.use(
         }
       }
 
-      // 2. Hosted Supabase fallback only if no local token and not explicitly local-defense
-      if (!token && import.meta.env.VITE_AUTH_MODE !== 'local-defense') {
-        try {
-          const { supabase } = await import('../config/supabase')
-          const { data: { session } } = await supabase.auth.getSession()
-          token = session?.access_token
-        } catch {
-          token = null
-        }
-      }
-
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       } else if (!config.headers.Authorization) {
@@ -69,7 +58,28 @@ apiClient.interceptors.response.use(
         sessionStorage.removeItem('achievenest_current_user')
         localStorage.removeItem('achievenest_access_token')
         sessionStorage.removeItem('achievenest_access_token')
-        window.dispatchEvent(new Event('storage'))
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('storage'))
+        }
+      } else if (error.response.status === 403 && error.response.data?.error?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        console.warn('Mandatory password change required (403). Restricting session.')
+        const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
+        if (rawUser) {
+          try {
+            const user = JSON.parse(rawUser)
+            user.must_change_password = true
+            user.account_lifecycle_status = 'pending_first_login'
+            user.required_next_action = 'change_password'
+            user.can_access_protected_portal = false
+            localStorage.setItem('achievenest_current_user', JSON.stringify(user))
+            sessionStorage.setItem('achievenest_current_user', JSON.stringify(user))
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(new Event('storage'))
+            }
+          } catch {
+            // Ignore parse error
+          }
+        }
       }
       return Promise.reject(error.response.data || error.response)
     }

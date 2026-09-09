@@ -5,11 +5,8 @@ namespace App\Controllers\Api;
 use App\Services\AuthenticatedActorService;
 use App\Services\LocalAuthService;
 use App\Services\LocalTokenService;
-use App\Services\SupabaseAdminAuthService;
-use App\Services\SupabaseAuthService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
-use Throwable;
 
 class AuthController extends Controller
 {
@@ -18,14 +15,12 @@ class AuthController extends Controller
     protected AuthenticatedActorService $actorService;
     protected LocalAuthService $localAuthService;
     protected LocalTokenService $localTokenService;
-    protected bool $isLocalDefense;
 
     public function __construct()
     {
         $this->actorService = new AuthenticatedActorService();
         $this->localAuthService = new LocalAuthService();
         $this->localTokenService = new LocalTokenService();
-        $this->isLocalDefense = (env('AUTH_MODE') === 'local-defense' || env('ACHIEVENEST_ENV') === 'local-defense');
     }
 
     public function options()
@@ -45,22 +40,12 @@ class AuthController extends Controller
         $ip = $this->request->getIPAddress();
         $userAgent = $this->request->getUserAgent()->getAgentString();
 
-        if ($this->isLocalDefense) {
-            $result = $this->localAuthService->login($email, $password, $rememberMe, $ip, $userAgent);
-            if (! $result['success']) {
-                return $this->respond(['error' => $result['error']], $result['status']);
-            }
-
-            return $this->respond(['data' => $result['data']], 200);
+        $result = $this->localAuthService->login($email, $password, $rememberMe, $ip, $userAgent);
+        if (! $result['success']) {
+            return $this->respond(['error' => $result['error']], $result['status']);
         }
 
-        // Hosted mode login fallback or delegation
-        return $this->respond([
-            'error' => [
-                'code'    => 'HOSTED_AUTH_DELEGATED',
-                'message' => 'In hosted mode, authentication is mediated directly by Supabase Auth.',
-            ],
-        ], 400);
+        return $this->respond(['data' => $result['data']], 200);
     }
 
     /**
@@ -216,9 +201,7 @@ class AuthController extends Controller
         $authorization = $this->request->getHeaderLine('Authorization');
         if ($authorization !== '' && preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
             $token = trim($matches[1]);
-            if ($this->isLocalDefense) {
-                $this->localTokenService->revokeSession($token, 'logout');
-            }
+            $this->localTokenService->revokeSession($token, 'logout');
         }
 
         return $this->respond([
@@ -279,46 +262,11 @@ class AuthController extends Controller
             ], 422);
         }
 
-        if ($this->isLocalDefense) {
-            $result = $this->localAuthService->changePassword($authUserId, $newPassword, $ip);
-            if (! $result['success']) {
-                return $this->respond(['error' => $result['error']], $result['status']);
-            }
-
-            return $this->respond(['data' => $result['data']], 200);
+        $result = $this->localAuthService->changePassword($authUserId, $newPassword, $ip);
+        if (! $result['success']) {
+            return $this->respond(['error' => $result['error']], $result['status']);
         }
 
-        // Hosted Supabase password update
-        try {
-            (new SupabaseAdminAuthService())->updateUserPassword($authUserId, $newPassword);
-        } catch (Throwable $e) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'PASSWORD_UPDATE_FAILED',
-                    'message' => 'Failed to update password: ' . $e->getMessage(),
-                ],
-            ], 500);
-        }
-
-        $db = db_connect();
-        $db->table('profiles')->where('id', $authUserId)->update([
-            'must_change_password' => 0,
-            'updated_at'           => date('Y-m-d H:i:s'),
-        ]);
-
-        $db->table('password_reset_events')->insert([
-            'actor_user_id'  => $authUserId,
-            'target_user_id' => $authUserId,
-            'action'         => 'mandatory_password_change_completed',
-            'metadata'       => json_encode(['ip_address' => $ip]),
-            'occurred_at'    => date('Y-m-d H:i:s'),
-        ]);
-
-        return $this->respond([
-            'data' => [
-                'message'              => 'Password has been updated successfully.',
-                'must_change_password' => false,
-            ],
-        ], 200);
+        return $this->respond(['data' => $result['data']], 200);
     }
 }

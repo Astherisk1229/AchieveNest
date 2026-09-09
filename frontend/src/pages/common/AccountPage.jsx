@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import useUserProfile from '../../hooks/useUserProfile'
-import { supabase } from '../../config/supabase'
+import { submitPasswordChange } from '../../services/authService'
 
 export default function AccountPage({ currentUser }) {
   const { user: authUser } = useAuth()
@@ -61,8 +61,7 @@ export default function AccountPage({ currentUser }) {
     }
     setIsUpdatingPassword(true)
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
+      await submitPasswordChange(newPassword, confirmPassword)
       setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
       setNewPassword('')
       setConfirmPassword('')

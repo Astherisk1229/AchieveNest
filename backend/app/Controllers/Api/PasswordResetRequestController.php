@@ -2,14 +2,11 @@
 
 namespace App\Controllers\Api;
 
-use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
 use App\Services\LocalAuthService;
 use App\Services\LocalTokenService;
-use App\Services\SupabaseAdminAuthService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
-use Throwable;
 
 class PasswordResetRequestController extends Controller
 {
@@ -17,21 +14,16 @@ class PasswordResetRequestController extends Controller
 
     protected AuthenticatedActorService $actorService;
     protected LocalAuthService $localAuthService;
-    protected SupabaseAdminAuthService $adminAuthService;
     protected LocalTokenService $localTokenService;
-    protected bool $isLocalDefense;
 
     public function __construct(
         ?AuthenticatedActorService $actorService = null,
         ?LocalAuthService $localAuthService = null,
-        ?SupabaseAdminAuthService $adminAuthService = null,
         ?LocalTokenService $localTokenService = null
     ) {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
         $this->localAuthService = $localAuthService ?? new LocalAuthService();
-        $this->adminAuthService = $adminAuthService ?? new SupabaseAdminAuthService();
         $this->localTokenService = $localTokenService ?? new LocalTokenService();
-        $this->isLocalDefense = (env('AUTH_MODE') === 'local-defense' || env('ACHIEVENEST_ENV') === 'local-defense');
     }
 
     public function options()
@@ -223,49 +215,19 @@ class PasswordResetRequestController extends Controller
         $targetUserId = $request['user_id'];
         $ip = $this->request->getIPAddress();
 
-        if ($this->isLocalDefense) {
-            $result = $this->localAuthService->adminResetPassword($actor['profile']['id'], $targetUserId, $ip);
-            if (! $result['success']) {
-                return $this->respond(['error' => $result['error']], $result['status']);
-            }
-
-            $temporaryPassword = $result['data']['temporary_password'];
-
-            $db->table('password_reset_requests')->where('id', $requestId)->update([
-                'status'       => 'completed',
-                'processed_by' => $actor['profile']['id'],
-                'processed_at' => date('Y-m-d H:i:s'),
-                'updated_at'   => date('Y-m-d H:i:s'),
-            ]);
-        } else {
-            $temporaryPassword = 'Temp_' . bin2hex(random_bytes(6)) . '!A1';
-            try {
-                $this->adminAuthService->updateUserPassword($targetUserId, $temporaryPassword);
-            } catch (Throwable $e) {
-                return $this->respond([
-                    'error' => [
-                        'code'    => 'AUTH_UPDATE_FAILED',
-                        'message' => 'Failed to update user password in authentication provider: ' . $e->getMessage(),
-                    ],
-                ], 500);
-            }
-
-            $db->transStart();
-
-            $db->table('profiles')->where('id', $targetUserId)->update([
-                'must_change_password' => 1,
-                'updated_at'           => date('Y-m-d H:i:s'),
-            ]);
-
-            $db->table('password_reset_requests')->where('id', $requestId)->update([
-                'status'       => 'completed',
-                'processed_by' => $actor['profile']['id'],
-                'processed_at' => date('Y-m-d H:i:s'),
-                'updated_at'   => date('Y-m-d H:i:s'),
-            ]);
-
-            $db->transComplete();
+        $result = $this->localAuthService->adminResetPassword($actor['profile']['id'], $targetUserId, $ip);
+        if (! $result['success']) {
+            return $this->respond(['error' => $result['error']], $result['status']);
         }
+
+        $temporaryPassword = $result['data']['temporary_password'];
+
+        $db->table('password_reset_requests')->where('id', $requestId)->update([
+            'status'       => 'completed',
+            'processed_by' => $actor['profile']['id'],
+            'processed_at' => date('Y-m-d H:i:s'),
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ]);
 
         return $this->respond([
             'data' => [

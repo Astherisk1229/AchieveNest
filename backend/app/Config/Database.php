@@ -26,25 +26,22 @@ class Database extends Config
      */
     public array $default = [
         'DSN'          => '',
-        'hostname'     => '',
-        'username'     => '',
+        'hostname'     => 'localhost',
+        'username'     => 'achievenest_app',
         'password'     => '',
-        'database'     => 'postgres',
-        'schema'       => 'public',
-        'DBDriver'     => 'Postgre',
+        'database'     => 'achievenest_local',
+        'DBDriver'     => 'MySQLi',
         'DBPrefix'     => '',
         'pConnect'     => false,
         'DBDebug'      => true,
-        'charset'      => 'utf8',
-        'DBCollat'     => '',
+        'charset'      => 'utf8mb4',
+        'DBCollat'     => 'utf8mb4_unicode_ci',
         'swapPre'      => '',
         'encrypt'      => false,
         'compress'     => false,
         'strictOn'     => false,
         'failover'     => [],
-        'port'         => 5432,
-        'connect_timeout' => 5,
-        'sslmode'      => 'require',
+        'port'         => 3306,
         'numberNative' => false,
         'foundRows'    => false,
         'dateFormat'   => [
@@ -55,7 +52,7 @@ class Database extends Config
     ];
 
     /**
-     * Supabase development/testing database.
+     * Local WAMP development database.
      *
      * Credentials are supplied through the local .env file.
      *
@@ -63,12 +60,11 @@ class Database extends Config
      */
     public array $development = [
         'DSN'             => '',
-        'hostname'        => '',
-        'username'        => '',
+        'hostname'        => 'localhost',
+        'username'        => 'achievenest_app',
         'password'        => '',
-        'database'        => 'postgres',
-        'schema'          => 'public',
-        'DBDriver'        => 'Postgre',
+        'database'        => 'achievenest_local',
+        'DBDriver'        => 'MySQLi',
         'DBPrefix'        => '',
         'pConnect'        => false,
         'DBDebug'         => true,
@@ -79,9 +75,7 @@ class Database extends Config
         'compress'        => false,
         'strictOn'        => false,
         'failover'        => [],
-        'port'            => 5432,
-        'connect_timeout' => 5,
-        'sslmode'         => 'require',
+        'port'            => 3306,
         'numberNative'    => false,
         'foundRows'       => false,
         'dateFormat'      => [
@@ -265,7 +259,8 @@ class Database extends Config
         parent::__construct();
 
         // Keep local defense, hosted development, and automated tests isolated.
-        if (env('ACHIEVENEST_ENV') === 'local-defense' || env('database.defaultGroup') === 'local_defense') {
+        $runtimeTarget = getenv('ACHIEVENEST_ENV') ?: env('ACHIEVENEST_ENV');
+        if ($runtimeTarget === 'local-defense' || env('database.defaultGroup') === 'local_defense') {
             $this->defaultGroup = 'local_defense';
         } elseif (ENVIRONMENT === 'development') {
             $this->defaultGroup = 'development';

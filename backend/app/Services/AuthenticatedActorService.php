@@ -2,28 +2,19 @@
 
 namespace App\Services;
 
-use Throwable;
-
 class AuthenticatedActorService
 {
-    protected ?SupabaseAuthService $supabaseAuth;
     protected LocalTokenService $localTokenService;
-    protected bool $isLocalDefense;
 
-    public function __construct(
-        ?SupabaseAuthService $supabaseAuth = null,
-        ?LocalTokenService $localTokenService = null
-    ) {
-        $this->supabaseAuth = $supabaseAuth;
+    public function __construct(?LocalTokenService $localTokenService = null)
+    {
         $this->localTokenService = $localTokenService ?? new LocalTokenService();
-        $this->isLocalDefense = (env('AUTH_MODE') === 'local-defense' || env('ACHIEVENEST_ENV') === 'local-defense');
     }
 
     /**
      * Resolves the authenticated actor from Authorization Bearer header.
      *
-     * In local-defense mode, uses LocalTokenService with server-side session registry.
-     * In hosted mode, uses SupabaseAuthService.
+     * Uses LocalTokenService with the server-side session registry.
      *
      * Generic account roles (student, personnel, hr_staff, osad_staff) remain
      * sourced from profile_roles. Business-scoped governance roles are sourced
@@ -41,18 +32,9 @@ class AuthenticatedActorService
         $token = trim($matches[1]);
         $claims = null;
 
-        if ($this->isLocalDefense) {
-            $claims = $this->localTokenService->verifyToken($token);
-            if ($claims === null) {
-                return null;
-            }
-        } else {
-            try {
-                $service = $this->supabaseAuth ?? new SupabaseAuthService();
-                $claims = $service->verifyAccessToken($token);
-            } catch (Throwable) {
-                return null;
-            }
+        $claims = $this->localTokenService->verifyToken($token);
+        if ($claims === null) {
+            return null;
         }
 
         $authUserId = (string) ($claims->sub ?? '');

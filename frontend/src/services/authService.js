@@ -1,9 +1,8 @@
 /**
  * AchieveNest Authentication Service
- * Dual-mode: Local-Defense authentication (WAMP MySQL) & Hosted Supabase Auth.
+ * Local authentication backed by CodeIgniter and WAMP MySQL.
  */
 
-import { supabase } from '../config/supabase'
 import apiClient from './apiClient'
 import AuthController from '../controllers/AuthController'
 import {
@@ -23,8 +22,15 @@ function dispatchStorageEvent() {
   }
 }
 
+function clearStoredSession() {
+  localStorage.removeItem(STORAGE_KEY_USER)
+  sessionStorage.removeItem(STORAGE_KEY_USER)
+  localStorage.removeItem(STORAGE_KEY_TOKEN)
+  sessionStorage.removeItem(STORAGE_KEY_TOKEN)
+}
+
 /**
- * Authenticates user via local-defense API or hosted Supabase Auth based on environment configuration.
+ * Authenticates a user through the local CodeIgniter API.
  */
 export async function authenticateUser(email, password, rememberMe = true) {
   const cleanEmail = String(email || '').trim().toLowerCase()
@@ -33,37 +39,15 @@ export async function authenticateUser(email, password, rememberMe = true) {
     throw new Error('Please enter a valid NDMU institutional email (@ndmu.edu.ph).')
   }
 
-  const authMode = import.meta.env.VITE_AUTH_MODE || 'local-defense'
-
-  // 1. Local-Defense Track (Direct CodeIgniter JWT authentication)
-  if (authMode === 'local-defense') {
-    const res = await apiClient.post('/auth/login', {
-      institutional_email: cleanEmail,
-      password,
-      remember_me: rememberMe
-    })
-
-    const accessToken = res?.data?.access_token || res?.access_token
-    if (!accessToken) {
-      throw new Error('Login succeeded but no access token was returned.')
-    }
-
-    return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
-  }
-
-  // 2. Hosted Supabase Auth Track
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: cleanEmail,
-    password
+  const res = await apiClient.post('/auth/login', {
+    institutional_email: cleanEmail,
+    password,
+    remember_me: rememberMe
   })
 
-  if (error) {
-    throw new Error(error.message || 'Supabase authentication failed.')
-  }
-
-  const accessToken = data?.session?.access_token
+  const accessToken = res?.data?.access_token || res?.access_token
   if (!accessToken) {
-    throw new Error('Supabase login succeeded but no access token was returned.')
+    throw new Error('Login succeeded but no access token was returned.')
   }
 
   return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
@@ -73,6 +57,8 @@ export async function authenticateUser(email, password, rememberMe = true) {
  * Resolves profile from backend /api/v1/auth/me using the provided access token.
  */
 export async function fetchProfileAndCreateSession(accessToken, emailFallback = '', rememberMe = true) {
+  clearStoredSession()
+
   // Store token first so apiClient interceptor picks it up immediately
   if (rememberMe) {
     localStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
@@ -80,14 +66,23 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     sessionStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
   }
 
-  const backendResponse = await apiClient.get('/auth/me', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    }
-  })
+  let backendResponse
+  try {
+    backendResponse = await apiClient.get('/auth/me', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    })
+  } catch (error) {
+    clearStoredSession()
+    dispatchStorageEvent()
+    throw error
+  }
 
   const user = backendResponse?.data?.user || backendResponse?.user || null
   if (!user) {
+    clearStoredSession()
+    dispatchStorageEvent()
     throw new Error('Authenticated session is valid, but the backend profile could not be resolved.')
   }
 
@@ -106,11 +101,20 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
   // Determine authoritative account type & assigned roles
   const userRoles = (user.roles || []).map(r => (typeof r === 'object' ? r.role_key : r)).map(r => normalizeRoleContext(r))
   const accountType = normalizeAccountType(user.account_type || (userRoles.includes('student') ? 'student' : 'personnel'))
+  if (accountType === 'student' && !userRoles.includes('student')) {
+    userRoles.push('student')
+  }
+  if (accountType === 'hr_admin' && !userRoles.includes('hr_staff')) {
+    userRoles.push('hr_staff')
+  }
+  if (accountType === 'osad_admin' && !userRoles.includes('osad_staff')) {
+    userRoles.push('osad_staff')
+  }
   const authoritativeAssignedRoles = normalizeAssignedRoles(userRoles, accountType)
   const activeRoleContext = resolveDefaultActiveRole(accountType, authoritativeAssignedRoles)
 
+  // Explicitly allowlisted session payload: never spreads raw response and never persists temporary_password
   const sessionPayload = {
-    ...user,
     id: user.id,
     institutional_id: user.institutional_id,
     institutional_email: cleanEmail,
@@ -119,6 +123,10 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     account_type: accountType,
     user_type: accountType,
     status: user.status || 'active',
+    administrative_status: user.administrative_status || user.status || 'active',
+    account_lifecycle_status: user.account_lifecycle_status || (user.must_change_password ? 'pending_first_login' : (user.must_change_password === false ? 'active' : 'unknown')),
+    credential_integrity_status: user.credential_integrity_status || (user.must_change_password !== null && user.must_change_password !== undefined ? 'valid' : 'missing'),
+    required_next_action: user.required_next_action || (user.must_change_password ? 'change_password' : (user.must_change_password === false ? 'none' : 'contact_administrator')),
     active_role_context: activeRoleContext,
     roles: user.roles || [],
     role_assignments: user.role_assignments || [],
@@ -129,12 +137,17 @@ export async function fetchProfileAndCreateSession(accessToken, emailFallback = 
     department_id: user.department_id || null,
     designation: user.designation || null,
     year_level: user.year_level || null,
-    must_change_password: Boolean(user.must_change_password),
+    must_change_password: user.must_change_password !== null && user.must_change_password !== undefined ? Boolean(user.must_change_password) : null,
     token: accessToken,
     access_token: accessToken,
     logged_in_at: new Date().toISOString(),
     rememberMe
   }
+
+  // Defense-in-depth: explicitly ensure ephemeral credentials are never stored
+  delete sessionPayload.temporary_password
+  delete sessionPayload.password
+  delete sessionPayload.password_hash
 
   if (rememberMe) {
     localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(sessionPayload))
@@ -242,18 +255,7 @@ export async function logoutUser() {
     // Ignore network/server errors during logout
   }
 
-  localStorage.removeItem(STORAGE_KEY_USER)
-  sessionStorage.removeItem(STORAGE_KEY_USER)
-  localStorage.removeItem(STORAGE_KEY_TOKEN)
-  sessionStorage.removeItem(STORAGE_KEY_TOKEN)
-
-  try {
-    if (import.meta.env.VITE_AUTH_MODE !== 'local-defense') {
-      await supabase.auth.signOut().catch(() => {})
-    }
-  } catch {
-    // Ignore in local-defense mode
-  }
+  clearStoredSession()
 
   dispatchStorageEvent()
 }
@@ -281,26 +283,48 @@ export async function requestPasswordReset(email) {
 /**
  * Submits a mandatory password change for the authenticated user and clears must_change_password flag.
  */
-export async function submitPasswordChange(newPassword, confirmPassword) {
+export async function submitPasswordChange(newPassword, confirmPassword, currentPassword = '') {
   const currentUser = getCurrentUser()
   const token = currentUser?.token || currentUser?.access_token
 
   const response = await apiClient.post('/auth/change-password', {
+    current_password: currentPassword,
     new_password: newPassword,
-    confirm_password: confirmPassword
+    confirm_password: confirmPassword,
+    new_password_confirmation: confirmPassword
   }, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   })
 
-  // Update local session to clear must_change_password
+  // Update stored token if fresh session returned
+  const sessionData = response?.data?.session || response?.session
+  if (sessionData?.access_token) {
+    setStoredToken(sessionData.access_token)
+  }
+
+  // Update local session to clear must_change_password and set active lifecycle
   if (currentUser) {
     currentUser.must_change_password = false
+    currentUser.account_lifecycle_status = 'active'
+    currentUser.required_next_action = 'none'
+    currentUser.can_access_protected_portal = true
+    if (sessionData?.access_token) {
+      currentUser.token = sessionData.access_token
+      currentUser.access_token = sessionData.access_token
+    }
     const local = localStorage.getItem(STORAGE_KEY_USER)
     const session = sessionStorage.getItem(STORAGE_KEY_USER)
     if (local) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
     if (session) sessionStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
     if (!local && !session) localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(currentUser))
     dispatchStorageEvent()
+  }
+
+  // Rehydrate canonical server session
+  try {
+    await getAuthUser()
+  } catch {
+    // Proceed with locally updated user
   }
 
   return response?.data || response

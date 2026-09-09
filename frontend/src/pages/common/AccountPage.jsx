@@ -27,10 +27,6 @@ export default function AccountPage({ currentUser }) {
   const { user: authUser } = useAuth()
   const activeUser = currentUser || authUser
 
-  if (activeUser?.account_type === 'student') {
-    return <StudentInstitutionalProfileView currentUser={activeUser} />
-  }
-
   const {
     user,
     presentation,
@@ -53,6 +49,10 @@ export default function AccountPage({ currentUser }) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' })
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+
+  if (activeUser?.account_type === 'student') {
+    return <StudentInstitutionalProfileView currentUser={activeUser} />
+  }
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault()

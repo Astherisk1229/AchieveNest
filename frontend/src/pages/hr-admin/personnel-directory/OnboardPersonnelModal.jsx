@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import { X, UserPlus, Briefcase, GraduationCap, Award, Sparkles } from 'lucide-react'
+import { X, UserPlus, Briefcase, GraduationCap, Building2, Sparkles } from 'lucide-react'
 import { validatePersonnelPlacement, validatePersonnelMasterData } from '../../../utils/personnelPlacement'
 import { useProvisioningCredential } from '../../../hooks/useProvisioningCredential'
 import OneTimeCredentialModal from '../../../components/credentials/OneTimeCredentialModal'

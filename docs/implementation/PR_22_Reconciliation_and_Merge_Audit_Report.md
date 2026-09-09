@@ -9,7 +9,7 @@ Decision: **repair PR #22; do not replace it; do not merge yet**
 
 - `origin/main`: `ceaf341ddd266a2bdf0fd4fe0bd9d01cdfbca845`
 - Audited PR head before repair: `cf9e678fe54daea80b289888ffa4c9dde3f100c0`
-- Repaired local PR head: `ed33d39baedb836cb69e02a83e275bb7e8c39c4a`
+- Repaired and documented PR head before this report-finalization commit: `8206848badbe8a255ab0bd65ea2694b98a1aaa0e`
 - Preservation branch/commit: `preserve/local-wamp-state` at `3fe33e4`
 - Current worktree was clean after the repair commits.
 
@@ -96,6 +96,6 @@ The lockfile was updated with npm's non-breaking remediations: `react-router-dom
 
 ## Merge and rollback recommendation
 
-Do not merge at `ed33d39`. After the unresolved gates are closed and an independent approval exists, use a normal merge commit so the phase history and reconciliation boundary remain visible. Record the final PR head, merge commit, CI check URLs, approver, and post-merge smoke results.
+Do not merge at `8206848`. After the unresolved gates are closed and an independent approval exists, use a normal merge commit so the phase history and reconciliation boundary remain visible. Record the final PR head, merge commit, CI check URLs, approver, and post-merge smoke results.
 
 Rollback anchor before any eventual merge: `ceaf341ddd266a2bdf0fd4fe0bd9d01cdfbca845`. Database rollback must use the validated pre-merge WAMP backup and replay procedure; Git rollback alone is not sufficient for schema changes.

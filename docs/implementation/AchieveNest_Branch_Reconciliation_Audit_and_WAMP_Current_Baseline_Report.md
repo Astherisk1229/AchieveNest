@@ -4,7 +4,9 @@
 **Reconciliation branch:** `reconcile/wamp-current`  
 **Preserved pre-reconciliation state:** `preserve/local-wamp-state` at `3fe33e4`  
 **Upstream comparison baseline:** `origin/main` at `ceaf341`  
-**Status:** Validated locally; GitHub PR review and merge pending
+**Reconciliation commit:** `48e7b87`  
+**Remote branch:** `origin/reconcile/wamp-current`  
+**Status:** Validated and pushed; GitHub PR creation/review and merge pending
 
 ## Executive summary
 
@@ -116,7 +118,7 @@ No branches were deleted during reconciliation.
 
 ## GitHub merge gate and CHU-01 Phase 2 readiness
 
-Local reconciliation and validation are complete. GitHub CLI is not installed in this environment, and unauthenticated GitHub API access did not expose the repository PR state. Therefore PR creation/review/approval and the final merge into `main` remain external gates; `main` must not yet be declared authoritative.
+Local reconciliation and validation are complete, and the branch has been pushed. GitHub CLI is not installed in this environment, unauthenticated GitHub API access did not expose the repository PR state, and the available browser connection could not initialize. Therefore PR creation/review/approval and the final merge into `main` remain external gates; `main` must not yet be declared authoritative. The prepared PR page is `https://github.com/Astherisk1229/AchieveNest/pull/new/reconcile/wamp-current`.
 
 CHU-01 Phase 2 is technically ready against `reconcile/wamp-current`, but implementation must begin only after:
 

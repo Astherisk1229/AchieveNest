@@ -48,7 +48,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K4 security/migration/
   it('19 supported mapping fixture is stable under a second pure pass', () => { const map = (p) => p.official_unit_id ? { group: PERSONNEL_GROUPS.NON_TEACHING_FACULTY, side: ORGANIZATIONAL_SIDES.NON_ACADEMIC } : null; expect(map(PLAN_K_PERSONAS.P_LEG_SUPPORTED)).toEqual(map(PLAN_K_PERSONAS.P_LEG_SUPPORTED)) })
   it('20 unmatched legacy rank fixture is not assigned a synthetic rank', () => expect(PLAN_K_PERSONAS.P_LEG_SUPPORTED.current_rank).toBeUndefined())
   it('21 position title is absent from canonical routing inputs', () => expect(PersonnelReviewerRoutingRegistry.resolveReviewerRoute.toString()).not.toMatch(/position_title|job_title/))
-  it('22 migration integrity requires DB-backed validation and is not simulated', () => expect(source('backend/.env')).toMatch(/ACHIEVENEST_ENV\s*=\s*local-defense/))
+  it('22 migration integrity requires DB-backed validation and is not simulated', () => expect(source('backend/.env.example')).toMatch(/ACHIEVENEST_ENV\s*=\s*local-defense/))
   it('23 duplicate profile prevention is represented by stable persona IDs', () => expect(new Set(Object.values(PLAN_K_PERSONAS).map((p) => p.id)).size).toBe(Object.keys(PLAN_K_PERSONAS).length))
   it('24 FK/orphan validation is gated away from protected DB', () => expect(source('backend/app/Config/Database.php')).toMatch(/must never target protected achievenest_local/i))
   it('25 owner self-deletion manifest is authorized', () => expect(PersonnelEvidenceVersioningService.buildDeletionManifest(PLAN_K_PERSONAS.P1.id, { profile_id: PLAN_K_PERSONAS.P1.id, roles: ['personnel'] }, null, [evidence]).valid).toBe(true))

@@ -1,8 +1,7 @@
 /**
  * Student Account Form & Lifecycle Contract Constants & Display Helpers
- * 
- * Canonical source of truth for frontend Student Year Levels, Sex Options,
- * display fallbacks, and numeric academic year sorting.
+ *
+ * Canonical source of truth for frontend Student provisioning controls.
  */
 
 import {
@@ -28,6 +27,16 @@ export const STUDENT_SEX_OPTIONS = [
   'Prefer not to say'
 ]
 
+/** Canonical name suffix values for Student provisioning. */
+export const STUDENT_SUFFIX_OPTIONS = [
+  'Jr.',
+  'Sr.',
+  'II',
+  'III',
+  'IV',
+  'V'
+]
+
 /** Full option objects for Sex select dropdowns with placeholder */
 export const STUDENT_SEX_SELECT_OPTIONS = [
   { value: '', label: 'Select Sex', disabled: true },
@@ -42,13 +51,38 @@ export const STUDENT_YEAR_LEVEL_SELECT_OPTIONS = [
   ...STUDENT_YEAR_LEVELS.map(yl => ({ value: yl, label: yl }))
 ]
 
+/** Full option objects for optional suffix selection. */
+export const STUDENT_SUFFIX_SELECT_OPTIONS = [
+  { value: '', label: 'None' },
+  ...STUDENT_SUFFIX_OPTIONS.map(value => ({ value, label: value }))
+]
+
+/**
+ * Student numbers are currently constrained to ASCII digits by the backend.
+ * Exact institutional length remains configuration-driven until NDMU confirms it.
+ */
+export function sanitizeStudentNumber(value = '') {
+  return String(value).replace(/[^0-9]/g, '')
+}
+
+/**
+ * Keep legitimate human-name characters while preventing digits/control-style punctuation.
+ * Unicode letters and combining marks are supported, plus spaces, apostrophes and hyphens.
+ */
+export function sanitizeStudentName(value = '') {
+  return String(value)
+    .replace(/[^\p{L}\p{M}\s'’-]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+}
+
+/** Normalize institutional email for canonical comparison/submission. */
+export function normalizeInstitutionalEmail(value = '') {
+  return String(value).replace(/\s+/g, '').toLowerCase()
+}
+
 /**
  * Format sex for safe display in UI tables, details, and profiles.
  * Renders canonical value or approved neutral fallback for legacy NULL rows.
- * 
- * @param {string|null|undefined} sex 
- * @param {string} [fallback='Not yet provided']
- * @returns {string}
  */
 export function formatStudentSexDisplay(sex, fallback = 'Not yet provided') {
   if (!sex || typeof sex !== 'string' || !sex.trim()) {
@@ -63,11 +97,6 @@ export function formatStudentSexDisplay(sex, fallback = 'Not yet provided') {
 
 /**
  * Compare two academic year strings (YYYY-YYYY) numerically by starting year.
- * 
- * @param {string} ay1
- * @param {string} ay2
- * @param {boolean} [descending=true]
- * @returns {number}
  */
 export function compareAcademicYears(ay1, ay2, descending = true) {
   const startYear1 = parseInt((ay1 || '').split('-')[0], 10) || 0

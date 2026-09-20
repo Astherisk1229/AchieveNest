@@ -15,3 +15,17 @@ pre_j4_*.txt
 frontend/test-results.json
 frontend/vitest-results-*.json
 
+# Local tool and rendering caches
+/.impeccable-cache/
+/.tmp-k-doc-render/
+/.tmp-*.log
+
+# Generated validation and acceptance output
+/output/
+/backend/writable/*.log
+/backend/writable/*_dump.json
+/backend/writable/*_validation_results.json
+/backend/writable/personnel-template-debug/
+
+# Runtime user uploads
+/backend/public/uploads/

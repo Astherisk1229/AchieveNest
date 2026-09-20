@@ -3,6 +3,8 @@
 namespace App\Database\Seeds;
 
 use App\Services\DefenseDemoPreflightService;
+use App\Services\FacultyStatusService;
+use App\Services\PersonnelClassificationService;
 use CodeIgniter\Database\Seeder;
 use RuntimeException;
 
@@ -200,11 +202,20 @@ class DefenseDemoPersonaSeeder extends Seeder
 
             // Personnel Subtype Table
             if ($p['account_type'] === 'personnel' || $p['account_type'] === 'hr_admin' || $p['account_type'] === 'osad_admin') {
+                $personnelClassification = $p['personnel_type'] ?? PersonnelClassificationService::SIDE_NON_ACADEMIC;
+                $isAcademic = $personnelClassification === PersonnelClassificationService::SIDE_ACADEMIC;
+
                 $db->table('personnel_profiles')->upsert([
                     'profile_id'               => $p['id'],
-                    'personnel_classification' => $p['personnel_type'] ?? 'non_academic',
-                    'employment_status'        => 'permanent',
-                    'faculty_engagement'       => ($p['personnel_type'] ?? '') === 'academic' ? 'full_time_faculty' : null,
+                    'personnel_classification' => $personnelClassification,
+                    'personnel_group'          => $isAcademic
+                        ? PersonnelClassificationService::GROUP_FACULTY
+                        : PersonnelClassificationService::GROUP_NON_TEACHING_FACULTY,
+                    'organizational_side'      => $isAcademic
+                        ? PersonnelClassificationService::SIDE_ACADEMIC
+                        : PersonnelClassificationService::SIDE_NON_ACADEMIC,
+                    'employment_status'        => FacultyStatusService::EMPLOYMENT_PERMANENT,
+                    'faculty_engagement'       => FacultyStatusService::ENGAGEMENT_FULL_TIME,
                     'created_at'               => $now,
                     'updated_at'               => $now,
                 ]);

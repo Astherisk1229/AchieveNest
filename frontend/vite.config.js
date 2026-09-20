@@ -8,6 +8,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    host: '127.0.0.1',
+    port: 5174,
+    proxy: {
+      '/api': 'http://127.0.0.1:8081',
+    },
+  },
   test: {
     testTimeout: 15000,
   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, Calendar, GraduationCap, Hash, Lock, Mail, ShieldCheck, User, UserPlus, X } from 'lucide-react'
+import { AlertCircle, Calendar, GraduationCap, Hash, LoaderCircle, Lock, Mail, RefreshCw, ShieldCheck, User, UserPlus, X } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
+import SearchableSelect from '../../../components/ui/SearchableSelect'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { useConfirmableClose } from '../../../hooks/useConfirmableClose'
 import { useProvisioningCredential } from '../../../hooks/useProvisioningCredential'
@@ -15,7 +16,10 @@ import {
   STUDENT_YEAR_LEVELS,
   getAcademicYearValues,
   getDefaultAcademicYear,
+  isActiveAcademicReference,
+  isValidStudentName,
   normalizeInstitutionalEmail,
+  programBelongsToCollege,
   sanitizeStudentName,
   sanitizeStudentNumber
 } from '../../../contracts/studentAccountContract'
@@ -54,6 +58,8 @@ export default function AddStudentAccountModalV2({
   const [loadedColleges, setLoadedColleges] = useState(colleges)
   const [loadedPrograms, setLoadedPrograms] = useState(degreePrograms)
   const [isLoadingReferences, setIsLoadingReferences] = useState(false)
+  const [referenceError, setReferenceError] = useState(null)
+  const [referenceReloadKey, setReferenceReloadKey] = useState(0)
   const [formData, setFormData] = useState(emptyForm)
   const [fieldErrors, setFieldErrors] = useState({})
   const [serverError, setServerError] = useState(null)
@@ -89,6 +95,7 @@ export default function AddStudentAccountModalV2({
     setFormData(emptyForm())
     setFieldErrors({})
     setServerError(null)
+    setReferenceError(null)
     setIsSubmitting(false)
     setEmailAvailability('empty')
   }
@@ -113,30 +120,30 @@ export default function AddStudentAccountModalV2({
     let mounted = true
     const load = async () => {
       setIsLoadingReferences(true)
+      setReferenceError(null)
       try {
         const [cols, progs] = await Promise.all([
           colleges.length ? colleges : fetchColleges({ status: 'active' }),
           degreePrograms.length ? degreePrograms : fetchAcademicPrograms()
         ])
         if (mounted) {
-          setLoadedColleges((cols || []).filter(c => !c.status || c.status === 'active'))
-          setLoadedPrograms((progs || []).filter(p => !p.status || p.status === 'active'))
+          setLoadedColleges((cols || []).filter(isActiveAcademicReference))
+          setLoadedPrograms((progs || []).filter(isActiveAcademicReference))
         }
       } catch (error) {
-        if (mounted) setServerError('Academic references could not be loaded. Try again before creating an account.')
+        if (mounted) setReferenceError('Academic references could not be loaded.')
       } finally {
         if (mounted) setIsLoadingReferences(false)
       }
     }
     load()
     return () => { mounted = false }
-  }, [isOpen, colleges, degreePrograms])
+  }, [isOpen, colleges, degreePrograms, referenceReloadKey])
 
   const filteredPrograms = useMemo(() => {
     if (!formData.collegeId) return []
     return loadedPrograms.filter((program) => {
-      const programCollegeId = program.college_id || program.collegeId
-      return String(programCollegeId || '') === String(formData.collegeId)
+      return programBelongsToCollege(program, formData.collegeId)
     })
   }, [loadedPrograms, formData.collegeId])
 
@@ -165,12 +172,6 @@ export default function AddStudentAccountModalV2({
     setServerError(null)
   }
 
-  const validName = (value, required) => {
-    const clean = (value || '').trim()
-    if (!clean) return !required
-    return /^[\p{L}\p{M}]+(?:[ '\u2019-][\p{L}\p{M}]+)*$/u.test(clean)
-  }
-
   const validateSingleField = (field, inputValue = formData[field]) => {
     const value = typeof inputValue === 'string' ? inputValue.trim() : inputValue
     switch (field) {
@@ -185,13 +186,13 @@ export default function AddStudentAccountModalV2({
         return null
       }
       case 'firstName':
-        if (!validName(value, true)) return 'Enter a valid first name.'
+        if (!isValidStudentName(value, true)) return 'Enter a valid first name.'
         return null
       case 'middleName':
-        if (!validName(value, false)) return 'Enter a valid middle name.'
+        if (!isValidStudentName(value, false)) return 'Enter a valid middle name.'
         return null
       case 'lastName':
-        if (!validName(value, true)) return 'Enter a valid last name.'
+        if (!isValidStudentName(value, true)) return 'Enter a valid last name.'
         return null
       case 'sex':
         if (!STUDENT_SEX_OPTIONS.includes(value)) return 'Select a valid sex value.'
@@ -256,7 +257,7 @@ export default function AddStudentAccountModalV2({
   const clientErrors = validateClient()
   const formValid = Object.keys(clientErrors).length === 0
   const emailBlocksSubmit = ['checking', 'unavailable', 'invalid_syntax'].includes(emailAvailability)
-  const canSubmit = formValid && !emailBlocksSubmit && !isSubmitting && !isLoadingReferences
+  const canSubmit = formValid && !emailBlocksSubmit && !isSubmitting && !isLoadingReferences && !referenceError
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -277,6 +278,7 @@ export default function AddStudentAccountModalV2({
       middle_name: formData.middleName.trim() || null,
       last_name: formData.lastName.trim(),
       suffix: formData.suffix || null,
+      college_id: formData.collegeId,
       academic_program_id: formData.academicProgramId,
       year_level: formData.yearLevel,
       academic_year: formData.academicYear,
@@ -295,6 +297,7 @@ export default function AddStudentAccountModalV2({
       const mapped = {
         ...(fields.institutional_email ? { institutionalEmail: fields.institutional_email } : {}),
         ...(fields.institutional_id ? { institutionalId: fields.institutional_id } : {}),
+        ...(fields.college_id ? { collegeId: fields.college_id } : {}),
         ...(fields.academic_program_id ? { academicProgramId: fields.academic_program_id } : {}),
         ...(fields.year_level ? { yearLevel: fields.year_level } : {}),
         ...(fields.academic_year ? { academicYear: fields.academic_year } : {})
@@ -302,7 +305,8 @@ export default function AddStudentAccountModalV2({
       if (code === 'EMAIL_ALREADY_EXISTS') mapped.institutionalEmail = 'This institutional email is already assigned to an account.'
       if (code === 'INSTITUTIONAL_ID_ALREADY_EXISTS') mapped.institutionalId = 'This Student Number is already assigned to an account.'
       if (code === 'INVALID_INSTITUTIONAL_ID') mapped.institutionalId = body?.error?.message || 'Enter a valid Student Number.'
-      if (code === 'INVALID_ACADEMIC_PROGRAM' || code === 'ACADEMIC_PROGRAM_NOT_FOUND') mapped.academicProgramId = 'Selected academic program is inactive or invalid.'
+      if (code === 'INVALID_COLLEGE') mapped.collegeId = 'Selected academic college is inactive or invalid.'
+      if (code === 'INVALID_ACADEMIC_PROGRAM' || code === 'ACADEMIC_PROGRAM_NOT_FOUND' || code === 'PROGRAM_COLLEGE_MISMATCH') mapped.academicProgramId = 'Select an active program assigned to the selected college.'
       if (Object.keys(mapped).length) {
         setFieldErrors(mapped)
         focusFirstError(mapped)
@@ -316,61 +320,64 @@ export default function AddStudentAccountModalV2({
 
   if (!isOpen) return null
 
-  const fieldClass = (key, extra = '') => `w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs font-medium text-slate-900 dark:text-white focus:outline-none transition ${fieldErrors[key] ? 'border-red-500 focus:border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-[#16834a]'} ${extra}`
-  const ErrorText = ({ field }) => fieldErrors[field] ? <p className="text-[11px] text-red-600 dark:text-red-400 mt-1 font-medium">{fieldErrors[field]}</p> : null
+  const fieldClass = (key, extra = '') => `h-10 w-full rounded-xl border bg-white px-3 py-2 text-sm font-medium text-slate-900 outline-none transition duration-150 placeholder:text-slate-500 hover:border-slate-400 focus:ring-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 dark:bg-slate-900 dark:text-white dark:disabled:bg-slate-800 ${fieldErrors[key] ? 'border-red-500 focus:border-red-600 focus:ring-red-500/15' : 'border-slate-300 dark:border-slate-700 focus:border-emerald-600 focus:ring-emerald-600/20'} ${extra}`
+  const ErrorText = ({ field }) => fieldErrors[field] ? <p id={`${field}-error`} role="alert" className="mt-1.5 text-xs font-medium text-red-600 dark:text-red-400">{fieldErrors[field]}</p> : null
+  const helperClass = 'mt-1.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400'
+  const programLabel = (program) => `${program.code || 'Program'} — ${program.name}`
 
   return (
     <>
-      <div className={`fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 ${credentialHook.isOpen || credentialHook.deliveryFault ? 'hidden' : ''}`} role="dialog" aria-modal="true" aria-labelledby="add-student-title" onClick={(e) => { if (e.target === e.currentTarget) requestClose() }}>
-        <div className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-          <div className="p-6 bg-[#EFF7F0] dark:bg-[#162720] border-b border-[#69A97C]/50 dark:border-emerald-800/40 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#176B43] text-white flex items-center justify-center"><UserPlus className="w-5 h-5" /></div>
-              <div><h3 id="add-student-title" className="font-extrabold text-base text-[#17663B] dark:text-white">Add Student Account</h3><p className="text-xs text-[#245F42] dark:text-emerald-400 font-medium mt-0.5">Provision a Student account with validated academic placement and secure first-login credentials.</p></div>
+      <div className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-[2px] sm:p-6 ${credentialHook.isOpen || credentialHook.deliveryFault ? 'hidden' : ''}`} role="dialog" aria-modal="true" aria-labelledby="add-student-title" aria-describedby="add-student-description" onClick={(e) => { if (e.target === e.currentTarget) requestClose() }}>
+        <div className="flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl shadow-slate-950/25 dark:bg-[#131e2e]">
+          <div className="flex items-start justify-between gap-4 border-b border-emerald-900/10 bg-[#EFF7F0] px-5 py-4 sm:px-7 sm:py-5 dark:border-emerald-800/40 dark:bg-[#162720]">
+            <div className="flex min-w-0 items-start gap-3.5">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#176B43] text-white shadow-sm"><UserPlus aria-hidden="true" className="h-5 w-5" /></div>
+              <div className="min-w-0"><h2 id="add-student-title" className="text-lg font-extrabold tracking-[-0.02em] text-[#145C39] dark:text-white">Add Student Account</h2><p id="add-student-description" className="mt-1 max-w-2xl text-sm leading-relaxed text-[#245F42] dark:text-emerald-300">Create a validated academic record and secure first-login credentials.</p></div>
             </div>
-            <button type="button" aria-label="Close dialog" onClick={requestClose} className="w-8 h-8 rounded-full flex items-center justify-center text-slate-700 dark:text-slate-200"><X className="w-4 h-4" /></button>
+            <button type="button" aria-label="Close dialog" onClick={requestClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-white/70 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800"><X aria-hidden="true" className="h-5 w-5" /></button>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-xs">
-              {serverError && <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-2"><AlertCircle className="w-4 h-4" />{serverError}</div>}
+            <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6 sm:px-7">
+              {serverError && <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-700"><AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />{serverError}</div>}
+              {referenceError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900"><span className="flex items-start gap-2.5"><AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />{referenceError}</span><button type="button" onClick={() => setReferenceReloadKey(key => key + 1)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-bold text-amber-950 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />Retry</button></div>}
 
               <section className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b font-bold"><User className="w-4 h-4 text-[#16834a]" />1. Student Identity Information</div>
+                <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3 dark:border-slate-800"><User aria-hidden="true" className="h-4 w-4 text-emerald-700 dark:text-emerald-400" /><h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Student Identity Information</h3></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="block text-[11px] font-bold mb-1">Student Number *</label><div className="relative"><Hash className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" /><input ref={refs.institutionalId} value={formData.institutionalId} onChange={e => handleInputChange('institutionalId', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, institutionalId: validateSingleField('institutionalId') }))} inputMode="numeric" maxLength={STUDENT_NUMBER_MAX_LENGTH} className={fieldClass('institutionalId', 'pl-9 font-mono font-bold')} placeholder="e.g. 202610492" /></div><ErrorText field="institutionalId" /></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Institutional Email *</label><div className="relative"><Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" /><input ref={refs.institutionalEmail} type="email" value={formData.institutionalEmail} onChange={e => handleInputChange('institutionalEmail', e.target.value)} onBlur={() => { const err = validateSingleField('institutionalEmail'); setFieldErrors(prev => ({ ...prev, institutionalEmail: err })); if (!err) checkEmailAvailability() }} maxLength={EMAIL_MAX_LENGTH} className={fieldClass('institutionalEmail', 'pl-9')} placeholder="e.g. j.delacruz@ndmu.edu.ph" /></div><ErrorText field="institutionalEmail" />{!fieldErrors.institutionalEmail && emailAvailability === 'checking' && <p className="text-[11px] text-slate-500 mt-1">Checking availability…</p>}{!fieldErrors.institutionalEmail && emailAvailability === 'available' && <p className="text-[11px] text-emerald-600 mt-1">Email is available. Final verification occurs on submit.</p>}{!fieldErrors.institutionalEmail && emailAvailability === 'network_unknown' && <p className="text-[11px] text-amber-700 mt-1">Availability check unavailable; the server will verify on submit.</p>}</div>
+                  <div><label htmlFor="student-number" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Student Number <span aria-hidden="true" className="text-red-600">*</span></label><div className="relative"><Hash aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="student-number" ref={refs.institutionalId} value={formData.institutionalId} onChange={e => handleInputChange('institutionalId', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, institutionalId: validateSingleField('institutionalId') }))} inputMode="numeric" maxLength={STUDENT_NUMBER_MAX_LENGTH} aria-invalid={Boolean(fieldErrors.institutionalId)} aria-describedby={fieldErrors.institutionalId ? 'institutionalId-error' : 'student-number-help'} className={fieldClass('institutionalId', 'pl-9 tabular-nums')} placeholder="e.g. 202610492" /></div><ErrorText field="institutionalId" />{!fieldErrors.institutionalId && <p id="student-number-help" className={helperClass}>Digits only · 5–50 characters</p>}</div>
+                  <div><label htmlFor="student-email" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Institutional Email <span aria-hidden="true" className="text-red-600">*</span></label><div className="relative"><Mail aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input id="student-email" ref={refs.institutionalEmail} type="email" value={formData.institutionalEmail} onChange={e => handleInputChange('institutionalEmail', e.target.value)} onBlur={() => { const err = validateSingleField('institutionalEmail'); setFieldErrors(prev => ({ ...prev, institutionalEmail: err })); if (!err) checkEmailAvailability() }} maxLength={EMAIL_MAX_LENGTH} aria-invalid={Boolean(fieldErrors.institutionalEmail)} aria-describedby={fieldErrors.institutionalEmail ? 'institutionalEmail-error' : 'student-email-help'} className={fieldClass('institutionalEmail', 'pl-9')} placeholder="student@ndmu.edu.ph" /></div><ErrorText field="institutionalEmail" />{!fieldErrors.institutionalEmail && emailAvailability === 'checking' && <p className={helperClass}>Checking availability…</p>}{!fieldErrors.institutionalEmail && emailAvailability === 'available' && <p className="mt-1.5 text-xs font-medium text-emerald-700">Email is available.</p>}{!fieldErrors.institutionalEmail && emailAvailability === 'network_unknown' && <p className="mt-1.5 text-xs text-amber-700">Availability check unavailable; the server will verify on submit.</p>}{!fieldErrors.institutionalEmail && !['checking', 'available', 'network_unknown'].includes(emailAvailability) && <p id="student-email-help" className={helperClass}>Use your institutional @ndmu.edu.ph address</p>}</div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div><label className="block text-[11px] font-bold mb-1">First Name *</label><input ref={refs.firstName} value={formData.firstName} onChange={e => handleInputChange('firstName', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, firstName: validateSingleField('firstName') }))} maxLength={NAME_MAX_LENGTH} className={fieldClass('firstName')} /><ErrorText field="firstName" /></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Middle Name <span className="text-slate-400 font-normal">(Optional)</span></label><input ref={refs.middleName} value={formData.middleName} onChange={e => handleInputChange('middleName', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, middleName: validateSingleField('middleName') }))} maxLength={NAME_MAX_LENGTH} className={fieldClass('middleName')} /><ErrorText field="middleName" /></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Last Name *</label><input ref={refs.lastName} value={formData.lastName} onChange={e => handleInputChange('lastName', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, lastName: validateSingleField('lastName') }))} maxLength={NAME_MAX_LENGTH} className={fieldClass('lastName')} /><ErrorText field="lastName" /></div>
+                  <div><label htmlFor="student-first-name" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">First Name <span aria-hidden="true" className="text-red-600">*</span></label><input id="student-first-name" ref={refs.firstName} value={formData.firstName} onChange={e => handleInputChange('firstName', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, firstName: validateSingleField('firstName') }))} maxLength={NAME_MAX_LENGTH} aria-invalid={Boolean(fieldErrors.firstName)} aria-describedby={fieldErrors.firstName ? 'firstName-error' : undefined} className={fieldClass('firstName')} /><ErrorText field="firstName" /></div>
+                  <div><label htmlFor="student-middle-name" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Middle Name <span className="font-normal text-slate-500">(Optional)</span></label><input id="student-middle-name" ref={refs.middleName} value={formData.middleName} onChange={e => handleInputChange('middleName', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, middleName: validateSingleField('middleName') }))} maxLength={NAME_MAX_LENGTH} aria-invalid={Boolean(fieldErrors.middleName)} aria-describedby={fieldErrors.middleName ? 'middleName-error' : undefined} className={fieldClass('middleName')} /><ErrorText field="middleName" /></div>
+                  <div><label htmlFor="student-last-name" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Last Name <span aria-hidden="true" className="text-red-600">*</span></label><input id="student-last-name" ref={refs.lastName} value={formData.lastName} onChange={e => handleInputChange('lastName', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, lastName: validateSingleField('lastName') }))} maxLength={NAME_MAX_LENGTH} aria-invalid={Boolean(fieldErrors.lastName)} aria-describedby={fieldErrors.lastName ? 'lastName-error' : undefined} className={fieldClass('lastName')} /><ErrorText field="lastName" /></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="block text-[11px] font-bold mb-1">Name Suffix <span className="text-slate-400 font-normal">(Optional)</span></label><select ref={refs.suffix} value={formData.suffix} onChange={e => handleInputChange('suffix', e.target.value)} className={fieldClass('suffix')}>{SUFFIX_OPTIONS.map(opt => <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>)}</select></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Sex *</label><select ref={refs.sex} value={formData.sex} onChange={e => handleInputChange('sex', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, sex: validateSingleField('sex') }))} className={fieldClass('sex')}>{SEX_OPTIONS.map(opt => <option key={opt.value || 'placeholder'} value={opt.value} disabled={opt.disabled}>{opt.label}</option>)}</select><ErrorText field="sex" /></div>
+                  <div><label htmlFor="student-suffix" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Name Suffix <span className="font-normal text-slate-500">(Optional)</span></label><select id="student-suffix" ref={refs.suffix} value={formData.suffix} onChange={e => handleInputChange('suffix', e.target.value)} className={fieldClass('suffix')}>{SUFFIX_OPTIONS.map(opt => <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>)}</select></div>
+                  <div><label htmlFor="student-sex" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Sex <span aria-hidden="true" className="text-red-600">*</span></label><select id="student-sex" ref={refs.sex} value={formData.sex} onChange={e => handleInputChange('sex', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, sex: validateSingleField('sex') }))} aria-invalid={Boolean(fieldErrors.sex)} aria-describedby={fieldErrors.sex ? 'sex-error' : undefined} className={fieldClass('sex')}>{SEX_OPTIONS.map(opt => <option key={opt.value || 'placeholder'} value={opt.value} disabled={opt.disabled}>{opt.label}</option>)}</select><ErrorText field="sex" /></div>
                 </div>
               </section>
 
-              <section className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 pb-2 border-b font-bold"><GraduationCap className="w-4 h-4 text-[#16834a]" />2. Academic Placement & Enrollment</div>
+              <section className="space-y-4">
+                <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3 dark:border-slate-800"><GraduationCap aria-hidden="true" className="h-4 w-4 text-emerald-700 dark:text-emerald-400" /><h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Academic Placement &amp; Enrollment</h3></div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="block text-[11px] font-bold mb-1">Academic College *</label><select ref={refs.collegeId} value={formData.collegeId} onChange={e => handleCollegeChange(e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, collegeId: validateSingleField('collegeId') }))} disabled={isLoadingReferences} className={fieldClass('collegeId')}><option value="" disabled>Select Academic College</option>{loadedColleges.map(c => <option key={c.id} value={c.id}>[{c.code}] {c.name}</option>)}</select><ErrorText field="collegeId" /></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Academic Degree Program *</label><select ref={refs.academicProgramId} value={formData.academicProgramId} onChange={e => handleInputChange('academicProgramId', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, academicProgramId: validateSingleField('academicProgramId') }))} disabled={!formData.collegeId || isLoadingReferences} className={fieldClass('academicProgramId')}><option value="" disabled>{formData.collegeId ? 'Select Degree Program' : 'Select a college first'}</option>{filteredPrograms.map(p => <option key={p.id} value={p.id}>[{p.code}] {p.name}</option>)}</select><ErrorText field="academicProgramId" /></div>
+                  <div><label htmlFor="academic-college" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Academic College <span aria-hidden="true" className="text-red-600">*</span></label><select id="academic-college" ref={refs.collegeId} value={formData.collegeId} onChange={e => handleCollegeChange(e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, collegeId: validateSingleField('collegeId') }))} disabled={isLoadingReferences || Boolean(referenceError)} aria-invalid={Boolean(fieldErrors.collegeId)} aria-describedby={fieldErrors.collegeId ? 'collegeId-error' : undefined} className={fieldClass('collegeId')}><option value="" disabled>{isLoadingReferences ? 'Loading colleges…' : 'Select Academic College'}</option>{loadedColleges.map(c => <option key={c.id} value={c.id}>{c.code ? `${c.code} — ` : ''}{c.name}</option>)}</select><ErrorText field="collegeId" /></div>
+                  <div><label htmlFor="academic-program" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Academic Degree Program <span aria-hidden="true" className="text-red-600">*</span></label><SearchableSelect id="academic-program" ref={refs.academicProgramId} value={formData.academicProgramId} options={filteredPrograms} onChange={value => handleInputChange('academicProgramId', value)} disabled={!formData.collegeId || isLoadingReferences || Boolean(referenceError)} placeholder={isLoadingReferences ? 'Loading programs…' : !formData.collegeId ? 'Select a College first' : filteredPrograms.length ? 'Search or select a program' : 'No active programs available'} searchPlaceholder="Search by program code or name" getOptionLabel={programLabel} getOptionValue={program => program.id} emptyMessage={filteredPrograms.length ? 'No matching programs' : 'No active programs available for this college'} aria-invalid={Boolean(fieldErrors.academicProgramId)} aria-describedby={fieldErrors.academicProgramId ? 'academicProgramId-error' : 'academic-program-help'} /><ErrorText field="academicProgramId" />{!fieldErrors.academicProgramId && <p id="academic-program-help" className={helperClass}>{formData.collegeId ? 'Choose an official active program for this College' : 'Select a College first'}</p>}</div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="block text-[11px] font-bold mb-1">Current Year Level *</label><select ref={refs.yearLevel} value={formData.yearLevel} onChange={e => handleInputChange('yearLevel', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, yearLevel: validateSingleField('yearLevel') }))} className={fieldClass('yearLevel')}><option value="" disabled>Select Year Level</option>{YEAR_LEVEL_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}</select><ErrorText field="yearLevel" /></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Academic Year *</label><div className="relative"><Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" /><select ref={refs.academicYear} value={formData.academicYear} onChange={e => handleInputChange('academicYear', e.target.value)} className={fieldClass('academicYear', 'pl-9')}>{ACADEMIC_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}</select></div><ErrorText field="academicYear" /></div>
+                  <div><label htmlFor="student-year-level" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Current Year Level <span aria-hidden="true" className="text-red-600">*</span></label><select id="student-year-level" ref={refs.yearLevel} value={formData.yearLevel} onChange={e => handleInputChange('yearLevel', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, yearLevel: validateSingleField('yearLevel') }))} aria-invalid={Boolean(fieldErrors.yearLevel)} aria-describedby={fieldErrors.yearLevel ? 'yearLevel-error' : undefined} className={fieldClass('yearLevel')}><option value="" disabled>Select Year Level</option>{YEAR_LEVEL_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}</select><ErrorText field="yearLevel" /></div>
+                  <div><label htmlFor="student-academic-year" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-200">Academic Year <span aria-hidden="true" className="text-red-600">*</span></label><div className="relative"><Calendar aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><select id="student-academic-year" ref={refs.academicYear} value={formData.academicYear} onChange={e => handleInputChange('academicYear', e.target.value)} className={fieldClass('academicYear', 'pl-9')}>{ACADEMIC_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}</select></div><ErrorText field="academicYear" /></div>
                 </div>
               </section>
 
-              <section className="space-y-3 pt-2">
-                <div className="flex items-center gap-2 pb-2 border-b font-bold"><ShieldCheck className="w-4 h-4 text-[#16834a]" />3. Account Security & Credentials</div>
-                <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 space-y-1.5"><div className="flex items-center gap-2 text-[#17663B] dark:text-emerald-300 font-bold text-xs"><Lock className="w-3.5 h-3.5" />Secure Account Activation</div><p className="text-emerald-800 dark:text-emerald-400 text-[11px] leading-relaxed">The Student record is created as <strong>Active/Enrolled</strong>. Account access remains <strong>Pending First Login</strong> until the Student uses the backend-generated temporary credential and sets a permanent password.</p></div>
+              <section className="space-y-3">
+                <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3 dark:border-slate-800"><ShieldCheck aria-hidden="true" className="h-4 w-4 text-emerald-700 dark:text-emerald-400" /><h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Account Security &amp; Credentials</h3></div>
+                <div className="flex gap-3 rounded-xl bg-emerald-50/80 p-4 dark:bg-emerald-950/30"><Lock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" /><div><p className="text-sm font-bold text-emerald-950 dark:text-emerald-200">Secure first-login setup</p><p className="mt-1 text-xs leading-relaxed text-emerald-900 dark:text-emerald-300">The Student record begins <strong>Active/Enrolled</strong>. A secure temporary credential is generated, while authentication remains <strong>Pending First Login</strong> until the Student sets a permanent password.</p></div></div>
               </section>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t flex items-center justify-between"><span className="text-[11px] text-slate-500 font-medium">OSAD Governance</span><div className="flex items-center gap-2"><button type="button" onClick={requestClose} disabled={isSubmitting} className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-extrabold">Cancel</button><Button type="submit" disabled={!canSubmit} size="sm" className="gap-1.5 font-bold"><UserPlus className="w-3.5 h-3.5" />{isSubmitting ? 'Provisioning Account...' : 'Create Student Account'}</Button></div></div>
+            <div className="flex flex-col-reverse items-stretch justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:px-7 dark:border-slate-800 dark:bg-slate-900"><Button type="button" variant="secondary" onClick={requestClose} disabled={isSubmitting}>Cancel</Button><Button type="submit" disabled={!canSubmit} className="min-w-48">{isSubmitting ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : <UserPlus aria-hidden="true" className="h-4 w-4" />}{isSubmitting ? 'Creating…' : 'Create Student Account'}</Button></div>
           </form>
         </div>
       </div>

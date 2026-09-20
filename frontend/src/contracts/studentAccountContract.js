@@ -66,6 +66,21 @@ export function sanitizeStudentName(value = '') {
     .replace(/\s{2,}/g, ' ')
 }
 
+export function isValidStudentName(value = '', required = true) {
+  const clean = String(value).trim()
+  if (!clean) return !required
+  return /^[\p{L}\p{M}]+(?:[ .'\u2019-][\p{L}\p{M}]+)*\.?$/u.test(clean)
+}
+
+export function isActiveAcademicReference(item = {}) {
+  return (!item.status || item.status === 'active') && item.is_active !== false && item.is_active !== 0
+}
+
+export function programBelongsToCollege(program, collegeId) {
+  const programCollegeId = program?.college_id || program?.collegeId
+  return Boolean(collegeId) && String(programCollegeId || '') === String(collegeId)
+}
+
 export function normalizeInstitutionalEmail(value = '') {
   return String(value).replace(/\s+/g, '').toLowerCase()
 }

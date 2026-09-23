@@ -3,16 +3,27 @@
 namespace App\Services;
 
 use App\Helpers\ValidationHelper;
+use CodeIgniter\Database\BaseConnection;
 use RuntimeException;
 use Throwable;
 
 class LocalAuthService
 {
     protected LocalTokenService $tokenService;
+    protected AuthenticationEligibilityService $eligibilityService;
+    protected AuthenticationCompletionService $completionService;
+    protected ?BaseConnection $db;
 
-    public function __construct(?LocalTokenService $tokenService = null)
-    {
+    public function __construct(
+        ?LocalTokenService $tokenService = null,
+        ?AuthenticationEligibilityService $eligibilityService = null,
+        ?AuthenticationCompletionService $completionService = null,
+        ?BaseConnection $db = null
+    ) {
         $this->tokenService = $tokenService ?? new LocalTokenService();
+        $this->eligibilityService = $eligibilityService ?? new AuthenticationEligibilityService();
+        $this->completionService = $completionService ?? new AuthenticationCompletionService($this->tokenService);
+        $this->db = $db;
     }
 
     /**
@@ -49,7 +60,7 @@ class LocalAuthService
             ];
         }
 
-        $db = db_connect();
+        $db = $this->db ?? db_connect();
 
         // 1. Resolve profile by institutional email
         $profile = $db->table('profiles')
@@ -69,33 +80,7 @@ class LocalAuthService
             ];
         }
 
-        // 2. Check profile lifecycle status
-        $status = $profile['status'] ?? 'active';
-        if ($status === 'suspended') {
-            $this->logAuthFailure($db, $profile['id'], 'ACCOUNT_SUSPENDED', 'Account suspended.', $ip);
-            return [
-                'success' => false,
-                'status'  => 403,
-                'error'   => [
-                    'code'    => 'ACCOUNT_SUSPENDED',
-                    'message' => 'This account has been suspended. Please contact administration.',
-                ],
-            ];
-        }
-
-        if ($status === 'archived') {
-            $this->logAuthFailure($db, $profile['id'], 'ACCOUNT_ARCHIVED', 'Account archived.', $ip);
-            return [
-                'success' => false,
-                'status'  => 403,
-                'error'   => [
-                    'code'    => 'ACCOUNT_ARCHIVED',
-                    'message' => 'This account has been archived and cannot log in.',
-                ],
-            ];
-        }
-
-        // 3. Resolve password hash strictly from local_auth_credentials
+        // 2. Resolve password hash strictly from local_auth_credentials
         $credential = $db->table('local_auth_credentials')
             ->where('profile_id', $profile['id'])
             ->get()
@@ -115,7 +100,8 @@ class LocalAuthService
 
         $hash = $credential['password_hash'] ?? '';
 
-        if (($credential['status'] ?? 'active') !== 'active') {
+        $credentialStatus = (string) ($credential['status'] ?? 'active');
+        if ($credentialStatus !== 'active' && $credentialStatus !== 'locked') {
             $this->logAuthFailure($db, $profile['id'], 'CREDENTIAL_DISABLED', 'Credential disabled.', $ip);
             return [
                 'success' => false,
@@ -139,41 +125,30 @@ class LocalAuthService
             ];
         }
 
-        // 4. Resolve lifecycle data canonically from local_auth_credentials
-        $canonicalMustChange = $credential['must_change_password'] ?? null;
-        $lifecycle = AccountLifecycleResolver::resolve(
-            $profile['status'] ?? 'active',
-            $canonicalMustChange
-        );
+        // 4. Delegate provider-neutral lifecycle eligibility after password proof.
+        $eligibility = $this->eligibilityService->evaluate(array_merge($profile, [
+            'must_change_password' => $credential['must_change_password'] ?? null,
+            'is_locked' => $credentialStatus === 'locked',
+        ]));
 
-        if ($lifecycle['can_authenticate'] !== true) {
-            $this->logAuthFailure($db, $profile['id'], 'ACCOUNT_RESTRICTED', 'Account restricted from authentication.', $ip);
-            return [
-                'success' => false,
-                'status'  => 403,
-                'error'   => [
-                    'code'    => 'ACCOUNT_RESTRICTED',
-                    'message' => 'Your account cannot authenticate at this time.',
-                ],
-            ];
+        if ($eligibility['eligible'] !== true) {
+            return $this->deniedEligibilityResult($db, $profile, $eligibility, $credentialStatus, $ip);
         }
 
-        // 6. Issue local token and session
-        try {
-            $tokenData = $this->tokenService->issueToken($profile['id'], $rememberMe, $ip, $userAgent);
-        } catch (Throwable $e) {
-            return [
-                'success' => false,
-                'status'  => 500,
-                'error'   => [
-                    'code'    => 'AUTH_TOKEN_ERROR',
-                    'message' => 'Failed to issue authentication token.',
-                ],
-            ];
+        // 5. Delegate shared JWT issuance, session persistence, and response assembly.
+        $completion = $this->completionService->complete($profile, $eligibility, [
+            'remember_me' => $rememberMe,
+            'authentication_method' => 'password',
+            'ip' => $ip,
+            'user_agent' => $userAgent,
+        ]);
+
+        if (($completion['success'] ?? false) !== true) {
+            return $completion;
         }
 
-        // 7. Record successful login audit
-        $isFirstLogin = (bool) ($lifecycle['must_change_password'] ?? false);
+        // 6. Record the password-flow success audit exactly once, after completion.
+        $isFirstLogin = (bool) ($eligibility['must_change_password'] ?? false);
         $logId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
         $db->table('audit_logs')->insert([
             'id'               => $logId,
@@ -188,19 +163,61 @@ class LocalAuthService
             'safe_context'     => json_encode(['auth_mode' => 'local-defense', 'first_login' => $isFirstLogin]),
         ]);
 
+        return $completion;
+    }
+
+    private function deniedEligibilityResult(
+        $db,
+        array $profile,
+        array $eligibility,
+        string $credentialStatus,
+        ?string $ip
+    ): array {
+        $state = $eligibility['lifecycle_state'] ?? AccountLifecycleResolver::STATUS_UNKNOWN;
+
+        if ($state === AccountLifecycleResolver::STATUS_SUSPENDED) {
+            $this->logAuthFailure($db, $profile['id'], 'ACCOUNT_SUSPENDED', 'Account suspended.', $ip);
+            return [
+                'success' => false,
+                'status' => 403,
+                'error' => [
+                    'code' => 'ACCOUNT_SUSPENDED',
+                    'message' => 'This account has been suspended. Please contact administration.',
+                ],
+            ];
+        }
+
+        if ($state === AccountLifecycleResolver::STATUS_ARCHIVED) {
+            $this->logAuthFailure($db, $profile['id'], 'ACCOUNT_ARCHIVED', 'Account archived.', $ip);
+            return [
+                'success' => false,
+                'status' => 403,
+                'error' => [
+                    'code' => 'ACCOUNT_ARCHIVED',
+                    'message' => 'This account has been archived and cannot log in.',
+                ],
+            ];
+        }
+
+        if ($state === AccountLifecycleResolver::STATUS_LOCKED && $credentialStatus === 'locked') {
+            $this->logAuthFailure($db, $profile['id'], 'CREDENTIAL_DISABLED', 'Credential disabled.', $ip);
+            return [
+                'success' => false,
+                'status' => 403,
+                'error' => [
+                    'code' => 'CREDENTIAL_DISABLED',
+                    'message' => 'Local authentication credential is disabled.',
+                ],
+            ];
+        }
+
+        $this->logAuthFailure($db, $profile['id'], 'ACCOUNT_RESTRICTED', 'Account restricted from authentication.', $ip);
         return [
-            'success' => true,
-            'status'  => 200,
-            'data'    => [
-                'access_token'             => $tokenData['access_token'],
-                'token_type'               => $tokenData['token_type'],
-                'expires_at'               => $tokenData['expires_at'],
-                'expires_in'               => $tokenData['expires_in'],
-                'must_change_password'     => $lifecycle['must_change_password'],
-                'account_lifecycle_status' => $lifecycle['account_lifecycle_status'],
-                'administrative_status'    => $lifecycle['administrative_status'],
-                'required_next_action'     => $lifecycle['required_next_action'],
-                'user_id'                  => $profile['id'],
+            'success' => false,
+            'status' => 403,
+            'error' => [
+                'code' => 'ACCOUNT_RESTRICTED',
+                'message' => 'Your account cannot authenticate at this time.',
             ],
         ];
     }
@@ -367,6 +384,7 @@ class LocalAuthService
             'status'  => 200,
             'data'    => [
                 'message'                  => 'Password has been updated successfully.',
+                'access_token'             => $tokenData['access_token'],
                 'must_change_password'     => false,
                 'account_lifecycle_status' => AccountLifecycleResolver::STATUS_ACTIVE,
                 'administrative_status'    => 'active',

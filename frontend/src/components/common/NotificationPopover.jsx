@@ -1,76 +1,67 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Bell, CheckCheck, ChevronRight } from 'lucide-react'
+import { Bell, CheckCheck, ChevronRight, RefreshCw } from 'lucide-react'
+import notificationApiService from '../../services/notificationApiService'
 
 export default function NotificationPopover() {
   const navigate = useNavigate()
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 'notif_1',
-      title: 'Achievement Verified',
-      message: 'Your submission "Dean\'s Lister - First Semester AY 2025-2026" has been verified.',
-      type: 'verification',
-      targetPath: '/student/achievements',
-      navState: { highlightId: 1, filterStatus: 'Verified' },
-      time: '10m ago',
-      is_read: false
-    },
-    {
-      id: 'notif_2',
-      title: 'Revision Requested',
-      message: 'Please update your "Best Research Paper" submission with a higher resolution scan.',
-      type: 'warning',
-      targetPath: '/student/achievements',
-      navState: { highlightId: 5, filterStatus: 'Returned' },
-      time: '1h ago',
-      is_read: false
-    },
-    {
-      id: 'notif_3',
-      title: 'Certificate Ready',
-      message: 'Your official verified certificate for NDMU Tech Summit 2025 is ready for download.',
-      type: 'certificate',
-      targetPath: '/student/portfolio',
-      navState: { openBookletModal: true },
-      time: '3h ago',
-      is_read: true
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const res = await notificationApiService.getNotifications()
+      const list = res?.data?.notifications || []
+      const mapped = list.map(n => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        type: n.type || 'info',
+        targetPath: n.target_path
+          || (n.entity_type === 'student_portfolio_records' ? '/student/achievements' : null)
+          || (['personnel_evaluations', 'personnel_portfolio_submission'].includes(n.entity_type) ? '/personnel/portfolio/edit' : null),
+        navState: { highlightId: n.entity_id },
+        time: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+        is_read: Boolean(n.is_read)
+      }))
+      setNotifications(mapped)
+      setUnreadCount(res?.data?.unread_count ?? mapped.filter(x => !x.is_read).length)
+    } catch (err) {
+      console.warn('[NotificationPopover] Failed to fetch notifications:', err)
+    } finally {
+      setLoading(false)
     }
-  ])
-
-  const unreadCount = notifications.filter(n => !n.is_read).length
-
-  React.useEffect(() => {
-    const handleAddResetNotification = () => {
-      setNotifications(prev => [
-        {
-          id: `notif_reset_${Date.now()}`,
-          title: '⚠️ Password Reset Requested',
-          message: 'Student Juan Dela Cruz (2023-0142) submitted a password reset request.',
-          type: 'warning',
-          targetPath: '/osad/dashboard?tab=accounts',
-          navState: {},
-          time: 'Just now',
-          is_read: false
-        },
-        ...prev
-      ])
-    }
-    window.addEventListener('achievenest_reset_request_submitted', handleAddResetNotification)
-    return () => window.removeEventListener('achievenest_reset_request_submitted', handleAddResetNotification)
-  }, [])
-
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })))
   }
 
-  const handleNotificationClick = (notif) => {
-    // 1. Mark as read
-    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
-    // 2. Close popover
+  useEffect(() => {
+    fetchNotifications()
+  }, [location.pathname])
+
+  const markAllRead = async () => {
+    try {
+      await notificationApiService.markAllAsRead()
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })))
+      setUnreadCount(0)
+    } catch (e) {
+      console.warn('Failed to mark all read:', e)
+    }
+  }
+
+  const handleNotificationClick = async (notif) => {
+    if (!notif.is_read) {
+      try {
+        await notificationApiService.markAsRead(notif.id)
+      } catch {
+        // ignore
+      }
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    }
     setIsOpen(false)
-    // 3. Navigate to target path with nav state
     if (notif.targetPath) {
       navigate(notif.targetPath, { state: notif.navState })
     }
@@ -80,7 +71,11 @@ export default function NotificationPopover() {
     <div className="relative inline-block text-left font-sans">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const nextState = !isOpen
+          setIsOpen(nextState)
+          if (nextState) fetchNotifications()
+        }}
         className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-[#16834a] dark:hover:text-emerald-400 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 transition active:scale-[0.98] cursor-pointer"
         aria-label="Notifications"
         title="Notification Center"
@@ -114,13 +109,18 @@ export default function NotificationPopover() {
                   className="text-xs text-[#16834a] dark:text-emerald-400 hover:underline flex items-center gap-1 font-bold cursor-pointer"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  Mark read
+                  <span>Mark read</span>
                 </button>
               )}
             </div>
 
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-              {notifications.length === 0 ? (
+              {loading ? (
+                <div className="py-8 text-center space-y-2">
+                  <RefreshCw className="w-5 h-5 text-emerald-600 animate-spin mx-auto" />
+                  <p className="text-xs font-semibold text-slate-400">Loading notifications...</p>
+                </div>
+              ) : notifications.length === 0 ? (
                 <p className="text-xs text-slate-400 text-center py-6">No notifications found.</p>
               ) : (
                 notifications.map((notif) => (
@@ -148,7 +148,7 @@ export default function NotificationPopover() {
             </div>
 
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 mt-3 flex items-center justify-between text-xs">
-              <span className="text-[10px] text-slate-400 font-mono">AchieveNest Gateway</span>
+              <span className="text-[10px] text-slate-400 font-mono">Notification Gateway</span>
               <button
                 type="button"
                 onClick={() => {

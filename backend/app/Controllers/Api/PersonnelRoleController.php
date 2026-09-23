@@ -75,6 +75,22 @@ class PersonnelRoleController extends Controller
                  WHERE da.is_active = 1
                  ORDER BY p.full_name"
             )->getResultArray());
+
+            if ($db->tableExists('department_head_assignments')) {
+                $assignments = array_merge($assignments, $db->query(
+                    "SELECT dha.id AS assignment_id, dha.personnel_profile_id AS profile_id,
+                            'department_head' AS role_key, 'Department Head' AS role_display_name,
+                            'department' AS scope_type, dha.department_id AS scope_id,
+                            au.code AS scope_code, au.name AS scope_name,
+                            dha.is_active, dha.assigned_at, dha.assigned_by,
+                            p.institutional_id, p.email AS institutional_email, p.full_name, p.designation_title AS designation
+                     FROM department_head_assignments dha
+                     JOIN profiles p ON p.id = dha.personnel_profile_id
+                     JOIN administrative_units au ON au.id = dha.department_id
+                     WHERE dha.is_active = 1
+                     ORDER BY p.full_name"
+                )->getResultArray());
+            }
         }
 
         if ($isOsad) {
@@ -131,13 +147,16 @@ class PersonnelRoleController extends Controller
         if ($roleKey === 'dean' && ! $this->authz->governance()->canAssignDean($actor)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_ASSIGNMENT', 'message' => 'Only HR may assign Dean.']], 403);
         }
+        if ($roleKey === 'department_head' && ! $this->authz->hasRole($actor, 'hr_staff')) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_ASSIGNMENT', 'message' => 'Only HR may assign Department Head.']], 403);
+        }
         if ($roleKey === 'program_coordinator' && ! $this->authz->governance()->canAssignCoordinator($actor)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_ASSIGNMENT', 'message' => 'Only OSAD may assign Program Coordinator.']], 403);
         }
         if ($roleKey === 'organization_moderator' && ! $this->authz->governance()->canAssignModerator($actor)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_ASSIGNMENT', 'message' => 'Only OSAD may assign Organization Moderator.']], 403);
         }
-        if (! in_array($roleKey, ['dean', 'program_coordinator', 'organization_moderator'], true)) {
+        if (! in_array($roleKey, ['dean', 'department_head', 'program_coordinator', 'organization_moderator'], true)) {
             return $this->respond(['error' => ['code' => 'INVALID_ROLE_KEY', 'message' => 'Unsupported specialized role.']], 422);
         }
 
@@ -191,6 +210,37 @@ class PersonnelRoleController extends Controller
                     'role_key'      => $roleKey,
                     'scope_type'    => 'college',
                     'scope_id'      => $scopeId,
+                ]]);
+            }
+
+            if ($roleKey === 'department_head') {
+                if (($target['account_type'] ?? '') !== 'personnel') {
+                    return $this->respond(['error' => ['code' => 'INVALID_PERSONNEL_STATE', 'message' => 'Department Head requires an active Personnel account.']], 422);
+                }
+                $scopeId = ! empty($json['department_id']) ? (string) $json['department_id'] : $compatScopeId;
+                if ($scopeId === null) {
+                    return $this->respond(['error' => ['code' => 'MISSING_DEPARTMENT', 'message' => 'department_id is required for Department Head assignment.']], 422);
+                }
+                $department = $db->table('administrative_units')->where('id', $scopeId)->where('status', 'active')->get()->getRowArray();
+                if ($department === null) {
+                    return $this->respond(['error' => ['code' => 'INVALID_DEPARTMENT', 'message' => 'Active Department not found.']], 422);
+                }
+                $eligible = $db->table('personnel_administrative_unit_affiliations')
+                    ->where('personnel_profile_id', $targetProfileId)->where('administrative_unit_id', $scopeId)
+                    ->where('is_active', 1)->get()->getRowArray();
+                if ($eligible === null) {
+                    return $this->respond(['error' => ['code' => 'INELIGIBLE_DEPARTMENT_AFFILIATION', 'message' => 'Personnel must belong to the assigned Department.']], 422);
+                }
+                $assignmentId = $this->genUuid();
+                $db->table('department_head_assignments')->insert([
+                    'id' => $assignmentId, 'personnel_profile_id' => $targetProfileId,
+                    'department_id' => $scopeId, 'effective_from' => date('Y-m-d'), 'is_active' => 1,
+                    'assigned_by' => $actor['profile']['id'], 'assigned_at' => date('Y-m-d H:i:s'),
+                ]);
+                return $this->respondCreated(['data' => [
+                    'message' => 'Department Head assignment created.', 'assignment_id' => $assignmentId,
+                    'profile_id' => $targetProfileId, 'role_key' => $roleKey,
+                    'scope_type' => 'department', 'scope_id' => $scopeId,
                 ]]);
             }
 
@@ -295,7 +345,7 @@ class PersonnelRoleController extends Controller
         $reason = trim((string) ($json['reason'] ?? 'Specialized role revocation'));
         $db = db_connect();
 
-        $candidates = $requestedRole !== '' ? [$requestedRole] : ['dean', 'program_coordinator', 'organization_moderator'];
+        $candidates = $requestedRole !== '' ? [$requestedRole] : ['dean', 'department_head', 'program_coordinator', 'organization_moderator'];
 
         foreach ($candidates as $roleKey) {
             if ($roleKey === 'dean') {
@@ -332,6 +382,19 @@ class PersonnelRoleController extends Controller
                 return $this->respond(['data' => ['message' => 'Program Coordinator assignment revoked.', 'assignment_id' => $assignmentId]], 200);
             }
 
+            if ($roleKey === 'department_head') {
+                $row = $db->table('department_head_assignments')->where('id', $assignmentId)
+                    ->where('personnel_profile_id', $targetProfileId)->where('is_active', 1)->get()->getRowArray();
+                if ($row === null) continue;
+                if (! $isHr) {
+                    return $this->respond(['error' => ['code' => 'FORBIDDEN_ROLE_REVOCATION', 'message' => 'Only HR may revoke Department Head.']], 403);
+                }
+                $db->table('department_head_assignments')->where('id', $assignmentId)->update([
+                    'is_active' => 0, 'effective_until' => date('Y-m-d'),
+                ]);
+                return $this->respond(['data' => ['message' => 'Department Head assignment revoked.', 'assignment_id' => $assignmentId]], 200);
+            }
+
             if ($roleKey === 'organization_moderator') {
                 $row = $db->table('organization_moderator_assignments')
                     ->where('id', $assignmentId)->where('personnel_profile_id', $targetProfileId)
@@ -351,5 +414,24 @@ class PersonnelRoleController extends Controller
         }
 
         return $this->respond(['error' => ['code' => 'ASSIGNMENT_NOT_FOUND', 'message' => 'Active specialized assignment not found.']], 404);
+    }
+
+    /** GET /api/v1/personnel/department-roster */
+    public function departmentRoster()
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated active session required.']], 401);
+        $departmentIds = $this->authz->getDepartmentHeadDepartmentIds($actor);
+        if ($departmentIds === []) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Active Department Head assignment required.']], 403);
+
+        $rows = db_connect()->table('personnel_administrative_unit_affiliations paua')
+            ->select('p.id, p.institutional_id, p.full_name, p.email AS institutional_email, p.status, pp.personnel_group, pp.organizational_side, pp.position_title, au.id AS department_id, au.code AS department_code, au.name AS department_name')
+            ->join('profiles p', 'p.id = paua.personnel_profile_id')
+            ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+            ->join('administrative_units au', 'au.id = paua.administrative_unit_id')
+            ->whereIn('paua.administrative_unit_id', $departmentIds)->where('paua.is_active', 1)
+            ->where('p.account_type', 'personnel')->where('p.status', 'active')
+            ->orderBy('p.full_name')->get()->getResultArray();
+        return $this->respond(['data' => ['department_ids' => $departmentIds, 'personnel' => $rows]], 200);
     }
 }

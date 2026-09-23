@@ -129,6 +129,15 @@ class FacultyStatusService
             return ['valid' => false, 'error' => $statusValidation['error']];
         }
 
+        $employmentStartDate = null;
+        if (($payload['employment_start_date'] ?? null) !== null && trim((string) $payload['employment_start_date']) !== '') {
+            try {
+                $employmentStartDate = (new EmploymentServiceDurationService())->validateRequiredStartDate($payload['employment_start_date']);
+            } catch (\InvalidArgumentException $error) {
+                return ['valid' => false, 'error' => ['code' => 'INVALID_EMPLOYMENT_START_DATE', 'field' => 'employment_start_date', 'message' => $error->getMessage()]];
+            }
+        }
+
         // 3. Position Title
         $positionTitle = isset($payload['position_title']) ? trim((string) $payload['position_title']) : null;
         if ($positionTitle !== null && mb_strlen($positionTitle) > 150) {
@@ -207,6 +216,7 @@ class FacultyStatusService
             'faculty_engagement_label' => $engagementValidation['label'],
             'employment_status'     => $statusValidation['status'],
             'employment_status_label' => $statusValidation['label'],
+            'employment_start_date' => $employmentStartDate,
             'position_title'        => $positionTitle ?: 'Faculty Member',
             'current_rank_title'    => $rankTitle ?: 'Faculty Member',
             'qualification_summary' => $qualSummary ?: 'Bachelor Degree / Masteral Units',
@@ -225,13 +235,14 @@ class FacultyStatusService
 
         $engagementLabel = $engagement ? (self::CANONICAL_ENGAGEMENTS[$engagement] ?? $engagement) : 'Unassigned';
         $statusLabel     = self::CANONICAL_EMPLOYMENT_STATUSES[$status] ?? ucfirst($status);
+        $employmentStartDate = $row['employment_start_date'] ?? null;
+        $serviceDuration = (new EmploymentServiceDurationService())->calculate($employmentStartDate);
 
-        $isFullTime = ($engagement === self::ENGAGEMENT_FULL_TIME);
         $isActive   = (($row['status'] ?? 'active') === 'active');
         $isAcademic = ($side === 'academic');
 
         // Dean review & evaluation eligibility derivation
-        $isDeanReviewEligible = ($isAcademic && $isFullTime && $isActive);
+        $isDeanReviewEligible = ($group === 'faculty' && $isAcademic && $isActive);
 
         return [
             'profile_id'               => $row['id'] ?? $row['profile_id'],
@@ -241,6 +252,8 @@ class FacultyStatusService
             'faculty_engagement_label' => $engagementLabel,
             'employment_status'        => $status,
             'employment_status_label'  => $statusLabel,
+            'employment_start_date'    => $employmentStartDate,
+            'service_duration'         => $serviceDuration,
             'college_id'               => $row['college_id'] ?? null,
             'college_code'             => $row['college_code'] ?? null,
             'college_name'             => $row['college_name'] ?? null,

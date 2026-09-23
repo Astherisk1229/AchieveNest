@@ -105,7 +105,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-4: Institutional A
       expect(label).toBe('University Library')
     })
 
-    it('4. Faculty + Non-Academic remains unsupported', () => {
+    it('4. Faculty + Non-Academic validates with administrative unit in CHU-01 Phase 2', () => {
       const validation = validatePersonnelPlacement({
         group: 'faculty',
         side: 'non_academic',
@@ -113,8 +113,8 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-4: Institutional A
         academicProgramIds: [],
         administrativeUnitId: 5
       })
-      expect(validation.isValid).toBe(false)
-      expect(validation.errors.classificationPair).toContain('Invalid combination: Faculty must belong to the Academic organizational side')
+      expect(validation.isValid).toBe(true)
+      expect(validation.errors).toEqual({})
     })
 
     it('5. Academic projection uses college_id / college entity resolution', () => {

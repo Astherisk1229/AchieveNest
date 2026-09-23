@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useId } from 'react'
-import { X, AlertCircle, Save, Send, AlertTriangle, Layers, Tag } from 'lucide-react'
+import { X, AlertCircle, Save, Send, AlertTriangle, Layers, CheckCircle2, FileCheck2 } from 'lucide-react'
 import SharedAchievementFields from '../components/SharedAchievementFields'
 import StructuredDetailsFields from '../components/StructuredDetailsFields'
 import EvidenceUploadSection from '../components/EvidenceUploadSection'
-import {
-  PRIMARY_CATEGORIES,
-  getSubcategoriesByCategory,
-  getSubcategorySchema
-} from '../../../config/portfolioFormSchemaRegistry'
+import { getSubcategorySchema } from '../../../config/portfolioFormSchemaRegistry'
+import portfolioService from '../../../services/portfolioService'
 
 /**
  * Utility to check if structured metadata has meaningful student-entered data
@@ -25,7 +22,8 @@ export default function AchievementSubmissionModal({
   isOpen,
   onClose,
   onSubmitAchievement,
-  initialData = null
+  initialData = null,
+  taxonomy = []
 }) {
   const modalTitleId = useId()
 
@@ -88,8 +86,22 @@ export default function AchievementSubmissionModal({
   if (!isOpen) return null
 
   // Subcategories for currently selected Category
-  const availableSubcategories = getSubcategoriesByCategory(categoryId)
+  const availableSubcategories = taxonomy.find(category => category.id === categoryId)?.subcategories || []
   const currentSchema = getSubcategorySchema(subcategoryId)
+  const selectedCategory = taxonomy.find(category => category.id === categoryId)
+  const selectedSubcategory = availableSubcategories.find(subcategory => subcategory.id === subcategoryId)
+  const classificationComplete = Boolean(categoryId && subcategoryId)
+  const basicInformationComplete = Boolean(
+    formData.title.trim().length >= 3 &&
+    formData.organizer_or_body.trim().length >= 2 &&
+    formData.start_date
+  )
+  const tailoredDetailsComplete = Boolean(currentSchema?.fields?.every(field => {
+    const visible = !field.visibility || structuredMetadata[field.visibility.field] === field.visibility.equals
+    return !visible || !field.required || ![undefined, null, ''].includes(structuredMetadata[field.key])
+  }))
+  const evidenceComplete = evidenceFiles.length > 0
+  const readyToSubmit = classificationComplete && basicInformationComplete && tailoredDetailsComplete && evidenceComplete
 
   // Handle Shared Field Changes
   const handleSharedChange = (field, value) => {
@@ -201,8 +213,26 @@ export default function AchievementSubmissionModal({
     setEvidenceFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  const handleReplaceFile = (index, file) => {
+    setEvidenceFiles(prev => prev.map((entry, i) => i === index ? file : entry))
+  }
+
+  const handlePreviewFile = async (file) => {
+    let blob
+    if (file instanceof File) blob = file
+    else if (file?.id) blob = await portfolioService.downloadEvidence(file.id)
+    if (!blob) return
+    const url = URL.createObjectURL(blob)
+    const previewLink = document.createElement('a')
+    previewLink.href = url
+    previewLink.target = '_blank'
+    previewLink.rel = 'noopener noreferrer'
+    previewLink.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000)
+  }
+
   // Client Validation
-  const validateForm = (isSubmitNow) => {
+  const validateForm = (isSubmitNow, requireEvidence = isSubmitNow) => {
     const errs = {}
 
     // Draft permits incomplete work; Submit enforces all rules
@@ -225,7 +255,7 @@ export default function AchievementSubmissionModal({
       if (!subcategoryId) {
         errs.subcategory_id = 'Subcategory is required.'
       }
-      if (evidenceFiles.length === 0) {
+      if (requireEvidence && evidenceFiles.length === 0) {
         errs.evidence = 'At least one supporting evidence attachment is required before submitting.'
       }
 
@@ -250,6 +280,15 @@ export default function AchievementSubmissionModal({
     }
 
     setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      const firstKey = Object.keys(errs)[0]
+      window.setTimeout(() => {
+        const fieldName = firstKey.startsWith('structured_metadata.') ? firstKey.split('.')[1] : firstKey
+        const target = document.querySelector(`[name="${fieldName}"]`) || document.getElementById('evidence-file-input')
+        target?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+        target?.focus?.()
+      }, 0)
+    }
     return Object.keys(errs).length === 0
   }
 
@@ -284,10 +323,11 @@ export default function AchievementSubmissionModal({
       }
       onClose()
     } catch (err) {
-      if (err.errors) {
-        setErrors(err.errors)
+      const backendError = err?.error || err
+      if (backendError?.errors) {
+        setErrors(backendError.errors)
       } else {
-        setErrors({ general: err.message || 'Failed to save achievement record.' })
+        setErrors({ general: backendError?.message || 'Failed to save achievement record.' })
       }
     } finally {
       setIsSubmitting(false)
@@ -314,68 +354,52 @@ export default function AchievementSubmissionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div 
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 sm:items-center sm:p-4" onKeyDown={(event) => { if (event.key === 'Escape' && !confirmDialog.isOpen) handleRequestClose() }}>
+      <div
+        className="flex h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900 sm:h-auto sm:max-h-[92vh] sm:max-w-4xl sm:rounded-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={modalTitleId}
       >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-          <div>
-            <h3 id={modalTitleId} className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:px-6 sm:py-4">
+          <div className="min-w-0 pr-4">
+            <h3 id={modalTitleId} className="truncate text-lg font-extrabold tracking-[-0.02em] text-slate-900 dark:text-slate-100">
               <span>{initialData ? 'Edit Achievement Record' : 'Add Achievement / Portfolio Record'}</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Enter your verified co-curricular and extra-curricular accomplishment details.
+            <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
+              Classify the activity, add its details, and attach evidence for review.
             </p>
           </div>
           <button
             type="button"
             onClick={handleRequestClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-200/50 transition cursor-pointer"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16834a] dark:hover:bg-slate-800 dark:hover:text-white"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Scrollable Form Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* General Error Banner */}
+        <div className="flex-1 space-y-6 overflow-y-auto px-4 py-5 [scrollbar-color:#94a3b8_transparent] dark:[scrollbar-color:#475569_transparent] sm:px-6 sm:py-6">
           {errors.general && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 font-medium">
+            <div className="flex items-start gap-2.5 rounded-xl bg-rose-50 p-3.5 text-sm font-medium text-rose-800 dark:bg-rose-950/40 dark:text-rose-200" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
               <span>{errors.general}</span>
             </div>
           )}
 
-          {/* 1. Basic Information (Shared Core Fields) */}
-          <SharedAchievementFields
-            formData={formData}
-            onChange={handleSharedChange}
-            errors={errors}
-            disabled={isSubmitting}
-          />
-
-          {/* 2. Classification Section (Primary Category & Subcategory) */}
-          <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
-            <div>
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+          <section className="space-y-3" aria-labelledby="classification-heading">
+            <div className="flex items-center justify-between gap-3">
+              <h4 id="classification-heading" className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
                 <Layers className="w-4 h-4 text-[#16834a]" />
                 <span>Classification</span>
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Select the primary activity domain and specific subcategory to load required details.
-              </p>
+              {classificationComplete && <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> Complete</span>}
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Primary Category Selector */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="primary-category" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Primary Category <span className="text-rose-600 dark:text-rose-400">*</span>
+                  Category <span className="text-rose-600 dark:text-rose-400">*</span>
                 </label>
                 <select
                   id="primary-category"
@@ -386,14 +410,14 @@ export default function AchievementSubmissionModal({
                   aria-required="true"
                   aria-invalid={Boolean(errors.category_id)}
                   aria-describedby={errors.category_id ? 'category-error' : undefined}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 focus:outline-none transition ${
+                  className={`min-h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 dark:bg-slate-900 dark:text-slate-100 ${
                     errors.category_id
                       ? 'border-rose-500 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
                       : 'border-slate-200 dark:border-slate-700 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20'
                   }`}
                 >
-                  <option value="">-- Select Primary Category --</option>
-                  {PRIMARY_CATEGORIES.map(cat => (
+                  <option value="">{taxonomy.length ? 'Select a category' : 'Loading approved categories…'}</option>
+                  {taxonomy.map(cat => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>
@@ -406,8 +430,6 @@ export default function AchievementSubmissionModal({
                   </p>
                 )}
               </div>
-
-              {/* Subcategory Selector */}
               <div>
                 <label htmlFor="portfolio-subcategory" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Subcategory <span className="text-rose-600 dark:text-rose-400">*</span>
@@ -421,14 +443,14 @@ export default function AchievementSubmissionModal({
                   aria-required="true"
                   aria-invalid={Boolean(errors.subcategory_id)}
                   aria-describedby={errors.subcategory_id ? 'subcategory-error' : undefined}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 focus:outline-none transition disabled:opacity-60 disabled:cursor-not-allowed ${
+                  className={`min-h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-slate-900 transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:bg-slate-900 dark:text-slate-100 dark:disabled:bg-slate-800 ${
                     errors.subcategory_id
                       ? 'border-rose-500 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
                       : 'border-slate-200 dark:border-slate-700 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20'
                   }`}
                 >
                   <option value="">
-                    {categoryId ? '-- Select Subcategory --' : 'Select a primary category first'}
+                    {categoryId ? 'Select a subcategory' : 'Select a category first'}
                   </option>
                   {availableSubcategories.map(sub => (
                     <option key={sub.id} value={sub.id}>
@@ -444,69 +466,62 @@ export default function AchievementSubmissionModal({
                 )}
               </div>
             </div>
-          </div>
+          </section>
 
-          {/* 3. Structured Details Region (Dynamically mounted when Subcategory is selected) */}
-          {subcategoryId ? (
-            <StructuredDetailsFields
-              subcategoryId={subcategoryId}
-              structuredMetadata={structuredMetadata}
-              onChange={setStructuredMetadata}
-              errors={errors}
-              disabled={isSubmitting}
-            />
-          ) : (
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">
-              Select a primary category and subcategory above to reveal specific participation details.
-            </div>
-          )}
+          <section className="space-y-4 border-t border-slate-200 pt-6 dark:border-slate-800" aria-label="Basic information">
+            <SharedAchievementFields formData={formData} onChange={handleSharedChange} errors={errors} disabled={isSubmitting} />
+          </section>
 
-          {/* 4. Supporting Evidence Section */}
-          <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+          <section className="border-t border-slate-200 pt-6 dark:border-slate-800" aria-live="polite">
+            {subcategoryId ? (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <StructuredDetailsFields subcategoryId={subcategoryId} structuredMetadata={structuredMetadata} onChange={setStructuredMetadata} errors={errors} disabled={isSubmitting} />
+              </div>
+            ) : (
+              <div className="py-3 text-sm text-slate-500 dark:text-slate-400">
+                Choose a category and subcategory to reveal the relevant achievement details.
+              </div>
+            )}
+          </section>
+
+          <section className="border-t border-slate-200 pt-6 dark:border-slate-800" aria-label="Supporting evidence">
             <EvidenceUploadSection
               files={evidenceFiles}
               onAddFiles={handleAddFiles}
               onRemoveFile={handleRemoveFile}
+              onReplaceFile={handleReplaceFile}
+              onPreviewFile={handlePreviewFile}
               error={errors.evidence}
               required={true}
               disabled={isSubmitting}
             />
-          </div>
+          </section>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-          <button
-            type="button"
-            onClick={handleRequestClose}
-            disabled={isSubmitting}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-          >
-            Cancel
-          </button>
-
-          <div className="flex items-center gap-2.5">
-            {/* Save Draft Button */}
+        <div className="border-t border-slate-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+          {readyToSubmit && (
+            <div className="mb-3 flex items-start gap-2 text-xs text-emerald-800 dark:text-emerald-300">
+              <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0" />
+              <span><strong>Ready to submit.</strong> {selectedCategory?.name} › {selectedSubcategory?.name} · {evidenceFiles.length} evidence file{evidenceFiles.length === 1 ? '' : 's'}.</span>
+            </div>
+          )}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
-              onClick={() => handleSave(false)}
+              onClick={handleRequestClose}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-extrabold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="min-h-11 rounded-xl px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16834a] disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              <Save className="w-4 h-4 text-slate-500" />
-              <span>Save Draft</span>
+              Cancel
             </button>
-
-            {/* Submit Button */}
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#126b3c] text-white text-xs font-extrabold shadow-sm hover:shadow transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Submitting...' : 'Submit for Verification'}</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <button type="button" onClick={() => handleSave(false)} disabled={isSubmitting || !categoryId || formData.title.trim().length < 3} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-bold text-slate-800 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16834a] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                <Save className="h-4 w-4" /><span>Save Draft</span>
+              </button>
+              <button type="button" onClick={() => handleSave(true)} disabled={isSubmitting} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#16834a] px-5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#126b3c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16834a] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                <Send className="h-4 w-4" /><span>{isSubmitting ? 'Submitting…' : 'Submit for Verification'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

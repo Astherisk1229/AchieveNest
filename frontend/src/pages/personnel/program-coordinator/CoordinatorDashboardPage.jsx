@@ -5,6 +5,7 @@ import { useVerification } from '../../../hooks/useVerification'
 import { useStudentRoster } from '../../../hooks/useStudentRoster'
 import CoordinatorMetricsSidebar from './CoordinatorMetricsSidebar'
 import { calculateAverageReviewTime } from '../../../utils/verificationMetrics'
+import { AchieveNestLogo } from '../../../components/brand'
 import { 
   Shield, 
   ShieldCheck,
@@ -75,8 +76,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
     }
   }
 
-  // Master Initial Submissions Data
-  const [initialSubmissionsData] = useState([
+  /* Legacy presentation fixture retained temporarily for visual-reference only.
+     It is commented out and cannot participate in the runtime queue.
     {
       id: 101,
       title: 'Community Outreach Volunteer',
@@ -178,10 +179,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
       status: 'Returned',
       return_remarks: 'Please attach an official signed certification from the Athletics Office. Scanned photo is unreadable.'
     }
-  ])
+  ]
+  */
 
-  // Initial Student Roster Data
-  const [initialStudentsData] = useState([
+  /* Legacy roster fixture retained temporarily for visual-reference only.
     {
       id: 'usr_std_001',
       student_id: '2021-00123',
@@ -247,7 +248,9 @@ export default function CoordinatorDashboardPage({ currentUser }) {
       pending_count: 1,
       avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
     }
-  ])
+  ]
+  */
+  const initialStudentsData = []
 
   // Custom MVC Bridge Hooks
   const {
@@ -263,7 +266,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
     handleApprove: handleApproveHook,
     handleReturn: handleReturnHook,
     handleExportCSVReport: handleExportCSVReportHook
-  } = useVerification(initialSubmissionsData)
+  } = useVerification()
 
   const {
     filteredStudents,
@@ -297,21 +300,29 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   }
 
   // Wrapper handlers using Hook + Toast
-  const handleApprove = (itemId) => {
-    handleApproveHook(itemId)
-    triggerToast('Achievement approved & verified successfully!')
-    setSelectedReviewItem(null)
+  const handleApprove = async (itemId, remarks = '') => {
+    try {
+      await handleApproveHook(itemId, remarks)
+      triggerToast('Achievement approved & verified successfully!')
+      setSelectedReviewItem(null)
+    } catch (error) {
+      triggerToast(error?.message || 'Unable to verify achievement.')
+    }
   }
 
-  const handleReturn = (itemId) => {
+  const handleReturn = async (itemId) => {
     if (!returnRemarks.trim()) {
       alert('Please provide remarks explaining why the achievement is being returned.')
       return
     }
-    handleReturnHook(itemId, returnRemarks.trim())
-    triggerToast('Achievement returned to student with remarks.')
-    setSelectedReviewItem(null)
-    setReturnRemarks('')
+    try {
+      await handleReturnHook(itemId, returnRemarks.trim())
+      triggerToast('Achievement returned to student with remarks.')
+      setSelectedReviewItem(null)
+      setReturnRemarks('')
+    } catch (error) {
+      triggerToast(error?.message || 'Unable to request a revision.')
+    }
   }
 
   const handleExportCSVReport = () => {
@@ -1031,17 +1042,19 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         <div className="flex items-center justify-end gap-3">
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               if (!workspaceRemarks.trim()) {
                                 alert('Please provide feedback remarks in the textarea before returning this submission.')
                                 return
                               }
-                              setAllSubmissions(prev => prev.map(s =>
-                                s.id === workspaceItem.id ? { ...s, status: 'Returned', return_remarks: workspaceRemarks.trim() } : s
-                              ))
-                              setSelectedWorkspaceItem(prev => prev ? { ...prev, status: 'Returned', return_remarks: workspaceRemarks.trim() } : prev)
-                              setWorkspaceRemarks('')
-                              triggerToast('Submission returned to student with your remarks.')
+                              try {
+                                await handleReturnHook(workspaceItem.id, workspaceRemarks.trim())
+                                setSelectedWorkspaceItem(null)
+                                setWorkspaceRemarks('')
+                                triggerToast('Submission returned to student with your remarks.')
+                              } catch (error) {
+                                triggerToast(error?.message || 'Unable to request a revision.')
+                              }
                             }}
                             className="px-5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-300 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
                           >
@@ -1052,13 +1065,15 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                           {workspaceItem.status === 'Pending' && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setAllSubmissions(prev => prev.map(s =>
-                                  s.id === workspaceItem.id ? { ...s, status: 'Verified', return_remarks: '' } : s
-                                ))
-                                setSelectedWorkspaceItem(prev => prev ? { ...prev, status: 'Verified' } : prev)
-                                setWorkspaceRemarks('')
-                                triggerToast('Achievement approved & verified successfully!')
+                              onClick={async () => {
+                                try {
+                                  await handleApproveHook(workspaceItem.id, workspaceRemarks.trim())
+                                  setSelectedWorkspaceItem(null)
+                                  setWorkspaceRemarks('')
+                                  triggerToast('Achievement approved & verified successfully!')
+                                } catch (error) {
+                                  triggerToast(error?.message || 'Unable to verify achievement.')
+                                }
                               }}
                               className="px-6 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white font-extrabold text-xs shadow-2xs transition cursor-pointer flex items-center justify-center gap-2"
                             >
@@ -1169,15 +1184,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                     {/* Banner Header Body */}
                     <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-sm shadow-md shrink-0">
-                          🔰
-                        </div>
-                        <div className="leading-tight">
-                          <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
-                          <span className="text-[9px] font-bold text-[#245F42] tracking-widest uppercase block">NDMU</span>
-                        </div>
-                      </div>
+                      <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
 
                       <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
                         Veritas • Caritas • Excellentia

@@ -44,7 +44,7 @@ describe('Personnel Evaluation Track — Plan G — Phase G1: Reviewer Routing, 
       expect(assignment.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
-    it('assigns active Dean for Non-Teaching Faculty + Academic within college scope', () => {
+    it('assigns HR Staff for Non-Teaching Faculty + Academic in CHU-01 Phase 2', () => {
       const evaluation = {
         evaluation_id: 'EVAL-NT-ACAD-01',
         personnel_profile_id: 'USER-NT-ACAD-1',
@@ -56,9 +56,9 @@ describe('Personnel Evaluation Track — Plan G — Phase G1: Reviewer Routing, 
 
       const assignment = PersonnelReviewerAssignmentService.assignReviewer(evaluation, mockDirectory)
       expect(assignment.assignment_status).toBe(ASSIGNMENT_STATUSES.ASSIGNED)
-      expect(assignment.assigned_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
-      expect(assignment.evaluator_profile_id).toBe('USER-DEAN-CBA')
-      expect(assignment.evaluator_college_id).toBe('COLLEGE-CBA')
+      expect(assignment.assigned_reviewer_role).toBe(REVIEWER_ROLES.HR)
+      expect(assignment.evaluator_profile_id).toBe('USER-HR-1')
+      expect(assignment.evaluator_college_id).toBeNull()
     })
 
     it('assigns HR Staff for Non-Teaching Faculty + Non-Academic', () => {
@@ -153,7 +153,7 @@ describe('Personnel Evaluation Track — Plan G — Phase G1: Reviewer Routing, 
       const evaluation = {
         evaluation_id: 'EVAL-INVALID-COMBO',
         personnel_profile_id: 'USER-INVALID-1',
-        personnel_group: 'faculty',
+        personnel_group: 'invalid_group',
         organizational_side: 'non_academic',
         status: EVALUATION_STATUSES.SUBMITTED
       }

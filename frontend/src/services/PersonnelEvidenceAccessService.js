@@ -200,7 +200,7 @@ export default class PersonnelEvidenceAccessService {
    * Sanitizes header filename for attachment downloads.
    */
   static sanitizeHeaderFilename(filename = 'evidence.pdf') {
-    const base = filename.replace(/^.*[\\/]/, '')
+    const base = String(filename || 'evidence.pdf').replace(/^.*[\\/]/, '')
     const safe = base.replace(/[\r\n"';\0]/g, '').replace(/[^\x20-\x7E]/g, '')
     return safe.trim() || 'evidence_download.pdf'
   }

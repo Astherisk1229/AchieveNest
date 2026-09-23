@@ -10,6 +10,7 @@
 
 import SecurityController from './SecurityController.js'
 import OcrScanModel from '../models/OcrScanModel.js'
+import { ocrService } from '../services/ocrService.js'
 
 export default class OcrScanController {
   /**
@@ -31,7 +32,13 @@ export default class OcrScanController {
 
     try {
       // 2. Perform Authentic Text Extraction from File Binary / Text Layer
-      const textExtraction = await OcrScanController.extractTextFromFile(file)
+      const backendDocument = await ocrService.extract(file)
+      const textExtraction = {
+        text: backendDocument?.text || '',
+        lines: (backendDocument?.text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean),
+        pages: [],
+        warnings: backendDocument?.warnings || []
+      }
       const rawText = textExtraction.text || ''
       const rawLines = textExtraction.lines || []
       const pages = textExtraction.pages || [{ pageNumber: 1, text: rawText }]
@@ -70,6 +77,8 @@ export default class OcrScanController {
         pages,
         extractionWarnings
       })
+      result.documentQuality = backendDocument?.quality || { score: 0, label: 'failed' }
+      result.ocrEngine = backendDocument?.engine || 'backend'
 
       return { success: true, result }
     } catch (err) {
@@ -78,164 +87,6 @@ export default class OcrScanController {
         success: false,
         error: 'OCR processing error. Your uploaded file remains safely stored. You may enter details manually.'
       }
-    }
-  }
-
-  /**
-   * Extracts text content from genuine PDF or image files without fabrication.
-   * Extracts genuine text layers from PDF streams or text readers.
-   * @param {File|Blob} file
-   * @returns {Promise<{ text: string, lines: string[], pages: Array<{pageNumber: number, text: string}>, warnings: string[] }>}
-   */
-  static async extractTextFromFile(file) {
-    if (!file) {
-      return { text: '', lines: [], pages: [], warnings: ['No file provided.'] }
-    }
-
-    const fileName = (file.name || '').toLowerCase()
-    const isPdf = fileName.endsWith('.pdf') || (file.type && file.type.includes('pdf'))
-
-    return new Promise((resolve) => {
-      if (typeof FileReader === 'undefined') {
-        resolve({ text: '', lines: [], pages: [], warnings: ['FileReader API not available.'] })
-        return
-      }
-
-      const reader = new FileReader()
-
-      reader.onload = (e) => {
-        try {
-          const buffer = e.target.result
-          let extractedText = ''
-          const warnings = []
-
-          if (isPdf) {
-            // Extract text from PDF buffer
-            extractedText = OcrScanController.extractTextFromPdfBuffer(buffer)
-            if (!extractedText.trim()) {
-              warnings.push('PDF does not contain an embedded text layer. Please enter accomplishment details manually.')
-            }
-          } else {
-            // For images or plain text files
-            if (typeof buffer === 'string') {
-              extractedText = buffer
-            } else {
-              const decoder = new TextDecoder('utf-8', { fatal: false })
-              extractedText = decoder.decode(buffer)
-            }
-          }
-
-          // Clean lines
-          const lines = extractedText
-            .split(/\r?\n/)
-            .map(l => l.trim())
-            .filter(l => l.length > 0)
-
-          resolve({
-            text: extractedText.trim(),
-            lines,
-            pages: [{ pageNumber: 1, text: extractedText.trim() }],
-            warnings
-          })
-        } catch (err) {
-          resolve({
-            text: '',
-            lines: [],
-            pages: [],
-            warnings: ['Failed to extract text from file binary.']
-          })
-        }
-      }
-
-      reader.onerror = () => {
-        resolve({
-          text: '',
-          lines: [],
-          pages: [],
-          warnings: ['Error reading file stream.']
-        })
-      }
-
-      // Read as ArrayBuffer for binary inspection
-      reader.readAsArrayBuffer(file)
-    })
-  }
-
-  /**
-   * Parses PDF binary stream to extract embedded text tokens and Tj/TJ strings.
-   * @param {ArrayBuffer} buffer 
-   * @returns {string}
-   */
-  static extractTextFromPdfBuffer(buffer) {
-    if (!buffer) return ''
-    try {
-      const decoder = new TextDecoder('utf-8', { fatal: false })
-      const rawString = decoder.decode(buffer)
-      
-      const textChunks = []
-
-      // 1. Search for literal text inside parentheses before Tj: (Some Text) Tj
-      const tjRegex = /\(([^)]+)\)\s*Tj/g
-      let match
-      while ((match = tjRegex.exec(rawString)) !== null) {
-        const cleaned = match[1].replace(/\\([()\\])/g, '$1').trim()
-        if (cleaned) textChunks.push(cleaned)
-      }
-
-      // 2. Search for array text tokens before TJ: [(Some) 20 (Text)] TJ
-      const arrayTjRegex = /\[([^\]]+)\]\s*TJ/g
-      while ((match = arrayTjRegex.exec(rawString)) !== null) {
-        const inner = match[1]
-        const subStrings = []
-        const innerMatchRegex = /\(([^)]+)\)/g
-        let subMatch
-        while ((subMatch = innerMatchRegex.exec(inner)) !== null) {
-          const cleaned = subMatch[1].replace(/\\([()\\])/g, '$1').trim()
-          if (cleaned) subStrings.push(cleaned)
-        }
-        if (subStrings.length > 0) {
-          textChunks.push(subStrings.join(' '))
-        }
-      }
-
-      // 3. Search for plain text stream blocks: BT ... ET
-      if (textChunks.length === 0) {
-        const btRegex = /BT([\s\S]*?)ET/g
-        while ((match = btRegex.exec(rawString)) !== null) {
-          const block = match[1]
-          const subTextRegex = /\(([^)]+)\)/g
-          let subMatch
-          while ((subMatch = subTextRegex.exec(block)) !== null) {
-            const cleaned = subMatch[1].replace(/\\([()\\])/g, '$1').trim()
-            if (cleaned) textChunks.push(cleaned)
-          }
-        }
-      }
-
-      // 4. Fallback if PDF was created in ASCII/plain representation
-      if (textChunks.length === 0) {
-        const plainLines = rawString.split(/\r?\n/)
-        for (const line of plainLines) {
-          const trimmed = line.trim()
-          if (
-            trimmed.length > 4 &&
-            !trimmed.startsWith('%') &&
-            !trimmed.startsWith('xref') &&
-            !trimmed.startsWith('trailer') &&
-            !trimmed.startsWith('startxref') &&
-            !trimmed.includes('endobj') &&
-            !trimmed.includes('/Type') &&
-            !trimmed.includes('/Filter') &&
-            !trimmed.includes('/Length')
-          ) {
-            textChunks.push(trimmed)
-          }
-        }
-      }
-
-      return textChunks.join('\n').trim()
-    } catch (err) {
-      return ''
     }
   }
 
@@ -258,6 +109,7 @@ export default class OcrScanController {
     let maxScore = -999
     let bestCategory = 'A.3 Attendance to Seminars/Trainings'
     let bestMatches = []
+    const ranked = []
 
     for (const [catKey, rule] of Object.entries(rules)) {
       let score = 0
@@ -291,6 +143,7 @@ export default class OcrScanController {
         bestCategory = catKey
         bestMatches = matched
       }
+      ranked.push({ category: catKey, score, matchedKeywords: matched })
     }
 
     if (maxScore <= 0) {
@@ -298,20 +151,31 @@ export default class OcrScanController {
         category: null,
         confidence: 0,
         matchedKeywords: []
+        , alternatives: []
       }
     }
 
-    // Calculate confidence percentage (min 60%, max 98%)
-    let confidence = 65
-    if (maxScore >= 50) confidence = 95
-    else if (maxScore >= 35) confidence = 88
-    else if (maxScore >= 20) confidence = 78
-    else if (maxScore >= 10) confidence = 70
+    // Evidence-proportional score. There is deliberately no confidence floor.
+    const confidence = Math.min(98, Math.round(35 + (63 * (1 - Math.exp(-maxScore / 45)))))
+
+    let alternatives = ranked
+      .filter((candidate) => candidate.category !== bestCategory && candidate.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map(({ category, matchedKeywords }) => ({ category, matchedKeywords }))
+    const genericRecognition = /CERTIFICATE OF (?:RECOGNITION|APPRECIATION)/.test(uppercaseText)
+      && !/(AWARDEE|WINNER|RECIPIENT|NOMINEE|RESOURCE PERSON|GUEST LECTURER|JUDGE|SPEAKER|RENDERED SERVICE|VOLUNTEER)/.test(uppercaseText)
+    if (genericRecognition) {
+      alternatives = ['B.1 Guest Lecturer / Consultant / Judge', 'C.1 Extra-Curricular Activities', 'C.2 Community Involvement']
+        .filter((category) => category !== bestCategory)
+        .map((category) => ({ category, matchedKeywords: [] }))
+    }
 
     return {
       category: bestCategory,
       confidence,
-      matchedKeywords: bestMatches
+      matchedKeywords: bestMatches,
+      alternatives
     }
   }
 
@@ -323,7 +187,7 @@ export default class OcrScanController {
    * Missing scopes do NOT default to National.
    * Missing issuers do NOT default to NDMU.
    */
-  static extractFieldsFromText(rawText, rawLines) {
+  static extractFieldsFromText(rawText, rawLines, category = null) {
     if (!rawText || rawText.trim() === '') {
       return {
         title: '',
@@ -443,6 +307,18 @@ export default class OcrScanController {
       degreeLevel = 'Ph.D. Units'
     }
 
+    const unitsMatch = rawText.match(/\b(?:completed\s+)?(\d{1,3})\s+(?:graduate\s+|doctoral\s+|master'?s?\s+)?units(?:\s+completed)?\b/i)
+    const unitsCompleted = unitsMatch && Number(unitsMatch[1]) <= 300 ? unitsMatch[1] : ''
+
+    const degreeEntities = category?.startsWith('A.1')
+      ? OcrScanController.extractDegreeEntities(rawText, rawLines)
+      : null
+    if (degreeEntities) {
+      degreeLevel = degreeEntities.degreeLevel.value
+      title = degreeEntities.degreeTitle.value
+      issuer = degreeEntities.institution.value
+    }
+
     let pubType = ''
     if (uppercaseText.includes('PUBLISHED BOOK') || uppercaseText.includes('MONOGRAPH') || uppercaseText.includes('ISBN')) {
       pubType = 'Book'
@@ -503,13 +379,56 @@ export default class OcrScanController {
       scopeLevel: scopeLevel || '',
       specificRole: specificRole || '',
       degreeLevel: degreeLevel || '',
+      unitsCompleted,
       pubType: pubType || '',
       awardType: awardType || '',
       matType: matType || '',
       fundingStatus: fundingStatus || '',
       subType: subType || '',
-      additionalDetails: title ? `Extracted via AchieveNest OCR Engine on ${new Date().toLocaleDateString()}` : ''
+      additionalDetails: title ? `Extracted via AchieveNest OCR Engine on ${new Date().toLocaleDateString()}` : '',
+      fieldMetadata: degreeEntities ? {
+        title: degreeEntities.degreeTitle,
+        issuer: degreeEntities.institution,
+        degreeLevel: degreeEntities.degreeLevel,
+        date: degreeEntities.date,
+        unitsCompleted: { value: unitsCompleted, confidence: unitsCompleted ? 90 : 0, source: unitsCompleted ? 'ocr' : 'not_found', evidenceText: unitsMatch?.[0] || '' }
+      } : {}
     }
+  }
+
+  static extractDegreeEntities(rawText, rawLines = []) {
+    const lines = rawLines.length ? rawLines : rawText.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+    const institutionPattern = /\b(university|college|institute|academy|school|polytechnic|conservatory)\b/i
+    const recipientPattern = /^(?:dr\.?|mr\.?|ms\.?|mrs\.?)\s+[\p{L}\p{M}.' -]{3,}$/iu
+    const degreePattern = /\b((?:doctor of (?:philosophy|education)|master(?: of| in) [\p{L}\p{M} &-]+|bachelor(?: of| in) [\p{L}\p{M} &-]+)(?:[ \t]*\([^\n)]{2,12}\))?(?:[ \t]+in[ \t]+[\p{L}\p{M} &-]+)?)/giu
+
+    const institutionLine = lines.find(line => institutionPattern.test(line) && !/doctor|master|bachelor/i.test(line)) || ''
+    const degreeMatches = Array.from(rawText.matchAll(degreePattern)).map(match => match[1]).sort((a, b) => b.length - a.length)
+    const degreeEvidence = degreeMatches[0] || ''
+    let degreeTitle = degreeEvidence.replace(/\s*\((?:Ph\.?D\.?|Ed\.?D\.?)\)\s*/i, ' ').replace(/\s+/g, ' ').trim()
+    if (institutionPattern.test(degreeTitle) || recipientPattern.test(degreeTitle)) degreeTitle = ''
+
+    const level = OcrScanController.resolveDegreeLevel(degreeEvidence || rawText)
+    const date = OcrScanController.extractDateFromText(rawText)
+    return {
+      degreeLevel: { ...level, source: level.value ? 'ocr' : 'not_found', evidenceText: level.matchedAlias || '' },
+      degreeTitle: { value: degreeTitle, confidence: degreeTitle ? 96 : 0, source: degreeTitle ? 'ocr' : 'not_found', evidenceText: degreeEvidence },
+      institution: { value: institutionLine, confidence: institutionLine ? 94 : 0, source: institutionLine ? 'ocr' : 'not_found', evidenceText: institutionLine },
+      date: { value: date, confidence: date ? 96 : 0, source: date ? 'ocr' : 'not_found', evidenceText: date }
+    }
+  }
+
+  static resolveDegreeLevel(text = '') {
+    const normalized = text.toLowerCase().replace(/[^a-z]+/g, ' ').trim()
+    const aliases = [
+      { value: 'Ph.D. Degree Holder', patterns: ['doctor of philosophy', 'phd', 'ph d', 'doctorate'], confidence: 98 },
+      { value: "Master's Degree Holder", patterns: ['master of science', 'master of arts', 'master in', 'mba', 'm s', 'm a'], confidence: 97 }
+    ]
+    for (const option of aliases) {
+      const match = option.patterns.find(alias => normalized.includes(alias))
+      if (match) return { value: option.value, confidence: option.confidence, matchedAlias: match }
+    }
+    return { value: '', confidence: 0, matchedAlias: null }
   }
 
   /**

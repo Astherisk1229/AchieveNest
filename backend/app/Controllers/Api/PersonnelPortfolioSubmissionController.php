@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
+use App\Services\ReviewerResolverService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use RuntimeException;
@@ -19,6 +20,29 @@ use Throwable;
 class PersonnelPortfolioSubmissionController extends Controller
 {
     use ResponseTrait;
+
+    /** Remove evaluator-only score state from responses returned to the portfolio owner. */
+    private function withoutPersonnelScoring(mixed $row): mixed
+    {
+        if (! is_array($row)) {
+            return $row;
+        }
+        foreach (array_keys($row) as $key) {
+            if (preg_match('/(?:points?|score|scoring|cap|ceiling)/i', (string) $key)) {
+                unset($row[$key]);
+                continue;
+            }
+            if (is_array($row[$key])) {
+                $row[$key] = $this->withoutPersonnelScoring($row[$key]);
+            }
+        }
+        return $row;
+    }
+
+    private function existingFieldsOnly(object $db, string $table, array $data): array
+    {
+        return array_filter($data, static fn ($value, $field): bool => $db->fieldExists((string) $field, $table), ARRAY_FILTER_USE_BOTH);
+    }
 
     private AuthorizationService $authz;
 
@@ -49,6 +73,16 @@ class PersonnelPortfolioSubmissionController extends Controller
         );
     }
 
+    private function calculateEligibleAgainAcademicYear(string $academicYear, int $lockYears = 2): string
+    {
+        if (preg_match('/(\d{4})\s*-\s*(\d{4})/', $academicYear, $matches)) {
+            $start = (int) $matches[1] + $lockYears;
+            $end = (int) $matches[2] + $lockYears;
+            return "AY {$start}-{$end}";
+        }
+        return "AY " . (date('Y') + $lockYears) . "-" . (date('Y') + $lockYears + 1);
+    }
+
     private function getRootsTable($db): string
     {
         return $db->tableExists('public.personnel_evaluation_roots') ? 'public.personnel_evaluation_roots' : 'personnel_evaluation_roots';
@@ -67,6 +101,31 @@ class PersonnelPortfolioSubmissionController extends Controller
     private function getEventsTable($db): string
     {
         return $db->tableExists('public.personnel_evaluation_events') ? 'public.personnel_evaluation_events' : 'personnel_evaluation_events';
+    }
+
+    /** Persist the portable workflow-event DTO against either legacy or canonical event columns. */
+    private function persistEvaluationEvent(object $db, string $table, array $event, ?string $previousStatus, string $newStatus): void
+    {
+        $row = $event;
+        if (! $db->fieldExists('event_type', $table)) {
+            $row['action'] = $row['event_type'];
+            unset($row['event_type']);
+        }
+        if (! $db->fieldExists('performed_by', $table)) {
+            $row['actor_profile_id'] = $row['performed_by'];
+            unset($row['performed_by']);
+        }
+        if (! $db->fieldExists('payload', $table)) {
+            $row['remarks'] = $row['payload'];
+            unset($row['payload']);
+        }
+        if (! $db->fieldExists('created_at', $table)) {
+            $row['occurred_at'] = $row['created_at'];
+            unset($row['created_at']);
+        }
+        if ($db->fieldExists('previous_status', $table)) $row['previous_status'] = $previousStatus;
+        if ($db->fieldExists('new_status', $table)) $row['new_status'] = $newStatus;
+        $db->table($table)->insert($this->existingFieldsOnly($db, $table, $row));
     }
 
     /**
@@ -89,11 +148,6 @@ class PersonnelPortfolioSubmissionController extends Controller
 
         // Assigned Evaluator
         if ($profileId !== '' && $profileId === ($evaluation['evaluator_profile_id'] ?? null)) {
-            return true;
-        }
-
-        // Dean role
-        if (in_array('dean', $roles, true)) {
             return true;
         }
 
@@ -137,20 +191,67 @@ class PersonnelPortfolioSubmissionController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $academicYear = trim((string) ($json['academic_year'] ?? '2025-2026'));
-        if ($academicYear === '') {
-            $academicYear = '2025-2026';
+        $evaluationPeriodId = trim((string) ($json['evaluation_period_id'] ?? ''));
+        if ($evaluationPeriodId === '') return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_REQUIRED', 'message' => 'Select the current open personnel evaluation period before submitting.']], 422);
+        $idempotencyKey = trim($this->request->getHeaderLine('Idempotency-Key'));
+        if ($idempotencyKey === '' || ! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $idempotencyKey)) {
+            return $this->respond(['error' => ['code' => 'IDEMPOTENCY_KEY_REQUIRED', 'message' => 'A valid submission request key is required. Please retry from the portfolio page.']], 422);
         }
-        $evaluationCycleId = trim((string) ($json['evaluation_cycle_id'] ?? $academicYear));
-        if ($evaluationCycleId === '') {
-            $evaluationCycleId = $academicYear;
+        try {
+            $period = (new \App\Services\PersonnelEvaluationPeriodService())->resolveForSubmission($evaluationPeriodId, 'RANKING_PROMOTION');
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            return $this->respond(['error' => ['code' => strtok($e->getMessage(), ':') ?: 'EVALUATION_PERIOD_INVALID', 'message' => $e->getMessage()]], 422);
         }
+        $academicYear = $period['academic_year'];
+        $evaluationCycleId = $period['id'];
 
         $db = db_connect();
+        $eligibility = (new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($personnelProfileId, $period['id']);
+        if (($eligibility['eligibility_status'] ?? 'pending') !== 'eligible') {
+            $annual = $eligibility['annual_review_requirement']['status'] ?? 'pending';
+            $service = $eligibility['service_requirement']['status'] ?? 'pending';
+            $code = $annual === 'pending' ? 'ANNUAL_REVIEW_PENDING' : ($annual === 'not_passed' ? 'ANNUAL_REVIEW_NOT_PASSED' : ($service === 'pending' ? 'SERVICE_REQUIREMENT_PENDING' : ($service === 'not_passed' ? 'SERVICE_REQUIREMENT_NOT_MET' : 'PORTFOLIO_NOT_ELIGIBLE')));
+            return $this->respond(['error'=>['code'=>$code,'message'=>'Portfolio submission is unavailable until eligibility is confirmed.','reasons'=>$eligibility['eligibility_reasons']]],422);
+        }
         $rootsTable = $this->getRootsTable($db);
         $evalsTable = $this->getEvaluationsTable($db);
         $itemsTable = $this->getItemsTable($db);
         $eventsTable = $this->getEventsTable($db);
+        $personnel = $db->table('personnel_profiles pp')
+            ->select('pp.personnel_classification, pp.position_title, pca.college_id, c.name AS college_name, paua.administrative_unit_id AS department_id, au.name AS department_name, da.id AS dean_assignment_id')
+            ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id=pp.profile_id AND pca.is_active=1', 'left')
+            ->join('colleges c', 'c.id=pca.college_id', 'left')
+            ->join('personnel_administrative_unit_affiliations paua', 'paua.personnel_profile_id=pp.profile_id AND paua.is_active=1', 'left')
+            ->join('administrative_units au', 'au.id=paua.administrative_unit_id', 'left')
+            ->join('dean_assignments da', 'da.personnel_profile_id=pp.profile_id AND da.is_active=1', 'left')
+            ->where('pp.profile_id', $personnelProfileId)->get()->getRowArray() ?? [];
+        $actualGroup = ($personnel['personnel_classification'] ?? '') === 'non_academic' ? 'NON_TEACHING_FACULTY' : 'FACULTY';
+        if (($period['personnel_group'] ?? 'FACULTY') !== $actualGroup) return $this->respond(['error'=>['code'=>'PERSONNEL_GROUP_MISMATCH','message'=>'This ranking period does not apply to your personnel classification.']], 422);
+        try { $criteriaSnapshot = (new \App\Services\RubricAdministrationService())->getScaleVersionHierarchy($period['evaluation_scale_version_id']); }
+        catch (\Throwable $e) { return $this->respond(['error'=>['code'=>'CRITERIA_SNAPSHOT_FAILED','message'=>'The assigned ranking criteria could not be snapshotted.']], 422); }
+        if ($db->tableExists('personnel_evaluation_idempotency')) {
+            $priorRequest = $db->table('personnel_evaluation_idempotency')->where([
+                'actor_profile_id' => $personnelProfileId,
+                'operation' => 'portfolio-submit',
+                'idempotency_key' => $idempotencyKey,
+            ])->get()->getRowArray();
+            if ($priorRequest) {
+                $priorEvaluation = $db->table($evalsTable)->where('id', $priorRequest['resource_id'])->get()->getRowArray();
+                if ($priorEvaluation && ($priorEvaluation['evaluation_period_id'] ?? null) === $evaluationPeriodId) {
+                    return $this->respond(['data' => [
+                        'message' => 'Portfolio submission was already accepted.',
+                        'submission_id' => $priorEvaluation['id'],
+                        'evaluation_root_id' => $priorEvaluation['evaluation_root_id'] ?? null,
+                        'version_number' => (int) ($priorEvaluation['version_number'] ?? 1),
+                        'status' => $priorEvaluation['status'],
+                        'submitted_at' => $priorEvaluation['submitted_at'],
+                        'academic_year' => $priorEvaluation['academic_year'],
+                        'evaluation_cycle_id' => $priorEvaluation['evaluation_cycle_id'],
+                    ]]);
+                }
+                return $this->respond(['error' => ['code' => 'IDEMPOTENCY_CONFLICT', 'message' => 'This submission request key was already used for another request.']], 409);
+            }
+        }
 
         // Phase C5: One evaluation root per cycle guard
         $existingRoot = null;
@@ -172,12 +273,15 @@ class PersonnelPortfolioSubmissionController extends Controller
                     ->getRowArray();
             }
             if ($latestEval === null) {
-                $latestEval = $db->table($evalsTable)
+                $evalBuilder = $db->table($evalsTable)
                     ->where('personnel_profile_id', $personnelProfileId)
-                    ->where('academic_year', $academicYear)
-                    ->orderBy('submitted_at', 'DESC')
-                    ->get()
-                    ->getRowArray();
+                    ->where('academic_year', $academicYear);
+                if ($db->fieldExists('submitted_at', $evalsTable)) {
+                    $evalBuilder->orderBy('submitted_at', 'DESC');
+                } else {
+                    $evalBuilder->orderBy('created_at', 'DESC');
+                }
+                $latestEval = $evalBuilder->get()->getRowArray();
             }
 
             if ($latestEval !== null) {
@@ -220,12 +324,15 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
         } else {
             // Fallback check on evaluations table if roots table hasn't been backfilled
-            $existingCycleEvaluation = $db->table($evalsTable)
+            $evalBuilder = $db->table($evalsTable)
                 ->where('personnel_profile_id', $personnelProfileId)
-                ->where('academic_year', $academicYear)
-                ->orderBy('submitted_at', 'DESC')
-                ->get()
-                ->getRowArray();
+                ->where('academic_year', $academicYear);
+            if ($db->fieldExists('submitted_at', $evalsTable)) {
+                $evalBuilder->orderBy('submitted_at', 'DESC');
+            } else {
+                $evalBuilder->orderBy('created_at', 'DESC');
+            }
+            $existingCycleEvaluation = $evalBuilder->get()->getRowArray();
 
             if ($existingCycleEvaluation !== null) {
                 $existingStatus = strtolower((string) ($existingCycleEvaluation['status'] ?? ''));
@@ -299,7 +406,7 @@ class PersonnelPortfolioSubmissionController extends Controller
         $missingProof = [];
         foreach ($accomplishments as $acc) {
             $attached = $evidenceMap[$acc['id']] ?? [];
-            if (empty($attached) && empty($acc['attached_file_name'])) {
+            if (empty($attached)) {
                 $missingProof[] = $acc['title'];
             }
         }
@@ -317,10 +424,44 @@ class PersonnelPortfolioSubmissionController extends Controller
             ], 422);
         }
 
+        // Faculty document-first drafts are not submission-ready until classification is confirmed
+        // and structured fields exist. Legacy records remain governed by their existing validation path.
+        $incompleteDrafts = [];
+        foreach ($accomplishments as $acc) {
+            $metadata = $acc['category_metadata'] ?? null;
+            if (is_string($metadata)) $metadata = json_decode($metadata, true);
+            $isStagingDraft = ($acc['title'] ?? '') === 'Pending document review';
+            $isFacultyStructured = is_array($metadata) && ($metadata['portfolio_format'] ?? '') === 'faculty_academic';
+            if ($isStagingDraft || ($isFacultyStructured && (empty($metadata['faculty_confirmed_category']) || empty($metadata['subcategory_code']) || empty($metadata['details'])))) {
+                $incompleteDrafts[] = $acc['title'] ?? 'Incomplete faculty accomplishment';
+            }
+        }
+        if ($incompleteDrafts !== []) {
+            return $this->respond(['error' => [
+                'code' => 'INCOMPLETE_ACCOMPLISHMENT_DRAFTS',
+                'message' => 'Submission is blocked because one or more faculty accomplishment drafts still require confirmed classification and complete structured details.',
+                'items' => $incompleteDrafts,
+            ]], 422);
+        }
+
         $now = date('Y-m-d H:i:s');
         $rootId = $this->genUuid();
         $evaluationId = $this->genUuid();
         $tenureYears = (int) ($actor['profile']['tenure_years'] ?? $json['tenure_years'] ?? 0);
+        $eligibilitySnapshot = $eligibility;
+
+        // Resolve the authoritative reviewer before persistence so the recipient queue,
+        // workflow event, and notification all reference the same reviewer immediately.
+        try {
+            $reviewer = (new ReviewerResolverService())->resolve($personnelProfileId, $period);
+        } catch (Throwable $e) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'REVIEWER_UNAVAILABLE',
+                    'message' => 'Portfolio cannot be submitted until an authorized reviewer is available: ' . $e->getMessage(),
+                ],
+            ], 422);
+        }
 
         // Atomic transaction to create evaluation root + Version 1 header + item snapshots
         $db->transBegin();
@@ -331,6 +472,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'id'                   => $rootId,
                     'personnel_profile_id' => $personnelProfileId,
                     'evaluation_cycle_id'  => $evaluationCycleId,
+                    'evaluation_period_id' => $period['id'],
                     'academic_year'        => $academicYear,
                     'created_by'           => $personnelProfileId,
                     'created_at'           => $now,
@@ -348,14 +490,35 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'submission_type'      => 'Personnel Ranking Evaluation',
                 'academic_year'        => $academicYear,
                 'evaluation_cycle_id'  => $evaluationCycleId,
+                'evaluation_period_id' => $period['id'],
+                'semester'             => $period['semester'],
+                'period_name_snapshot' => $period['period_name'],
+                'evaluation_type_snapshot' => $period['evaluation_type'],
+                'coverage_label_snapshot' => $period['coverage_label'] ?: $period['semester_label'],
+                'evaluation_scale_version_id' => $period['evaluation_scale_version_id'],
+                'personnel_group_snapshot' => $actualGroup,
+                'criteria_snapshot' => json_encode($criteriaSnapshot, JSON_UNESCAPED_UNICODE),
+                'position_title_snapshot' => !empty($personnel['dean_assignment_id']) ? 'Dean' : ($personnel['position_title'] ?? null),
+                'college_id_snapshot' => $personnel['college_id'] ?? null,
+                'college_name_snapshot' => $personnel['college_name'] ?? null,
+                'department_id_snapshot' => $personnel['department_id'] ?? null,
+                'department_name_snapshot' => $personnel['department_name'] ?? null,
+                'eligibility_snapshot' => json_encode([
+                    'evaluation_period_id' => $period['id'],
+                    'personnel_id' => $personnelProfileId,
+                    'eligibility_status' => $eligibilitySnapshot['eligibility_status'],
+                    'eligibility_reasons' => $eligibilitySnapshot['eligibility_reasons'],
+                    'annual_review_requirement' => $eligibilitySnapshot['annual_review_requirement'],
+                    'service_requirement' => $eligibilitySnapshot['service_requirement'],
+                    'employment_status' => $eligibilitySnapshot['employment_status'],
+                    'service_years' => $eligibilitySnapshot['service_years'],
+                    'decision_timestamp' => $now,
+                ], JSON_UNESCAPED_UNICODE),
                 'version_number'       => 1,
                 'previous_version_id'  => null,
-                'evaluator_profile_id' => null,
+                'evaluator_profile_id' => $reviewer['evaluator_profile_id'],
+                'originating_evaluator_profile_id' => $reviewer['evaluator_profile_id'],
                 'tenure_years'         => $tenureYears,
-                'total_score'          => 0.00,
-                'area_a_score'         => 0.00,
-                'area_b_score'         => 0.00,
-                'area_c_score'         => 0.00,
                 'submitted_at'         => $now,
                 'created_at'           => $now,
                 'updated_at'           => $now,
@@ -365,11 +528,25 @@ class PersonnelPortfolioSubmissionController extends Controller
                 $headerData['evaluation_root_id'] = $rootId;
             }
 
-            $db->table($evalsTable)->insert($headerData);
+            $db->table($evalsTable)->insert($this->existingFieldsOnly($db, $evalsTable, $headerData));
+
+            if ($db->tableExists('personnel_evaluation_idempotency')) {
+                $db->table('personnel_evaluation_idempotency')->insert([
+                    'id' => $this->genUuid(),
+                    'actor_profile_id' => $personnelProfileId,
+                    'operation' => 'portfolio-submit',
+                    'idempotency_key' => $idempotencyKey,
+                    'request_hash' => hash('sha256', $evaluationPeriodId),
+                    'resource_id' => $evaluationId,
+                    'response_status' => 201,
+                    'created_at' => $now,
+                ]);
+            }
 
             // 3. Snapshot each accomplishment into personnel_evaluation_items
-            foreach ($accomplishments as $acc) {
-                $primaryEv = ($evidenceMap[$acc['id']] ?? [])[0] ?? null;
+            foreach ($accomplishments as $submissionOrder => $acc) {
+                $itemEvidence = $evidenceMap[$acc['id']] ?? [];
+                $primaryEv = $itemEvidence[0] ?? null;
                 $fileName = $primaryEv['original_filename'] ?? $acc['attached_file_name'] ?? 'supporting_proof.pdf';
                 $fileUrl = $primaryEv['storage_path'] ?? null;
 
@@ -381,34 +558,40 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $categoryArea = 'areaC';
                 }
 
-                $criterionCode = match ($categoryArea) {
-                    'areaB' => 'B.1',
-                    'areaC' => 'C.1',
-                    default => 'A.1',
-                };
+                $criterionCode = trim((string) ($acc['category_code'] ?? ''));
+                if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
+                $metadata = is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? []);
+                $criterionSnapshot = (new \App\Services\LockedCriterionResolverService())->resolve($criteriaSnapshot, $criterionCode, $metadata + ['scope_level' => $acc['scope_level'] ?? null, 'organizer' => $acc['organizer_or_publisher'] ?? null]);
 
                 $itemData = [
                     'id'                  => $this->genUuid(),
                     'evaluation_id'       => $evaluationId,
                     'accomplishment_id'   => $acc['id'],
+                    'domain'              => $domain,
+                    'item_description'    => $acc['title'],
                     'category_area'       => $categoryArea,
                     'criterion_code'      => $criterionCode,
-                    'criterion_key'       => $criterionCode,
-                    'criterion_title'     => $acc['category'] ?: $acc['title'],
+                    'criterion_key'       => $criterionSnapshot['criterion_reference'],
+                    'criterion_title'     => ($acc['category'] ?? '') ?: $acc['title'],
+                    'criterion_version_id'=> $period['evaluation_scale_version_id'],
+                    'criterion_snapshot'  => json_encode($criterionSnapshot, JSON_UNESCAPED_UNICODE),
+                    'configured_points_snapshot' => $criterionSnapshot['configured_points'],
+                    'portfolio_section'   => $domain,
+                    'submission_order'    => $submissionOrder,
+                    'evidence_snapshot'   => json_encode(array_values($itemEvidence), JSON_UNESCAPED_UNICODE),
                     'evidence_title'      => $acc['title'],
                     'file_name'           => $fileName,
                     'file_url'            => $fileUrl,
                     'source_type'         => 'accomplishment',
                     'verification_status' => 'pending',
                     'rating_status'       => 'unrated',
-                    'awarded_points'      => 0.00,
-                    'max_points'          => 40.00,
-                    'scoring_mode'        => 'FIXED_OPTION',
                     'scoring_payload'     => json_encode([
-                        'claimed_points'   => (float) ($acc['claimed_points'] ?? 0.0),
                         'scope_level'      => $acc['scope_level'] ?? 'Local',
                         'occurrence_date'  => $acc['occurrence_date'] ?? null,
                         'organizer'        => $acc['organizer_or_publisher'] ?? null,
+                        'category_code'    => $acc['category_code'] ?? null,
+                        'category_area'    => $acc['category_area'] ?? $categoryArea,
+                        'category_metadata'=> is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? null),
                         'original_remarks' => $acc['description'] ?? $acc['remarks'] ?? null,
                     ]),
                     'created_at'          => $now,
@@ -419,11 +602,27 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $itemData['evidence_id'] = $primaryEv['id'];
                 }
 
-                $db->table($itemsTable)->insert($itemData);
+                $db->table($itemsTable)->insert($this->existingFieldsOnly($db, $itemsTable, $itemData));
+
+                // Package D: Record achievement usage and 2-year reuse lock
+                if ($db->tableExists('personnel_achievement_usage')) {
+                    $eligibleAgainAY = $this->calculateEligibleAgainAcademicYear($academicYear, 2);
+                    $db->table('personnel_achievement_usage')->ignore(true)->insert([
+                        'id'                           => $this->genUuid(),
+                        'achievement_id'               => $acc['id'],
+                        'personnel_profile_id'         => $personnelProfileId,
+                        'portfolio_submission_id'      => $evaluationId,
+                        'academic_year'                => $academicYear,
+                        'used_at'                      => $now,
+                        'reuse_lock_years'             => 2,
+                        'eligible_again_academic_year' => $eligibleAgainAY,
+                        'created_at'                   => $now,
+                    ]);
+                }
             }
 
             // 4. Record submission audit event
-            $db->table($eventsTable)->insert([
+            $eventRow = [
                 'id'            => $this->genUuid(),
                 'evaluation_id' => $evaluationId,
                 'event_type'    => 'portfolio_submitted',
@@ -432,22 +631,41 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'total_items'         => count($accomplishments),
                     'academic_year'       => $academicYear,
                     'evaluation_cycle_id' => $evaluationCycleId,
+                    'evaluation_period_id'=> $period['id'],
                     'evaluation_root_id'  => $rootId,
                     'version_number'      => 1,
                 ]),
                 'created_at'    => $now,
-            ]);
+            ];
+            $this->persistEvaluationEvent($db, $eventsTable, $eventRow, 'draft', 'submitted');
+
+            try {
+                $notifService = new \App\Services\PersonnelWorkflowNotificationService($db);
+                $notifService->handleWorkflowEvent($eventRow, [
+                    'personnel_profile_id' => $personnelProfileId,
+                    'personnel_name'       => $actor['profile']['full_name'] ?? 'Candidate',
+                    'assigned_reviewer_id' => $reviewer['evaluator_profile_id'],
+                    'version_number'       => 1,
+                ]);
+            } catch (\Throwable $notifErr) {
+                log_message('error', 'Failed to generate submission notification: ' . $notifErr->getMessage());
+                throw new \RuntimeException('Submission notification could not be persisted.', 0, $notifErr);
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
+            log_message('error', 'Personnel portfolio submission failed: {exception}: {message}', [
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+            ]);
 
             // Catch unique constraint violation on concurrent submission
             if (str_contains($e->getMessage(), 'uq_personnel_eval_roots_profile_cycle') || str_contains($e->getMessage(), 'Duplicate entry')) {
                 return $this->respond([
                     'error' => [
                         'code' => 'DUPLICATE_EVALUATION',
-                        'message' => "An evaluation root already exists for evaluation cycle {$evaluationCycleId}.",
+                        'message' => 'A portfolio submission already exists for this evaluation period.',
                     ],
                 ], 409);
             }
@@ -455,7 +673,7 @@ class PersonnelPortfolioSubmissionController extends Controller
             return $this->respond([
                 'error' => [
                     'code' => 'SUBMISSION_FAILED',
-                    'message' => 'Failed to create portfolio submission package: ' . $e->getMessage(),
+                    'message' => 'The portfolio submission could not be completed. No submission was created; please retry.',
                 ],
             ], 500);
         }
@@ -528,11 +746,14 @@ class PersonnelPortfolioSubmissionController extends Controller
         }
 
         if ($latestSubmission === null) {
-            $latestSubmission = $db->table($evalsTable)
-                ->where('personnel_profile_id', $personnelProfileId)
-                ->orderBy('submitted_at', 'DESC')
-                ->get()
-                ->getRowArray();
+            $evalBuilder = $db->table($evalsTable)
+                ->where('personnel_profile_id', $personnelProfileId);
+            if ($db->fieldExists('submitted_at', $evalsTable)) {
+                $evalBuilder->orderBy('submitted_at', 'DESC');
+            } else {
+                $evalBuilder->orderBy('created_at', 'DESC');
+            }
+            $latestSubmission = $evalBuilder->get()->getRowArray();
         }
 
         if ($latestSubmission === null) {
@@ -628,7 +849,19 @@ class PersonnelPortfolioSubmissionController extends Controller
         $academicYear = $latestSubmission['academic_year'] ?? '2025-2026';
         $tenureYears = (int) ($latestSubmission['tenure_years'] ?? 0);
         $resolvedCycleId = $existingRoot['evaluation_cycle_id'] ?? $latestSubmission['evaluation_cycle_id'] ?? $academicYear;
+        $resolvedPeriodId = $existingRoot['evaluation_period_id'] ?? $latestSubmission['evaluation_period_id'] ?? null;
+        $periodSnapshot = $resolvedPeriodId ? $db->table('personnel_evaluation_periods')->where('id', $resolvedPeriodId)->get()->getRowArray() : null;
         $rootId = $existingRoot['id'] ?? $latestSubmission['evaluation_root_id'] ?? null;
+        try {
+            $reviewer = (new ReviewerResolverService())->resolve($personnelProfileId, $period);
+        } catch (Throwable $e) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'REVIEWER_UNAVAILABLE',
+                    'message' => 'Portfolio cannot be resubmitted until an authorized reviewer is available: ' . $e->getMessage(),
+                ],
+            ], 422);
+        }
 
         // Atomic transaction to create Version N header + fresh item snapshots
         $db->transBegin();
@@ -660,14 +893,27 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'submission_type'     => 'Personnel Ranking Evaluation',
                 'academic_year'       => $academicYear,
                 'evaluation_cycle_id' => $resolvedCycleId,
+                'evaluation_period_id'=> $resolvedPeriodId,
+                'semester'            => $latestSubmission['semester'] ?? ($periodSnapshot['semester'] ?? 'FULL_ACADEMIC_YEAR'),
+                'period_name_snapshot'=> $latestSubmission['period_name_snapshot'] ?? ($periodSnapshot['period_name'] ?? null),
+                'evaluation_type_snapshot'=> $latestSubmission['evaluation_type_snapshot'] ?? ($periodSnapshot['evaluation_type'] ?? null),
+                'coverage_label_snapshot'=> $latestSubmission['coverage_label_snapshot'] ?? ($periodSnapshot['coverage_label'] ?? null),
+                'evaluation_scale_version_id'=> $latestSubmission['evaluation_scale_version_id'] ?? ($periodSnapshot['evaluation_scale_version_id'] ?? null),
+                'criteria_snapshot'     => $latestSubmission['criteria_snapshot'] ?? json_encode((new \App\Services\RubricAdministrationService())->getScaleVersionHierarchy($periodSnapshot['evaluation_scale_version_id']), JSON_UNESCAPED_UNICODE),
+                'eligibility_snapshot'  => $latestSubmission['eligibility_snapshot'] ?? json_encode((new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($personnelProfileId, (string) $resolvedPeriodId), JSON_UNESCAPED_UNICODE),
+                'personnel_group_snapshot' => $latestSubmission['personnel_group_snapshot'] ?? null,
+                'position_title_snapshot' => $latestSubmission['position_title_snapshot'] ?? null,
+                'college_id_snapshot' => $latestSubmission['college_id_snapshot'] ?? null,
+                'college_name_snapshot' => $latestSubmission['college_name_snapshot'] ?? null,
+                'department_id_snapshot' => $latestSubmission['department_id_snapshot'] ?? null,
+                'department_name_snapshot' => $latestSubmission['department_name_snapshot'] ?? null,
                 'version_number'      => $newVersionNumber,
                 'previous_version_id' => $latestSubmission['id'],
-                'evaluator_profile_id'=> null,
+                // Re-resolve on Version N+1 so Dean revocation/reassignment takes
+                // effect for future work without changing immutable prior versions.
+                'evaluator_profile_id'=> $reviewer['evaluator_profile_id'],
+                'originating_evaluator_profile_id'=> $reviewer['evaluator_profile_id'],
                 'tenure_years'        => $tenureYears,
-                'total_score'         => 0.00,
-                'area_a_score'        => 0.00,
-                'area_b_score'        => 0.00,
-                'area_c_score'        => 0.00,
                 'submitted_at'        => $now,
                 'created_at'          => $now,
                 'updated_at'          => $now,
@@ -680,8 +926,10 @@ class PersonnelPortfolioSubmissionController extends Controller
             $db->table($evalsTable)->insert($headerData);
 
             // 2. Snapshot current working accomplishments into personnel_evaluation_items for Version N
-            foreach ($accomplishments as $acc) {
-                $primaryEv = ($evidenceMap[$acc['id']] ?? [])[0] ?? null;
+            $resubmissionCriteria = is_string($headerData['criteria_snapshot']) ? json_decode($headerData['criteria_snapshot'], true) : $headerData['criteria_snapshot'];
+            foreach ($accomplishments as $submissionOrder => $acc) {
+                $itemEvidence = $evidenceMap[$acc['id']] ?? [];
+                $primaryEv = $itemEvidence[0] ?? null;
                 $fileName = $primaryEv['original_filename'] ?? $acc['attached_file_name'] ?? 'supporting_proof.pdf';
                 $fileUrl = $primaryEv['storage_path'] ?? null;
 
@@ -693,34 +941,40 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $categoryArea = 'areaC';
                 }
 
-                $criterionCode = match ($categoryArea) {
-                    'areaB' => 'B.1',
-                    'areaC' => 'C.1',
-                    default => 'A.1',
-                };
+                $criterionCode = trim((string) ($acc['category_code'] ?? ''));
+                if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
+                $metadata = is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? []);
+                $criterionSnapshot = (new \App\Services\LockedCriterionResolverService())->resolve($resubmissionCriteria, $criterionCode, $metadata + ['scope_level' => $acc['scope_level'] ?? null, 'organizer' => $acc['organizer_or_publisher'] ?? null]);
 
                 $itemData = [
                     'id'                  => $this->genUuid(),
                     'evaluation_id'       => $newEvaluationId,
                     'accomplishment_id'   => $acc['id'],
+                    'domain'              => $domain,
+                    'item_description'    => $acc['title'],
                     'category_area'       => $categoryArea,
                     'criterion_code'      => $criterionCode,
-                    'criterion_key'       => $criterionCode,
-                    'criterion_title'     => $acc['category'] ?: $acc['title'],
+                    'criterion_key'       => $criterionSnapshot['criterion_reference'],
+                    'criterion_title'     => ($acc['category'] ?? '') ?: $acc['title'],
+                    'criterion_version_id'=> $headerData['evaluation_scale_version_id'],
+                    'criterion_snapshot'  => json_encode($criterionSnapshot, JSON_UNESCAPED_UNICODE),
+                    'configured_points_snapshot' => $criterionSnapshot['configured_points'],
+                    'portfolio_section'   => $domain,
+                    'submission_order'    => $submissionOrder,
+                    'evidence_snapshot'   => json_encode(array_values($itemEvidence), JSON_UNESCAPED_UNICODE),
                     'evidence_title'      => $acc['title'],
                     'file_name'           => $fileName,
                     'file_url'            => $fileUrl,
                     'source_type'         => 'accomplishment',
                     'verification_status' => 'pending',
                     'rating_status'       => 'unrated',
-                    'awarded_points'      => 0.00,
-                    'max_points'          => 40.00,
-                    'scoring_mode'        => 'FIXED_OPTION',
                     'scoring_payload'     => json_encode([
-                        'claimed_points'   => (float) ($acc['claimed_points'] ?? 0.0),
                         'scope_level'      => $acc['scope_level'] ?? 'Local',
                         'occurrence_date'  => $acc['occurrence_date'] ?? null,
                         'organizer'        => $acc['organizer_or_publisher'] ?? null,
+                        'category_code'    => $acc['category_code'] ?? null,
+                        'category_area'    => $acc['category_area'] ?? $categoryArea,
+                        'category_metadata'=> is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? null),
                         'original_remarks' => $acc['description'] ?? $acc['remarks'] ?? null,
                     ]),
                     'created_at'          => $now,
@@ -731,11 +985,27 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $itemData['evidence_id'] = $primaryEv['id'];
                 }
 
-                $db->table($itemsTable)->insert($itemData);
+                $db->table($itemsTable)->insert($this->existingFieldsOnly($db, $itemsTable, $itemData));
+
+                // Package D: Record achievement usage and 2-year reuse lock for resubmission
+                if ($db->tableExists('personnel_achievement_usage')) {
+                    $eligibleAgainAY = $this->calculateEligibleAgainAcademicYear($academicYear, 2);
+                    $db->table('personnel_achievement_usage')->ignore(true)->insert([
+                        'id'                           => $this->genUuid(),
+                        'achievement_id'               => $acc['id'],
+                        'personnel_profile_id'         => $personnelProfileId,
+                        'portfolio_submission_id'      => $newEvaluationId,
+                        'academic_year'                => $academicYear,
+                        'used_at'                      => $now,
+                        'reuse_lock_years'             => 2,
+                        'eligible_again_academic_year' => $eligibleAgainAY,
+                        'created_at'                   => $now,
+                    ]);
+                }
             }
 
             // 3. Record resubmission audit event linking Version N to Version N-1 and Root
-            $db->table($eventsTable)->insert([
+            $eventRow = [
                 'id'            => $this->genUuid(),
                 'evaluation_id' => $newEvaluationId,
                 'event_type'    => 'portfolio_resubmitted',
@@ -748,9 +1018,24 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'total_items'             => count($accomplishments),
                     'academic_year'           => $academicYear,
                     'evaluation_cycle_id'     => $resolvedCycleId,
+                    'evaluation_period_id'    => $resolvedPeriodId,
                 ]),
                 'created_at'    => $now,
-            ]);
+            ];
+            $this->persistEvaluationEvent($db, $eventsTable, $eventRow, 'returned_for_revision', 'submitted');
+
+            try {
+                $notifService = new \App\Services\PersonnelWorkflowNotificationService($db);
+                $notifService->handleWorkflowEvent($eventRow, [
+                    'personnel_profile_id' => $personnelProfileId,
+                    'personnel_name'       => $actor['profile']['full_name'] ?? 'Candidate',
+                    'version_number'       => $newVersionNumber,
+                    'assigned_reviewer_id' => $reviewer['evaluator_profile_id'],
+                ]);
+            } catch (\Throwable $notifErr) {
+                log_message('error', 'Failed to generate resubmission notification: ' . $notifErr->getMessage());
+                throw new \RuntimeException('Resubmission notification could not be persisted.', 0, $notifErr);
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -784,6 +1069,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'submitted_at'        => $now,
                 'academic_year'       => $academicYear,
                 'evaluation_cycle_id' => $resolvedCycleId,
+                'evaluation_period_id'=> $resolvedPeriodId,
                 'total_items'         => count($accomplishments),
             ],
         ]);
@@ -796,145 +1082,168 @@ class PersonnelPortfolioSubmissionController extends Controller
      */
     public function getHistory(): mixed
     {
-        $actor = $this->actor();
-        if ($actor === null) {
-            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
-        }
-
-        $queryProfileId = $this->request->getGet('personnel_profile_id');
-        $actorProfileId = $actor['profile']['id'] ?? null;
-
-        // If target profile is specified and differs from actor, verify reviewer authorization
-        $targetProfileId = $actorProfileId;
-        if (! empty($queryProfileId) && $queryProfileId !== $actorProfileId) {
-            $dummyEval = ['evaluator_profile_id' => null];
-            if (! $this->isAuthorizedReviewer($actor, $dummyEval)) {
-                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Unauthorized to view other personnel submission history.']], 403);
+        try {
+            $actor = $this->actor();
+            if ($actor === null) {
+                return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
             }
-            $targetProfileId = $queryProfileId;
-        }
 
-        if (! $targetProfileId) {
-            return $this->respond(['error' => ['code' => 'INVALID_ACTOR', 'message' => 'Personnel profile not found.']], 403);
-        }
+            $queryProfileId = $this->request->getGet('personnel_profile_id');
+            $actorProfileId = $actor['profile']['id'] ?? null;
 
-        $db = db_connect();
-        $rootsTable = $this->getRootsTable($db);
-        $evalsTable = $this->getEvaluationsTable($db);
-        $itemsTable = $this->getItemsTable($db);
+            // If target profile is specified and differs from actor, verify reviewer authorization
+            $targetProfileId = $actorProfileId;
+            if (! empty($queryProfileId) && $queryProfileId !== $actorProfileId) {
+                $dummyEval = ['evaluator_profile_id' => null];
+                if (! $this->isAuthorizedReviewer($actor, $dummyEval)) {
+                    return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Unauthorized to view other personnel submission history.']], 403);
+                }
+                $targetProfileId = $queryProfileId;
+            }
 
-        $submissions = [];
-        $root = null;
+            if (! $targetProfileId) {
+                return $this->respond(['error' => ['code' => 'INVALID_ACTOR', 'message' => 'Personnel profile not found.']], 403);
+            }
 
-        if ($db->tableExists($rootsTable)) {
-            $root = $db->table($rootsTable)
-                ->where('personnel_profile_id', $targetProfileId)
-                ->orderBy('created_at', 'DESC')
-                ->get()
-                ->getRowArray();
+            $db = db_connect();
+            $rootsTable = $this->getRootsTable($db);
+            $evalsTable = $this->getEvaluationsTable($db);
+            $itemsTable = $this->getItemsTable($db);
 
-            if ($root !== null && $db->fieldExists('evaluation_root_id', $evalsTable)) {
-                $submissions = $db->table($evalsTable)
-                    ->where('evaluation_root_id', $root['id'])
-                    ->orderBy('version_number', 'ASC')
+            $submissions = [];
+            $root = null;
+
+            if ($db->tableExists($rootsTable)) {
+                $root = $db->table($rootsTable)
+                    ->where('personnel_profile_id', $targetProfileId)
+                    ->orderBy('created_at', 'DESC')
                     ->get()
-                    ->getResultArray();
-            }
-        }
+                    ->getRowArray();
 
-        if (empty($submissions)) {
-            $submissions = $db->table($evalsTable)
-                ->where('personnel_profile_id', $targetProfileId)
-                ->orderBy('submitted_at', 'ASC')
-                ->get()
-                ->getResultArray();
-        }
-
-        if (empty($submissions)) {
-            return $this->respond([
-                'data' => [
-                    'evaluation_root_id'     => null,
-                    'versions'               => [],
-                    'total_versions'         => 0,
-                    'current_version_number' => 0,
-                ],
-            ], 200);
-        }
-
-        // Fetch items for all versions
-        $submissionIds = array_column($submissions, 'id');
-        $allItems = $db->table($itemsTable)
-            ->whereIn('evaluation_id', $submissionIds)
-            ->orderBy('category_area', 'ASC')
-            ->orderBy('criterion_code', 'ASC')
-            ->orderBy('created_at', 'ASC')
-            ->get()
-            ->getResultArray();
-
-        $itemsByEvalId = [];
-        foreach ($allItems as $item) {
-            if (isset($item['scoring_payload']) && is_string($item['scoring_payload'])) {
-                $decoded = json_decode($item['scoring_payload'], true);
-                $item['scoring_payload'] = $decoded !== null ? $decoded : $item['scoring_payload'];
-                $item['original_remarks'] = is_array($decoded) ? ($decoded['original_remarks'] ?? null) : null;
-            } else {
-                $item['original_remarks'] = null;
-            }
-            $itemsByEvalId[$item['evaluation_id']][] = $item;
-        }
-
-        $totalVersions = count($submissions);
-        $versionList = [];
-
-        foreach ($submissions as $idx => $sub) {
-            $vNum = ! empty($sub['version_number']) ? (int) $sub['version_number'] : ($idx + 1);
-            $isCurrent = ($idx === $totalVersions - 1);
-
-            $returnFeedback = null;
-            if (! empty($sub['evaluator_remarks'])) {
-                $decodedRemarks = json_decode((string) $sub['evaluator_remarks'], true);
-                if (is_array($decodedRemarks) && isset($decodedRemarks['required_corrections'])) {
-                    $returnFeedback = $decodedRemarks;
+                if ($root !== null && $db->fieldExists('evaluation_root_id', $evalsTable)) {
+                    $builder = $db->table($evalsTable)->where('evaluation_root_id', $root['id']);
+                    if ($db->fieldExists('version_number', $evalsTable)) {
+                        $builder->orderBy('version_number', 'ASC');
+                    } elseif ($db->fieldExists('submitted_at', $evalsTable)) {
+                        $builder->orderBy('submitted_at', 'ASC');
+                    } else {
+                        $builder->orderBy('created_at', 'ASC');
+                    }
+                    $submissions = $builder->get()->getResultArray();
                 }
             }
-            if ($returnFeedback === null && ! empty($sub['return_reason'])) {
-                $returnFeedback = [
-                    'reason'               => $sub['return_reason'],
-                    'required_corrections' => $sub['return_reason'],
-                    'returned_at'          => $sub['returned_at'],
-                    'item_deficiencies'    => [],
+
+            if (empty($submissions)) {
+                $builder = $db->table($evalsTable)->where('personnel_profile_id', $targetProfileId);
+                if ($db->fieldExists('submitted_at', $evalsTable)) {
+                    $builder->orderBy('submitted_at', 'ASC');
+                } else {
+                    $builder->orderBy('created_at', 'ASC');
+                }
+                $submissions = $builder->get()->getResultArray();
+            }
+
+            if (empty($submissions)) {
+                return $this->respond([
+                    'data' => [
+                        'evaluation_root_id'     => null,
+                        'versions'               => [],
+                        'total_versions'         => 0,
+                        'current_version_number' => 0,
+                    ],
+                ], 200);
+            }
+
+            // Fetch items for all versions
+            $submissionIds = array_column($submissions, 'id');
+            $itemsBuilder = $db->table($itemsTable)->whereIn('evaluation_id', $submissionIds);
+            if ($db->fieldExists('category_area', $itemsTable)) {
+                $itemsBuilder->orderBy('category_area', 'ASC');
+            }
+            if ($db->fieldExists('criterion_code', $itemsTable)) {
+                $itemsBuilder->orderBy('criterion_code', 'ASC');
+            }
+            if ($db->fieldExists('created_at', $itemsTable)) {
+                $itemsBuilder->orderBy('created_at', 'ASC');
+            }
+            $allItems = $itemsBuilder->get()->getResultArray();
+
+            $itemsByEvalId = [];
+            foreach ($allItems as $item) {
+                if (isset($item['scoring_payload']) && is_string($item['scoring_payload'])) {
+                    $decoded = json_decode($item['scoring_payload'], true);
+                    $item['scoring_payload'] = $decoded !== null ? $decoded : $item['scoring_payload'];
+                    $item['original_remarks'] = is_array($decoded) ? ($decoded['original_remarks'] ?? null) : null;
+                } else {
+                    $item['original_remarks'] = null;
+                }
+                $itemsByEvalId[$item['evaluation_id']][] = $item;
+            }
+
+            $totalVersions = count($submissions);
+            $versionList = [];
+
+            foreach ($submissions as $idx => $sub) {
+                $vNum = ! empty($sub['version_number']) ? (int) $sub['version_number'] : ($idx + 1);
+                $isCurrent = ($idx === $totalVersions - 1);
+
+                $returnFeedback = null;
+                if (! empty($sub['evaluator_remarks'])) {
+                    $decodedRemarks = json_decode((string) $sub['evaluator_remarks'], true);
+                    if (is_array($decodedRemarks) && isset($decodedRemarks['required_corrections'])) {
+                        $returnFeedback = $decodedRemarks;
+                    }
+                }
+                if ($returnFeedback === null && ! empty($sub['return_reason'])) {
+                    $returnFeedback = [
+                        'reason'               => $sub['return_reason'],
+                        'required_corrections' => $sub['return_reason'],
+                        'returned_at'          => $sub['returned_at'] ?? null,
+                        'item_deficiencies'    => [],
+                    ];
+                }
+
+                $versionItems = $itemsByEvalId[$sub['id']] ?? [];
+                if ($targetProfileId === $actorProfileId) {
+                    $versionItems = array_map(fn (array $item): array => $this->withoutPersonnelScoring($item), $versionItems);
+                }
+
+                $versionList[] = [
+                    'id'                  => $sub['id'],
+                    'evaluation_root_id'  => $sub['evaluation_root_id'] ?? ($root['id'] ?? null),
+                    'version_number'      => $vNum,
+                    'status'              => $sub['status'] ?? 'submitted',
+                    'academic_year'       => $sub['academic_year'] ?? '2025-2026',
+                    'previous_version_id' => $sub['previous_version_id'] ?? null,
+                    'submitted_at'        => $sub['submitted_at'] ?? ($sub['created_at'] ?? null),
+                    'returned_at'         => $sub['returned_at'] ?? null,
+                    'return_feedback'     => $returnFeedback,
+                    'items_count'         => count($versionItems),
+                    'items'               => $versionItems,
+                    'is_current'          => $isCurrent,
                 ];
             }
 
-            $versionItems = $itemsByEvalId[$sub['id']] ?? [];
+            $latestVersionNum = end($versionList)['version_number'] ?? 1;
+            $rootId = $root['id'] ?? ($submissions[0]['evaluation_root_id'] ?? null);
 
-            $versionList[] = [
-                'id'                  => $sub['id'],
-                'evaluation_root_id'  => $sub['evaluation_root_id'] ?? ($root['id'] ?? null),
-                'version_number'      => $vNum,
-                'status'              => $sub['status'],
-                'academic_year'       => $sub['academic_year'],
-                'previous_version_id' => $sub['previous_version_id'] ?? null,
-                'submitted_at'        => $sub['submitted_at'],
-                'returned_at'         => $sub['returned_at'],
-                'return_feedback'     => $returnFeedback,
-                'items_count'         => count($versionItems),
-                'items'               => $versionItems,
-                'is_current'          => $isCurrent,
-            ];
+            return $this->respond([
+                'data' => [
+                    'evaluation_root_id'     => $rootId,
+                    'versions'               => $versionList,
+                    'total_versions'         => count($versionList),
+                    'current_version_number' => $latestVersionNum,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            log_message('error', '[PersonnelPortfolioSubmissionController::getHistory] ' . $e->getMessage());
+            return $this->respond([
+                'error' => [
+                    'code' => 'SUBMISSION_HISTORY_LOOKUP_FAILED',
+                    'message' => 'Unable to load submission history information.'
+                ]
+            ], 500);
         }
-
-        $latestVersionNum = end($versionList)['version_number'] ?? 1;
-        $rootId = $root['id'] ?? ($submissions[0]['evaluation_root_id'] ?? null);
-
-        return $this->respond([
-            'data' => [
-                'evaluation_root_id'     => $rootId,
-                'versions'               => $versionList,
-                'total_versions'         => count($versionList),
-                'current_version_number' => $latestVersionNum,
-            ],
-        ], 200);
     }
 
     /**
@@ -943,104 +1252,130 @@ class PersonnelPortfolioSubmissionController extends Controller
      */
     public function getLatest(): mixed
     {
-        $actor = $this->actor();
-        if ($actor === null) {
-            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
-        }
-
-        $personnelProfileId = $actor['profile']['id'] ?? null;
-        if (! $personnelProfileId) {
-            return $this->respond(['error' => ['code' => 'INVALID_ACTOR', 'message' => 'Personnel profile not found.']], 403);
-        }
-
-        $db = db_connect();
-        $rootsTable = $this->getRootsTable($db);
-        $evalsTable = $this->getEvaluationsTable($db);
-        $itemsTable = $this->getItemsTable($db);
-
-        $root = null;
-        if ($db->tableExists($rootsTable)) {
-            $root = $db->table($rootsTable)
-                ->where('personnel_profile_id', $personnelProfileId)
-                ->orderBy('created_at', 'DESC')
-                ->get()
-                ->getRowArray();
-        }
-
-        $submission = null;
-        if ($root !== null && $db->fieldExists('evaluation_root_id', $evalsTable)) {
-            $submission = $db->table($evalsTable)
-                ->where('evaluation_root_id', $root['id'])
-                ->orderBy('version_number', 'DESC')
-                ->get()
-                ->getRowArray();
-        }
-
-        if ($submission === null) {
-            $submission = $db->table($evalsTable)
-                ->where('personnel_profile_id', $personnelProfileId)
-                ->orderBy('submitted_at', 'DESC')
-                ->get()
-                ->getRowArray();
-        }
-
-        if ($submission === null) {
-            return $this->respond(['data' => ['submission' => null, 'status' => 'DRAFT', 'items_count' => 0, 'items' => []]], 200);
-        }
-
-        if (empty($submission['version_number'])) {
-            $submission['version_number'] = 1;
-        }
-
-        // Fetch immutable item snapshots
-        $items = $db->table($itemsTable)
-            ->where('evaluation_id', $submission['id'])
-            ->orderBy('category_area', 'ASC')
-            ->orderBy('criterion_code', 'ASC')
-            ->orderBy('created_at', 'ASC')
-            ->get()
-            ->getResultArray();
-
-        foreach ($items as &$item) {
-            if (isset($item['scoring_payload']) && is_string($item['scoring_payload'])) {
-                $decoded = json_decode($item['scoring_payload'], true);
-                $item['scoring_payload'] = $decoded !== null ? $decoded : $item['scoring_payload'];
-                $item['original_remarks'] = is_array($decoded) ? ($decoded['original_remarks'] ?? null) : null;
-            } else {
-                $item['original_remarks'] = null;
+        try {
+            $actor = $this->actor();
+            if ($actor === null) {
+                return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
             }
-        }
-        unset($item);
 
-        // Parse return feedback if present
-        $returnFeedback = null;
-        if (! empty($submission['evaluator_remarks'])) {
-            $decodedRemarks = json_decode((string) $submission['evaluator_remarks'], true);
-            if (is_array($decodedRemarks) && isset($decodedRemarks['required_corrections'])) {
-                $returnFeedback = $decodedRemarks;
+            $personnelProfileId = $actor['profile']['id'] ?? null;
+            if (! $personnelProfileId) {
+                return $this->respond(['error' => ['code' => 'INVALID_ACTOR', 'message' => 'Personnel profile not found.']], 403);
             }
-        }
 
-        if ($returnFeedback === null && ! empty($submission['return_reason'])) {
-            $returnFeedback = [
-                'reason'               => $submission['return_reason'],
-                'required_corrections' => $submission['return_reason'],
-                'returned_at'          => $submission['returned_at'],
-                'item_deficiencies'    => [],
-            ];
-        }
+            $db = db_connect();
+            $rootsTable = $this->getRootsTable($db);
+            $evalsTable = $this->getEvaluationsTable($db);
+            $itemsTable = $this->getItemsTable($db);
 
-        return $this->respond([
-            'data' => [
-                'submission'         => $submission,
-                'evaluation_root_id' => $root['id'] ?? ($submission['evaluation_root_id'] ?? null),
-                'status'             => $submission['status'],
-                'version_number'     => (int) ($submission['version_number'] ?? 1),
-                'return_feedback'    => $returnFeedback,
-                'items_count'        => count($items),
-                'items'              => $items,
-            ],
-        ], 200);
+            $root = null;
+            if ($db->tableExists($rootsTable)) {
+                $root = $db->table($rootsTable)
+                    ->where('personnel_profile_id', $personnelProfileId)
+                    ->orderBy('created_at', 'DESC')
+                    ->get()
+                    ->getRowArray();
+            }
+
+            $submission = null;
+            if ($root !== null && $db->fieldExists('evaluation_root_id', $evalsTable)) {
+                $builder = $db->table($evalsTable)->where('evaluation_root_id', $root['id']);
+                if ($db->fieldExists('version_number', $evalsTable)) {
+                    $builder->orderBy('version_number', 'DESC');
+                } elseif ($db->fieldExists('submitted_at', $evalsTable)) {
+                    $builder->orderBy('submitted_at', 'DESC');
+                } else {
+                    $builder->orderBy('created_at', 'DESC');
+                }
+                $submission = $builder->get()->getRowArray();
+            }
+
+            if ($submission === null) {
+                $builder = $db->table($evalsTable)->where('personnel_profile_id', $personnelProfileId);
+                if ($db->fieldExists('submitted_at', $evalsTable)) {
+                    $builder->orderBy('submitted_at', 'DESC');
+                } else {
+                    $builder->orderBy('created_at', 'DESC');
+                }
+                $submission = $builder->get()->getRowArray();
+            }
+
+            if ($submission === null) {
+                return $this->respond(['data' => ['submission' => null, 'status' => 'DRAFT', 'items_count' => 0, 'items' => []]], 200);
+            }
+
+            if (empty($submission['version_number'])) {
+                $submission['version_number'] = 1;
+            }
+            if (empty($submission['submitted_at']) && ! empty($submission['created_at'])) {
+                $submission['submitted_at'] = $submission['created_at'];
+            }
+
+            // Fetch immutable item snapshots
+            $itemsBuilder = $db->table($itemsTable)->where('evaluation_id', $submission['id']);
+            if ($db->fieldExists('category_area', $itemsTable)) {
+                $itemsBuilder->orderBy('category_area', 'ASC');
+            }
+            if ($db->fieldExists('criterion_code', $itemsTable)) {
+                $itemsBuilder->orderBy('criterion_code', 'ASC');
+            }
+            if ($db->fieldExists('created_at', $itemsTable)) {
+                $itemsBuilder->orderBy('created_at', 'ASC');
+            }
+            $items = $itemsBuilder->get()->getResultArray();
+
+            foreach ($items as &$item) {
+                if (isset($item['scoring_payload']) && is_string($item['scoring_payload'])) {
+                    $decoded = json_decode($item['scoring_payload'], true);
+                    $item['scoring_payload'] = $decoded !== null ? $decoded : $item['scoring_payload'];
+                    $item['original_remarks'] = is_array($decoded) ? ($decoded['original_remarks'] ?? null) : null;
+                } else {
+                    $item['original_remarks'] = null;
+                }
+            }
+            unset($item);
+
+            $submission = $this->withoutPersonnelScoring($submission);
+            $items = array_map(fn (array $item): array => $this->withoutPersonnelScoring($item), $items);
+
+            // Parse return feedback if present
+            $returnFeedback = null;
+            if (! empty($submission['evaluator_remarks'])) {
+                $decodedRemarks = json_decode((string) $submission['evaluator_remarks'], true);
+                if (is_array($decodedRemarks) && isset($decodedRemarks['required_corrections'])) {
+                    $returnFeedback = $decodedRemarks;
+                }
+            }
+
+            if ($returnFeedback === null && ! empty($submission['return_reason'])) {
+                $returnFeedback = [
+                    'reason'               => $submission['return_reason'],
+                    'required_corrections' => $submission['return_reason'],
+                    'returned_at'          => $submission['returned_at'] ?? null,
+                    'item_deficiencies'    => [],
+                ];
+            }
+
+            return $this->respond([
+                'data' => [
+                    'submission'         => $submission,
+                    'evaluation_root_id' => $root['id'] ?? ($submission['evaluation_root_id'] ?? null),
+                    'status'             => $submission['status'] ?? 'submitted',
+                    'version_number'     => (int) ($submission['version_number'] ?? 1),
+                    'return_feedback'    => $returnFeedback,
+                    'items_count'        => count($items),
+                    'items'              => $items,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            log_message('error', '[PersonnelPortfolioSubmissionController::getLatest] ' . $e->getMessage());
+            return $this->respond([
+                'error' => [
+                    'code' => 'SUBMISSION_LOOKUP_FAILED',
+                    'message' => 'Unable to load portfolio submission details.'
+                ]
+            ], 500);
+        }
     }
 
     /**
@@ -1195,14 +1530,26 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
 
             // 3. Log audit event
-            $db->table($eventsTable)->insert([
+            $eventRow = [
                 'id'            => $this->genUuid(),
                 'evaluation_id' => $id,
                 'event_type'    => 'returned_for_revision',
                 'performed_by'  => $reviewerId,
                 'payload'       => json_encode($feedbackRecord),
                 'created_at'    => $now,
-            ]);
+            ];
+            $this->persistEvaluationEvent($db, $eventsTable, $eventRow, (string) $evaluation['status'], 'returned_for_revision');
+
+            try {
+                $notifService = new \App\Services\PersonnelWorkflowNotificationService($db);
+                $notifService->handleWorkflowEvent($eventRow, [
+                    'personnel_profile_id' => $evaluation['personnel_profile_id'],
+                    'version_number'       => (int) ($evaluation['version_number'] ?? 1),
+                ]);
+            } catch (\Throwable $notifErr) {
+                log_message('error', 'Failed to generate return notification: ' . $notifErr->getMessage());
+                throw new \RuntimeException('Return notification could not be persisted.', 0, $notifErr);
+            }
 
             $db->transCommit();
         } catch (Throwable $e) {
@@ -1518,4 +1865,5 @@ class PersonnelPortfolioSubmissionController extends Controller
             ],
         ], 200);
     }
+
 }

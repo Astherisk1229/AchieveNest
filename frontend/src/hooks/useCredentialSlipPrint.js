@@ -32,14 +32,17 @@ export function useCredentialSlipPrint() {
       setPrintAttemptCount(prev => prev + 1)
       setLastErrorCode(null)
 
-      // Allow React to commit the print view to the DOM before invoking window.print()
-      await new Promise(resolve => setTimeout(resolve, 60))
+      // Allow React to commit the print view portal to the DOM before invoking window.print()
+      await new Promise(resolve => setTimeout(resolve, 150))
 
       setStatus('dialog_opening')
 
       if (typeof window !== 'undefined' && typeof window.print === 'function') {
         // Set up afterprint listener
         const handleAfterPrint = () => {
+          if (cleanupTimerRef.current) {
+            clearTimeout(cleanupTimerRef.current)
+          }
           setIsPrintPrepared(false)
           setStatus('dialog_closed')
           window.removeEventListener('afterprint', handleAfterPrint)
@@ -49,11 +52,12 @@ export function useCredentialSlipPrint() {
 
         window.print()
 
-        // Fallback cleanup timer in case afterprint does not fire in some browsers
+        // Fallback cleanup timer (30s) in case afterprint does not fire in some environments
         cleanupTimerRef.current = setTimeout(() => {
           setIsPrintPrepared(false)
           setStatus('dialog_closed')
-        }, 1000)
+          window.removeEventListener('afterprint', handleAfterPrint)
+        }, 30000)
 
         return { success: true }
       } else {

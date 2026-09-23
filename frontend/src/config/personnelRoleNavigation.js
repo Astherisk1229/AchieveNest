@@ -54,3 +54,22 @@ export function getAuthorizedNavigationForSession(userOrRole = '') {
  * Alias for backward compatibility.
  */
 export const getPersonnelNavigation = getAuthorizedNavigationForSession
+
+const TAB_ALIASES = Object.freeze({
+  'academic-structure': ['colleges', 'programs'], accounts: ['students', 'student-accounts'],
+  organizations: ['orgs', 'student-organizations'], 'password-resets': ['resets'],
+  awards: ['criteria', 'award-categories'], 'candidate-review': ['awardees', 'candidates'],
+  'certificate-templates': ['templates'], reports: ['accreditation', 'compliance'],
+  audit: ['activity-log', 'logs', 'audit-logs']
+})
+
+export function isNavigationItemActive(item, pathname = '', activeTab = 'overview') {
+  const currentPath = pathname.split('?')[0]
+  const itemPath = item.path.split('?')[0]
+  if (item.tab && currentPath === itemPath) {
+    const itemTab = item.tab.toLowerCase()
+    const currentTab = String(activeTab || 'overview').toLowerCase()
+    return currentTab === itemTab || (TAB_ALIASES[itemTab] || []).includes(currentTab)
+  }
+  return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`)
+}

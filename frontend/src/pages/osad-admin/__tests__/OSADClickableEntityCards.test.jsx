@@ -7,7 +7,6 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import OSADStudentOrganizationsPage from '../OSADStudentOrganizationsPage'
-import OSADAwardCandidateReviewPage from '../OSADAwardCandidateReviewPage'
 
 describe('Plan 06 Phase 6 — OSAD Clickable Entity Cards', () => {
   const sampleOrgs = [
@@ -36,16 +35,5 @@ describe('Plan 06 Phase 6 — OSAD Clickable Entity Cards', () => {
     expect(element.type).toBe(OSADStudentOrganizationsPage)
     expect(element.props.organizations).toHaveLength(1)
     expect(element.props.onSelectOrganization).toBe(onSelectOrg)
-  })
-
-  it('renders OSADAwardCandidateReviewPage with candidate card interactions', () => {
-    const element = (
-      <OSADAwardCandidateReviewPage
-        awardCategories={[]}
-        awardees={[]}
-      />
-    )
-
-    expect(element.type).toBe(OSADAwardCandidateReviewPage)
   })
 })

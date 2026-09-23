@@ -1,23 +1,36 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { X, Search, ShieldCheck, UserCheck, Building2, CheckCircle2, UserPlus } from 'lucide-react'
 import { assignDeanRole } from '../../../services/hrAdminService'
 import { isAcademicPersonnel } from '../../../utils/personnelPlacement'
+import { personnelMasterDataService } from '../../../services/personnelMasterDataService'
 
-const COLLEGES = [
-  { id: 'col_ceac', code: 'CEAC', name: 'College of Engineering, Architecture, and Computing' },
-  { id: 'col_cba', code: 'CBA', name: 'College of Business Administration' },
-  { id: 'col_cas', code: 'CAS', name: 'College of Arts and Sciences' },
-  { id: 'col_cte', code: 'CTE', name: 'College of Teacher Education' },
-  { id: 'col_chs', code: 'CHS', name: 'College of Health Sciences' }
-]
-
-export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [], onAssign, showToast }) {
-  const [selectedCollege, setSelectedCollege] = useState(COLLEGES[0])
+export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [], onAssign, showToast, initialCollegeId = null }) {
+  const [colleges, setColleges] = useState([])
+  const [selectedCollege, setSelectedCollege] = useState(null)
+  const [isLoadingColleges, setIsLoadingColleges] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPersonnel, setSelectedPersonnel] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let active = true
+    setIsLoadingColleges(true)
+    personnelMasterDataService.getColleges({ status: 'active' })
+      .then(records => {
+        if (!active) return
+        const assignable = records.filter(college => String(college.status || 'active').toLowerCase() === 'active')
+        setColleges(assignable)
+        setSelectedCollege(current => assignable.find(college => college.id === initialCollegeId) || assignable.find(college => college.id === current?.id) || assignable[0] || null)
+      })
+      .catch(error => {
+        if (active) setErrorMsg(error?.message || 'Failed to load authoritative Colleges.')
+      })
+      .finally(() => { if (active) setIsLoadingColleges(false) })
+    return () => { active = false }
+  }, [isOpen, initialCollegeId])
 
   if (!isOpen) return null
 
@@ -25,7 +38,7 @@ export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [
   const eligiblePersonnel = personnelList.filter(p => {
     if (!p) return false
     const isAcademic = isAcademicPersonnel(p)
-    const matchesCollege = !p.college_code || p.college_code === selectedCollege.code || (p.college && p.college.includes(selectedCollege.code))
+    const matchesCollege = Boolean(selectedCollege) && (p.college_id === selectedCollege.id || p.college_code === selectedCollege.code)
     const query = searchQuery.toLowerCase().trim()
     const matchesQuery = !query ||
       (p.full_name || '').toLowerCase().includes(query) ||
@@ -103,8 +116,12 @@ export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [
               1. Select Target College
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {COLLEGES.map((col) => {
-                const isSelected = selectedCollege.code === col.code
+              {isLoadingColleges && <p className="text-xs text-slate-500">Loading authoritative Colleges…</p>}
+              {!isLoadingColleges && colleges.length === 0 && (
+                <p className="text-xs text-rose-600">No active College records are available. Create or activate a College in OSAD first.</p>
+              )}
+              {colleges.map((col) => {
+                const isSelected = selectedCollege?.id === col.id
                 return (
                   <button
                     key={col.code}
@@ -157,7 +174,7 @@ export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [
             <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
               {eligiblePersonnel.length === 0 ? (
                 <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 font-medium">
-                  No eligible academic personnel found for {selectedCollege.code}.
+                  No eligible academic personnel found for {selectedCollege?.code || 'the selected College'}.
                 </div>
               ) : (
                 eligiblePersonnel.map((p) => {
@@ -189,7 +206,7 @@ export default function DeanAssignmentModal({ isOpen, onClose, personnelList = [
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-500 truncate">{p.designation || 'Academic Faculty'} • {p.college_name || selectedCollege.name}</p>
+                          <p className="text-[11px] text-slate-500 truncate">{p.designation || p.position_title || 'Academic Faculty'} • {p.college_name || selectedCollege?.name}</p>
                         </div>
                       </div>
 

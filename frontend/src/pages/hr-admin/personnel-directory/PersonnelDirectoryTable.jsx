@@ -1,9 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Search, ArrowUp, ArrowDown, ArrowUpDown, MoreVertical,
-  Eye, Edit3, KeyRound, Award, Copy, Check, Download, X,
-  ChevronLeft, ChevronRight, User, AlertCircle, RefreshCw,
-  Building2, Briefcase, ShieldCheck, GraduationCap
+  Copy, Check, X, ChevronLeft, ChevronRight, User, RefreshCw,
+  ShieldCheck, KeyRound
 } from 'lucide-react'
 import PersonnelActionsMenu from './PersonnelActionsMenu'
 import { Select, SelectItem } from '../../../components/ui/select'
@@ -100,7 +99,7 @@ export default function PersonnelDirectoryTable({
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1)
-  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const rowsPerPage = 10
 
   // Selection & Action Menu State
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -113,6 +112,15 @@ export default function PersonnelDirectoryTable({
     if (!activeMenuId) return null
     return personnelList.find(p => p.id === activeMenuId) || null
   }, [personnelList, activeMenuId])
+
+  const collegeOptions = useMemo(() => Array.from(new Map(personnelList
+    .filter(person => person?.college_id && person?.college_name)
+    .map(person => [person.college_id, { id: person.college_id, code: person.college_code, name: person.college_name }])).values())
+    .sort((a, b) => a.name.localeCompare(b.name)), [personnelList])
+  const departmentOptions = useMemo(() => Array.from(new Map(personnelList
+    .filter(person => person?.administrative_unit_id && person?.administrative_unit_name)
+    .map(person => [person.administrative_unit_id, { id: person.administrative_unit_id, code: person.administrative_unit_code, name: person.administrative_unit_name }])).values())
+    .sort((a, b) => a.name.localeCompare(b.name)), [personnelList])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -195,7 +203,10 @@ export default function PersonnelDirectoryTable({
 
     // 8. Governance Role Filter
     if (roleFilter !== 'ALL') {
-      list = list.filter(p => (p.assigned_roles || []).includes(roleFilter))
+      list = list.filter(p => (p.assigned_roles || []).some(r => {
+        const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
+        return key === roleFilter
+      }))
     }
 
     // 9. Status Filter
@@ -266,12 +277,21 @@ export default function PersonnelDirectoryTable({
     setSearch('')
     setGroupFilter('ALL')
     setSideFilter('ALL')
+    setEngagementFilter('ALL')
+    setEmploymentStatusFilter('ALL')
     setCollegeFilter('ALL')
     setUnitFilter('ALL')
     setRoleFilter('ALL')
     setStatusFilter('ALL')
     setCurrentPage(1)
   }
+
+  const hasActiveFilters = Boolean(
+    search || groupFilter !== 'ALL' || sideFilter !== 'ALL' ||
+    engagementFilter !== 'ALL' || employmentStatusFilter !== 'ALL' ||
+    collegeFilter !== 'ALL' || unitFilter !== 'ALL' ||
+    roleFilter !== 'ALL' || statusFilter !== 'ALL'
+  )
 
   const renderStatusBadge = (statusStr = 'active') => {
     const s = String(statusStr).toLowerCase()
@@ -294,10 +314,32 @@ export default function PersonnelDirectoryTable({
     )
   }
 
+  const renderLoginReadiness = (readiness) => {
+    const status = readiness?.status || 'UNKNOWN'
+    const config = {
+      READY: ['Login Ready', 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'],
+      NEEDS_PASSWORD_CHANGE: ['Password Change Required', 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'],
+      DISABLED: ['Login Disabled', 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'],
+      IDENTITY_CONFLICT: ['Account Conflict', 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'],
+      NOT_READY: ['Login Not Ready', 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'],
+      UNKNOWN: ['Readiness Unknown', 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'],
+    }[status] || ['Readiness Unknown', 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700']
+    const reasons = (readiness?.reason_codes || []).map(reason => reason.toLowerCase().replace(/_/g, ' ')).join(', ')
+
+    return (
+      <span
+        className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${config[1]}`}
+        title={reasons ? `${config[0]}: ${reasons}` : config[0]}
+      >
+        <KeyRound className="h-2.5 w-2.5" aria-hidden="true" />
+        {config[0]}
+      </span>
+    )
+  }
+
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
-      {/* Search & Filter Toolbar */}
-      <div className="p-4 rounded-xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 space-y-4">
+      <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="relative flex-1 w-full min-w-0">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -308,7 +350,7 @@ export default function PersonnelDirectoryTable({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, institutional ID, email, affiliation, or designation..."
+              placeholder="Search name, email, ID, assignment, or position"
               className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43] dark:focus:border-emerald-600 transition"
             />
             {search && (
@@ -323,8 +365,7 @@ export default function PersonnelDirectoryTable({
           </div>
         </div>
 
-        {/* Row 2: Target-Schema Category Filter Bar (Plan D1 & Plan D2 Models) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-8 gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/80">
           {/* Personnel Group Filter */}
           <Select
             value={groupFilter}
@@ -338,20 +379,7 @@ export default function PersonnelDirectoryTable({
             <SelectItem value="non_teaching_faculty">Non-Teaching Faculty</SelectItem>
           </Select>
 
-          {/* Organizational Side Filter */}
-          <Select
-            value={sideFilter}
-            onValueChange={setSideFilter}
-            ariaLabel="Filter by organizational side"
-            className="w-full"
-            triggerClassName="py-2 text-xs font-medium"
-          >
-            <SelectItem value="ALL">All Sides</SelectItem>
-            <SelectItem value="academic">Academic</SelectItem>
-            <SelectItem value="non_academic">Non-Academic</SelectItem>
-          </Select>
-
-          {/* Faculty Engagement Filter (Plan D2) */}
+          {/* Employment type */}
           <Select
             value={engagementFilter}
             onValueChange={setEngagementFilter}
@@ -359,12 +387,12 @@ export default function PersonnelDirectoryTable({
             className="w-full"
             triggerClassName="py-2 text-xs font-medium"
           >
-            <SelectItem value="ALL">All Engagement</SelectItem>
+            <SelectItem value="ALL">All Employment Types</SelectItem>
             <SelectItem value="full_time_faculty">Full-time Faculty</SelectItem>
             <SelectItem value="part_time_faculty">Part-time Faculty</SelectItem>
           </Select>
 
-          {/* Employment Status Filter (Plan D2) */}
+          {/* Appointment status */}
           <Select
             value={employmentStatusFilter}
             onValueChange={setEmploymentStatusFilter}
@@ -372,7 +400,7 @@ export default function PersonnelDirectoryTable({
             className="w-full"
             triggerClassName="py-2 text-xs font-medium"
           >
-            <SelectItem value="ALL">All Tenure</SelectItem>
+            <SelectItem value="ALL">All Appointments</SelectItem>
             <SelectItem value="permanent">Permanent</SelectItem>
             <SelectItem value="probationary">Probationary</SelectItem>
           </Select>
@@ -386,27 +414,19 @@ export default function PersonnelDirectoryTable({
             triggerClassName="py-2 text-xs font-medium"
           >
             <SelectItem value="ALL">All Colleges</SelectItem>
-            <SelectItem value="CEAC">CEAC - Engineering &amp; Computing</SelectItem>
-            <SelectItem value="CBA">CBA - Business Administration</SelectItem>
-            <SelectItem value="CAS">CAS - Arts &amp; Sciences</SelectItem>
-            <SelectItem value="CTE">CTE - Teacher Education</SelectItem>
-            <SelectItem value="CHS">CHS - Health Sciences</SelectItem>
+            {collegeOptions.map(college => <SelectItem key={college.id} value={college.id}>{college.code ? `${college.code} — ` : ''}{college.name}</SelectItem>)}
           </Select>
 
           {/* Administrative Unit Filter */}
           <Select
             value={unitFilter}
             onValueChange={setUnitFilter}
-            ariaLabel="Filter by administrative unit"
+            ariaLabel="Filter by department"
             className="w-full"
             triggerClassName="py-2 text-xs font-medium"
           >
-            <SelectItem value="ALL">All Admin Units</SelectItem>
-            <SelectItem value="PPS">Physical Plant &amp; Security</SelectItem>
-            <SelectItem value="HRMD">Human Resource Management</SelectItem>
-            <SelectItem value="ICTO">ICT Operations</SelectItem>
-            <SelectItem value="REG">Registrar's Office</SelectItem>
-            <SelectItem value="FIN">Finance Office</SelectItem>
+            <SelectItem value="ALL">All Departments</SelectItem>
+            {departmentOptions.map(department => <SelectItem key={department.id} value={department.id}>{department.code ? `${department.code} — ` : ''}{department.name}</SelectItem>)}
           </Select>
 
           {/* Governance Role Filter */}
@@ -436,14 +456,25 @@ export default function PersonnelDirectoryTable({
             <SelectItem value="suspended">Suspended</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
           </Select>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Clear filters
+            </button>
+          )}
         </div>
       </div>
 
       {/* Primary Directory Table Shell */}
-      <section className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs">
-        <div className="overflow-x-auto min-w-full">
-          <table className="w-full min-w-[1000px] text-left text-xs border-collapse">
-            <thead>
+      <section className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="overflow-x-auto min-w-full max-h-[70vh]">
+          <table className="w-full min-w-[760px] text-left text-xs border-collapse">
+            <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-semibold text-xs select-none">
                 <th className="p-4 w-12 text-center">
                   <input
@@ -471,7 +502,7 @@ export default function PersonnelDirectoryTable({
                     onClick={() => handleSort('full_name')}
                     className="flex items-center gap-1.5 hover:text-[#064e2b] dark:hover:text-emerald-400 font-semibold text-xs text-slate-600 dark:text-slate-300 cursor-pointer"
                   >
-                    <span>Personnel Member</span>
+                    <span>Personnel</span>
                     {sortColumn === 'full_name' ? (
                       sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#064e2b]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#064e2b]" />
                     ) : (
@@ -480,10 +511,12 @@ export default function PersonnelDirectoryTable({
                   </button>
                 </th>
 
-                <th className="p-4 text-left">Classification &amp; Placement</th>
-                <th className="p-4 text-left">Engagement &amp; Status (Plan D2)</th>
-                <th className="p-4 text-left">Position &amp; Academic Rank</th>
-                <th className="p-4 text-left">Governance &amp; Status</th>
+                <th className="p-4 text-left">Assignment</th>
+                <th className="hidden lg:table-cell p-4 text-left">Employment</th>
+                <th className="hidden md:table-cell p-4 text-left">Job Title</th>
+                <th className="hidden md:table-cell p-4 text-left">Academic Rank</th>
+                <th className="hidden lg:table-cell p-4 text-left">Appointment</th>
+                <th className="p-4 text-left">Status &amp; Responsibilities</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -491,7 +524,7 @@ export default function PersonnelDirectoryTable({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
               {paginatedList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center">
+                  <td colSpan={9} className="p-12 text-center">
                     <div className="space-y-3 max-w-md mx-auto">
                       <User className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
                       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No personnel records found</h3>
@@ -554,9 +587,13 @@ export default function PersonnelDirectoryTable({
                             {p.full_name ? p.full_name.charAt(0) : 'P'}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-slate-900 dark:text-white truncate">
+                            <button
+                              type="button"
+                              onClick={(event) => { event.stopPropagation(); handleSelect?.(p) }}
+                              className="block max-w-full truncate text-left font-bold text-slate-900 hover:text-emerald-800 hover:underline hover:underline-offset-4 dark:text-white dark:hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded"
+                            >
                               {p.full_name}
-                            </p>
+                            </button>
                             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                               <span className="truncate">{p.institutional_email || p.email}</span>
                               {(p.institutional_email || p.email) && (
@@ -577,79 +614,66 @@ export default function PersonnelDirectoryTable({
                         </div>
                       </td>
 
-                      {/* Classification & Primary Affiliation */}
+                      {/* Assignment */}
                       <td className="p-4">
-                        <div className="space-y-1.5">
-                          <div className="flex flex-wrap items-center gap-1">
-                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                              (p.personnel_group || (isAcademic ? 'faculty' : 'non_teaching_faculty')) === 'faculty'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#064e2b] dark:text-emerald-300 border-emerald-200/80'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                            }`}>
-                              {(p.personnel_group || (isAcademic ? 'faculty' : 'non_teaching_faculty')) === 'faculty' ? 'Faculty' : 'Non-Teaching Faculty'}
-                            </span>
-                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
-                              (p.organizational_side || (isAcademic ? 'academic' : 'non_academic')) === 'academic'
-                                ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80'
-                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200/80'
-                            }`}>
-                              {(p.organizational_side || (isAcademic ? 'academic' : 'non_academic')) === 'academic' ? 'Academic' : 'Non-Academic'}
-                            </span>
-                          </div>
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                            {isAcademic
-                              ? (p.college_name ? `${p.college_code || ''} — ${p.college_name}` : (p.college || 'College Unassigned'))
-                              : (p.administrative_unit_name ? `${p.administrative_unit_code || ''} — ${p.administrative_unit_name}` : 'Unit Unassigned')
-                            }
+                        <div className="max-w-[240px] space-y-1">
+                          <p className="font-bold text-slate-800 dark:text-slate-100">{isAcademic ? (p.college_code || 'College') : (p.administrative_unit_code || 'Unit')}</p>
+                          <p className="truncate text-slate-600 dark:text-slate-300" title={isAcademic ? (p.college_name || p.college) : p.administrative_unit_name}>
+                            {isAcademic ? (p.college_name || p.college || 'Unassigned') : (p.administrative_unit_name || 'Unassigned')}
                           </p>
+                          <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">{formatPersonnelClassification(p)}</p>
                         </div>
                       </td>
 
                       {/* Engagement & Employment Status (Plan D2) */}
-                      <td className="p-4">
-                        <div className="space-y-1">
-                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                            p.faculty_engagement === 'part_time_faculty'
-                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200'
-                              : 'bg-emerald-50 dark:bg-emerald-950/40 text-[#064e2b] dark:text-emerald-300 border-emerald-200'
-                          }`}>
-                            {engagementLabel}
-                          </span>
-                          <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                            {employmentStatusLabel} Status
-                          </span>
+                      <td className="hidden lg:table-cell p-4">
+                        <div className="space-y-1 text-slate-700 dark:text-slate-300">
+                          <p className="font-semibold">{engagementLabel.replace(' Faculty', '')}</p>
+                          <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">{employmentStatusLabel}</p>
                         </div>
                       </td>
 
-                      {/* Position & Academic Rank (Plan D2 Separation) */}
-                      <td className="p-4">
+                      {/* Job title */}
+                      <td className="hidden md:table-cell p-4">
                         <p className="font-semibold text-slate-800 dark:text-slate-200">
                           {p.position_title || p.designation || 'Personnel'}
                         </p>
-                        <p className="text-[11px] font-bold text-[#064e2b] dark:text-emerald-400 mt-0.5">
-                          {p.current_rank_title || p.academic_rank || 'Rank unassigned'}
-                        </p>
+                      </td>
+
+                      <td className="hidden md:table-cell p-4 font-semibold text-slate-800 dark:text-slate-200">{p.current_rank_title || p.academic_rank || 'Unassigned'}</td>
+
+                      <td className="hidden lg:table-cell p-4 font-semibold text-slate-800 dark:text-slate-200">
+                        {(p.assigned_roles || []).some(role => (typeof role === 'object' ? role?.role_key : role) === 'dean') ? 'College Dean' : 'None'}
                       </td>
 
                       {/* Status & Governance Roles */}
                       <td className="p-4">
                         <div>{renderStatusBadge(p.status || p.account_status || 'active')}</div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {(p.assigned_roles || []).map(r => (
-                            <span
-                              key={r}
-                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                                r === 'dean'
-                                  ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200'
-                                  : r === 'program_coordinator'
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200'
-                                  : 'bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-200'
-                              }`}
-                            >
-                              <ShieldCheck className="w-2.5 h-2.5" />
-                              {r.replace('_', ' ')}
-                            </span>
-                          ))}
+                        <div>{renderLoginReadiness(p.login_readiness)}</div>
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          {(p.assigned_roles || []).filter(r => {
+                            const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
+                            return ['program_coordinator', 'organization_moderator'].includes(key)
+                          }).slice(0, 1).map((r, idx) => {
+                            const roleKey = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
+                            if (!roleKey) return null
+                            const roleDisplay = roleKey.replace(/_/g, ' ')
+                            return (
+                              <span
+                                key={roleKey || idx}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                              >
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                <span className="capitalize">{roleDisplay}</span>
+                              </span>
+                            )
+                          })}
+                          {(p.assigned_roles || []).filter(r => {
+                            const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
+                            return ['program_coordinator', 'organization_moderator'].includes(key)
+                          }).length > 1 && (
+                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">+1 responsibility</span>
+                          )}
                         </div>
                       </td>
 
@@ -658,6 +682,7 @@ export default function PersonnelDirectoryTable({
                         <button
                           ref={el => { triggerRefs.current[p.id] = el }}
                           type="button"
+                          aria-label={`Open actions for ${p.full_name || 'personnel'}`}
                           onClick={(e) => {
                             e.stopPropagation()
                             setActiveMenuId(activeMenuId === p.id ? null : p.id)

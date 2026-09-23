@@ -72,10 +72,9 @@ export default class PersonnelAchievementController {
       organizer_or_publisher: newEntry.location || newEntry.issuer || newEntry.organizer_or_publisher || '',
       occurrence_date: newEntry.date_achieved || newEntry.date || new Date().toISOString().split('T')[0],
       description: newEntry.description || '',
-      claimed_points: Number(newEntry.claimed_points || newEntry.points || 0),
       scope_level: newEntry.scope_level || '',
       academic_year: newEntry.academic_year || '',
-      advisory_classification: newEntry.advisory_classification || null,
+      category_metadata: newEntry.category_metadata || {},
       ocr_metadata: newEntry.ocr_metadata || null
     }
 
@@ -102,13 +101,14 @@ export default class PersonnelAchievementController {
       academic_year: payload.academic_year,
       scope_level: payload.scope_level,
       description: payload.description,
-      claimed_points: payload.claimed_points,
-      advisory_classification: payload.advisory_classification,
       ocr_metadata: payload.ocr_metadata,
+      category_metadata: payload.category_metadata,
       status: 'Pending Review',
-      attached_file_name: evidenceData?.original_filename || file?.name || 'supporting_document.pdf',
+      attached_file_name: evidenceData?.id ? evidenceData.original_filename : '',
       evidence_id: evidenceData?.id || null,
-      evidence: evidenceData ? [evidenceData] : []
+      evidence: evidenceData?.id ? [evidenceData] : [],
+      primary_evidence: evidenceData?.id ? evidenceData : null,
+      has_valid_evidence: Boolean(evidenceData?.id)
     })
   }
 
@@ -128,7 +128,7 @@ export default class PersonnelAchievementController {
   /**
    * Update existing achievement in backend database and synchronize memory list
    */
-  static async updateAchievement(currentList, targetId, updateData) {
+  static async updateAchievement(currentList, targetId, updateData, file = null) {
     // 1. Prepare update payload
     const payload = {
       title: updateData.title,
@@ -138,16 +138,16 @@ export default class PersonnelAchievementController {
       organizer_or_publisher: updateData.location || updateData.issuer || updateData.organizer_or_publisher || '',
       occurrence_date: updateData.date_achieved || updateData.date || updateData.occurrence_date,
       description: updateData.description || '',
-      claimed_points: Number(updateData.claimed_points || updateData.points || 0),
       scope_level: updateData.scope_level || '',
       academic_year: updateData.academic_year || '',
-      advisory_classification: updateData.advisory_classification || null,
+      category_metadata: updateData.category_metadata || {},
       ocr_metadata: updateData.ocr_metadata || null
     }
 
     // 2. Persist update to backend
     if (targetId && !String(targetId).startsWith('ach_')) {
       await personnelAccomplishmentService.updateAccomplishment(targetId, payload)
+      if (file) await personnelAccomplishmentService.uploadEvidence(targetId, file)
     }
 
     // 3. Return updated list with re-hydrated model

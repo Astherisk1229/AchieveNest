@@ -18,6 +18,12 @@ class StudentPortfolioController extends Controller
     protected LocalEvidenceStorageService $storage;
     protected PortfolioStructuredMetadataValidator $metadataValidator;
 
+    private const PROTECTED_STUDENT_FIELDS = [
+        'status', 'verification_status', 'verifier_id', 'verified_by', 'verified_at',
+        'award_score', 'candidate_score', 'points', 'portfolio_verified', 'student_profile_id',
+        'submitted_at', 'created_at', 'updated_at',
+    ];
+
     public function __construct(
         ?AuthorizationService $authz = null,
         ?LocalEvidenceStorageService $storage = null,
@@ -48,6 +54,30 @@ class StudentPortfolioController extends Controller
             random_int(0, 0x3fff) | 0x8000,
             random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
         );
+    }
+
+    private function protectedPayloadError(array $payload): ?array
+    {
+        $attempted = array_values(array_intersect(array_keys($payload), self::PROTECTED_STUDENT_FIELDS));
+        if ($attempted === []) {
+            return null;
+        }
+
+        return [
+            'code' => 'PROTECTED_FIELDS_NOT_EDITABLE',
+            'message' => 'Student requests cannot set workflow, verification, ownership, or scoring fields.',
+            'fields' => $attempted,
+        ];
+    }
+
+    private function stripStudentScoringFields(array $payload): array
+    {
+        foreach (array_keys($payload) as $key) {
+            if (preg_match('/(?:score|points|ranking|threshold|award|candidate|weight)/i', (string) $key)) {
+                unset($payload[$key]);
+            }
+        }
+        return $payload;
     }
 
     /**
@@ -133,10 +163,20 @@ class StudentPortfolioController extends Controller
 
         // Attach evidence files count & items
         foreach ($records as &$rec) {
-            $rec['evidence'] = $db->table('student_portfolio_evidence')
+            $evidenceRows = $db->table('student_portfolio_evidence')
                 ->where('portfolio_record_id', $rec['id'])
                 ->get()->getResultArray();
+            $rec['evidence'] = array_map(fn (array $item): array => $this->storage->formatSafeEvidence($item, 'student'), $evidenceRows);
             $rec['evidence_count'] = count($rec['evidence']);
+            $latestDecision = $db->table('student_portfolio_verification_events')
+                ->where('portfolio_record_id', $rec['id'])
+                ->whereIn('action', ['revision_requested', 'rejected'])
+                ->orderBy('occurred_at', 'DESC')
+                ->get(1)->getRowArray();
+            $rec['latest_remarks'] = $latestDecision['remarks'] ?? null;
+            if (($actor['profile']['account_type'] ?? '') === 'student') {
+                $rec = $this->stripStudentScoringFields($rec);
+            }
         }
         unset($rec);
 
@@ -193,6 +233,10 @@ class StudentPortfolioController extends Controller
             return $this->storage->formatSafeEvidence($ev, 'student');
         }, $evidence);
 
+        if (($actor['profile']['account_type'] ?? '') === 'student') {
+            $record = $this->stripStudentScoringFields($record);
+        }
+
         $events = $db->table('student_portfolio_verification_events ve')
             ->select(['ve.*', 'p.full_name AS actor_name'])
             ->join('profiles p', 'p.id = ve.actor_profile_id', 'left')
@@ -207,6 +251,69 @@ class StudentPortfolioController extends Controller
                 'events'   => $events,
             ],
         ], 200);
+    }
+
+    /**
+     * PUT /api/v1/portfolio/{id}
+     * Updates an owned draft or revision-requested record before submission.
+     */
+    public function update(string $id): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (! ValidationHelper::validateUuid($id)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record UUID.']], 422);
+        }
+
+        $db = db_connect();
+        $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
+        if ($record === null) {
+            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+        }
+        if (! $this->authz->portfolio()->canSubmit($actor, $record)
+            || ! in_array($record['status'], ['draft', 'revision_requested'], true)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only your own draft or revision-requested record can be edited.']], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        if (($error = $this->protectedPayloadError($json)) !== null) {
+            return $this->respond(['error' => $error], 422);
+        }
+        $categoryId = trim((string) ($json['category_id'] ?? $record['category_id']));
+        $subcategoryId = array_key_exists('subcategory_id', $json)
+            ? (! empty($json['subcategory_id']) ? trim((string) $json['subcategory_id']) : null)
+            : ($record['subcategory_id'] ?? null);
+        $taxonomy = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
+        if (! $taxonomy['valid']) {
+            return $this->respond(['error' => $taxonomy['error']], 422);
+        }
+
+        $existingMetadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true) ?: [];
+        $metadata = is_array($json['structured_metadata'] ?? null) ? $json['structured_metadata'] : $existingMetadata;
+        $metadataResult = $this->metadataValidator->validateMetadata($categoryId, $subcategoryId, $metadata, false);
+        if (! $metadataResult['valid']) {
+            return $this->respond(['error' => ['code' => 'INVALID_STRUCTURED_METADATA', 'message' => 'Structured metadata validation failed.', 'errors' => $metadataResult['errors']]], 422);
+        }
+
+        $changes = [
+            'category_id' => $categoryId,
+            'subcategory_id' => $subcategoryId,
+            'structured_metadata' => json_encode($metadataResult['sanitized_metadata']),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+        foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
+            if (array_key_exists($field, $json)) {
+                $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
+            }
+        }
+        if (($changes['title'] ?? $record['title']) === '') {
+            return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'Title is required.']], 422);
+        }
+
+        $db->table('student_portfolio_records')->where('id', $id)->update($changes);
+        return $this->respond(['data' => ['message' => 'Portfolio record updated.', 'id' => $id, 'status' => $record['status']]], 200);
     }
 
     /**
@@ -225,6 +332,9 @@ class StudentPortfolioController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
+        if (($error = $this->protectedPayloadError($json)) !== null) {
+            return $this->respond(['error' => $error], 422);
+        }
         $title = trim((string) ($json['title'] ?? ''));
         $categoryId = trim((string) ($json['category_id'] ?? ''));
         $subcategoryId = ! empty($json['subcategory_id']) ? trim((string) $json['subcategory_id']) : null;
@@ -235,6 +345,13 @@ class StudentPortfolioController extends Controller
         $description = ! empty($json['description']) ? trim((string) $json['description']) : null;
         $structuredMetadata = is_array($json['structured_metadata'] ?? null) ? $json['structured_metadata'] : [];
         $submitNow = (bool) ($json['submit_now'] ?? true);
+
+        if ($submitNow) {
+            return $this->respond(['error' => [
+                'code' => 'DRAFT_AND_EVIDENCE_REQUIRED_FIRST',
+                'message' => 'Create a draft, persist evidence through the protected upload endpoint, then submit the same record for verification.',
+            ]], 422);
+        }
 
         if ($title === '' || $categoryId === '') {
             return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'Title and category_id are required.']], 422);
@@ -418,7 +535,6 @@ class StudentPortfolioController extends Controller
             $db->transRollback();
             return $this->respond(['error' => ['code' => 'CREATION_FAILED', 'message' => 'Failed to create portfolio record: ' . $e->getMessage()]], 500);
         }
-
         if ($db->transStatus() === false) {
             return $this->respond(['error' => ['code' => 'CREATION_FAILED', 'message' => 'Transaction failed while creating portfolio record.']], 500);
         }
@@ -515,7 +631,6 @@ class StudentPortfolioController extends Controller
             $this->storage->deletePhysicalFile($stored['storage_path']);
             return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
         }
-
         if ($db->transStatus() === false) {
             $this->storage->deletePhysicalFile($stored['storage_path']);
             return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
@@ -550,6 +665,80 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Can only resubmit your own draft or revision-requested record.']], 403);
         }
 
+        $taxonomy = $this->metadataValidator->validateTaxonomyPair(
+            (string) ($record['category_id'] ?? ''),
+            ! empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null
+        );
+        if (! $taxonomy['valid'] || empty($record['subcategory_id'])) {
+            return $this->respond(['error' => [
+                'code' => 'INCOMPLETE_CLASSIFICATION',
+                'message' => 'A valid category and matching subcategory are required before submission.',
+            ]], 422);
+        }
+
+        $metadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true);
+        $metadataResult = $this->metadataValidator->validateMetadata(
+            (string) $record['category_id'],
+            (string) $record['subcategory_id'],
+            is_array($metadata) ? $metadata : [],
+            true
+        );
+        if (! $metadataResult['valid']) {
+            return $this->respond(['error' => [
+                'code' => 'INVALID_STRUCTURED_METADATA',
+                'message' => 'Complete all required achievement details before submission.',
+                'errors' => $metadataResult['errors'],
+            ]], 422);
+        }
+
+        $title = trim((string) ($record['title'] ?? ''));
+        $organizer = trim((string) ($record['organizer_or_body'] ?? ''));
+        $startDate = trim((string) ($record['start_date'] ?? $record['occurrence_date'] ?? ''));
+        if (mb_strlen($title) < 3 || $organizer === '' || $startDate === '') {
+            return $this->respond(['error' => [
+                'code' => 'INCOMPLETE_COMMON_DETAILS',
+                'message' => 'Title, organizer or issuing body, and start date are required before submission.',
+            ]], 422);
+        }
+        if (! empty($record['end_date']) && (string) $record['end_date'] < $startDate) {
+            return $this->respond(['error' => ['code' => 'INVALID_DATE_RANGE', 'message' => 'End date cannot be before start date.']], 422);
+        }
+
+        $evidenceCount = $db->table('student_portfolio_evidence')
+            ->where('portfolio_record_id', $id)
+            ->where('status', 'active')
+            ->countAllResults();
+        if ($evidenceCount < 1) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_REQUIRED', 'message' => 'Persisted supporting evidence is required before submission.']], 422);
+        }
+
+        $duplicate = $db->table('student_portfolio_records')
+            ->where('student_profile_id', $record['student_profile_id'])
+            ->where('category_id', $record['category_id'])
+            ->where('subcategory_id', $record['subcategory_id'])
+            ->where('title', $title)
+            ->where('start_date', $startDate)
+            ->where('id !=', $id)
+            ->whereNotIn('status', ['rejected'])
+            ->countAllResults();
+        if ($duplicate > 0) {
+            return $this->respond(['error' => ['code' => 'DUPLICATE_ACHIEVEMENT', 'message' => 'A matching achievement record already exists. Review the existing record instead of submitting a duplicate.']], 409);
+        }
+
+        $routing = $db->table('student_program_enrollments spe')
+            ->select('spe.academic_program_id, pca.personnel_profile_id AS coordinator_profile_id')
+            ->join('program_coordinator_assignments pca', 'pca.academic_program_id = spe.academic_program_id AND pca.is_active = 1')
+            ->where('spe.student_profile_id', $record['student_profile_id'])
+            ->where('spe.is_active', 1)
+            ->orderBy('spe.effective_from', 'DESC')
+            ->get(1)->getRowArray();
+        if ($routing === null || empty($routing['coordinator_profile_id'])) {
+            return $this->respond(['error' => [
+                'code' => 'VERIFICATION_ROUTING_UNAVAILABLE',
+                'message' => 'No active Program Coordinator is assigned to your current program. Contact OSAD before submitting.',
+            ]], 503);
+        }
+
         $now = date('Y-m-d H:i:s');
         $db->transStart();
         try {
@@ -574,6 +763,29 @@ class StudentPortfolioController extends Controller
         } catch (Throwable $e) {
             $db->transRollback();
             return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'Failed to resubmit: ' . $e->getMessage()]], 500);
+        }
+        if ($db->transStatus() === false) {
+            return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'The submission transaction could not be committed.']], 500);
+        }
+
+
+        // Notifications are auxiliary. Queue visibility is derived from the
+        // persisted submitted record and authoritative program assignment.
+        try {
+            $db->table('notifications')->insert([
+                'id'                   => $this->genUuid(),
+                'recipient_profile_id' => $routing['coordinator_profile_id'],
+                'actor_profile_id'     => $actor['profile']['id'],
+                'notification_type'    => 'student_achievement_submitted',
+                'title'                => 'Student Achievement Submitted',
+                'message'              => "A student achievement '{$title}' is ready for verification.",
+                'reference_type'       => 'student_portfolio_records',
+                'reference_id'         => $id,
+                'is_mandatory'         => 1,
+                'created_at'           => $now,
+            ]);
+        } catch (Throwable) {
+            // Deliberately do not invalidate a committed submission.
         }
 
         return $this->respond([
@@ -622,7 +834,7 @@ class StudentPortfolioController extends Controller
             ->join('profiles p', 'p.id = spr.student_profile_id')
             ->join('student_program_enrollments spe', 'spe.student_profile_id = spr.student_profile_id AND spe.is_active = 1')
             ->join('academic_programs ap', 'ap.id = spe.academic_program_id')
-            ->whereIn('spr.status', ['submitted', 'revisions_requested', 'under_review'])
+            ->whereIn('spr.status', ['submitted', 'revision_requested'])
             ->orderBy('spr.submitted_at', 'ASC');
 
         $this->authz->portfolio()->scopeVerificationQuery($actor, $builder);
@@ -652,7 +864,7 @@ class StudentPortfolioController extends Controller
      */
     public function requestRevision(string $id): mixed
     {
-        return $this->decideRecord($id, 'revisions_requested', 'revisions_requested');
+        return $this->decideRecord($id, 'revision_requested', 'revision_requested');
     }
 
     /**
@@ -677,7 +889,7 @@ class StudentPortfolioController extends Controller
         }
 
         // Phase 3 Rule: Only reviewable states can be verified / transitioned
-        $reviewableStates = ['submitted', 'revisions_requested', 'under_review', 'revision_requested'];
+        $reviewableStates = ['submitted'];
         if (! in_array($record['status'], $reviewableStates, true)) {
             return $this->respond([
                 'error' => [
@@ -700,7 +912,7 @@ class StudentPortfolioController extends Controller
         $remarks = trim((string) ($json['remarks'] ?? ''));
 
         // Phase 3 Rules: VR-3.6 & VR-3.7 (Revision and Rejection require non-empty remarks)
-        if (in_array($targetStatus, ['revisions_requested', 'rejected', 'revision_requested'], true) && $remarks === '') {
+        if (in_array($targetStatus, ['revision_requested', 'rejected'], true) && $remarks === '') {
             return $this->respond([
                 'error' => [
                     'code'    => 'REMARKS_REQUIRED',
@@ -746,31 +958,35 @@ class StudentPortfolioController extends Controller
                 'occurred_at'         => $now,
             ]);
 
-            // Emit notification to the student
-            $notifType = 'portfolio_' . $actionName;
-            $notifTitle = 'Portfolio Submission ' . ucfirst(str_replace('_', ' ', $targetStatus));
+            $db->transComplete();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'Failed to record decision: ' . $e->getMessage()]], 500);
+        }
+        if ($db->transStatus() === false) {
+            return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'The verification decision could not be committed.']], 500);
+        }
+
+
+        try {
             $notifMsg = "Your portfolio submission '{$record['title']}' has been updated to {$targetStatus}.";
             if ($remarks !== '') {
                 $notifMsg .= " Remarks: {$remarks}";
             }
-
             $db->table('notifications')->insert([
                 'id'                   => $this->genUuid(),
                 'recipient_profile_id' => $record['student_profile_id'],
                 'actor_profile_id'     => $actor['profile']['id'],
-                'notification_type'    => $notifType,
-                'title'                => $notifTitle,
+                'notification_type'    => 'portfolio_' . $actionName,
+                'title'                => 'Portfolio Submission ' . ucfirst(str_replace('_', ' ', $targetStatus)),
                 'message'              => $notifMsg,
                 'reference_type'       => 'student_portfolio_records',
                 'reference_id'         => $id,
                 'is_mandatory'         => 1,
                 'created_at'           => $now,
             ]);
-
-            $db->transComplete();
-        } catch (Throwable $e) {
-            $db->transRollback();
-            return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'Failed to record decision: ' . $e->getMessage()]], 500);
+        } catch (Throwable) {
+            // A notification failure must not roll back the decision.
         }
 
         return $this->respond([

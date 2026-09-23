@@ -22,6 +22,7 @@ import { useAuth } from '../../context/AuthContext'
 import useUserProfile from '../../hooks/useUserProfile'
 import { submitPasswordChange } from '../../services/authService'
 import StudentInstitutionalProfileView from '../student/StudentInstitutionalProfileView'
+import ProfilePhotoUploader from '../../components/common/ProfilePhotoUploader'
 
 export default function AccountPage({ currentUser }) {
   const { user: authUser } = useAuth()
@@ -41,9 +42,6 @@ export default function AccountPage({ currentUser }) {
   const [phone, setPhone] = useState(user.phone || '')
   const [location, setLocation] = useState(user.location || '')
   const [avatarUrl, setAvatarUrl] = useState(user.avatar_url || '')
-
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
-  const [tempAvatarUrl, setTempAvatarUrl] = useState(user.avatar_url || '')
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -97,14 +95,6 @@ export default function AccountPage({ currentUser }) {
     setIsEditing(false)
   }
 
-  const handleSaveAvatarModal = (e) => {
-    e.preventDefault()
-    if (!tempAvatarUrl.trim()) return
-    setAvatarUrl(tempAvatarUrl.trim())
-    handleSaveOverrides({ avatar_url: tempAvatarUrl.trim() })
-    setIsAvatarModalOpen(false)
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-6 font-sans text-slate-900 dark:text-slate-100">
       
@@ -145,21 +135,15 @@ export default function AccountPage({ currentUser }) {
         
         {/* User Identity Header */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-slate-100 dark:border-slate-800">
-          <div className="relative group shrink-0">
-            <img
-              src={avatarUrl || user.avatar_url}
-              alt={user.full_name}
-              className="w-20 h-20 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700"
-            />
-            <button
-              type="button"
-              onClick={() => setIsAvatarModalOpen(true)}
-              className="absolute -bottom-1 -right-1 p-1.5 rounded-lg bg-[#176B43] hover:bg-[#125536] text-white transition shadow-xs cursor-pointer"
-              title="Change Profile Picture"
-            >
-              <Camera className="w-3.5 h-3.5 text-white" />
-            </button>
-          </div>
+          <ProfilePhotoUploader
+            currentAvatarUrl={avatarUrl || user.avatar_url}
+            fullName={user.full_name}
+            size="md"
+            onPhotoUpdated={(newUrl) => {
+              setAvatarUrl(newUrl)
+              handleSaveOverrides({ avatar_url: newUrl })
+            }}
+          />
 
           <div className="space-y-1 text-center sm:text-left min-w-0 flex-1">
             <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug truncate">
@@ -333,52 +317,6 @@ export default function AccountPage({ currentUser }) {
           </button>
         </div>
       </div>
-
-      {/* Avatar Edit Modal */}
-      {isAvatarModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white dark:bg-[#131e2e] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xl font-sans">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Camera className="w-4 h-4 text-[#16834a]" />
-                <span>Update Profile Picture URL</span>
-              </h3>
-              <button onClick={() => setIsAvatarModalOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveAvatarModal} className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Avatar Image URL (HTTP/HTTPS)</label>
-                <input
-                  type="text"
-                  value={tempAvatarUrl}
-                  onChange={e => setTempAvatarUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAvatarModalOpen(false)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer"
-                >
-                  Update Picture
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Password Reset / Update Modal */}
       {showPasswordModal && (

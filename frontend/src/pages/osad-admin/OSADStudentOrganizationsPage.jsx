@@ -145,7 +145,7 @@ export default function OSADStudentOrganizationsPage({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredOrgs.map(org => {
             const orgScope = org.scope || org.scopeType || 'university'
-            const scopeLabel = orgScope.replace('_', ' ')
+            const scopeLabel = String(orgScope).replace(/_/g, ' ')
             const categoryLabel = CATEGORY_LABELS[org.category] || org.category || 'Academic / College-Based'
             const moderatorName = org.moderator_name || org.coordinator_name || org.moderatorName || 'Unassigned'
             const hasLogo = Boolean(org.logo_storage_key)

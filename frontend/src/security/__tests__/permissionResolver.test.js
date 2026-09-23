@@ -66,10 +66,10 @@ describe('permissionResolver', () => {
       expect(labels).toEqual([
         'HR Dashboard',
         'Personnel Directory',
-        'Evaluation Submissions',
-        'HR Audit Trail',
-        'Rank Assignment Logs',
-        'Password Resets'
+        'Organizational Structure',
+        'Ranking Cycles',
+        'Password Resets',
+        'HR Audit Trail'
       ])
       expect(labels).not.toContain('Dashboard Overview')
       expect(labels).not.toContain('OSAD Dashboard')
@@ -143,7 +143,7 @@ describe('permissionResolver', () => {
       expect(labels).not.toContain('Edit Portfolio')
     })
 
-    it('returns strictly 3 operational items for dean context', () => {
+    it('returns the current operational items for dean context', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
@@ -155,8 +155,9 @@ describe('permissionResolver', () => {
 
       expect(labels).toEqual([
         'Dean Dashboard',
+        'Annual Review & Eligibility',
         'Faculty Ranking Reviews',
-        'College Faculty Roster'
+        'College Personnel Roster'
       ])
       expect(labels).not.toContain('Edit Portfolio')
     })

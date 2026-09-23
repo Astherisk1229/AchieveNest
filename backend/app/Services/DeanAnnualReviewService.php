@@ -3,399 +3,138 @@
 namespace App\Services;
 
 use CodeIgniter\Database\BaseConnection;
-use RuntimeException;
 use InvalidArgumentException;
+use RuntimeException;
 
-/**
- * DeanAnnualReviewService
- *
- * Plan D1 — Dean Annual Review Input & Portfolio-Validation Eligibility.
- * Manages official Annual Review inputs, decision recording, and supersession by College Deans.
- */
+/** Manual Dean annual-rating workflow; legacy binary decisions remain read-only. */
 class DeanAnnualReviewService
 {
-    protected BaseConnection $db;
-    protected PersonnelEligibilityService $eligibilityService;
-
-    public function __construct(?BaseConnection $db = null, ?PersonnelEligibilityService $eligibilityService = null)
+    public function __construct(protected ?BaseConnection $db=null, protected ?PersonnelEligibilityService $eligibilityService=null, protected ?OrganizationalAuthorityResolver $authorityResolver=null)
     {
-        $this->db = $db ?? db_connect();
-        $this->eligibilityService = $eligibilityService ?? new PersonnelEligibilityService($this->db);
+        $this->db ??= db_connect();
+        $this->eligibilityService ??= new PersonnelEligibilityService($this->db);
+        $this->authorityResolver ??= new OrganizationalAuthorityResolver($this->db);
     }
 
-    private function genUuid(): string
+    private function uuid(): string { return sprintf('%04x%04x-%04x-4%03x-%04x-%04x%04x%04x',random_int(0,65535),random_int(0,65535),random_int(0,65535),random_int(0,4095),random_int(32768,49151),random_int(0,65535),random_int(0,65535),random_int(0,65535)); }
+
+    public function getDeanAssignedCollege(string $deanId): ?string
     {
-        return sprintf(
-            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            random_int(0, 0xffff), random_int(0, 0xffff),
-            random_int(0, 0xffff),
-            random_int(0, 0x0fff) | 0x4000,
-            random_int(0, 0x3fff) | 0x8000,
-            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
-        );
+        $row=$this->db->table('dean_assignments')->select('college_id')->where('personnel_profile_id',$deanId)->where('is_active',1)->get()->getRowArray();
+        return $row['college_id']??null;
     }
 
-    /**
-     * Resolves the active assigned College ID for a Dean.
-     */
-    public function getDeanAssignedCollege(string $deanProfileId): ?string
+    public function validateDeanAuthorization(string $deanId,string $personId): array
     {
-        $assignment = $this->db->query(
-            "SELECT college_id
-             FROM dean_assignments
-             WHERE personnel_profile_id = ?
-               AND is_active = 1
-             LIMIT 1",
-            [$deanProfileId]
-        )->getRowArray();
-
-        return $assignment['college_id'] ?? null;
+        $authority=$this->authorityResolver->resolveResponsibleAuthority($personId);
+        if(($authority['authority_type']??'')!=='DEAN'||!$this->authorityResolver->actorMayAct($authority,$deanId)) throw new RuntimeException('FORBIDDEN: Caller is not the responsible organizational authority for this personnel member.');
+        $collegeId=$authority['scope_id'];
+        $person=$this->db->table('personnel_profiles pp')->select('p.id,p.full_name,p.institutional_id,p.email AS institutional_email,p.avatar_url,pp.personnel_group,pp.organizational_side,pp.faculty_engagement,pp.employment_status,pp.employment_start_date,pp.position_title,pp.current_rank_title,COALESCE(pca.college_id,au.college_id) AS college_id,c.name AS college_name,c.code AS college_code')
+            ->join('profiles p','p.id=pp.profile_id')->join('personnel_college_affiliations pca','pca.personnel_profile_id=pp.profile_id AND pca.is_active=1','left')->join('personnel_administrative_unit_affiliations pau','pau.personnel_profile_id=pp.profile_id AND pau.is_active=1','left')->join('administrative_units au','au.id=pau.administrative_unit_id AND au.status=\'active\'','left')
+            ->join('colleges c','c.id=COALESCE(pca.college_id,au.college_id)','left')->where('pp.profile_id',$personId)->where('p.status','active')->groupStart()->where('pca.college_id',$collegeId)->orWhere('au.college_id',$collegeId)->groupEnd()->get()->getRowArray();
+        if(!$person) throw new RuntimeException('FORBIDDEN: Personnel member is outside the Dean assigned college.');
+        return ['dean_college_id'=>$collegeId,'personnel'=>$person];
     }
 
-    /**
-     * Validates that caller is an authorized Dean for the target academic personnel.
-     */
-    public function validateDeanAuthorization(string $deanProfileId, string $personnelProfileId): array
+    private function period(array $payload): array
     {
-        $deanCollegeId = $this->getDeanAssignedCollege($deanProfileId);
-        if ($deanCollegeId === null) {
-            throw new RuntimeException('FORBIDDEN: Caller is not an active assigned College Dean.');
+        $ref=trim((string)($payload['evaluation_period_id']??$payload['evaluation_cycle_id']??''));
+        if($ref!=='') {
+            $p=$this->db->table('personnel_evaluation_periods')->groupStart()->where('id',$ref)->orWhere('academic_year',$ref)->orWhere('period_code',$ref)->groupEnd()->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
+        } else {
+            $p=$this->db->table('personnel_evaluation_periods')->whereIn('status',['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'])->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
+            $p ??= $this->db->table('personnel_evaluation_periods')->whereIn('status',['CLOSED','ARCHIVED'])->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
         }
-
-        $personnel = $this->db->query(
-            "SELECT p.id, p.full_name, p.institutional_id, p.institutional_email,
-                    pp.personnel_group, pp.organizational_side, pp.faculty_engagement,
-                    pp.employment_status, pp.position_title, pp.current_rank_title,
-                    pp.college_id, pca.college_id AS affiliation_college_id,
-                    c.name AS college_name, c.code AS college_code
-             FROM profiles p
-             JOIN personnel_profiles pp ON pp.profile_id = p.id
-             LEFT JOIN personnel_college_affiliations pca ON pca.personnel_profile_id = p.id AND pca.is_active = 1
-             LEFT JOIN colleges c ON c.id = COALESCE(pp.college_id, pca.college_id)
-             WHERE p.id = ?
-               AND p.status = 'active'",
-            [$personnelProfileId]
-        )->getRowArray();
-
-        if ($personnel === null) {
-            throw new RuntimeException('NOT_FOUND: Active personnel profile not found: ' . $personnelProfileId);
-        }
-
-        $effectiveSide = strtolower((string) ($personnel['organizational_side'] ?? 'academic'));
-        if ($effectiveSide !== 'academic') {
-            throw new RuntimeException('ANNUAL_REVIEW_NOT_APPLICABLE: Annual reviews and portfolio validation apply only to Academic personnel.');
-        }
-
-        $personnelCollegeId = $personnel['college_id'] ?? $personnel['affiliation_college_id'] ?? null;
-        if ($personnelCollegeId !== $deanCollegeId) {
-            throw new RuntimeException('FORBIDDEN: Personnel member does not belong to the Dean\'s assigned College.');
-        }
-
-        return [
-            'dean_college_id' => $deanCollegeId,
-            'personnel'       => $personnel,
-        ];
+        if(!$p) throw new InvalidArgumentException('VALIDATION_ERROR: Evaluation period was not found.');
+        return $p;
     }
 
-    /**
-     * Records the initial effective Annual Review decision for a personnel member in an evaluation cycle.
-     */
-    public function recordReview(string $deanProfileId, array $payload): array
+    private function assertOpen(array $period): void
     {
-        $personnelProfileId = (string) ($payload['personnel_profile_id'] ?? '');
-        $evaluationCycleId = trim((string) ($payload['evaluation_cycle_id'] ?? '2025-2026'));
-        $decision = strtolower(trim((string) ($payload['decision'] ?? '')));
-        $decisionReason = trim((string) ($payload['decision_reason'] ?? ''));
-        $evidenceDocId = $payload['evidence_document_id'] ?? null;
-        $evidenceRef = $payload['evidence_reference'] ?? null;
-        $reviewSummary = $payload['review_summary_payload'] ?? null;
-        $reviewPeriodLabel = trim((string) ($payload['review_period_label'] ?? "AY {$evaluationCycleId} Annual Review"));
+        if(in_array($period['status']??'', ['CLOSED','ARCHIVED'],true)) throw new RuntimeException('EVALUATION_PERIOD_LOCKED: This evaluation period is closed and remains read-only.');
+    }
 
-        if ($personnelProfileId === '' || $evaluationCycleId === '') {
-            throw new InvalidArgumentException('VALIDATION_ERROR: personnel_profile_id and evaluation_cycle_id are required.');
-        }
+    private function rating(array $payload,bool $required=false): ?string
+    {
+        $rating=strtolower(trim((string)($payload['annual_rating']??'')));
+        if($rating===''&&!$required) return null;
+        if(!in_array($rating,PersonnelEligibilityService::RATINGS,true)) throw new InvalidArgumentException('INVALID_ANNUAL_RATING: Select a valid annual rating.');
+        return $rating;
+    }
 
-        if (! in_array($decision, ['cleared', 'not_cleared'], true)) {
-            throw new InvalidArgumentException('VALIDATION_ERROR: decision must be either cleared or not_cleared.');
-        }
-
-        if ($decision === 'not_cleared' && $decisionReason === '') {
-            throw new InvalidArgumentException('DECISION_REASON_REQUIRED: A specific reason is required when Subject to Portfolio Validation is No (not_cleared).');
-        }
-
-        $authContext = $this->validateDeanAuthorization($deanProfileId, $personnelProfileId);
-        $collegeId = $authContext['dean_college_id'];
-
-        // Check if effective review already exists
-        $existing = $this->db->query(
-            "SELECT id FROM personnel_annual_reviews
-             WHERE personnel_profile_id = ?
-               AND evaluation_cycle_id = ?
-               AND superseded_at IS NULL
-             LIMIT 1",
-            [$personnelProfileId, $evaluationCycleId]
-        )->getRowArray();
-
-        if ($existing !== null) {
-            throw new RuntimeException('ANNUAL_REVIEW_ALREADY_RECORDED: An effective annual review decision already exists for this personnel member and cycle.');
-        }
-
-        $id = $this->genUuid();
-        $now = date('Y-m-d H:i:s');
-
-        $summaryJson = is_array($reviewSummary) ? json_encode($reviewSummary) : ($reviewSummary ?: null);
-
-        $this->db->table('personnel_annual_reviews')->insert([
-            'id'                     => $id,
-            'personnel_profile_id'   => $personnelProfileId,
-            'evaluation_cycle_id'    => $evaluationCycleId,
-            'college_id'             => $collegeId,
-            'review_period_label'    => $reviewPeriodLabel,
-            'decision'               => $decision,
-            'decision_reason'        => $decision === 'not_cleared' ? $decisionReason : null,
-            'evidence_document_id'   => $evidenceDocId,
-            'evidence_reference'     => $evidenceRef,
-            'review_summary_payload' => $summaryJson,
-            'recorded_by_dean_id'    => $deanProfileId,
-            'recorded_at'            => $now,
-            'supersedes_review_id'   => null,
-            'superseded_at'          => null,
-            'superseded_by_dean_id'  => null,
-            'created_at'             => $now,
-            'updated_at'             => $now,
-        ]);
-
-        // Audit Event Logging
-        $this->logAuditEvent('annual_review_recorded', $deanProfileId, [
-            'review_id'              => $id,
-            'personnel_profile_id'   => $personnelProfileId,
-            'evaluation_cycle_id'    => $evaluationCycleId,
-            'college_id'             => $collegeId,
-            'decision'               => $decision,
-            'decision_reason'        => $decisionReason,
-            'recorded_at'            => $now,
-        ]);
-
-        $this->logAuditEvent(
-            $decision === 'cleared' ? 'portfolio_validation_cleared' : 'portfolio_validation_not_cleared',
-            $deanProfileId,
-            [
-                'review_id'            => $id,
-                'personnel_profile_id' => $personnelProfileId,
-                'evaluation_cycle_id'  => $evaluationCycleId,
-                'decision'             => $decision,
-            ]
-        );
-
+    public function recordReview(string $deanId,array $payload): array
+    {
+        $personId=(string)($payload['personnel_profile_id']??'');
+        if($personId==='') throw new InvalidArgumentException('VALIDATION_ERROR: personnel_profile_id is required.');
+        $period=$this->period($payload); $this->assertOpen($period);
+        $auth=$this->validateDeanAuthorization($deanId,$personId);
+        $status=strtolower((string)($payload['review_status']??'draft'));
+        if(!in_array($status,['draft','finalized'],true)) throw new InvalidArgumentException('INVALID_REVIEW_STATUS: review_status must be draft or finalized.');
+        $rating=$this->rating($payload,$status==='finalized');
+        $existing=$this->db->table('personnel_annual_reviews')->where('personnel_profile_id',$personId)->where('evaluation_period_id',$period['id'])->where('superseded_at',null)->orderBy('created_at','DESC')->get()->getRowArray();
+        if($existing&&empty($existing['annual_rating'])) throw new RuntimeException('LEGACY_REVIEW_READ_ONLY: Legacy binary annual-review records are historical and cannot be changed.');
+        if($existing&&($existing['review_status']??null)==='finalized') throw new RuntimeException('ANNUAL_REVIEW_ALREADY_FINALIZED: Use supersession to correct a finalized annual review.');
+        $now=date('Y-m-d H:i:s');
+        $values=['annual_rating'=>$rating,'review_status'=>$status,'finalized_at'=>$status==='finalized'?$now:null,'updated_at'=>$now];
+        if($existing){ $this->db->table('personnel_annual_reviews')->where('id',$existing['id'])->update($values); $id=$existing['id']; $event=$status==='finalized'?'annual_review_finalized':'annual_review_draft_updated'; }
+        else { $id=$this->uuid(); $this->db->table('personnel_annual_reviews')->insert($values+[
+            'id'=>$id,'personnel_profile_id'=>$personId,'evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'college_id'=>$auth['dean_college_id'],
+            'review_period_label'=>$period['period_name'],'decision'=>null,'decision_reason'=>null,'recorded_by_dean_id'=>$deanId,'recorded_at'=>$now,'created_at'=>$now
+        ]); $event=$status==='finalized'?'annual_review_finalized':'annual_review_draft_created'; }
+        $this->audit($event,$deanId,['review_id'=>$id,'personnel_profile_id'=>$personId,'evaluation_period_id'=>$period['id'],'annual_rating'=>$rating]);
         return $this->getReviewById($id);
     }
 
-    /**
-     * Supersedes an existing effective review with a corrected successor review.
-     */
-    public function supersedeReview(string $reviewId, string $deanProfileId, array $payload): array
+    public function supersedeReview(string $reviewId,string $deanId,array $payload): array
     {
-        $existing = $this->db->query(
-            "SELECT * FROM personnel_annual_reviews WHERE id = ? LIMIT 1",
-            [$reviewId]
-        )->getRowArray();
-
-        if ($existing === null) {
-            throw new RuntimeException('NOT_FOUND: Annual review record not found: ' . $reviewId);
-        }
-
-        if ($existing['superseded_at'] !== null) {
-            throw new RuntimeException('INVALID_REVIEW_TRANSITION: Cannot supersede an annual review that has already been superseded.');
-        }
-
-        $personnelProfileId = $existing['personnel_profile_id'];
-        $evaluationCycleId = $existing['evaluation_cycle_id'];
-
-        $authContext = $this->validateDeanAuthorization($deanProfileId, $personnelProfileId);
-        $collegeId = $authContext['dean_college_id'];
-
-        $decision = strtolower(trim((string) ($payload['decision'] ?? $existing['decision'])));
-        $decisionReason = trim((string) ($payload['decision_reason'] ?? $existing['decision_reason'] ?? ''));
-        $evidenceDocId = $payload['evidence_document_id'] ?? $existing['evidence_document_id'];
-        $evidenceRef = $payload['evidence_reference'] ?? $existing['evidence_reference'];
-        $reviewSummary = $payload['review_summary_payload'] ?? $existing['review_summary_payload'];
-        $reviewPeriodLabel = trim((string) ($payload['review_period_label'] ?? $existing['review_period_label']));
-
-        if (! in_array($decision, ['cleared', 'not_cleared'], true)) {
-            throw new InvalidArgumentException('VALIDATION_ERROR: decision must be either cleared or not_cleared.');
-        }
-
-        if ($decision === 'not_cleared' && $decisionReason === '') {
-            throw new InvalidArgumentException('DECISION_REASON_REQUIRED: A specific reason is required when Subject to Portfolio Validation is No (not_cleared).');
-        }
-
-        $now = date('Y-m-d H:i:s');
-        $newId = $this->genUuid();
-        $summaryJson = is_array($reviewSummary) ? json_encode($reviewSummary) : ($reviewSummary ?: null);
-
+        $old=$this->getReviewById($reviewId);
+        if(!empty($old['superseded_at'])) throw new RuntimeException('INVALID_REVIEW_TRANSITION: This review was already superseded.');
+        if(empty($old['annual_rating'])) throw new RuntimeException('LEGACY_REVIEW_READ_ONLY: Legacy binary annual-review records cannot be superseded into ratings.');
+        if(($old['review_status']??'')!=='finalized') throw new RuntimeException('INVALID_REVIEW_TRANSITION: Only finalized reviews use supersession.');
+        $period=$this->period(['evaluation_period_id'=>$old['evaluation_period_id']]); $this->assertOpen($period);
+        $auth=$this->validateDeanAuthorization($deanId,$old['personnel_profile_id']);
+        $reason=trim((string)($payload['correction_reason']??''));
+        if($reason==='') throw new InvalidArgumentException('CORRECTION_REASON_REQUIRED: Explain why this finalized review must be corrected.');
+        $submission=$this->db->table('personnel_evaluations')->select('id')->where('personnel_profile_id',$old['personnel_profile_id'])->where('evaluation_period_id',$period['id'])->where('submitted_at !=',null)->get()->getRowArray();
+        if($submission) throw new RuntimeException('HR_REOPENING_REQUIRED: The portfolio was already submitted. HR-authorized reopening is required before correction.');
+        $rating=$this->rating($payload,true); $now=date('Y-m-d H:i:s'); $newId=$this->uuid();
         $this->db->transStart();
-
-        // 1. Mark prior review as superseded
-        $this->db->table('personnel_annual_reviews')
-            ->where('id', $reviewId)
-            ->update([
-                'superseded_at'         => $now,
-                'superseded_by_dean_id' => $deanProfileId,
-                'updated_at'            => $now,
-            ]);
-
-        // 2. Insert new superseding review
-        $this->db->table('personnel_annual_reviews')->insert([
-            'id'                     => $newId,
-            'personnel_profile_id'   => $personnelProfileId,
-            'evaluation_cycle_id'    => $evaluationCycleId,
-            'college_id'             => $collegeId,
-            'review_period_label'    => $reviewPeriodLabel,
-            'decision'               => $decision,
-            'decision_reason'        => $decision === 'not_cleared' ? $decisionReason : null,
-            'evidence_document_id'   => $evidenceDocId,
-            'evidence_reference'     => $evidenceRef,
-            'review_summary_payload' => $summaryJson,
-            'recorded_by_dean_id'    => $deanProfileId,
-            'recorded_at'            => $now,
-            'supersedes_review_id'   => $reviewId,
-            'superseded_at'          => null,
-            'superseded_by_dean_id'  => null,
-            'created_at'             => $now,
-            'updated_at'             => $now,
-        ]);
-
+        $this->db->table('personnel_annual_reviews')->where('id',$reviewId)->update(['review_status'=>'superseded','superseded_at'=>$now,'superseded_by_dean_id'=>$deanId,'updated_at'=>$now]);
+        $this->db->table('personnel_annual_reviews')->insert(['id'=>$newId,'personnel_profile_id'=>$old['personnel_profile_id'],'evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'college_id'=>$auth['dean_college_id'],'review_period_label'=>$period['period_name'],'decision'=>null,'decision_reason'=>null,'annual_rating'=>$rating,'review_status'=>'finalized','finalized_at'=>$now,'correction_reason'=>$reason,'recorded_by_dean_id'=>$deanId,'recorded_at'=>$now,'supersedes_review_id'=>$reviewId,'created_at'=>$now,'updated_at'=>$now]);
         $this->db->transComplete();
-
-        if ($this->db->transStatus() === false) {
-            throw new RuntimeException('DATABASE_ERROR: Failed to supersede annual review transactionally.');
-        }
-
-        // Audit Event Logging
-        $this->logAuditEvent('annual_review_superseded', $deanProfileId, [
-            'prior_review_id'      => $reviewId,
-            'new_review_id'        => $newId,
-            'personnel_profile_id' => $personnelProfileId,
-            'evaluation_cycle_id'  => $evaluationCycleId,
-            'prior_decision'       => $existing['decision'],
-            'new_decision'         => $decision,
-            'superseded_at'        => $now,
-        ]);
-
+        if(!$this->db->transStatus()) throw new RuntimeException('DATABASE_ERROR: Annual review supersession failed.');
+        $this->audit('annual_review_superseded',$deanId,['prior_review_id'=>$reviewId,'new_review_id'=>$newId,'personnel_profile_id'=>$old['personnel_profile_id'],'evaluation_period_id'=>$period['id'],'correction_reason'=>$reason]);
         return $this->getReviewById($newId);
     }
 
-    /**
-     * Lists academic personnel in the Dean's assigned college with their annual review status.
-     */
-    public function listForDean(string $deanProfileId, array $filters = []): array
+    public function listForDean(string $deanId,array $filters=[]): array
     {
-        $deanCollegeId = $this->getDeanAssignedCollege($deanProfileId);
-        if ($deanCollegeId === null) {
-            throw new RuntimeException('FORBIDDEN: Caller is not an active assigned College Dean.');
+        $college=$this->getDeanAssignedCollege($deanId); if(!$college) throw new RuntimeException('FORBIDDEN: Caller is not an active assigned College Dean.');
+        $period=$this->period($filters);
+        $rows=$this->db->table('personnel_profiles pp')->distinct()->select('p.id,p.full_name,p.institutional_id,p.email AS institutional_email,p.avatar_url,pp.personnel_group,pp.organizational_side,pp.faculty_engagement,pp.employment_status,pp.employment_start_date,pp.position_title,pp.current_rank_title,c.name AS college_name,c.code AS college_code')
+            ->join('profiles p','p.id=pp.profile_id')->join('personnel_college_affiliations pca','pca.personnel_profile_id=pp.profile_id AND pca.is_active=1','left')->join('personnel_administrative_unit_affiliations pau','pau.personnel_profile_id=pp.profile_id AND pau.is_active=1','left')->join('administrative_units au','au.id=pau.administrative_unit_id AND au.status=\'active\'','left')->join('colleges c','c.id=COALESCE(pca.college_id,au.college_id)','left')
+            ->groupStart()->where('pca.college_id',$college)->orWhere('au.college_id',$college)->groupEnd()->where('p.status','active')->where('p.id !=',$deanId)->orderBy('p.full_name')->get()->getResultArray();
+        $items=[];
+        foreach($rows as $person){
+            try { $authority=$this->authorityResolver->resolveResponsibleAuthority($person['id'],$period); }
+            catch (RuntimeException) { continue; }
+            if(($authority['authority_type']??'')!=='DEAN'||($authority['authority_profile_id']??'')!==$deanId) continue;
+            $review=$this->db->table('personnel_annual_reviews')->where('personnel_profile_id',$person['id'])->where('evaluation_period_id',$period['id'])->where('superseded_at',null)->orderBy('created_at','DESC')->get()->getRowArray();
+            $count=$this->db->table('personnel_annual_reviews')->where('personnel_profile_id',$person['id'])->where('evaluation_period_id',$period['id'])->where('superseded_at !=',null)->countAllResults();
+            $items[]=['personnel'=>$person,'evaluation_period_id'=>$period['id'],'annual_review'=>$review,'superseded_count'=>$count,'eligibility'=>$this->eligibilityService->evaluateEligibility($person['id'],$period['id'])];
         }
-
-        $evaluationCycleId = trim((string) ($filters['evaluation_cycle_id'] ?? '2025-2026'));
-
-        $query = $this->db->query(
-            "SELECT p.id, p.full_name, p.institutional_id, p.institutional_email, p.avatar_url,
-                    pp.personnel_group, pp.organizational_side, pp.faculty_engagement,
-                    pp.employment_status, pp.position_title, pp.current_rank_title,
-                    pp.qualification_summary, c.name AS college_name, c.code AS college_code
-             FROM profiles p
-             JOIN personnel_profiles pp ON pp.profile_id = p.id
-             LEFT JOIN personnel_college_affiliations pca ON pca.personnel_profile_id = p.id AND pca.is_active = 1
-             LEFT JOIN colleges c ON c.id = COALESCE(pp.college_id, pca.college_id)
-             WHERE (pp.college_id = ? OR pca.college_id = ?)
-               AND pp.organizational_side = 'academic'
-               AND p.status = 'active'
-             ORDER BY p.full_name ASC",
-            [$deanCollegeId, $deanCollegeId]
-        );
-
-        $personnelRows = $query->getResultArray();
-        $result = [];
-
-        foreach ($personnelRows as $row) {
-            $profileId = $row['id'];
-
-            $effectiveReview = $this->db->query(
-                "SELECT * FROM personnel_annual_reviews
-                 WHERE personnel_profile_id = ?
-                   AND evaluation_cycle_id = ?
-                   AND superseded_at IS NULL
-                 LIMIT 1",
-                [$profileId, $evaluationCycleId]
-            )->getRowArray();
-
-            $supersededCount = $this->db->query(
-                "SELECT COUNT(*) AS total FROM personnel_annual_reviews
-                 WHERE personnel_profile_id = ?
-                   AND evaluation_cycle_id = ?
-                   AND superseded_at IS NOT NULL",
-                [$profileId, $evaluationCycleId]
-            )->getRowArray()['total'] ?? 0;
-
-            $eligibility = $this->eligibilityService->evaluateEligibility($profileId, $evaluationCycleId);
-
-            $result[] = [
-                'personnel'            => $row,
-                'evaluation_cycle_id'  => $evaluationCycleId,
-                'annual_review'        => $effectiveReview,
-                'superseded_count'     => (int) $supersededCount,
-                'eligibility'          => $eligibility,
-            ];
-        }
-
-        return [
-            'evaluation_cycle_id' => $evaluationCycleId,
-            'college_id'          => $deanCollegeId,
-            'total_personnel'     => count($result),
-            'personnel'           => $result,
-        ];
+        return ['evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'evaluation_period'=>['id'=>$period['id'],'name'=>$period['period_name'],'status'=>$period['status'],'evaluation_end_at'=>$period['evaluation_end_at'],'is_locked'=>in_array($period['status'],['CLOSED','ARCHIVED'],true)],'college_id'=>$college,'total_personnel'=>count($items),'personnel'=>$items];
     }
 
-    /**
-     * Gets a single review record by ID.
-     */
     public function getReviewById(string $id): array
     {
-        $review = $this->db->query(
-            "SELECT * FROM personnel_annual_reviews WHERE id = ? LIMIT 1",
-            [$id]
-        )->getRowArray();
-
-        if ($review === null) {
-            throw new RuntimeException('NOT_FOUND: Annual review record not found: ' . $id);
-        }
-
-        if (! empty($review['review_summary_payload']) && is_string($review['review_summary_payload'])) {
-            $decoded = json_decode($review['review_summary_payload'], true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $review['review_summary_payload'] = $decoded;
-            }
-        }
-
-        return $review;
+        $row=$this->db->table('personnel_annual_reviews')->where('id',$id)->get()->getRowArray();
+        if(!$row) throw new RuntimeException('NOT_FOUND: Annual review record not found.');
+        return $row;
     }
 
-    /**
-     * Logs structured events into account_lifecycle_events.
-     */
-    private function logAuditEvent(string $eventType, string $performedBy, array $meta): void
+    private function audit(string $type,string $actor,array $meta): void
     {
-        try {
-            $this->db->table('account_lifecycle_events')->insert([
-                'id'           => $this->genUuid(),
-                'account_id'   => $meta['personnel_profile_id'] ?? $performedBy,
-                'event_type'   => $eventType,
-                'performed_by' => $performedBy,
-                'reason'       => json_encode($meta),
-                'occurred_at'  => date('Y-m-d H:i:s'),
-                'created_at'   => date('Y-m-d H:i:s'),
-            ]);
-        } catch (\Throwable $e) {
-            // Non-blocking audit log failure
-        }
+        try{$this->db->table('account_lifecycle_events')->insert(['id'=>$this->uuid(),'account_id'=>$meta['personnel_profile_id']??$actor,'event_type'=>$type,'performed_by'=>$actor,'reason'=>json_encode($meta),'occurred_at'=>date('Y-m-d H:i:s'),'created_at'=>date('Y-m-d H:i:s')]);}catch(\Throwable $e){}
     }
 }

@@ -106,6 +106,20 @@ class AuthorizationService
         return array_values(array_unique($ids));
     }
 
+    /** Returns all Department IDs assigned to an active Department Head. */
+    public function getDepartmentHeadDepartmentIds(array $actor): array
+    {
+        $ids = [];
+        foreach ($actor['assignments'] ?? [] as $assignment) {
+            if (($assignment['role_key'] ?? '') === 'department_head'
+                && ($assignment['scope_type'] ?? '') === 'department'
+                && ! empty($assignment['scope_id'])) {
+                $ids[] = (string) $assignment['scope_id'];
+            }
+        }
+        return array_values(array_unique($ids));
+    }
+
     /**
      * Returns all assigned organization IDs for an active Organization Moderator.
      */

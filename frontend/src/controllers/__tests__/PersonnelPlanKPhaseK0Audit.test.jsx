@@ -51,15 +51,15 @@ describe('Personnel Evaluation Track — Plan K — Phase K0: Final Acceptance M
       expect(activeSides).toContain('non_academic')
     })
 
-    it('3. Faculty + Non-Academic remains unsupported', () => {
+    it('3. Faculty + Non-Academic validates with administrative unit in CHU-01 Phase 2', () => {
       const validation = validatePersonnelPlacement({
         group: 'faculty',
         side: 'non_academic',
         collegeId: null,
         administrativeUnitId: 'unit-1'
       })
-      expect(validation.isValid).toBe(false)
-      expect(validation.errors.classificationPair).toContain('Faculty must belong to the Academic organizational side')
+      expect(validation.isValid).toBe(true)
+      expect(validation.errors).toEqual({})
     })
 
     it('4. Faculty Status values are frozen to Full-time and Part-time', () => {
@@ -106,10 +106,10 @@ describe('Personnel Evaluation Track — Plan K — Phase K0: Final Acceptance M
       expect(rule.reviewer_role).toBe(REVIEWER_ROLES.DEAN)
     })
 
-    it('9. NTF + Academic routes to Dean', () => {
+    it('9. NTF + Academic routes to HR in CHU-01 Phase 2', () => {
       const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'NON_TEACHING_FACULTY_ACADEMIC')
       expect(rule).toBeDefined()
-      expect(rule.reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(rule.reviewer_role).toBe(REVIEWER_ROLES.HR)
     })
 
     it('10. NTF + Non-Academic routes to HR', () => {

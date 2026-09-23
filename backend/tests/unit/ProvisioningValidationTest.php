@@ -47,12 +47,20 @@ final class ProvisioningValidationTest extends CIUnitTestCase
         }
     }
 
-    public function testPersonnelIdSafetyDoesNotInventAFormat(): void
+    public function testPersonnelIdIsNumericAndPreservesLeadingZeros(): void
     {
-        $this->assertSame('EMP822313', ValidationHelper::canonicalizePersonnelInstitutionalId(' EMP822313 ', 50));
-        $this->assertSame('2026-DEMO-003', ValidationHelper::canonicalizePersonnelInstitutionalId('2026-DEMO-003', 50));
-        $this->assertNull(ValidationHelper::canonicalizePersonnelInstitutionalId("EMP\u{202E}123", 50));
+        $this->assertSame('00822313', ValidationHelper::canonicalizePersonnelInstitutionalId(' 00822313 ', 50));
+        $this->assertNull(ValidationHelper::canonicalizePersonnelInstitutionalId('EMP822313', 50));
+        $this->assertNull(ValidationHelper::canonicalizePersonnelInstitutionalId('2026-DEMO-003', 50));
         $this->assertNull(ValidationHelper::canonicalizePersonnelInstitutionalId(str_repeat('A', 51), 50));
+    }
+
+    public function testNamesUseThePersonnelSafeCharacterContract(): void
+    {
+        $this->assertTrue(ValidationHelper::validateName("Peña de la Cruz-O'Neil"));
+        foreach (['Maria2', '<b>Maria</b>', 'Maria🙂', "Maria\u{200B}"] as $invalid) {
+            $this->assertFalse(ValidationHelper::validateName($invalid));
+        }
     }
 
     public function testAcademicYearMustBeConsecutiveAndWithinConfiguredBounds(): void

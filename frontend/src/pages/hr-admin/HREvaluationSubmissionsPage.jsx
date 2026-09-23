@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { CheckCircle2 } from 'lucide-react'
-import { useHR } from '../../hooks/useHR'
 import VerificationQueueHeader from './evaluation-submissions/queue/VerificationQueueHeader'
 import VerificationStatusTabs from './evaluation-submissions/queue/VerificationStatusTabs'
 import VerificationQueueToolbar from './evaluation-submissions/queue/VerificationQueueToolbar'
@@ -8,21 +7,18 @@ import PortfolioSubmissionRow from './evaluation-submissions/queue/PortfolioSubm
 import PortfolioEvaluationStudio from './evaluation-submissions/evaluation/PortfolioEvaluationStudio'
 import ReturnForRevisionModal from './evaluation-submissions/evaluation/actions/ReturnForRevisionModal'
 import FinalizeEvaluationModal from './evaluation-submissions/evaluation/actions/FinalizeEvaluationModal'
+import hrEvaluationService from '../../services/hrEvaluationService'
+import periodService from '../../services/personnelEvaluationPeriodService'
+import FacultyEvaluationSummary from '../../components/evaluation/FacultyEvaluationSummary'
 
 export function HREvaluationSubmissionsPage(props) {
-  const hrHook = useHR()
-
-  const directHRQueue = props.directHRQueue || hrHook.directHRQueue || []
-  const endorsedQueue = props.endorsedQueue || hrHook.endorsedQueue || []
-  const accomplishments = props.accomplishments || hrHook.accomplishments || []
-  const handleSealVerification = props.handleSealVerification || hrHook.handleSealVerification
-  const handleReturnAccomplishment = props.handleReturnAccomplishment || hrHook.handleReturnAccomplishment
-
   // Queue State: 'submitted' | 'in_evaluation' | 'ready_for_finalization' | 'returned_for_revision' | 'completed'
-  const [activeTab, setActiveTab] = useState('submitted')
+  const [activeTab, setActiveTab] = useState(props.initialTab || 'submitted')
   const [search, setSearch] = useState('')
   const [collegeFilter, setCollegeFilter] = useState('ALL')
   const [submissionType, setSubmissionType] = useState('ALL')
+  const [periodFilter, setPeriodFilter] = useState(props.fixedPeriodId || 'ALL')
+  const [periods, setPeriods] = useState([])
 
   // Evaluation Studio & Modals State
   const [evaluatingSubmission, setEvaluatingSubmission] = useState(null)
@@ -30,6 +26,27 @@ export function HREvaluationSubmissionsPage(props) {
   const [finalizingSubmission, setFinalizingSubmission] = useState(null)
   const [finalizingScores, setFinalizingScores] = useState({})
   const [toastMsg, setToastMsg] = useState(null)
+  const [submissions, setSubmissions] = useState([])
+  const [loadError, setLoadError] = useState(null)
+  const [summaryReport, setSummaryReport] = useState(null)
+
+  const loadSubmissions = useCallback(async () => {
+    try {
+      setLoadError(null)
+      const [rows, periodData] = await Promise.all([
+        hrEvaluationService.list(periodFilter === 'ALL' ? {} : { evaluation_period_id: periodFilter }),
+        periodService.listPersonnelEvaluationPeriods()
+      ])
+      setSubmissions(rows)
+      setPeriods(periodData?.periods || [])
+    } catch (error) {
+      setSubmissions([])
+      setLoadError(error?.response?.data?.error?.message || error?.message || 'Failed to load evaluations.')
+    }
+  }, [periodFilter])
+
+  useEffect(() => { loadSubmissions() }, [loadSubmissions])
+  useEffect(() => { if (props.fixedPeriodId) setPeriodFilter(props.fixedPeriodId) }, [props.fixedPeriodId])
 
   const showToast = (msg) => {
     if (props.showToast) {
@@ -41,70 +58,7 @@ export function HREvaluationSubmissionsPage(props) {
   }
 
   // Authoritative Submissions Catalog
-  const baseSubmissions = useMemo(() => {
-    return [
-      {
-        id: 'sub-101',
-        faculty_name: 'Dr. Ana Reyes',
-        email: 'moderator@ndmu.edu.ph',
-        employee_id: 'EMP-2019-0881',
-        college: 'CEAC - College of Engineering, Architecture, and Computing',
-        personnel_classification: 'academic',
-        program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
-        academic_rank: 'Associate Professor I',
-        submission_type: 'Personnel Ranking Evaluation',
-        submissionType: 'Personnel Ranking Evaluation',
-        submitted_at: '2026-08-14T08:30:00Z',
-        submittedDate: 'Aug 14, 2026',
-        completed_items_count: 6,
-        completedItemsCount: 6,
-        total_items_count: 6,
-        totalItemsCount: 6,
-        status: 'submitted',
-        tenure_years: 7,
-      },
-      {
-        id: 'sub-102',
-        faculty_name: 'Dr. Gabriel Mendoza',
-        email: 'gmendoza@ndmu.edu.ph',
-        employee_id: 'EMP-2018-0412',
-        college: 'CBA - College of Business Administration',
-        personnel_classification: 'academic',
-        program_affiliations: [{ code: 'BSBA', name: 'BS Business Administration' }],
-        academic_rank: 'Full Professor I',
-        submission_type: 'Personnel Ranking Evaluation',
-        submissionType: 'Personnel Ranking Evaluation',
-        submitted_at: '2026-08-12T09:15:00Z',
-        submittedDate: 'Aug 12, 2026',
-        completed_items_count: 4,
-        completedItemsCount: 4,
-        total_items_count: 6,
-        totalItemsCount: 6,
-        status: 'in_evaluation',
-        tenure_years: 15,
-      },
-      {
-        id: 'sub-103',
-        faculty_name: 'Engr. Sarah Cruz',
-        email: 'scruz@ndmu.edu.ph',
-        employee_id: 'EMP-2022-0901',
-        college: 'CAS - College of Arts and Sciences',
-        personnel_classification: 'academic',
-        program_affiliations: [{ code: 'BSPHY', name: 'BS Physics' }],
-        academic_rank: 'Instructor III',
-        submission_type: 'Personnel Ranking Evaluation',
-        submissionType: 'Personnel Ranking Evaluation',
-        submitted_at: '2026-08-10T11:00:00Z',
-        submittedDate: 'Aug 10, 2026',
-        completed_items_count: 3,
-        completedItemsCount: 3,
-        total_items_count: 6,
-        totalItemsCount: 6,
-        status: 'returned_for_revision',
-        tenure_years: 4,
-      },
-    ]
-  }, [])
+  const baseSubmissions = submissions
 
   // Filter Submissions
   const filteredSubmissions = useMemo(() => {
@@ -117,7 +71,7 @@ export function HREvaluationSubmissionsPage(props) {
         sub.email.toLowerCase().includes(q) ||
         (sub.program_affiliations || []).some(program => `${program.code} ${program.name}`.toLowerCase().includes(q))
 
-      const matchesCollege = collegeFilter === 'ALL' || sub.college.includes(collegeFilter)
+      const matchesCollege = collegeFilter === 'ALL' || String(sub.college || sub.department_name || '').includes(collegeFilter)
       
       const matchesTab =
         sub.status === activeTab ||
@@ -139,31 +93,50 @@ export function HREvaluationSubmissionsPage(props) {
     completed: baseSubmissions.filter(s => s.status === 'completed').length,
   }), [baseSubmissions])
 
-  const handleInspect = (sub) => {
-    setEvaluatingSubmission(sub)
+  const handleInspect = async (sub) => {
+    try {
+      if (['ready_for_finalization', 'completed'].includes(sub.status)) {
+        const result = await hrEvaluationService.getReport(sub.id)
+        setSummaryReport(result.report?.snapshot || result.report?.report_payload || result.report)
+        return
+      }
+      if (sub.status === 'submitted') await hrEvaluationService.start(sub.id)
+      const detail = await hrEvaluationService.get(sub.id)
+      setEvaluatingSubmission({ ...sub, ...(detail?.evaluation || detail) })
+      await loadSubmissions()
+    } catch (error) {
+      showToast(error?.response?.data?.error?.message || error?.message || 'Unable to open evaluation.')
+    }
   }
 
-  const handleSaveProgress = (items, scores) => {
+  const handleSaveProgress = () => {
     showToast('Evaluation draft saved.')
   }
 
-  const handleConfirmReturn = (subId, returnData) => {
-    if (handleReturnAccomplishment) {
-      handleReturnAccomplishment(subId, returnData.remarks)
+  const handleConfirmReturn = async (subId, returnData) => {
+    try {
+      await hrEvaluationService.returnForRevision(subId, returnData)
+      await loadSubmissions()
+      showToast(`Returned portfolio to ${returningSubmission?.faculty_name || 'personnel'} for revision.`)
+      setReturningSubmission(null)
+      setEvaluatingSubmission(null)
+    } catch (error) {
+      showToast(error?.response?.data?.error?.message || error?.message || 'Unable to return evaluation.')
     }
-    showToast(`Returned portfolio to ${returningSubmission?.faculty_name || 'personnel'} for revision.`)
-    setReturningSubmission(null)
-    setEvaluatingSubmission(null)
   }
 
-  const handleConfirmFinalize = (subId, scores) => {
-    if (handleSealVerification) {
-      handleSealVerification(subId, 'HR-FINALIZED')
+  const handleConfirmFinalize = async (subId, scores) => {
+    try {
+      if (finalizingSubmission?.status === 'in_evaluation') await hrEvaluationService.markReady(subId)
+      await hrEvaluationService.finalize(subId, scores)
+      await loadSubmissions()
+      const totalPts = scores.grandTotalAwarded ?? scores.total_score ?? scores.totalScore ?? 0
+      showToast(`Successfully finalized evaluation for ${finalizingSubmission?.faculty_name || 'personnel'} (${Number(totalPts).toFixed(2)} / 160.00 Points).`)
+      setFinalizingSubmission(null)
+      setEvaluatingSubmission(null)
+    } catch (error) {
+      showToast(error?.response?.data?.error?.message || error?.message || 'Unable to finalize evaluation.')
     }
-    const totalPts = scores.grandTotalAwarded ?? scores.total_score ?? scores.totalScore ?? 0
-    showToast(`Successfully finalized evaluation for ${finalizingSubmission?.faculty_name || 'personnel'} (${Number(totalPts).toFixed(2)} / 160.00 Points).`)
-    setFinalizingSubmission(null)
-    setEvaluatingSubmission(null)
   }
 
   return (
@@ -175,16 +148,17 @@ export function HREvaluationSubmissionsPage(props) {
           <span>{toastMsg}</span>
         </div>
       )}
+      {summaryReport && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-4 sm:p-8"><FacultyEvaluationSummary report={summaryReport} onClose={() => setSummaryReport(null)} /></div>}
 
-      {/* Header & Workload Counters */}
-      <VerificationQueueHeader stats={counts} />
+      {/* The cycle shell supplies context when this queue is embedded. */}
+      {!props.embedded && <VerificationQueueHeader stats={counts} />}
 
       {/* Status Tabs */}
-      <VerificationStatusTabs
+      {!props.lockStatus && <VerificationStatusTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         counts={counts}
-      />
+      />}
 
       {/* Search & Filter Toolbar */}
       <VerificationQueueToolbar
@@ -195,7 +169,8 @@ export function HREvaluationSubmissionsPage(props) {
         submissionType={submissionType}
         setSubmissionType={setSubmissionType}
       />
-
+      {!props.fixedPeriodId && <label className="flex max-w-sm items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300"><span className="shrink-0">Evaluation period</span><select value={periodFilter} onChange={(event)=>setPeriodFilter(event.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><option value="ALL">All evaluation periods</option>{periods.map(period=><option key={period.id} value={period.id}>{period.period_name} · {period.academic_year_label}</option>)}</select></label>}
+      {loadError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-100">{loadError}</p>}
       {/* Personnel Ranking Submissions Queue */}
       <div className="space-y-3">
         {filteredSubmissions.length === 0 ? (

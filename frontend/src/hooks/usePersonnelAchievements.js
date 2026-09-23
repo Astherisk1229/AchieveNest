@@ -46,8 +46,9 @@ export default function usePersonnelAchievements() {
     return savedModel
   }, [])
 
-  const updateAchievement = useCallback((targetId, updateData) => {
-    setAchievements(prev => PersonnelAchievementController.updateAchievement(prev, targetId, updateData))
+  const updateAchievement = useCallback(async (targetId, updateData, file = null) => {
+    const updated = await PersonnelAchievementController.updateAchievement(achievements, targetId, updateData, file)
+    setAchievements(updated)
     if (previewItem && previewItem.id === targetId) {
       setPreviewItem(prev => {
         if (!prev) return null
@@ -55,7 +56,8 @@ export default function usePersonnelAchievements() {
         return { ...json, ...updateData }
       })
     }
-  }, [previewItem])
+    return updated
+  }, [achievements, previewItem])
 
   const deleteAchievement = useCallback(async (targetId) => {
     await PersonnelAchievementController.deleteAchievement(targetId)

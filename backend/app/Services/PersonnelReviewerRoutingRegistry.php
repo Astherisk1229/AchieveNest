@@ -7,21 +7,23 @@ use RuntimeException;
 /**
  * PersonnelReviewerRoutingRegistry
  *
- * Authoritative Reviewer Routing & Authority Registry for Plan G — Phase G0.
+ * Authoritative Reviewer Routing & Authority Registry for Personnel Evaluation Track
+ * (Plan G Phases G0–G1, Plan K5 Final Closure, and CHU-01 Phase 2 Reconciliation).
  * Freezes canonical routing rules, evaluator authority, scope boundaries,
  * and unresolved routing handling.
  *
- * Core Governance Rules:
- * 1. Faculty + Academic -> Dean (within Dean's authorized academic college scope).
- * 2. Non-Teaching Faculty + Academic -> Dean (within Dean's authorized academic college scope).
- * 3. Non-Teaching Faculty + Non-Academic -> HR.
- * 4. Dean -> HR.
- * 5. VP for Academics -> HR.
- * 6. VP for Administration -> HR.
- * 7. Department Secretary is strictly NOT an authorized evaluator.
- * 8. Personnel cannot self-evaluate or self-route.
- * 9. Scale code alone does not determine reviewer identity.
- * 10. Unresolved administrator mappings remain unresolved ('reviewer_route_unresolved').
+ * Authoritative Provenance of Canonical Routing Rules:
+ * 1. Faculty + Academic -> Dean [Plan G (G0/G1) & Plan K5 Final Routing Matrix; COLLEGE_ACADEMIC_SCOPE, requires college match].
+ * 2. Faculty + Non-Academic -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
+ * 3. Non-Teaching Faculty + Academic -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
+ * 4. Non-Teaching Faculty + Non-Academic -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 5. Dean (Self/Peer) -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 6. VP for Academics -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 7. VP for Administration -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 8. Department Secretary is strictly NOT an authorized evaluator [Plan G0].
+ * 9. Personnel cannot self-evaluate or self-route [Plan G0].
+ * 10. Scale code alone does not determine reviewer identity [Plan G0].
+ * 11. Unresolved inputs strictly return status='unresolved' with zero silent fallback [CHU-01 Phase 2 & Plan G0].
  */
 class PersonnelReviewerRoutingRegistry
 {
@@ -47,14 +49,25 @@ class PersonnelReviewerRoutingRegistry
             'authorized_reviewer_role' => self::REVIEWER_ROLE_DEAN,
             'scope_type' => 'COLLEGE_ACADEMIC_SCOPE',
             'requires_college_match' => true,
+            'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
+        ],
+        'FACULTY_NON_ACADEMIC' => [
+            'personnel_group' => 'faculty',
+            'organizational_side' => 'non_academic',
+            'position_keyword' => null,
+            'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
+            'scope_type' => 'UNIVERSITY_HR_SCOPE',
+            'requires_college_match' => false,
+            'authoritative_source' => 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)',
         ],
         'NON_TEACHING_FACULTY_ACADEMIC' => [
             'personnel_group' => 'non_teaching_faculty',
             'organizational_side' => 'academic',
             'position_keyword' => null,
-            'authorized_reviewer_role' => self::REVIEWER_ROLE_DEAN,
-            'scope_type' => 'COLLEGE_ACADEMIC_SCOPE',
-            'requires_college_match' => true,
+            'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
+            'scope_type' => 'UNIVERSITY_HR_SCOPE',
+            'requires_college_match' => false,
+            'authoritative_source' => 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)',
         ],
         'NON_TEACHING_FACULTY_NON_ACADEMIC' => [
             'personnel_group' => 'non_teaching_faculty',
@@ -63,6 +76,7 @@ class PersonnelReviewerRoutingRegistry
             'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
             'scope_type' => 'UNIVERSITY_HR_SCOPE',
             'requires_college_match' => false,
+            'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
         ],
         'DEAN_EVALUATION' => [
             'personnel_group' => 'faculty',
@@ -71,6 +85,7 @@ class PersonnelReviewerRoutingRegistry
             'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
             'scope_type' => 'UNIVERSITY_HR_SCOPE',
             'requires_college_match' => false,
+            'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
         ],
         'VP_ACADEMICS_EVALUATION' => [
             'personnel_group' => 'faculty',
@@ -79,6 +94,7 @@ class PersonnelReviewerRoutingRegistry
             'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
             'scope_type' => 'UNIVERSITY_HR_SCOPE',
             'requires_college_match' => false,
+            'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
         ],
         'VP_ADMINISTRATION_EVALUATION' => [
             'personnel_group' => 'non_teaching_faculty',
@@ -87,6 +103,7 @@ class PersonnelReviewerRoutingRegistry
             'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
             'scope_type' => 'UNIVERSITY_HR_SCOPE',
             'requires_college_match' => false,
+            'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
         ],
     ];
 
@@ -114,7 +131,7 @@ class PersonnelReviewerRoutingRegistry
         $isVpAdmin = !empty($personnelContext['is_vp_administration']);
         $collegeId = $personnelContext['college_id'] ?? null;
 
-        // 1. High-level administrative positions route to HR
+        // 1. High-level administrative positions route to HR (Plan G & Plan K5)
         if ($isDean) {
             return [
                 'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
@@ -123,6 +140,7 @@ class PersonnelReviewerRoutingRegistry
                 'routing_reason' => 'Dean evaluation routes authoritatively to HR.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
             ];
         }
 
@@ -134,6 +152,7 @@ class PersonnelReviewerRoutingRegistry
                 'routing_reason' => 'VP for Academics evaluation routes authoritatively to HR.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
             ];
         }
 
@@ -145,6 +164,7 @@ class PersonnelReviewerRoutingRegistry
                 'routing_reason' => 'VP for Administration evaluation routes authoritatively to HR.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
             ];
         }
 
@@ -157,17 +177,31 @@ class PersonnelReviewerRoutingRegistry
                 'routing_reason' => 'Faculty + Academic personnel route to active Dean of assigned college.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
+            ];
+        }
+
+        if ($group === 'faculty' && $side === 'non_academic') {
+            return [
+                'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
+                'scope_type' => 'UNIVERSITY_HR_SCOPE',
+                'target_college_id' => null,
+                'routing_reason' => 'Faculty + Non-Academic personnel route to HR Office.',
+                'status' => 'resolved',
+                'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)',
             ];
         }
 
         if ($group === 'non_teaching_faculty' && $side === 'academic') {
             return [
-                'authorized_reviewer_role' => self::REVIEWER_ROLE_DEAN,
-                'scope_type' => 'COLLEGE_ACADEMIC_SCOPE',
-                'target_college_id' => $collegeId,
-                'routing_reason' => 'Non-Teaching Faculty + Academic personnel route to active Dean of assigned college.',
+                'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
+                'scope_type' => 'UNIVERSITY_HR_SCOPE',
+                'target_college_id' => null,
+                'routing_reason' => 'Non-Teaching Faculty + Academic personnel route to HR Office.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)',
             ];
         }
 
@@ -179,17 +213,22 @@ class PersonnelReviewerRoutingRegistry
                 'routing_reason' => 'Non-Teaching Faculty + Non-Academic personnel route to HR Office.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
+                'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
             ];
         }
 
-        // 3. Unresolved cases remain strictly unresolved
+        // 3. Unresolved cases remain strictly unresolved (zero silent fallback)
         return [
             'authorized_reviewer_role' => null,
             'scope_type' => null,
             'target_college_id' => null,
-            'routing_reason' => "Reviewer route cannot be determined for classification [{$group} + {$side}].",
+            'routing_reason' => "No authoritative reviewer route is defined for classification [{$group} + {$side}].",
             'status' => 'unresolved',
             'reason_code' => self::REASON_REVIEWER_ROUTE_UNRESOLVED,
+            'inputs' => [
+                'personnel_group' => $group,
+                'organizational_side' => $side,
+            ],
         ];
     }
 

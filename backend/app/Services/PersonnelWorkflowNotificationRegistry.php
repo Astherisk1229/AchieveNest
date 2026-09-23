@@ -21,6 +21,7 @@ class PersonnelWorkflowNotificationRegistry
     public const TYPE_PORTFOLIO_RESUBMITTED         = 'personnel_portfolio_resubmitted';
     public const TYPE_EVALUATION_FINALIZED          = 'personnel_evaluation_finalized';
     public const TYPE_SUMMARY_AVAILABLE             = 'personnel_summary_available';
+    public const TYPE_PORTFOLIO_ENDORSED_TO_HR      = 'faculty_portfolio_endorsed_to_hr';
 
     // Recipient Target Categories
     public const RECIPIENT_PERSONNEL                = 'personnel';
@@ -60,6 +61,12 @@ class PersonnelWorkflowNotificationRegistry
             'recipient_target'  => self::RECIPIENT_ASSIGNED_REVIEWER,
             'title_template'    => 'Revised Portfolio Resubmitted',
             'deep_link_route'   => '/personnel/evaluations/workspace',
+        ],
+        PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION => [
+            'notification_type' => self::TYPE_PORTFOLIO_ENDORSED_TO_HR,
+            'recipient_target'  => self::RECIPIENT_HR_OFFICE,
+            'title_template'    => 'Faculty Portfolio Endorsed to HR',
+            'deep_link_route'   => '/hr/evaluation-submissions',
         ],
         PersonnelWorkflowEventRegistry::EVENT_EVALUATION_FINALIZED => [
             'notification_type' => self::TYPE_EVALUATION_FINALIZED,
@@ -136,6 +143,11 @@ class PersonnelWorkflowNotificationRegistry
             case PersonnelWorkflowEventRegistry::EVENT_PORTFOLIO_RESUBMITTED:
                 $title = $config['title_template'];
                 $message = "A revised portfolio (Version {$version}) has been resubmitted by {$personnelName} for your review.";
+                break;
+
+            case PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION:
+                $title = $config['title_template'];
+                $message = "A Dean-endorsed Faculty portfolio (Version {$version}) is ready for HR finalization.";
                 break;
 
             case PersonnelWorkflowEventRegistry::EVENT_EVALUATION_FINALIZED:

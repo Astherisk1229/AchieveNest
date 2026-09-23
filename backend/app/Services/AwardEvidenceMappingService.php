@@ -220,14 +220,21 @@ class AwardEvidenceMappingService
         // 1. Campus Journalism Award
         if ($awardCode === 'CAMPUS_JOURNALISM_AWARD') {
             if ($catCode === 'CAMPUS_JOURNALISM') {
-                $pubType = strtolower((string) ($meta['publication_type'] ?? 'news'));
+                $pubType = strtolower(trim((string) ($meta['publication_type'] ?? '')));
                 $matchedComp = match ($pubType) {
                     'news', 'news item' => 'COMP_JOURN_NEWS',
                     'literary', 'literary piece' => 'COMP_JOURN_LITERARY',
                     'column', 'opinion' => 'COMP_JOURN_COLUMN',
                     'editorial' => 'COMP_JOURN_EDITORIAL',
-                    default => 'COMP_JOURN_NEWS',
+                    default => null,
                 };
+                if ($matchedComp === null) {
+                    return [
+                        'relevant' => false,
+                        'reason' => 'METADATA_UNSCORABLE',
+                        'message' => 'Publication type is missing or unknown.',
+                    ];
+                }
                 $matchedCrit = $this->findCriterionByCode($criteria, ['PUB', 'PUBLICATION', 'QUALITY']);
                 return [
                     'relevant'             => true,

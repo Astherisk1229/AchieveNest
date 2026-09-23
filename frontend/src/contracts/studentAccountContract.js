@@ -28,6 +28,9 @@ export const STUDENT_SEX_OPTIONS = [
   'Prefer not to say'
 ]
 
+/** Controlled suffix values accepted by Student provisioning. */
+export const STUDENT_SUFFIX_OPTIONS = ['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V']
+
 /** Full option objects for Sex select dropdowns with placeholder */
 export const STUDENT_SEX_SELECT_OPTIONS = [
   { value: '', label: 'Select Sex', disabled: true },

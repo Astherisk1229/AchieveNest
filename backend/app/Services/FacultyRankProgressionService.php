@@ -115,9 +115,9 @@ class FacultyRankProgressionService
         if ($personnelGroup !== 'faculty') {
             return [
                 'current_rank_code' => $currentRankCode,
-                'status' => 'INELIGIBLE',
-                'reason_code' => 'unsupported_personnel_group',
-                'message' => 'Non-teaching personnel are outside the Faculty Academic Rank progression graph.',
+                'status' => 'UNRESOLVED',
+                'reason_code' => 'rank_catalog_not_configured',
+                'message' => 'Non-Teaching Faculty follows the shared ranking process, but its authoritative rank catalog is not configured.',
                 'normal_next_rank' => null,
                 'allowed_exception_transitions' => [],
                 'all_valid_target_ranks' => [],
@@ -226,8 +226,8 @@ class FacultyRankProgressionService
         if ($personnelGroup !== 'faculty') {
             return [
                 'allowed' => false,
-                'reason_code' => 'unsupported_personnel_group',
-                'message' => 'Non-teaching personnel cannot participate in Faculty rank progression.',
+                'reason_code' => 'rank_catalog_not_configured',
+                'message' => 'Non-Teaching Faculty follows the shared ranking process, but its authoritative rank catalog is not configured.',
             ];
         }
 

@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start-achievenest-dev.ps1",
+    "dev:frontend": "vite",
     "build": "vite build",
     "lint": "oxlint",
     "test": "vitest run",

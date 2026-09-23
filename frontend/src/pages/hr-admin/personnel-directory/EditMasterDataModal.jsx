@@ -3,6 +3,7 @@ import { X, Check, ShieldCheck, Briefcase, GraduationCap, Building2, Sparkles } 
 import { validatePersonnelMasterData, validatePersonnelPlacement, isAcademicPersonnel } from '../../../utils/personnelPlacement'
 import { personnelMasterDataService } from '../../../services/personnelMasterDataService'
 import { personnelRankRecommendationService } from '../../../services/personnelRankRecommendationService'
+import { localToday, validateEmploymentStartDate } from '../../../utils/employmentDate'
 
 export default function EditMasterDataModal({
   personnel,
@@ -14,6 +15,7 @@ export default function EditMasterDataModal({
   const [form, setForm] = useState({
     facultyEngagement: 'full_time_faculty',
     employmentStatus: 'permanent',
+    employmentStartDate: '',
     positionTitle: '',
     currentRankTitle: '',
     qualificationSummary: '',
@@ -96,6 +98,7 @@ export default function EditMasterDataModal({
     setForm({
       facultyEngagement: engagement,
       employmentStatus: personnel.employment_status || 'permanent',
+      employmentStartDate: personnel.employment_start_date || '',
       positionTitle: personnel.position_title || personnel.designation || '',
       currentRankTitle: rankTitle,
       qualificationSummary: personnel.qualification_summary || '',
@@ -248,6 +251,8 @@ export default function EditMasterDataModal({
       employmentStatus: form.employmentStatus
     })
     Object.assign(nextErrors, mdValidation.errors)
+    const employmentStartDateError = validateEmploymentStartDate(form.employmentStartDate)
+    if (employmentStartDateError) nextErrors.employmentStartDate = employmentStartDateError
 
     const placementValidation = validatePersonnelPlacement({
       group: form.personnelGroup,
@@ -267,6 +272,7 @@ export default function EditMasterDataModal({
       const payload = {
         faculty_engagement: form.facultyEngagement,
         employment_status: form.employmentStatus,
+        employment_start_date: form.employmentStartDate || null,
         position_title: form.positionTitle.trim() || 'Personnel',
         current_rank_title: form.currentRankTitle.trim() || null,
         qualification_summary: form.qualificationSummary.trim() || null,
@@ -282,6 +288,15 @@ export default function EditMasterDataModal({
       const apiError = err?.response?.data?.error || err?.error || {}
       if (apiError.code === 'CATALOG_CROSSOVER_REJECTED') {
         setErrors({ currentRankTitle: apiError.message || 'Incompatible rank/title catalog.' })
+      } else if (apiError.code === 'INVALID_EMPLOYMENT_START_DATE') {
+        setErrors({ employmentStartDate: apiError.message || 'Enter a valid employment start date.' })
+      } else if (apiError.code === 'POSITION_OCCUPIED') {
+        const holder = apiError.current_holder
+        const placement = holder?.placement?.name || 'this organizational placement'
+        setErrors({
+          positionTitle: 'Choose another job title.',
+          general: `Department Secretary position is already occupied. ${holder?.name || 'Another active personnel member'} currently holds this position in ${placement}. Only one active personnel member may hold this position at a time.`
+        })
       } else if (apiError.message) {
         setErrors({ general: apiError.message })
       }
@@ -420,6 +435,20 @@ export default function EditMasterDataModal({
                 </div>
                 {errors.employmentStatus && <span className="text-xs text-rose-600 font-bold block">{errors.employmentStatus}</span>}
               </fieldset>
+
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 sm:col-span-2">
+                Employment Start Date
+                <input
+                  type="date"
+                  max={localToday()}
+                  value={form.employmentStartDate}
+                  onChange={event => update('employmentStartDate', event.target.value)}
+                  aria-invalid={Boolean(errors.employmentStartDate)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+                <span className="mt-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Official date employment at NDMU began. Leave blank only when the legacy record has not yet been verified.</span>
+                {errors.employmentStartDate && <span className="mt-1 block text-xs font-bold text-rose-600">{errors.employmentStartDate}</span>}
+              </label>
             </div>
           </section>
 
@@ -641,4 +670,3 @@ export default function EditMasterDataModal({
     </>
   )
 }
-

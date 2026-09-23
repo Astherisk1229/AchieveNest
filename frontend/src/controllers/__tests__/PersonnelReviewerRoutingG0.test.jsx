@@ -31,7 +31,20 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
-    it('routes Non-Teaching Faculty + Academic to Dean within academic college scope', () => {
+    it('routes Faculty + Non-Academic to HR', () => {
+      const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
+        personnel_group: 'faculty',
+        organizational_side: 'non_academic'
+      })
+
+      expect(route.status).toBe('resolved')
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
+      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE)
+      expect(route.target_college_id).toBeNull()
+      expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
+    })
+
+    it('routes Non-Teaching Faculty + Academic to HR', () => {
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'academic',
@@ -39,9 +52,10 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
       })
 
       expect(route.status).toBe('resolved')
-      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
-      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE)
-      expect(route.target_college_id).toBe('COLLEGE-CHS')
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
+      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE)
+      expect(route.target_college_id).toBeNull()
+      expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
     it('routes Non-Teaching Faculty + Non-Academic to HR', () => {
@@ -97,10 +111,21 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
   // 2. Unresolved & Unsupported Route Handling (No Guessed Reviewers)
   // =========================================================================
   describe('2. Unresolved Reviewer Handling', () => {
-    it('returns status unresolved for unsupported combinations without guessing', () => {
+    it('returns status unresolved for missing or unsupported combinations without guessing', () => {
+      const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
+        personnel_group: 'invalid_group',
+        organizational_side: 'non_academic'
+      })
+
+      expect(route.status).toBe('unresolved')
+      expect(route.authorized_reviewer_role).toBeNull()
+      expect(route.reason_code).toBe(ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED)
+    })
+
+    it('returns status unresolved when organizational side is missing', () => {
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'faculty',
-        organizational_side: 'non_academic' // Invalid combination
+        organizational_side: ''
       })
 
       expect(route.status).toBe('unresolved')

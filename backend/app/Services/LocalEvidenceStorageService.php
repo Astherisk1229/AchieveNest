@@ -15,6 +15,8 @@ class LocalEvidenceStorageService
         'jpg'  => ['image/jpeg'],
         'jpeg' => ['image/jpeg'],
         'png'  => ['image/png'],
+        'doc'  => ['application/msword'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
     ];
 
     public const DANGEROUS_EXTENSIONS = [
@@ -153,7 +155,7 @@ class LocalEvidenceStorageService
             return [
                 'success'       => false,
                 'error_code'    => 'UNSUPPORTED_FILE_TYPE',
-                'error_message' => 'Only PDF, JPEG, and PNG files are permitted.',
+                'error_message' => 'Only PDF, Word documents (DOC/DOCX), JPEG, and PNG files are permitted.',
             ];
         }
 

@@ -243,6 +243,66 @@ class OSADController {
         moderator_org: null,
         coordinator_program: null,
         status: 'Active'
+      },
+      {
+        id: 'usr-pers-fac-perm',
+        full_name: 'Prof. Marco Valdez',
+        employee_id: 'EMP-2026-001',
+        role: 'personnel',
+        academic_rank: 'Associate Professor',
+        college: 'CEAC',
+        college_code: 'CEAC',
+        academic_programs: ['BSCS'],
+        email: 'faculty.permanent@ndmu.edu.ph',
+        assigned_roles: ['program_coordinator'],
+        moderator_org: null,
+        coordinator_program: 'BS Computer Science',
+        status: 'Active'
+      },
+      {
+        id: 'usr-pers-fac-prob',
+        full_name: 'Engr. Roberto Cruz',
+        employee_id: 'EMP-2026-002',
+        role: 'personnel',
+        academic_rank: 'Assistant Professor',
+        college: 'CEAC',
+        college_code: 'CEAC',
+        academic_programs: ['BSCS'],
+        email: 'faculty.probationary@ndmu.edu.ph',
+        assigned_roles: [],
+        moderator_org: null,
+        coordinator_program: null,
+        status: 'Active'
+      },
+      {
+        id: 'usr-pers-ntf-acad',
+        full_name: 'Prof. Grace Tan',
+        employee_id: 'EMP-2026-003',
+        role: 'personnel',
+        academic_rank: 'Senior Lecturer',
+        college: 'CBA',
+        college_code: 'CBA',
+        academic_programs: ['BSBA'],
+        email: 'nonteaching.academic@ndmu.edu.ph',
+        assigned_roles: [],
+        moderator_org: null,
+        coordinator_program: null,
+        status: 'Active'
+      },
+      {
+        id: 'usr-pers-ntf-nonacad',
+        full_name: 'Dr. Fernando Alonzo',
+        employee_id: 'EMP-2026-004',
+        role: 'personnel',
+        academic_rank: 'Full Professor',
+        college: 'CAS',
+        college_code: 'CAS',
+        academic_programs: ['BACOM'],
+        email: 'nonteaching.nonacademic@ndmu.edu.ph',
+        assigned_roles: [],
+        moderator_org: null,
+        coordinator_program: null,
+        status: 'Active'
       }
     ]
 

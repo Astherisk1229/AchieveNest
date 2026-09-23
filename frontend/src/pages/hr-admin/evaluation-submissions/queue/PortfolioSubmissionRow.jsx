@@ -55,7 +55,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
           <div className="flex items-center justify-end gap-1 text-[11px] font-bold">
             {isReady ? (
               <span className="text-[#176B43] dark:text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Ready for Final Evaluation
+                <CheckCircle2 className="w-3.5 h-3.5" /> Ready for HR Finalization
               </span>
             ) : (
               <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">

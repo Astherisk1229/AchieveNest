@@ -256,7 +256,7 @@ export default function OneTimeCredentialModal({
               type="button"
               variant="default"
               onClick={onRequestClose}
-              className="rounded-xl px-6 font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="rounded-xl px-6 font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
             >
               Done
             </Button>
@@ -266,11 +266,15 @@ export default function OneTimeCredentialModal({
 
       {/* Discard Confirmation Dialog */}
       <ConfirmDialog
+        open={isConfirmDiscardOpen}
         isOpen={isConfirmDiscardOpen}
         title="Discard Temporary Credential?"
         message="Have you securely saved or delivered these credentials? Closing this window permanently removes the displayed temporary password. It cannot be viewed again."
+        confirmLabel="Close and remove credentials"
         confirmText="Close and remove credentials"
+        cancelLabel="Continue viewing credentials"
         cancelText="Continue viewing credentials"
+        tone="warning"
         type="warning"
         onConfirm={onConfirmDiscard}
         onCancel={onCancelDiscard}

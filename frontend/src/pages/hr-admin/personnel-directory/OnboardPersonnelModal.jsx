@@ -6,6 +6,7 @@ import OneTimeCredentialModal from '../../../components/credentials/OneTimeCrede
 import CredentialDeliveryFaultModal from '../../../components/credentials/CredentialDeliveryFaultModal'
 import { personnelMasterDataService } from '../../../services/personnelMasterDataService'
 import { personnelRankRecommendationService } from '../../../services/personnelRankRecommendationService'
+import { localToday, validateEmploymentStartDate } from '../../../utils/employmentDate'
 
 export default function OnboardPersonnelModal({
   isOpen,
@@ -26,6 +27,7 @@ export default function OnboardPersonnelModal({
     qualificationSummary: '',
     facultyEngagement: 'full_time_faculty',
     employmentStatus: 'permanent',
+    employmentStartDate: '',
     personnelGroup: 'faculty',
     organizationalSide: 'academic',
     collegeId: '',
@@ -225,17 +227,10 @@ export default function OnboardPersonnelModal({
   }
 
   const setPersonnelGroup = (group) => {
-    setForm(current => {
-      const nextSide = (group === 'faculty') ? 'academic' : current.organizationalSide
-      return {
-        ...current,
-        personnelGroup: group,
-        organizationalSide: nextSide,
-        collegeId: nextSide === 'academic' ? current.collegeId : '',
-        academicProgramIds: nextSide === 'academic' ? current.academicProgramIds : [],
-        administrativeUnitId: nextSide === 'non_academic' ? current.administrativeUnitId : ''
-      }
-    })
+    setForm(current => ({
+      ...current,
+      personnelGroup: group
+    }))
   }
 
   const setOrganizationalSide = (side) => {
@@ -266,10 +261,32 @@ export default function OnboardPersonnelModal({
   const submit = async event => {
     event.preventDefault()
     const nextErrors = {}
-    if (!form.institutionalId.trim()) nextErrors.institutionalId = 'Institutional ID is required.'
-    if (!form.email.trim().toLowerCase().endsWith('@ndmu.edu.ph')) nextErrors.email = 'Use an @ndmu.edu.ph email.'
-    if (!form.firstName.trim()) nextErrors.firstName = 'First name is required.'
-    if (!form.lastName.trim()) nextErrors.lastName = 'Last name is required.'
+    const trimmedId = form.institutionalId.trim()
+    const trimmedEmail = form.email.trim().toLowerCase()
+    const trimmedFirstName = form.firstName.trim()
+    const trimmedLastName = form.lastName.trim()
+
+    if (!trimmedId) {
+      nextErrors.institutionalId = 'Institutional ID is required.'
+    } else if (!/^\d{1,50}$/.test(trimmedId)) {
+      nextErrors.institutionalId = 'Institutional ID must contain digits only (maximum 50).'
+    }
+
+    if (!trimmedEmail) {
+      nextErrors.email = 'Institutional email is required.'
+    } else {
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@ndmu\.edu\.ph$/
+      if (!emailPattern.test(trimmedEmail)) {
+        nextErrors.email = 'Use an @ndmu.edu.ph institutional email.'
+      }
+    }
+
+    const namePattern = /^[\p{L}\p{M}]+(?:[ .'-][\p{L}\p{M}]+)*\.?$/u
+    if (!trimmedFirstName) nextErrors.firstName = 'First name is required.'
+    else if (!namePattern.test(trimmedFirstName)) nextErrors.firstName = 'Use letters, spaces, hyphens, apostrophes, or periods only.'
+    if (!trimmedLastName) nextErrors.lastName = 'Last name is required.'
+    else if (!namePattern.test(trimmedLastName)) nextErrors.lastName = 'Use letters, spaces, hyphens, apostrophes, or periods only.'
+    if (form.middleName.trim() && !namePattern.test(form.middleName.trim())) nextErrors.middleName = 'Use letters, spaces, hyphens, apostrophes, or periods only.'
 
     const mergedOptions = {
       colleges: effectiveColleges,
@@ -293,17 +310,19 @@ export default function OnboardPersonnelModal({
       employmentStatus: form.employmentStatus
     })
     Object.assign(nextErrors, masterDataValidation.errors)
+    const employmentStartDateError = validateEmploymentStartDate(form.employmentStartDate, { required: true })
+    if (employmentStartDateError) nextErrors.employmentStartDate = employmentStartDateError
 
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
     setSubmitting(true)
     try {
       const res = await onSubmit({
-        institutional_id: form.institutionalId.trim(),
-        institutional_email: form.email.trim().toLowerCase(),
-        first_name: form.firstName.trim(),
+        institutional_id: trimmedId,
+        institutional_email: trimmedEmail,
+        first_name: trimmedFirstName,
         middle_name: form.middleName.trim() || null,
-        last_name: form.lastName.trim(),
+        last_name: trimmedLastName,
         suffix: form.suffix.trim() || null,
         designation: form.designation.trim() || form.positionTitle.trim() || 'Personnel',
         position_title: form.positionTitle.trim() || form.designation.trim() || 'Personnel',
@@ -311,12 +330,13 @@ export default function OnboardPersonnelModal({
         qualification_summary: form.qualificationSummary.trim() || null,
         faculty_engagement: form.facultyEngagement,
         employment_status: form.employmentStatus,
+        employment_start_date: form.employmentStartDate,
         personnel_group: form.personnelGroup,
         organizational_side: form.organizationalSide,
         personnel_classification: form.organizationalSide,
         college_id: form.organizationalSide === 'academic' ? form.collegeId : null,
         academic_program_ids: form.organizationalSide === 'academic' ? form.academicProgramIds : [],
-        administrative_unit_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null
+        department_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null
       })
 
       if (res && (res.data || res.temporary_password)) {
@@ -325,19 +345,45 @@ export default function OnboardPersonnelModal({
         onClose()
       }
     } catch (error) {
-      const apiError = error?.response?.data?.error || error?.error || {}
-      if (apiError.code === 'EMAIL_ALREADY_EXISTS') setErrors({ email: 'An account with this email already exists.' })
-      else if (apiError.code === 'INSTITUTIONAL_ID_ALREADY_EXISTS') setErrors({ institutionalId: 'An account with this institutional ID already exists.' })
-      else if (apiError.code === 'INVALID_PERSONNEL_CLASSIFICATION') setErrors({ classificationPair: apiError.message || 'Invalid classification combination.' })
-      else if (apiError.code === 'INVALID_FACULTY_ENGAGEMENT') setErrors({ facultyEngagement: apiError.message || 'Invalid faculty engagement.' })
-      else if (apiError.code === 'INVALID_EMPLOYMENT_STATUS') setErrors({ employmentStatus: apiError.message || 'Invalid employment status.' })
-      else if (apiError.code === 'CATALOG_CROSSOVER_REJECTED') setErrors({ currentRankTitle: apiError.message || 'Incompatible rank/title catalog.' })
-      else if (apiError.code === 'VALIDATION_FAILED') {
-        setErrors({
-          ...(apiError.fields?.institutional_email ? { email: apiError.fields.institutional_email } : {}),
-          ...(apiError.fields?.institutional_id ? { institutionalId: apiError.fields.institutional_id } : {})
-        })
-      } else throw error
+      const apiError = error?.response?.data?.error || error?.error || error || {}
+      const mappedErrors = {}
+
+      if (apiError.code === 'EMAIL_ALREADY_EXISTS') {
+        mappedErrors.email = 'This institutional email is already reserved by an account.'
+      } else if (apiError.code === 'INSTITUTIONAL_ID_ALREADY_EXISTS') {
+        mappedErrors.institutionalId = 'This Institutional ID is already assigned to an account.'
+      } else if (apiError.code === 'MISSING_ACADEMIC_AFFILIATION') {
+        mappedErrors.collegeId = 'Academic Personnel require a college and at least one program.'
+        mappedErrors.academicProgramIds = 'Select at least one academic program.'
+      } else if (apiError.code === 'INVALID_PROGRAM_AFFILIATION') {
+        mappedErrors.academicProgramIds = 'Every Academic Program must belong to the selected College.'
+      } else if (['MISSING_DEPARTMENT', 'INVALID_DEPARTMENT', 'MISSING_ADMINISTRATIVE_UNIT', 'INVALID_ADMINISTRATIVE_UNIT'].includes(apiError.code)) {
+        mappedErrors.administrativeUnitId = apiError.message || 'Select an active Department.'
+      } else if (apiError.code === 'INVALID_PERSONNEL_CLASSIFICATION') {
+        mappedErrors.classificationPair = apiError.message || 'Invalid classification combination.'
+      } else if (apiError.code === 'INVALID_FACULTY_ENGAGEMENT') {
+        mappedErrors.facultyEngagement = apiError.message || 'Invalid faculty engagement.'
+      } else if (apiError.code === 'INVALID_EMPLOYMENT_STATUS') {
+        mappedErrors.employmentStatus = apiError.message || 'Invalid employment status.'
+      } else if (apiError.code === 'INVALID_EMPLOYMENT_START_DATE') {
+        mappedErrors.employmentStartDate = apiError.message || 'Enter a valid employment start date.'
+      } else if (apiError.code === 'CATALOG_CROSSOVER_REJECTED') {
+        mappedErrors.currentRankTitle = apiError.message || 'Incompatible rank/title catalog.'
+      } else if (apiError.code === 'POSITION_OCCUPIED') {
+        const holder = apiError.current_holder
+        const placement = holder?.placement?.name || 'this organizational placement'
+        mappedErrors.positionTitle = 'Choose another job title.'
+        mappedErrors.general = `Department Secretary position is already occupied. ${holder?.name || 'Another active personnel member'} currently holds this position in ${placement}. Only one active personnel member may hold this position at a time.`
+      } else if (apiError.code === 'VALIDATION_FAILED' && apiError.fields) {
+        if (apiError.fields.institutional_email) mappedErrors.email = apiError.fields.institutional_email
+        if (apiError.fields.institutional_id) mappedErrors.institutionalId = apiError.fields.institutional_id
+        if (apiError.fields.name) mappedErrors.firstName = apiError.fields.name
+        if (apiError.fields.employment_start_date) mappedErrors.employmentStartDate = apiError.fields.employment_start_date
+      } else {
+        mappedErrors.general = apiError.message || error?.message || 'Personnel account was not created. Please retry or contact the system administrator.'
+      }
+
+      setErrors(mappedErrors)
     } finally {
       setSubmitting(false)
     }
@@ -350,14 +396,20 @@ export default function OnboardPersonnelModal({
         type={type}
         value={form[key]}
         placeholder={placeholder}
-        onChange={e => update(key, e.target.value)}
+        onChange={e => {
+          const value = key === 'institutionalId' ? e.target.value.replace(/\D/g, '').slice(0, 50) : e.target.value
+          update(key, value)
+          if (errors[key]) setErrors(prev => ({ ...prev, [key]: null }))
+        }}
+        inputMode={key === 'institutionalId' ? 'numeric' : undefined}
+        maxLength={key === 'institutionalId' ? 50 : key.toLowerCase().includes('name') ? 100 : 255}
+        aria-invalid={Boolean(errors[key])}
+        aria-describedby={errors[key] ? `${key}-error` : undefined}
         className="mt-1 w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900"
       />
-      {errors[key] && <span className="text-rose-600 block mt-0.5">{errors[key]}</span>}
+      {errors[key] && <span id={`${key}-error`} role="alert" className="text-rose-600 block mt-0.5">{errors[key]}</span>}
     </label>
   )
-
-  const isFaculty = form.personnelGroup === 'faculty'
 
   return (
     <>
@@ -380,6 +432,12 @@ export default function OnboardPersonnelModal({
             </button>
           </header>
 
+          {errors.general && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+              {errors.general}
+            </div>
+          )}
+
           {masterData.error && (
             <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
               {masterData.error}
@@ -392,7 +450,7 @@ export default function OnboardPersonnelModal({
               <span>A. Account Information</span>
             </h3>
             <div className="grid sm:grid-cols-2 gap-3">
-              {field('Institutional ID', 'institutionalId', 'text', 'e.g. 2026-0042')}
+              {field('Institutional ID', 'institutionalId', 'text', 'e.g. 20260042')}
               {field('Institutional Email', 'email', 'email', 'username@ndmu.edu.ph')}
               {field('First Name', 'firstName')}
               {field('Middle Name', 'middleName')}
@@ -436,12 +494,11 @@ export default function OnboardPersonnelModal({
                     <input type="radio" name="organizationalSide" checked={form.organizationalSide === 'academic'} onChange={() => setOrganizationalSide('academic')} />
                     <span>Academic</span>
                   </label>
-                  <label className={`text-xs font-semibold flex items-center gap-1.5 ${isFaculty ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-                    <input type="radio" name="organizationalSide" disabled={isFaculty} checked={form.organizationalSide === 'non_academic'} onChange={() => setOrganizationalSide('non_academic')} />
+                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="organizationalSide" checked={form.organizationalSide === 'non_academic'} onChange={() => setOrganizationalSide('non_academic')} />
                     <span>Non-Academic</span>
                   </label>
                 </div>
-                {isFaculty && <p className="text-[10px] text-slate-400 italic">Faculty members are strictly on the Academic side.</p>}
               </fieldset>
             </div>
             {errors.classificationPair && <span className="text-xs text-rose-600 font-bold block">{errors.classificationPair}</span>}
@@ -501,6 +558,21 @@ export default function OnboardPersonnelModal({
                 </div>
                 {errors.employmentStatus && <span className="text-xs text-rose-600 font-bold block">{errors.employmentStatus}</span>}
               </fieldset>
+
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 sm:col-span-2">
+                Employment Start Date <span className="text-rose-600" aria-hidden="true">*</span>
+                <input
+                  type="date"
+                  required
+                  max={localToday()}
+                  value={form.employmentStartDate}
+                  onChange={event => update('employmentStartDate', event.target.value)}
+                  aria-invalid={Boolean(errors.employmentStartDate)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-medium text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                />
+                <span className="mt-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Official date employment at NDMU began.</span>
+                {errors.employmentStartDate && <span className="mt-1 block text-xs font-bold text-rose-600">{errors.employmentStartDate}</span>}
+              </label>
             </div>
           </section>
 

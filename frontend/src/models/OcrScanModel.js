@@ -180,7 +180,7 @@ export default class OcrScanModel {
     
     // Ensure helper handles both plain strings and structured objects
     const resolveField = (key, fallbackSource = 'ocr') => {
-      const item = rawF[key]
+      const item = rawF.fieldMetadata?.[key] || rawF[key]
       if (item && typeof item === 'object' && 'value' in item) {
         return OcrScanModel.createFieldEntry(item.value, item.confidence, item.source || fallbackSource, item.evidenceText)
       }
@@ -194,6 +194,7 @@ export default class OcrScanModel {
     const scopeLevelField = resolveField('scopeLevel')
     const specificRoleField = resolveField('specificRole')
     const degreeLevelField = resolveField('degreeLevel')
+    const unitsCompletedField = resolveField('unitsCompleted')
     const pubTypeField = resolveField('pubType')
     const awardTypeField = resolveField('awardType')
     const matTypeField = resolveField('matType')
@@ -231,6 +232,7 @@ export default class OcrScanModel {
         scopeLevel: scopeLevelField,
         role: specificRoleField,
         degreeLevel: degreeLevelField,
+        unitsCompleted: unitsCompletedField,
         pubType: pubTypeField,
         awardType: awardTypeField,
         matType: matTypeField,
@@ -247,6 +249,7 @@ export default class OcrScanModel {
         scopeLevel: scopeLevelField.value,
         specificRole: specificRoleField.value,
         degreeLevel: degreeLevelField.value,
+        unitsCompleted: unitsCompletedField.value,
         pubType: pubTypeField.value,
         awardType: awardTypeField.value,
         matType: matTypeField.value,

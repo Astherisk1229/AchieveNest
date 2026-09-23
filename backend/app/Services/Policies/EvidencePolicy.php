@@ -84,7 +84,7 @@ class EvidencePolicy
                 ->getRowArray();
 
             if ($record !== null) {
-                return in_array($record['status'] ?? 'draft', ['draft', 'revisions_requested'], true);
+                return in_array($record['status'] ?? 'draft', ['draft', 'revision_requested'], true);
             }
         }
 

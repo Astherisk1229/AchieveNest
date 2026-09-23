@@ -10,6 +10,7 @@ export default function PersonnelSelectorModal({
   targetName = '',
   personnelList = [],
   onSelectPersonnel,
+  onSelect,
   roleType = 'coordinator' // 'coordinator' | 'moderator'
 }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -30,18 +31,18 @@ export default function PersonnelSelectorModal({
 
   if (!isOpen) return null
 
-  const cleanQuery = searchQuery.toLowerCase().trim().replace(/-/g, '')
+  const cleanQuery = String(searchQuery || '').toLowerCase().trim().replace(/-/g, '')
 
   const filteredList = personnelList.filter(p => {
-    if (!searchQuery.trim()) return true
-    const cleanEmpId = (p.employee_id || '').toLowerCase().replace(/-/g, '')
+    if (!cleanQuery) return true
+    const cleanEmpId = String(p.employee_id || '').toLowerCase().replace(/-/g, '')
     return (
-      p.full_name.toLowerCase().includes(cleanQuery) ||
+      String(p.full_name || '').toLowerCase().includes(cleanQuery) ||
       cleanEmpId.includes(cleanQuery) ||
-      (p.college && p.college.toLowerCase().includes(cleanQuery)) ||
-      (p.college_code && p.college_code.toLowerCase().includes(cleanQuery)) ||
-      (p.administrative_unit && p.administrative_unit.toLowerCase().includes(cleanQuery)) ||
-      (p.email && p.email.toLowerCase().includes(cleanQuery))
+      (p.college && String(p.college).toLowerCase().includes(cleanQuery)) ||
+      (p.college_code && String(p.college_code).toLowerCase().includes(cleanQuery)) ||
+      (p.administrative_unit && String(p.administrative_unit).toLowerCase().includes(cleanQuery)) ||
+      (p.email && String(p.email).toLowerCase().includes(cleanQuery))
     )
   })
 
@@ -107,7 +108,7 @@ export default function PersonnelSelectorModal({
               </div>
             ) : (
               filteredList.map(person => {
-                const cleanEmpId = (person.employee_id || 'EMP7491').replace(/-/g, '')
+                const cleanEmpId = String(person.employee_id || 'EMP7491').replace(/-/g, '')
                 const isCurrentlyAssigned = 
                   roleType === 'coordinator' ? person.coordinator_program === targetName :
                   person.moderator_org === targetName
@@ -146,7 +147,10 @@ export default function PersonnelSelectorModal({
                       size="sm"
                       disabled={isCurrentlyAssigned}
                       onClick={() => {
-                        onSelectPersonnel(person)
+                        const selectHandler = onSelectPersonnel || onSelect
+                        if (typeof selectHandler === 'function') {
+                          selectHandler(person)
+                        }
                         handleCloseModal()
                       }}
                       variant={isCurrentlyAssigned ? 'secondary' : 'default'}

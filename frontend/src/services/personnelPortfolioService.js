@@ -13,7 +13,7 @@ import apiClient from './apiClient'
  * @returns {Promise<Object>} { data: { submission_id, status, submitted_at, total_items } }
  */
 export async function submitPortfolio(payload = {}) {
-  const res = await apiClient.post('/personnel/portfolio/submit', payload)
+  const res = await apiClient.post('/personnel/portfolio/submit', payload, { headers: { 'Idempotency-Key': crypto.randomUUID() } })
   return res?.data || res
 }
 
@@ -25,6 +25,10 @@ export async function submitPortfolio(payload = {}) {
 export async function getLatestSubmission() {
   const res = await apiClient.get('/personnel/portfolio/submission/latest')
   return res?.data || res
+}
+export async function getCurrentEligibility(evaluationCycleId) {
+  const res = await apiClient.get('/personnel/eligibility/current', { params: evaluationCycleId ? { evaluation_cycle_id: evaluationCycleId } : {} })
+  return res?.data?.data || res?.data || res
 }
 
 /**
@@ -46,7 +50,7 @@ export async function returnPortfolioForRevision(evaluationId, payload = {}) {
  * @returns {Promise<Object>} { data: { submission_id, version_number, status, submitted_at, total_items } }
  */
 export async function resubmitPortfolio(payload = {}) {
-  const res = await apiClient.post('/personnel/portfolio/submissions/resubmit', payload)
+  const res = await apiClient.post('/personnel/portfolio/submissions/resubmit', payload, { headers: { 'Idempotency-Key': crypto.randomUUID() } })
   return res?.data || res
 }
 
@@ -80,6 +84,7 @@ export const personnelPortfolioService = {
   getSubmissionHistory,
   returnPortfolioForRevision,
   purgePortfolio
+  , getCurrentEligibility
 }
 
 export default personnelPortfolioService

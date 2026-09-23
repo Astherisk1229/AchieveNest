@@ -30,6 +30,7 @@ describe('roleContext utility & navigation registry', () => {
     it('normalizes legacy aliases to canonical identifiers', () => {
       expect(normalizeRoleContext('faculty')).toBe(CANONICAL_ROLES.PERSONNEL)
       expect(normalizeRoleContext('dean')).toBe(CANONICAL_ROLES.DEAN)
+      expect(normalizeRoleContext('department_head')).toBe(CANONICAL_ROLES.DEPARTMENT_HEAD)
       expect(normalizeRoleContext('dep_sec')).toBe(CANONICAL_ROLES.DEAN)
       expect(normalizeRoleContext('department_secretary')).toBe(CANONICAL_ROLES.DEAN)
       expect(normalizeRoleContext('org_moderator')).toBe(CANONICAL_ROLES.ORGANIZATION_MODERATOR)
@@ -44,7 +45,7 @@ describe('roleContext utility & navigation registry', () => {
     it('returns valid roles for each account type', () => {
       expect(getValidRolesForAccountType('student')).toEqual(['student'])
       expect(getValidRolesForAccountType('personnel')).toEqual([
-        'personnel', 'dean', 'program_coordinator', 'organization_moderator'
+        'personnel', 'department_head', 'dean', 'program_coordinator', 'organization_moderator'
       ])
       expect(getValidRolesForAccountType('hr_admin')).toEqual(['hr_staff'])
       expect(getValidRolesForAccountType('osad_admin')).toEqual(['osad_staff'])
@@ -57,6 +58,7 @@ describe('roleContext utility & navigation registry', () => {
       expect(isValidAccountRoleCombination('student', 'student')).toBe(true)
       expect(isValidAccountRoleCombination('personnel', 'personnel')).toBe(true)
       expect(isValidAccountRoleCombination('personnel', 'dean')).toBe(true)
+      expect(isValidAccountRoleCombination('personnel', 'department_head')).toBe(true)
       expect(isValidAccountRoleCombination('personnel', 'program_coordinator')).toBe(true)
 
       // Invalid combinations (Defense against privilege crossover)
@@ -121,10 +123,10 @@ describe('roleContext utility & navigation registry', () => {
       expect(labels).toEqual([
         'HR Dashboard',
         'Personnel Directory',
-        'Evaluation Submissions',
-        'HR Audit Trail',
-        'Rank Assignment Logs',
-        'Password Resets'
+        'Organizational Structure',
+        'Ranking Cycles',
+        'Password Resets',
+        'HR Audit Trail'
       ])
       expect(labels).not.toContain('Personnel Dashboard')
       expect(labels).not.toContain('Dashboard Overview')
@@ -178,6 +180,17 @@ describe('roleContext utility & navigation registry', () => {
       expect(labels).toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Account'])
       expect(labels).not.toContain('Verification Workspace')
       expect(labels).not.toContain('HR Dashboard')
+    })
+
+    it('keeps personal capabilities in Department Head context', () => {
+      const headSession = {
+        account_type: 'personnel',
+        active_role_context: 'department_head',
+        assigned_roles: ['personnel', 'department_head'],
+        role_assignments: [{ role_key: 'department_head', scope_type: 'department', scope_id: 'department-1' }]
+      }
+      expect(getAuthorizedNavigationForSession(headSession).map(item => item.label))
+        .toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Account'])
     })
 
     it('returns ONLY operational links for program_coordinator', () => {

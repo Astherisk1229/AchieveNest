@@ -110,9 +110,11 @@ export default class PersonnelPortfolioModel {
       category: itemData.category || '',
       title: itemData.title || '',
       scope_level: itemData.scope_level || 'Local',
-      claimed_points: Number(itemData.claimed_points) || 0,
-      verified_points: Number(itemData.verified_points) || Number(itemData.claimed_points) || 0,
-      proof_file_name: itemData.proof_file_name || 'document_proof.pdf',
+      proof_file_name: itemData.proof_file_name || '',
+      evidence_id: itemData.evidence_id || itemData.primary_evidence?.id || null,
+      evidence: Array.isArray(itemData.evidence) ? itemData.evidence : [],
+      primary_evidence: itemData.primary_evidence || null,
+      has_valid_evidence: Boolean(itemData.has_valid_evidence),
       is_proof_verified: Boolean(itemData.is_proof_verified) || false,
       remarks: itemData.remarks || ''
     }

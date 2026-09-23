@@ -11,6 +11,7 @@ class AwardPolicy
     public function canRunAwardEvaluation(array $actor): bool
     {
         return ($actor['profile']['account_type'] ?? '') === 'osad_admin' &&
+               ($actor['profile']['status'] ?? '') === 'active' &&
                in_array('osad_staff', $actor['roles'] ?? [], true);
     }
 
@@ -25,26 +26,16 @@ class AwardPolicy
     }
 
     /**
-     * Determines whether an actor can view student award evaluations.
+     * Determines whether an actor can access sensitive OSAD award-evaluation data.
+     *
+     * Candidate records, evidence, scoring bases, review workspaces, and results
+     * are administrative OSAD data. Student self-access and Dean access belong to
+     * separate, purpose-built workflows and must not implicitly authorize these
+     * OSAD endpoints.
      */
     public function canViewAwardEvaluation(array $actor, ?string $targetStudentId = null): bool
     {
-        $actorId = (string) ($actor['profile']['id'] ?? '');
-        $roles = (array) ($actor['roles'] ?? []);
-
-        // 1. Student can view own evaluations
-        if ($targetStudentId !== null && $actorId === $targetStudentId) {
-            return true;
-        }
-
-        // 2. OSAD staff has full university-wide view
-        if (in_array('osad_staff', $roles, true)) {
-            return true;
-        }
-
-        // 3. Active Dean can view award candidate evaluations
-        $deanCollegeIds = $this->getDeanCollegeIds($actor);
-        return ! empty($deanCollegeIds);
+        return $this->canRunAwardEvaluation($actor);
     }
 
     protected function getDeanCollegeIds(array $actor): array

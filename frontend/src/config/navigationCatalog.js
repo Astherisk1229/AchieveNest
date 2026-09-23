@@ -23,10 +23,25 @@ import {
   User,
   GraduationCap,
   Trophy,
+  ListTree,
   FileSpreadsheet,
-  KeyRound
+  KeyRound,
+  BriefcaseBusiness,
+  HeartHandshake
 } from 'lucide-react'
 import { CANONICAL_ROLES, CANONICAL_ACCOUNT_TYPES } from '../utils/roleContext'
+import { DEAN_ROUTES } from './deanRoutes'
+
+export const WORKSPACE_NAVIGATION = Object.freeze({
+  [CANONICAL_ROLES.STUDENT]: { label: 'Student Portal', icon: GraduationCap },
+  [CANONICAL_ROLES.PERSONNEL]: { label: 'Personnel Portal', icon: User },
+  [CANONICAL_ROLES.PROGRAM_COORDINATOR]: { label: 'Program Coordinator', icon: BriefcaseBusiness },
+  [CANONICAL_ROLES.ORGANIZATION_MODERATOR]: { label: 'Organization Moderator', icon: HeartHandshake },
+  [CANONICAL_ROLES.DEAN]: { label: 'Dean Portal', icon: Building2 },
+  [CANONICAL_ROLES.DEPARTMENT_HEAD]: { label: 'Department Head', icon: Building2 },
+  [CANONICAL_ROLES.HR_STAFF]: { label: 'HR Portal', icon: Users, showOnboardingGuide: true },
+  [CANONICAL_ROLES.OSAD_STAFF]: { label: 'OSAD Portal', icon: ShieldCheck, showOnboardingGuide: true }
+})
 
 export const NAVIGATION_CATALOG = [
   // ==========================================
@@ -84,7 +99,7 @@ export const NAVIGATION_CATALOG = [
     tab: 'overview',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
+    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
     requiredPermissions: ['portfolio.personal.read']
   },
   {
@@ -94,7 +109,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/portfolio/edit',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
+    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
     requiredPermissions: ['portfolio.personal.update']
   },
   {
@@ -102,6 +117,16 @@ export const NAVIGATION_CATALOG = [
     label: 'Portfolio',
     icon: BookOpen,
     path: '/personnel/portfolio',
+    portal: 'personnel',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
+    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
+    requiredPermissions: ['portfolio.personal.read']
+  },
+  {
+    id: 'personnel-rank-placement',
+    label: 'Rank & Placement',
+    icon: ListTree,
+    path: '/personnel/rank-placement',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
@@ -114,7 +139,7 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/account',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
+    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
     requiredPermissions: ['personnel.account.manage']
   },
 
@@ -221,9 +246,18 @@ export const NAVIGATION_CATALOG = [
     id: 'dean-dashboard-overview',
     label: 'Dean Dashboard',
     icon: Home,
-    path: '/personnel/dashboard?tab=overview',
-    tab: 'overview',
-    portal: 'personnel',
+    path: DEAN_ROUTES.DASHBOARD,
+    portal: 'dean',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
+    requiredActiveContexts: [CANONICAL_ROLES.DEAN],
+    requiredPermissions: ['college.faculty.review']
+  },
+  {
+    id: 'dean-annual-review-eligibility',
+    label: 'Annual Review & Eligibility',
+    icon: ShieldCheck,
+    path: DEAN_ROUTES.ANNUAL_REVIEW_ELIGIBILITY,
+    portal: 'dean',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEAN],
     requiredPermissions: ['college.faculty.review']
@@ -232,20 +266,18 @@ export const NAVIGATION_CATALOG = [
     id: 'dean-review-workspace',
     label: 'Faculty Ranking Reviews',
     icon: FileCheck2,
-    path: '/personnel/dashboard?tab=workspace',
-    tab: 'workspace',
-    portal: 'personnel',
+    path: DEAN_ROUTES.FACULTY_RANKING_REVIEWS,
+    portal: 'dean',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEAN],
     requiredPermissions: ['college.faculty.review']
   },
   {
     id: 'dean-faculty-roster',
-    label: 'College Faculty Roster',
+    label: 'College Personnel Roster',
     icon: Users,
-    path: '/personnel/dashboard?tab=personnel',
-    tab: 'personnel',
-    portal: 'personnel',
+    path: DEAN_ROUTES.COLLEGE_PERSONNEL,
+    portal: 'dean',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEAN],
     requiredPermissions: ['college.faculty.review']
@@ -276,30 +308,20 @@ export const NAVIGATION_CATALOG = [
     requiredPermissions: ['hr.personnel.manage']
   },
   {
-    id: 'hr-evaluation-submissions',
-    label: 'Evaluation Submissions',
-    icon: FolderKanban,
-    path: '/hr/evaluation-submissions',
+    id: 'hr-organizational-structure',
+    label: 'Organizational Structure',
+    icon: Building2,
+    path: '/hr/organizational-structure',
     portal: 'hr',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
-    requiredPermissions: ['hr.evaluation.manage']
+    requiredPermissions: ['hr.personnel.manage']
   },
   {
-    id: 'hr-audit-trail',
-    label: 'HR Audit Trail',
-    icon: ShieldCheck,
-    path: '/hr/audit-trail',
-    portal: 'hr',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
-    requiredPermissions: ['hr.evaluation.manage']
-  },
-  {
-    id: 'hr-rank-assignment-logs',
-    label: 'Rank Assignment Logs',
-    icon: FileCheck2,
-    path: '/hr/rank-assignment-logs',
+    id: 'hr-ranking-cycles',
+    label: 'Ranking Cycles',
+    icon: Calendar,
+    path: '/hr/ranking-cycles',
     portal: 'hr',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
@@ -314,6 +336,16 @@ export const NAVIGATION_CATALOG = [
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.personnel.manage']
+  },
+  {
+    id: 'hr-audit-trail',
+    label: 'HR Audit Trail',
+    icon: ShieldCheck,
+    path: '/hr/audit-trail',
+    portal: 'hr',
+    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
+    requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
+    requiredPermissions: ['hr.evaluation.manage']
   },
 
   // ==========================================
@@ -388,7 +420,7 @@ export const NAVIGATION_CATALOG = [
     id: 'osad-award-categories',
     label: 'Awards & Scoring Criteria',
     icon: Award,
-    path: '/osad/dashboard?tab=awards',
+    path: '/osad/awards',
     tab: 'awards',
     portal: 'osad',
     workflowFamily: 'evaluation',

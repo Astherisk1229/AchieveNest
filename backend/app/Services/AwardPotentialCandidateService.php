@@ -22,8 +22,6 @@ class AwardPotentialCandidateService
     protected AwardScoringService $scoringService;
     protected AwardReviewService $reviewService;
 
-    public const UNIVERSAL_THRESHOLD_PERCENT = 80.00;
-
     public function __construct(
         $db = null,
         ?AwardEligibilityService $eligibilityService = null,
@@ -41,13 +39,17 @@ class AwardPotentialCandidateService
     /**
      * Evaluates and classifies a student for an award against the 80% threshold.
      */
-    public function evaluatePotentialCandidate(array $award, array $student, ?array $evaluation = null): array
+    public function evaluatePotentialCandidate(array $award, array $student, ?array $evaluation = null, ?string $cycleId = null): array
     {
         $reasons = [];
+        $cycleId = $this->resolveEvaluationCycleId($cycleId, $evaluation);
 
         // 1. Award Precondition Validation
         if (empty($award['id']) || ($award['status'] ?? 'active') !== 'active') {
             return $this->buildErrorResult($award, $student, 'AWARD_INACTIVE', 'Award is not active or missing.', $reasons);
+        }
+        if (strtoupper(trim((string) ($award['authority_status'] ?? ''))) === 'PROPOSED') {
+            return $this->buildErrorResult($award, $student, 'AWARD_AUTHORITY_PENDING', 'Proposed rubrics are unavailable for authoritative candidate generation.', $reasons);
         }
 
         // 2. Eligibility & Relevant Evidence Preconditions
@@ -58,7 +60,7 @@ class AwardPotentialCandidateService
         }
 
         // 3. Load or Verify Evaluation State (Phase 6 Review Status)
-        $evaluationRecord = $evaluation ?? $this->loadEvaluationRecord($award['id'], $student['id']);
+        $evaluationRecord = $evaluation ?? $this->loadEvaluationRecord($award['id'], $student['id'], $cycleId);
         $reviewStatus = $evaluationRecord['status'] ?? 'pending';
         $isEvaluated = in_array(strtolower($reviewStatus), ['completed', 'evaluated'], true);
 
@@ -108,9 +110,11 @@ class AwardPotentialCandidateService
         $potentialScore = round($unroundedPercentage, 4); // Full backend numeric precision
         $displayScore = round($unroundedPercentage, 2);
 
-        $thresholdPercent = (float)($award['candidate_threshold_percent'] ?? self::UNIVERSAL_THRESHOLD_PERCENT);
-        if ($thresholdPercent <= 0.0) {
-            $thresholdPercent = self::UNIVERSAL_THRESHOLD_PERCENT;
+        $thresholdPercent = $this->resolveThreshold($award);
+        if ($thresholdPercent === null) {
+            return $this->buildErrorResult($award, $student, 'THRESHOLD_CONFIGURATION_ERROR', 'Candidate threshold is missing or invalid.', [
+                ['code' => 'THRESHOLD_CONFIGURATION_ERROR', 'message' => 'A numeric threshold from 0 through 100 is required.'],
+            ]);
         }
 
         // 6. Universal 80% Threshold Evaluation (Inclusive >= 80.00%)
@@ -129,7 +133,7 @@ class AwardPotentialCandidateService
             ];
         }
 
-        $result = [
+        $result = AwardApiContractService::score([
             'award_id'                    => $award['id'],
             'award_code'                  => $award['code'],
             'award_name'                  => $award['name'],
@@ -149,8 +153,9 @@ class AwardPotentialCandidateService
             'qualified'                   => $isQualified,
             'scoring_version'             => $award['scoring_version'] ?? 'v1.0',
             'classified_at'               => date('Y-m-d H:i:s'),
+            'cycle_id'                    => $cycleId,
             'reasons'                     => $reasons
-        ];
+        ], $award);
 
         // 7. Persist Candidate Classification to DB
         $this->persistCandidateClassification($result);
@@ -161,20 +166,20 @@ class AwardPotentialCandidateService
     /**
      * Evaluates potential candidate by award ID and student ID.
      */
-    public function evaluatePotentialCandidateByIds(string $awardId, string $studentId): array
+    public function evaluatePotentialCandidateByIds(string $awardId, string $studentId, ?string $cycleId = null): array
     {
         $award = $this->loadAwardById($awardId);
         $student = $this->loadStudentById($studentId);
 
-        return $this->evaluatePotentialCandidate($award, $student);
+        return $this->evaluatePotentialCandidate($award, $student, null, $cycleId);
     }
 
     /**
      * Recalculates candidate status from current master portfolio scores.
      */
-    public function recalculatePotentialCandidateStatus(string $awardId, string $studentId): array
+    public function recalculatePotentialCandidateStatus(string $awardId, string $studentId, ?string $cycleId = null): array
     {
-        return $this->evaluatePotentialCandidateByIds($awardId, $studentId);
+        return $this->evaluatePotentialCandidateByIds($awardId, $studentId, $cycleId);
     }
 
     /**
@@ -182,19 +187,23 @@ class AwardPotentialCandidateService
      * Ordered by Portfolio Potential Score DESC, Student Name ASC for presentation.
      * Guaranteed: No Top-N cutoff, no winner declaration.
      */
-    public function getPotentialCandidatesForAward(string $awardId): array
+    public function getPotentialCandidatesForAward(string $awardId, ?string $cycleId = null): array
     {
         $award = $this->loadAwardById($awardId);
-        $threshold = (float)($award['candidate_threshold_percent'] ?? self::UNIVERSAL_THRESHOLD_PERCENT);
+        $threshold = $this->resolveThreshold($award);
+        if ($threshold === null) {
+            throw new RuntimeException('Candidate threshold is missing or invalid.');
+        }
 
-        $evaluations = $this->loadEvaluationsForAward($awardId, ['completed', 'evaluated']);
+        $cycleId = $this->resolveEvaluationCycleId($cycleId);
+        $evaluations = $this->loadEvaluationsForAward($awardId, $cycleId, ['completed', 'evaluated']);
         $candidates = [];
 
         foreach ($evaluations as $eval) {
             $student = $this->loadStudentById($eval['student_profile_id']);
             if (!$student) continue;
 
-            $classification = $this->evaluatePotentialCandidate($award, $student, $eval);
+            $classification = $this->evaluatePotentialCandidate($award, $student, $eval, $cycleId);
 
             if ($classification['candidate_status'] === 'POTENTIAL_CANDIDATE' && $classification['qualified']) {
                 $candidates[] = $classification;
@@ -210,14 +219,7 @@ class AwardPotentialCandidateService
         });
 
         return [
-            'award'                        => [
-                'id'                          => $award['id'],
-                'code'                        => $award['code'],
-                'name'                        => $award['name'],
-                'candidate_threshold_percent' => $threshold,
-                'portfolio_max'               => (float)($award['portfolio_max'] ?? 50.0),
-                'scoring_version'             => $award['scoring_version'] ?? 'v1.0'
-            ],
+            'award'                        => AwardApiContractService::award($award),
             'total_potential_candidates'  => count($candidates),
             'potential_candidates'        => $candidates
         ];
@@ -226,19 +228,23 @@ class AwardPotentialCandidateService
     /**
      * Retrieves all evaluated results (both Potential Candidates and Below Threshold) for transparency.
      */
-    public function getEvaluatedResultsForAward(string $awardId): array
+    public function getEvaluatedResultsForAward(string $awardId, ?string $cycleId = null): array
     {
         $award = $this->loadAwardById($awardId);
-        $threshold = (float)($award['candidate_threshold_percent'] ?? self::UNIVERSAL_THRESHOLD_PERCENT);
+        $threshold = $this->resolveThreshold($award);
+        if ($threshold === null) {
+            throw new RuntimeException('Candidate threshold is missing or invalid.');
+        }
 
-        $evaluations = $this->loadEvaluationsForAward($awardId, ['completed', 'evaluated']);
+        $cycleId = $this->resolveEvaluationCycleId($cycleId);
+        $evaluations = $this->loadEvaluationsForAward($awardId, $cycleId, ['completed', 'evaluated']);
         $results = [];
 
         foreach ($evaluations as $eval) {
             $student = $this->loadStudentById($eval['student_profile_id']);
             if (!$student) continue;
 
-            $classification = $this->evaluatePotentialCandidate($award, $student, $eval);
+            $classification = $this->evaluatePotentialCandidate($award, $student, $eval, $cycleId);
             $results[] = $classification;
         }
 
@@ -250,12 +256,7 @@ class AwardPotentialCandidateService
         });
 
         return [
-            'award'                        => [
-                'id'                          => $award['id'],
-                'code'                        => $award['code'],
-                'name'                        => $award['name'],
-                'candidate_threshold_percent' => $threshold
-            ],
+            'award'                        => AwardApiContractService::award($award),
             'total_evaluated'             => count($results),
             'evaluated_results'           => $results
         ];
@@ -299,13 +300,14 @@ class AwardPotentialCandidateService
     /**
      * Invalidates candidate classification when evaluation is reopened or modified.
      */
-    public function invalidateCandidateClassification(string $awardId, string $studentId): void
+    public function invalidateCandidateClassification(string $awardId, string $studentId, string $cycleId): void
     {
         $now = date('Y-m-d H:i:s');
         if (method_exists($this->db, 'table')) {
             $this->db->table('student_award_evaluations')
                 ->where('award_definition_id', $awardId)
                 ->where('student_profile_id', $studentId)
+                ->where('cycle_id', $cycleId)
                 ->update([
                     'candidate_status'        => 'STALE',
                     'qualifies_portfolio_based' => 0,
@@ -314,7 +316,8 @@ class AwardPotentialCandidateService
         } elseif ($this->db instanceof \mysqli) {
             $eAward = $this->db->real_escape_string($awardId);
             $eStudent = $this->db->real_escape_string($studentId);
-            $this->db->query("UPDATE student_award_evaluations SET candidate_status = 'STALE', qualifies_portfolio_based = 0, updated_at = '{$now}' WHERE award_definition_id = '{$eAward}' AND student_profile_id = '{$eStudent}'");
+            $eCycle = $this->db->real_escape_string($cycleId);
+            $this->db->query("UPDATE student_award_evaluations SET candidate_status = 'STALE', qualifies_portfolio_based = 0, updated_at = '{$now}' WHERE award_definition_id = '{$eAward}' AND student_profile_id = '{$eStudent}' AND cycle_id = '{$eCycle}'");
         }
     }
 
@@ -335,6 +338,7 @@ class AwardPotentialCandidateService
             $existing = $this->db->table('student_award_evaluations')
                 ->where('award_definition_id', $result['award_id'])
                 ->where('student_profile_id', $result['student_id'])
+                ->where('cycle_id', $result['cycle_id'])
                 ->get()->getRowArray();
 
             if ($existing) {
@@ -353,6 +357,7 @@ class AwardPotentialCandidateService
         } elseif ($this->db instanceof \mysqli) {
             $eAward = $this->db->real_escape_string($result['award_id']);
             $eStudent = $this->db->real_escape_string($result['student_id']);
+            $eCycle = $this->db->real_escape_string($result['cycle_id']);
             $this->db->query("UPDATE student_award_evaluations SET 
                 raw_score = {$rawScore},
                 max_computable_score = {$maxScore},
@@ -361,7 +366,7 @@ class AwardPotentialCandidateService
                 candidate_status = '{$candidateStatus}',
                 candidate_classified_at = '{$now}',
                 updated_at = '{$now}'
-                WHERE award_definition_id = '{$eAward}' AND student_profile_id = '{$eStudent}'");
+                WHERE award_definition_id = '{$eAward}' AND student_profile_id = '{$eStudent}' AND cycle_id = '{$eCycle}'");
         }
     }
 
@@ -395,33 +400,37 @@ class AwardPotentialCandidateService
         return null;
     }
 
-    protected function loadEvaluationRecord(string $awardId, string $studentId): ?array
+    protected function loadEvaluationRecord(string $awardId, string $studentId, string $cycleId): ?array
     {
         if (method_exists($this->db, 'table')) {
             return $this->db->table('student_award_evaluations')
                 ->where('award_definition_id', $awardId)
                 ->where('student_profile_id', $studentId)
+                ->where('cycle_id', $cycleId)
                 ->get()->getRowArray();
         } elseif ($this->db instanceof \mysqli) {
             $eAward = $this->db->real_escape_string($awardId);
             $eStudent = $this->db->real_escape_string($studentId);
-            $res = $this->db->query("SELECT * FROM student_award_evaluations WHERE award_definition_id = '{$eAward}' AND student_profile_id = '{$eStudent}' LIMIT 1");
+            $eCycle = $this->db->real_escape_string($cycleId);
+            $res = $this->db->query("SELECT * FROM student_award_evaluations WHERE award_definition_id = '{$eAward}' AND student_profile_id = '{$eStudent}' AND cycle_id = '{$eCycle}' LIMIT 1");
             return $res ? $res->fetch_assoc() : null;
         }
         return null;
     }
 
-    protected function loadEvaluationsForAward(string $awardId, array $statuses): array
+    protected function loadEvaluationsForAward(string $awardId, string $cycleId, array $statuses): array
     {
         if (method_exists($this->db, 'table')) {
             return $this->db->table('student_award_evaluations')
                 ->where('award_definition_id', $awardId)
+                ->where('cycle_id', $cycleId)
                 ->whereIn('status', $statuses)
                 ->get()->getResultArray();
         } elseif ($this->db instanceof \mysqli) {
             $eAward = $this->db->real_escape_string($awardId);
+            $eCycle = $this->db->real_escape_string($cycleId);
             $quotedStatuses = "'" . implode("','", array_map([$this->db, 'real_escape_string'], $statuses)) . "'";
-            $res = $this->db->query("SELECT * FROM student_award_evaluations WHERE award_definition_id = '{$eAward}' AND status IN ({$quotedStatuses})");
+            $res = $this->db->query("SELECT * FROM student_award_evaluations WHERE award_definition_id = '{$eAward}' AND cycle_id = '{$eCycle}' AND status IN ({$quotedStatuses})");
             $rows = [];
             if ($res) {
                 while ($r = $res->fetch_assoc()) {
@@ -435,7 +444,7 @@ class AwardPotentialCandidateService
 
     protected function buildErrorResult(array $award, array $student, string $code, string $message, array $reasons): array
     {
-        return [
+        return AwardApiContractService::score([
             'award_id'                    => $award['id'] ?? null,
             'award_code'                  => $award['code'] ?? null,
             'award_name'                  => $award['name'] ?? null,
@@ -446,12 +455,22 @@ class AwardPotentialCandidateService
             'raw_portfolio_score'         => 0.0,
             'computable_max_score'        => (float)($award['portfolio_max'] ?? 0.0),
             'portfolio_potential_score'   => 0.0,
-            'candidate_threshold_percent' => (float)($award['candidate_threshold_percent'] ?? self::UNIVERSAL_THRESHOLD_PERCENT),
+            'candidate_threshold_percent' => $this->resolveThreshold($award),
             'candidate_status'            => 'NOT_CLASSIFIED',
             'qualified'                   => false,
             'error_code'                  => $code,
             'error_message'               => $message,
             'reasons'                     => !empty($reasons) ? $reasons : [['code' => $code, 'message' => $message]]
-        ];
+        ], $award);
+    }
+
+    protected function resolveThreshold(array $award): ?float
+    {
+        $value = $award['candidate_threshold_percent'] ?? null;
+        if (! is_numeric($value)) {
+            return null;
+        }
+        $threshold = (float) $value;
+        return $threshold >= 0.0 && $threshold <= 100.0 ? $threshold : null;
     }
 }

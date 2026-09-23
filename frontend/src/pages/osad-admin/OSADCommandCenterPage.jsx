@@ -5,15 +5,8 @@ import PotentialAwardCandidatesPreview from '../../components/osad/PotentialAwar
 
 export default function OSADCommandCenterPage({
   setSearchParams,
-  awardees = [],
-  candidateDecisions = [],
-  currentUser,
-  metrics,
-  awardCategories = [],
-  getUsers
+  metrics
 }) {
-  const usersList = typeof getUsers === 'function' ? (getUsers('student', '') || []) : []
-
   return (
     <div className="space-y-5 animate-in fade-in duration-200 font-sans">
       {/* Derived Operational Header & Summary KPIs */}
@@ -23,13 +16,7 @@ export default function OSADCommandCenterPage({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Potential Award Candidates Preview */}
         <div className="lg:col-span-7">
-          <PotentialAwardCandidatesPreview
-            awardCategories={awardCategories}
-            users={usersList}
-            awardees={awardees}
-            candidateDecisions={candidateDecisions}
-            onViewAll={() => setSearchParams({ tab: 'candidate-review' })}
-          />
+          <PotentialAwardCandidatesPreview onViewAll={() => setSearchParams({ tab: 'awards-criteria' })} />
         </div>
 
         {/* Right Column: Achievement Distribution by College */}

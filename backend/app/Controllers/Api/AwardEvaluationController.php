@@ -9,6 +9,7 @@ use App\Services\AwardEvidenceMappingService;
 use App\Services\AwardScoringService;
 use App\Services\AwardReviewService;
 use App\Services\AwardPotentialCandidateService;
+use App\Services\AwardApiContractService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use InvalidArgumentException;
@@ -55,6 +56,21 @@ class AwardEvaluationController extends Controller
         return $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
     }
 
+    protected function awardEvaluationForbidden(array $actor, ?string $studentId = null): bool
+    {
+        return ! $this->authz->award()->canViewAwardEvaluation($actor, $studentId);
+    }
+
+    protected function forbiddenAwardEvaluationResponse(): mixed
+    {
+        return $this->respond([
+            'error' => [
+                'code' => 'FORBIDDEN',
+                'message' => 'Active OSAD administrator authorization required.',
+            ],
+        ], 403);
+    }
+
     private function genUuid(): string
     {
         return sprintf(
@@ -86,24 +102,90 @@ class AwardEvaluationController extends Controller
             ->get()->getResultArray();
 
         foreach ($awards as &$award) {
+            $version = $db->table('award_scoring_model_versions')
+                ->where('award_definition_id', $award['id'])
+                ->where('status', 'published')
+                ->orderBy('version_number', 'DESC')
+                ->get()->getRowArray();
             $criteria = $db->table('award_criteria')
                 ->where('award_definition_id', $award['id'])
                 ->orderBy('sort_order', 'ASC')
                 ->get()->getResultArray();
 
+            $computableMaximum = 0.0;
+
             foreach ($criteria as &$crit) {
-                $crit['components'] = $db->table('award_criterion_components')
+                $rules = $db->table('award_scoring_rules')->where('criterion_id', $crit['id'])->where('is_active', 1)->orderBy('sort_order', 'ASC')->get()->getResultArray();
+                $rulesByComponent = [];
+                foreach ($rules as $rule) {
+                    if (! empty($rule['criterion_component_id'])) {
+                        $rulesByComponent[$rule['criterion_component_id']] = $rule;
+                    }
+                }
+                $components = $db->table('award_criterion_components')
                     ->where('criterion_id', $crit['id'])
                     ->orderBy('sort_order', 'ASC')
                     ->get()->getResultArray();
+                $crit['components'] = array_map(
+                    static fn(array $component): array => AwardApiContractService::criterionComponent($component, $rulesByComponent[$component['id']] ?? null),
+                    $components
+                );
+                $criterionRule = count($rules) === 1 ? $rules[0] : null;
+                $crit = AwardApiContractService::criterion(array_merge($crit, $criterionRule ?? []));
+                if (! $crit['human_only']) {
+                    $computableMaximum += (float) ($crit['max_points'] ?? 0.0);
+                }
             }
             unset($crit);
 
             $award['criteria'] = $criteria;
+            $award['human_only_criteria'] = array_values(array_filter($criteria, static fn(array $criterion): bool => $criterion['human_only']));
+            $award['computable_max_score'] = $computableMaximum;
+            $award = AwardApiContractService::award($award, $version);
         }
         unset($award);
 
         return $this->respond(['data' => ['awards' => $awards]], 200);
+    }
+
+    public function showAward(string $awardId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        $db = db_connect();
+        $award = $db->table('award_definitions')->where('id', $awardId)->where('status', 'active')->get()->getRowArray();
+        if ($award === null) {
+            return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Award not found.']], 404);
+        }
+        $version = $db->table('award_scoring_model_versions')->where('award_definition_id', $awardId)->where('status', 'published')->orderBy('version_number', 'DESC')->get()->getRowArray();
+        $criteria = $db->table('award_criteria')->where('award_definition_id', $awardId)->orderBy('sort_order', 'ASC')->get()->getResultArray();
+        $computableMaximum = 0.0;
+        foreach ($criteria as &$criterion) {
+            $rules = $db->table('award_scoring_rules')->where('criterion_id', $criterion['id'])->where('is_active', 1)->orderBy('sort_order', 'ASC')->get()->getResultArray();
+            $rulesByComponent = [];
+            foreach ($rules as $rule) {
+                if (! empty($rule['criterion_component_id'])) {
+                    $rulesByComponent[$rule['criterion_component_id']] = $rule;
+                }
+            }
+            $components = $db->table('award_criterion_components')->where('criterion_id', $criterion['id'])->orderBy('sort_order', 'ASC')->get()->getResultArray();
+            $criterion['components'] = array_map(
+                static fn(array $component): array => AwardApiContractService::criterionComponent($component, $rulesByComponent[$component['id']] ?? null),
+                $components
+            );
+            $criterionRule = count($rules) === 1 ? $rules[0] : null;
+            $criterion = AwardApiContractService::criterion(array_merge($criterion, $criterionRule ?? []));
+            if (! $criterion['human_only']) {
+                $computableMaximum += (float) ($criterion['max_points'] ?? 0.0);
+            }
+        }
+        unset($criterion);
+        $award['criteria'] = $criteria;
+        $award['human_only_criteria'] = array_values(array_filter($criteria, static fn(array $criterion): bool => $criterion['human_only']));
+        $award['computable_max_score'] = $computableMaximum;
+        return $this->respond(['data' => AwardApiContractService::award($award, $version)], 200);
     }
 
     /**
@@ -165,10 +247,7 @@ class AwardEvaluationController extends Controller
      */
     protected function isAuthorizedThresholdActor(array $actor): bool
     {
-        $accountType = $actor['profile']['account_type'] ?? '';
-        $status = $actor['profile']['status'] ?? '';
-        $roles = (array) ($actor['roles'] ?? []);
-        return $accountType === 'osad_admin' && $status === 'active' && in_array('osad_staff', $roles, true);
+        return $this->authz->award()->canRunAwardEvaluation($actor);
     }
 
     /**
@@ -292,6 +371,7 @@ class AwardEvaluationController extends Controller
                 'c.code AS college_code',
                 'c.name AS college_name',
                 'sae.raw_score',
+                'sae.max_computable_score',
                 'sae.potential_score',
                 'sae.outcome',
                 'sae.verified_evidence_count',
@@ -362,7 +442,7 @@ class AwardEvaluationController extends Controller
         $candidates = [];
 
         foreach ($evaluations as $e) {
-            $candidates[] = [
+            $candidate = [
                 'candidate_id'              => 'eval-' . $e['evaluation_id'],
                 'student_profile_id'        => $e['student_profile_id'],
                 'student_name'              => $e['student_name'],
@@ -386,11 +466,22 @@ class AwardEvaluationController extends Controller
                 'raw_score'                 => (float) $e['raw_score'],
                 'potential_score'           => (float) $e['potential_score'],
                 'verified_evidence_count'   => (int) $e['verified_evidence_count'],
-                'is_candidate'              => (float) $e['potential_score'] >= (float) ($e['candidate_threshold_percent'] ?? 80.0),
+                'is_candidate'              => is_numeric($e['candidate_threshold_percent'] ?? null)
+                    ? (float) $e['potential_score'] >= (float) $e['candidate_threshold_percent']
+                    : false,
                 'outcome'                   => $e['outcome'],
                 'evaluated_at'              => $e['evaluated_at'],
                 'nominated_at'              => null,
             ];
+            $candidates[] = array_merge($candidate, AwardApiContractService::score([
+                'raw_score' => $e['raw_score'],
+                'max_computable_score' => $e['max_computable_score'],
+                'potential_score' => $e['potential_score'],
+                'candidate_threshold_percent' => $e['candidate_threshold_percent'],
+                'candidate_status' => $candidate['is_candidate'] ? 'POTENTIAL_CANDIDATE' : 'BELOW_THRESHOLD',
+                'qualification_basis' => 'PORTFOLIO_THRESHOLD',
+                'scoring_status' => 'VALID',
+            ]));
         }
 
         foreach ($nominations as $n) {
@@ -454,7 +545,7 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'AWARD_CYCLE_REQUIRED', 'message' => 'A valid Award Cycle is required.']], 422);
         }
         $evaluation = $db->table('student_award_evaluations sae')
-            ->select(['sae.*', 'ad.name AS award_name', 'ad.code AS award_code', 'p.full_name AS student_name', 'p.institutional_id AS student_id_number'])
+            ->select(['sae.*', 'ad.name AS award_name', 'ad.code AS award_code', 'ad.candidate_threshold_percent', 'ad.authority_status', 'ad.source_fidelity_status', 'p.full_name AS student_name', 'p.institutional_id AS student_id_number'])
             ->join('award_definitions ad', 'ad.id = sae.award_definition_id')
             ->join('profiles p', 'p.id = sae.student_profile_id')
             ->where('sae.award_definition_id', $awardId)
@@ -482,10 +573,27 @@ class AwardEvaluationController extends Controller
         }
         unset($cs);
 
+        $criteriaContract = array_map(static function (array $criterion): array {
+            $normalized = AwardApiContractService::criterion([
+                'criterion_id' => $criterion['criterion_id'],
+                'criterion_code' => $criterion['criterion_code'],
+                'criterion_name' => $criterion['criterion_name'],
+                'max_points' => $criterion['criterion_max_points'],
+                'rule_type' => ($criterion['scoring_snapshot'] ?? null) !== null ? (json_decode($criterion['scoring_snapshot'], true)['rule_type'] ?? null) : null,
+            ]);
+            $normalized['achieved_points'] = isset($criterion['awarded_points']) ? (float) $criterion['awarded_points'] : null;
+            $normalized['calculation_text'] = $normalized['aggregation_mode'] !== null ? 'Calculated using ' . $normalized['aggregation_mode'] . '.' : null;
+            $normalized['verified_record_count'] = count($criterion['evidence_items']);
+            $normalized['evidence_ids'] = array_values(array_filter(array_column($criterion['evidence_items'], 'portfolio_record_id')));
+            return array_merge($criterion, $normalized);
+        }, $criterionScores);
+        $scoreContract = AwardApiContractService::score($evaluation, $evaluation);
+
         return $this->respond([
             'data' => [
-                'evaluation' => $evaluation,
-                'criteria'   => $criterionScores,
+                'evaluation' => array_merge($evaluation, $scoreContract),
+                'criteria'   => $criteriaContract,
+                'human_only_criteria' => [],
             ],
         ], 200);
     }
@@ -559,6 +667,10 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $scoringService = new \App\Services\CampusJournalismScoringService();
             $payload = $scoringService->calculateForStudent($studentId);
@@ -579,6 +691,11 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
 
         try {
@@ -629,6 +746,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $result = $this->eligibilityService->evaluateStudentEligibilityByIds($awardId, $studentId);
             return $this->respond(['data' => $result], 200);
@@ -647,6 +769,11 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
 
         try {
@@ -673,6 +800,11 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
 
         try {
@@ -706,6 +838,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $db = db_connect();
             $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
@@ -719,7 +856,7 @@ class AwardEvaluationController extends Controller
             }
 
             $result = $this->scoringService->scoreStudentForAward($award, $student);
-            return $this->respond(['data' => $result], 200);
+            return $this->respond(['data' => AwardApiContractService::score($result, $award)], 200);
         } catch (Throwable $e) {
             log_message('error', '[AwardEvaluationController::scoreStudentAward] ' . $e->getMessage());
             return $this->respond(['error' => ['code' => 'SCORING_CALCULATION_FAILED', 'message' => 'Failed to calculate award score for student.']], 500);
@@ -737,6 +874,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $db = db_connect();
             $award = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
@@ -750,7 +892,7 @@ class AwardEvaluationController extends Controller
             }
 
             $result = $this->scoringService->scoreStudentForAward($award, $student);
-            return $this->respond(['data' => $result], 200);
+            return $this->respond(['data' => AwardApiContractService::score($result, $award)], 200);
         } catch (Throwable $e) {
             log_message('error', '[AwardEvaluationController::studentScoringBasis] ' . $e->getMessage());
             return $this->respond(['error' => ['code' => 'SCORING_BASIS_FAILED', 'message' => 'Failed to retrieve scoring basis.']], 500);
@@ -766,6 +908,11 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
 
         try {
@@ -786,6 +933,11 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
 
         $payload = $this->request->getJSON(true) ?? [];
@@ -822,6 +974,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         $payload = $this->request->getJSON(true) ?? [];
         $manualScores = $payload['manual_scores'] ?? $payload['scores'] ?? [];
         $notes = $payload['notes'] ?? null;
@@ -855,6 +1012,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile_id'] ?? null);
             return $this->respond([
@@ -882,6 +1044,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $result = $this->candidateService->evaluatePotentialCandidateByIds($awardId, $studentId);
             return $this->respond(['data' => $result], 200);
@@ -902,6 +1069,11 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+
+        if ($this->awardEvaluationForbidden($actor, $studentId)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
 
         try {
@@ -926,6 +1098,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $result = $this->candidateService->getPotentialCandidatesForAward($awardId);
             return $this->respond(['data' => $result], 200);
@@ -948,6 +1125,11 @@ class AwardEvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
+
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
         try {
             $result = $this->candidateService->getEvaluatedResultsForAward($awardId);
             return $this->respond(['data' => $result], 200);
@@ -959,6 +1141,3 @@ class AwardEvaluationController extends Controller
         }
     }
 }
-
-
-

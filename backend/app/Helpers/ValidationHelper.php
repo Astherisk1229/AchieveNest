@@ -91,7 +91,7 @@ class ValidationHelper
             return null;
         }
         $clean = trim($id);
-        return $clean !== '' && strlen($clean) <= $maximum ? $clean : null;
+        return preg_match('/^[0-9]{1,' . $maximum . '}$/D', $clean) === 1 ? $clean : null;
     }
 
     public static function validateStudentYearLevel(mixed $value, ?array $allowedYearLevels = null): bool
@@ -253,7 +253,8 @@ class ValidationHelper
         }
         return strlen($clean) >= 1
             && strlen($clean) <= self::MAX_NAME_LENGTH
-            && preg_match('/[\x00-\x1F\x7F\p{Cf}]/u', $clean) !== 1;
+            && preg_match('/[\x00-\x1F\x7F\p{Cf}]/u', $clean) !== 1
+            && preg_match("/^[\\p{L}\\p{M}]+(?:[ .'-][\\p{L}\\p{M}]+)*\\.?$/u", $clean) === 1;
     }
 
     public const TEMP_UPPERCASE = 'ABCDEFGHJKLMNPQRSTUVWXYZ';

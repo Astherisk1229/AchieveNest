@@ -281,11 +281,15 @@ class LocalDefenseAuthSeeder extends Seeder
             // Personnel profile & affiliations
             if (in_array($actor['account_type'], ['personnel', 'hr_admin', 'osad_admin'], true)) {
                 $existingPp = $db->table('personnel_profiles')->where('profile_id', $actor['id'])->get()->getRowArray();
+                $isAcad = ($actor['personnel_type'] ?? '') === 'academic';
                 if ($existingPp === null) {
                     $db->table('personnel_profiles')->insert([
                         'profile_id'               => $actor['id'],
+                        'personnel_group'          => $isAcad ? 'faculty' : 'non_teaching_faculty',
+                        'organizational_side'      => $isAcad ? 'academic' : 'non_academic',
                         'personnel_classification' => $actor['personnel_type'] ?? 'academic',
-                        'employment_status'        => 'full_time',
+                        'employment_status'        => 'permanent',
+                        'faculty_engagement'       => $isAcad ? 'full_time_faculty' : null,
                     ]);
                 }
 

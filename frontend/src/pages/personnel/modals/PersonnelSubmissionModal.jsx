@@ -26,11 +26,10 @@ import {
 import RankingCriteriaModel from '../../../models/RankingCriteriaModel.js'
 import SecurityController from '../../../controllers/SecurityController.js'
 import OcrScanController from '../../../controllers/OcrScanController.js'
-import AchievementClassificationService from '../../../services/achievementClassificationService.js'
 import PersonnelAchievementController from '../../../controllers/PersonnelAchievementController.js'
 
 // Helper component for required field labels (Clean Auto-filled badge when OCR populated)
-const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited }) => {
+const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfidence = null }) => {
   const isFilled = value !== undefined && value !== null && String(value).trim() !== ''
   return (
     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
@@ -38,7 +37,7 @@ const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited }) => {
         <span>{label}</span>
         {isOcrAutoFilled && !isManuallyEdited && (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200" title="Auto-filled from certificate text via AchieveNest OCR Engine">
-            Auto-filled
+            Auto-filled{ocrConfidence !== null ? ` • ${ocrConfidence}%` : ''}
           </span>
         )}
         {isManuallyEdited && isFilled && (
@@ -169,6 +168,25 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
     markFieldEdited('dateAchieved')
   }
 
+  const handleCategoryChange = (nextCategory) => {
+    setCategory(nextCategory)
+    markFieldEdited('category')
+    if (!ocrResult?.rawText || !nextCategory.startsWith('A.1')) return
+    const remapped = OcrScanController.extractFieldsFromText(ocrResult.rawText, ocrResult.rawLines, nextCategory)
+    const metadata = remapped.fieldMetadata || {}
+    if (!manuallyEdited.degreeTitle && (metadata.title?.confidence || 0) >= 85) setDegreeTitle(remapped.title)
+    if (!manuallyEdited.institution && (metadata.issuer?.confidence || 0) >= 85) setInstitution(remapped.issuer)
+    if (!manuallyEdited.degreeLevel && (metadata.degreeLevel?.confidence || 0) >= 85) setDegreeLevel(remapped.degreeLevel)
+    if (!manuallyEdited.unitsCompleted && remapped.unitsCompleted) setUnitsCompleted(remapped.unitsCompleted)
+    setOcrBadges(prev => ({
+      ...prev,
+      degreeTitle: !manuallyEdited.degreeTitle && (metadata.title?.confidence || 0) >= 85,
+      institution: !manuallyEdited.institution && (metadata.issuer?.confidence || 0) >= 85,
+      degreeLevel: !manuallyEdited.degreeLevel && (metadata.degreeLevel?.confidence || 0) >= 85,
+      unitsCompleted: !manuallyEdited.unitsCompleted && Boolean(remapped.unitsCompleted)
+    }))
+  }
+
   // Perform Intelligent Document Scan & Auto-Fill
   const performOcrScan = async (fileToScan) => {
     if (!fileToScan) return
@@ -202,9 +220,10 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         const catToApply = (!manuallyEdited.category && res.detectedCategory) ? res.detectedCategory : category
 
         if (catToApply.startsWith('A.1')) {
-          if (fields.title && !manuallyEdited.degreeTitle) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
-          if (fields.issuer && !manuallyEdited.institution) { setInstitution(fields.issuer); newBadges.institution = true }
-          if (fields.degreeLevel && !manuallyEdited.degreeLevel) { setDegreeLevel(fields.degreeLevel); newBadges.degreeLevel = true }
+          if (fields.title && (res.fields.title.confidence || 0) >= 85 && !manuallyEdited.degreeTitle) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
+          if (fields.issuer && (res.fields.issuer.confidence || 0) >= 85 && !manuallyEdited.institution) { setInstitution(fields.issuer); newBadges.institution = true }
+          if (fields.degreeLevel && (res.fields.degreeLevel.confidence || 0) >= 85 && !manuallyEdited.degreeLevel) { setDegreeLevel(fields.degreeLevel); newBadges.degreeLevel = true }
+          if (fields.unitsCompleted && (res.fields.unitsCompleted.confidence || 0) >= 85 && !manuallyEdited.unitsCompleted) { setUnitsCompleted(fields.unitsCompleted); newBadges.unitsCompleted = true }
         } else if (catToApply.startsWith('A.2')) {
           if (fields.title && !manuallyEdited.orgName) { setOrgName(fields.title); newBadges.orgName = true }
           if (fields.issuer && !manuallyEdited.officeHeld) { setOfficeHeld(fields.issuer); newBadges.officeHeld = true }
@@ -256,26 +275,14 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
   if (!isOpen) return null
 
-  // Advisory Classification & Suggested Points derived from Canonical Plan F Rules
-  const advisoryClassification = AchievementClassificationService.classifyAchievement({
-    category,
-    degreeLevel,
-    unitsCompleted,
-    orgPosition,
-    scopeLevel,
-    speakerRole,
-    pubType,
-    fundingStatus,
-    awardType,
-    matType,
-    subType
-  }, ocrResult)
-
-  const estimatedPts = advisoryClassification.suggestedPoints !== null && !isNaN(advisoryClassification.suggestedPoints)
-    ? advisoryClassification.suggestedPoints
-    : 0
-
   const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, degreeLevel || subType || pubType)
+  const ocrFieldSummary = Object.values(ocrResult?.fields || {}).reduce((summary, field) => {
+    const confidence = Number(field?.confidence || 0)
+    if (field?.value && confidence >= 85) summary.autoFilled += 1
+    else if (field?.value && confidence >= 60) summary.needsReview += 1
+    else summary.manual += 1
+    return summary
+  }, { autoFilled: 0, needsReview: 0, manual: 0 })
 
   // Enhanced Security File Upload & Automatic OCR Trigger
   const handleFileChange = async (e) => {
@@ -347,20 +354,20 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         academic_year: academicYear || inferAcademicYear(dateAchieved),
         category: category,
         scope_level: scopeLevel,
-        claimed_points: estimatedPts,
-        advisory_classification: {
-          suggested_category: advisoryClassification.suggestedCategory,
-          suggested_subcategory: advisoryClassification.suggestedSubcategory,
-          criterion_code: advisoryClassification.criterionCode,
-          suggested_points: advisoryClassification.suggestedPoints,
-          is_advisory: true,
-          is_ambiguous: advisoryClassification.isAmbiguous,
-          matched_reason: advisoryClassification.matchedReason,
-          rule_reference: advisoryClassification.ruleReference
+        category_metadata: {
+          degree_level: degreeLevel || null,
+          units_completed: unitsCompleted || null,
+          organization_position: orgPosition || null,
+          speaker_role: speakerRole || null,
+          publication_type: pubType || null,
+          research_role: researchRole || null,
+          funding_status: fundingStatus || null,
+          award_type: awardType || null,
+          material_type: matType || null,
+          service_subtype: subType || null
         },
         status: 'Pending Review',
         description: description.trim(),
-        attached_file_name: attachedFile ? attachedFile.name : (editingItem?.attached_file_name || 'proof_document.pdf'),
         ocr_metadata: ocrResult ? {
           extracted_category: ocrResult.detectedCategory,
           confidence_score: ocrResult.confidenceScore,
@@ -425,7 +432,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
           </div>
         )}
 
-        {/* Advisory Duplicate Warning Banner (Non-blocking) */}
+        {/* Duplicate Warning Banner (Non-blocking) */}
         {(() => {
           const { title: curTitle, issuer: curIssuer } = getNormalizedTitleAndIssuer()
           const dup = PersonnelAchievementController.checkDuplicateWarning(
@@ -436,7 +443,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             return (
               <div className="mx-5 mt-4 p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2.5 shrink-0 animate-in fade-in duration-150">
                 <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                <span><strong>Advisory:</strong> {dup.warningMessage}</span>
+                <span><strong>Possible duplicate:</strong> {dup.warningMessage}</span>
               </div>
             )
           }
@@ -462,21 +469,28 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         )}
 
         {ocrResult && !isScanning && (
-          <div className="mx-5 mt-4 p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-[#064e2b] text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150">
+          <div className={`mx-5 mt-4 p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150 ${ocrResult.documentQuality?.label === 'failed' ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-emerald-50/90 border-emerald-300 text-[#064e2b]'}`}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-700 text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-slate-900">OCR Scan Completed</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-[#064e2b] text-[10px] font-extrabold border border-emerald-400/60">
-                    {ocrResult.confidenceScore}% Confidence Match
+                  <span className="font-extrabold text-slate-900">{ocrResult.documentQuality?.label === 'failed' ? 'Manual entry required' : 'OCR scan completed'}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${ocrResult.documentQuality?.label === 'failed' ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-200 text-[#064e2b] border-emerald-400/60'}`}>
+                    Document quality: {ocrResult.documentQuality?.label || 'review'}
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-800 mt-0.5">
-                  Suggested Category: <strong className="text-emerald-950">{ocrResult.detectedCategory || 'Manual Selection Required'}</strong> • You can freely edit or clear any field.
+                  {ocrResult.documentQuality?.label === 'failed'
+                    ? 'OCR could not reliably read this document. Upload a clearer file or continue manually.'
+                    : <>Suggested Category: <strong className="text-emerald-950">{ocrResult.detectedCategory || 'Manual Selection Required'}</strong> • Category confidence: {ocrResult.confidenceScore}%</>}
                 </p>
+                {ocrResult.documentQuality?.label !== 'failed' && (
+                  <p className="text-[10px] text-emerald-900 mt-1 tabular-nums">
+                    Auto-filled: {ocrFieldSummary.autoFilled} • Needs review: {ocrFieldSummary.needsReview} • Manual: {ocrFieldSummary.manual}
+                  </p>
+                )}
                 {ocrResult.extractionWarnings?.length > 0 && (
                   <p className="text-[10px] text-amber-800 mt-1 italic">
                     ℹ {ocrResult.extractionWarnings[0]}
@@ -562,18 +576,15 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             />
             <select
               value={category}
-              onChange={(e) => {
-                setCategory(e.target.value)
-                markFieldEdited('category')
-              }}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
             >
-              <optgroup label="Area A: Professional Development (70 Pts Max)">
+              <optgroup label="Area A: Professional Development">
                 <option value="A.1 Degree/s">A.1 Degrees & Advanced Units</option>
                 <option value="A.2 Active Membership to Prof Orgs">A.2 Active Membership to Professional Organizations</option>
                 <option value="A.3 Attendance to Seminars/Trainings">A.3 Attendance to Seminars & Trainings</option>
               </optgroup>
-              <optgroup label="Area B: Productivity & Creative Work (50 Pts Max)">
+              <optgroup label="Area B: Productivity & Creative Work">
                 <option value="B.1 Guest Lecturer / Consultant / Judge">B.1 Lectures, Speakerships & Consultancy</option>
                 <option value="B.2 Publication">B.2 Scholarly Publications (Journals, Books, Articles)</option>
                 <option value="B.3 Conduct of Research">B.3 Conduct of Research Projects</option>
@@ -581,7 +592,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                 <option value="B.5 Production of Instructional Materials">B.5 Instructional Materials / Manuals</option>
                 <option value="B.6 Creative Work">B.6 Creative Work & Exhibitions</option>
               </optgroup>
-              <optgroup label="Area C: Service & Leadership (40 Pts Max)">
+              <optgroup label="Area C: Service & Leadership">
                 <option value="C.1 Extra-Curricular Activities">C.1 Institutional Service & Committees</option>
                 <option value="C.2 Community Involvement">C.2 Community & Extension Involvement</option>
               </optgroup>
@@ -592,9 +603,6 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
           <div className="p-4 rounded-3xl bg-slate-50/70 border border-slate-200/80 space-y-3.5">
             <div className="font-extrabold text-slate-800 text-xs flex items-center justify-between">
               <span>3. Fill Required Details ({category})</span>
-              <span className="text-[11px] font-semibold text-[#16834a]">
-                ~{estimatedPts} Provisional Pts (Advisory)
-              </span>
             </div>
 
             {/* A.1 Degrees */}
@@ -607,6 +615,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       value={degreeLevel} 
                       isOcrAutoFilled={ocrBadges.degreeLevel}
                       isManuallyEdited={manuallyEdited.degreeLevel}
+                      ocrConfidence={ocrResult?.fields?.degreeLevel?.confidence}
                     />
                     <select
                       value={degreeLevel}
@@ -614,17 +623,19 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Degree Level --</option>
-                      <option value="Ph.D. Degree Holder">Ph.D. / Doctoral Degree Holder (40 Pts)</option>
-                      <option value="Ph.D. Units">Ph.D. Completed Units (2 Pts / 3 Units)</option>
-                      <option value="Master's Degree Holder">Master's Degree Holder (20 Pts)</option>
-                      <option value="Master's Units">Master's Completed Units (1 Pt / 3 Units)</option>
+                      <option value="Ph.D. Degree Holder">Ph.D. / Doctoral Degree Holder</option>
+                      <option value="Ph.D. Units">Ph.D. Completed Units</option>
+                      <option value="Master's Degree Holder">Master's Degree Holder</option>
+                      <option value="Master's Units">Master's Completed Units</option>
                     </select>
                   </div>
                   <div>
                     <ReqLabel 
                       label="Units Completed" 
                       value={unitsCompleted} 
+                      isOcrAutoFilled={ocrBadges.unitsCompleted}
                       isManuallyEdited={manuallyEdited.unitsCompleted}
+                      ocrConfidence={ocrResult?.fields?.unitsCompleted?.confidence}
                     />
                     <input
                       type="number"
@@ -642,6 +653,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                     value={degreeTitle} 
                     isOcrAutoFilled={ocrBadges.degreeTitle}
                     isManuallyEdited={manuallyEdited.degreeTitle}
+                    ocrConfidence={ocrResult?.fields?.title?.confidence}
                   />
                   <input
                     type="text"
@@ -658,6 +670,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                     value={institution} 
                     isOcrAutoFilled={ocrBadges.institution}
                     isManuallyEdited={manuallyEdited.institution}
+                    ocrConfidence={ocrResult?.fields?.issuer?.confidence}
                   />
                   <input
                     type="text"
@@ -702,8 +715,8 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Role --</option>
-                      <option value="Officer">Officer / Board Member (10 Pts)</option>
-                      <option value="Member">Regular Active Member (5 Pts)</option>
+                      <option value="Officer">Officer / Board Member</option>
+                      <option value="Member">Regular Active Member</option>
                     </select>
                   </div>
                 </div>
@@ -757,11 +770,11 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Scope --</option>
-                      <option value="International">International (10 Pts)</option>
-                      <option value="National">National (8 Pts)</option>
-                      <option value="Regional">Regional (6 Pts)</option>
-                      <option value="City / Local">City / Local (4 Pts)</option>
-                      <option value="In-House">In-House / Institutional (3 Pts)</option>
+                      <option value="International">International</option>
+                      <option value="National">National</option>
+                      <option value="Regional">Regional</option>
+                      <option value="City / Local">City / Local</option>
+                      <option value="In-House">In-House / Institutional</option>
                     </select>
                   </div>
                 </div>
@@ -800,10 +813,10 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Role --</option>
-                      <option value="Keynote Speaker">Keynote Speaker (10 Pts)</option>
-                      <option value="Resource Person">Resource Person / Lecturer (8 Pts)</option>
-                      <option value="Facilitator">Facilitator / Trainer (6 Pts)</option>
-                      <option value="Judge">Judge / Panelist (5 Pts)</option>
+                      <option value="Keynote Speaker">Keynote Speaker</option>
+                      <option value="Resource Person">Resource Person / Lecturer</option>
+                      <option value="Facilitator">Facilitator / Trainer</option>
+                      <option value="Judge">Judge / Panelist</option>
                     </select>
                   </div>
                   <div>
@@ -872,9 +885,9 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Type --</option>
-                      <option value="Scholarly Paper">Scholarly Paper / Journal Article (5 Pts)</option>
-                      <option value="Book">Published Book / Monograph (5 Pts)</option>
-                      <option value="Article">Professional / Trade Article (4 Pts)</option>
+                      <option value="Scholarly Paper">Scholarly Paper / Journal Article</option>
+                      <option value="Book">Published Book / Monograph</option>
+                      <option value="Article">Professional / Trade Article</option>
                     </select>
                   </div>
                 </div>
@@ -913,9 +926,9 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Status --</option>
-                      <option value="Externally Funded Research Project">Externally Funded Project (20 Pts)</option>
-                      <option value="Completed Institutional Research">Completed Institutional Research (15 Pts)</option>
-                      <option value="Departmental Research">Departmental Research (10 Pts)</option>
+                      <option value="Externally Funded Research Project">Externally Funded Project</option>
+                      <option value="Completed Institutional Research">Completed Institutional Research</option>
+                      <option value="Departmental Research">Departmental Research</option>
                     </select>
                   </div>
                   <div>
@@ -985,9 +998,9 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                       className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
                     >
                       <option value="">-- Select Scope --</option>
-                      <option value="National">National / International (40 Pts)</option>
-                      <option value="Regional">Regional (30 Pts)</option>
-                      <option value="Institutional">Institutional (10 Pts)</option>
+                      <option value="National">National / International</option>
+                      <option value="Regional">Regional</option>
+                      <option value="Institutional">Institutional</option>
                     </select>
                   </div>
                 </div>

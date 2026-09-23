@@ -19,7 +19,7 @@ export default class OrganizationModeratorAssignmentModel {
     if (!organizationId) {
       errors.push('Student Organization ID is required for Moderator assignment.')
     } else {
-      const org = organizations.find(o => o.id === organizationId && o.status === 'active')
+      const org = organizations.find(o => o.id === organizationId && String(o.status || '').toLowerCase() === 'active')
       if (!org) errors.push('Selected Student Organization is invalid or archived.')
     }
 

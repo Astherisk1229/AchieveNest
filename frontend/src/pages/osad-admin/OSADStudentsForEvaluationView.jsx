@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Award,
-  ArrowLeft,
   Users,
   Search,
   Filter,
-  CheckCircle2,
-  Clock,
   ChevronRight,
-  ShieldCheck,
-  RefreshCw,
-  AlertCircle
+  ShieldCheck
 } from 'lucide-react'
 import { fetchStudentsForEvaluation } from '../../services/awardAdminService'
 import OSADPageHeader from '../../components/osad/OSADPageHeader'
@@ -69,8 +63,6 @@ export default function OSADStudentsForEvaluationView({
     return matchesSearch && matchesStatus
   })
 
-  const threshold = parseFloat(award.candidate_threshold_percent || '80.00').toFixed(2)
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-150 font-sans">
       {/* Standardized Detail Header */}
@@ -88,9 +80,6 @@ export default function OSADStudentsForEvaluationView({
             <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-emerald-800 dark:text-emerald-300">
               {award.code}
             </span>
-            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50">
-              {award.graduating_only ? 'Graduating Only' : 'Open Pool'}
-            </span>
             {award.gender_restriction && (
               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/50">
                 {award.gender_restriction}
@@ -98,7 +87,7 @@ export default function OSADStudentsForEvaluationView({
             )}
           </div>
         }
-        description={`Students for Evaluation • Candidate Threshold: ${threshold}% • Computable Max: ${award.portfolio_max || '50.00'} pts`}
+        description="Review students whose verified records were mapped to this award. Score and threshold details remain server-authoritative."
         secondaryActions={
           <span className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-300 text-xs font-extrabold border border-emerald-200/60 dark:border-emerald-800/50">
             {students.length} {students.length === 1 ? 'Student' : 'Students'} for Evaluation
@@ -190,11 +179,11 @@ export default function OSADStudentsForEvaluationView({
                           ? 'bg-amber-100 text-amber-800 border border-amber-300'
                           : 'bg-slate-100 text-slate-700 border border-slate-200'
                       }`}>
-                        {status.replace('_', ' ')}
+                        {String(status || 'PENDING').replace(/_/g, ' ')}
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
-                      {std.program} • {std.year_level || '4th Year'} • {std.college || 'Academic Unit'}
+                      {[std.program, std.year_level, std.college].filter(Boolean).join(' • ') || 'Academic details unavailable'}
                     </p>
                   </div>
                 </div>
@@ -202,7 +191,7 @@ export default function OSADStudentsForEvaluationView({
                 <div className="flex items-center gap-4 self-end sm:self-center">
                   <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
                     <ShieldCheck className="w-4 h-4 text-[#16834a]" />
-                    <span className="font-extrabold">{std.relevant_verified_record_count || std.evidence_count || 1}</span>
+                    <span className="font-extrabold">{std.relevant_verified_record_count ?? std.evidence_count ?? '—'}</span>
                     <span className="text-slate-400 font-medium text-[11px]">Verified Records</span>
                   </div>
 

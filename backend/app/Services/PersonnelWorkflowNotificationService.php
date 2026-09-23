@@ -108,6 +108,9 @@ class PersonnelWorkflowNotificationService
                 'read_at'              => null,
                 'created_at'           => $now,
             ];
+            if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) {
+                $notifRow['workflow_event_id'] = $eventId;
+            }
 
             $this->db->table($this->notificationsTable)->insert($notifRow);
 
@@ -135,8 +138,8 @@ class PersonnelWorkflowNotificationService
 
         switch ($targetCategory) {
             case PersonnelWorkflowNotificationRegistry::RECIPIENT_PERSONNEL:
-                $personnelId = $evaluationContext['personnel_profile_id'] 
-                    ?? $eventRow['subject_personnel_id'] 
+                $personnelId = $evaluationContext['personnel_profile_id']
+                    ?? $eventRow['subject_personnel_id']
                     ?? null;
                 if ($personnelId) {
                     $recipients[] = (string)$personnelId;
@@ -144,12 +147,27 @@ class PersonnelWorkflowNotificationService
                 break;
 
             case PersonnelWorkflowNotificationRegistry::RECIPIENT_ASSIGNED_REVIEWER:
-                $reviewerId = $evaluationContext['assigned_reviewer_id'] 
-                    ?? $evaluationContext['evaluator_profile_id'] 
-                    ?? $eventRow['metadata']['reviewer_id'] 
+                $reviewerId = $evaluationContext['assigned_reviewer_id']
+                    ?? $evaluationContext['evaluator_profile_id']
+                    ?? $eventRow['metadata']['reviewer_id']
                     ?? null;
                 if ($reviewerId) {
                     $recipients[] = (string)$reviewerId;
+                } else {
+                    $personnelId = $evaluationContext['personnel_profile_id']
+                        ?? $eventRow['subject_personnel_id']
+                        ?? null;
+                    if ($personnelId) {
+                        try {
+                            $resolver = new ReviewerResolverService();
+                            $resolved = $resolver->resolve((string)$personnelId);
+                            if (!empty($resolved['evaluator_profile_id'])) {
+                                $recipients[] = (string)$resolved['evaluator_profile_id'];
+                            }
+                        } catch (Throwable $e) {
+                            // Fallback logging if reviewer resolution fails
+                        }
+                    }
                 }
                 break;
 
@@ -157,6 +175,9 @@ class PersonnelWorkflowNotificationService
                 $hrId = $evaluationContext['hr_reviewer_id'] ?? null;
                 if ($hrId) {
                     $recipients[] = (string)$hrId;
+                } else {
+                    $rows = $this->db->query("SELECT DISTINCT p.id FROM profiles p JOIN profile_roles pr ON pr.profile_id = p.id JOIN roles r ON r.id = pr.role_id WHERE p.status = 'active' AND pr.is_active = 1 AND r.role_key = 'hr_staff'")->getResultArray();
+                    foreach ($rows as $row) $recipients[] = (string) $row['id'];
                 }
                 break;
         }
@@ -174,6 +195,7 @@ class PersonnelWorkflowNotificationService
             ->where('recipient_profile_id', $recipientProfileId)
             ->where('notification_type', $notificationType);
 
+        if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) $builder->where('workflow_event_id', $eventId);
         $results = $builder->get()->getResultArray();
         return !empty($results);
     }
@@ -183,11 +205,11 @@ class PersonnelWorkflowNotificationService
      */
     public function getExistingNotification(string $eventId, string $recipientProfileId, string $notificationType): ?array
     {
-        return $this->db->table($this->notificationsTable)
+        $builder = $this->db->table($this->notificationsTable)
             ->where('recipient_profile_id', $recipientProfileId)
-            ->where('notification_type', $notificationType)
-            ->get()
-            ->getRowArray();
+            ->where('notification_type', $notificationType);
+        if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) $builder->where('workflow_event_id', $eventId);
+        return $builder->get()->getRowArray();
     }
 
     /**

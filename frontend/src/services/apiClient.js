@@ -1,5 +1,15 @@
 import axios from 'axios'
 
+const performanceLoggingEnabled = import.meta.env.DEV || import.meta.env.VITE_PERFORMANCE_LOGGING === 'true'
+
+function responseBytes(data) {
+  try {
+    return new Blob([typeof data === 'string' ? data : JSON.stringify(data)]).size
+  } catch {
+    return null
+  }
+}
+
 /**
  * AchieveNest REST API Client Layer
  * Pre-configured Axios instance with JWT Bearer Token interceptors and error handlers.
@@ -16,6 +26,12 @@ const apiClient = axios.create({
 // Request Interceptor: Attach JWT Bearer Token from local storage or session storage
 apiClient.interceptors.request.use(
   async (config) => {
+    if (performanceLoggingEnabled) {
+      config.metadata = {
+        requestId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        startedAt: performance.now()
+      }
+    }
     try {
       // 1. Direct local token check (local-defense mode or authenticated session)
       let token = localStorage.getItem('achievenest_access_token') || sessionStorage.getItem('achievenest_access_token')
@@ -49,8 +65,35 @@ apiClient.interceptors.request.use(
 
 // Response Interceptor: Global Error & Unauthenticated 401 Handler
 apiClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    if (performanceLoggingEnabled && response.config.metadata) {
+      const duration = performance.now() - response.config.metadata.startedAt
+      console.info('[PERF] API', {
+        request_id: response.config.metadata.requestId,
+        method: response.config.method?.toUpperCase(),
+        route: response.config.url,
+        status: response.status,
+        duration_ms: Number(duration.toFixed(1)),
+        response_bytes: responseBytes(response.data)
+      })
+    }
+    return response.data
+  },
   (error) => {
+    if (performanceLoggingEnabled && error.config?.metadata) {
+      const duration = performance.now() - error.config.metadata.startedAt
+      console.info('[API ERROR]', {
+        request_id: error.config.metadata.requestId,
+        method: error.config.method?.toUpperCase(),
+        url: `${error.config.baseURL || ''}${error.config.url || ''}`,
+        code: error.code || 'UNKNOWN',
+        message: error.message,
+        response_received: Boolean(error.response),
+        status: error.response?.status || 0,
+        duration_ms: Number(duration.toFixed(1)),
+        outcome: error.code === 'ECONNABORTED' ? 'timeout' : 'failed'
+      })
+    }
     if (error.response) {
       if (error.response.status === 401) {
         console.warn('API Unauthenticated (401). Redirecting to login session.')
@@ -83,7 +126,11 @@ apiClient.interceptors.response.use(
       }
       return Promise.reject(error.response.data || error.response)
     }
-    return Promise.reject(error)
+
+    const connectivityError = new Error('Unable to connect to the AchieveNest server. Please check the server connection and try again.')
+    connectivityError.code = error.code || 'ERR_NETWORK'
+    connectivityError.isNetworkError = true
+    return Promise.reject(connectivityError)
   }
 )
 

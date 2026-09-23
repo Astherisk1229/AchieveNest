@@ -10,17 +10,20 @@ import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
 import EditMasterDataModal from './personnel-directory/EditMasterDataModal'
 import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
 import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
+import BatchImportPersonnelModal from './personnel-directory/BatchImportPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
 import { collectPersonnelPlacementOptions, mergePlacementMasterData } from '../../utils/personnelPlacement'
 import { updatePersonnelMasterData } from '../../services/hrAdminService'
 import { personnelMasterDataService } from '../../services/personnelMasterDataService'
 
 export function HRPersonnelDirectoryPage(props) {
-  const hrHook = useHR()
+  // This route needs directory and reset data only. Dashboard and audit data
+  // have their own routes and must not block the personnel table.
+  const hrHook = useHR({ resources: ['directory', 'passwordResets'] })
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const personnelList = props.personnelList || hrHook.personnelList || []
-  const passwordResets = props.passwordResets || hrHook.passwordResets || []
+  const personnelList = props.personnelList || hrHook.personnelList
+  const passwordResets = props.passwordResets || hrHook.passwordResets
   const handleApprovePasswordReset = props.handleApprovePasswordReset || hrHook.handleApprovePasswordReset
   const handleCreatePersonnelAccount = props.handleCreatePersonnelAccount || hrHook.handleCreatePersonnelAccount
   const handleUpdateRank = props.handleUpdateRank || hrHook.handleUpdateRank
@@ -85,6 +88,7 @@ export function HRPersonnelDirectoryPage(props) {
 
   // Modals & Toast State
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
+  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (msg) => {
@@ -167,7 +171,7 @@ export function HRPersonnelDirectoryPage(props) {
     setResetPasswordPersonnel(null)
   }
 
-  const handleManageRole = (p, roleKey) => {
+  const handleManageRole = (p, _roleKey) => {
     showToast(`Updated administrative role authorization for ${p.full_name}.`)
   }
 
@@ -212,6 +216,7 @@ export function HRPersonnelDirectoryPage(props) {
         totalCount={personnelList.length}
         pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onOpenBatchImport={() => setIsBatchImportOpen(true)}
       />
 
       {/* Governance Roster Tabs */}
@@ -223,7 +228,20 @@ export function HRPersonnelDirectoryPage(props) {
       />
 
       {/* Main Tab Views */}
-      {activeTab === 'directory' && (
+      {activeTab === 'directory' && hrHook.error && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+          <span>{hrHook.error}</span>
+          <button type="button" onClick={() => hrHook.refreshData?.()} className="font-bold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700">Retry directory</button>
+        </div>
+      )}
+
+      {activeTab === 'directory' && hrHook.isLoading && (
+        <div aria-label="Loading Personnel Directory" className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+          {[1, 2, 3, 4, 5].map(row => <div key={row} className="h-16 animate-pulse bg-slate-50/80 dark:bg-slate-800/30" />)}
+        </div>
+      )}
+
+      {activeTab === 'directory' && !hrHook.isLoading && (
         <PersonnelDirectoryTable
           personnelList={personnelList}
           sortConfig={directorySort}
@@ -299,6 +317,14 @@ export function HRPersonnelDirectoryPage(props) {
         onClose={() => setIsOnboardingOpen(false)}
         onSubmit={handleOnboardSubmit}
         placementOptions={placementOptions}
+      />
+
+      {/* Batch Import Personnel XLSX Modal */}
+      <BatchImportPersonnelModal
+        isOpen={isBatchImportOpen}
+        onClose={() => setIsBatchImportOpen(false)}
+        onSuccess={() => hrHook.refreshData?.()}
+        showToast={showToast}
       />
     </div>
   )

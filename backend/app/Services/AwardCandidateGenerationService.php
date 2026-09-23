@@ -90,6 +90,9 @@ class AwardCandidateGenerationService
         if ($award === null) {
             throw new RuntimeException("Award [{$awardId}] not found.");
         }
+        if (strtoupper(trim((string) ($award['authority_status'] ?? ''))) === 'PROPOSED') {
+            throw new RuntimeException('Proposed rubrics are unavailable for authoritative candidate generation.');
+        }
 
         $versionBuilder = $this->db->table('award_scoring_model_versions')
             ->where('award_definition_id', $awardId)
@@ -102,7 +105,11 @@ class AwardCandidateGenerationService
             ->orderBy('version_number', 'DESC');
         $version = $versionBuilder->get()->getRowArray();
 
-        $thresholdPercent = (float) ($version['candidate_threshold_percent'] ?? $award['candidate_threshold_percent'] ?? 80.00);
+        $thresholdValue = $version['candidate_threshold_percent'] ?? $award['candidate_threshold_percent'] ?? null;
+        if (! is_numeric($thresholdValue) || (float) $thresholdValue < 0.0 || (float) $thresholdValue > 100.0) {
+            throw new RuntimeException('Candidate threshold configuration is missing or invalid.');
+        }
+        $thresholdPercent = (float) $thresholdValue;
 
         // Fetch all active students
         $students = $this->db->table('profiles')
@@ -156,38 +163,23 @@ class AwardCandidateGenerationService
             ->orderBy('p.full_name', 'ASC')
             ->get()->getResultArray();
 
-        // Calculate deterministic dense rank based on potential_score
-        $rankedQueue = [];
-        $currentRank = 0;
-        $lastScore = null;
+        $reviewQueue = [];
 
         foreach ($entries as $item) {
             $score = $item['potential_score'] !== null ? (float) $item['potential_score'] : null;
 
-            if ($score !== null) {
-                if ($lastScore === null || $score < $lastScore) {
-                    $currentRank++;
-                    $lastScore = $score;
-                }
-                $rankValue = $currentRank;
-            } else {
-                // Dean nomination with no computed score yet
-                $rankValue = null;
-            }
-
-            $rankedQueue[] = [
+            $reviewQueue[] = [
                 'id'                  => $item['id'],
                 'student_profile_id'  => $item['student_profile_id'],
                 'student_name'        => $item['student_name'],
                 'institutional_id'    => $item['institutional_id'],
                 'pathway'             => $item['pathway'] ?? $item['eligibility_source'],
                 'potential_score'     => $score,
-                'rank_position'       => $rankValue,
                 'status'              => $item['status'],
                 'eligible_at'         => $item['eligible_at'],
             ];
         }
 
-        return $rankedQueue;
+        return $reviewQueue;
     }
 }

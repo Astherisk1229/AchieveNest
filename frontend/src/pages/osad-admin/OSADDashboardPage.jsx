@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import {
   Trophy,
   Users,
@@ -37,8 +37,6 @@ import OSADStudentAccountsPage from './OSADStudentAccountsPage'
 import OSADAcademicProgramsPage from './OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
 import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
-import OSADAwardsAndCriteriaPage from './OSADAwardsAndCriteriaPage'
-import OSADAwardCandidateReviewPage from './OSADAwardCandidateReviewPage'
 import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
 import OSADPasswordResetRequestsPage from './OSADPasswordResetRequestsPage'
@@ -266,7 +264,7 @@ export default function OSADDashboardPage({ currentUser }) {
       )}
 
       {activeTab === 'awards' && (
-        <OSADAwardsAndCriteriaPage />
+        <Navigate to="/osad/awards" replace />
       )}
 
       {activeTab === 'certificate-templates' && (
@@ -274,21 +272,7 @@ export default function OSADDashboardPage({ currentUser }) {
       )}
 
       {(activeTab === 'candidate-review' || activeTab === 'awardees') && (
-        <OSADAwardCandidateReviewPage
-          awardCategories={awardCategories}
-          awardees={awardees}
-          candidateDecisions={awardees}
-          getUsers={getUsers}
-          getStudentLeaderboards={getStudentLeaderboards}
-          generateAwardCandidates={generateAwardCandidates}
-          advanceCandidateToInterview={confirmAwardee}
-          doNotAdvanceCandidate={undoAwardeeConfirmation}
-          reverseAdvancementDecision={undoAwardeeConfirmation}
-          confirmAwardee={confirmAwardee}
-          batchConfirmAwardees={batchConfirmAwardees}
-          undoAwardeeConfirmation={undoAwardeeConfirmation}
-          showToast={showToast}
-        />
+        <Navigate to="/osad/awards" replace />
       )}
 
       {activeTab === 'accreditation-reports' && (

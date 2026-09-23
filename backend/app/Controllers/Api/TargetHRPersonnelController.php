@@ -7,6 +7,9 @@ use App\Services\AccountLifecycleResolver;
 use App\Services\AuthorizationService;
 use App\Services\FacultyStatusService;
 use App\Services\PersonnelClassificationService;
+use App\Services\PersonnelLoginReadinessService;
+use App\Services\DeanAssignmentService;
+use App\Services\DepartmentSecretaryOccupancyService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -18,15 +21,27 @@ class TargetHRPersonnelController extends Controller
     protected AuthorizationService $authz;
     protected PersonnelClassificationService $classificationService;
     protected FacultyStatusService $facultyStatusService;
+    protected \App\Services\PersonnelImportService $importService;
+    protected PersonnelLoginReadinessService $loginReadinessService;
+    protected DeanAssignmentService $deanAssignmentService;
+    protected DepartmentSecretaryOccupancyService $secretaryOccupancyService;
 
     public function __construct(
         ?AuthorizationService $authz = null,
         ?PersonnelClassificationService $classificationService = null,
-        ?FacultyStatusService $facultyStatusService = null
+        ?FacultyStatusService $facultyStatusService = null,
+        ?\App\Services\PersonnelImportService $importService = null,
+        ?PersonnelLoginReadinessService $loginReadinessService = null,
+        ?DeanAssignmentService $deanAssignmentService = null,
+        ?DepartmentSecretaryOccupancyService $secretaryOccupancyService = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->classificationService = $classificationService ?? new PersonnelClassificationService();
         $this->facultyStatusService = $facultyStatusService ?? new FacultyStatusService();
+        $this->importService = $importService ?? new \App\Services\PersonnelImportService();
+        $this->loginReadinessService = $loginReadinessService ?? new PersonnelLoginReadinessService();
+        $this->deanAssignmentService = $deanAssignmentService ?? new DeanAssignmentService();
+        $this->secretaryOccupancyService = $secretaryOccupancyService ?? new DepartmentSecretaryOccupancyService();
     }
 
     public function options(): mixed
@@ -58,7 +73,9 @@ class TargetHRPersonnelController extends Controller
 
     public function directory(): mixed
     {
+        $requestStartedAt = microtime(true);
         $actor = $this->resolveActor();
+        $authDurationMs = (microtime(true) - $requestStartedAt) * 1000;
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated active session required.']], 401);
         }
@@ -67,6 +84,7 @@ class TargetHRPersonnelController extends Controller
         }
 
         $db = db_connect();
+        $databaseStartedAt = microtime(true);
         $search = trim((string) $this->request->getGet('search'));
         $collegeId = trim((string) $this->request->getGet('college_id'));
         $administrativeUnitId = trim((string) $this->request->getGet('administrative_unit_id'));
@@ -91,12 +109,17 @@ class TargetHRPersonnelController extends Controller
         $selectCols = [
             'p.id', 'p.institutional_id', 'p.email AS institutional_email', 'p.full_name',
             'p.first_name', 'p.middle_name', 'p.last_name',
-            'p.designation_title AS designation', 'p.status',
+            'p.designation_title AS designation', 'p.status', 'p.account_type',
+            '1 AS profile_exists', '1 AS has_personnel_profile',
+            '(lac.profile_id IS NOT NULL) AS has_credential',
+            "(COALESCE(lac.password_hash, '') <> '') AS has_password_hash",
+            'lac.status AS credential_status',
             'lac.must_change_password AS credential_must_change_password',
             "CASE WHEN lac.profile_id IS NULL THEN 'missing' WHEN lac.must_change_password IS NULL THEN 'invalid' ELSE 'valid' END AS credential_integrity_status",
             'p.created_at',
             'pp.personnel_classification',
             'pp.employment_status',
+            'pp.employment_start_date',
             $hasGroupCol ? 'pp.personnel_group' : "CASE WHEN pp.personnel_classification='academic' THEN 'faculty' ELSE 'non_teaching_faculty' END AS personnel_group",
             $hasSideCol  ? 'pp.organizational_side' : "pp.personnel_classification AS organizational_side",
             $hasEngagementCol ? 'pp.faculty_engagement' : "NULL AS faculty_engagement",
@@ -114,6 +137,13 @@ class TargetHRPersonnelController extends Controller
             "(SELECT qr.qualification_status FROM personnel_qualification_reviews qr
                WHERE qr.personnel_profile_id = p.id
                ORDER BY qr.reviewed_at DESC LIMIT 1) AS latest_qualification_decision",
+            "(SELECT COUNT(*) FROM profile_roles pr2 JOIN roles r2 ON r2.id=pr2.role_id
+               WHERE pr2.profile_id=p.id AND pr2.is_active=1 AND r2.role_key='personnel') AS active_personnel_roles",
+            "(SELECT COUNT(*) FROM dean_assignments da2 WHERE da2.personnel_profile_id=p.id AND da2.is_active=1) AS active_dean_assignments",
+            "(SELECT COUNT(*) FROM program_coordinator_assignments ca2 WHERE ca2.personnel_profile_id=p.id AND ca2.is_active=1) AS active_coordinator_assignments",
+            "(SELECT COUNT(*) FROM organization_moderator_assignments ma2 WHERE ma2.personnel_profile_id=p.id AND ma2.is_active=1) AS active_moderator_assignments",
+            "(SELECT COUNT(*) FROM profiles pe WHERE LOWER(TRIM(pe.email))=LOWER(TRIM(p.email))) AS duplicate_email_count",
+            "(SELECT COUNT(*) FROM profiles pi WHERE pi.institutional_id=p.institutional_id) AS duplicate_employee_id_count",
         ];
 
         $builder = $db->table('profiles p')
@@ -163,6 +193,55 @@ class TargetHRPersonnelController extends Controller
             ->limit($pagination['per_page'], $pagination['offset'])
             ->get()->getResultArray();
 
+        $profileIds = array_values(array_filter(array_column($rows, 'id')));
+        $programsByProfile = [];
+        $rolesByProfile = [];
+        $evaluationsByProfile = [];
+
+        if ($profileIds !== []) {
+            $programRows = $db->table('personnel_program_affiliations ppa')
+                ->select('ppa.personnel_profile_id, ap.id AS academic_program_id, ap.code, ap.name')
+                ->join('academic_programs ap', 'ap.id = ppa.academic_program_id')
+                ->whereIn('ppa.personnel_profile_id', $profileIds)
+                ->where('ppa.is_active', 1)
+                ->orderBy('ap.code', 'ASC')
+                ->get()->getResultArray();
+            foreach ($programRows as $programRow) {
+                $programsByProfile[$programRow['personnel_profile_id']][] = [
+                    'academic_program_id' => $programRow['academic_program_id'],
+                    'code' => $programRow['code'],
+                    'name' => $programRow['name'],
+                ];
+            }
+
+            foreach ([
+                ['dean_assignments', 'dean'],
+                ['program_coordinator_assignments', 'program_coordinator'],
+                ['organization_moderator_assignments', 'organization_moderator'],
+            ] as [$table, $roleKey]) {
+                $assignmentRows = $db->table($table)
+                    ->select('personnel_profile_id')
+                    ->whereIn('personnel_profile_id', $profileIds)
+                    ->where('is_active', 1)
+                    ->get()->getResultArray();
+                foreach ($assignmentRows as $assignmentRow) {
+                    $rolesByProfile[$assignmentRow['personnel_profile_id']][] = $roleKey;
+                }
+            }
+
+            $evaluationRows = $db->table('personnel_evaluations')
+                ->select('personnel_profile_id, status, evaluation_cycle_id, total_score, created_at')
+                ->whereIn('personnel_profile_id', $profileIds)
+                ->orderBy('created_at', 'DESC')
+                ->get()->getResultArray();
+            foreach ($evaluationRows as $evaluationRow) {
+                $profileId = $evaluationRow['personnel_profile_id'];
+                if (! isset($evaluationsByProfile[$profileId])) {
+                    $evaluationsByProfile[$profileId] = $evaluationRow;
+                }
+            }
+        }
+
         foreach ($rows as &$row) {
             $lifecycle = AccountLifecycleResolver::resolve(
                 $row['status'] ?? 'active',
@@ -175,6 +254,22 @@ class TargetHRPersonnelController extends Controller
             $row['credential_integrity_status'] = $lifecycle['credential_integrity_status'];
             $row['must_change_password']        = $lifecycle['must_change_password'];
             $row['required_next_action']        = $lifecycle['required_next_action'];
+            $row['login_readiness']             = $this->loginReadinessService->evaluate($row);
+
+            unset(
+                $row['profile_exists'],
+                $row['has_personnel_profile'],
+                $row['has_credential'],
+                $row['has_password_hash'],
+                $row['credential_status'],
+                $row['credential_must_change_password'],
+                $row['active_personnel_roles'],
+                $row['active_dean_assignments'],
+                $row['active_coordinator_assignments'],
+                $row['active_moderator_assignments'],
+                $row['duplicate_email_count'],
+                $row['duplicate_employee_id_count']
+            );
 
             // Resolved canonical classification details
             $resolvedCls = $this->classificationService->resolveFromRecord($row);
@@ -187,28 +282,33 @@ class TargetHRPersonnelController extends Controller
             $dto = $this->facultyStatusService->buildMasterDataDto($row);
             $row['faculty_engagement_label']    = $dto['faculty_engagement_label'];
             $row['employment_status_label']     = $dto['employment_status_label'];
+            $row['employment_start_date']       = $dto['employment_start_date'];
+            $row['service_duration']            = $dto['service_duration'];
             $row['is_dean_review_eligible']     = $dto['is_dean_review_eligible'];
 
-            $row['program_affiliations'] = $db->query(
-                "SELECT ap.id AS academic_program_id, ap.code, ap.name
-                 FROM personnel_program_affiliations ppa
-                 JOIN academic_programs ap ON ap.id = ppa.academic_program_id
-                 WHERE ppa.personnel_profile_id = ? AND ppa.is_active = 1
-                 ORDER BY ap.code",
-                [$row['id']]
-            )->getResultArray();
+            $row['program_affiliations'] = $programsByProfile[$row['id']] ?? [];
+            $row['assigned_roles'] = array_values(array_unique($rolesByProfile[$row['id']] ?? []));
 
-            $roleRows = $db->query(
-                "SELECT 'dean' AS role_key FROM dean_assignments WHERE personnel_profile_id=? AND is_active=1
-                 UNION ALL
-                 SELECT 'program_coordinator' AS role_key FROM program_coordinator_assignments WHERE personnel_profile_id=? AND is_active=1
-                 UNION ALL
-                 SELECT 'organization_moderator' AS role_key FROM organization_moderator_assignments WHERE personnel_profile_id=? AND is_active=1",
-                [$row['id'], $row['id'], $row['id']]
-            )->getResultArray();
-            $row['assigned_roles'] = array_values(array_unique(array_column($roleRows, 'role_key')));
+            // Authoritative Reviewer Routing Resolution
+            $routing = \App\Services\PersonnelReviewerRoutingRegistry::resolveReviewerRoute([
+                'personnel_group'     => $row['personnel_group'],
+                'organizational_side' => $row['organizational_side'],
+                'is_dean'             => in_array('dean', $row['assigned_roles'], true),
+                'college_id'          => $row['college_id'] ?? null,
+            ]);
+            $row['reviewer_route'] = $routing['authorized_reviewer_role'] ?? 'unresolved';
+            $row['reviewer_scope_type'] = $routing['scope_type'] ?? 'UNRESOLVED_SCOPE';
+
+            // Latest Evaluation Record (Real Persisted Data)
+            $evalRecord = $evaluationsByProfile[$row['id']] ?? null;
+            $row['latest_evaluation_status'] = $evalRecord['status'] ?? 'not_started';
+            $row['latest_evaluation_cycle']  = $evalRecord['evaluation_cycle_id'] ?? null;
+            $row['latest_evaluation_score']  = $evalRecord['total_score'] ?? null;
         }
         unset($row);
+
+        $databaseDurationMs = (microtime(true) - $databaseStartedAt) * 1000;
+        $this->recordPerformanceTiming($requestStartedAt, $authDurationMs, $databaseDurationMs, $profileIds === [] ? 8 : 13);
 
         return $this->respond(['data' => [
             'total'     => $total,
@@ -216,6 +316,38 @@ class TargetHRPersonnelController extends Controller
             'per_page'  => $pagination['per_page'],
             'personnel' => $rows,
         ]], 200);
+    }
+
+    private function recordPerformanceTiming(
+        float $requestStartedAt,
+        float $authDurationMs,
+        float $databaseDurationMs,
+        int $queryCount
+    ): void {
+        if (ENVIRONMENT !== 'development') {
+            return;
+        }
+
+        $totalDurationMs = (microtime(true) - $requestStartedAt) * 1000;
+        $requestId = $this->request->getHeaderLine('X-Request-ID') ?: bin2hex(random_bytes(8));
+        $this->response
+            ->setHeader('X-Request-ID', $requestId)
+            ->setHeader('X-Query-Count', (string) $queryCount)
+            ->setHeader('Server-Timing', sprintf(
+                'auth;dur=%.1f, db;dur=%.1f, total;dur=%.1f',
+                $authDurationMs,
+                $databaseDurationMs,
+                $totalDurationMs
+            ));
+
+        log_message('info', sprintf(
+            '[PERF] request_id=%s route="GET /api/v1/hr/personnel" auth_ms=%.1f database_ms=%.1f total_ms=%.1f queries=%d',
+            $requestId,
+            $authDurationMs,
+            $databaseDurationMs,
+            $totalDurationMs,
+            $queryCount
+        ));
     }
 
     /**
@@ -247,7 +379,7 @@ class TargetHRPersonnelController extends Controller
             ->select([
                 'p.id', 'p.institutional_id', 'p.email AS institutional_email', 'p.full_name',
                 'p.first_name', 'p.middle_name', 'p.last_name', 'p.designation_title AS designation', 'p.status',
-                'pp.personnel_classification', 'pp.employment_status',
+                'pp.personnel_classification', 'pp.employment_status', 'pp.employment_start_date',
                 'pp.personnel_group', 'pp.organizational_side',
                 'pp.faculty_engagement', 'pp.position_title', 'pp.current_rank_title', 'pp.qualification_summary',
                 'pca.college_id', 'c.code AS college_code', 'c.name AS college_name',
@@ -308,13 +440,29 @@ class TargetHRPersonnelController extends Controller
         $now = date('Y-m-d H:i:s');
         $priorEngagement = $currentPersonnel['faculty_engagement'] ?? null;
         $priorStatus     = $currentPersonnel['employment_status'] ?? 'permanent';
+        $priorEmploymentStartDate = $currentPersonnel['employment_start_date'] ?? null;
         $priorPosition   = $currentPersonnel['position_title'] ?? ($targetProfile['designation_title'] ?? '');
         $priorRank       = $currentPersonnel['current_rank_title'] ?? ($currentPersonnel['rank_level'] ?? '');
 
         $db->transBegin();
         try {
+            $collegeAffiliation = $db->table('personnel_college_affiliations')
+                ->select('college_id')->where('personnel_profile_id', $profileId)->where('is_active', 1)->get()->getRowArray();
+            $unitAffiliation = $db->table('personnel_administrative_unit_affiliations')
+                ->select('administrative_unit_id')->where('personnel_profile_id', $profileId)->where('is_active', 1)->get()->getRowArray();
+            $secretaryConflict = $this->secretaryOccupancyService->findConflict(
+                $db,
+                $validation['position_title'],
+                $collegeAffiliation['college_id'] ?? null,
+                $unitAffiliation['administrative_unit_id'] ?? null,
+                $profileId
+            );
+            if ($secretaryConflict !== null) {
+                throw new \DomainException(json_encode($secretaryConflict));
+            }
             $updateData = [
                 'employment_status'     => $validation['employment_status'],
+                'employment_start_date' => $validation['employment_start_date'],
                 'position_title'        => $validation['position_title'],
                 'current_rank_title'    => $validation['current_rank_title'],
                 'rank_level'            => $validation['current_rank_title'],
@@ -346,6 +494,10 @@ class TargetHRPersonnelController extends Controller
                         'new_engagement'   => $validation['faculty_engagement'],
                         'prior_status'     => $priorStatus,
                         'new_status'       => $validation['employment_status'],
+                        'prior_employment_start_date' => $priorEmploymentStartDate,
+                        'new_employment_start_date' => $validation['employment_start_date'],
+                        'employment_start_date_changed' => $priorEmploymentStartDate !== $validation['employment_start_date'],
+                        'employment_status_changed' => $priorStatus !== $validation['employment_status'],
                         'prior_position'   => $priorPosition,
                         'new_position'     => $validation['position_title'],
                         'prior_rank'       => $priorRank,
@@ -359,6 +511,12 @@ class TargetHRPersonnelController extends Controller
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
+            if ($e instanceof \DomainException) {
+                $details = json_decode($e->getMessage(), true);
+                if (is_array($details) && ($details['code'] ?? null) === 'POSITION_OCCUPIED') {
+                    return $this->respond(['error' => $details], 409);
+                }
+            }
             return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Failed to update personnel master data: ' . $e->getMessage()]], 500);
         }
 
@@ -370,6 +528,8 @@ class TargetHRPersonnelController extends Controller
                 'faculty_engagement_label' => $validation['faculty_engagement_label'],
                 'employment_status'        => $validation['employment_status'],
                 'employment_status_label'  => $validation['employment_status_label'],
+                'employment_start_date'    => $validation['employment_start_date'],
+                'service_duration'         => (new \App\Services\EmploymentServiceDurationService())->calculate($validation['employment_start_date']),
                 'position_title'           => $validation['position_title'],
                 'current_rank_title'       => $validation['current_rank_title'],
                 'qualification_summary'    => $validation['qualification_summary'],
@@ -491,39 +651,13 @@ class TargetHRPersonnelController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_IDS', 'message' => 'Valid Personnel profile_id and college_id UUIDs are required.']], 422);
         }
 
-        $db = db_connect();
-        $eligible = $db->query(
-            "SELECT 1 FROM profiles p
-             JOIN personnel_profiles pp ON pp.profile_id=p.id AND pp.personnel_classification='academic'
-             JOIN personnel_college_affiliations pca ON pca.personnel_profile_id=p.id AND pca.college_id=? AND pca.is_active=1
-             WHERE p.id=? AND p.account_type='personnel' AND p.status='active'",
-            [$collegeId, $profileId]
-        )->getRowArray();
-        if ($eligible === null) {
-            return $this->respond(['error' => ['code' => 'INELIGIBLE_DEAN_AFFILIATION', 'message' => 'Dean must be active Academic Personnel affiliated with the selected College.']], 422);
+        $effectiveFrom = trim((string) ($json['effective_date'] ?? date('Y-m-d')));
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $effectiveFrom)) {
+            return $this->respond(['error' => ['code' => 'INVALID_EFFECTIVE_DATE', 'message' => 'Effective Date must use YYYY-MM-DD format.']], 422);
         }
-
-        $assignmentId = $this->genUuid();
-        try {
-            $db->table('dean_assignments')->insert([
-                'id'                   => $assignmentId,
-                'personnel_profile_id' => $profileId,
-                'college_id'           => $collegeId,
-                'effective_from'       => date('Y-m-d'),
-                'is_active'            => 1,
-                'assigned_by'          => $actor['profile']['id'],
-                'assigned_at'          => date('Y-m-d H:i:s'),
-            ]);
-        } catch (Throwable $e) {
-            return $this->respond(['error' => ['code' => 'ASSIGNMENT_FAILED', 'message' => 'Failed to assign Dean: ' . $e->getMessage()]], 409);
-        }
-
-        return $this->respondCreated(['data' => [
-            'message'       => 'Dean assignment created.',
-            'assignment_id' => $assignmentId,
-            'profile_id'    => $profileId,
-            'college_id'    => $collegeId,
-        ]]);
+        $result = $this->deanAssignmentService->assign($profileId, $collegeId, $actor['profile']['id'], $effectiveFrom);
+        if (! $result['success']) return $this->respond(['error' => $result['error']], $result['status']);
+        return $this->respondCreated(['data' => ['message' => 'Dean assignment created.', ...$result['data']]]);
     }
 
     public function revokeDean(string $profileId, string $assignmentId): mixed
@@ -552,5 +686,97 @@ class TargetHRPersonnelController extends Controller
         ]);
 
         return $this->respond(['data' => ['message' => 'Dean assignment revoked.', 'assignment_id' => $assignmentId]], 200);
+    }
+
+    /**
+     * GET /api/v1/hr/personnel/import/template
+     * Generates and downloads the authoritative XLSX batch import template.
+     */
+    public function downloadTemplate(): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (!$this->requireHrAdmin($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Admin access required.']], 403);
+        }
+
+        $xlsxContent = $this->importService->generateTemplate();
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="AchieveNest_Personnel_Import_Template.xlsx"')
+            ->setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->setBody($xlsxContent);
+    }
+
+    /**
+     * POST /api/v1/hr/personnel/import/preview
+     * Parses uploaded XLSX or JSON rows and returns row-by-row validation preview.
+     */
+    public function previewImport(): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (!$this->requireHrAdmin($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Admin access required.']], 403);
+        }
+
+        $rawRows = [];
+        $file = $this->request->getFile('file');
+        if ($file !== null && $file->isValid()) {
+            $ext = strtolower($file->getClientExtension());
+            if (!in_array($ext, ['xlsx', 'csv'], true)) {
+                return $this->respond(['error' => ['code' => 'INVALID_FILE_FORMAT', 'message' => 'Only .xlsx and .csv files are supported.']], 422);
+            }
+            try {
+                $rawRows = $this->importService->parseFile($file->getTempName(), $file->getClientMimeType());
+            } catch (Throwable $e) {
+                return $this->respond(['error' => ['code' => 'PARSE_ERROR', 'message' => $e->getMessage()]], 422);
+            }
+        } else {
+            $json = $this->request->getJSON(true);
+            $rawRows = is_array($json) ? ($json['rows'] ?? $json) : [];
+        }
+
+        if (empty($rawRows) || !is_array($rawRows)) {
+            return $this->respond(['error' => ['code' => 'EMPTY_FILE', 'message' => 'Uploaded file or payload contains no data rows.']], 422);
+        }
+
+        $previewResult = $this->importService->validateRows($rawRows);
+
+        return $this->respond(['data' => $previewResult], 200);
+    }
+
+    /**
+     * POST /api/v1/hr/personnel/import/commit
+     * Commits validated rows with atomic transaction guarantees.
+     */
+    public function commitImport(): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (!$this->requireHrAdmin($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Admin access required.']], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $rows = (array) ($json['rows'] ?? []);
+
+        if (empty($rows)) {
+            return $this->respond(['error' => ['code' => 'NO_ROWS_TO_COMMIT', 'message' => 'No valid rows provided to commit.']], 422);
+        }
+
+        try {
+            $result = $this->importService->commitRows($rows, $actor);
+            return $this->respondCreated(['data' => $result]);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'IMPORT_FAILED', 'message' => $e->getMessage()]], 500);
+        }
     }
 }

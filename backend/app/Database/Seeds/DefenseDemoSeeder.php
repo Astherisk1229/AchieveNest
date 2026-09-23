@@ -60,6 +60,8 @@ class DefenseDemoSeeder extends Seeder
         $db->table('personnel_program_affiliations')->like('id', $demoPrefix)->delete();
         $db->table('personnel_college_affiliations')->like('id', $demoPrefix)->delete();
         $db->table('student_program_enrollments')->like('id', $demoPrefix)->delete();
+        $db->table('student_profiles')->like('profile_id', $demoPrefix)->delete();
+        $db->table('personnel_profiles')->like('profile_id', $demoPrefix)->delete();
         $db->table('profile_roles')->like('profile_id', $demoPrefix)->delete();
         $db->table('local_auth_credentials')->like('profile_id', $demoPrefix)->delete();
         $db->table('profiles')->like('id', $demoPrefix)->delete();

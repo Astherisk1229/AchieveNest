@@ -7,6 +7,7 @@ import {
   STUDENT_SEX_OPTIONS,
   STUDENT_SEX_SELECT_OPTIONS,
   STUDENT_YEAR_LEVEL_SELECT_OPTIONS,
+  STUDENT_SUFFIX_OPTIONS,
   getAcademicYearValues,
   getDefaultAcademicYear
 } from '../../../contracts/studentAccountContract'
@@ -42,6 +43,11 @@ describe('Plan 08 Phase 4 — OSAD Student Form UX & Accessibility', () => {
 
     const activeValues = STUDENT_SEX_SELECT_OPTIONS.filter(opt => !opt.disabled).map(opt => opt.value)
     expect(activeValues).toEqual(STUDENT_SEX_OPTIONS)
+  })
+
+  it('keeps Year Level blank until explicitly selected and controls suffix values', () => {
+    expect(STUDENT_YEAR_LEVEL_SELECT_OPTIONS[0]).toEqual({ value: '', label: 'Select Year Level', disabled: true })
+    expect(STUDENT_SUFFIX_OPTIONS).toEqual(['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V'])
   })
 
   it('provides dynamic Academic Year values with 2025 lower bound', () => {

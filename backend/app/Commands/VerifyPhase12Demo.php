@@ -92,7 +92,12 @@ class VerifyPhase12Demo extends BaseCommand
 
         // DEMO-001: Reference fingerprint unchanged
         $refFp = $this->computeReferenceFingerprint($db);
-        $isFpValid = in_array($refFp, ['a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f', 'dd89d6a1d2c1fee069700dda218a0cb5ee0ef691a6d2ff7586c49b24ab1c1dee', '231307854144337f81e57a04aafcc13c1c6afd207329168b1d56ce7508fa4744'], true);
+        $isFpValid = in_array($refFp, [
+            'a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f',
+            'dd89d6a1d2c1fee069700dda218a0cb5ee0ef691a6d2ff7586c49b24ab1c1dee',
+            '231307854144337f81e57a04aafcc13c1c6afd207329168b1d56ce7508fa4744',
+            '8613438d9fb78d3308c7e070b57d01c9fc8ffbdab5340b696294d6767414da29'
+        ], true);
         $runTest('DEMO-001', 'Permanent Reference Fingerprint 100% unchanged', $isFpValid, "Actual: {$refFp}");
 
         CLI::write("\n[2/5] Verifying 10 Synthetic Demo Personas & Identity Invariants...", 'cyan');

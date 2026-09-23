@@ -97,14 +97,43 @@ describe('Personnel Evaluation Track — Plan D — Phase D1 Final Personnel Cla
       expect(data.organizational_side).toBe('non_academic')
       expect(data.classification_code).toBe('NON_TEACHING_FACULTY_NON_ACADEMIC')
     })
-  })
-
-  describe('D1.1 & D1.3 — Invalid Pair & Legacy Group Rejection', () => {
-    it('rejects invalid pair: Faculty + Non-Academic with 422 INVALID_PERSONNEL_CLASSIFICATION', async () => {
+    it('accepts and persists valid pair: Faculty + Non-Academic (FACULTY_NON_ACADEMIC)', async () => {
       const profileId = '10000000-0000-0000-0000-000000000003'
       const payload = {
         personnel_group: 'faculty',
-        organizational_side: 'non_academic'
+        organizational_side: 'non_academic',
+        reason: 'Faculty assigned to administrative unit'
+      }
+
+      const mockResponse = {
+        data: {
+          message: 'Personnel classification updated successfully.',
+          profile_id: profileId,
+          personnel_group: 'faculty',
+          organizational_side: 'non_academic',
+          classification_code: 'FACULTY_NON_ACADEMIC',
+          classification_label: 'Faculty • Non-Academic',
+          updated_at: '2026-09-08 21:00:00'
+        }
+      }
+
+      vi.spyOn(apiClient, 'put').mockResolvedValue(mockResponse)
+
+      const result = await hrAdminService.updatePersonnelClassification(profileId, payload)
+      const data = result?.data || result
+      expect(apiClient.put).toHaveBeenCalledWith(`/hr/personnel/${profileId}/classification`, payload)
+      expect(data.personnel_group).toBe('faculty')
+      expect(data.organizational_side).toBe('non_academic')
+      expect(data.classification_code).toBe('FACULTY_NON_ACADEMIC')
+    })
+  })
+
+  describe('D1.1 & D1.3 — Invalid Pair & Legacy Group Rejection', () => {
+    it('rejects invalid organizational side with 422 INVALID_PERSONNEL_CLASSIFICATION', async () => {
+      const profileId = '10000000-0000-0000-0000-000000000003'
+      const payload = {
+        personnel_group: 'faculty',
+        organizational_side: 'invalid_side'
       }
 
       const mockError = {
@@ -113,7 +142,7 @@ describe('Personnel Evaluation Track — Plan D — Phase D1 Final Personnel Cla
           data: {
             error: {
               code: 'INVALID_PERSONNEL_CLASSIFICATION',
-              message: 'Invalid combination: Faculty cannot be assigned to the Non-Academic organizational side.'
+              message: "Invalid organizational_side: 'invalid_side'. Allowed values are: 'academic', 'non_academic'."
             }
           }
         }
@@ -243,7 +272,7 @@ describe('Personnel Evaluation Track — Plan D — Phase D1 Final Personnel Cla
       ]
     }
 
-    it('flags classificationPair error if Faculty + Non-Academic is attempted in client form', () => {
+    it('validates Faculty + Non-Academic with administrative unit successfully in client form', () => {
       const result = validatePersonnelPlacement({
         group: 'faculty',
         side: 'non_academic',
@@ -252,8 +281,8 @@ describe('Personnel Evaluation Track — Plan D — Phase D1 Final Personnel Cla
         administrativeUnitId: 'UNIT-01'
       }, mockOptions)
 
-      expect(result.isValid).toBe(false)
-      expect(result.errors.classificationPair).toContain('Invalid combination')
+      expect(result.isValid).toBe(true)
+      expect(result.errors).toEqual({})
     })
 
     it('validates Faculty + Academic with college and program successfully', () => {

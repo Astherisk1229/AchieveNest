@@ -21,6 +21,7 @@ import PersonnelEvaluationFinalizationReadinessService from './PersonnelEvaluati
 import { EVALUATION_SCALE_CODES, EVALUATION_RULE_VERSION } from './evaluationInstrumentRegistry.js'
 import { RESULT_VOCABULARY } from './PersonnelEvaluationResultPersistenceService.js'
 import { resolveEvaluationDepartmentLabel } from '../utils/personnelPlacement.js'
+import { buildFacultyEvaluationSummaryRows } from './facultyEvaluationSummary.js'
 
 export const OUTPUT_TYPES = Object.freeze({
   DELIBERATION_SUMMARY: 'deliberation_summary',
@@ -318,6 +319,10 @@ export default class PersonnelEvaluationPrintService {
           items: itemsByArea.C
         }
       }
+      const summaryRows = buildFacultyEvaluationSummaryRows(items)
+      areas.area_a.criteria_rows = summaryRows.filter((row) => row.area === 'A')
+      areas.area_b.criteria_rows = summaryRows.filter((row) => row.area === 'B')
+      areas.area_c.criteria_rows = summaryRows.filter((row) => row.area === 'C')
     } else {
       // Non-Teaching Scale
       let areaBTotal = 0.0

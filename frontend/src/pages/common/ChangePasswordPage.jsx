@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Lock,
@@ -12,6 +12,8 @@ import {
   KeyRound
 } from 'lucide-react'
 import { submitPasswordChange, logoutUser, getCurrentUser } from '../../services/authService'
+import RouteAccessController from '../../controllers/RouteAccessController'
+import { AchieveNestLogo } from '../../components/brand'
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate()
@@ -28,6 +30,12 @@ export default function ChangePasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login', { replace: true })
+    }
+  }, [user, navigate])
 
   // Policy validation checks
   const hasMinLength = newPassword.length >= 8
@@ -88,20 +96,18 @@ export default function ChangePasswordPage() {
       await submitPasswordChange(newPassword, confirmPassword, currentPassword)
       setIsSuccess(true)
       setTimeout(() => {
-        const accountType = user?.account_type || 'student'
-        if (accountType === 'student') {
-          navigate('/student/dashboard')
-        } else if (accountType === 'osad_admin') {
-          navigate('/osad/dashboard')
-        } else if (accountType === 'hr_admin') {
-          navigate('/hr/dashboard')
-        } else {
-          navigate('/personnel/dashboard')
-        }
+        const freshUser = getCurrentUser()
+        const targetRoute = RouteAccessController.resolveRedirect(freshUser)
+        navigate(targetRoute)
       }, 1500)
     } catch (err) {
       const msg = err?.error?.message || err?.message || 'Failed to update password. Please check your inputs and try again.'
       setError(msg)
+      if (err?.error?.code === 'MISSING_BEARER_TOKEN' || err?.error?.code === 'INVALID_ACCESS_TOKEN' || String(msg).toLowerCase().includes('expired')) {
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -110,6 +116,7 @@ export default function ChangePasswordPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#064e2b] to-slate-950 flex items-center justify-center p-4 font-sans text-slate-900">
       <div className="w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-center bg-white px-6 py-4"><AchieveNestLogo variant="horizontal" size="document" /></div>
         
         {/* Header Strip */}
         <div className="p-6 bg-[#064e2b] text-white border-b border-emerald-900/60 flex items-center justify-between">

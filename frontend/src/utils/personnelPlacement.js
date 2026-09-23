@@ -90,26 +90,29 @@ export function validatePersonnelPlacement({ classification, group, side, colleg
   const errors = {}
 
   // Validate group & side pairing
-  if (group || side) {
-    const effectiveGroup = (group || 'faculty').toLowerCase()
-    const effectiveSide  = (side || classification || 'academic').toLowerCase()
-
-    if (effectiveGroup === 'faculty' && effectiveSide === 'non_academic') {
-      errors.classificationPair = 'Invalid combination: Faculty must belong to the Academic organizational side.'
+  if (group !== undefined && group !== null) {
+    const effectiveGroup = String(group).toLowerCase().trim()
+    if (!['faculty', 'non_teaching_faculty'].includes(effectiveGroup)) {
+      errors.personnelGroup = "Invalid personnel group. Allowed values: 'faculty', 'non_teaching_faculty'."
     }
   }
 
-  const effectiveClassification = (side || classification || 'academic').toLowerCase()
+  const effectiveSide = side !== undefined ? String(side).toLowerCase().trim() : (classification || 'academic').toLowerCase().trim()
+  if (!['academic', 'non_academic'].includes(effectiveSide)) {
+    errors.organizationalSide = "Invalid organizational side. Allowed values: 'academic', 'non_academic'."
+  }
 
-  if (effectiveClassification === 'academic') {
+  if (effectiveSide === 'academic') {
     if (!collegeId) errors.collegeId = 'Select a College.'
     if (!academicProgramIds.length) errors.academicProgramIds = 'Select at least one Academic Program.'
     if (options && options.academicPrograms) {
       const validIds = new Set(options.academicPrograms.filter(program => program.collegeId === collegeId).map(program => program.id))
       if (academicProgramIds.some(id => !validIds.has(id))) errors.academicProgramIds = 'Every Academic Program must belong to the selected College.'
     }
-  } else if (!administrativeUnitId) {
-    errors.administrativeUnitId = 'Select a Department.'
+  } else if (effectiveSide === 'non_academic') {
+    if (!administrativeUnitId) {
+      errors.administrativeUnitId = 'Select a Department.'
+    }
   }
   return { isValid: Object.keys(errors).length === 0, errors }
 }

@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Services\AuthorizationService;
+use App\Services\EventSourceRecordBridgeService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -153,51 +154,19 @@ class EventController extends Controller
             return $this->respond(['error' => ['code' => 'EMPTY_PARTICIPANTS', 'message' => 'At least one participant required.']], 422);
         }
 
-        $category = $db->table('portfolio_categories')
-            ->where('status', 'active')
-            ->orderBy('sort_order', 'ASC')
-            ->get()->getRowArray();
-        $catId = $category['id'] ?? '11111111-1111-1111-1111-111111111111';
-
-        $createdCount = 0;
-        $now = date('Y-m-d H:i:s');
-        $db->transStart();
         try {
-            foreach ($participants as $p) {
-                $studentId = $p['student_id'] ?? null;
-                $award = $p['award'] ?? 'Certificate of Participation';
-
-                if (! $studentId) continue;
-
-                $recordId = $this->genUuid();
-                $db->table('student_portfolio_records')->insert([
-                    'id'                  => $recordId,
-                    'student_profile_id'  => $studentId,
-                    'category_id'         => $catId,
-                    'title'               => sprintf('%s — %s', $event['title'], $award),
-                    'organizer_or_body'   => $event['venue'] ?? 'NDMU Campus',
-                    'occurrence_date'     => substr($event['start_time'], 0, 10),
-                    'description'         => sprintf('Awarded %s in %s held on %s.', $award, $event['title'], substr($event['start_time'], 0, 10)),
-                    'status'              => 'verified',
-                    'verified_at'         => $now,
-                    'created_at'          => $now,
-                    'updated_at'          => $now,
-                ]);
-
-                $createdCount++;
-            }
-
-            $db->transComplete();
+            $results=(new EventSourceRecordBridgeService($db))->recordFacts($eventId,$participants,$actor['profile']['id']);
         } catch (Throwable $e) {
-            $db->transRollback();
-            return $this->respond(['error' => ['code' => 'BATCH_FAILED', 'message' => 'Failed to record participants: ' . $e->getMessage()]], 500);
+            $code=$e->getMessage()==='EVENT_SOURCE_RECORD_BRIDGE_SCHEMA_MISSING'?$e->getMessage():'BATCH_FAILED';
+            return $this->respond(['error' => ['code' => $code, 'message' => 'Failed to record finalized participant facts.']], $code==='BATCH_FAILED'?500:503);
         }
 
         return $this->respondCreated([
             'data' => [
-                'message'            => sprintf('Successfully added %d participants and generated verified portfolio records.', $createdCount),
+                'message'            => 'Student-specific event facts recorded. Canonical source records require explicit bridge resolution.',
                 'event_id'           => $eventId,
-                'participants_count' => $createdCount,
+                'participants_count' => count($results),
+                'results'            => $results,
             ],
         ]);
     }

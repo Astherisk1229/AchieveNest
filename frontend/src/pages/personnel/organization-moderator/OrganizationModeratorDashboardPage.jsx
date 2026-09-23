@@ -44,6 +44,7 @@ import DigitalCertificateModal from './DigitalCertificateModal'
 import EventCardOptionsMenu from './EventCardOptionsMenu'
 import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
 import DigitalCertificatesWorkspace from './certificates/DigitalCertificatesWorkspace'
+import { AchieveNestLogo } from '../../../components/brand'
 
 
 
@@ -1502,13 +1503,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <Plus className="w-4 h-4 text-white" />
                   <span>Create Event</span>
                 </button>
-                <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-full h-full">
-                    <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
-                    <circle cx="50" cy="50" r="28" fill="#ffffff" />
-                    <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
-                  </svg>
-                </div>
+                <div className="rounded-xl bg-white p-1"><AchieveNestLogo variant="mark" size="compact" /></div>
               </div>
             </div>
 

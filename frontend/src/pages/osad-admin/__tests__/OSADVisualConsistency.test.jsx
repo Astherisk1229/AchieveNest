@@ -26,7 +26,7 @@ import OSADStudentAccountsPage from '../OSADStudentAccountsPage'
 import OSADAcademicProgramsPage from '../OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from '../OSADStudentOrganizationsPage'
 import OSADAwardsAndCriteriaPage from '../OSADAwardsAndCriteriaPage'
-import OSADAwardCandidateReviewPage from '../OSADAwardCandidateReviewPage'
+import OSADStudentAwardReviewWorkspace from '../OSADStudentAwardReviewWorkspace'
 import OSADCertificateTemplatesPage from '../OSADCertificateTemplatesPage'
 
 // Mock react-router-dom
@@ -113,7 +113,7 @@ describe('Plan 06 Phase 10 — OSAD Visual Consistency Suite', () => {
       <OSADStudentAccountsPage />,
       <OSADStudentOrganizationsPage />,
       <OSADAwardsAndCriteriaPage />,
-      <OSADAwardCandidateReviewPage />,
+      <OSADStudentAwardReviewWorkspace awardId="award-1" studentId="student-1" />,
       <OSADCertificateTemplatesPage />
     ]
 

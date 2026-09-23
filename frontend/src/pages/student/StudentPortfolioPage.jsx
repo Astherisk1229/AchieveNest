@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrentUser } from '../../services/authService'
+import portfolioService from '../../services/portfolioService'
 import ExportPortfolioPreviewModal from './modals/ExportPortfolioPreviewModal'
 import EditStudentInfoModal from './modals/EditStudentInfoModal'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
@@ -10,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Separator } from '../../components/ui/separator'
+import { AchieveNestLogo } from '../../components/brand'
 
 import {
   Trophy,
@@ -45,6 +47,7 @@ export default function StudentPortfolioPage({ currentUser }) {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
+  const [verifiedAchievements, setVerifiedAchievements] = useState([])
 
   // Student Profile State
   const [student, setStudent] = useState(activeUser || {
@@ -73,6 +76,16 @@ export default function StudentPortfolioPage({ currentUser }) {
       }))
     }
   }, [activeUser])
+
+  useEffect(() => {
+    let active = true
+    portfolioService.fetchRecords({ status: 'verified' })
+      .then(records => {
+        if (active) setVerifiedAchievements((Array.isArray(records) ? records : []).filter(record => record.status === 'verified'))
+      })
+      .catch(() => { if (active) setVerifiedAchievements([]) })
+    return () => { active = false }
+  }, [])
 
   // Experience & Involvement List State
   const [experiences, setExperiences] = useState([
@@ -148,41 +161,21 @@ export default function StudentPortfolioPage({ currentUser }) {
   }
 
   // Featured Verified Achievements
-  const featuredAchievements = [
-    {
-      id: 1,
-      title: "Dean's Lister - First Semester AY 2025-2026",
-      date: 'Dec 15, 2025',
-      category: 'Academic',
-      bannerBg: 'bg-[#16834a]',
-      emoji: '📚'
-    },
-    {
-      id: 2,
-      title: 'Student Council President',
-      date: 'Jan 10, 2026',
-      category: 'Leadership',
-      bannerBg: 'bg-[#16834a]',
-      emoji: '👑'
-    },
-    {
-      id: 3,
-      title: 'Basketball Intramurals Champion',
-      date: 'Feb 14, 2026',
-      category: 'Sports',
-      bannerBg: 'bg-[#16834a]',
-      emoji: '🏀'
-    }
-  ]
+  const featuredAchievements = verifiedAchievements.map(record => ({
+    id: record.id,
+    title: record.title,
+    date: record.start_date || record.occurrence_date || record.verified_at,
+    category: record.category_name || 'Achievement',
+    emoji: '🏆'
+  }))
 
   // Supporting Evidence Items
-  const evidenceItems = [
-    { id: 1, title: 'Deans List Certificate', category: 'Academic', emoji: '📚' },
-    { id: 2, title: 'Appointment Paper', category: 'Leadership', emoji: '👑' },
-    { id: 3, title: 'Outreach Certificate', category: 'Community', emoji: '🤝' },
-    { id: 4, title: 'Champion Trophy Cert', category: 'Sports', emoji: '🏀' },
-    { id: 5, title: 'Research Abstract', category: 'Academic', emoji: '🔬' }
-  ]
+  const evidenceItems = verifiedAchievements.flatMap(record => (record.evidence || []).map(evidence => ({
+    id: evidence.id,
+    title: evidence.original_filename,
+    category: record.category_name,
+    emoji: '📄'
+  })))
 
   return (
     <>
@@ -232,16 +225,7 @@ export default function StudentPortfolioPage({ currentUser }) {
 
           {/* Banner Header Body: Left Brand Logo & Right University Motto */}
           <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
-            {/* NDMU Brand Logo & Seal (Left on Green Shape) */}
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-sm shadow-md shrink-0">
-                🔰
-              </div>
-              <div className="leading-tight">
-                <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
-                <span className="text-[9px] font-bold text-emerald-200 tracking-widest uppercase block">NDMU</span>
-              </div>
-            </div>
+            <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
 
             {/* Motto Right (On Reserved White Area) */}
             <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
@@ -259,7 +243,7 @@ export default function StudentPortfolioPage({ currentUser }) {
                 {/* Circular Profile Avatar using Avatar component system */}
                 <div className="relative shrink-0 z-30 sm:-mb-1">
                   <Avatar size="xl" className="w-28 h-28 sm:w-36 sm:h-36 border-4 border-white shadow-xl aspect-square bg-white">
-                    <AvatarImage src={student.avatar_url} alt={student.full_name} fetchpriority="high" decoding="async" loading="eager" />
+                    <AvatarImage src={student.avatar_url} alt={student.full_name} fetchPriority="high" decoding="async" loading="eager" />
                     <AvatarFallback className="text-2xl font-black bg-gradient-to-br from-emerald-600 to-[#064e2b]">
                       {student.full_name ? student.full_name.split(' ').map(n => n[0]).join('') : 'MS'}
                     </AvatarFallback>
@@ -455,10 +439,11 @@ export default function StudentPortfolioPage({ currentUser }) {
                   </span>
                   <span>Featured Achievements</span>
                 </h2>
-                <span className="text-xs font-bold text-slate-400">3 verified</span>
+                <span className="text-xs font-bold text-slate-400">{featuredAchievements.length} verified</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {featuredAchievements.length === 0 && <p className="sm:col-span-2 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">Verified achievements will appear here automatically after Program Coordinator approval.</p>}
                 {featuredAchievements.map((item) => (
                   <div
                     key={item.id}

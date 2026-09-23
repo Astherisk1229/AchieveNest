@@ -77,7 +77,7 @@ class VerificationQueueController extends Controller
             ])
             ->join('portfolio_categories pc', 'pc.id = spr.category_id')
             ->join('profiles p', 'p.id = spr.student_profile_id')
-            ->whereIn('spr.status', ['submitted', 'under_review', 'revisions_requested'])
+            ->whereIn('spr.status', ['submitted', 'revision_requested'])
             ->orderBy('spr.submitted_at', 'ASC');
 
         $this->authz->portfolio()->scopeVerificationQuery($actor, $builder);
@@ -131,7 +131,7 @@ class VerificationQueueController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not the authorized active Program Coordinator for this student program.']], 403);
         }
 
-        $targetStatus = $decision === 'approved' ? 'verified' : ($decision === 'rejected' ? 'rejected' : 'revisions_requested');
+        $targetStatus = $decision === 'approved' ? 'verified' : ($decision === 'rejected' ? 'rejected' : 'revision_requested');
         $now = date('Y-m-d H:i:s');
 
         $db->transStart();

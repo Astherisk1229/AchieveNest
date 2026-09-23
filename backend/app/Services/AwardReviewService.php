@@ -70,6 +70,15 @@ class AwardReviewService
 
         // 3. Phase 5 Portfolio Scoring (Read-Only)
         $portfolioScoring = $this->scoringService->scoreStudentForAward($awardArr, $studentArr);
+        $scoreContract = AwardApiContractService::score($portfolioScoring, $awardArr);
+        $criteriaContract = array_map(static function (array $criterion): array {
+            $normalized = AwardApiContractService::criterion($criterion);
+            $normalized['achieved_points'] = isset($criterion['earned_points']) ? (float) $criterion['earned_points'] : null;
+            $normalized['calculation_text'] = $criterion['calculation_text'] ?? ($normalized['aggregation_mode'] !== null ? 'Calculated by ' . $normalized['aggregation_mode'] . '.' : null);
+            $normalized['verified_record_count'] = count($criterion['evidence_trace'] ?? []);
+            $normalized['evidence_ids'] = array_values(array_filter(array_map(static fn(array $trace) => $trace['record_id'] ?? null, $criterion['evidence_trace'] ?? [])));
+            return $normalized;
+        }, $portfolioScoring['criteria_scores'] ?? []);
 
         // 4. Load Non-Computable / Manual Panel Criteria for Award
         $manualCriteria = $this->loadManualCriteriaForAward($awardId, $awardCode, $studentId);
@@ -95,8 +104,13 @@ class AwardReviewService
                 'description'                 => $awardArr['description'] ?? '',
                 'graduating_only'             => (bool) ($awardArr['graduating_only'] ?? true),
                 'gender_restriction'          => $awardArr['gender_restriction'] ?? 'any',
-                'computable_max_score'        => (float) ($portfolioScoring['computable_max_score'] ?? 0.0),
-                'scoring_version'             => $awardArr['active_scoring_version'] ?? '1.0',
+                'computable_max_score'        => $scoreContract['computable_max_score'],
+                'authority_status'            => AwardApiContractService::authority($awardArr['authority_status'] ?? null),
+                'source_fidelity_status'      => $awardArr['source_fidelity_status'] ?? null,
+                'configuration_status'        => $scoreContract['configuration_status'],
+                'configuration_valid'         => $scoreContract['configuration_valid'],
+                'scoring_version_id'          => $awardArr['scoring_model_version_id'] ?? null,
+                'scoring_version_label'       => null,
                 'governance'                  => $governance,
             ],
             'student' => [
@@ -111,15 +125,21 @@ class AwardReviewService
             'eligibility'                     => $eligibility,
             'evaluation_status'               => $reviewStatus,
             'is_finalized'                    => ($reviewStatus === self::STATUS_EVALUATED),
-            'portfolio_scoring'               => [
-                'raw_portfolio_score'         => $portfolioScoring['raw_portfolio_score'] ?? 0.0,
-                'computable_max_score'        => $portfolioScoring['computable_max_score'] ?? 0.0,
-                'formula_note'                => 'Portfolio Potential Score = (Raw Portfolio Score / Computable Maximum) * 100 [Calculated in Phase 7]',
-                'criteria'                    => $portfolioScoring['criteria_scores'] ?? [],
+            'portfolio_scoring'               => array_merge($scoreContract, [
+                'formula_note'                => 'Portfolio Potential Score = (Raw Portfolio Score / Computable Maximum) × 100.',
+                'criteria'                    => $criteriaContract,
                 'evidence_traceability'       => $portfolioScoring['evidence_traceability'] ?? [],
                 'is_read_only'                => true,
-            ],
+            ]),
             'manual_panel_criteria'           => $manualCriteria,
+            'human_only_criteria'             => array_map(static fn(array $criterion): array => [
+                'criterion_id' => $criterion['criterion_id'] ?? null,
+                'name' => $criterion['criterion_name'] ?? null,
+                'max_points' => isset($criterion['official_max_points']) ? (float) $criterion['official_max_points'] : null,
+                'evaluation_stage' => 'FULL_EVALUATION',
+                'source_note' => $criterion['source_note'] ?? null,
+                'human_only' => true,
+            ], $manualCriteria),
             'relevant_verified_evidence'      => $evidencePackage['criteria'] ?? [],
             'all_relevant_records'            => $this->extractAllRelevantEvidenceRecords($evidencePackage),
             'review_notes'                    => $savedState['notes'] ?? '',

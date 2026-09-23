@@ -6,6 +6,10 @@ import PersonnelAchievementController from '../PersonnelAchievementController.js
 import personnelAccomplishmentService from '../../services/personnelAccomplishmentService.js'
 import AchievementModel from '../../models/AchievementModel.js'
 
+vi.mock('../../services/ocrService.js', () => ({
+  ocrService: { extract: vi.fn().mockResolvedValue({ text: '', warnings: ['Manual entry is available.'], quality: { score: 0, label: 'failed' }, engine: 'test' }) }
+}))
+
 describe('Personnel Evaluation Track — Plan A End-to-End Integration & Regression Suite (Phase A5)', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -74,7 +78,6 @@ describe('Personnel Evaluation Track — Plan A End-to-End Integration & Regress
       date_achieved: confirmedFields.dateAchieved,
       academic_year: 'AY 2025-2026',
       scope_level: confirmedFields.scopeLevel,
-      claimed_points: advisory.suggestedPoints,
       advisory_classification: advisory,
       ocr_metadata: ocrResponse.result
     }
@@ -83,8 +86,9 @@ describe('Personnel Evaluation Track — Plan A End-to-End Integration & Regress
     expect(createdRecord).toBeInstanceOf(AchievementModel)
     expect(createdRecord.id).toBe(mockAccId)
     expect(createdRecord.evidence_id).toBe(mockEvId)
-    expect(createdRecord.claimed_points).toBe(8)
-    expect(createdRecord.advisory_classification.isAdvisory).toBe(true)
+    expect(createdRecord.claimed_points).toBeUndefined()
+    expect(createdRecord.advisory_classification).toBeUndefined()
+    expect(createdRecord.ocr_metadata).toEqual(ocrResponse.result)
 
     // 5. Backend Reload / Rehydration (survives browser refresh/login)
     vi.spyOn(personnelAccomplishmentService, 'fetchAccomplishments').mockResolvedValue([
@@ -94,7 +98,6 @@ describe('Personnel Evaluation Track — Plan A End-to-End Integration & Regress
         domain: 'professional_development',
         organizer_or_publisher: confirmedFields.issuer,
         occurrence_date: confirmedFields.dateAchieved,
-        claimed_points: 8,
         status: 'draft',
         evidence: [
           { id: mockEvId, original_filename: 'seminar_cert.pdf' }

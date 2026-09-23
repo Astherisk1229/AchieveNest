@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
 import RichAchievementSearchBar from './RichAchievementSearchBar'
 import AchievementPopoverMenu from './AchievementPopoverMenu'
 import AchievementPreviewModal from './modals/AchievementPreviewModal'
@@ -34,6 +35,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
+import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 
 export default function PersonnelAchievementsPage({ currentUser }) {
   const navigate = useNavigate()
@@ -79,6 +81,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [initialModalCategory, setInitialModalCategory] = useState('')
+  const [modalAreaCode, setModalAreaCode] = useState('A')
 
   useEffect(() => {
     if (location.state?.openSubmissionModal) {
@@ -96,7 +99,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   const categoryGroups = [
     {
       area: 'Area A: Professional Development',
-      badge: '70 Max Pts',
+      badge: 'Professional Development',
       items: [
         { name: 'Degrees & Orgs', icon: GraduationCap, label: 'Degrees & Orgs' },
         { name: 'Seminars & Trainings', icon: Users, label: 'Seminars & Trainings' }
@@ -104,7 +107,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     },
     {
       area: 'Area B: Productivity & Creative Work',
-      badge: '50 Max Pts',
+      badge: 'Creative Work',
       items: [
         { name: 'Lectures & Publications', icon: BookOpen, label: 'Lectures & Publications' },
         { name: 'Research & Awards', icon: Award, label: 'Research & Awards' },
@@ -113,7 +116,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     },
     {
       area: 'Area C: Service & Leadership',
-      badge: '40 Max Pts',
+      badge: 'Service & Leadership',
       items: [
         { name: 'Service & Community', icon: Heart, label: 'Service & Community' }
       ]
@@ -121,9 +124,14 @@ export default function PersonnelAchievementsPage({ currentUser }) {
   ]
 
   // Add new achievement handler (async backend upload)
-  const handleAddNewAchievement = async (newEntry, file = null) => {
+  const handleAddNewAchievement = async (newEntry, file = null, persistence = null) => {
+    if (persistence?.alreadyPersisted) {
+      await refreshAchievements()
+      setEditingItem(null)
+      return true
+    }
     if (editingItem) {
-      updateAchievement(editingItem.id, newEntry)
+      await updateAchievement(editingItem.id, newEntry, file)
       setEditingItem(null)
     } else {
       await addAchievement(newEntry, file)
@@ -150,12 +158,12 @@ export default function PersonnelAchievementsPage({ currentUser }) {
     const headers = ['ID', 'Title', 'Issuing Institution', 'Category', 'Date', 'Status', 'Portfolio Status']
     const rows = achievements.map(a => [
       a.id,
-      `"${a.title.replace(/"/g, '""')}"`,
-      `"${a.location}"`,
-      `"${a.category}"`,
-      `"${a.date}"`,
-      `"${a.status}"`,
-      `"${a.portfolio_status || 'Available'}"`
+      `"${String(a.title || '').replace(/"/g, '""')}"`,
+      `"${String(a.location || '')}"`,
+      `"${String(a.category || '')}"`,
+      `"${String(a.date || '')}"`,
+      `"${String(a.status || '')}"`,
+      `"${String(a.portfolio_status || 'Available')}"`
     ])
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const encodedUri = encodeURI(csvContent)
@@ -206,7 +214,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
           <button
             type="button"
-            onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
+            onClick={() => { setEditingItem(null); setModalAreaCode('A'); setIsSubmitOpen(true) }}
             className="px-4 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[#064e2b] text-xs font-extrabold flex items-center gap-2 transition shadow-2xs cursor-pointer"
             title="Upload certificate file and let AchieveNest OCR automatically detect category and fill details"
           >
@@ -216,7 +224,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
 
           <button
             type="button"
-            onClick={() => { setEditingItem(null); setIsSubmitOpen(true) }}
+            onClick={() => { setEditingItem(null); setModalAreaCode('A'); setIsSubmitOpen(true) }}
             className="px-4.5 py-2.5 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -656,13 +664,22 @@ export default function PersonnelAchievementsPage({ currentUser }) {
       />
 
       {/* PERSONNEL SUBMISSION & EDIT MODAL */}
-      <PersonnelSubmissionModal
+      {usesFacultyAcademicPortfolio(user) ? <FacultyAcademicSubmissionModal
         isOpen={isSubmitOpen}
         onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
         onSubmitAccomplishment={handleAddNewAchievement}
         initialCategory={initialModalCategory}
         editingItem={editingItem}
-      />
+        currentUser={user}
+        areaCode={editingItem?.category_area?.replace('area', '') || modalAreaCode}
+        areaName={({ A: 'Professional Development', B: 'Productivity & Creative Work', C: 'Service & Leadership' })[editingItem?.category_area?.replace('area', '') || modalAreaCode]}
+      /> : <PersonnelSubmissionModal
+        isOpen={isSubmitOpen}
+        onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
+        onSubmitAccomplishment={handleAddNewAchievement}
+        initialCategory={initialModalCategory}
+        editingItem={editingItem}
+      />}
     </div>
   )
 }

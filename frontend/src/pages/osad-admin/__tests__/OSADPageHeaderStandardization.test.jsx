@@ -21,7 +21,6 @@ import OSADOrganizationDetailsView from '../OSADOrganizationDetailsView'
 import OSADAccreditationReportsPage from '../OSADAccreditationReportsPage'
 import OSADSystemAuditLogsPage from '../OSADSystemAuditLogsPage'
 import OSADAwardsAndCriteriaPage from '../OSADAwardsAndCriteriaPage'
-import OSADAwardCandidateReviewPage from '../OSADAwardCandidateReviewPage'
 import OSADStudentsForEvaluationView from '../OSADStudentsForEvaluationView'
 import OSADPotentialCandidatesView from '../OSADPotentialCandidatesView'
 import OSADStudentAwardReviewWorkspace from '../OSADStudentAwardReviewWorkspace'
@@ -184,13 +183,11 @@ describe('Plan 06 Phase 7 — OSAD Page Header Standardization Suite', () => {
 
   it('instantiates OSADAwardsAndCriteriaPage and sub-views cleanly', () => {
     const catalog = <OSADAwardsAndCriteriaPage />
-    const review = <OSADAwardCandidateReviewPage awardCategories={[]} awardees={[]} />
     const stdView = <OSADStudentsForEvaluationView award={{ id: 'a-1', name: 'Honor Award', code: 'HA' }} onBack={vi.fn()} />
     const potView = <OSADPotentialCandidatesView award={{ id: 'a-1', name: 'Honor Award', code: 'HA' }} onBack={vi.fn()} />
     const workView = <OSADStudentAwardReviewWorkspace awardId="a-1" studentId="s-1" onBack={vi.fn()} />
 
     expect(catalog.type).toBe(OSADAwardsAndCriteriaPage)
-    expect(review.type).toBe(OSADAwardCandidateReviewPage)
     expect(stdView.type).toBe(OSADStudentsForEvaluationView)
     expect(potView.type).toBe(OSADPotentialCandidatesView)
     expect(workView.type).toBe(OSADStudentAwardReviewWorkspace)

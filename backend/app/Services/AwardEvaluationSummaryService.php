@@ -41,6 +41,9 @@ class AwardEvaluationSummaryService
         if ($award === null) {
             throw new RuntimeException("Award definition [{$awardId}] not found.");
         }
+        if (strtoupper(trim((string) ($award['authority_status'] ?? ''))) === 'PROPOSED') {
+            throw new RuntimeException('Proposed rubrics are unavailable for authoritative candidate evaluation summaries.');
+        }
 
         $student = $this->db->table('profiles')
             ->where('id', $studentProfileId)
@@ -56,7 +59,11 @@ class AwardEvaluationSummaryService
             ->orderBy('version_number', 'DESC')
             ->get()->getRowArray();
 
-        $thresholdPercent = (float) ($version['candidate_threshold_percent'] ?? $award['candidate_threshold_percent'] ?? 80.00);
+        $thresholdValue = $version['candidate_threshold_percent'] ?? $award['candidate_threshold_percent'] ?? null;
+        if (! is_numeric($thresholdValue) || (float) $thresholdValue < 0.0 || (float) $thresholdValue > 100.0) {
+            throw new RuntimeException('Candidate threshold configuration is missing or invalid.');
+        }
+        $thresholdPercent = (float) $thresholdValue;
 
         // Fetch or trigger evaluation calculation
         $evalResult = $this->evalService->evaluateStudentAward($cycle['id'], $awardId, $studentProfileId, $evaluatorProfileId);
@@ -91,7 +98,7 @@ class AwardEvaluationSummaryService
                     'name'             => $crit['name'],
                     'status_label'     => 'Not Automatically Evaluated (Panel / Institutional Requirement)',
                     'max_points'       => (float) $crit['max_points'],
-                    'authority_status' => $crit['authority_status'] ?? 'OFFICIAL',
+                    'authority_status' => AwardApiContractService::authority($crit['authority_status'] ?? null),
                 ];
                 continue;
             }
@@ -124,9 +131,9 @@ class AwardEvaluationSummaryService
                 'status_label'        => 'Portfolio Computable',
                 'max_points'          => (float) $crit['max_points'],
                 'awarded_points'      => $critScoreRow !== null ? (float) $critScoreRow['awarded_points'] : 0.0,
-                'rule_applied'        => $rule['code'] ?? 'DEFAULT_RULE',
-                'rule_type'           => $rule['rule_type'] ?? 'sum_capped',
-                'authority_status'    => $rule['authority_status'] ?? $crit['authority_status'] ?? 'OFFICIAL',
+                'rule_applied'        => $rule['code'] ?? null,
+                'rule_type'           => $rule['rule_type'] ?? null,
+                'authority_status'    => AwardApiContractService::authority($rule['authority_status'] ?? $crit['authority_status'] ?? null),
                 'evidence_count'      => count($evidenceRows),
                 'evidence'            => array_map(function ($ev) {
                     return [
@@ -140,11 +147,36 @@ class AwardEvaluationSummaryService
             ];
         }
 
+        $criteriaBreakdown = array_map(static function (array $criterion): array {
+            $contract = AwardApiContractService::criterion($criterion);
+            $contract['achieved_points'] = $criterion['awarded_points'];
+            $contract['calculation_text'] = $criterion['rule_applied'] !== null ? 'Calculated using ' . $criterion['rule_applied'] . '.' : null;
+            $contract['verified_record_count'] = $criterion['evidence_count'];
+            $contract['evidence_ids'] = array_values(array_filter(array_column($criterion['evidence'], 'portfolio_record_id')));
+            return array_merge($criterion, $contract);
+        }, $criteriaBreakdown);
+        $nonComputableCriteria = array_map(static fn(array $criterion): array => array_merge($criterion, [
+            'criterion_type' => 'HUMAN_ONLY',
+            'human_only' => true,
+            'evaluation_stage' => 'FULL_EVALUATION',
+            'source_note' => null,
+            'scoring_status' => 'HUMAN_ONLY',
+            'scoring_warnings' => [],
+        ]), $nonComputableCriteria);
+
         $rawScore = (float) $evalResult['raw_score'];
         $maxComputable = (float) $evalResult['max_computable_score'];
         $potentialScore = (float) $evalResult['potential_percent'];
         $qualifies = ($potentialScore >= $thresholdPercent);
 
+        $scoreContract = AwardApiContractService::score([
+            'raw_portfolio_score' => $rawScore,
+            'computable_max_score' => $maxComputable,
+            'portfolio_potential_score' => $potentialScore,
+            'candidate_threshold_percent' => $thresholdPercent,
+            'candidate_status' => $qualifies ? 'POTENTIAL_CANDIDATE' : 'BELOW_THRESHOLD',
+            'scoring_status' => 'VALID',
+        ], $award);
         $payload = [
             'summary_title'               => 'Portfolio-Based Award Evaluation Summary',
             'evaluation_id'               => $evalId,
@@ -158,23 +190,28 @@ class AwardEvaluationSummaryService
                 'id'                      => $award['id'],
                 'code'                    => $award['code'],
                 'name'                    => $award['name'],
-                'authority_status'        => $award['authority_status'] ?? 'OFFICIAL',
+                'authority_status'        => AwardApiContractService::authority($award['authority_status'] ?? null),
+                'source_fidelity_status'  => $award['source_fidelity_status'] ?? null,
             ],
             'award_cycle'                 => [
                 'id'                      => $cycle['id'],
                 'name'                    => $cycle['name'],
-                'academic_year'           => $cycle['academic_year'] ?? '2025-2026',
+                'academic_year'           => $cycle['academic_year'] ?? null,
             ],
             'scoring_model_version'       => [
                 'id'                      => $version['id'] ?? null,
-                'version_number'          => $version['version_number'] ?? '1.0',
-                'version_label'           => $version['version_label'] ?? 'v1.0 Published',
+                'version_number'          => $version['version_number'] ?? null,
+                'version_label'           => $version['version_label'] ?? null,
+                'source_document_id'      => $version['source_document_id'] ?? null,
+                'source_document_label'   => $version['source_document_label'] ?? $version['source_document_ref'] ?? null,
+                'source_effective_date'   => $version['source_effective_date'] ?? null,
                 'candidate_threshold_percent' => $thresholdPercent,
             ],
+            'score_contract'              => $scoreContract,
             'totals'                      => [
                 'portfolio_raw_score'     => $rawScore,
                 'max_computable_score'    => $maxComputable,
-                'official_rubric_total'   => (float) (array_sum(array_column($allCriteria, 'weight')) ?: 100.00),
+                'official_rubric_total'   => $allCriteria === [] ? null : (float) array_sum(array_column($allCriteria, 'weight')),
                 'portfolio_potential_score' => $potentialScore,
                 'candidate_threshold_percent' => $thresholdPercent,
                 'threshold_result'        => $qualifies ? 'Met' : 'Not Met',

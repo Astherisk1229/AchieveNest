@@ -61,7 +61,7 @@ class AuthenticatedActorService
              JOIN roles r ON r.id = pr.role_id
              WHERE pr.profile_id = ?
                AND pr.is_active = 1
-               AND r.role_key NOT IN ('dean', 'program_coordinator', 'organization_moderator')",
+               AND r.role_key NOT IN ('dean', 'department_head', 'program_coordinator', 'organization_moderator')",
             [$authUserId]
         )->getResultArray();
 
@@ -74,6 +74,16 @@ class AuthenticatedActorService
              WHERE da.personnel_profile_id = ? AND da.is_active = 1",
             [$authUserId]
         )->getResultArray();
+
+        $departmentHeadRows = $db->tableExists('department_head_assignments') ? $db->query(
+            "SELECT 'department_head' AS role_key, 'Department Head' AS display_name,
+                    dha.id AS assignment_id, 'department' AS scope_type,
+                    dha.department_id AS scope_id, au.code AS scope_code, au.name AS scope_name
+             FROM department_head_assignments dha
+             JOIN administrative_units au ON au.id = dha.department_id
+             WHERE dha.personnel_profile_id = ? AND dha.is_active = 1",
+            [$authUserId]
+        )->getResultArray() : [];
 
         $coordinatorRows = $db->query(
             "SELECT 'program_coordinator' AS role_key,
@@ -97,7 +107,7 @@ class AuthenticatedActorService
             [$authUserId]
         )->getResultArray();
 
-        $assignments = array_merge($genericRoleRows, $deanRows, $coordinatorRows, $moderatorRows);
+        $assignments = array_merge($genericRoleRows, $deanRows, $departmentHeadRows, $coordinatorRows, $moderatorRows);
         $roles = array_values(array_unique(array_column($assignments, 'role_key')));
 
         return [

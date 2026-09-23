@@ -1,5 +1,10 @@
 import apiClient from './apiClient'
 
+export async function fetchCurrentEvaluationPeriod(evaluationType = 'RANKING_PROMOTION') {
+  const response = await apiClient.get('/personnel/evaluation-period/current', { params: { evaluation_type: evaluationType } })
+  return response?.data?.data || response?.data || response
+}
+
 /**
  * personnelAccomplishmentService.js
  * Frontend Service for Personnel Accomplishment persistence and secure evidence file upload/streaming.
@@ -13,11 +18,31 @@ export const personnelAccomplishmentService = {
     return res?.data?.accomplishments || res?.accomplishments || []
   },
 
+  async fetchAccomplishment(accomplishmentId) {
+    const res = await apiClient.get(`/personnel/accomplishments/${accomplishmentId}`)
+    return res?.data?.accomplishment || res?.accomplishment || res?.data || res
+  },
+
   /**
    * Persist a new accomplishment record to the database.
    */
   async createAccomplishment(payload) {
     const res = await apiClient.post('/personnel/accomplishments', payload)
+    return res?.data || res
+  },
+
+  async beginEvidenceDraft() {
+    const res = await apiClient.post('/personnel/accomplishments/evidence-draft', {})
+    return res?.data || res
+  },
+
+  async saveDraft(accomplishmentId, payload = {}) {
+    const res = await apiClient.put(`/personnel/accomplishments/${accomplishmentId}/draft`, payload)
+    return res?.data || res
+  },
+
+  async checkDuplicate(payload) {
+    const res = await apiClient.post('/personnel/accomplishments/check-duplicate', payload)
     return res?.data || res
   },
 
@@ -68,7 +93,7 @@ export const personnelAccomplishmentService = {
       }
     }
 
-    const response = await fetch(`${baseURL}/evidence/personnel/${evidenceId}/download`, {
+    const response = await fetch(`${baseURL}/evidence/personnel/${evidenceId}/preview`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
 
@@ -106,7 +131,7 @@ export const personnelAccomplishmentService = {
       }
     }
 
-    const response = await fetch(`${baseURL}/evidence/personnel/${evidenceId}/download`, {
+    const response = await fetch(`${baseURL}/evidence/personnel/${evidenceId}/preview`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
 

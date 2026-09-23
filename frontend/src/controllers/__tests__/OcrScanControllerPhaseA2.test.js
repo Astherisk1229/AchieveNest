@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import OcrScanController from '../OcrScanController.js'
 import OcrScanModel from '../../models/OcrScanModel.js'
 
+vi.mock('../../services/ocrService.js', () => ({
+  ocrService: { extract: vi.fn().mockResolvedValue({ text: '', warnings: ['No readable text detected.'], quality: { score: 0, label: 'failed' }, engine: 'test' }) }
+}))
+
 describe('Phase A2: OCR Extraction & Auto-Fill with Zero-Fabrication Guarantee', () => {
 
   // =========================================================================
@@ -209,5 +213,25 @@ describe('Phase A2: OCR Extraction & Auto-Fill with Zero-Fabrication Guarantee',
     expect(OcrScanController.isValidCalendarDate(2026, 13, 10)).toBe(false)
     expect(OcrScanController.isValidCalendarDate(2026, 2, 28)).toBe(true)
     expect(OcrScanController.isValidCalendarDate(2024, 2, 29)).toBe(true) // leap year
+  })
+
+  it('maps A.1 institution and degree title to distinct semantic fields', () => {
+    const text = `Harrington Institute of Advanced Studies
+DOCTOR OF PHILOSOPHY
+Degree Certificate
+Dr. Amelia Foster
+Doctor of Philosophy (Ph.D.) in Psychology
+Issued on: December 18, 2050`
+    const fields = OcrScanController.extractFieldsFromText(text, text.split('\n'), 'A.1 Degree/s')
+    expect(fields.degreeLevel).toBe('Ph.D. Degree Holder')
+    expect(fields.title).toBe('Doctor of Philosophy in Psychology')
+    expect(fields.issuer).toBe('Harrington Institute of Advanced Studies')
+    expect(fields.date).toBe('2050-12-18')
+    expect(fields.unitsCompleted).toBe('')
+    expect(fields.title).not.toContain('Institute')
+  })
+
+  it.each(['PhD', 'Ph.D.', 'Doctor of Philosophy', 'Doctorate'])('resolves %s to the canonical doctoral option', alias => {
+    expect(OcrScanController.resolveDegreeLevel(alias).value).toBe('Ph.D. Degree Holder')
   })
 })

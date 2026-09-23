@@ -91,8 +91,10 @@ class AwardScoringService
         $totalRawScore = 0.0;
         $totalMaxComputable = 0.0;
         $allEvidenceTrace = [];
+        $allContributions = [];
 
         foreach ($criteria as $crit) {
+            $crit['evidence'] = $this->distinctEvidence($crit['evidence'] ?? []);
             $critScoreResult = $this->scoreCriterion($awardCode, $crit);
             $criteriaScores[] = $critScoreResult;
             $totalRawScore += $critScoreResult['earned_points'];
@@ -101,11 +103,37 @@ class AwardScoringService
             foreach ($critScoreResult['evidence_trace'] as $trace) {
                 $allEvidenceTrace[] = $trace;
             }
+            foreach ($critScoreResult['contributions'] as $contribution) {
+                $allContributions[] = $contribution;
+            }
         }
 
-        // Cap award raw score to computable maximum
-        $awardCap = $this->getAwardComputableCap($awardCode, $totalMaxComputable);
+        $configuredMax = $awardArr['computable_max_score'] ?? $awardArr['portfolio_max'] ?? null;
+        if ($configuredMax !== null && (! is_numeric($configuredMax) || (float) $configuredMax <= 0.0 || abs((float) $configuredMax - $totalMaxComputable) > 0.001)) {
+            return [
+                'award_id' => $awardArr['id'] ?? null,
+                'award_code' => $awardCode,
+                'student_id' => $studentArr['id'] ?? null,
+                'is_eligible' => true,
+                'raw_portfolio_score' => 0.0,
+                'computable_max_score' => is_numeric($configuredMax) ? (float) $configuredMax : null,
+                'criteria_scores' => $criteriaScores,
+                'evidence_traceability' => $allEvidenceTrace,
+                'scoring_status' => 'CONFIGURATION_ERROR',
+                'diagnostics' => ['Configured computable maximum does not match the authoritative criterion total.'],
+            ];
+        }
+
+        $awardCap = $totalMaxComputable;
         $finalRawScore = min($totalRawScore, $awardCap);
+        $allocatedRawScore = round(array_sum(array_column($allContributions, 'allocated_points')), 2);
+        if (abs($allocatedRawScore - round($finalRawScore, 2)) > 0.001) {
+            throw new RuntimeException("SCORING_TRACE_PORTFOLIO_RECONCILIATION_FAILED:{$allocatedRawScore}:{$finalRawScore}");
+        }
+        $warnings = array_values(array_map(
+            static fn(array $trace): string => $trace['scoring_warning'],
+            array_filter($allEvidenceTrace, static fn(array $trace): bool => isset($trace['scoring_warning']))
+        ));
 
         return [
             'award_id'               => $awardArr['id'] ?? null,
@@ -119,7 +147,9 @@ class AwardScoringService
             'scoring_version'        => $awardArr['active_scoring_version'] ?? '1.0',
             'criteria_scores'        => $criteriaScores,
             'evidence_traceability'  => $allEvidenceTrace,
-            'scoring_status'         => 'SCORED',
+            'contributing_evidence'  => $allContributions,
+            'scoring_status'         => $warnings === [] ? 'SCORED' : 'PARTIALLY_UNSCORABLE',
+            'scoring_warnings'       => $warnings,
         ];
     }
 
@@ -287,7 +317,7 @@ class AwardScoringService
                 $components[] = $aResult;
                 $components[] = $bResult;
             } elseif (str_contains($critCode, 'LEADERSHIP') || str_contains($critCode, 'LEAD')) {
-                $c1Result = $this->evaluateHighestOnlyLeadership($evidenceList, 5.0, ['SSG_UNIVERSITY_GOVERNMENT' => 3.0, 'COLLEGIATE_COLLEGE_COUNCIL' => 3.0, 'CLUB_ORGANIZATION' => 2.0]);
+                $c1Result = $this->evaluateAdditiveLeadership($evidenceList, 5.0, ['SSG_UNIVERSITY_GOVERNMENT' => 3.0, 'COLLEGIATE_COLLEGE_COUNCIL' => 3.0, 'CLUB_ORGANIZATION' => 2.0]);
                 $c2Result = $this->evaluateAccumulateAwardsSeminars($evidenceList, 5.0, 3.0, 2.0, 0.0);
                 $components[] = $c1Result;
                 $components[] = $c2Result;
@@ -300,14 +330,15 @@ class AwardScoringService
                 $citationEv = array_filter($evidenceList, fn($ev) => ($ev['category_code'] ?? '') === 'CITATION_RECOGNITION');
 
                 $a1Result = $this->evaluateFixedPresenceTriple($commEv, 15.0, 5.0, 5.0, 5.0);
-                $a2Result = $this->evaluateFixedPresenceTriple($commEv, 15.0, 5.0, 5.0, 5.0);
+                $initiatedEv = array_filter($commEv, fn(array $ev): bool => $this->hasInitiatedLeadershipRole($ev));
+                $a2Result = $this->evaluateFixedPresenceTriple($initiatedEv, 15.0, 5.0, 5.0, 5.0);
                 $a3Result = $this->evaluatePerRecordCapped($citationEv, 2.0, 10.0, 'Volunteer Citations');
 
                 $components[] = $a1Result;
                 $components[] = $a2Result;
                 $components[] = $a3Result;
             } elseif (str_contains($critCode, 'LEADERSHIP') || str_contains($critCode, 'VOL_LEAD')) {
-                $b1Result = $this->evaluateHighestOnlyLeadership($evidenceList, 5.0, ['SSG_UNIVERSITY_GOVERNMENT' => 3.0, 'COLLEGIATE_COLLEGE_COUNCIL' => 3.0, 'CLUB_ORGANIZATION' => 2.0]);
+                $b1Result = $this->evaluateAdditiveLeadership($evidenceList, 5.0, ['SSG_UNIVERSITY_GOVERNMENT' => 3.0, 'COLLEGIATE_COLLEGE_COUNCIL' => 3.0, 'CLUB_ORGANIZATION' => 2.0]);
                 $b2Result = $this->evaluateAccumulateAwardsSeminars($evidenceList, 5.0, 3.0, 2.0, 0.0);
                 $components[] = $b1Result;
                 $components[] = $b2Result;
@@ -316,6 +347,8 @@ class AwardScoringService
 
         // Aggregate component points into criterion earned points
         foreach ($components as $comp) {
+            $comp = $this->attachAuthoritativeComponentIdentity($comp, (string) ($crit['criterion_id'] ?? ''));
+            $comp['contributions'] = $this->reconcileComponentContributions($comp, $crit);
             $critEarnedTotal += $comp['earned_points'];
             foreach ($comp['evidence_trace'] as $trace) {
                 $critTrace[] = array_merge($trace, [
@@ -323,9 +356,27 @@ class AwardScoringService
                     'criterion_code' => $critCode,
                 ]);
             }
+            $normalizedComponents[] = $comp;
         }
 
+        $components = $normalizedComponents ?? [];
+
         $cappedCritEarned = min($critEarnedTotal, $critMax);
+        $criterionContributions = array_merge(...array_map(
+            static fn(array $component): array => $component['contributions'],
+            $components
+        ));
+        $allocated = round(array_sum(array_column($criterionContributions, 'allocated_points')), 2);
+        if (abs($allocated - round($cappedCritEarned, 2)) > 0.001) {
+            throw new RuntimeException("SCORING_TRACE_RECONCILIATION_FAILED:{$critCode}:{$allocated}:{$cappedCritEarned}");
+        }
+        $criterionWarnings = array_values(array_map(static fn(array $trace): array => [
+            'code' => $trace['warning_code'] ?? 'INVALID_METADATA',
+            'severity' => 'warning',
+            'message' => $trace['scoring_warning'],
+            'criterion_id' => $crit['criterion_id'] ?? null,
+            'evidence_id' => $trace['record_id'] ?? null,
+        ], array_filter($critTrace, static fn(array $trace): bool => isset($trace['scoring_warning']))));
 
         return [
             'criterion_id'    => $crit['criterion_id'] ?? '',
@@ -335,7 +386,67 @@ class AwardScoringService
             'max_points'      => round($critMax, 2),
             'components'      => $components,
             'evidence_trace'  => $critTrace,
+            'contributions'   => $criterionContributions,
+            'scoring_status'  => $criterionWarnings === [] ? 'VALID' : 'PARTIALLY_UNSCORABLE',
+            'scoring_warnings'=> $criterionWarnings,
         ];
+    }
+
+    /**
+     * Produces the canonical post-cap allocation without changing the scorer's earned value.
+     */
+    protected function reconcileComponentContributions(array $component, array $criterion): array
+    {
+        $remaining = round((float) ($component['earned_points'] ?? 0.0), 2);
+        $rows = [];
+        foreach (($component['evidence_trace'] ?? []) as $trace) {
+            if ($remaining <= 0.0 || ! ($trace['is_selected'] ?? false)) {
+                continue;
+            }
+            $proposed = max(0.0, (float) ($trace['contribution_points'] ?? $trace['base_points'] ?? 0.0));
+            if ($proposed <= 0.0) {
+                continue;
+            }
+            $allocated = round(min($proposed, $remaining), 2);
+            if ($allocated <= 0.0) {
+                continue;
+            }
+            $rows[] = [
+                'evidence_id' => $trace['record_id'] ?? null,
+                'evidence_title' => $trace['title'] ?? '',
+                'criterion_id' => $criterion['criterion_id'] ?? null,
+                'criterion_code' => $criterion['criterion_code'] ?? null,
+                'criterion_name' => $criterion['criterion_name'] ?? null,
+                'component_id' => $component['component_id'] ?? null,
+                'component_code' => $component['component_code'] ?? null,
+                'component_name' => $component['component_name'] ?? null,
+                'allocated_points' => $allocated,
+            ];
+            $remaining = round($remaining - $allocated, 2);
+        }
+        if ($remaining > 0.001) {
+            throw new RuntimeException('SCORING_TRACE_COMPONENT_UNALLOCATED:' . ($component['component_code'] ?? 'UNKNOWN') . ':' . $remaining);
+        }
+        return $rows;
+    }
+
+    protected function attachAuthoritativeComponentIdentity(array $component, string $criterionId): array
+    {
+        $component['component_id'] = $component['component_id'] ?? null;
+        if ($criterionId === '' || ! method_exists($this->db, 'table')) {
+            return $component;
+        }
+        $row = $this->db->table('award_criterion_components')
+            ->select('id, code, name')
+            ->where('criterion_id', $criterionId)
+            ->where('code', $component['component_code'] ?? '')
+            ->get()->getRowArray();
+        if ($row) {
+            $component['component_id'] = $row['id'];
+            $component['component_code'] = $row['code'];
+            $component['component_name'] = $row['name'];
+        }
+        return $component;
     }
 
     /**
@@ -352,7 +463,14 @@ class AwardScoringService
                 continue;
             }
             $subCode = $ev['subcategory_code'] ?? '';
-            $points = $levelPoints[$subCode] ?? 4.0;
+            $meta = $ev['structured_metadata'] ?? [];
+            if (empty($meta['position_level']) || !in_array(strtolower($meta['position_level']), ['executive', 'officer', 'committee_head', 'member'])) {
+                continue;
+            }
+            $points = $levelPoints[$subCode] ?? 0.0;
+            if ($points <= 0.0) {
+                continue;
+            }
             $qualifyingRecords[] = [
                 'record_id' => $ev['record_id'],
                 'points'    => $points,
@@ -394,6 +512,46 @@ class AwardScoringService
         ];
     }
 
+    protected function evaluateAdditiveLeadership(array $evidenceList, float $cap, array $levelPoints): array
+    {
+        $total = 0.0;
+        $trace = [];
+
+        foreach ($this->distinctEvidence($evidenceList) as $ev) {
+            if (($ev['category_code'] ?? '') !== 'LEADERSHIP_POSITION') {
+                continue;
+            }
+            $subCode = strtoupper(trim((string) ($ev['subcategory_code'] ?? '')));
+            $meta = $ev['structured_metadata'] ?? [];
+            $position = strtolower(trim((string) ($meta['position_level'] ?? '')));
+            $points = $levelPoints[$subCode] ?? 0.0;
+            if ($points <= 0.0 || ! in_array($position, ['executive', 'officer', 'committee_head', 'member'], true)) {
+                continue;
+            }
+            $remaining = max(0.0, $cap - $total);
+            $contribution = min($points, $remaining);
+            $total += $contribution;
+            $trace[] = [
+                'record_id' => $ev['record_id'] ?? null,
+                'title' => $ev['title'] ?? '',
+                'component_name' => 'Leadership Involvement',
+                'rule_type' => 'DISTINCT_ADDITIVE_WITH_CAP',
+                'base_points' => $points,
+                'contribution_points' => $contribution,
+                'is_selected' => $contribution > 0.0,
+            ];
+        }
+
+        return [
+            'component_code' => 'COMP_LEADERSHIP_INVOLVEMENT',
+            'component_name' => 'Leadership Involvement',
+            'rule_type' => 'DISTINCT_ADDITIVE_WITH_CAP',
+            'earned_points' => round($total, 2),
+            'max_points' => $cap,
+            'evidence_trace' => $trace,
+        ];
+    }
+
     /**
      * Rule: Distinct Category Accumulation (Student Leader of the Year: SSG 12, College 8, Club 6, Year 4; cap 30).
      */
@@ -415,7 +573,14 @@ class AwardScoringService
                 continue;
             }
             $subCode = $ev['subcategory_code'] ?? '';
-            $points = $categoryPoints[$subCode] ?? 4.0;
+            $meta = $ev['structured_metadata'] ?? [];
+            if (empty($meta['position_level']) || !in_array(strtolower($meta['position_level']), ['executive', 'officer', 'committee_head', 'member'])) {
+                continue;
+            }
+            $points = $categoryPoints[$subCode] ?? 0.0;
+            if ($points <= 0.0) {
+                continue;
+            }
 
             if (! isset($seenCategories[$subCode])) {
                 $seenCategories[$subCode] = true;
@@ -475,13 +640,15 @@ class AwardScoringService
             $ruleName = '';
 
             if ($catCode === 'CITATION_RECOGNITION') {
-                $scope = strtoupper(trim((string) ($meta['scope'] ?? 'LOCAL')));
-                if ($scope === 'INTERNATIONAL' || $scope === 'NATIONAL') {
+                $scope = strtoupper(trim((string) ($meta['scope'] ?? '')));
+                if ($scope === 'INTERNATIONAL') {
                     $points = $natAwardPoints;
-                    $ruleName = 'National/International Award';
-                } else {
+                    $ruleName = 'International Award';
+                } elseif ($scope === 'LOCAL') {
                     $points = $localAwardPoints;
                     $ruleName = 'Local Award/Citation';
+                } else {
+                    $trace[] = $this->unscorableTrace($ev, 'Leadership award scope is missing, unknown, or unresolved.');
                 }
             } elseif ($catCode === 'SEMINAR_TRAINING') {
                 $points = $seminarPoints;
@@ -527,8 +694,16 @@ class AwardScoringService
                 continue;
             }
             $meta = $ev['structured_metadata'] ?? [];
-            $level = strtoupper(trim((string) ($meta['civic_level'] ?? $meta['scope'] ?? 'BARANGAY')));
-            $points = ($level === 'BARANGAY') ? 10.0 : 8.0;
+            $level = strtoupper(trim((string) ($meta['civic_level'] ?? $meta['scope'] ?? '')));
+            $points = match ($level) {
+                'BARANGAY' => 10.0,
+                'MUNICIPAL', 'PROVINCIAL' => 8.0,
+                default => 0.0,
+            };
+            if ($points <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Civic level is missing, unknown, or unresolved.');
+                continue;
+            }
 
             if ($points > $highestPoints) {
                 $highestPoints = $points;
@@ -572,11 +747,15 @@ class AwardScoringService
             $meta = $ev['structured_metadata'] ?? [];
             $type = strtoupper(trim((string) ($meta['involvement_type'] ?? $subCode)));
 
+            $points = 0.0;
             if (str_contains($type, 'SCHOOL') || str_contains($subCode, 'UNIVERSITY')) {
+                if (! $hasSchool) $points = $schoolPts;
                 $hasSchool = true;
             } elseif (str_contains($type, 'COMMUNITY')) {
+                if (! $hasComm) $points = $commPts;
                 $hasComm = true;
             } elseif (str_contains($type, 'CHURCH') || str_contains($type, 'PARISH') || str_contains($subCode, 'MINISTRY')) {
+                if (! $hasChurch) $points = $churchPts;
                 $hasChurch = true;
             }
 
@@ -585,9 +764,9 @@ class AwardScoringService
                 'title'               => $ev['title'] ?? '',
                 'component_name'      => 'Fixed Presence Involvement',
                 'rule_type'           => 'FIXED_PRESENCE',
-                'base_points'         => 0.0,
-                'contribution_points' => 0.0,
-                'is_selected'         => true,
+                'base_points'         => $points,
+                'contribution_points' => $points,
+                'is_selected'         => $points > 0.0,
             ];
         }
 
@@ -617,13 +796,22 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $role = strtoupper(trim((string) ($meta['role'] ?? 'LEAD')));
-            $scope = strtoupper(trim((string) ($meta['scope'] ?? 'SCHOOL')));
+            if (! $this->hasInitiatedLeadershipRole($ev)) {
+                $trace[] = $this->unscorableTrace($ev, 'Explicit initiated-activity leadership role is required.');
+                continue;
+            }
+            $scope = strtoupper(trim((string) ($meta['scope'] ?? '')));
 
+            $points = 0.0;
             if (str_contains($scope, 'SCHOOL')) {
+                if (! $hasSchool) $points = $schoolPts;
                 $hasSchool = true;
-            } else {
+            } elseif (str_contains($scope, 'COMMUNITY') || str_contains($scope, 'CHURCH')) {
+                if (! $hasComm) $points = $commPts;
                 $hasComm = true;
+            } else {
+                $trace[] = $this->unscorableTrace($ev, 'Initiated-activity scope is missing or unknown.');
+                continue;
             }
 
             $trace[] = [
@@ -631,9 +819,9 @@ class AwardScoringService
                 'title'               => $ev['title'] ?? '',
                 'component_name'      => 'Initiated Activity',
                 'rule_type'           => 'FIXED_PRESENCE',
-                'base_points'         => 0.0,
-                'contribution_points' => 0.0,
-                'is_selected'         => true,
+                'base_points'         => $points,
+                'contribution_points' => $points,
+                'is_selected'         => $points > 0.0,
             ];
         }
 
@@ -692,8 +880,8 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $role = strtoupper(trim((string) ($meta['role'] ?? 'ORGANIZER')));
-            $points = 2.0;
+            $role = strtoupper(trim((string) ($meta['role'] ?? '')));
+            $points = 0.0;
 
             if (str_contains($role, 'INITIATOR') || str_contains($role, 'PRINCIPAL')) {
                 $points = 5.0;
@@ -701,6 +889,12 @@ class AwardScoringService
                 $points = 4.0;
             } elseif (str_contains($role, 'FACILITATOR') || str_contains($role, 'COORDINATOR')) {
                 $points = 3.0;
+            } elseif (str_contains($role, 'ORGANIZER')) {
+                $points = 2.0;
+            }
+            if ($points <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Explicit initiated-activity leadership role is required.');
+                continue;
             }
 
             $totalEarned += $points;
@@ -801,8 +995,15 @@ class AwardScoringService
 
         foreach ($filtered as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $role = strtoupper(trim((string) ($meta['role'] ?? 'OFFICER')));
-            $pts = str_contains($role, 'OFFICER') || str_contains($role, 'EDITOR') ? 3.0 : 2.0;
+            $role = strtoupper(trim((string) ($meta['role'] ?? '')));
+            if (str_contains($role, 'OFFICER') || str_contains($role, 'EDITOR')) {
+                $pts = 3.0;
+            } elseif (str_contains($role, 'CONTRIBUTOR')) {
+                $pts = 2.0;
+            } else {
+                $trace[] = $this->unscorableTrace($ev, 'Campus publication role is missing or unknown.');
+                continue;
+            }
             $total += $pts;
 
             $trace[] = [
@@ -837,8 +1038,15 @@ class AwardScoringService
 
         foreach ($filtered as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $scope = strtoupper(trim((string) ($meta['scope'] ?? 'LOCAL')));
-            $pts = ($scope === 'NATIONAL' || $scope === 'INTERNATIONAL') ? 3.0 : 2.0;
+            $scope = strtoupper(trim((string) ($meta['scope'] ?? '')));
+            if ($scope === 'INTERNATIONAL') {
+                $pts = 3.0;
+            } elseif ($scope === 'LOCAL') {
+                $pts = 2.0;
+            } else {
+                $trace[] = $this->unscorableTrace($ev, 'Journalism award scope is missing, unknown, or unresolved.');
+                continue;
+            }
             $total += $pts;
 
             $trace[] = [
@@ -873,12 +1081,15 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $compType = strtoupper(trim((string) ($meta['competition_type'] ?? 'INDIVIDUAL')));
+            $compType = strtoupper(trim((string) ($meta['competition_type'] ?? '')));
 
             if (str_contains($compType, 'TEAM')) {
                 $hasTeam = true;
-            } else {
+            } elseif (str_contains($compType, 'INDIVIDUAL')) {
                 $hasInd = true;
+            } else {
+                $trace[] = $this->unscorableTrace($ev, 'Sports category is missing or unknown.');
+                continue;
             }
 
             $trace[] = [
@@ -924,8 +1135,12 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $level = strtoupper(trim((string) ($meta['event_level'] ?? 'PRISAA LOCAL')));
-            $pts = $schedule[$level] ?? 2.0;
+            $level = strtoupper(trim((string) ($meta['event_level'] ?? '')));
+            $pts = $schedule[$level] ?? 0.0;
+            if ($pts <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Sports event level is missing or unknown.');
+                continue;
+            }
             $total += $pts;
 
             $trace[] = [
@@ -959,10 +1174,14 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $level = strtoupper(trim((string) ($meta['event_level'] ?? 'PRISAA LOCAL')));
-            $result = strtoupper(trim((string) ($meta['placement'] ?? $meta['result'] ?? 'BRONZE')));
+            $level = strtoupper(trim((string) ($meta['event_level'] ?? '')));
+            $result = strtoupper(trim((string) ($meta['placement'] ?? $meta['result'] ?? '')));
 
-            $pts = self::SPORTS_AWARDS_MATRIX[$level][$result] ?? 1.0;
+            $pts = self::SPORTS_AWARDS_MATRIX[$level][$result] ?? 0.0;
+            if ($pts <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Sports event level or placement is missing or unknown.');
+                continue;
+            }
             $total += $pts;
 
             $trace[] = [
@@ -997,12 +1216,15 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $perfType = strtoupper(trim((string) ($meta['performance_type'] ?? 'INDIVIDUAL')));
+            $perfType = strtoupper(trim((string) ($meta['performance_type'] ?? '')));
 
             if (str_contains($perfType, 'GROUP') || str_contains($perfType, 'ENSEMBLE')) {
                 $hasGroup = true;
-            } else {
+            } elseif (str_contains($perfType, 'INDIVIDUAL')) {
                 $hasInd = true;
+            } else {
+                $trace[] = $this->unscorableTrace($ev, 'Socio-cultural performance type is missing or unknown.');
+                continue;
             }
 
             $trace[] = [
@@ -1048,8 +1270,12 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $level = strtoupper(trim((string) ($meta['event_level'] ?? 'LOCAL')));
-            $pts = $schedule[$level] ?? 2.0;
+            $level = strtoupper(trim((string) ($meta['event_level'] ?? '')));
+            $pts = $schedule[$level] ?? 0.0;
+            if ($pts <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Socio-cultural event level is missing or unknown.');
+                continue;
+            }
             $total += $pts;
 
             $trace[] = [
@@ -1083,10 +1309,14 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $level = strtoupper(trim((string) ($meta['event_level'] ?? 'LOCAL')));
-            $result = strtoupper(trim((string) ($meta['placement'] ?? $meta['result'] ?? 'BRONZE')));
+            $level = strtoupper(trim((string) ($meta['event_level'] ?? '')));
+            $result = strtoupper(trim((string) ($meta['placement'] ?? $meta['result'] ?? '')));
 
-            $pts = self::SOCIO_AWARDS_MATRIX[$level][$result] ?? 1.0;
+            $pts = self::SOCIO_AWARDS_MATRIX[$level][$result] ?? 0.0;
+            if ($pts <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Socio-cultural event level or placement is missing or unknown.');
+                continue;
+            }
             $total += $pts;
 
             $trace[] = [
@@ -1120,15 +1350,21 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $type = strtoupper(trim((string) ($meta['participation_type'] ?? 'ACTIVITY')));
+            $type = strtoupper(trim((string) ($meta['participation_type'] ?? '')));
 
-            $pts = 2.0;
+            $pts = 0.0;
             if (str_contains($type, 'SUSTAINED')) {
                 $pts = 5.0;
             } elseif (str_contains($type, 'COMMITTEE')) {
                 $pts = 4.0;
             } elseif (str_contains($type, 'OUTREACH') || str_contains($type, 'CO-CURRICULAR')) {
                 $pts = 3.0;
+            } elseif ($type === 'ACTIVITY') {
+                $pts = 2.0;
+            }
+            if ($pts <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Organization involvement type is missing or unknown.');
+                continue;
             }
 
             $total += $pts;
@@ -1163,15 +1399,21 @@ class AwardScoringService
 
         foreach ($evidenceList as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
-            $type = strtoupper(trim((string) ($meta['contribution_type'] ?? 'CONTRIBUTOR')));
+            $type = strtoupper(trim((string) ($meta['contribution_type'] ?? '')));
 
-            $pts = 2.0;
+            $pts = 0.0;
             if (str_contains($type, 'MAJOR')) {
                 $pts = 5.0;
             } elseif (str_contains($type, 'FACILITATOR') || str_contains($type, 'ORGANIZER')) {
                 $pts = 4.0;
             } elseif (str_contains($type, 'COMMITTEE')) {
                 $pts = 3.0;
+            } elseif ($type === 'CONTRIBUTOR') {
+                $pts = 2.0;
+            }
+            if ($pts <= 0.0) {
+                $trace[] = $this->unscorableTrace($ev, 'Contribution type is missing or unknown.');
+                continue;
             }
 
             $total += $pts;
@@ -1196,29 +1438,64 @@ class AwardScoringService
         ];
     }
 
-    /**
-     * Helper to get authoritative computable maximum for an award.
-     */
-    protected function getAwardComputableCap(string $awardCode, float $fallback): float
+    protected function hasInitiatedLeadershipRole(array $evidence): bool
     {
-        $caps = [
-            'NOTRE_DAME_AWARD'             => 50.0,
-            'SMC_AWARD'                    => 60.0,
-            'LEADERSHIP_AWARD'             => 50.0,
-            'CAMPUS_JOURNALISM_AWARD'      => 70.0,
-            'SPORTS_AWARD_FEMALE'          => 55.0,
-            'SPORTS_AWARD_MALE'            => 55.0,
-            'SOCIO_CULTURAL_AWARD_FEMALE'  => 55.0,
-            'SOCIO_CULTURAL_AWARD_MALE'    => 55.0,
-            'STUDENT_LEADER_OF_THE_YEAR'   => 50.0,
-            'MEMBER_OF_THE_YEAR'           => 40.0,
-            'VOLUNTEER_OF_THE_YEAR'        => 50.0,
-            'ATHLETE_OF_THE_YEAR_FEMALE'   => 55.0,
-            'ATHLETE_OF_THE_YEAR_MALE'     => 55.0,
-            'PERFORMER_OF_THE_YEAR_FEMALE' => 55.0,
-            'PERFORMER_OF_THE_YEAR_MALE'   => 55.0,
-        ];
+        $role = strtoupper(trim((string) (($evidence['structured_metadata'] ?? [])['role'] ?? '')));
+        foreach (['INITIATOR', 'PRINCIPAL ORGANIZER', 'ACTIVITY HEAD', 'PROJECT HEAD', 'LEAD COORDINATOR'] as $accepted) {
+            if ($role === $accepted || str_contains($role, $accepted)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        return $caps[$awardCode] ?? $fallback;
+    protected function distinctEvidence(array $evidenceList): array
+    {
+        $seen = [];
+        $result = [];
+        foreach ($evidenceList as $evidence) {
+            $identity = $evidence['source_record_id'] ?? $evidence['evidence_id'] ?? $evidence['record_id'] ?? null;
+            if ($identity === null) {
+                $meta = $evidence['structured_metadata'] ?? [];
+                $parts = [
+                    $meta['event_id'] ?? $meta['publication_id'] ?? $meta['source_reference'] ?? null,
+                    $meta['role'] ?? null,
+                    $meta['result'] ?? $meta['placement'] ?? null,
+                    $meta['period'] ?? $meta['academic_year'] ?? null,
+                ];
+                if ($parts[0] === null) {
+                    // No stable source identity: keep the record unmerged rather than
+                    // using its mutable title as an authoritative duplicate key.
+                    $result[] = $evidence;
+                    continue;
+                }
+                $identity = implode('|', array_map(static fn($part): string => strtoupper(trim((string) $part)), $parts));
+            }
+            $identity = (string) $identity;
+            if (isset($seen[$identity])) {
+                continue;
+            }
+            $seen[$identity] = true;
+            $result[] = $evidence;
+        }
+        return $result;
+    }
+
+    protected function unscorableTrace(array $evidence, string $warning): array
+    {
+        $code = str_contains($warning, 'scope') && str_contains($warning, 'Leadership')
+            ? 'UNRESOLVED_LEADERSHIP_SCOPE'
+            : (str_contains($warning, 'role') ? 'MISSING_QUALIFYING_ROLE' : 'INVALID_METADATA');
+        return [
+            'record_id' => $evidence['record_id'] ?? null,
+            'title' => $evidence['title'] ?? '',
+            'component_name' => 'Unscorable evidence',
+            'rule_type' => 'FAIL_CLOSED',
+            'base_points' => 0.0,
+            'contribution_points' => 0.0,
+            'is_selected' => false,
+            'scoring_warning' => $warning,
+            'warning_code' => $code,
+        ];
     }
 }

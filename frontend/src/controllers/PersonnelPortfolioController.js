@@ -1,6 +1,7 @@
 import PersonnelPortfolioModel from '../models/PersonnelPortfolioModel.js'
 import personnelAccomplishmentService from '../services/personnelAccomplishmentService.js'
 import personnelPortfolioService from '../services/personnelPortfolioService.js'
+import { hasValidPersonnelEvidence, resolvePersonnelEvidence } from '../utils/personnelEvidence.js'
 
 /**
  * PersonnelPortfolioController.js
@@ -23,45 +24,37 @@ export default class PersonnelPortfolioController {
     if (!acc) return null
 
     const id = acc.id || acc._id || `acc_${Math.random().toString(36).substr(2, 9)}`
-    const rawCategory = acc.category || acc.advisory_classification?.criterion_reference || 'General Accomplishment'
+    const metadata = typeof acc.category_metadata === 'string'
+      ? JSON.parse(acc.category_metadata || '{}')
+      : (acc.category_metadata || {})
+    const rawCategory = acc.category || acc.category_code || 'Unclassified'
+    const categoryCode = acc.category_code || metadata.criterion_code || (rawCategory.match(/^([ABC]\.\d(?:\.\d)?)/)?.[1] || '')
+    const subcategoryCode = acc.subcategory_code || metadata.subcategory_code || ''
     const isUnclassified = Boolean(
       acc.is_unclassified ||
-      !acc.category ||
+      !categoryCode ||
+      (metadata.portfolio_format === 'faculty_academic' && !subcategoryCode) ||
       acc.category === 'Unclassified' ||
       acc.category === 'General Accomplishment' ||
       acc.advisory_classification?.is_unclassified
     )
 
-    const claimedPoints = Number(
-      acc.claimed_points !== undefined && acc.claimed_points !== null
-        ? acc.claimed_points
-        : (acc.advisory_classification?.suggested_points ?? acc.points ?? 0)
-    ) || 0
-
-    // Compute proof filename from evidence object or direct field
-    const proofFileName = acc.attached_file_name ||
-      acc.evidence?.original_filename ||
-      acc.evidence_file_name ||
-      acc.proof_file_name ||
-      ''
-
-    const evidenceId = acc.evidence_id || acc.evidence?.id || null
+    const evidence = resolvePersonnelEvidence(acc)
 
     return {
       id,
       canonical_id: id,
       title: acc.title || '',
       category: rawCategory,
-      category_code: acc.advisory_classification?.criterion_code || (
-        rawCategory.startsWith('A.') ? 'A.1' :
-        rawCategory.startsWith('B.') ? 'B.1' :
-        rawCategory.startsWith('C.') ? 'C.1' : ''
-      ),
+      category_code: categoryCode,
+      subcategory_code: subcategoryCode,
+      category_area: acc.category_area || (categoryCode ? `area${categoryCode.charAt(0)}` : ''),
       scope_level: acc.scope_level || acc.advisory_classification?.scope || 'Local',
-      claimed_points: claimedPoints,
-      verified_points: 0, // Advisory only in working draft; evaluator accepted scoring belongs to Plan G
-      proof_file_name: proofFileName,
-      evidence_id: evidenceId,
+      proof_file_name: evidence?.original_filename || '',
+      evidence_id: evidence?.id || null,
+      evidence: evidence ? [evidence] : [],
+      primary_evidence: evidence,
+      has_valid_evidence: Boolean(evidence),
       is_proof_verified: false,
       is_unclassified: isUnclassified,
       advisory_status: isUnclassified ? 'Needs Classification' : 'Advisory Record',
@@ -74,6 +67,7 @@ export default class PersonnelPortfolioController {
       academic_year: acc.academic_year || '',
       advisory_classification: acc.advisory_classification || null,
       ocr_metadata: acc.ocr_metadata || null,
+      category_metadata: metadata,
       created_at: acc.created_at || null,
       updated_at: acc.updated_at || null
     }
@@ -260,7 +254,7 @@ export default class PersonnelPortfolioController {
       ...portfolioModel.area_c_items
     ]
 
-    const missingProof = allItems.filter(item => !item.proof_file_name || !item.proof_file_name.trim())
+    const missingProof = allItems.filter(item => !hasValidPersonnelEvidence(item))
     return {
       isValid: missingProof.length === 0,
       missingProofCount: missingProof.length,
@@ -282,8 +276,10 @@ export default class PersonnelPortfolioController {
       throw new Error(`Cannot submit portfolio: ${validation.missingProofCount} item(s) are missing required proof documents.`)
     }
 
+    const evaluationPeriodId = options.evaluationPeriodId
+    if (!evaluationPeriodId) throw new Error('No personnel evaluation period is currently open for submission.')
     const payload = {
-      academic_year: options.academicYear || portfolioModel.academic_year || '2025-2026',
+      evaluation_period_id: evaluationPeriodId,
       tenure_years: options.tenureYears !== undefined ? options.tenureYears : portfolioModel.years_of_service
     }
 
@@ -320,7 +316,6 @@ export default class PersonnelPortfolioController {
     }
 
     const payload = {
-      academic_year: options.academicYear || portfolioModel.academic_year || '2025-2026',
       tenure_years: options.tenureYears !== undefined ? options.tenureYears : portfolioModel.years_of_service
     }
 

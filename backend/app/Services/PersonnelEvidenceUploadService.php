@@ -274,6 +274,24 @@ class PersonnelEvidenceUploadService
             ];
         }
 
+        $incomingChecksum = hash_file('sha256', $tempPath);
+        $existingEvidence = $incomingChecksum === false ? null : $this->db->table('personnel_accomplishment_evidence')
+            ->where('accomplishment_id', $accomplishmentId)
+            ->where('sha256', $incomingChecksum)
+            ->where('status', 'active')
+            ->get()->getRowArray();
+        if ($existingEvidence !== null) {
+            return [
+                'success' => true,
+                'status' => 200,
+                'data' => [
+                    'message' => 'The matching evidence was already persisted. The existing record was restored.',
+                    'idempotent_replay' => true,
+                    'evidence' => $this->storage->formatSafeEvidence($existingEvidence, 'personnel'),
+                ],
+            ];
+        }
+
         // 4. Store Real Physical File into Protected Root
         $stored = null;
         try {
@@ -313,7 +331,9 @@ class PersonnelEvidenceUploadService
             'sha256'             => $stored['sha256'],
             'uploaded_by'        => $actor['profile']['id'] ?? $ownerProfileId,
             'uploaded_at'        => $now,
-            'security_status'    => 'verified',
+            // MySQL constraint permits pending/clean/rejected/quarantined. Scanning is
+            // deferred in the current local-storage posture, so pending is authoritative.
+            'security_status'    => 'pending',
             'malware_scanner'    => 'none_deferred',
             'status'             => 'active',
         ];
@@ -328,10 +348,10 @@ class PersonnelEvidenceUploadService
 
             return [
                 'success' => false,
-                'status'  => 500,
+                'status'  => str_contains(strtolower($e->getMessage()), 'duplicate') ? 409 : 500,
                 'error'   => [
-                    'code'    => 'DATABASE_ERROR',
-                    'message' => 'Failed to persist evidence metadata record to database.',
+                    'code'    => str_contains(strtolower($e->getMessage()), 'duplicate') ? 'DUPLICATE_EVIDENCE' : 'DATABASE_ERROR',
+                    'message' => str_contains(strtolower($e->getMessage()), 'duplicate') ? 'This evidence file is already attached to this accomplishment.' : 'Failed to persist evidence metadata record to database.',
                 ],
             ];
         }

@@ -348,15 +348,15 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
       expect(validation.errors.classificationPair).toBeUndefined();
     });
 
-    it('27. Faculty + Non-Academic rejected', () => {
+    it('27. Faculty + Non-Academic accepted with administrative unit in CHU-01 Phase 2', () => {
       const validation = validatePersonnelPlacement({
         group: 'faculty',
         side: 'non_academic',
         administrativeUnitId: '10000000-0000-0000-0000-000000000010'
       }, defaultPlacementOptions);
 
-      expect(validation.isValid).toBe(false);
-      expect(validation.errors.classificationPair).toContain('Invalid combination: Faculty must belong to the Academic organizational side.');
+      expect(validation.isValid).toBe(true);
+      expect(validation.errors.classificationPair).toBeUndefined();
     });
   });
 

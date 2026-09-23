@@ -200,11 +200,14 @@ class DefenseDemoPersonaSeeder extends Seeder
 
             // Personnel Subtype Table
             if ($p['account_type'] === 'personnel' || $p['account_type'] === 'hr_admin' || $p['account_type'] === 'osad_admin') {
+                $isAcademic = ($p['personnel_type'] ?? '') === 'academic';
                 $db->table('personnel_profiles')->upsert([
                     'profile_id'               => $p['id'],
+                    'personnel_group'          => $isAcademic ? 'faculty' : 'non_teaching_faculty',
+                    'organizational_side'      => $isAcademic ? 'academic' : 'non_academic',
                     'personnel_classification' => $p['personnel_type'] ?? 'non_academic',
                     'employment_status'        => 'permanent',
-                    'faculty_engagement'       => ($p['personnel_type'] ?? '') === 'academic' ? 'full_time_faculty' : null,
+                    'faculty_engagement'       => $isAcademic ? 'full_time_faculty' : null,
                     'created_at'               => $now,
                     'updated_at'               => $now,
                 ]);

@@ -1,5 +1,7 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import './credential-slip-print.css'
+import { AchieveNestLogo } from '../brand'
 
 export default function CredentialSlipPrintView({
   credential,
@@ -16,7 +18,7 @@ export default function CredentialSlipPrintView({
   const instructionsTitle = isReset ? 'Account Recovery Sign-In Instructions:' : 'First-Time Sign-In Instructions:'
   const passwordLabel = isReset ? 'One-Time Temporary Reset Password:' : 'One-Time Temporary Password:'
 
-  return (
+  const printContent = (
     <section
       id="credential-slip-print-root"
       className="credential-slip-print-root p-6 max-w-2xl mx-auto text-black bg-white"
@@ -26,6 +28,7 @@ export default function CredentialSlipPrintView({
         
         {/* Header Branding */}
         <div className="border-b-2 border-black pb-3 text-center">
+          <AchieveNestLogo variant="horizontal" size="document" className="mx-auto mb-2" />
           <h1 className="text-xl font-bold tracking-tight uppercase">
             Notre Dame of Marbel University
           </h1>
@@ -130,4 +133,10 @@ export default function CredentialSlipPrintView({
       </div>
     </section>
   )
+
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(printContent, document.body)
+  }
+
+  return printContent
 }

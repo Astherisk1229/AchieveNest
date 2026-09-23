@@ -5,6 +5,8 @@ namespace App\Controllers\Api;
 use App\Helpers\ValidationHelper;
 use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
+use App\Services\DepartmentSecretaryOccupancyService;
+use App\Services\EmploymentServiceDurationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -16,11 +18,13 @@ class TargetProvisioningController extends Controller
 
     protected AuthenticatedActorService $actorService;
     protected ProvisioningValidation $provisioningConfig;
+    protected DepartmentSecretaryOccupancyService $secretaryOccupancyService;
 
-    public function __construct(?AuthenticatedActorService $actorService = null)
+    public function __construct(?AuthenticatedActorService $actorService = null, ?DepartmentSecretaryOccupancyService $secretaryOccupancyService = null)
     {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
         $this->provisioningConfig = config('ProvisioningValidation');
+        $this->secretaryOccupancyService = $secretaryOccupancyService ?? new DepartmentSecretaryOccupancyService();
     }
 
     public function options()
@@ -141,7 +145,7 @@ class TargetProvisioningController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $allowedFields = ['institutional_id','institutional_email','first_name','middle_name','last_name','suffix','academic_program_id','degree_program_id','year_level','academic_year','sex'];
+        $allowedFields = ['institutional_id','institutional_email','first_name','middle_name','last_name','suffix','college_id','academic_program_id','degree_program_id','year_level','academic_year','sex'];
         if (! is_array($json) || array_diff(array_keys($json), $allowedFields) !== []) {
             return $this->validationError(['request' => 'Request contains unsupported fields.']);
         }
@@ -160,13 +164,14 @@ class TargetProvisioningController extends Controller
         $lastName = trim((string) ($json['last_name'] ?? ''));
         $middleName = ! empty($json['middle_name']) ? trim((string) $json['middle_name']) : null;
         $suffix = ! empty($json['suffix']) ? trim((string) $json['suffix']) : null;
+        $collegeId = trim((string) ($json['college_id'] ?? ''));
         $academicProgramId = trim((string) ($json['academic_program_id'] ?? $json['degree_program_id'] ?? ''));
         $yearLevel = trim((string) ($json['year_level'] ?? ''));
         $academicYear = ! empty($json['academic_year']) ? trim((string) $json['academic_year']) : '';
         $rawSex = $json['sex'] ?? null;
 
-        if ($firstName === '' || $lastName === '' || $academicProgramId === '') {
-            return $this->respond(['error' => ['code' => 'MISSING_REQUIRED_FIELDS', 'message' => 'Institutional ID, institutional email, first name, last name, and academic_program_id are required.']], 422);
+        if ($firstName === '' || $lastName === '' || $collegeId === '' || $academicProgramId === '') {
+            return $this->respond(['error' => ['code' => 'MISSING_REQUIRED_FIELDS', 'message' => 'Institutional ID, institutional email, first name, last name, college_id, and academic_program_id are required.']], 422);
         }
         if ($instId === null) {
             return $this->respond(['error' => ['code' => 'INVALID_INSTITUTIONAL_ID', 'field' => 'institutional_id', 'message' => 'Student Institutional ID must contain 5 to 50 ASCII digits.']], 422);
@@ -175,9 +180,14 @@ class TargetProvisioningController extends Controller
             return $this->validationError(['institutional_email' => 'Enter a valid ndmu.edu.ph institutional email.']);
         }
         if (! ValidationHelper::validateName($firstName) || ! ValidationHelper::validateName($lastName)
-            || ($middleName !== null && ! ValidationHelper::validateName($middleName, false))
-            || ($suffix !== null && ! ValidationHelper::validateName($suffix, false))) {
-            return $this->validationError(['name' => 'Names must be within database limits and contain no control or invisible formatting characters.']);
+            || ($middleName !== null && ! ValidationHelper::validateName($middleName, false))) {
+            return $this->validationError(['name' => 'Names may contain letters, spaces, apostrophes, hyphens, and periods only.']);
+        }
+        if ($suffix !== null && ! in_array($suffix, ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'], true)) {
+            return $this->validationError(['suffix' => 'Suffix must be Jr., Sr., II, III, IV, or V.']);
+        }
+        if (! ValidationHelper::validateUuid($collegeId)) {
+            return $this->validationError(['college_id' => 'college_id must be a valid UUID.']);
         }
         if (! ValidationHelper::validateUuid($academicProgramId)) {
             return $this->respond(['error' => ['code' => 'INVALID_ACADEMIC_PROGRAM', 'message' => 'academic_program_id must be a valid UUID.']], 422);
@@ -199,12 +209,20 @@ class TargetProvisioningController extends Controller
 
 
         $db = db_connect();
+        $college = $db->table('colleges')
+            ->where('id', $collegeId)
+            ->where('status', 'active')
+            ->get()->getRowArray();
+        if ($college === null) {
+            return $this->respond(['error' => ['code' => 'COLLEGE_NOT_FOUND', 'message' => 'Active Academic College not found.']], 422);
+        }
         $program = $db->table('academic_programs')
             ->where('id', $academicProgramId)
+            ->where('college_id', $collegeId)
             ->where('status', 'active')
             ->get()->getRowArray();
         if ($program === null) {
-            return $this->respond(['error' => ['code' => 'ACADEMIC_PROGRAM_NOT_FOUND', 'message' => 'Active Academic Program not found.']], 422);
+            return $this->respond(['error' => ['code' => 'ACADEMIC_PROGRAM_NOT_FOUND', 'message' => 'Active Academic Program not found in the selected College.']], 422);
         }
 
         $conflict = $this->identityConflict($db, $instId, $email);
@@ -301,6 +319,7 @@ class TargetProvisioningController extends Controller
                 'details'          => 'Student account provisioned successfully by OSAD administrator.',
                 'safe_context'     => json_encode([
                     'institutional_id'    => $instId,
+                    'college_id'          => $collegeId,
                     'academic_program_id' => $academicProgramId,
                     'year_level'          => $yearLevel,
                     'academic_year'       => $academicYear,
@@ -328,6 +347,7 @@ class TargetProvisioningController extends Controller
             'full_name'                => $fullName,
             'sex'                      => $sex,
             'account_type'             => 'student',
+            'college_id'               => $collegeId,
             'academic_program_id'      => $academicProgramId,
             'program'                  => $program['name'],
             'program_code'             => $program['code'],
@@ -501,9 +521,11 @@ class TargetProvisioningController extends Controller
             'organizational_side',
             'college_id',
             'academic_program_ids',
+            'department_id',
             'administrative_unit_id',
             'faculty_engagement',
             'employment_status',
+            'employment_start_date',
             'position_title',
             'current_rank_title',
             'qualification_summary',
@@ -559,6 +581,11 @@ class TargetProvisioningController extends Controller
             return $this->respond(['error' => $employmentStatusValidation['error']], 422);
         }
         $employmentStatus = $employmentStatusValidation['status'];
+        try {
+            $employmentStartDate = (new EmploymentServiceDurationService())->validateRequiredStartDate($json['employment_start_date'] ?? null);
+        } catch (\InvalidArgumentException $error) {
+            return $this->validationError(['employment_start_date' => $error->getMessage()]);
+        }
 
         $positionTitle = ! empty($json['position_title']) ? trim((string) $json['position_title']) : (! empty($json['designation']) ? trim((string) $json['designation']) : 'Personnel');
         $qualificationSummary = ! empty($json['qualification_summary']) ? trim((string) $json['qualification_summary']) : null;
@@ -602,14 +629,21 @@ class TargetProvisioningController extends Controller
 
         $classification = $clsValidation['side'];
         $collegeId = ! empty($json['college_id']) ? (string) $json['college_id'] : null;
-        $administrativeUnitId = ! empty($json['administrative_unit_id']) ? (string) $json['administrative_unit_id'] : null;
+        $departmentId = ! empty($json['department_id']) ? (string) $json['department_id'] : null;
+        $legacyAdministrativeUnitId = ! empty($json['administrative_unit_id']) ? (string) $json['administrative_unit_id'] : null;
+        if ($departmentId !== null && $legacyAdministrativeUnitId !== null && $departmentId !== $legacyAdministrativeUnitId) {
+            return $this->validationError(['department_id' => 'department_id conflicts with the legacy administrative_unit_id value.']);
+        }
+        // Compatibility boundary: Departments are currently persisted in the legacy
+        // administrative_units tables until a dedicated schema migration is approved.
+        $administrativeUnitId = $departmentId ?? $legacyAdministrativeUnitId;
         $programIds = array_values(array_unique(array_filter(array_map('strval', (array) ($json['academic_program_ids'] ?? [])))));
 
         if ($firstName === '' || $lastName === '') {
             return $this->respond(['error' => ['code' => 'MISSING_REQUIRED_FIELDS', 'message' => 'Institutional ID, institutional email, first name, and last name are required.']], 422);
         }
         if ($instId === null) {
-            return $this->respond(['error' => ['code' => 'INVALID_INSTITUTIONAL_ID', 'field' => 'institutional_id', 'message' => 'Personnel Institutional ID must be a non-empty scalar string of at most 50 characters without control or invisible formatting characters.']], 422);
+            return $this->respond(['error' => ['code' => 'INVALID_INSTITUTIONAL_ID', 'field' => 'institutional_id', 'message' => 'Personnel Institutional ID must contain digits only and be at most 50 digits.']], 422);
         }
         if ($email === null) {
             return $this->validationError(['institutional_email' => 'Enter a valid ndmu.edu.ph institutional email.']);
@@ -617,7 +651,7 @@ class TargetProvisioningController extends Controller
         if (! ValidationHelper::validateName($firstName) || ! ValidationHelper::validateName($lastName)
             || ($middleName !== null && ! ValidationHelper::validateName($middleName, false))
             || ($suffix !== null && ! ValidationHelper::validateName($suffix, false))) {
-            return $this->validationError(['name' => 'Names must be within database limits and contain no control or invisible formatting characters.']);
+            return $this->validationError(['name' => "Names may contain Unicode letters, spaces, hyphens, apostrophes, and periods only."]);
         }
 
         $db = db_connect();
@@ -636,11 +670,11 @@ class TargetProvisioningController extends Controller
             $administrativeUnitId = null;
         } else {
             if ($administrativeUnitId === null) {
-                return $this->respond(['error' => ['code' => 'MISSING_ADMINISTRATIVE_UNIT', 'message' => 'Non-Academic Personnel require administrative_unit_id.']], 422);
+                return $this->respond(['error' => ['code' => 'MISSING_DEPARTMENT', 'field' => 'department_id', 'message' => 'Non-Academic Personnel require a Department.']], 422);
             }
             $unit = $db->table('administrative_units')->where('id', $administrativeUnitId)->where('status', 'active')->get()->getRowArray();
             if ($unit === null) {
-                return $this->respond(['error' => ['code' => 'INVALID_ADMINISTRATIVE_UNIT', 'message' => 'Active Administrative Unit not found.']], 422);
+                return $this->respond(['error' => ['code' => 'INVALID_DEPARTMENT', 'field' => 'department_id', 'message' => 'Select an active Department.']], 422);
             }
             $collegeId = null;
             $programIds = [];
@@ -670,6 +704,15 @@ class TargetProvisioningController extends Controller
             if ($this->identityConflict($db, $instId, $email) !== null) {
                 throw new \RuntimeException('IDENTITY_CONFLICT');
             }
+            $secretaryConflict = $this->secretaryOccupancyService->findConflict(
+                $db,
+                $positionTitle,
+                $collegeId,
+                $administrativeUnitId
+            );
+            if ($secretaryConflict !== null) {
+                throw new \DomainException(json_encode($secretaryConflict));
+            }
             $now = date('Y-m-d H:i:s');
             $db->table('profiles')->insert([
                 'id'                   => $authUserId,
@@ -691,6 +734,7 @@ class TargetProvisioningController extends Controller
                 'profile_id'               => $authUserId,
                 'personnel_classification' => $clsValidation['side'],
                 'employment_status'        => $employmentStatus,
+                'employment_start_date'    => $employmentStartDate,
             ];
             if ($db->fieldExists('personnel_group', 'personnel_profiles')) {
                 $personnelProfileData['personnel_group'] = $clsValidation['group'];
@@ -786,12 +830,20 @@ class TargetProvisioningController extends Controller
                     'personnel_classification' => $classification,
                     'college_id'               => $collegeId,
                     'academic_program_ids'     => $programIds,
+                    'employment_status'        => $employmentStatus,
+                    'employment_start_date'    => $employmentStartDate,
                 ]),
             ]);
 
             $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
+            if ($e instanceof \DomainException) {
+                $details = json_decode($e->getMessage(), true);
+                if (is_array($details) && ($details['code'] ?? null) === 'POSITION_OCCUPIED') {
+                    return $this->respond(['error' => $details], 409);
+                }
+            }
             $this->logProvisioningFailure($db, $actor['profile']['id'], 'personnel', 'Personnel provisioning failed: ' . $e->getMessage());
             $conflict = $this->identityConflict($db, $instId, $email);
             if ($conflict !== null) return $conflict;
@@ -812,6 +864,9 @@ class TargetProvisioningController extends Controller
             'personnel_classification' => $classification,
             'personnel_group'          => $clsValidation['group'],
             'organizational_side'      => $clsValidation['side'],
+            'employment_status'        => $employmentStatus,
+            'employment_start_date'    => $employmentStartDate,
+            'service_duration'         => (new EmploymentServiceDurationService())->calculate($employmentStartDate),
             'classification_code'      => $clsValidation['code'],
             'classification_label'     => $clsValidation['label'],
             'college_id'               => $collegeId,

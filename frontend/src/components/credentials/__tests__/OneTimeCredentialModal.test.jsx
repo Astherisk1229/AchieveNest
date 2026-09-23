@@ -235,6 +235,25 @@ describe('Plan 07 Phase 4 — One-Time Credential Success Modal & Contract Test 
       expect(html).toContain('Print Credential Slip')
     })
 
+    it('P4-UI-013: Renders Done button and renders ConfirmDialog when isConfirmDiscardOpen is true', () => {
+      const html = renderToString(
+        <OneTimeCredentialModal
+          isOpen={true}
+          credential={mockPersonnelCredential}
+          onRequestClose={() => {}}
+          isConfirmDiscardOpen={true}
+          onConfirmDiscard={() => {}}
+          onCancelDiscard={() => {}}
+          onCopy={() => {}}
+        />
+      )
+
+      expect(html).toContain('Done')
+      expect(html).toContain('Discard Temporary Credential?')
+      expect(html).toContain('Close and remove credentials')
+      expect(html).toContain('Continue viewing credentials')
+    })
+
     it('returns empty string when isOpen is false', () => {
       const html = renderToString(
         <OneTimeCredentialModal

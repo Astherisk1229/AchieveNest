@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use CodeIgniter\Database\BaseConnection;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use RuntimeException;
@@ -14,9 +15,11 @@ class LocalTokenService
     protected string $audience;
     protected int $accessTtl;
     protected int $rememberTtl;
+    protected ?BaseConnection $db;
 
-    public function __construct()
+    public function __construct(?BaseConnection $db = null)
     {
+        $this->db = $db;
         $this->jwtSecret = (string) (env('LOCAL_AUTH_JWT_SECRET') ?: env('local_auth.jwtSecret', ''));
         $this->issuer = (string) (env('LOCAL_AUTH_ISSUER') ?: 'achievenest-local');
         $this->audience = (string) (env('LOCAL_AUTH_AUDIENCE') ?: 'achievenest-web');
@@ -62,8 +65,8 @@ class LocalTokenService
             random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
         );
 
-        $db = db_connect();
-        $db->table('local_auth_sessions')->insert([
+        $db = $this->db ?? db_connect();
+        $sessionCreated = $db->table('local_auth_sessions')->insert([
             'id'              => $sessionId,
             'profile_id'      => $profileId,
             'token_hash'      => $tokenHash,
@@ -75,6 +78,10 @@ class LocalTokenService
             'created_ip'      => $ip,
             'user_agent_hash' => $userAgent ? hash('sha256', $userAgent) : null,
         ]);
+
+        if ($sessionCreated !== true) {
+            throw new RuntimeException('Failed to persist local authentication session.');
+        }
 
         return [
             'access_token' => $token,
@@ -124,7 +131,7 @@ class LocalTokenService
 
         // Validate server-side session revocation
         $tokenHash = hash('sha256', $jwt);
-        $db = db_connect();
+        $db = $this->db ?? db_connect();
 
         $session = $db->table('local_auth_sessions')
             ->where('token_hash', $tokenHash)
@@ -164,7 +171,7 @@ class LocalTokenService
     public function revokeSession(string $token, string $reason = 'logout'): bool
     {
         $tokenHash = hash('sha256', trim($token));
-        $db = db_connect();
+        $db = $this->db ?? db_connect();
 
         $session = $db->table('local_auth_sessions')
             ->where('token_hash', $tokenHash)
@@ -190,7 +197,7 @@ class LocalTokenService
      */
     public function revokeAllSessionsForProfile(string $profileId, string $reason = 'password_change'): bool
     {
-        $db = db_connect();
+        $db = $this->db ?? db_connect();
         $db->table('local_auth_sessions')
             ->where('profile_id', $profileId)
             ->where('revoked_at IS NULL', null, false)

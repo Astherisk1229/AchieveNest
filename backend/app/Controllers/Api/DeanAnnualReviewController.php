@@ -173,6 +173,9 @@ class DeanAnnualReviewController extends Controller
             if (str_starts_with($e->getMessage(), 'ANNUAL_REVIEW_NOT_APPLICABLE')) {
                 return $this->fail(['error' => ['code' => 'ANNUAL_REVIEW_NOT_APPLICABLE', 'message' => $e->getMessage()]], 422);
             }
+            foreach (['EVALUATION_PERIOD_LOCKED','LEGACY_REVIEW_READ_ONLY','ANNUAL_REVIEW_ALREADY_FINALIZED'] as $code) {
+                if (str_starts_with($e->getMessage(), $code)) return $this->fail(['error'=>['code'=>$code,'message'=>$e->getMessage()]], 409);
+            }
             return $this->failServerError($e->getMessage());
         } catch (Throwable $e) {
             return $this->failServerError('Unexpected error creating annual review record.');
@@ -216,6 +219,9 @@ class DeanAnnualReviewController extends Controller
             }
             if (str_starts_with($e->getMessage(), 'INVALID_REVIEW_TRANSITION')) {
                 return $this->fail(['error' => ['code' => 'INVALID_REVIEW_TRANSITION', 'message' => $e->getMessage()]], 409);
+            }
+            foreach (['EVALUATION_PERIOD_LOCKED','LEGACY_REVIEW_READ_ONLY','HR_REOPENING_REQUIRED'] as $code) {
+                if (str_starts_with($e->getMessage(), $code)) return $this->fail(['error'=>['code'=>$code,'message'=>$e->getMessage()]], 409);
             }
             return $this->failServerError($e->getMessage());
         } catch (Throwable $e) {

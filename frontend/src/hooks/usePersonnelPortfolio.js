@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import PersonnelPortfolioController from '../controllers/PersonnelPortfolioController.js'
 import personnelAccomplishmentService from '../services/personnelAccomplishmentService.js'
 import personnelPortfolioService from '../services/personnelPortfolioService.js'
@@ -10,12 +10,13 @@ import personnelPortfolioService from '../services/personnelPortfolioService.js'
  */
 export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileContext = {}) {
   const [portfolio, setPortfolio] = useState(() => PersonnelPortfolioController.loadPortfolio(personnelId, profileContext))
-  const [totals, setTotals] = useState(() => portfolio ? portfolio.calculateAcceptedCappedTotals() : null)
   const [latestSubmission, setLatestSubmission] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const [submissionHistory, setSubmissionHistory] = useState([])
+  const inFlightRef = useRef(false)
+  const profileKey = useMemo(() => JSON.stringify(profileContext || {}), [profileContext])
 
   // Refresh state helper
   const refreshPortfolio = useCallback((updatedModel, submissionData = null) => {
@@ -31,28 +32,34 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
       )
     }
     setPortfolio(updatedModel)
-    setTotals(updatedModel ? updatedModel.calculateAcceptedCappedTotals() : null)
     setError(null)
   }, [])
 
   // Asynchronous reload directly from backend
   const reload = useCallback(async () => {
+    if (inFlightRef.current) return
+    inFlightRef.current = true
     setLoading(true)
     setError(null)
     try {
+      const parsedContext = JSON.parse(profileKey || '{}')
       const [loaded, subRes, histRes] = await Promise.all([
-        PersonnelPortfolioController.loadPortfolioAsync(personnelId, profileContext),
+        PersonnelPortfolioController.loadPortfolioAsync(personnelId, parsedContext),
         personnelPortfolioService.getLatestSubmission().catch(() => null),
         personnelPortfolioService.getSubmissionHistory().catch(() => null)
       ])
 
-      const subData = subRes?.data?.submission || (subRes?.data?.status ? subRes.data : null)
+      const submissionPayload = subRes?.data || null
+      const submissionHeader = submissionPayload?.submission || (submissionPayload?.status ? submissionPayload : null)
+      const subData = submissionHeader
+        ? { ...submissionHeader, items: Array.isArray(submissionPayload?.items) ? submissionPayload.items : (submissionHeader.items || []) }
+        : null
       setLatestSubmission(subData)
 
       const historyData = histRes?.data?.versions || []
       setSubmissionHistory(historyData)
 
-      if (subData && subData.status && subData.status !== 'DRAFT') {
+      if (subData && subData.status && subData.status !== 'DRAFT' && loaded && typeof loaded.transitionStatus === 'function') {
         loaded.transitionStatus(
           subData.status,
           loaded.personnel_name,
@@ -66,12 +73,17 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
       console.error('[usePersonnelPortfolio] Error loading portfolio from backend:', err)
       setError(err?.message || 'Failed to load portfolio records from repository')
     } finally {
+      inFlightRef.current = false
       setLoading(false)
     }
-  }, [personnelId, profileContext, refreshPortfolio])
+  }, [personnelId, profileKey, refreshPortfolio])
 
   useEffect(() => {
+    let active = true
     reload()
+    return () => {
+      active = false
+    }
   }, [reload])
 
   const loadSubmissionHistory = useCallback(async () => {
@@ -207,7 +219,6 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
 
   return {
     portfolio,
-    totals,
     latestSubmission,
     submissionHistory,
     versionNumber,

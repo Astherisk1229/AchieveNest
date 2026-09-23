@@ -1,9 +1,19 @@
 /**
  * PersonnelReviewerRoutingRegistry.js
  *
- * Canonical Authoritative Frontend Mirror & Reviewer Routing Registry for Plan G — Phase G0.
+ * Canonical Authoritative Frontend Mirror & Reviewer Routing Registry for Personnel Evaluation Track
+ * (Plan G Phases G0–G1, Plan K5 Final Closure, and CHU-01 Phase 2 Reconciliation).
  * Freezes authoritative reviewer routing rules, evaluator authority, scope boundaries,
  * and unresolved routing protection.
+ *
+ * Authoritative Provenance:
+ * 1. Faculty + Academic -> Dean [Plan G (G0/G1) & Plan K5 Final Routing Matrix; COLLEGE_ACADEMIC_SCOPE].
+ * 2. Faculty + Non-Academic -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
+ * 3. Non-Teaching Faculty + Academic -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
+ * 4. Non-Teaching Faculty + Non-Academic -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 5. Dean / VP -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 6. Department Secretary strictly excluded; Self-evaluation strictly prohibited [Plan G0].
+ * 7. Unresolved inputs strictly return status='unresolved' with zero silent fallback [CHU-01 Phase 2 & Plan G0].
  */
 
 export const REVIEWER_ROLES = Object.freeze({
@@ -32,16 +42,28 @@ export const CANONICAL_ROUTING_TABLE = Object.freeze([
     designation: null,
     reviewer_role: REVIEWER_ROLES.DEAN,
     scope: REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE,
-    requires_college_match: true
+    requires_college_match: true,
+    authoritative_source: 'Plan G (G0/G1) & Plan K5 Final Routing Matrix'
+  },
+  {
+    context_key: 'FACULTY_NON_ACADEMIC',
+    personnel_group: 'faculty',
+    organizational_side: 'non_academic',
+    designation: null,
+    reviewer_role: REVIEWER_ROLES.HR,
+    scope: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
+    requires_college_match: false,
+    authoritative_source: 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)'
   },
   {
     context_key: 'NON_TEACHING_FACULTY_ACADEMIC',
     personnel_group: 'non_teaching_faculty',
     organizational_side: 'academic',
     designation: null,
-    reviewer_role: REVIEWER_ROLES.DEAN,
-    scope: REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE,
-    requires_college_match: true
+    reviewer_role: REVIEWER_ROLES.HR,
+    scope: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
+    requires_college_match: false,
+    authoritative_source: 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)'
   },
   {
     context_key: 'NON_TEACHING_FACULTY_NON_ACADEMIC',
@@ -50,7 +72,8 @@ export const CANONICAL_ROUTING_TABLE = Object.freeze([
     designation: null,
     reviewer_role: REVIEWER_ROLES.HR,
     scope: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
-    requires_college_match: false
+    requires_college_match: false,
+    authoritative_source: 'Plan G (G0/G1) & Plan K5 Final Routing Matrix'
   },
   {
     context_key: 'DEAN_EVALUATION',
@@ -59,7 +82,8 @@ export const CANONICAL_ROUTING_TABLE = Object.freeze([
     designation: 'dean',
     reviewer_role: REVIEWER_ROLES.HR,
     scope: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
-    requires_college_match: false
+    requires_college_match: false,
+    authoritative_source: 'Plan G (G0/G1) & Plan K5 Final Routing Matrix'
   },
   {
     context_key: 'VP_ACADEMICS_EVALUATION',
@@ -68,7 +92,8 @@ export const CANONICAL_ROUTING_TABLE = Object.freeze([
     designation: 'vp_academics',
     reviewer_role: REVIEWER_ROLES.HR,
     scope: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
-    requires_college_match: false
+    requires_college_match: false,
+    authoritative_source: 'Plan G (G0/G1) & Plan K5 Final Routing Matrix'
   },
   {
     context_key: 'VP_ADMINISTRATION_EVALUATION',
@@ -77,7 +102,8 @@ export const CANONICAL_ROUTING_TABLE = Object.freeze([
     designation: 'vp_administration',
     reviewer_role: REVIEWER_ROLES.HR,
     scope: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
-    requires_college_match: false
+    requires_college_match: false,
+    authoritative_source: 'Plan G (G0/G1) & Plan K5 Final Routing Matrix'
   }
 ])
 
@@ -144,12 +170,23 @@ export default class PersonnelReviewerRoutingRegistry {
       }
     }
 
+    if (group === 'faculty' && side === 'non_academic') {
+      return {
+        authorized_reviewer_role: REVIEWER_ROLES.HR,
+        scope_type: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
+        target_college_id: null,
+        routing_reason: 'Faculty + Non-Academic personnel route to HR Office.',
+        status: 'resolved',
+        reason_code: ROUTING_REASON_CODES.ROUTE_ASSIGNED
+      }
+    }
+
     if (group === 'non_teaching_faculty' && side === 'academic') {
       return {
-        authorized_reviewer_role: REVIEWER_ROLES.DEAN,
-        scope_type: REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE,
-        target_college_id: college_id,
-        routing_reason: 'Non-Teaching Faculty + Academic personnel route to active Dean of assigned college.',
+        authorized_reviewer_role: REVIEWER_ROLES.HR,
+        scope_type: REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE,
+        target_college_id: null,
+        routing_reason: 'Non-Teaching Faculty + Academic personnel route to HR Office.',
         status: 'resolved',
         reason_code: ROUTING_REASON_CODES.ROUTE_ASSIGNED
       }
@@ -166,14 +203,18 @@ export default class PersonnelReviewerRoutingRegistry {
       }
     }
 
-    // 3. Unresolved cases remain strictly unresolved
+    // 3. Unresolved cases remain strictly unresolved (zero silent fallback)
     return {
       authorized_reviewer_role: null,
       scope_type: null,
       target_college_id: null,
-      routing_reason: `Reviewer route cannot be determined for classification [${group} + ${side}].`,
+      routing_reason: `No authoritative reviewer route is defined for classification [${group} + ${side}].`,
       status: 'unresolved',
-      reason_code: ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED
+      reason_code: ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED,
+      inputs: {
+        personnel_group: group,
+        organizational_side: side
+      }
     }
   }
 

@@ -29,3 +29,18 @@ frontend/vitest-results-*.json
 
 # Runtime user uploads
 /backend/public/uploads/
+# Generated OCR sidecar
+/frontend/src/assets/ndmu_login_bg-ocr.txt
+
+# Local pre-migration / test snapshots
+/backend/.env.pre-phase2-test
+/backend/app/Config/Database.php.pre-phase2-test
+
+# Local database backups
+/db-backups/
+
+# Temporary implementation backup
+/backend/app/Services/CanonicalStudentAchievementService.php.student06-backup
+
+# Local pre-implementation migration snapshot
+/backend/app/Phase2/Database/Migrations/2026-09-21-000003_CreateStudentAchievementDetailTables.php.pre-implementation

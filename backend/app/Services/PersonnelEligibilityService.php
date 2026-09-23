@@ -4,165 +4,83 @@ namespace App\Services;
 
 use CodeIgniter\Database\BaseConnection;
 
-/**
- * PersonnelEligibilityService
- *
- * Plan D1 — Portfolio-Validation & Ranking Eligibility.
- * Produces an explainable, read-only eligibility DTO.
- * Has no scoring formula and makes no writes to Plan C records.
- */
+/** Canonical, explainable Dean portfolio-eligibility engine. */
 class PersonnelEligibilityService
 {
-    protected BaseConnection $db;
+    public const ELIGIBLE_RATINGS = ['outstanding', 'very_satisfactory', 'satisfactory'];
+    public const RATINGS = ['outstanding', 'very_satisfactory', 'satisfactory', 'fair', 'poor'];
 
-    public function __construct(?BaseConnection $db = null)
+    public static function isEligibleRating(?string $rating): bool { return in_array($rating, self::ELIGIBLE_RATINGS, true); }
+    public static function serviceCondition(string $employmentStatus, ?float $serviceYears): ?bool
     {
-        $this->db = $db ?? db_connect();
+        if ($serviceYears === null) return null;
+        if ($employmentStatus === 'permanent') return true;
+        if ($employmentStatus === 'probationary') return $serviceYears >= 3.0;
+        return false;
     }
 
-    /**
-     * Evaluates portfolio-validation eligibility and ranking readiness for a personnel profile and evaluation cycle.
-     */
-    public function evaluateEligibility(string $personnelProfileId, string $evaluationCycleId = '2025-2026'): array
+    public function __construct(protected ?BaseConnection $db = null, private ?EmploymentServiceDurationService $duration = null)
     {
-        $personnel = $this->db->query(
-            "SELECT p.id, p.full_name, p.status AS account_status,
-                    pp.personnel_group, pp.organizational_side, pp.faculty_engagement,
-                    pp.employment_status, pp.position_title, pp.current_rank_title,
-                    pp.college_id
-             FROM profiles p
-             JOIN personnel_profiles pp ON pp.profile_id = p.id
-             WHERE p.id = ?",
-            [$personnelProfileId]
-        )->getRowArray();
+        $this->db ??= db_connect();
+        $this->duration ??= new EmploymentServiceDurationService();
+    }
 
-        if ($personnel === null) {
-            return [
-                'evaluation_cycle_id' => $evaluationCycleId,
-                'personnel_profile_id' => $personnelProfileId,
-                'portfolio_validation' => [
-                    'eligible'     => false,
-                    'decision'     => 'pending',
-                    'review_id'    => null,
-                    'recorded_at'  => null,
-                    'reason_codes' => ['PERSONNEL_NOT_FOUND'],
-                ],
-                'ranking_readiness' => [
-                    'eligible'     => false,
-                    'reason_codes' => ['PERSONNEL_NOT_FOUND'],
-                ],
-            ];
+    public function evaluateEligibility(string $personnelProfileId, string $periodReference): array
+    {
+        $period = $this->resolvePeriod($periodReference);
+        $person = $this->db->table('personnel_profiles pp')
+            ->select('p.id,p.full_name,p.status AS account_status,pp.personnel_group,pp.organizational_side,pp.faculty_engagement,pp.employment_status,pp.employment_start_date,pp.position_title,pp.current_rank_title')
+            ->join('profiles p','p.id=pp.profile_id')->where('pp.profile_id',$personnelProfileId)->get()->getRowArray();
+
+        $reasons = [];
+        if (!$person) return $this->result($personnelProfileId, $period, 'pending', ['Personnel record is unavailable.']);
+        try { $authority=(new OrganizationalAuthorityResolver($this->db))->resolveResponsibleAuthority($personnelProfileId,$period);$reviewResponsibility=strtolower((string)$authority['authority_type']); }
+        catch (\RuntimeException) { $reviewResponsibility='unresolved'; }
+        if (!$period) $reasons[] = 'Evaluation period is unavailable.';
+        elseif (!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'], true)) $reasons[] = 'Evaluation period is not open.';
+
+        $service = null;
+        if ($period) {
+            try { $service = $this->duration->calculate($person['employment_start_date'] ?? null, substr((string)$period['evaluation_end_at'],0,10)); }
+            catch (\Throwable $e) { $reasons[] = 'Employment start date is invalid.'; }
         }
+        $status = strtolower((string)($person['employment_status'] ?? ''));
+        $serviceYears = $service ? round(((int)$service['total_months']) / 12, 2) : null;
+        $serviceStatus='pending';
+        if($serviceYears===null)$reasons[]='Waiting for HR employment/service information.';
+        elseif($status==='permanent')$serviceStatus='passed';
+        elseif($status==='probationary'&&$serviceYears>=3.0)$serviceStatus='passed';
+        elseif($status==='probationary'){$serviceStatus='not_passed';$reasons[]='Probationary personnel require at least 3.00 years of service.';}
+        else{$serviceStatus='not_passed';$reasons[]='Employment status must be Permanent or Probationary.';}
 
-        $group = strtolower((string) ($personnel['personnel_group'] ?? 'faculty'));
-        $side = strtolower((string) ($personnel['organizational_side'] ?? 'academic'));
-        $engagement = strtolower((string) ($personnel['faculty_engagement'] ?? 'full_time_faculty'));
-        $status = strtolower((string) ($personnel['employment_status'] ?? 'permanent'));
-        $accountActive = strtolower((string) ($personnel['account_status'] ?? 'active')) === 'active';
+        $import=null;
+        if($period&&$this->db->tableExists('personnel_annual_review_imports'))$import=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personnelProfileId,'evaluation_period_id'=>$period['id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();
+        $annualStatus=$import['two_review_status']??'pending';
+        if(!$import)$reasons[]='Two confirmed annual-review reports are required.';
+        elseif($annualStatus==='pending')$reasons[]=$import['two_review_reason']?:'Second required annual review is missing.';
+        elseif($annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
+        $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
+        $eligibility=$hardFailure?'not_eligible':(($serviceStatus==='passed'&&$annualStatus==='passed'&&$period)?'eligible':'pending');
+        $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;return$result;
+    }
 
-        // Fetch effective Annual Review
-        $effectiveReview = $this->db->query(
-            "SELECT * FROM personnel_annual_reviews
-             WHERE personnel_profile_id = ?
-               AND evaluation_cycle_id = ?
-               AND superseded_at IS NULL
-             LIMIT 1",
-            [$personnelProfileId, $evaluationCycleId]
-        )->getRowArray();
+    private function resolvePeriod(string $reference): ?array
+    {
+        $builder = $this->db->table('personnel_evaluation_periods');
+        $builder->groupStart()->where('id',$reference)->orWhere('academic_year',$reference)->orWhere('period_code',$reference)->groupEnd();
+        return $builder->orderBy('evaluation_end_at','DESC')->get()->getRowArray() ?: null;
+    }
 
-        // 1. Evaluate Portfolio-Validation Eligibility
-        $pvEligible = false;
-        $pvDecision = 'pending';
-        $pvReviewId = null;
-        $pvRecordedAt = null;
-        $pvReasonCodes = [];
-
-        if ($side !== 'academic') {
-            $pvReasonCodes[] = 'NOT_ACADEMIC_PERSONNEL';
-        }
-
-        if ($effectiveReview === null) {
-            $pvDecision = 'pending';
-            if ($side === 'academic') {
-                $pvReasonCodes[] = 'ANNUAL_REVIEW_PENDING';
-            }
-        } else {
-            $pvDecision = $effectiveReview['decision'];
-            $pvReviewId = $effectiveReview['id'];
-            $pvRecordedAt = $effectiveReview['recorded_at'];
-
-            if ($effectiveReview['decision'] === 'cleared' && $side === 'academic') {
-                $pvEligible = true;
-            } elseif ($effectiveReview['decision'] === 'not_cleared') {
-                $pvReasonCodes[] = 'ANNUAL_REVIEW_NOT_CLEARED';
-            }
-        }
-
-        // 2. Evaluate Ranking Readiness
-        $rrReasonCodes = [];
-
-        if (! $accountActive) {
-            $rrReasonCodes[] = 'ACCOUNT_INACTIVE';
-        }
-
-        if ($side !== 'academic') {
-            $rrReasonCodes[] = 'NOT_ACADEMIC_PERSONNEL';
-        }
-
-        if ($group !== 'faculty') {
-            $rrReasonCodes[] = 'UNSUPPORTED_PERSONNEL_GROUP_FOR_RANKING';
-        }
-
-        if ($engagement === 'part_time_faculty') {
-            $rrReasonCodes[] = 'PART_TIME_FACULTY';
-        }
-
-        if ($effectiveReview === null) {
-            if ($side === 'academic') {
-                $rrReasonCodes[] = 'ANNUAL_REVIEW_PENDING';
-            }
-        } elseif ($effectiveReview['decision'] !== 'cleared') {
-            $rrReasonCodes[] = 'ANNUAL_REVIEW_NOT_CLEARED';
-        }
-
-        // Check if Plan C evaluation root already exists for this cycle
-        $existingRoot = $this->db->query(
-            "SELECT id FROM personnel_evaluation_roots
-             WHERE personnel_profile_id = ?
-               AND (evaluation_cycle_id = ? OR academic_year = ?)
-             LIMIT 1",
-            [$personnelProfileId, $evaluationCycleId, $evaluationCycleId]
-        )->getRowArray();
-
-        if ($existingRoot !== null) {
-            $rrReasonCodes[] = 'EVALUATION_ALREADY_EXISTS_FOR_CYCLE';
-        }
-
-        $rankingReady = (count($rrReasonCodes) === 0);
-
+    private function result(string $profileId, ?array $period, string $status, array $reasons, ?float $years=null, ?string $rating=null, ?string $employment=null, ?string $reviewId=null, ?array $import=null, string $annualStatus='pending', string $serviceStatus='pending'): array
+    {
+        $labels=['eligible'=>'Eligible','not_eligible'=>'Not Eligible','pending'=>'Pending'];
         return [
-            'evaluation_cycle_id'  => $evaluationCycleId,
-            'personnel_profile_id' => $personnelProfileId,
-            'master_data' => [
-                'personnel_group'     => $group,
-                'organizational_side' => $side,
-                'faculty_engagement'  => $engagement,
-                'employment_status'   => $status,
-                'position_title'      => $personnel['position_title'] ?? 'Personnel',
-                'current_rank_title'  => $personnel['current_rank_title'] ?? null,
-            ],
-            'portfolio_validation' => [
-                'eligible'        => $pvEligible,
-                'decision'        => $pvDecision,
-                'review_id'       => $pvReviewId,
-                'recorded_at'     => $pvRecordedAt,
-                'decision_reason' => $effectiveReview['decision_reason'] ?? null,
-                'reason_codes'    => array_values(array_unique($pvReasonCodes)),
-            ],
-            'ranking_readiness' => [
-                'eligible'     => $rankingReady,
-                'reason_codes' => array_values(array_unique($rrReasonCodes)),
-            ],
+            'evaluation_period_id'=>$period['id']??null,'evaluation_cycle_id'=>$period['academic_year']??null,'personnel_profile_id'=>$profileId,
+            'eligibility_status'=>$status,'eligibility_label'=>$labels[$status],'eligibility_reasons'=>array_values(array_unique($reasons)),
+            'service_years'=>$years,'annual_rating'=>$rating,'employment_status'=>$employment,'annual_review_id'=>$reviewId,
+            'annual_review_requirement'=>['status'=>$annualStatus,'review_1_school_year'=>$import['review_1_school_year']??null,'review_1_rating'=>$import['review_1_rating']??null,'review_2_school_year'=>$import['review_2_school_year']??null,'review_2_rating'=>$import['review_2_rating']??null,'import_id'=>$import['id']??null],
+            'service_requirement'=>['status'=>$serviceStatus,'service_years'=>$years,'employment_status'=>$employment],
+            'portfolio_validation'=>['eligible'=>$status==='eligible','decision'=>$status,'review_id'=>$reviewId,'reason_codes'=>array_values(array_unique($reasons))],
         ];
     }
 }

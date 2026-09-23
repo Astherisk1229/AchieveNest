@@ -1,294 +1,295 @@
-/**
- * IssueCertificatesModal.jsx
- * 6-Step Stepper Modal for Bulk Certificate Issuance.
- */
-
-import React, { useState, useEffect } from 'react'
-import { X, ChevronRight, ChevronLeft, Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react'
-import CertificateIssuanceController from '../../../../../controllers/CertificateIssuanceController'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, RefreshCw, ShieldCheck, Sparkles, X } from 'lucide-react'
+import certificateService from '../../../../../services/certificateService'
+import {
+  certificateReadinessErrorMessage,
+  certificateIssuanceError,
+  createCertificateIdempotencyKey,
+  loadCertificateReadinessForEvent,
+  normalizeCertificateReadiness,
+  normalizeIssuedCertificate
+} from '../../../../../services/certificateReadiness'
 import CertificateRecipientReview from './CertificateRecipientReview'
 import CertificateTemplatePicker from './CertificateTemplatePicker'
 import CertificateSignatoryResolver from './CertificateSignatoryResolver'
 import CertificateIssuancePreview from './CertificateIssuancePreview'
 
-export default function IssueCertificatesModal({ isOpen, onClose, events = [], onIssuanceComplete }) {
+const STEP_LABELS = ['Select event', 'Review recipients', 'Compatible template', 'Signatory readiness', 'Unofficial preview']
+
+export default function IssueCertificatesModal({ isOpen, onClose, events = [] }) {
   const [step, setStep] = useState(1)
-  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || 'evt-1')
-  const [selectedRecipients, setSelectedRecipients] = useState([])
-  const [selectedTemplateId, setSelectedTemplateId] = useState('tpl-workshop-01')
-  const [resolvedSignatories, setResolvedSignatories] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [issuanceSuccess, setIssuanceSuccess] = useState(null)
+  const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || '')
+  const [readinessState, setReadinessState] = useState('idle')
+  const [recipientResults, setRecipientResults] = useState([])
+  const [readinessError, setReadinessError] = useState(null)
+  const [selectedRecipientId, setSelectedRecipientId] = useState(null)
+  const [templateState, setTemplateState] = useState('idle')
+  const [retryVersion, setRetryVersion] = useState(0)
+  const [issuanceState, setIssuanceState] = useState('idle')
+  const [issuedCertificate, setIssuedCertificate] = useState(null)
+  const [issuanceError, setIssuanceError] = useState(null)
+  const requestVersion = useRef(0)
+  const issuanceRequestVersion = useRef(0)
+  const issuanceAttempt = useRef(null)
 
-  const publishedTemplates = CertificateIssuanceController.getPublishedTemplates()
-  const approvedSignatories = CertificateIssuanceController.getApprovedSignatories()
-  const selectedEvent = events.find(e => e.id === selectedEventId) || events[0] || { id: 'evt-1', title: 'Computer Society Tech Summit 2026' }
-  const selectedTemplate = publishedTemplates.find(t => t.id === selectedTemplateId) || publishedTemplates[0]
-
-  const eligibilityData = CertificateIssuanceController.getRecipientEligibility(selectedEventId)
-
-  // Auto initialize eligible recipients
   useEffect(() => {
-    if (eligibilityData?.students) {
-      const eligibleIds = eligibilityData.students.filter(s => s.isEligible).map(s => s.id)
-      setSelectedRecipients(eligibleIds)
-    }
-  }, [selectedEventId])
+    if (!selectedEventId && events[0]?.id) setSelectedEventId(events[0].id)
+  }, [events, selectedEventId])
 
-  // Auto initialize signatories
+  const selectedEvent = useMemo(
+    () => events.find(event => String(event.id) === String(selectedEventId)) || null,
+    [events, selectedEventId]
+  )
+  const selectedRecipient = recipientResults.find(result => result.sourceRecord.id === selectedRecipientId) || recipientResults[0] || null
+
   useEffect(() => {
-    if (selectedTemplate?.signatorySlots) {
-      const initialMap = {}
-      selectedTemplate.signatorySlots.forEach(slot => {
-        const match = approvedSignatories.find(s => s.role === slot.defaultRole || s.status === 'approved')
-        if (match) initialMap[slot.id] = match
+    if (!isOpen || !selectedEvent) return undefined
+    const controller = new AbortController()
+    const activeVersion = ++requestVersion.current
+
+    setReadinessState('loading')
+    setReadinessError(null)
+    setRecipientResults([])
+
+    loadCertificateReadinessForEvent(selectedEvent, { signal: controller.signal })
+      .then(results => {
+        if (controller.signal.aborted || activeVersion !== requestVersion.current) return
+        setRecipientResults(results)
+        setSelectedRecipientId(current => (results.find(result => result.sourceRecord.id === current) || results.find(result => result.readinessStatus === 'ISSUABLE') || results[0])?.sourceRecord.id || null)
+        setReadinessState('loaded')
       })
-      setResolvedSignatories(initialMap)
+      .catch(error => {
+        if (controller.signal.aborted || activeVersion !== requestVersion.current) return
+        setReadinessError(certificateReadinessErrorMessage(error))
+        setReadinessState('error')
+      })
+
+    return () => controller.abort()
+  }, [isOpen, selectedEvent, retryVersion])
+
+  useEffect(() => {
+    if (!isOpen) {
+      requestVersion.current += 1
+      setStep(1)
+      setReadinessState('idle')
+      setRecipientResults([])
+      setReadinessError(null)
+      setSelectedRecipientId(null)
+      setIssuanceState('idle')
+      setIssuedCertificate(null)
+      setIssuanceError(null)
+      issuanceAttempt.current = null
+      issuanceRequestVersion.current += 1
     }
-  }, [selectedTemplateId])
+  }, [isOpen])
 
   if (!isOpen) return null
 
-  const handleNext = () => {
-    if (step < 6) setStep(step + 1)
-  }
+  const canContinue = step === 1
+    ? Boolean(selectedEvent)
+    : readinessState === 'loaded' && Boolean(selectedRecipient)
 
-  const handleBack = () => {
-    if (step > 1) setStep(step - 1)
-  }
-
-  const handleConfirmIssuance = async () => {
-    setIsSubmitting(true)
-    const eligibleStudents = eligibilityData.students.filter(s => selectedRecipients.includes(s.id))
-    const idempotencyKey = `batch_${selectedEventId}_${selectedTemplateId}_${Date.now()}`
-
-    const res = CertificateIssuanceController.issueCertificateBatch({
-      eventId: selectedEventId,
-      eventTitle: selectedEvent.title,
-      organizationId: 'org-cs',
-      organizationName: 'Computer Society NDMU',
-      templateId: selectedTemplateId,
-      signatories: resolvedSignatories,
-      recipients: eligibleStudents,
-      idempotencyKey
-    })
-
-    setIsSubmitting(false)
-    if (res.success) {
-      setIssuanceSuccess(res.batch)
-      if (onIssuanceComplete) onIssuanceComplete(res.batch)
+  const handleTemplateSelect = async template => {
+    if (!selectedRecipient || issuanceState === 'issuing' || template.versionId === selectedRecipient.template?.versionId) return
+    setIssuanceState('idle')
+    setIssuedCertificate(null)
+    setIssuanceError(null)
+    issuanceAttempt.current = null
+    setTemplateState('loading')
+    try {
+      const readiness = await certificateService.getReadiness({
+        source_record_id: selectedRecipient.sourceRecord.id,
+        template_version_id: template.versionId,
+        signatories: selectedRecipient.signatories || {}
+      })
+      const updated = normalizeCertificateReadiness({ source_record_id: selectedRecipient.sourceRecord.id, student_id: selectedRecipient.studentId, student_name: selectedRecipient.studentName }, readiness, template)
+      updated.compatibleTemplates = selectedRecipient.compatibleTemplates
+      updated.signatories = selectedRecipient.signatories || {}
+      setRecipientResults(current => current.map(result => result.sourceRecord.id === updated.sourceRecord.id ? updated : result))
+      setTemplateState('loaded')
+    } catch (error) {
+      setReadinessError(certificateReadinessErrorMessage(error))
+      setTemplateState('error')
     }
   }
 
-  const sampleRecipient = eligibilityData.students.find(s => selectedRecipients.includes(s.id)) || eligibilityData.students[0]
+  const refreshReadiness = () => setRetryVersion(version => version + 1)
+
+  const handleIssue = async () => {
+    if (!selectedRecipient || selectedRecipient.readinessStatus !== 'ISSUABLE' || !selectedRecipient.template?.versionId || issuanceState === 'issuing') return
+    const contextKey = [selectedEvent?.id, selectedRecipient.sourceRecord.id, selectedRecipient.template.versionId].join(':')
+    if (!issuanceAttempt.current || issuanceAttempt.current.contextKey !== contextKey) {
+      issuanceAttempt.current = { contextKey, idempotencyKey: createCertificateIdempotencyKey() }
+    }
+    const activeVersion = ++issuanceRequestVersion.current
+    setIssuanceState('issuing')
+    setIssuanceError(null)
+    try {
+      const result = await certificateService.issueCertificate({
+        source_record_id: selectedRecipient.sourceRecord.id,
+        template_version_id: selectedRecipient.template.versionId,
+        signatories: selectedRecipient.signatories || {},
+        idempotency_key: issuanceAttempt.current.idempotencyKey
+      })
+      if (activeVersion !== issuanceRequestVersion.current) return
+      if (result?.status === 'BLOCKED' || result?.issued === false && result?.status !== 'ALREADY_ISSUED') {
+        const code = result?.code || result?.readiness?.blocking_reasons?.[0] || 'READINESS_CHANGED'
+        setIssuanceError(certificateIssuanceError({ code }))
+        setIssuanceState('issue_error')
+        issuanceAttempt.current = null
+        refreshReadiness()
+        return
+      }
+      setIssuedCertificate(normalizeIssuedCertificate(result))
+      setIssuanceState('issued')
+      refreshReadiness()
+    } catch (error) {
+      if (activeVersion !== issuanceRequestVersion.current) return
+      const normalizedError = certificateIssuanceError(error)
+      setIssuanceError(normalizedError)
+      setIssuanceState(normalizedError.ambiguous ? 'ambiguous' : 'issue_error')
+      if (!normalizedError.ambiguous) issuanceAttempt.current = null
+      if (!normalizedError.ambiguous && ['READINESS_CHANGED', 'CURRENT_CERTIFICATE_ALREADY_EXISTS', 'SOURCE_RECORD_NOT_VERIFIED', 'MISSING_PUBLISHED_TEMPLATE', 'REQUIRED_SIGNATORY_UNAVAILABLE'].includes(normalizedError.code)) refreshReadiness()
+    }
+  }
+
+  const handleRecipientSelect = sourceRecordId => {
+    if (issuanceState === 'issuing') return
+    setSelectedRecipientId(sourceRecordId)
+    setIssuanceState('idle')
+    setIssuedCertificate(null)
+    setIssuanceError(null)
+    issuanceAttempt.current = null
+  }
+
+  const handleEventSelect = eventId => {
+    if (issuanceState === 'issuing') return
+    setSelectedEventId(eventId)
+    setSelectedRecipientId(null)
+    setIssuanceState('idle')
+    setIssuedCertificate(null)
+    setIssuanceError(null)
+    issuanceAttempt.current = null
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200 font-sans">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
-              <Sparkles className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:p-6" role="presentation">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="certificate-modal-title"
+        className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 dark:border-slate-800 sm:p-6">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+              <Sparkles className="h-5 w-5" aria-hidden="true" />
             </div>
-            <div>
-              <h2 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Bulk Digital Certificate Issuance Hub
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Step {step} of 6 — {step === 1 ? 'Select Event' : step === 2 ? 'Review Recipients' : step === 3 ? 'Select OSAD Template' : step === 4 ? 'Resolve Signatories' : step === 5 ? 'Preview Certificate' : 'Confirm & Issue'}
+            <div className="min-w-0">
+              <h2 id="certificate-modal-title" className="text-lg font-extrabold text-slate-900 dark:text-white">Certificate eligibility review</h2>
+              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-300">
+                Step {step} of {STEP_LABELS.length} — {STEP_LABELS[step - 1]}
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
+          <button type="button" onClick={onClose} disabled={issuanceState === 'issuing'} aria-label={issuanceState === 'issuing' ? 'Certificate issuance is in progress' : 'Close certificate review'} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-white">
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
-        {/* Stepper Progress Indicator Bar */}
-        <div className="px-6 pt-4">
-          <div className="grid grid-cols-6 gap-2">
-            {[1, 2, 3, 4, 5, 6].map(s => (
-              <div
-                key={s}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  s <= step ? 'bg-emerald-600' : 'bg-slate-200 dark:bg-slate-800'
-                }`}
-              />
-            ))}
+        <div className="px-5 pt-4 sm:px-6" aria-label="Certificate review progress">
+          <div className="grid grid-cols-5 gap-2">
+            {STEP_LABELS.map((label, index) => <div key={label} title={label} className={`h-1.5 rounded-full ${index + 1 <= step ? 'bg-emerald-600' : 'bg-slate-200 dark:bg-slate-700'}`} />)}
           </div>
         </div>
 
-        {/* Step Body Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
-          
-          {issuanceSuccess ? (
-            <div className="py-8 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center mx-auto shadow-md">
-                <CheckCircle2 className="w-10 h-10" />
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Choose an event context</h3>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">The backend will evaluate only the source records linked to the selected event.</p>
               </div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                  Bulk Issuance Completed Successfully!
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                  Issued <strong>{issuanceSuccess.recipientCount} digital certificates</strong> for event <strong>{issuanceSuccess.eventTitle}</strong>. Credentials have been transmitted to students' portfolios.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2.5 rounded-xl bg-[#176B43] text-white font-extrabold text-xs transition cursor-pointer"
-              >
-                Close & Return to Dashboard
-              </button>
+              {events.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">No event contexts are available.</div>
+              ) : (
+                <div className="space-y-2">
+                  {events.map(event => (
+                    <button key={event.id} type="button" onClick={() => handleEventSelect(event.id)} disabled={issuanceState === 'issuing'} aria-pressed={String(selectedEventId) === String(event.id)} className={`flex w-full min-w-0 items-start justify-between gap-3 rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${String(selectedEventId) === String(event.id) ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950'}`}>
+                      <span className="min-w-0">
+                        <span className="block break-words text-sm font-extrabold text-slate-900 dark:text-white">{event.title}</span>
+                        <span className="mt-1 block text-xs text-slate-600 dark:text-slate-300">{[event.date, event.venue].filter(Boolean).join(' • ') || 'Event details unavailable'}</span>
+                      </span>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">Backend candidates</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <>
-              {/* STEP 1: SELECT EVENT */}
-              {step === 1 && (
-                <div className="space-y-4">
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                    Select Organization Event for Certificate Issuance
-                  </h3>
-                  <div className="space-y-2">
-                    {events.map(evt => (
-                      <div
-                        key={evt.id}
-                        onClick={() => setSelectedEventId(evt.id)}
-                        className={`p-4 rounded-2xl border transition cursor-pointer flex items-center justify-between ${
-                          selectedEventId === evt.id
-                            ? 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950/60 dark:border-emerald-700 shadow-xs'
-                            : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-800 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div>
-                          <p className="text-xs font-extrabold text-slate-900 dark:text-white">{evt.title}</p>
-                          <p className="text-[10px] text-slate-500">{evt.date || 'AY 2025-2026'} • {evt.venue || 'NDMU Campus'}</p>
-                        </div>
-                        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] font-extrabold text-[10px]">
-                          Issuance Eligible
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: REVIEW RECIPIENTS */}
-              {step === 2 && (
-                <CertificateRecipientReview
-                  eligibilityData={eligibilityData}
-                  selectedRecipients={selectedRecipients}
-                  setSelectedRecipients={setSelectedRecipients}
-                />
-              )}
-
-              {/* STEP 3: SELECT OSAD TEMPLATE */}
-              {step === 3 && (
-                <CertificateTemplatePicker
-                  templates={publishedTemplates}
-                  selectedTemplateId={selectedTemplateId}
-                  setSelectedTemplateId={setSelectedTemplateId}
-                />
-              )}
-
-              {/* STEP 4: RESOLVE SIGNATORIES */}
-              {step === 4 && (
-                <CertificateSignatoryResolver
-                  template={selectedTemplate}
-                  approvedSignatories={approvedSignatories}
-                  resolvedSignatories={resolvedSignatories}
-                  setResolvedSignatories={setResolvedSignatories}
-                />
-              )}
-
-              {/* STEP 5: PREVIEW CERTIFICATE */}
-              {step === 5 && (
-                <CertificateIssuancePreview
-                  template={selectedTemplate}
-                  selectedEvent={selectedEvent}
-                  sampleRecipient={sampleRecipient}
-                  resolvedSignatories={resolvedSignatories}
-                />
-              )}
-
-              {/* STEP 6: CONFIRM & ISSUE */}
-              {step === 6 && (
-                <div className="space-y-6 text-center py-4">
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center text-emerald-600 mx-auto">
-                    <Sparkles className="w-7 h-7" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                      Confirm Bulk Issuance
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                      You are about to issue <strong>{selectedRecipients.length} digital certificates</strong> using template <strong>{selectedTemplate.title} ({selectedTemplate.code})</strong> for event <strong>{selectedEvent.title}</strong>.
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 max-w-lg mx-auto text-left space-y-1">
-                    <span className="font-extrabold block flex items-center gap-1">
-                      <AlertTriangle className="w-4 h-4 text-amber-600" />
-                      Idempotence & Automatic Delivery Warning
-                    </span>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                      Once confirmed, serial verification numbers will be generated and credentials will automatically appear in eligible students' portfolios as read-only verified items.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </>
           )}
 
+          {step > 1 && readinessState === 'loading' && (
+            <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center" role="status" aria-live="polite">
+              <LoaderCircle className="h-8 w-8 animate-spin text-emerald-600" aria-hidden="true" />
+              <div><p className="font-extrabold text-slate-900 dark:text-white">Evaluating certificate eligibility…</p><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Checking verified source records, templates, and readiness blockers.</p></div>
+            </div>
+          )}
+
+          {step > 1 && readinessState === 'error' && (
+            <div className="mx-auto flex min-h-64 max-w-lg flex-col items-center justify-center text-center" role="alert">
+              <AlertTriangle className="h-9 w-9 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <h3 className="mt-3 font-extrabold text-slate-900 dark:text-white">{readinessError}</h3>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">No mock eligibility data has been substituted.</p>
+              <button type="button" onClick={() => setRetryVersion(version => version + 1)} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> Retry
+              </button>
+            </div>
+          )}
+
+          {step > 1 && readinessState === 'loaded' && recipientResults.length === 0 && (
+            <div className="flex min-h-64 items-center justify-center rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300" role="status">
+              No certificate candidates were found for this event.
+            </div>
+          )}
+
+          {step === 2 && readinessState === 'loaded' && recipientResults.length > 0 && <CertificateRecipientReview recipients={recipientResults} selectedRecipientId={selectedRecipient?.sourceRecord.id} onSelectRecipient={handleRecipientSelect} isDisabled={issuanceState === 'issuing'} />}
+          {step === 3 && selectedRecipient && <CertificateTemplatePicker recipient={selectedRecipient} onSelectTemplate={handleTemplateSelect} isLoading={templateState === 'loading'} />}
+          {step === 4 && selectedRecipient && <CertificateSignatoryResolver recipient={selectedRecipient} />}
+          {step === 5 && selectedRecipient && (
+            <div className="space-y-4">
+              <CertificateIssuancePreview recipient={selectedRecipient} selectedEvent={selectedEvent} issuedCertificate={issuedCertificate} />
+              {issuanceError && (
+                <div className="flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/40 dark:text-amber-100" role="alert">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <div><p className="font-extrabold">Certificate issuance was not completed.</p><p className="mt-1 leading-relaxed">{issuanceError.message}</p></div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Modal Footer Controls */}
-        {!issuanceSuccess && (
-          <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
-            <button
-              type="button"
-              onClick={handleBack}
-              disabled={step === 1 || isSubmitting}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 disabled:opacity-40 transition flex items-center gap-1 cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Back</span>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+          <button type="button" onClick={() => setStep(current => Math.max(1, current - 1))} disabled={step === 1 || issuanceState === 'issuing' || issuanceState === 'issued'} className="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200">
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" /> Back
+          </button>
+          {step < STEP_LABELS.length ? (
+            <button type="button" onClick={() => setStep(current => Math.min(STEP_LABELS.length, current + 1))} disabled={!canContinue || readinessState === 'error' || templateState === 'loading'} className="inline-flex items-center gap-1 rounded-xl bg-emerald-700 px-5 py-2 text-sm font-extrabold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:disabled:bg-slate-700 dark:disabled:text-slate-300">
+              Continue <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
-
-            {step < 6 ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={selectedRecipients.length === 0}
-                className="px-5 py-2 rounded-xl bg-[#176B43] hover:bg-[#125536] text-white font-extrabold text-xs transition-all flex items-center gap-1 cursor-pointer disabled:bg-[#E5ECE7] disabled:text-[#7A8B80] disabled:cursor-not-allowed shadow-xs"
-              >
-                <span>Next Step</span>
-                <ChevronRight className="w-4 h-4 text-white" />
-              </button>
+          ) : (
+            issuanceState === 'issued' ? (
+              <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2 text-sm font-extrabold text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Done</button>
             ) : (
-              <button
-                type="button"
-                onClick={handleConfirmIssuance}
-                disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition flex items-center gap-2 cursor-pointer shadow-md"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>{isSubmitting ? 'Issuing Certificates...' : 'Confirm Bulk Issuance'}</span>
-              </button>
-            )}
-          </div>
-        )}
-
-      </div>
+              <div className="text-right">
+                <button type="button" onClick={handleIssue} disabled={selectedRecipient?.readinessStatus !== 'ISSUABLE' || !selectedRecipient?.template?.versionId || issuanceState === 'issuing'} aria-describedby="issuance-action-explanation" className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2 text-sm font-extrabold text-white hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:disabled:bg-slate-700 dark:disabled:text-slate-300">
+                  {issuanceState === 'issuing' ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> Issuing certificate…</> : issuanceState === 'ambiguous' ? <><RefreshCw className="h-4 w-4" aria-hidden="true" /> Retry safely</> : <><ShieldCheck className="h-4 w-4" aria-hidden="true" /> Issue certificate</>}
+                </button>
+                <p id="issuance-action-explanation" className="mt-1 max-w-sm text-[11px] text-slate-600 dark:text-slate-300">The backend will recheck eligibility, template, signatories, and duplicates before issuing.</p>
+              </div>
+            )
+          )}
+        </footer>
+      </section>
     </div>
   )
 }

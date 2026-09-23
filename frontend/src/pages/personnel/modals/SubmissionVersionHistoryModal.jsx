@@ -64,12 +64,10 @@ export default function SubmissionVersionHistoryModal({
       if (!item1) {
         added.push(item2)
       } else {
-        const p1 = Number(item1.scoring_payload?.claimed_points || 0)
-        const p2 = Number(item2.scoring_payload?.claimed_points || 0)
         const f1 = item1.file_name || ''
         const f2 = item2.file_name || ''
 
-        if (p1 !== p2 || f1 !== f2 || item1.evidence_title !== item2.evidence_title) {
+        if (f1 !== f2 || item1.evidence_id !== item2.evidence_id || item1.evidence_title !== item2.evidence_title) {
           modified.push({ before: item1, after: item2 })
         } else {
           unchanged.push(item2)
@@ -309,7 +307,7 @@ export default function SubmissionVersionHistoryModal({
                               <div className="text-[11px] text-slate-500 flex items-center gap-2">
                                 <span>Proof: {item.file_name || 'No file'}</span>
                                 <span>•</span>
-                                <span>Claimed: {item.scoring_payload?.claimed_points || 0} pts</span>
+                                <span>Persisted submission evidence</span>
                               </div>
                             </div>
 
@@ -390,7 +388,7 @@ export default function SubmissionVersionHistoryModal({
                       <div key={idx} className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs flex items-center justify-between">
                         <div>
                           <div className="font-bold text-emerald-950">{item.evidence_title || item.criterion_title}</div>
-                          <div className="text-[11px] text-emerald-700">Proof: {item.file_name} • Claimed: {item.scoring_payload?.claimed_points || 0} pts</div>
+                          <div className="text-[11px] text-emerald-700">Proof: {item.file_name}</div>
                         </div>
                         <span className="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-extrabold text-[10px]">NEW</span>
                       </div>
@@ -410,11 +408,11 @@ export default function SubmissionVersionHistoryModal({
                         <div className="grid grid-cols-2 gap-2 text-[11px]">
                           <div className="p-2 rounded bg-white/70 border border-amber-200/50">
                             <span className="font-bold text-slate-500">Version {versions[compareV1Idx]?.version_number}: </span>
-                            <span>Proof: {before.file_name} • Claimed: {before.scoring_payload?.claimed_points || 0} pts</span>
+                            <span>Proof: {before.file_name}</span>
                           </div>
                           <div className="p-2 rounded bg-white/70 border border-amber-200/50">
                             <span className="font-bold text-emerald-700">Version {versions[compareV2Idx]?.version_number}: </span>
-                            <span>Proof: {after.file_name} • Claimed: {after.scoring_payload?.claimed_points || 0} pts</span>
+                            <span>Proof: {after.file_name}</span>
                           </div>
                         </div>
                       </div>

@@ -1,0 +1,15 @@
+<?php
+namespace Tests\Unit;
+use CodeIgniter\Test\CIUnitTestCase;
+final class RecommendedRankPhaseNTest extends CIUnitTestCase
+{
+ private function source(string $p):string{return file_get_contents(ROOTPATH.$p);}
+ public function testFailRetainsPresentAndPassUsesConfirmedAppliedRank():void{$s=$this->source('app/Services/RecommendedRankService.php');self::assertStringContainsString("\$suggested=\$passed?\$applied:\$present",$s);self::assertStringContainsString("\$outcome=\$passed?'rank_applied_for':'retained_present_rank'",$s);}
+ public function testThresholdComesOnlyFromLockedCriteriaSnapshot():void{$s=$this->source('app/Services/RecommendedRankService.php');self::assertStringContainsString("\$e['criteria_snapshot']",$s);self::assertStringContainsString('PASSING_THRESHOLD_MISSING_OR_AMBIGUOUS',$s);self::assertStringNotContainsString('>= 75',$s);self::assertStringNotContainsString('>= 120',$s);}
+ public function testHighScoreCannotCreateJumpAndOnlyExactPhdExceptionExists():void{$s=$this->source('app/Services/RecommendedRankService.php');self::assertStringContainsString("\$c['total'] >= \$c['threshold']",$s);self::assertStringContainsString("\$present['rank_code']==='ASSISTANT_PROFESSOR_I'",$s);self::assertStringContainsString("'to_rank_code'=>'PROFESSOR_I'",$s);self::assertStringContainsString("'requires_verified_phd'=>1",$s);}
+ public function testOptionsExcludeArbitraryDemotionAndUnsupportedRanks():void{$s=$this->source('app/Services/RecommendedRankService.php');self::assertStringContainsString('INVALID_RECOMMENDED_RANK_OPTION',$s);self::assertStringContainsString("\$options=[['rank_code'=>\$suggested",$s);self::assertStringContainsString("\$options[]=['rank_code'=>\$present",$s);}
+ public function testAlternateRequiresReasonWhileSuggestionDoesNot():void{$s=$this->source('app/Services/RecommendedRankService.php');self::assertStringContainsString('DEVIATION_JUSTIFICATION_REQUIRED',$s);self::assertStringContainsString("\$deviation?trim((string)\$reason):null",$s);}
+ public function testAllRequiredStaleInputsAreHashedOrValidated():void{$s=$this->source('app/Services/RecommendedRankService.php');foreach(['present','placement','credentials','applied_id','applied_rank','evaluation','version','total','criteria','threshold','cycle','track','CONFIRMED_RANK_APPLIED_FOR_STALE','STALE_RECOMMENDED_RANK_SUGGESTION']as$t)self::assertStringContainsString($t,$s);}
+ public function testAuthorityIsServerResolvedAndPresentRankNeverMutates():void{$s=$this->source('app/Services/RecommendedRankService.php');self::assertStringContainsString('resolveResponsibleAuthority',$s);self::assertStringContainsString('actorMayAct',$s);self::assertStringNotContainsString("current_rank_title'=>",$s);}
+ public function testPersistenceIncludesSnapshotsAndImmutableEvents():void{$m=$this->source('app/Database/Migrations/2026-09-15-000009_CreateRecommendedRankDecisions.php');foreach(['evaluation_version','present_rank_code_snapshot','placement_id_snapshot','rank_applied_for_decision_id','evaluation_total_snapshot','passing_threshold_snapshot','criteria_snapshot_hash','personnel_recommended_rank_events']as$t)self::assertStringContainsString($t,$m);}
+}

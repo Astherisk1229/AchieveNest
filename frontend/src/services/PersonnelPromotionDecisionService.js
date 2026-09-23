@@ -1,7 +1,7 @@
 /**
  * PersonnelPromotionDecisionService.js
  *
- * Authoritative Post-Evaluation Deliberation, HR Promotion Decision & Approved Rank Update Engine (Plan H — Phase H3).
+ * LEGACY QUARANTINED compatibility module (Plan H — Phase H3).
  * Manages post-evaluation deliberation, processes HR-recorded promotion decisions ('Approved' or 'Not Approved'),
  * preserves current rank for denied/retained cases, and applies approved rank updates strictly validated
  * against Plan E faculty rank progression rules and confirmed PhD exceptions.
@@ -87,6 +87,7 @@ export const NORMAL_PROGRESSION_MAP = Object.freeze({
 
 export default class PersonnelPromotionDecisionService {
   static RULE_REFERENCE = 'NDMU-DOC-ACAD-RANKS-2026-V1'
+  static LEGACY_QUARANTINED = true
 
   /**
    * Resolves rank code or display label into canonical rank metadata.

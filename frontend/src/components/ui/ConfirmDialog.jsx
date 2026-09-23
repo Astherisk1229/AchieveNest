@@ -9,19 +9,31 @@ import { Button } from './button'
 
 export function ConfirmDialog({
   open = false,
+  isOpen,
   title = 'Are you sure?',
   message = 'Unsaved changes will be lost if you close without saving.',
   confirmLabel = 'Discard Changes',
+  confirmText,
   cancelLabel = 'Continue Editing',
+  cancelText,
   tone = 'warning', // 'warning' | 'destructive' | 'default'
+  type,
   onConfirm,
   onCancel,
   isProcessing = false
 }) {
   const confirmBtnRef = useRef(null)
+  const dialogRef = useRef(null)
+  const previousFocusRef = useRef(null)
+  const isDialogOpen = Boolean(isOpen !== undefined ? isOpen : open)
+  const effectiveConfirmLabel = confirmText || confirmLabel
+  const effectiveCancelLabel = cancelText || cancelLabel
+  const effectiveTone = type || tone
 
   useEffect(() => {
-    if (!open) return
+    if (!isDialogOpen) return
+
+    previousFocusRef.current = document.activeElement
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -31,22 +43,38 @@ export function ConfirmDialog({
           onCancel()
         }
       }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = [...dialogRef.current.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        if (!focusable.length) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown, true)
-    return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [open, onCancel, isProcessing])
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+      previousFocusRef.current?.focus?.()
+    }
+  }, [isDialogOpen, onCancel, isProcessing])
 
   useEffect(() => {
-    if (open && confirmBtnRef.current) {
+    if (isDialogOpen && confirmBtnRef.current) {
       confirmBtnRef.current.focus()
     }
-  }, [open])
+  }, [isDialogOpen])
 
-  if (!open) return null
+  if (!isDialogOpen) return null
 
   const getToneIcon = () => {
-    switch (tone) {
+    switch (effectiveTone) {
       case 'destructive':
         return (
           <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0">
@@ -70,7 +98,7 @@ export function ConfirmDialog({
   }
 
   const getConfirmVariant = () => {
-    if (tone === 'destructive') return 'destructive'
+    if (effectiveTone === 'destructive') return 'destructive'
     return 'default'
   }
 
@@ -87,9 +115,10 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
       aria-describedby="confirm-dialog-description"
       onClick={handleBackdropClick}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
     >
       <div
+        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         className="bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 relative text-slate-900 dark:text-slate-100"
       >
@@ -123,7 +152,7 @@ export function ConfirmDialog({
             onClick={onCancel}
             className="text-xs font-bold"
           >
-            {cancelLabel}
+            {effectiveCancelLabel}
           </Button>
 
           <Button
@@ -134,7 +163,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             className="text-xs font-extrabold shadow-sm"
           >
-            {confirmLabel}
+            {effectiveConfirmLabel}
           </Button>
         </div>
       </div>

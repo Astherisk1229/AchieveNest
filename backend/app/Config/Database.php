@@ -300,6 +300,24 @@ class Database extends Config
     ];
 
     /**
+     * Disposable isolated MySQL database used only by canonical Student
+     * achievement write tests.
+     *
+     * @var array<string, mixed>
+     */
+    public array $phase2_writer_test = [
+        'DSN' => '', 'hostname' => '127.0.0.1', 'username' => 'root', 'password' => '',
+        'database' => 'achievenest_phase2_writer_test', 'DBDriver' => 'MySQLi', 'DBPrefix' => '',
+        'pConnect' => false, 'DBDebug' => true, 'charset' => 'utf8mb4',
+        'DBCollat' => 'utf8mb4_unicode_ci', 'swapPre' => '', 'encrypt' => false,
+        'compress' => false, 'strictOn' => false, 'failover' => [], 'port' => 3306,
+        'dateFormat' => [
+            'date' => 'Y-m-d',
+            'datetime' => 'Y-m-d H:i:s',
+            'time' => 'H:i:s',
+        ],
+    ];
+    /**
      * Disposable isolated validation database for Plan K — Phase K4 remediation.
      * Hard-guarded against targeting protected achievenest_local.
      *
@@ -339,7 +357,40 @@ class Database extends Config
 
         // Keep local defense, hosted development, and automated tests isolated.
         $runtimeTarget = getenv('ACHIEVENEST_ENV') ?: env('ACHIEVENEST_ENV');
-        if ($runtimeTarget === 'k4-test') {
+        if ($runtimeTarget === 'phase2-writer-test') {
+            $this->phase2_writer_test['hostname'] = (string) (
+                getenv('PHASE2_WRITER_TEST_HOST') ?: '127.0.0.1'
+            );
+
+            $this->phase2_writer_test['database'] = (string) (
+                getenv('PHASE2_WRITER_TEST_DATABASE')
+                ?: 'achievenest_phase2_writer_test'
+            );
+
+            $this->phase2_writer_test['username'] = (string) (
+                getenv('PHASE2_WRITER_TEST_USERNAME') ?: 'root'
+            );
+
+            $this->phase2_writer_test['password'] = (string) (
+                getenv('PHASE2_WRITER_TEST_PASSWORD') ?: ''
+            );
+
+            $this->phase2_writer_test['port'] = (int) (
+                getenv('PHASE2_WRITER_TEST_PORT') ?: 3306
+            );
+
+            if (
+                $this->phase2_writer_test['database']
+                !== 'achievenest_phase2_writer_test'
+            ) {
+                throw new \RuntimeException(
+                    'Phase 2 writer tests must target exactly '
+                    . 'achievenest_phase2_writer_test.'
+                );
+            }
+
+            $this->defaultGroup = 'phase2_writer_test';
+        } elseif ($runtimeTarget === 'k4-test') {
             $this->k4_test['database'] = (string) (getenv('K4_TEST_DATABASE') ?: 'k4_test.sqlite');
             if ($this->k4_test['database'] === 'achievenest_local' || ! str_contains($this->k4_test['database'], 'test')) {
                 throw new \RuntimeException('K4 test target must be a disposable test database and must never target protected achievenest_local.');

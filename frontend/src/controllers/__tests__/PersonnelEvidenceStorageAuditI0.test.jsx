@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import SecurityController from '../SecurityController.js'
 import OcrScanController from '../OcrScanController.js'
 import personnelAccomplishmentService from '../../services/personnelAccomplishmentService.js'
 import PersonnelEvaluatorWorkspaceService, { EVIDENCE_STATUSES } from '../../services/PersonnelEvaluatorWorkspaceService.js'
 import { REVIEWER_ROLES } from '../../services/PersonnelReviewerRoutingRegistry.js'
 import { EVALUATION_SCALE_CODES } from '../../services/evaluationInstrumentRegistry.js'
+
+vi.mock('../../services/ocrService.js', () => ({
+  ocrService: { extract: vi.fn().mockResolvedValue({ text: '', warnings: ['Manual entry is available.'], quality: { score: 0, label: 'failed' }, engine: 'test' }) }
+}))
 
 describe('Personnel Evaluation Track — Plan I — Phase I0: Storage & Security Audit Matrix', () => {
 

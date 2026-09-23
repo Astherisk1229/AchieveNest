@@ -6,6 +6,7 @@ import AchievementSubmissionModal from './modals/AchievementSubmissionModal'
 import StudentAchievementPopoverMenu from './StudentAchievementPopoverMenu'
 import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewModal'
 import useStudentAchievements from '../../hooks/useStudentAchievements'
+import portfolioService from '../../services/portfolioService'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -65,9 +66,7 @@ export default function StudentAchievementsPage({ currentUser }) {
     addAchievement,
     updateAchievement,
     resubmitAchievement,
-    deleteAchievement,
-    toggleFavorite,
-    toggleAttachPortfolio
+    taxonomy
   } = useStudentAchievements()
 
   // Modal State Controls
@@ -93,14 +92,17 @@ export default function StudentAchievementsPage({ currentUser }) {
   }, [location.state, setSelectedCategory, setSelectedStatus, achievements, setPreviewItem])
 
   // Category definitions & icons mapping
-  const categoryDefs = [
-    { name: 'Academic', icon: GraduationCap },
-    { name: 'Leadership', icon: Users },
-    { name: 'Community', icon: Heart },
-    { name: 'Sports', icon: Award },
-    { name: 'Recognition', icon: Star },
-    { name: 'Professional Development', icon: Briefcase }
-  ]
+  const categoryDefs = taxonomy.map(category => {
+    const name = category.name || ''
+    const icon = /leadership|organization/i.test(name) ? Users
+      : /community|church|ministry/i.test(name) ? Heart
+        : /sport/i.test(name) ? Award
+          : /recognition|citation/i.test(name) ? Star
+            : /seminar|training/i.test(name) ? Briefcase
+              : /journal|academic/i.test(name) ? GraduationCap
+                : Trophy
+    return { ...category, name, icon }
+  })
 
   const getCategoryIcon = (catName) => {
     const found = categoryDefs.find(c => c.name === catName)
@@ -108,25 +110,24 @@ export default function StudentAchievementsPage({ currentUser }) {
   }
 
   // Submission / Edit / Resubmit Handler
-  const handleSubmitAchievement = (formData) => {
+  const handleSubmitAchievement = async (formData) => {
     if (editingItem) {
-      if (editingItem.status === 'Returned') {
-        resubmitAchievement(editingItem.id, formData)
+      if (editingItem.status === 'Returned' && formData.submit_now) {
+        await resubmitAchievement(editingItem.id, formData)
       } else {
-        updateAchievement(editingItem.id, formData)
+        await updateAchievement(editingItem.id, formData)
       }
       setEditingItem(null)
     } else {
-      addAchievement(formData)
+      await addAchievement(formData)
     }
     setIsSubmitOpen(false)
   }
 
-  // Simulated Proof File Download Helper
-  const handleDownloadProof = (item) => {
-    const filename = item.attached_file_name || 'student_achievement_proof.pdf'
-    const content = `NDMU Student Achievement Proof Record\n------------------------------------\nStudent: ${user.full_name} (${user.student_id})\nTitle: ${item.title}\nCategory: ${item.category}\nDate: ${item.date}\nIssuer/Location: ${item.location}\nVerification Status: ${item.status}\nReference ID: REF-${String(item.id).toUpperCase()}`
-    const blob = new Blob([content], { type: 'application/pdf' })
+  const handleDownloadProof = async (item) => {
+    if (!item.evidence_id) throw new Error('No persisted evidence is attached to this record.')
+    const filename = item.attached_file_name || 'student_achievement_evidence'
+    const blob = await portfolioService.downloadEvidence(item.evidence_id)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -141,13 +142,13 @@ export default function StudentAchievementsPage({ currentUser }) {
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Category', 'Date', 'Status', 'Location', 'Description', 'Favorited', 'In Portfolio']
     const rows = filteredAchievements.map(a => [
-      `"REF-${String(a.id).toUpperCase()}"`,
-      `"${a.title.replace(/"/g, '""')}"`,
-      `"${a.category}"`,
-      `"${a.date}"`,
-      `"${a.status}"`,
-      `"${a.location}"`,
-      `"${(a.description || '').replace(/"/g, '""')}"`,
+      `"REF-${String(a.id || '').toUpperCase()}"`,
+      `"${String(a.title || '').replace(/"/g, '""')}"`,
+      `"${String(a.category || '')}"`,
+      `"${String(a.date || '')}"`,
+      `"${String(a.status || '')}"`,
+      `"${String(a.location || '')}"`,
+      `"${String(a.description || '').replace(/"/g, '""')}"`,
       `"${a.is_favorited ? 'Yes' : 'No'}"`,
       `"${a.portfolio_id ? 'Yes' : 'No'}"`
     ])
@@ -332,18 +333,6 @@ export default function StudentAchievementsPage({ currentUser }) {
                         
                         {/* Hover Action Buttons Top Right (Favorite Star & 3-Dot Menu) */}
                         <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition z-10">
-                          {/* Favorite Toggle Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id) }}
-                            className={`p-1.5 rounded-full border transition cursor-pointer ${
-                              item.is_favorited ? 'bg-[#FFF4CC] text-[#8A6100] border-[#FFE3B3] shadow-xs' : 'bg-white/90 hover:bg-white text-[#52677A] border-[#DCE6DF]'
-                            }`}
-                            title={item.is_favorited ? 'Unfavorite' : 'Favorite'}
-                          >
-                            <Star className={`w-3.5 h-3.5 ${item.is_favorited ? 'fill-[#8A6100]' : ''}`} />
-                          </button>
-
                           {/* 3-Dot Options Button */}
                           <button
                             type="button"
@@ -582,9 +571,6 @@ export default function StudentAchievementsPage({ currentUser }) {
         onEdit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
         onDownload={handleDownloadProof}
         onResubmit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
-        onAttachPortfolio={toggleAttachPortfolio}
-        onDelete={deleteAchievement}
-        onToggleFavorite={toggleFavorite}
       />
 
       {/* Student Achievement Full Preview Modal */}
@@ -595,7 +581,6 @@ export default function StudentAchievementsPage({ currentUser }) {
         onEdit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
         onDownload={handleDownloadProof}
         onResubmit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
-        onAttachPortfolio={toggleAttachPortfolio}
       />
 
       {/* Achievement Submission & Edit Modal */}
@@ -604,6 +589,7 @@ export default function StudentAchievementsPage({ currentUser }) {
         onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
         onSubmitAchievement={handleSubmitAchievement}
         initialData={editingItem}
+        taxonomy={taxonomy}
       />
     </>
   )

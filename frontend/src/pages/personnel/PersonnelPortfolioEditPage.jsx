@@ -1,16 +1,24 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { useNavigate } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
+import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import SubmissionVersionHistoryModal from './modals/SubmissionVersionHistoryModal'
+import PersonnelEvidencePreviewModal from './modals/PersonnelEvidencePreviewModal'
+import AchievementPreviewModal from './modals/AchievementPreviewModal'
 import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
+import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import PersonnelAchievementController from '../../controllers/PersonnelAchievementController'
-import personnelAccomplishmentService from '../../services/personnelAccomplishmentService'
+import personnelAccomplishmentService, { fetchCurrentEvaluationPeriod } from '../../services/personnelAccomplishmentService'
 import portfolioConfigurationService from '../../services/portfolioConfigurationService'
+import { getCurrentEligibility } from '../../services/personnelPortfolioService'
+import AchievementReuseBadge from '../../components/common/AchievementReuseBadge'
+import { hasValidPersonnelEvidence, resolvePersonnelEvidence } from '../../utils/personnelEvidence'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 import {
   Plus,
@@ -58,7 +66,6 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
   const {
     portfolio,
-    totals,
     latestSubmission,
     submissionHistory,
     versionNumber,
@@ -84,17 +91,25 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
   // Dynamic Workspace Rubric Configuration State
   const [workspaceConfig, setWorkspaceConfig] = useState(null)
+  const [evaluationPeriod, setEvaluationPeriod] = useState(null)
   const [configLoading, setConfigLoading] = useState(false)
+  const [eligibility, setEligibility] = useState(null)
 
   useEffect(() => {
     let mounted = true
     async function loadConfig() {
       try {
         setConfigLoading(true)
-        const res = await portfolioConfigurationService.fetchWorkspaceConfiguration()
+        const [res, periodRes] = await Promise.all([
+          portfolioConfigurationService.fetchWorkspaceConfiguration(),
+          fetchCurrentEvaluationPeriod()
+        ])
         if (mounted && res?.data) {
           setWorkspaceConfig(res.data)
         }
+        if (mounted) setEvaluationPeriod(periodRes?.period || periodRes?.data?.period || null)
+        const period = periodRes?.period || periodRes?.data?.period
+        if (mounted && period?.id) setEligibility(await getCurrentEligibility(period.id))
       } catch (err) {
         console.warn('Could not load dynamic workspace configuration, using fallback rubric:', err.message)
       } finally {
@@ -118,6 +133,9 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [editingAccomplishment, setEditingAccomplishment] = useState(null)
+  const [previewEvidence, setPreviewEvidence] = useState(null)
+  const [viewingAccomplishment, setViewingAccomplishment] = useState(null)
+  const [isBookletOpen, setIsBookletOpen] = useState(false)
   const [initialSubmissionCategory, setInitialSubmissionCategory] = useState('A.1 Degree/s')
 
   // Feedback Toast & Error State
@@ -129,19 +147,31 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const isReturnedForRevision = activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel'
   const isCurrentlyLocked = !isReturnedForRevision && (isLocked || ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed'].includes(activeStatus))
   const isEditable = !isCurrentlyLocked && (activeStatus === 'draft' || isReturnedForRevision)
+  const eligibilityBlocked = !isReturnedForRevision && eligibility?.eligibility_status !== 'eligible'
 
   const showToast = (msg) => {
     setFeedbackMessage(msg)
     setTimeout(() => setFeedbackMessage(''), 3500)
   }
 
+  const isFacultyAcademic = usesFacultyAcademicPortfolio(activeUser)
+
   // Open Canonical Plan A Submission Modal for Targeted Area
   const handleOpenAddAccomplishment = (areaKey = activeArea) => {
-    const defaultCat = areaKey === 'A'
-      ? 'A.1 Degree/s'
-      : areaKey === 'B'
-        ? 'B.1 Guest Lecturer / Consultant / Judge'
-        : 'C.1 Involvement in extra-curricular activities'
+    let defaultCat = ''
+    if (isFacultyAcademic) {
+      defaultCat = areaKey === 'A'
+        ? 'A.1 Education'
+        : areaKey === 'B'
+          ? 'B.1 Invited as Guest Lecturer / Consultant / Judge / Resource Person'
+          : 'C.1.a Moderator of Clubs / Organizations'
+    } else {
+      defaultCat = areaKey === 'A'
+        ? 'A.1 Degree/s'
+        : areaKey === 'B'
+          ? 'B.1 Guest Lecturer / Consultant / Judge'
+          : 'C.1 Involvement in extra-curricular activities'
+    }
 
     setEditingAccomplishment(null)
     setInitialSubmissionCategory(defaultCat)
@@ -150,9 +180,11 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
 
   // Handle Canonical Achievement Save / Handoff
-  const handleSaveAccomplishment = async (newEntry, file) => {
+  const handleSaveAccomplishment = async (newEntry, file, persistence = null) => {
     try {
-      if (editingAccomplishment) {
+      if (persistence?.alreadyPersisted) {
+        showToast(`Accomplishment "${newEntry.title}" saved with its persisted evidence.`)
+      } else if (editingAccomplishment) {
         await personnelAccomplishmentService.updateAccomplishment(editingAccomplishment.id, newEntry)
         if (file) {
           await personnelAccomplishmentService.uploadEvidence(editingAccomplishment.id, file)
@@ -222,7 +254,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       return
     }
 
-    const missingProofItems = allItems.filter(i => !i.proof_file_name || !i.proof_file_name.trim())
+    const missingProofItems = allItems.filter(i => !hasValidPersonnelEvidence(i))
 
     if (missingProofItems.length > 0) {
       setSubmitError(`Validation Error: ${missingProofItems.length} accomplishment record(s) are missing documentary proof attachments. Please upload proof before submitting.`)
@@ -234,13 +266,13 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       let res
       if (isReturnedForRevision) {
         res = await resubmitPortfolio({
-          academicYear: '2025-2026',
-          tenureYears: activeUser.years_of_service || 8
+          evaluationPeriodId: evaluationPeriod?.id,
+          tenureYears: activeUser.years_of_service
         })
       } else {
         res = await submitPortfolio({
-          academicYear: '2025-2026',
-          tenureYears: activeUser.years_of_service || 8
+          evaluationPeriodId: evaluationPeriod?.id,
+          tenureYears: activeUser.years_of_service
         })
       }
 
@@ -277,14 +309,13 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     return matchesCat && matchesScope && matchesSearch
   })
 
-  // Calculated Area Point Caps & Percentages (Advisory Claimed Points)
-  const areaAPts = totals?.claimed?.rawA ?? (totals?.areaA?.claimed || 0)
-  const areaBPts = totals?.claimed?.rawB ?? (totals?.areaB?.claimed || 0)
-  const areaCPts = totals?.claimed?.rawC ?? (totals?.areaC?.claimed || 0)
-
-  const isAMaxed = areaAPts >= 70
-  const isBMaxed = areaBPts >= 50
-  const isCMaxed = areaCPts >= 40
+  const allPortfolioItems = [...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])]
+  const persistedEvidenceCount = allPortfolioItems.filter(hasValidPersonnelEvidence).length
+  const periodUnavailableReason = !evaluationPeriod
+    ? 'No personnel evaluation period is currently open for submission.'
+    : !evaluationPeriod.can_submit
+      ? 'The current personnel evaluation period is outside its submission window.'
+      : ''
 
   // Categories for active dropdown
   const currentHierarchy = ['A', 'B', 'C'].includes(activeArea) ? RankingCriteriaModel.CATEGORIES_HIERARCHY[activeArea] : null
@@ -310,7 +341,9 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{submitError}</span>
           </div>
-        )}        {/* Lock Notification Notice */}
+        )}
+        {eligibility && <section aria-labelledby="eligibility-heading" className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 id="eligibility-heading" className="font-extrabold text-slate-950 dark:text-white">Portfolio evaluation eligibility</h2><p className="mt-1 text-xs leading-5 text-slate-500">Official annual-review evidence and HR-maintained service information determine submission readiness.</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${eligibility.eligibility_status === 'eligible' ? 'bg-emerald-100 text-emerald-800' : eligibility.eligibility_status === 'not_eligible' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-900'}`}>{eligibility.eligibility_label}</span></div><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3"><div><dt className="text-xs font-semibold text-slate-500">Annual review requirement</dt><dd className="mt-1 space-y-1"><span className="block"><strong>{eligibility.annual_review_requirement?.review_1_school_year || 'First required year'}</strong> · {(eligibility.annual_review_requirement?.review_1_rating || 'Pending').replaceAll('_', ' ')}</span><span className="block"><strong>{eligibility.annual_review_requirement?.review_2_school_year || 'Second required year'}</strong> · {(eligibility.annual_review_requirement?.review_2_rating || 'Pending').replaceAll('_', ' ')}</span><span className="block font-bold capitalize">Two Annual Reviews: {(eligibility.annual_review_requirement?.status || 'pending').replaceAll('_', ' ')}</span></dd></div><div><dt className="text-xs font-semibold text-slate-500">Service requirement</dt><dd className="mt-1 font-bold capitalize">{(eligibility.service_requirement?.status || 'pending').replaceAll('_', ' ')}</dd></div><div><dt className="text-xs font-semibold text-slate-500">Portfolio evaluation eligibility</dt><dd className="mt-1 font-bold">{eligibility.eligibility_label}</dd></div></dl>{eligibility.eligibility_reasons?.length > 0 && <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">{eligibility.eligibility_reasons.join(' ')}</p>}</section>}
+        {/* Lock Notification Notice */}
         {isCurrentlyLocked && (
           <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-bold text-xs flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-3">
@@ -425,12 +458,16 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 STATUS: {portfolio?.status || latestSubmission?.status || 'DRAFT'}
               </span>
               <span className="text-xs font-bold text-[#245F42] hidden md:inline">
-                Evaluation Dossier • AY 2025-2026
+                {evaluationPeriod ? `${evaluationPeriod.period_name} • ${evaluationPeriod.academic_year_label} · ${evaluationPeriod.semester_label}` : 'No evaluation period open'}
               </span>
             </div>
 
             {/* Primary Portfolio Actions */}
             <div className="flex items-center gap-2 flex-wrap">
+              <button type="button" onClick={() => setIsBookletOpen(true)} className="px-3.5 py-1.5 rounded-xl bg-[#245F42] hover:bg-[#1B4731] text-white font-extrabold text-xs flex items-center gap-1.5 transition shadow-sm">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Portfolio Booklet</span>
+              </button>
               {/* Submission History Action */}
               <button
                 type="button"
@@ -465,7 +502,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 <button
                   type="button"
                   onClick={handleSubmitPortfolio}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || Boolean(periodUnavailableReason) || eligibilityBlocked}
                   className={`px-4 py-1.5 rounded-xl disabled:opacity-50 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer ${
                     isReturnedForRevision
                       ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400/50'
@@ -480,6 +517,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                   </span>
                 </button>
               )}
+              {isEditable && periodUnavailableReason && <p className="w-full text-right text-[11px] font-semibold text-amber-800">{periodUnavailableReason}</p>}
+              {isEditable && !periodUnavailableReason && eligibilityBlocked && <p className="w-full max-w-xl text-right text-[11px] font-semibold text-amber-800">Portfolio submission is unavailable: {eligibility?.eligibility_reasons?.join(' ') || 'eligibility is still being confirmed.'}</p>}
 
               {/* Action 3: Share */}
               <button
@@ -513,16 +552,16 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
               </div>
             </div>
 
-            {/* Advisory Claimed Points Card */}
+            {/* Persisted evidence coverage */}
             <div className="p-3.5 rounded-2xl bg-white border border-[#D9E5DC] space-y-1">
               <div className="text-[10px] font-extrabold text-[#245F42] uppercase tracking-wider">
-                Advisory Claimed Points
+                Evidence Coverage
               </div>
               <div className="text-xl font-black text-[#102A43]">
-                {areaAPts + areaBPts + areaCPts} <span className="text-xs font-semibold text-[#64748B]">Claimed Pts</span>
+                {persistedEvidenceCount} <span className="text-xs font-semibold text-[#64748B]">of {allPortfolioItems.length} records</span>
               </div>
-              <div className="text-[10px] font-medium text-amber-700">
-                Advisory only • Official scoring determined by Evaluator
+              <div className="text-[10px] font-medium text-[#476256]">
+                Only secured, persisted PDF or image files count as attached.
               </div>
             </div>
 
@@ -620,7 +659,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
               </span>
             </div>
             <div className="text-[11px] font-semibold text-slate-500">
-              Total Max: <strong>{workspaceConfig.scale.total_max_points} pts</strong> • Passing: <strong>{workspaceConfig.scale.passing_score} pts</strong>
+              Official evaluation criteria are applied by the assigned reviewer after submission.
             </div>
           </div>
         )}
@@ -628,9 +667,9 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         {/* ================= 3. WORKSPACE CATEGORY TABS ================= */}
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-3 scrollbar-none">
           {(workspaceConfig?.areas || [
-            { area_code: 'A', name: 'Area A: Professional Development', max_points: 70 },
-            { area_code: 'B', name: 'Area B: Productivity', max_points: 50 },
-            { area_code: 'C', name: 'Area C: Service & Leadership', max_points: 40 }
+            { area_code: 'A', name: 'Area A: Professional Development' },
+            { area_code: 'B', name: 'Area B: Productivity' },
+            { area_code: 'C', name: 'Area C: Service & Leadership' }
           ]).map((area) => {
             const isSelected = activeArea === area.area_code
             const itemCount = area.area_code === 'A'
@@ -672,8 +711,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             const currentAreaConfig = (workspaceConfig?.areas || []).find(a => a.area_code === activeArea) || {
               area_code: activeArea,
               name: activeArea === 'A' ? 'Area A: Professional Development' : activeArea === 'B' ? 'Area B: Productivity & Creative Work' : 'Area C: Service & Leadership',
-              description: activeArea === 'A' ? 'Educational degrees, certifications, memberships, and seminars (Ceiling: 70 Max Points).' : activeArea === 'B' ? 'Publications, Scopus journal articles, keynote lectures, research grants (Ceiling: 50 Max Points).' : 'Committee leadership, faculty adviserships, and extension projects (Ceiling: 40 Max Points).',
-              max_points: activeArea === 'A' ? 70 : activeArea === 'B' ? 50 : 40,
+              description: activeArea === 'A' ? 'Educational degrees, certifications, memberships, and seminars.' : activeArea === 'B' ? 'Publications, journal articles, keynote lectures, and research grants.' : 'Committee leadership, faculty adviserships, and extension projects.',
               is_personnel_entry_allowed: true,
               entry_policy: 'personnel_entry_allowed'
             }
@@ -689,11 +727,6 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
                         {currentAreaConfig.name}
                       </h3>
-                      {((activeArea === 'A' && isAMaxed) || (activeArea === 'B' && isBMaxed) || (activeArea === 'C' && isCMaxed)) && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950 uppercase">
-                          MAX CAP REACHED
-                        </span>
-                      )}
                       {isDisallowed && (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-200 uppercase">
                           Evaluator Indicator Area
@@ -701,7 +734,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       )}
                     </div>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">
-                      {currentAreaConfig.description} (Max Ceiling: {currentAreaConfig.max_points} Points)
+                      {String(currentAreaConfig.description || '').replace(/\s*\([^)]*(?:points?|pts?)[^)]*\)\.?/ig, '').trim()}
                     </p>
                   </div>
 
@@ -714,7 +747,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1.5 transition cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Sync Repository</span>
+                        <span>Refresh Portfolio</span>
                       </button>
 
                       <button
@@ -800,6 +833,13 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 Loading canonical accomplishments from repository...
               </p>
             </div>
+          ) : error ? (
+            <div className="p-10 text-center space-y-3" role="alert">
+              <AlertTriangle className="w-8 h-8 text-rose-600 mx-auto" />
+              <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">Portfolio records could not be loaded.</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Retry to restore the authoritative accomplishment list.</p>
+              <button type="button" onClick={reload} className="rounded-xl bg-rose-700 px-4 py-2 text-xs font-extrabold text-white focus:outline-none focus:ring-2 focus:ring-rose-500">Retry Loading</button>
+            </div>
           ) : currentAreaItems.length === 0 ? (
             /* Genuine Empty State (No Mock Seeds) */
             <div className="p-12 text-center space-y-3">
@@ -816,7 +856,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           ) : (
             <div className="space-y-3">
               {currentAreaItems.map((item) => {
-                const hasProof = Boolean(item.proof_file_name && item.proof_file_name.trim().length > 0)
+                const evidence = resolvePersonnelEvidence(item)
+                const hasProof = Boolean(evidence)
                 return (
                   <div
                     key={item.id}
@@ -833,10 +874,6 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-slate-200 text-slate-700">
                           Scope: {item.scope_level || 'Local'}
                         </span>
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-amber-50 text-amber-800 border border-amber-200">
-                          Claimed: {item.claimed_points || 0} pts (Advisory)
-                        </span>
-
                         {/* Unresolved / Incomplete Classification Neutral Badge */}
                         {item.is_unclassified && (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold uppercase bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300">
@@ -848,14 +885,17 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         {hasProof ? (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Proof Attached</span>
+                            <span>Evidence Available</span>
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 animate-pulse">
                             <AlertTriangle className="w-3 h-3 text-rose-600" />
-                            <span>Missing Proof PDF!</span>
+                            <span>Evidence Required</span>
                           </span>
                         )}
+
+                        {/* Package D: 2-Year Reuse Eligibility Badge */}
+                        <AchievementReuseBadge accomplishment={item} />
                       </div>
 
                       <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">
@@ -866,18 +906,18 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         {hasProof ? (
                           <button
                             type="button"
-                            onClick={() => handleDownloadEvidence(item.evidence_id, item.proof_file_name)}
+                            onClick={() => setPreviewEvidence(evidence)}
                             className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer underline hover:no-underline"
-                            title="Download/view authenticated evidence file"
+                            title="Preview authenticated evidence file"
                           >
                             <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>{item.proof_file_name}</span>
+                            <span>{evidence.original_filename}</span>
                             <ExternalLink className="w-3 h-3 text-emerald-600" />
                           </button>
                         ) : (
                           <span className="flex items-center gap-1 text-rose-600 font-medium">
                             <Paperclip className="w-3.5 h-3.5 text-rose-400" />
-                            <span>No Proof Attached</span>
+                            <span>No persisted evidence</span>
                           </span>
                         )}
                         {item.date && (
@@ -891,13 +931,21 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
                     {/* Interactive Actions for Personnel */}
                     <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-200/60 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setViewingAccomplishment(item)}
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:border-emerald-600 hover:bg-emerald-50 text-slate-700 font-extrabold text-xs flex items-center gap-1 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View</span>
+                      </button>
                       {isEditable && (
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => {
                               setEditingAccomplishment(item)
-                              setInitialSubmissionCategory(item.category || 'A.1 Degree/s')
+                              setInitialSubmissionCategory(item.category || (isFacultyAcademic ? 'A.1 Education' : 'A.1 Degree/s'))
                               setIsSubmissionModalOpen(true)
                             }}
                             className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-extrabold text-xs flex items-center gap-1 transition cursor-pointer"
@@ -925,15 +973,28 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         </div>
       </div>
 
-      {/* Canonical Plan A Accomplishment Submission & Edit Modal */}
+      {/* Canonical Accomplishment Submission & Edit Modal */}
       {isSubmissionModalOpen && (
-        <PersonnelSubmissionModal
-          isOpen={isSubmissionModalOpen}
-          onClose={() => setIsSubmissionModalOpen(false)}
-          onSubmitAccomplishment={handleSaveAccomplishment}
-          initialCategory={initialSubmissionCategory}
-          editingItem={editingAccomplishment}
-        />
+        isFacultyAcademic ? (
+          <FacultyAcademicSubmissionModal
+            isOpen={isSubmissionModalOpen}
+            onClose={() => { setIsSubmissionModalOpen(false); setEditingAccomplishment(null) }}
+            onSubmitAccomplishment={handleSaveAccomplishment}
+            initialCategory={initialSubmissionCategory}
+            editingItem={editingAccomplishment}
+            currentUser={activeUser}
+            areaCode={editingAccomplishment?.category_area?.replace('area', '') || activeArea}
+            areaName={((workspaceConfig?.areas || []).find((area) => area.area_code === (editingAccomplishment?.category_area?.replace('area', '') || activeArea))?.name || '').replace(/^Area\s+[ABC]\s*:\s*/i, '')}
+          />
+        ) : (
+          <PersonnelSubmissionModal
+            isOpen={isSubmissionModalOpen}
+            onClose={() => { setIsSubmissionModalOpen(false); setEditingAccomplishment(null) }}
+            onSubmitAccomplishment={handleSaveAccomplishment}
+            initialCategory={initialSubmissionCategory}
+            editingItem={editingAccomplishment}
+          />
+        )
       )}
 
       {/* Edit Basic Info Modal */}
@@ -958,6 +1019,19 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
           personnelName={activeUser.full_name}
         />
       )}
+      <PersonnelEvidencePreviewModal evidence={previewEvidence} onClose={() => setPreviewEvidence(null)} />
+      <AchievementPreviewModal
+        isOpen={Boolean(viewingAccomplishment)}
+        achievement={viewingAccomplishment}
+        onClose={() => setViewingAccomplishment(null)}
+        onEdit={(item) => { setEditingAccomplishment(item); setIsSubmissionModalOpen(true) }}
+        onDownload={(item) => {
+          const evidence = resolvePersonnelEvidence(item)
+          handleDownloadEvidence(evidence?.id, evidence?.original_filename)
+        }}
+        onResubmit={(item) => { setEditingAccomplishment(item); setIsSubmissionModalOpen(true) }}
+      />
+      <PersonnelPortfolioBookletModal isOpen={isBookletOpen} onClose={() => setIsBookletOpen(false)} portfolio={latestSubmission?.items?.length ? latestSubmission : portfolio} user={activeUser} />
     </>
   )
 }

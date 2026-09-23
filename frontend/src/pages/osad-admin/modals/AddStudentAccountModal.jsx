@@ -2,36 +2,45 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   UserPlus,
   X,
-  Building2,
   GraduationCap,
-  Sparkles,
   AlertCircle,
-  CheckCircle2,
-  Info,
   ShieldCheck,
   Calendar,
   Lock,
   Mail,
   User,
-  Hash
+  Hash,
+  LoaderCircle
 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
+import { SearchableSelect } from '../../../components/ui/SearchableSelect'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
 import { useConfirmableClose } from '../../../hooks/useConfirmableClose'
 import { useProvisioningCredential } from '../../../hooks/useProvisioningCredential'
 import OneTimeCredentialModal from '../../../components/credentials/OneTimeCredentialModal'
 import CredentialDeliveryFaultModal from '../../../components/credentials/CredentialDeliveryFaultModal'
 import { fetchColleges, fetchAcademicPrograms } from '../../../services/collegeAdminService'
+import { provisioningService } from '../../../services/provisioningService'
 import {
   STUDENT_YEAR_LEVELS,
   STUDENT_SEX_OPTIONS,
   STUDENT_SEX_SELECT_OPTIONS,
   STUDENT_YEAR_LEVEL_SELECT_OPTIONS,
   getAcademicYearValues,
-  getDefaultAcademicYear
+  getDefaultAcademicYear,
+  STUDENT_SUFFIX_OPTIONS
 } from '../../../contracts/studentAccountContract'
+import {
+  filterPrograms,
+  getProgramCollegeId,
+  getProgramLabel,
+  isActiveReference,
+  isInstitutionalEmail,
+  normalizeInstitutionalEmail,
+  sanitizePersonName,
+  sanitizeStudentNumber
+} from '../../../utils/studentRegistrationValidation'
 
-const YEAR_LEVEL_OPTIONS = STUDENT_YEAR_LEVELS
 const ACADEMIC_YEAR_OPTIONS = getAcademicYearValues()
 const DEFAULT_ACADEMIC_YEAR = getDefaultAcademicYear()
 const SEX_OPTIONS = STUDENT_SEX_SELECT_OPTIONS
@@ -46,6 +55,7 @@ export default function AddStudentAccountModal({
   const [loadedColleges, setLoadedColleges] = useState(colleges)
   const [loadedPrograms, setLoadedPrograms] = useState(degreePrograms)
   const [isLoadingReferences, setIsLoadingReferences] = useState(false)
+  const [referenceError, setReferenceError] = useState('')
 
   const credentialHook = useProvisioningCredential()
 
@@ -97,7 +107,7 @@ export default function AddStudentAccountModal({
     sex: '',
     collegeId: '',
     academicProgramId: '',
-    yearLevel: '1st Year',
+    yearLevel: '',
     academicYear: DEFAULT_ACADEMIC_YEAR
   })
 
@@ -122,6 +132,7 @@ export default function AddStudentAccountModal({
       }
 
       setIsLoadingReferences(true)
+      setReferenceError('')
       try {
         const [fetchedCols, fetchedProgs] = await Promise.all([
           colleges.length > 0 ? colleges : fetchColleges({ status: 'active' }),
@@ -133,6 +144,7 @@ export default function AddStudentAccountModal({
         }
       } catch (err) {
         console.warn('Failed to load colleges/programs for student modal:', err)
+        if (isMounted) setReferenceError('Reference data could not be loaded. Close and reopen the form to try again.')
       } finally {
         if (isMounted) setIsLoadingReferences(false)
       }
@@ -158,7 +170,7 @@ export default function AddStudentAccountModal({
         sex: '',
         collegeId: '',
         academicProgramId: '',
-        yearLevel: '1st Year',
+        yearLevel: '',
         academicYear: DEFAULT_ACADEMIC_YEAR
       })
       setFieldErrors({})
@@ -174,28 +186,13 @@ export default function AddStudentAccountModal({
       }, 50)
       return () => clearTimeout(timer)
     }
-  }, [isOpen])
+  }, [isOpen, firstInputRef])
 
   // Filter programs based on selected college
-  const filteredPrograms = useMemo(() => {
-    if (!formData.collegeId) return loadedPrograms
-    return loadedPrograms.filter(
-      (p) => p.college_id === formData.collegeId || p.collegeId === formData.collegeId
-    )
-  }, [loadedPrograms, formData.collegeId])
-
-  // ESC key handler
-  useEffect(() => {
-    if (!isOpen) return
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        requestClose()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen])
+  const filteredPrograms = useMemo(
+    () => filterPrograms(loadedPrograms, formData.collegeId),
+    [loadedPrograms, formData.collegeId]
+  )
 
   const isDirty = () => {
     return (
@@ -208,7 +205,7 @@ export default function AddStudentAccountModal({
       formData.sex !== '' ||
       formData.collegeId !== '' ||
       formData.academicProgramId !== '' ||
-      formData.yearLevel !== '1st Year' ||
+      formData.yearLevel !== '' ||
       formData.academicYear !== DEFAULT_ACADEMIC_YEAR
     )
   }
@@ -224,7 +221,7 @@ export default function AddStudentAccountModal({
       sex: '',
       collegeId: '',
       academicProgramId: '',
-      yearLevel: '1st Year',
+      yearLevel: '',
       academicYear: DEFAULT_ACADEMIC_YEAR
     })
     setFieldErrors({})
@@ -239,10 +236,26 @@ export default function AddStudentAccountModal({
     onDiscard: handleReset
   })
 
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        requestClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, requestClose])
+
   if (!isOpen) return null
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    let nextValue = value
+    if (field === 'institutionalId') nextValue = sanitizeStudentNumber(value)
+    if (['firstName', 'middleName', 'lastName'].includes(field)) nextValue = sanitizePersonName(value)
+    if (field === 'institutionalEmail') nextValue = normalizeInstitutionalEmail(value)
+    setFormData((prev) => ({ ...prev, [field]: nextValue }))
     if (fieldErrors[field]) {
       setFieldErrors((prev) => ({ ...prev, [field]: null }))
     }
@@ -252,13 +265,13 @@ export default function AddStudentAccountModal({
     if (field === 'institutionalEmail') {
       availabilityRequestRef.current.controller?.abort()
       availabilityRequestRef.current.sequence += 1
-      setEmailAvailability(value.trim() ? 'unchecked' : 'empty')
+      setEmailAvailability(nextValue ? 'unchecked' : 'empty')
     }
   }
 
   const checkEmailAvailability = async () => {
     const email = formData.institutionalEmail.trim().toLowerCase()
-    if (!/^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@ndmu\.edu\.ph$/.test(email)) {
+    if (!isInstitutionalEmail(email)) {
       setEmailAvailability(email ? 'invalid_syntax' : 'empty')
       return
     }
@@ -292,7 +305,7 @@ export default function AddStudentAccountModal({
         (p) => p.id === prev.academicProgramId
       )
       const progCollegeId = currentProg?.college_id || currentProg?.collegeId
-      const shouldResetProg = newCollegeId && progCollegeId && progCollegeId !== newCollegeId
+      const shouldResetProg = !newCollegeId || !currentProg || progCollegeId !== newCollegeId
 
       return {
         ...prev,
@@ -316,15 +329,20 @@ export default function AddStudentAccountModal({
         if (!clean) return 'First name is required.'
         return null
       }
+      case 'middleName':
       case 'lastName': {
         const clean = (value || '').trim()
-        if (!clean) return 'Last name is required.'
+        if (field === 'lastName' && !clean) return 'Last name is required.'
         return null
       }
       case 'institutionalEmail': {
         const clean = (value || '').trim().toLowerCase()
         if (!clean) return 'Institutional email is required.'
-        if (!clean.endsWith('@ndmu.edu.ph')) return 'Institutional email must end with @ndmu.edu.ph.'
+        if (!isInstitutionalEmail(clean)) return 'Use a valid @ndmu.edu.ph institutional email.'
+        return null
+      }
+      case 'suffix': {
+        if (!STUDENT_SUFFIX_OPTIONS.includes(value)) return 'Select an approved name suffix.'
         return null
       }
       case 'sex': {
@@ -332,8 +350,17 @@ export default function AddStudentAccountModal({
         if (!STUDENT_SEX_OPTIONS.includes(value)) return 'Sex must be Male, Female, or Prefer not to say.'
         return null
       }
+      case 'collegeId': {
+        const college = loadedColleges.find((item) => item.id === value)
+        if (!college || !isActiveReference(college)) return 'Select an active Academic College.'
+        return null
+      }
       case 'academicProgramId': {
         if (!value || !value.trim()) return 'Please select an Academic Degree Program.'
+        const program = loadedPrograms.find((item) => item.id === value)
+        if (!program || !isActiveReference(program) || getProgramCollegeId(program) !== formData.collegeId) {
+          return 'Select an active Program from the chosen College.'
+        }
         return null
       }
       case 'yearLevel': {
@@ -364,7 +391,9 @@ export default function AddStudentAccountModal({
       'firstName',
       'lastName',
       'institutionalEmail',
+      'suffix',
       'sex',
+      'collegeId',
       'academicProgramId',
       'yearLevel',
       'academicYear'
@@ -401,6 +430,7 @@ export default function AddStudentAccountModal({
       middle_name: formData.middleName.trim() || null,
       last_name: formData.lastName.trim(),
       suffix: formData.suffix.trim() || null,
+      college_id: formData.collegeId.trim(),
       academic_program_id: formData.academicProgramId.trim(),
       year_level: formData.yearLevel,
       academic_year: formData.academicYear.trim() || DEFAULT_ACADEMIC_YEAR,
@@ -441,6 +471,8 @@ export default function AddStudentAccountModal({
         mappedErrors = {
           ...(fields.institutional_email ? { institutionalEmail: fields.institutional_email } : {}),
           ...(fields.institutional_id ? { institutionalId: fields.institutional_id } : {}),
+          ...(fields.suffix ? { suffix: fields.suffix } : {}),
+          ...(fields.college_id ? { collegeId: fields.college_id } : {}),
           ...(fields.sex ? { sex: fields.sex } : {}),
           ...(fields.academic_program_id ? { academicProgramId: fields.academic_program_id } : {}),
           ...(fields.year_level ? { yearLevel: fields.year_level } : {}),
@@ -450,6 +482,8 @@ export default function AddStudentAccountModal({
         mappedErrors = { institutionalEmail: 'Institutional email must end with @ndmu.edu.ph.' }
       } else if (errCode === 'INVALID_ACADEMIC_PROGRAM' || errCode === 'ACADEMIC_PROGRAM_NOT_FOUND') {
         mappedErrors = { academicProgramId: 'Selected Academic Program is inactive or invalid.' }
+      } else if (errCode === 'COLLEGE_NOT_FOUND') {
+        mappedErrors = { collegeId: 'Selected Academic College is inactive or invalid.' }
       } else {
         setServerError(errMsg)
       }
@@ -462,6 +496,13 @@ export default function AddStudentAccountModal({
       setIsSubmitting(false)
     }
   }
+
+  const formErrors = validateClient()
+  const formIsValid = Object.keys(formErrors).length === 0
+    && emailAvailability !== 'checking'
+    && !isLoadingReferences
+    && !referenceError
+    && !isSubmitting
 
 
   return (
@@ -516,6 +557,12 @@ export default function AddStudentAccountModal({
                   <span className="font-medium">{serverError}</span>
                 </div>
               )}
+              {referenceError && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="font-medium">{referenceError}</span>
+                </div>
+              )}
 
               {/* Section 1: Identity Information */}
               <div className="space-y-4">
@@ -536,6 +583,8 @@ export default function AddStudentAccountModal({
                         ref={instIdRef}
                         id="student-institutional-id-input"
                         type="text"
+                        inputMode="numeric"
+                        maxLength={50}
                         required
                         aria-required="true"
                         aria-invalid={Boolean(fieldErrors.institutionalId)}
@@ -556,6 +605,7 @@ export default function AddStudentAccountModal({
                         {fieldErrors.institutionalId}
                       </p>
                     )}
+                    {!fieldErrors.institutionalId && <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Digits only, 5–50 characters</p>}
                   </div>
 
                   {/* Institutional Email */}
@@ -569,6 +619,8 @@ export default function AddStudentAccountModal({
                         ref={emailRef}
                         id="student-institutional-email-input"
                         type="email"
+                        autoCapitalize="none"
+                        spellCheck="false"
                         required
                         aria-required="true"
                         aria-invalid={Boolean(fieldErrors.institutionalEmail)}
@@ -595,6 +647,7 @@ export default function AddStudentAccountModal({
                     {!fieldErrors.institutionalEmail && emailAvailability === 'checking' && <p className="text-[11px] text-slate-500 mt-1">Checking availability…</p>}
                     {!fieldErrors.institutionalEmail && emailAvailability === 'available' && <p className="text-[11px] text-emerald-600 mt-1">Email is available. Final verification occurs when you submit.</p>}
                     {!fieldErrors.institutionalEmail && emailAvailability === 'network_unknown' && <p className="text-[11px] text-amber-700 mt-1">Availability could not be checked. It will be verified when you submit.</p>}
+                    {!fieldErrors.institutionalEmail && ['empty', 'unchecked', 'invalid_syntax'].includes(emailAvailability) && <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Use your institutional @ndmu.edu.ph address</p>}
                   </div>
                 </div>
 
@@ -683,15 +736,15 @@ export default function AddStudentAccountModal({
                     <label htmlFor="student-suffix-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Name Suffix <span className="text-slate-400 font-normal">(Optional)</span>
                     </label>
-                    <input
+                    <select
                       ref={suffixRef}
-                      id="student-suffix-input"
-                      type="text"
+                      id="student-suffix-select"
                       value={formData.suffix}
                       onChange={(e) => handleInputChange('suffix', e.target.value)}
-                      placeholder="e.g. Jr., III"
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
-                    />
+                      className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none transition hover:border-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-emerald-950"
+                    >
+                      {STUDENT_SUFFIX_OPTIONS.map((suffix) => <option key={suffix || 'none'} value={suffix}>{suffix || 'None'}</option>)}
+                    </select>
                   </div>
 
                   {/* Sex */}
@@ -746,24 +799,33 @@ export default function AddStudentAccountModal({
                   {/* College Scope */}
                   <div>
                     <label htmlFor="student-college-select" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Academic College
+                      Academic College <span className="text-red-500" aria-hidden="true">*</span>
                     </label>
                     <div className="relative">
                       <select
                         ref={collegeRef}
                         id="student-college-select"
+                        required
+                        aria-required="true"
+                        aria-invalid={Boolean(fieldErrors.collegeId)}
+                        aria-describedby={fieldErrors.collegeId ? 'error-student-college' : 'hint-student-college'}
                         value={formData.collegeId}
+                        disabled={isLoadingReferences || Boolean(referenceError)}
+                        onBlur={() => handleBlur('collegeId')}
                         onChange={(e) => handleCollegeChange(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition cursor-pointer"
+                        className={`min-h-11 w-full rounded-xl border bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:bg-slate-950 dark:text-white dark:disabled:bg-slate-900 ${fieldErrors.collegeId ? 'border-red-500 focus:ring-2 focus:ring-red-100' : 'border-slate-300 hover:border-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:focus:ring-emerald-950'}`}
                       >
-                        <option value="">All Academic Colleges</option>
-                        {loadedColleges.map((c) => (
+                        <option value="">{isLoadingReferences ? 'Loading colleges…' : 'Select Academic College'}</option>
+                        {loadedColleges.filter(isActiveReference).map((c) => (
                           <option key={c.id} value={c.id}>
                             [{c.code}] {c.name}
                           </option>
                         ))}
                       </select>
                     </div>
+                    {fieldErrors.collegeId
+                      ? <p id="error-student-college" className="mt-1 text-[11px] font-medium text-red-600 dark:text-red-400">{fieldErrors.collegeId}</p>
+                      : <p id="hint-student-college" className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Choose a College to load its Programs</p>}
                   </div>
 
                   {/* Academic Degree Program */}
@@ -771,34 +833,28 @@ export default function AddStudentAccountModal({
                     <label htmlFor="student-program-select" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Academic Degree Program <span className="text-red-500" aria-hidden="true">*</span>
                     </label>
-                    <select
+                    <SearchableSelect
                       ref={programRef}
                       id="student-program-select"
-                      required
-                      aria-required="true"
-                      aria-invalid={Boolean(fieldErrors.academicProgramId)}
-                      aria-describedby={fieldErrors.academicProgramId ? 'error-student-program' : undefined}
                       value={formData.academicProgramId}
+                      options={filteredPrograms}
+                      disabled={!formData.collegeId || isLoadingReferences || Boolean(referenceError)}
+                      invalid={Boolean(fieldErrors.academicProgramId)}
+                      describedBy={fieldErrors.academicProgramId ? 'error-student-program' : 'hint-student-program'}
                       onBlur={() => handleBlur('academicProgramId')}
-                      onChange={(e) => handleInputChange('academicProgramId', e.target.value)}
-                      className={`w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border text-xs font-medium text-slate-900 dark:text-white focus:outline-none transition cursor-pointer ${
-                        fieldErrors.academicProgramId
-                          ? 'border-red-500 focus:border-red-500'
-                          : 'border-slate-200 dark:border-slate-800 focus:border-[#16834a]'
-                      }`}
-                    >
-                      <option value="" disabled>Select Degree Program</option>
-                      {filteredPrograms.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          [{p.code}] {p.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => handleInputChange('academicProgramId', value)}
+                      placeholder={!formData.collegeId ? 'Select a College first' : isLoadingReferences ? 'Loading programs…' : 'Search or select a program'}
+                      searchPlaceholder="Search by Program code or name"
+                      getOptionLabel={getProgramLabel}
+                      getOptionValue={(program) => program.id}
+                      emptyMessage={filteredPrograms.length === 0 ? 'No active programs available for this college' : 'No matching programs'}
+                    />
                     {fieldErrors.academicProgramId && (
                       <p id="error-student-program" className="text-[11px] text-red-600 dark:text-red-400 mt-1 font-medium">
                         {fieldErrors.academicProgramId}
                       </p>
                     )}
+                    {!fieldErrors.academicProgramId && <p id="hint-student-program" className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Only active Programs from the selected College can be submitted</p>}
                   </div>
                 </div>
 
@@ -824,9 +880,9 @@ export default function AddStudentAccountModal({
                           : 'border-slate-200 dark:border-slate-800 focus:border-[#16834a]'
                       }`}
                     >
-                      {YEAR_LEVEL_OPTIONS.map((yl) => (
-                        <option key={yl} value={yl}>
-                          {yl}
+                      {STUDENT_YEAR_LEVEL_SELECT_OPTIONS.map((option) => (
+                        <option key={option.value || 'placeholder'} value={option.value} disabled={option.disabled}>
+                          {option.label}
                         </option>
                       ))}
                     </select>
@@ -886,7 +942,7 @@ export default function AddStudentAccountModal({
                     <span>Automatic Credential Bootstrap</span>
                   </div>
                   <p className="text-emerald-800 dark:text-emerald-400 text-[11px] leading-relaxed">
-                    Upon creation, the student account will be provisioned in <span className="font-bold">Active</span> status. A secure temporary password is automatically generated by the backend and the student will be required to set a permanent password on initial login.
+                    The Student record begins <span className="font-bold">Active / Enrolled</span>. A secure temporary credential is generated, while authentication remains <span className="font-bold">Pending First Login</span> until the Student establishes a permanent password.
                   </p>
                 </div>
               </div>
@@ -910,12 +966,12 @@ export default function AddStudentAccountModal({
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={!formIsValid}
                   size="sm"
                   className="gap-1.5 shadow-2xs font-bold"
                 >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>{isSubmitting ? 'Provisioning Account...' : 'Create Student Account'}</span>
+                  {isSubmitting ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <UserPlus className="w-3.5 h-3.5" />}
+                  <span>{isSubmitting ? 'Creating…' : 'Create Student Account'}</span>
                 </Button>
               </div>
             </div>

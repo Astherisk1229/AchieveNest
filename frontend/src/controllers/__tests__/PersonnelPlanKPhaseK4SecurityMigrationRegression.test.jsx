@@ -69,7 +69,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K4 security/migration/
   it('40 invalid title code is not present in part-time catalog', () => expect(source('frontend/src/services/partTimeFacultyTitleService.js')).not.toMatch(/INVALID_K4_TITLE/))
   it('41 invalid College ID is rejected by backend validation path', () => expect(source('backend/app/Controllers/Api/TargetHRPersonnelController.php')).toMatch(/INVALID_IDS|validateUuid/))
   it('42 invalid Department/administrative unit ID is rejected by provisioning', () => expect(source('backend/app/Controllers/Api/TargetProvisioningController.php')).toMatch(/administrative_unit_id|validateUuid/))
-  it('43 Faculty plus Non-Academic is outside canonical routing table', () => expect(CANONICAL_ROUTING_TABLE.some((r) => r.personnel_group === 'faculty' && r.organizational_side === 'non_academic')).toBe(false))
+  it('43 Faculty plus Non-Academic routes to HR in canonical routing table', () => expect(CANONICAL_ROUTING_TABLE.some((r) => r.personnel_group === 'faculty' && r.organizational_side === 'non_academic' && r.reviewer_role === 'hr_staff')).toBe(true))
   it('44 canonical groups exclude legacy third group', () => expect(Object.values(PERSONNEL_GROUPS)).not.toContain('non_teaching_personnel'))
   it('45 Plan A focused suite exists', () => expect(source('frontend/src/controllers/__tests__/PersonnelPlanAEndToEndA5.test.js')).toMatch(/Plan A End-to-End/))
   it('46 Plans B-J representative closure suites exist', () => expect([

@@ -57,9 +57,6 @@ export default function PortfolioSummaryCard({ portfolio, totals, onSubmitPortfo
     )
   }
 
-  const { claimed } = totals
-  const totalRaw = claimed.overflowA + claimed.acceptedA + claimed.overflowB + claimed.acceptedB + claimed.overflowC + claimed.acceptedC
-
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl mb-6">
       {/* Header Info */}

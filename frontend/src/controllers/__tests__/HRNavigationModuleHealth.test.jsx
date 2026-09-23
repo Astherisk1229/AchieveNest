@@ -52,9 +52,8 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
       const expectedPaths = [
         '/hr/dashboard',
         '/hr/personnel-directory',
-        '/hr/evaluation-submissions',
+        '/hr/ranking-cycles',
         '/hr/audit-trail',
-        '/hr/rank-assignment-logs',
         '/hr/password-resets'
       ]
 
@@ -71,9 +70,9 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
       const labels = authorizedNav.map(item => item.label)
       expect(labels).toContain('HR Dashboard')
       expect(labels).toContain('Personnel Directory')
-      expect(labels).toContain('Evaluation Submissions')
+      expect(labels).toContain('Organizational Structure')
+      expect(labels).toContain('Ranking Cycles')
       expect(labels).toContain('HR Audit Trail')
-      expect(labels).toContain('Rank Assignment Logs')
       expect(labels).toContain('Password Resets')
 
       authorizedNav.forEach(item => {

@@ -583,15 +583,15 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-5: End-to-End Vali
       expect(validUnitIds.includes(invalidUnitId)).toBe(false)
     })
 
-    it('32. Faculty + Non-Academic remains unsupported', () => {
+    it('32. Faculty + Non-Academic validates with administrative unit in CHU-01 Phase 2', () => {
       const validation = validatePersonnelPlacement({
         group: 'faculty',
         side: 'non_academic',
         collegeId: null,
         administrativeUnitId: 101
       })
-      expect(validation.isValid).toBe(false)
-      expect(validation.errors.classificationPair).toContain('Faculty must belong to the Academic organizational side')
+      expect(validation.isValid).toBe(true)
+      expect(validation.errors).toEqual({})
     })
 
     it('33. legacy rank remains preserved until explicit reconciliation', () => {

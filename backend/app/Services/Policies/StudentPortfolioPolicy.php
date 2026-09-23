@@ -71,10 +71,10 @@ class StudentPortfolioPolicy
         $studentProfileId = (string) ($record['student_profile_id'] ?? '');
         $status = (string) ($record['status'] ?? 'draft');
 
-        // Only student owner can edit, and only in draft or revisions_requested status
+        // Only student owner can edit, and only in canonical editable states.
         return $actorId !== '' &&
                $actorId === $studentProfileId &&
-               in_array($status, ['draft', 'revisions_requested'], true);
+               in_array($status, ['draft', 'revision_requested'], true);
     }
 
     /**
@@ -106,7 +106,7 @@ class StudentPortfolioPolicy
      * - Active Program Coordinator assignment
      * - Coordinator's assigned program matches student's active enrolled program
      * - NOT the student owner (NO self-verification)
-     * - Record status is 'submitted' or 'under_review'
+     * - Record status is canonical 'submitted'
      */
     public function canVerify(array $actor, array $record): bool
     {
@@ -120,7 +120,7 @@ class StudentPortfolioPolicy
         }
 
         // Rule 2: Must be in a verifiable status
-        if (! in_array($status, ['submitted', 'under_review'], true)) {
+        if ($status !== 'submitted') {
             return false;
         }
 
@@ -148,7 +148,7 @@ class StudentPortfolioPolicy
             return $builder->where('spr.student_profile_id', $actorId);
         }
 
-        // 2. OSAD sees all submitted/verified/under_review/revisions_requested/rejected records
+        // 2. OSAD sees all non-draft canonical workflow records.
         if (in_array('osad_staff', $roles, true)) {
             return $builder->whereNotIn('spr.status', ['draft']);
         }

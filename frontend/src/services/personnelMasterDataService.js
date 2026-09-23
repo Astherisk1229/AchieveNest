@@ -2,6 +2,9 @@ import apiClient from './apiClient'
 import { fetchColleges as fetchCollegesFromAdmin, fetchAcademicPrograms } from './collegeAdminService'
 import { facultyRankCatalogService } from './facultyRankCatalogService'
 import { partTimeFacultyTitleService } from './partTimeFacultyTitleService'
+import { cachedRequest } from '../utils/requestCache'
+
+const REFERENCE_DATA_TTL_MS = 5 * 60 * 1000
 
 /**
  * Confirmed seeded institutional Administrative Units / Offices (Plan D2 Authoritative Freeze)
@@ -28,6 +31,8 @@ export const personnelMasterDataService = {
    * @returns {Promise<Array<{ id: string|number, code: string, name: string }>>}
    */
   async getColleges(filters = {}) {
+    const cacheKey = `personnel-master-data:colleges:${JSON.stringify(filters)}`
+    return cachedRequest(cacheKey, async () => {
     try {
       const colleges = await fetchCollegesFromAdmin(filters)
       if (Array.isArray(colleges) && colleges.length > 0) {
@@ -38,7 +43,7 @@ export const personnelMasterDataService = {
           status: c.status || 'active'
         }))
       }
-    } catch (err) {
+    } catch {
       console.warn('Direct college admin fetch failed, attempting /colleges fallback:', err?.message)
     }
 
@@ -58,6 +63,7 @@ export const personnelMasterDataService = {
     }
 
     return []
+    }, { ttlMs: REFERENCE_DATA_TTL_MS })
   },
 
   /**
@@ -66,6 +72,8 @@ export const personnelMasterDataService = {
    * @returns {Promise<Array>}
    */
   async getAcademicPrograms(filters = {}) {
+    const cacheKey = `personnel-master-data:programs:${JSON.stringify(filters)}`
+    return cachedRequest(cacheKey, async () => {
     try {
       const programs = await fetchAcademicPrograms(filters)
       if (Array.isArray(programs)) {
@@ -81,6 +89,7 @@ export const personnelMasterDataService = {
       console.warn('Academic programs fetch failed:', err?.message)
     }
     return []
+    }, { ttlMs: REFERENCE_DATA_TTL_MS })
   },
 
   /**
@@ -88,6 +97,7 @@ export const personnelMasterDataService = {
    * @returns {Promise<Array<{ id: string|number, code: string, name: string }>>}
    */
   async getDepartments() {
+    return cachedRequest('personnel-master-data:departments', async () => {
     try {
       const res = await apiClient.get('/administrative-units')
       const data = res?.data?.administrative_units || res?.data?.data || res?.data || []
@@ -99,10 +109,11 @@ export const personnelMasterDataService = {
           status: u.status || 'active'
         }))
       }
-    } catch (err) {
+    } catch {
       // Return seeded units
     }
     return SEEDED_ADMINISTRATIVE_UNITS
+    }, { ttlMs: REFERENCE_DATA_TTL_MS })
   },
 
   /**
@@ -140,7 +151,7 @@ export const personnelMasterDataService = {
   /**
    * Synchronous helper for Full-Time Plan E 26-rank catalog.
    */
-  getFullTimeFacultyRanks(tier = null) {
+  getFullTimeFacultyRanks(_tier = null) {
     return facultyRankCatalogService.FULL_TIME_RANKS
   },
 

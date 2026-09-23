@@ -21,6 +21,7 @@ class PersonnelClassificationService
     public const SIDE_NON_ACADEMIC = 'non_academic';
 
     public const CODE_FACULTY_ACADEMIC = 'FACULTY_ACADEMIC';
+    public const CODE_FACULTY_NON_ACADEMIC = 'FACULTY_NON_ACADEMIC';
     public const CODE_NON_TEACHING_FACULTY_ACADEMIC = 'NON_TEACHING_FACULTY_ACADEMIC';
     public const CODE_NON_TEACHING_FACULTY_NON_ACADEMIC = 'NON_TEACHING_FACULTY_NON_ACADEMIC';
 
@@ -35,7 +36,8 @@ class PersonnelClassificationService
      */
     public const VALID_PAIRS = [
         self::GROUP_FACULTY => [
-            self::SIDE_ACADEMIC => self::CODE_FACULTY_ACADEMIC,
+            self::SIDE_ACADEMIC     => self::CODE_FACULTY_ACADEMIC,
+            self::SIDE_NON_ACADEMIC => self::CODE_FACULTY_NON_ACADEMIC,
         ],
         self::GROUP_NON_TEACHING_FACULTY => [
             self::SIDE_ACADEMIC     => self::CODE_NON_TEACHING_FACULTY_ACADEMIC,
@@ -96,7 +98,7 @@ class PersonnelClassificationService
                 'valid' => false,
                 'error' => [
                     'code'    => 'INVALID_PERSONNEL_CLASSIFICATION',
-                    'message' => "Invalid classification combination: Group '{$normGroup}' cannot be paired with Side '{$normSide}'. Faculty must be Academic.",
+                    'message' => "Invalid classification combination: Group '{$normGroup}' cannot be paired with Side '{$normSide}'.",
                 ],
             ];
         }
@@ -104,6 +106,7 @@ class PersonnelClassificationService
         $code = self::VALID_PAIRS[$normGroup][$normSide];
         $label = match ($code) {
             self::CODE_FACULTY_ACADEMIC                     => 'Faculty (Academic)',
+            self::CODE_FACULTY_NON_ACADEMIC                 => 'Faculty (Non-Academic)',
             self::CODE_NON_TEACHING_FACULTY_ACADEMIC         => 'Non-Teaching Faculty (Academic)',
             self::CODE_NON_TEACHING_FACULTY_NON_ACADEMIC     => 'Non-Teaching Faculty (Non-Academic)',
             default                                         => 'Personnel',

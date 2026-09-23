@@ -176,9 +176,9 @@ describe('Personnel Evaluation Track — Plan G — Phase G4: Reviewer Workflow 
       expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
     })
 
-    it('routes Non-Teaching Faculty + Academic to College Dean', () => {
+    it('routes Non-Teaching Faculty + Academic to HR', () => {
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute(nonTeachingAcademicContext)
-      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
     })
 
     it('routes Non-Teaching Faculty + Non-Academic to HR', () => {

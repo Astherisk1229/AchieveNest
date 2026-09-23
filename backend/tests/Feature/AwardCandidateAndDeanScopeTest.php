@@ -46,7 +46,7 @@ final class AwardCandidateAndDeanScopeTest extends CIUnitTestCase
 
         // 2. OSAD admin without Dean assignment -> cannot nominate via Dean pathway
         $osadActor = [
-            'profile' => ['id' => 'osad-uuid', 'account_type' => 'osad_admin'],
+            'profile' => ['id' => 'osad-uuid', 'account_type' => 'osad_admin', 'status' => 'active'],
             'roles'   => ['osad_staff'],
             'assignments' => [],
         ];
@@ -84,7 +84,7 @@ final class AwardCandidateAndDeanScopeTest extends CIUnitTestCase
         $this->assertFalse($this->policy->canRunAwardEvaluation($deanActor));
 
         $osadActor = [
-            'profile' => ['id' => 'osad-uuid', 'account_type' => 'osad_admin'],
+            'profile' => ['id' => 'osad-uuid', 'account_type' => 'osad_admin', 'status' => 'active'],
             'roles'   => ['osad_staff'],
         ];
         $this->assertTrue($this->policy->canRunAwardEvaluation($osadActor));

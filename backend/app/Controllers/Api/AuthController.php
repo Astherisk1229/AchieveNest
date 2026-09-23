@@ -2,6 +2,7 @@
 
 namespace App\Controllers\Api;
 
+use App\Helpers\ValidationHelper;
 use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
 use App\Services\LocalAuthService;
@@ -137,7 +138,7 @@ class AuthController extends Controller
 
         if (($profile['account_type'] ?? '') === 'personnel') {
             $personnelAffiliation = $db->query(
-                "SELECT pp.personnel_classification,
+                "SELECT pp.personnel_classification, pp.personnel_group, pp.organizational_side,
                         pca.college_id, c.code AS college_code, c.name AS college_name,
                         pau.administrative_unit_id,
                         au.code AS administrative_unit_code,
@@ -276,6 +277,15 @@ class AuthController extends Controller
                 'error' => [
                     'code'    => 'INVALID_PASSWORD_LENGTH',
                     'message' => 'New password must be at least 8 characters long.',
+                ],
+            ], 422);
+        }
+
+        if (! ValidationHelper::validatePasswordPolicy($newPassword)) {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'INVALID_PASSWORD_POLICY',
+                    'message' => 'New password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.',
                 ],
             ], 422);
         }

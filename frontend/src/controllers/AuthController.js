@@ -43,20 +43,20 @@ export default class AuthController {
   }
 
   /**
-   * Demo role context switcher helper for Personnel, Department Secretary, and HR.
+   * Demo role context switcher helper for Personnel, Dean, and HR.
    */
-  static switchDemoRole(roleKey, departmentId = 'DEP-CEAC') {
+  static switchDemoRole(roleKey, collegeId = 'COL-CEAC') {
     const user = this.getCurrentUser()
     if (!user) return null
-    if (roleKey === 'dep_sec') {
-      user.active_role_context = 'dep_sec'
-      user.department = 'College of Engineering, Architecture & Computing'
-    } else if (roleKey === 'hr') {
-      user.active_role_context = 'hr'
-      user.department = 'Human Resources Office'
+    if (roleKey === 'dean' || roleKey === 'dep_sec') {
+      user.active_role_context = 'dean'
+      user.college = 'College of Engineering, Architecture & Computing'
+    } else if (roleKey === 'hr' || roleKey === 'hr_staff') {
+      user.active_role_context = 'hr_staff'
+      user.administrative_unit = 'Human Resources Office'
     } else {
       user.active_role_context = 'personnel'
-      user.department = 'College of Engineering, Architecture & Computing'
+      user.college = 'College of Engineering, Architecture & Computing'
     }
     this.saveUser(user)
     return user
@@ -69,7 +69,9 @@ export default class AuthController {
     try {
       localStorage.setItem(STORAGE_KEY_USER, payload)
       sessionStorage.setItem(STORAGE_KEY_USER, payload)
-      window.dispatchEvent(new Event('storage'))
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event('storage'))
+      }
     } catch (e) {
       console.error('AuthController saveUser error:', e)
     }
@@ -80,7 +82,9 @@ export default class AuthController {
     try {
       localStorage.removeItem(STORAGE_KEY_USER)
       sessionStorage.removeItem(STORAGE_KEY_USER)
-      window.dispatchEvent(new Event('storage'))
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event('storage'))
+      }
     } catch (e) {
       console.error('AuthController logout error:', e)
     }

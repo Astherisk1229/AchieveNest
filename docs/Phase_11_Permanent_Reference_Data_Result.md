@@ -1,0 +1,49 @@
+# Phase 11 Result
+
+- Branch: defense/wamp-local
+- Starting commit: 0249d2fc4d86447d017193abc318fff550a0ca1c
+- Final commit: 26a65e877b3cdfe451a2737b953d17c93d15e01f
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- Permanent source migration: backend/database/mysql-defense/migrations/000010_constraints_indexes_reference_seeds.sql
+- Roles: 7
+- Colleges: 5
+- Academic Programs: 14
+- Administrative Units: 19
+- Portfolio Categories: 9
+- Portfolio Subcategories: 57
+- Potential Awards: 15
+- Award Criteria: 75
+- Award Scoring Rules: 150
+- Award Portfolio Mappings: 57
+- Orphan Programs: 0
+- Orphan Subcategories: 0
+- Orphan Award Criteria: 0
+- Orphan Award Rules: 0
+- Orphan Award Mappings: 0
+- Duplicate reference codes: 0
+- Graduate School present: NO
+- Department table present: NO
+- Department Secretary role present: NO
+- Production identities in permanent seed: NO
+- Demo identities in permanent seed: NO
+- Stable ID verification: PASSED (Deterministic UUIDv4 identifiers)
+- Reference fingerprint: a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f
+- Replay database: achievenest_phase11_replay
+- Clean replay: PASSED (000001–000011 replayed from zero with 0 errors)
+- Replay fingerprints identical: YES (a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f)
+- Portfolio taxonomy API: PASSED (GET /api/v1/portfolio/categories delivers 9 categories & 57 subcategories)
+- College/Program lookup: PASSED (Operational MySQL-driven lookups)
+- Administrative Unit lookup: PASSED (19 operational units)
+- Award lookup: PASSED (15 award definitions with 80.00% threshold)
+- Offline reference lookups: PASSED (Pure local MySQL)
+- Phase 7 regression: 27 / 27 PASSED
+- Phase 8 regression: 36 / 36 PASSED
+- Phase 9 regression: 28 / 28 PASSED
+- Phase 10 posture preserved: YES (security_status='pending', malware_scanner='none_deferred')
+- Frontend build: PASSED (0 errors)
+- PostgreSQL/Supabase migrations modified: NO
+- Production Supabase modified: NO
+- Real secrets committed: NO
+- Phase 11: PASSED
+- Blocking issues: None

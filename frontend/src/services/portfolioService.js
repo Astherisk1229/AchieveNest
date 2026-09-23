@@ -21,8 +21,22 @@ export const portfolioService = {
     return res?.data || res
   },
 
+  async updateRecord(id, payload) {
+    const res = await apiClient.put(`/portfolio/${id}`, payload)
+    return res?.data || res
+  },
+
   async addEvidence(id, payload) {
     const res = await apiClient.post(`/portfolio/${id}/evidence`, payload)
+    return res?.data || res
+  },
+
+  async downloadEvidence(evidenceId) {
+    return apiClient.get(`/evidence/student/${evidenceId}/download`, { responseType: 'blob' })
+  },
+
+  async resubmitRecord(id) {
+    const res = await apiClient.post(`/portfolio/${id}/resubmit`)
     return res?.data || res
   },
 

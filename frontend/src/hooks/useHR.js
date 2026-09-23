@@ -9,7 +9,10 @@ import { provisioningService } from '../services/provisioningService'
 import { fetchPasswordResetRequests, executePasswordReset } from '../services/passwordResetAdminService'
 import { fetchHRAudit, fetchHRDashboard, fetchPersonnelDirectory, assignDeanRole, revokeDeanRole } from '../services/hrAdminService'
 
-export function useHR() {
+const ALL_RESOURCES = ['directory', 'dashboard', 'passwordResets', 'audit']
+
+export function useHR({ resources = ALL_RESOURCES } = {}) {
+  const resourceKey = [...resources].sort().join('|')
   const [activeTab, setActiveTab] = useState('overview')
   const [personnelList, setPersonnelList] = useState([])
   const [accomplishments, setAccomplishments] = useState([])
@@ -47,34 +50,57 @@ export function useHR() {
     }
 
     try {
-      const [directory, dashboard, resets, audit] = await Promise.all([
-        fetchPersonnelDirectory({ per_page: 100 }),
-        fetchHRDashboard(),
-        fetchPasswordResetRequests('all'),
-        fetchHRAudit({ per_page: 50 })
-      ])
+      const enabled = new Set(resourceKey.split('|').filter(Boolean))
+      const requests = []
+      const names = []
+      if (enabled.has('directory')) { names.push('directory'); requests.push(fetchPersonnelDirectory({ per_page: 100 })) }
+      if (enabled.has('dashboard')) { names.push('dashboard'); requests.push(fetchHRDashboard()) }
+      if (enabled.has('passwordResets')) { names.push('passwordResets'); requests.push(fetchPasswordResetRequests('all')) }
+      if (enabled.has('audit')) { names.push('audit'); requests.push(fetchHRAudit({ per_page: 50 })) }
 
-      setPersonnelList((directory.personnel || []).map(person => ({
-        ...person,
-        employee_id: person.institutional_id,
-        email: person.institutional_email,
-        college: person.college_name || person.college_code || 'Pending placement',
-        employment_status: person.status,
-        academic_rank: person.designation || 'Personnel',
-        assigned_roles: person.assigned_roles || []
-      })))
-      setDashboardMetrics(dashboard)
-      setPasswordResets(resets)
-      setAuditLogs(audit.events || [])
+      const settled = await Promise.allSettled(requests)
+      const results = Object.fromEntries(names.map((name, index) => [name, settled[index]]))
+      const dirResult = results.directory
+      const dashResult = results.dashboard
+      const resetsResult = results.passwordResets
+      const auditResult = results.audit
+
+      if (dirResult?.status === 'fulfilled') {
+        const directory = dirResult.value?.data || dirResult.value || {}
+        const list = Array.isArray(directory.personnel) ? directory.personnel : []
+        setPersonnelList(list.map(person => ({
+          ...person,
+          employee_id: person.institutional_id || person.employee_id,
+          email: person.institutional_email || person.email,
+          college: person.college_name || person.college_code || person.college || 'Pending placement',
+          employment_status: person.employment_status || person.status || 'permanent',
+          academic_rank: person.current_rank_title || person.academic_rank || person.designation || 'Personnel',
+          assigned_roles: person.assigned_roles || []
+        })))
+      } else if (dirResult) {
+        const dirErr = dirResult.reason
+        const errMsg = dirErr?.error?.message || dirErr?.message || 'Unable to load Personnel Directory.'
+        setError(errMsg)
+      }
+
+      if (dashResult?.status === 'fulfilled') {
+        setDashboardMetrics(dashResult.value?.data || dashResult.value)
+      }
+
+      if (resetsResult?.status === 'fulfilled') {
+        setPasswordResets(resetsResult.value?.data || resetsResult.value || [])
+      }
+
+      if (auditResult?.status === 'fulfilled') {
+        const auditData = auditResult.value?.data || auditResult.value || {}
+        setAuditLogs(auditData.events || auditData || [])
+      }
     } catch (requestError) {
       setError(requestError?.error?.message || requestError?.message || 'Unable to load HR data.')
-      setPersonnelList([])
-      setPasswordResets([])
-      setAuditLogs([])
     } finally {
       setIsLoading(false)
     }
-  }, [selectedAwardId])
+  }, [selectedAwardId, resourceKey])
 
   useEffect(() => {
     void refreshData()

@@ -1,0 +1,27 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/HRNavigationModuleHealth.test.jsx (20 tests) 15ms
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N0/N1: HR Sidebar & Route Inventory Audit > has all canonical HR items defined in NAVIGATION_CATALOG with required permissions and roles
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N0/N1: HR Sidebar & Route Inventory Audit > returns authorized navigation items for hr_staff session with correct icons and paths
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N2A/N3A: Null Safety & Plan D Model Resolution > isAcademicPersonnel safely handles null, undefined, numbers, strings, and objects without throwing
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N2A/N3A: Null Safety & Plan D Model Resolution > formatPersonnelPlacement safely handles null, undefined, and empty objects
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N2A/N3A: Null Safety & Plan D Model Resolution > formatPersonnelClassification safely handles null and prioritizes Plan D fields
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N2A/N3A: Null Safety & Plan D Model Resolution > formatFacultyEngagement and formatEmploymentStatus safely handle null
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N2A/N3A: Null Safety & Plan D Model Resolution > collectPersonnelPlacementOptions handles null and empty arrays safely
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3A/N3B: HR Component Instantiation & Props Invariants > instantiates PersonnelDirectoryTable safely with empty list and sortConfig
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3A/N3B: HR Component Instantiation & Props Invariants > instantiates EditAssignmentModal safely with null personnel
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3A/N3B: HR Component Instantiation & Props Invariants > instantiates EditMasterDataModal safely with null or populated personnel
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3A/N3B: HR Component Instantiation & Props Invariants > instantiates FacultyDossierDrawer safely with null personnel
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3A/N3B: HR Component Instantiation & Props Invariants > instantiates DeanAssignmentModal safely with empty personnel list
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HRDashboardPage correctly with currentUser
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HRPersonnelDirectoryPage correctly
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HREvaluationSubmissionsPage correctly
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HRFacultyEvaluationOversightPage correctly and exports alias HRFacultyEvaluationAndRankingPage
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HRAuditTrailPage correctly
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HRRankAssignmentLogsPage correctly
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3B/N4: HR Page Modules Invariants > instantiates HRPasswordResetRequestsPage correctly
+   ✓ AchieveNest — HR Navigation & Module Health Check Verification Suite > Phase N3D: RBAC Route Access Controller Verification > allows hr_admin in /hr routes and strictly blocks student and personnel
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Duration  2.33s

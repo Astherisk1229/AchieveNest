@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
@@ -7,31 +7,72 @@ import GovernanceTabs from './personnel-directory/GovernanceTabs'
 import PersonnelDirectoryTable from './personnel-directory/PersonnelDirectoryTable'
 import FacultyDossierDrawer from './personnel-directory/FacultyDossierDrawer'
 import EditAssignmentModal from './personnel-directory/EditAssignmentModal'
-import DepartmentAssignments from './personnel-directory/DepartmentAssignments'
+import EditMasterDataModal from './personnel-directory/EditMasterDataModal'
 import PasswordResetQueue from './personnel-directory/PasswordResetQueue'
 import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
+import BatchImportPersonnelModal from './personnel-directory/BatchImportPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
+import { collectPersonnelPlacementOptions, mergePlacementMasterData } from '../../utils/personnelPlacement'
+import { updatePersonnelMasterData } from '../../services/hrAdminService'
+import { personnelMasterDataService } from '../../services/personnelMasterDataService'
 
 export function HRPersonnelDirectoryPage(props) {
-  const hrHook = useHR()
+  // This route needs directory and reset data only. Dashboard and audit data
+  // have their own routes and must not block the personnel table.
+  const hrHook = useHR({ resources: ['directory', 'passwordResets'] })
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const personnelList = props.personnelList || hrHook.personnelList || []
-  const passwordResets = props.passwordResets || hrHook.passwordResets || []
+  const personnelList = props.personnelList || hrHook.personnelList
+  const passwordResets = props.passwordResets || hrHook.passwordResets
   const handleApprovePasswordReset = props.handleApprovePasswordReset || hrHook.handleApprovePasswordReset
   const handleCreatePersonnelAccount = props.handleCreatePersonnelAccount || hrHook.handleCreatePersonnelAccount
-  const handleAssignDepartmentSecretary = props.handleAssignDepartmentSecretary || hrHook.handleAssignDepartmentSecretary
   const handleUpdateRank = props.handleUpdateRank || hrHook.handleUpdateRank
 
-  // Tab State: 'directory' | 'departments' | 'resets'
-  const tabQuery = searchParams.get('tab')
-  const [activeTab, setActiveTabState] = useState(tabQuery || 'directory')
+  // Master Data Placement Options State (Institutional API backed)
+  const [institutionalMasterData, setInstitutionalMasterData] = useState({
+    colleges: [],
+    academicPrograms: [],
+    administrativeUnits: []
+  })
 
   useEffect(() => {
-    if (tabQuery && tabQuery !== activeTab) {
-      setActiveTabState(tabQuery)
+    let isMounted = true
+    Promise.all([
+      personnelMasterDataService.getColleges(),
+      personnelMasterDataService.getAcademicPrograms(),
+      personnelMasterDataService.getDepartments()
+    ]).then(([colleges, programs, departments]) => {
+      if (isMounted) {
+        setInstitutionalMasterData({
+          colleges: colleges || [],
+          academicPrograms: programs || [],
+          administrativeUnits: departments || []
+        })
+      }
+    }).catch(err => {
+      console.warn('Failed to load institutional placement master data:', err?.message)
+    })
+
+    return () => {
+      isMounted = false
     }
-  }, [tabQuery])
+  }, [])
+
+  const placementOptions = useMemo(() => {
+    const scraped = collectPersonnelPlacementOptions(personnelList)
+    return mergePlacementMasterData(scraped, institutionalMasterData)
+  }, [personnelList, institutionalMasterData])
+
+  // Tab State: 'directory' | 'resets'
+  const tabQuery = searchParams.get('tab')
+  const safeTabQuery = tabQuery === 'resets' ? 'resets' : 'directory'
+  const [activeTab, setActiveTabState] = useState(safeTabQuery)
+
+  useEffect(() => {
+    if (safeTabQuery !== activeTab) {
+      setActiveTabState(safeTabQuery)
+    }
+  }, [safeTabQuery, activeTab])
 
   const setActiveTab = (tab) => {
     setActiveTabState(tab)
@@ -42,10 +83,12 @@ export function HRPersonnelDirectoryPage(props) {
   const [selectedFaculty, setSelectedFaculty] = useState(null)
   const [isDossierOpen, setIsDossierOpen] = useState(false)
   const [editingAssignmentPersonnel, setEditingAssignmentPersonnel] = useState(null)
+  const [editingMasterDataPersonnel, setEditingMasterDataPersonnel] = useState(null)
   const [resetPasswordPersonnel, setResetPasswordPersonnel] = useState(null)
 
   // Modals & Toast State
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
+  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false)
   const [toastMsg, setToastMsg] = useState(null)
 
   const showToast = (msg) => {
@@ -88,12 +131,27 @@ export function HRPersonnelDirectoryPage(props) {
     setEditingAssignmentPersonnel(p)
   }
 
+  const handleOpenEditMasterData = (p) => {
+    setEditingMasterDataPersonnel(p)
+  }
+
   const handleSaveAssignment = (updatedData) => {
-    if (handleAssignDepartmentSecretary) {
-      handleAssignDepartmentSecretary(updatedData.id, updatedData.department)
-    }
     showToast(`Updated administrative assignment for ${updatedData.full_name || 'personnel'}.`)
     setEditingAssignmentPersonnel(null)
+    hrHook.refreshData?.()
+  }
+
+  const handleSaveMasterData = async (profileId, payload) => {
+    try {
+      await updatePersonnelMasterData(profileId, payload)
+      showToast('HR Master Data updated successfully with audit trail.')
+      setEditingMasterDataPersonnel(null)
+      await hrHook.refreshData?.()
+    } catch (err) {
+      console.error('Failed to update master data:', err)
+      showToast('Failed to update master data. Please check authorization.')
+      throw err
+    }
   }
 
   const handlePromoteRank = (p, newRank, newStatus) => {
@@ -113,7 +171,7 @@ export function HRPersonnelDirectoryPage(props) {
     setResetPasswordPersonnel(null)
   }
 
-  const handleManageRole = (p, roleKey) => {
+  const handleManageRole = (p, _roleKey) => {
     showToast(`Updated administrative role authorization for ${p.full_name}.`)
   }
 
@@ -126,8 +184,8 @@ export function HRPersonnelDirectoryPage(props) {
       setActiveTab('directory')
       setDirectorySort({ column: 'created_at', direction: 'desc' })
       setRevealRequestKey(prev => prev + 1)
-      if (createdRecord && createdRecord.id) {
-        setNewlyCreatedId(createdRecord.id)
+      if (createdRecord && (createdRecord.id || createdRecord.data?.id)) {
+        setNewlyCreatedId(createdRecord.id || createdRecord.data?.id)
       }
 
       if (formData.action === 'save_pending' || formData.is_pending_placement) {
@@ -135,10 +193,11 @@ export function HRPersonnelDirectoryPage(props) {
       } else {
         showToast(`Personnel account created for ${formData.full_name || 'personnel'} and activation invitation sent.`)
       }
-      setIsOnboardingOpen(false)
+      return createdRecord
     } catch (err) {
       console.error('Onboarding failed:', err)
       showToast(`Failed to onboard personnel account. Please try again.`)
+      throw err
     }
   }
 
@@ -157,6 +216,7 @@ export function HRPersonnelDirectoryPage(props) {
         totalCount={personnelList.length}
         pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onOpenBatchImport={() => setIsBatchImportOpen(true)}
       />
 
       {/* Governance Roster Tabs */}
@@ -168,7 +228,20 @@ export function HRPersonnelDirectoryPage(props) {
       />
 
       {/* Main Tab Views */}
-      {activeTab === 'directory' && (
+      {activeTab === 'directory' && hrHook.error && (
+        <div role="alert" className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+          <span>{hrHook.error}</span>
+          <button type="button" onClick={() => hrHook.refreshData?.()} className="font-bold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700">Retry directory</button>
+        </div>
+      )}
+
+      {activeTab === 'directory' && hrHook.isLoading && (
+        <div aria-label="Loading Personnel Directory" className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+          {[1, 2, 3, 4, 5].map(row => <div key={row} className="h-16 animate-pulse bg-slate-50/80 dark:bg-slate-800/30" />)}
+        </div>
+      )}
+
+      {activeTab === 'directory' && !hrHook.isLoading && (
         <PersonnelDirectoryTable
           personnelList={personnelList}
           sortConfig={directorySort}
@@ -177,17 +250,11 @@ export function HRPersonnelDirectoryPage(props) {
           revealRequestKey={revealRequestKey}
           onSelectPersonnel={handleOpenDossier}
           onEditAssignment={handleOpenEditAssignment}
+          onEditMasterData={handleOpenEditMasterData}
           onPromoteRank={handleOpenDossier}
           onResetPassword={handleResetPassword}
           onManageRole={handleManageRole}
           showToast={showToast}
-        />
-      )}
-
-      {activeTab === 'departments' && (
-        <DepartmentAssignments
-          personnelList={personnelList}
-          onEditAssignment={handleOpenEditAssignment}
         />
       )}
 
@@ -211,9 +278,19 @@ export function HRPersonnelDirectoryPage(props) {
         isOpen={isDossierOpen}
         onClose={() => setIsDossierOpen(false)}
         onEditAssignment={handleOpenEditAssignment}
+        onEditMasterData={handleOpenEditMasterData}
         onPromoteRank={handlePromoteRank}
         onResetPassword={handleResetPassword}
         onManageRole={handleManageRole}
+      />
+
+      {/* Edit Master Data Modal (Plan D2 HR Control) */}
+      <EditMasterDataModal
+        personnel={editingMasterDataPersonnel}
+        isOpen={Boolean(editingMasterDataPersonnel)}
+        onClose={() => setEditingMasterDataPersonnel(null)}
+        onSave={handleSaveMasterData}
+        placementOptions={placementOptions}
       />
 
       {/* Edit Organizational Assignment Modal */}
@@ -222,6 +299,7 @@ export function HRPersonnelDirectoryPage(props) {
         isOpen={Boolean(editingAssignmentPersonnel)}
         onClose={() => setEditingAssignmentPersonnel(null)}
         onSave={handleSaveAssignment}
+        placementOptions={placementOptions}
       />
 
       {/* Reset Personnel Password Modal */}
@@ -238,6 +316,15 @@ export function HRPersonnelDirectoryPage(props) {
         evaluatorContext={{ evaluatorId: 'HR-2010-001', role: 'hr_staff' }}
         onClose={() => setIsOnboardingOpen(false)}
         onSubmit={handleOnboardSubmit}
+        placementOptions={placementOptions}
+      />
+
+      {/* Batch Import Personnel XLSX Modal */}
+      <BatchImportPersonnelModal
+        isOpen={isBatchImportOpen}
+        onClose={() => setIsBatchImportOpen(false)}
+        onSuccess={() => hrHook.refreshData?.()}
+        showToast={showToast}
       />
     </div>
   )

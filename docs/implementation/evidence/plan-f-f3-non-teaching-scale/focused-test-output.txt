@@ -1,0 +1,35 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelNonTeachingScaleF3.test.jsx (22 tests) 26ms
+   ✓ Personnel Evaluation Track — Plan F — Phase F3: Non-Teaching Personnel Ranking Scale Configuration Suite (22)
+     ✓ 1. Scale Applicability & Canonical Limits (3)
+       ✓ applies strictly to Non-Teaching Faculty on the Non-Academic side
+       ✓ rejects other personnel combinations from resolving to Non-Teaching scale
+       ✓ freezes exact canonical limits: Total Max 150, Passing 75, Area A 90, Area B 60
+     ✓ 2. Area A — Performance and Personal Indicators (Evaluation-Only) (3)
+       ✓ marks Area A as read-only / non-entry for personnel accomplishments
+       ✓ preserves official evaluation indicators: Job Performance (50), Personal Attitudes (10), Efficiency (30)
+       ✓ exposes official Area A weights in RankingCriteriaModel
+     ✓ 3. Area B — Service and Leadership Configuration & Point Schedules (8)
+       ✓ marks Area B as the active personnel achievement submission area
+       ✓ B.1 Involvement in School Activities: freezes exact subcategories, points, and max 30 ceiling
+       ✓ B.1 Involvement in School Activities: calculates B.1 points accurately via RankingCriteriaModel
+       ✓ B.2 Community Involvement: freezes exact categories, points, and max 30 ceiling
+       ✓ B.2 Community Involvement: calculates B.2 points accurately via RankingCriteriaModel
+       ✓ B.3 Number of Years at NDMU: configures B.3 as server-derived, 1 pt per 2 completed years, max 10
+       ✓ B.3 Number of Years at NDMU: calculates B.3 service years thresholds and caps accurately
+       ✓ B.4 Invited as Judge, Lecturer, Resource Person: freezes 5 points per qualifying invitation, max 30 pts ceiling
+       ✓ B.4 Invited as Judge, Lecturer, Resource Person: calculates B.4 invitation points with capping at 30 pts
+       ✓ B.5 Recognition / Meritorious Award: enforces evaluator_judgment_required = true with max 30 ceiling and no auto-score formula
+     ✓ 4. Boundary & Sub-Ceiling Tests (3)
+       ✓ B.3 Service Years: tests boundary sequence 0, 1, 2, 4, 10, 20, 25, 40 years
+       ✓ B.4 Invitations: tests boundary sequence 0, 1, 5, 6, 7, 10 invitations
+       ✓ Area B Category Allocation: preserves 60.0 allocation without summing individual category maxima
+     ✓ 5. Wrong-Scale & Area A Mutation Protection (3)
+       ✓ returns only Area A (read-only) and Area B (editable) for Non-Teaching scale
+       ✓ does not expose Administrators Area C, publications, or instructional materials to Non-Teaching scale
+       ✓ resolves correct required proof types for Non-Teaching accomplishments
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Duration  1.44s

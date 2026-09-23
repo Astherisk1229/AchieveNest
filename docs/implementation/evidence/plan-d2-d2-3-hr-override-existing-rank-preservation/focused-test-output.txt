@@ -1,0 +1,67 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelHROverrideAndEditSafetyD2Phase3.test.jsx (40 tests) 1423ms
+
+ Test Files  1 passed (1)
+      Tests  40 passed (40)
+   Start at  17:45:08
+   Duration  3.07s (transform 275ms, setup 11ms, collect 903ms, tests 1.42s, environment 0ms, prepare 174ms)
+
+================================================================================
+40/40 TESTS PASSED — PERSONNEL EVALUATION TRACK PLAN D2 PHASE D2-3 FOCUSED SUITE
+================================================================================
+Existing-Rank Preservation (Req 1–7)
+1. saved Professor III remains selected on edit
+2. saved Associate Professor II remains selected on edit
+3. saved Senior Instructor IV remains selected on edit
+4. qualification-only change does not mutate rank
+5. College-only change does not mutate rank
+6. Department-only change does not mutate rank
+7. Employment Status change does not mutate rank
+
+Recommendation Separation & State Model (Req 8–11)
+8. recommendation displays separately from saved rank
+9. recommendation arrival does not overwrite current rank
+10. manual HR rank selection is preserved
+11. later recommendation refresh does not overwrite manual selection
+
+Downgrade & Reset Protection (Req 12–15)
+12. Professor III not reset to Professor I on qualification mapping
+13. Associate Professor II not reset to Assistant Professor
+14. Senior Instructor IV not reset to Senior Instructor
+15. Part-Time title not reset to lower suggested title
+
+Promotion Protection & Boundaries (Req 16–20)
+16. qualification change does not trigger sequential progression
+17. PhD recommendation does not trigger AP I -> Professor I automatically
+18. no Promotion Decision created on recommendation resolution
+19. no Evaluation Result changed on recommendation resolution
+20. no approved-rank history created unless explicit authorized change path requires it
+
+Explicit HR Override & Audit (Req 21–25)
+21. HR can choose another valid Full-Time rank
+22. HR can choose another valid Part-Time title
+23. invalid rank rejected
+24. cross-catalog override rejected
+25. explicit rank change is auditable with prior and new rank
+
+Legacy Reconciliation (Req 26–29)
+26. unmatched legacy rank remains visible
+27. legacy rank is not silently replaced on render
+28. explicit HR reconciliation can choose valid seeded value
+29. reconciliation audit preserves old legacy value and new value
+
+Faculty Status Switching & Backend Safety (Req 30–36)
+30. new record Full-Time -> Part-Time clears incompatible unsaved rank
+31. new record Part-Time -> Full-Time clears incompatible title
+32. existing record catalog mismatch is flagged, not auto-converted
+33. unchanged rank produces no rank-change side effect
+34. changed rank must pass server catalog validation
+35. recommendation endpoint remains non-mutating
+36. stale payload cannot silently overwrite if concurrency guard exists
+
+Boundaries & Regressions (Req 37–40)
+37. Position / Job Title does not infer rank
+38. evaluation-summary projection remains deferred to D2-4
+39. D2-2 qualification-driven recommendation behavior remains intact
+40. confirms full Phase D2-3 HR override and edit safety integration

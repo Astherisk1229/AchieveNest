@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { getCurrentUser, logoutUser, updateUserRoleContext } from '../../services/authService'
+import { useNavigate, Link } from 'react-router-dom'
+import { getCurrentUser, logoutUser } from '../../services/authService'
 import NotificationPopover from '../common/NotificationPopover'
 import useTheme from '../../hooks/useTheme'
 import { 
@@ -25,11 +25,10 @@ import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } fr
 import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
 
-export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
+export default function Header({ currentUser, isSidebarOpen = true, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
-  const location = useLocation()
   const { isDark, toggleTheme } = useTheme()
-  const { user: authUser, activeRoleContext: authRoleContext, switchRoleContext: authSwitchRole } = useAuth() || {}
+  const { user: authUser, activeRoleContext: authRoleContext } = useAuth() || {}
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isSwitchToOpen, setIsSwitchToOpen] = useState(true)
 
@@ -54,15 +53,9 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
 
   const handleSelectRole = (roleId) => {
     const normId = normalizeRoleContext(roleId)
-    if (authSwitchRole) {
-      authSwitchRole(normId)
-    } else {
-      updateUserRoleContext(normId)
-    }
     if (onRoleChange) {
       onRoleChange(normId)
     }
-    navigate('/personnel/dashboard?tab=overview')
   }
 
   // Canonical display names for Personnel roles
@@ -96,11 +89,16 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
     if (accountType === 'hr_admin') return 'HR Admin'
     if (accountType === 'osad_admin') return 'OSAD Admin'
     if (accountType === 'student') return 'Student'
-    if (activeRoleContext === 'dean') return 'Dean'
+    if (activeRoleContext === 'dean') {
+      const deanAssignment = (user?.role_assignments || []).find(item => item.role_key === 'dean')
+      return deanAssignment?.scope_name ? `Dean · ${deanAssignment.scope_name}` : 'Dean'
+    }
     if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
-    // For base personnel: use actual stored classification/designation if present, fallback to "Personnel"
-    return user?.designation || user?.classification || 'Personnel'
+    const affiliation = user?.personnel_affiliation || {}
+    const group = affiliation.personnel_group === 'faculty' ? 'Faculty' : affiliation.personnel_group === 'non_teaching_faculty' ? 'Non-teaching Faculty' : affiliation.personnel_group
+    const side = affiliation.organizational_side === 'academic' ? 'Academic' : affiliation.organizational_side === 'non_academic' ? 'Non-academic' : affiliation.organizational_side
+    return group && side ? `${group} · ${side}` : user?.designation || affiliation.personnel_classification || 'Personnel'
   }
 
   return (
@@ -111,6 +109,8 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
         <button
           type="button"
           onClick={onToggleSidebar}
+          aria-expanded={isSidebarOpen}
+          aria-controls="main-sidebar"
           className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           aria-label="Toggle Navigation Sidebar"
         >
@@ -161,7 +161,7 @@ export default function Header({ currentUser, onToggleSidebar, onRoleChange }) {
                   width="38"
                   height="38"
                   className="w-full h-full object-cover rounded-full aspect-square"
-                  fetchpriority="high"
+                  fetchPriority="high"
                   decoding="async"
                   loading="eager"
                 />

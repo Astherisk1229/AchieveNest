@@ -1,7 +1,7 @@
 import React from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { normalizeRoleContext, normalizeAccountType, CANONICAL_ROLES } from '../../utils/roleContext'
+import { normalizeRoleContext, normalizeAccountType, CANONICAL_ROLES, isWorkspaceAvailable } from '../../utils/roleContext'
 
 export default function ActiveRoleGuard({
   children,
@@ -36,7 +36,7 @@ export default function ActiveRoleGuard({
 
   const normAllowed = allowedActiveContexts.map(c => normalizeRoleContext(c))
 
-  if (!normAllowed.includes(currentContext)) {
+  if (!normAllowed.includes(currentContext) || !isWorkspaceAvailable(user, currentContext)) {
     return (
       <Navigate
         to={redirectTo}

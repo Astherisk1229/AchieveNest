@@ -29,6 +29,11 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     'portfolio.personal.update',
     'personnel.account.manage'
   ],
+  department_head: [
+    'portfolio.personal.read',
+    'portfolio.personal.update',
+    'personnel.account.manage'
+  ],
   program_coordinator: [
     'achievement.student.verify'
   ],

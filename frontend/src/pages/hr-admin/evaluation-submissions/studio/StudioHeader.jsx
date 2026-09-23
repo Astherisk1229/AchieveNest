@@ -1,5 +1,6 @@
 import React from 'react'
 import { ArrowLeft, Save, X, Columns, Edit3, Eye } from 'lucide-react'
+import { formatPersonnelPlacement } from '../../../../utils/personnelPlacement'
 
 export default function StudioHeader({
   submission,
@@ -46,7 +47,7 @@ export default function StudioHeader({
               </span>
             </div>
             <p className="text-[10px] text-slate-400 truncate">
-              {submission.college || 'College'} · {submission.department || 'Department'}
+              {formatPersonnelPlacement(submission)}
             </p>
           </div>
         </div>

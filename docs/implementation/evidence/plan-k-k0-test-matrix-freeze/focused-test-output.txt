@@ -1,0 +1,17 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK0Audit.test.jsx (40 tests) 23ms
+
+ Test Files  1 passed (1)
+      Tests  40 passed (40)
+   Start at  18:37:31
+   Duration  1.68s (transform 337ms, setup 13ms, collect 906ms, tests 23ms, environment 0ms, prepare 218ms)
+
+All 40 Phase K0 audit tests passed with 0 failures:
+- Personnel Model & Classification Freeze: 5/5 passed
+- Eligibility & Routing Matrix Freeze: 8/8 passed
+- Lifecycle, Result & Promotion Vocabulary Freeze: 3/3 passed
+- Master Data, Resolver & Projection Freeze: 6/6 passed
+- Scale, Finalization, Notification & Audit Service Freeze: 5/5 passed
+- Unresolved Boundaries & Matrix Category Audits: 10/10 passed
+- Non-Destructive Invariants & Regression Proofs: 3/3 passed

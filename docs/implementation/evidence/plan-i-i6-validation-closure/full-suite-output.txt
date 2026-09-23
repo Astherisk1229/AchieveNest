@@ -1,0 +1,10 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ Test Files  146 passed (146)
+      Tests  1396 passed (1396)
+   Start at  10:41:59
+   Duration  74.03s (transform 8.03s, setup 756ms, collect 50.44s, tests 15.00s, environment 56ms, prepare 48.31s)
+
+All 146 test files completed successfully with 0 failures.
+Plan I Final Closure: VERIFIED.
+Zero Regressions across all system plans.

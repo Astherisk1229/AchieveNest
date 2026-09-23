@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-09-09T19:04:32+08:00",
+  "suite": "Master Frontend Regression Suite",
+  "totalFiles": 160,
+  "passedFiles": 160,
+  "failedFiles": 0,
+  "totalTests": 1923,
+  "passedTests": 1923,
+  "failedTests": 0,
+  "durationSeconds": 71.43,
+  "exitCode": 0,
+  "k1FocusedPassed": 40
+}

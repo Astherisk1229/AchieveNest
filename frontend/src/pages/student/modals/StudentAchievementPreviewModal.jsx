@@ -211,14 +211,14 @@ export default function StudentAchievementPreviewModal({
               <span>{copied ? 'Ref Code Copied!' : 'Copy Ref Code'}</span>
             </button>
 
-            <button
+            {onAttachPortfolio && <button
               type="button"
               onClick={() => onAttachPortfolio(achievement.id)}
               className="px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5 text-emerald-600" />
               <span>{isInPortfolio ? 'In Portfolio' : 'Attach to Portfolio'}</span>
-            </button>
+            </button>}
           </div>
 
           <div className="flex items-center gap-2">

@@ -1,0 +1,9 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ Test Files  125 passed (125)
+      Tests  899 passed (899)
+   Start at  00:32:11
+   Duration  61.17s (transform 6.56s, setup 786ms, collect 46.99s, tests 10.90s, environment 44ms, prepare 39.81s)
+
+All 125 test files executed with 0 failures (100% pass rate).
+Plan D, Plan E, Plan F0, Plan F1, and HR Navigation & Module Health test suites fully verified and green.

@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ExportPortfolioPreviewModal from '../student/modals/ExportPortfolioPreviewModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
+import PersonnelPortfolioGallery from './PersonnelPortfolioGallery'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
+import { AchieveNestLogo } from '../../components/brand'
 
 import {
   Trophy,
@@ -30,116 +32,49 @@ import {
   ExternalLink,
   Paperclip,
   Clock,
-  CreditCard
+  CreditCard,
+  User
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
+import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
 
 export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
   const activeUser = currentUser || getCurrentUser()
   const activeRoleContext = activeUser?.active_role_context || 'personnel'
 
-  const { portfolio } = usePersonnelPortfolio(activeUser?.employee_id || 'EMP-2021-0842')
+  const {
+    portfolio,
+    latestSubmission,
+    submissionHistory
+  } = usePersonnelPortfolio(activeUser?.employee_id || 'EMP-2021-0842')
 
   // Modals & Toast State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isCanvaModalOpen, setIsCanvaModalOpen] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
+  const [selectedSnapshot, setSelectedSnapshot] = useState(null)
 
   // Personnel Profile State
   const [personnel, setPersonnel] = useState(activeUser || {
     full_name: 'Dr. Maria Santos',
     student_id: 'EMP-2021-0842',
     employee_id: 'EMP-2021-0842',
-    program: 'Department of Computer Studies',
-    department: 'Department of Computer Studies',
+    personnel_classification: 'academic',
+    college_name: 'College of Engineering, Architecture, and Computing',
+    program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
     designation: 'Associate Professor & Research Coordinator',
     year_level: '8 Years Service',
     age: 38,
     location: 'Koronadal City, South Cotabato',
     email: 'faculty@ndmu.edu.ph',
     phone: '+63 917 845 2910',
-    avatar_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    about_me: 'I am a dedicated Associate Professor and Research Coordinator at Notre Dame of Marbel University with over 8 years of experience in computer science education, AI research, and institutional extension services. Passionate about leveraging technology for community development and student mentorship.'
+    avatar_url: null,
+    about_me: 'Dedicated faculty member and researcher at Notre Dame of Marbel University.'
   })
-
-  // Experience & Academic Involvement Timeline State
-  const [experiences, setExperiences] = useState([
-    {
-      id: 1,
-      role: 'Research Coordinator',
-      organization: 'College of Information Technology Education (CITE)',
-      period: 'Aug 2024 – Present',
-      icon: BookOpen
-    },
-    {
-      id: 2,
-      role: 'Associate Professor',
-      organization: 'Department of Computer Studies – NDMU',
-      period: 'AY 2022–Present',
-      icon: GraduationCap
-    },
-    {
-      id: 3,
-      role: 'LGU Digital Extension Lead',
-      organization: 'Koronadal City Governance IT Extension',
-      period: 'Jan – Dec 2025',
-      icon: Heart
-    },
-    {
-      id: 4,
-      role: 'CHED Curriculum Committee Member',
-      organization: 'Commission on Higher Education Region XII',
-      period: 'AY 2024–2025',
-      icon: ShieldCheck
-    },
-    {
-      id: 5,
-      role: 'IEEE Senior Member',
-      organization: 'IEEE Philippine Section',
-      period: 'Jun 2021 – Present',
-      icon: Award
-    }
-  ])
-
-  // Skills State
-  const [skills, setSkills] = useState([
-    { name: 'Artificial Intelligence', level: 3, label: 'Expert' },
-    { name: 'Data Analytics', level: 3, label: 'Expert' },
-    { name: 'Community Extension', level: 3, label: 'Expert' },
-    { name: 'Cloud Architecture', level: 2, label: 'Proficient' },
-    { name: 'Faculty Mentorship', level: 3, label: 'Expert' }
-  ])
-
-  // Verified Accomplishments State
-  const [verifiedAccomplishments] = useState([
-    {
-      id: 1,
-      title: 'Machine Learning Frameworks in Education Analytics',
-      category: 'Research & Publications',
-      date: 'Apr 15, 2026',
-      icon: BookOpen,
-      status: 'Verified'
-    },
-    {
-      id: 2,
-      title: 'NDMU Outstanding Research Faculty of the Year',
-      category: 'Institutional Awards',
-      date: 'Jan 10, 2026',
-      icon: Award,
-      status: 'Verified'
-    },
-    {
-      id: 3,
-      title: 'CHED Regional Training on AI Curriculum',
-      category: 'Seminars & Workshops',
-      date: 'Mar 20, 2026',
-      icon: Users,
-      status: 'Verified'
-    }
-  ])
 
   // Share Profile Handler
   const handleShareProfile = () => {
@@ -156,10 +91,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     }))
   }
 
-  // Redirect to Achievements with filtered category
-  const handleCategoryClick = (categoryName) => {
-    navigate('/personnel/achievements', { state: { selectedCategory: categoryName } })
-  }
+  const initials = PersonnelProfilePhotoService.getInitials(personnel.full_name)
 
   return (
     <>
@@ -215,15 +147,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
             {/* Top Brand & Motto Bar */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-xs shadow-md shrink-0">
-                  🔰
-                </div>
-                <div className="leading-tight">
-                  <span className="text-xs font-black tracking-tight text-white block">AchieveNest</span>
-                  <span className="text-[8px] font-bold text-[#245F42] tracking-widest uppercase block">NDMU</span>
-                </div>
-              </div>
+              <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
 
               <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide font-serif italic hidden sm:block">
                 Character, Competence and Culture in harmony
@@ -235,17 +159,21 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
               {/* Avatar + Faculty Info */}
               <div className="flex items-center gap-5 sm:gap-6">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 border-white dark:border-slate-800 shadow-md bg-white dark:bg-slate-900 overflow-hidden shrink-0 aspect-square">
-                  <img
-                    src={personnel.avatar_url}
-                    alt={personnel.full_name}
-                    width="96"
-                    height="96"
-                    className="w-full h-full object-cover rounded-full aspect-square"
-                    fetchpriority="high"
-                    decoding="async"
-                    loading="eager"
-                  />
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-3 border-white dark:border-slate-800 shadow-md bg-emerald-950 text-emerald-100 overflow-hidden shrink-0 aspect-square flex items-center justify-center font-black text-xl">
+                  {personnel.avatar_url ? (
+                    <img
+                      src={personnel.avatar_url}
+                      alt={personnel.full_name}
+                      width="96"
+                      height="96"
+                      className="w-full h-full object-cover rounded-full aspect-square"
+                      fetchPriority="high"
+                      decoding="async"
+                      loading="eager"
+                    />
+                  ) : (
+                    <span>{initials}</span>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -256,13 +184,13 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {personnel.department || 'College of IT'}</p>
+                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {formatPersonnelPlacement(personnel)}</p>
 
                   {/* Compact Credential Chips Row */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
-                      {personnel.department || 'College of Information Technology'}
+                      {formatPersonnelPlacement(personnel)}
                     </span>
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
@@ -278,7 +206,10 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 {/* Action: Portfolio Booklet View */}
                 <button
                   type="button"
-                  onClick={() => setIsCanvaModalOpen(true)}
+                  onClick={() => {
+                    setSelectedSnapshot(latestSubmission || portfolio)
+                    setIsCanvaModalOpen(true)
+                  }}
                   className="px-3.5 py-2 rounded-xl bg-[#245F42] hover:bg-[#1B4731] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-[0.98]"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
@@ -323,154 +254,20 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
         </div>
 
-        {/* ================= 3. TWO COLUMN MAIN CONTENT GRID ================= */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-          {/* LEFT COLUMN: ABOUT ME, TIMELINE & FEATURED ACCOMPLISHMENTS */}
-          <div className="lg:col-span-8 space-y-6">
-
-            {/* ABOUT ME CARD */}
-            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Users className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                  <span>About Me</span>
-                </h3>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                {personnel.about_me}
-              </p>
-            </div>
-
-            {/* EXPERIENCE & ACADEMIC INVOLVEMENT TIMELINE CARD */}
-            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Building2 className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                  <span>Experience & Involvement</span>
-                </h3>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                {experiences.map((exp) => {
-                  const Icon = exp.icon
-                  return (
-                    <div key={exp.id} className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3.5 transition hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <div className="w-9 h-9 rounded-xl bg-[#16834a] text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-                        <Icon className="w-4.5 h-4.5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white">{exp.role}</h4>
-                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{exp.period}</span>
-                        </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{exp.organization}</p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* FEATURED ACCOMPLISHMENTS GRID */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Trophy className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                  <span>Featured Accomplishments</span>
-                </h3>
-                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{verifiedAccomplishments.length} verified</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {verifiedAccomplishments.map((item) => {
-                  const ItemIcon = item.icon
-                  return (
-                    <div key={item.id} className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-md transition flex flex-col justify-between space-y-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
-                            {item.category}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                            <span>Verified</span>
-                          </span>
-                        </div>
-
-                        <h4 className="text-xs font-extrabold text-slate-900 dark:text-white line-clamp-2">{item.title}</h4>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
-                        <span>{item.date}</span>
-                        <ItemIcon className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* RIGHT COLUMN: CONTACT INFO, SKILLS & ACCOMPLISHMENTS BY CATEGORY */}
-          <div className="lg:col-span-4 space-y-6">
-
-            {/* CONTACT INFORMATION CARD */}
-            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Mail className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                  <span>Contact Information</span>
-                </h3>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">EMAIL</span>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">{personnel.email}</span>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">PHONE</span>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">{personnel.phone}</span>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase block">LOCATION</span>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">{personnel.location}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* KEY SKILLS & COMPETENCIES CARD */}
-            <div className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-                  <Star className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
-                  <span>Key Competencies</span>
-                </h3>
-              </div>
-
-              <div className="space-y-3 pt-1">
-                {skills.map((skill, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-900 dark:text-white">{skill.name}</span>
-                      <span className="font-extrabold text-[#16834a] dark:text-emerald-400 text-[10px]">{skill.label}</span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div className="h-full bg-[#16834a] dark:bg-emerald-500 rounded-full" style={{ width: `${(skill.level / 3) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-        </div>
+        {/* ================= 3. ACADEMIC-YEAR PORTFOLIO GALLERY (PACKAGE C) ================= */}
+        <PersonnelPortfolioGallery
+          portfolio={portfolio}
+          latestSubmission={latestSubmission}
+          submissionHistory={submissionHistory}
+          onOpenBooklet={(card) => {
+            setSelectedSnapshot(card?.raw_snapshot || portfolio)
+            setIsCanvaModalOpen(true)
+          }}
+          onOpenFeedback={(card) => {
+            setSelectedSnapshot(card?.raw_snapshot || portfolio)
+            setIsCanvaModalOpen(true)
+          }}
+        />
 
       </div>
 
@@ -488,7 +285,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
       <PersonnelPortfolioBookletModal
         isOpen={isCanvaModalOpen}
         onClose={() => setIsCanvaModalOpen(false)}
-        portfolio={portfolio}
+        portfolio={selectedSnapshot || portfolio}
         user={personnel}
       />
     </>

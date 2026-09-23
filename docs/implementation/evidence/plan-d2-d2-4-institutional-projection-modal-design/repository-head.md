@@ -1,0 +1,24 @@
+# Repository Head & Working Tree State — Plan D2 Phase D2-4
+
+- **Repository Head Commit**: `e8004d9`
+- **Branch**: main / trunk
+- **Status Summary**: Clean working tree with Plan D2 deliverables across phases D2-1 through D2-4.
+- **Modified Track Files**:
+  - `backend/app/Controllers/Api/TargetProvisioningController.php`
+  - `backend/app/Services/FacultyStatusService.php`
+  - `backend/app/Services/PersonnelEvaluationPrintService.php`
+  - `frontend/src/pages/hr-admin/HRPersonnelDirectoryPage.jsx`
+  - `frontend/src/pages/hr-admin/personnel-directory/EditAssignmentModal.jsx`
+  - `frontend/src/pages/hr-admin/personnel-directory/EditMasterDataModal.jsx`
+  - `frontend/src/pages/hr-admin/personnel-directory/OnboardPersonnelModal.jsx`
+  - `frontend/src/services/PersonnelEvaluationPrintService.js`
+  - `frontend/src/services/facultyInitialRankService.js`
+  - `frontend/src/services/partTimeFacultyTitleService.js`
+  - `frontend/src/utils/personnelPlacement.js`
+- **New Track Files**:
+  - `frontend/src/services/personnelMasterDataService.js`
+  - `frontend/src/services/personnelRankRecommendationService.js`
+  - `frontend/src/controllers/__tests__/PersonnelMasterDataDropdownsD2Phase1.test.jsx`
+  - `frontend/src/controllers/__tests__/PersonnelRankRecommendationD2Phase2.test.jsx`
+  - `frontend/src/controllers/__tests__/PersonnelHROverrideAndEditSafetyD2Phase3.test.jsx`
+  - `frontend/src/controllers/__tests__/PersonnelInstitutionalProjectionAndModalDesignD2Phase4.test.jsx`

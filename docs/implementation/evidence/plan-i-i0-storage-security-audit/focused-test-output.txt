@@ -1,0 +1,8 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx (24 tests) 20ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  09:38:55
+   Duration  1.43s (transform 226ms, setup 14ms, collect 623ms, tests 20ms, environment 0ms, prepare 219ms)

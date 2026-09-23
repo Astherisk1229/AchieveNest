@@ -15,7 +15,8 @@ export class AdminSetupGuideController {
     if (!guideDef) return null
 
     // Read current domain state
-    const osadDepartments = OSADController.getDepartments()
+    const osadPrograms = OSADController.getDegreePrograms()
+    const osadCoordinatorAssignments = OSADController.getProgramCoordinatorAssignments()
     const osadOrgs = OSADController.getOrganizations()
     const osadClubs = OSADController.getClubs()
     const osadUsers = OSADController.getUsers('student', '', 'all', 'name')
@@ -29,23 +30,23 @@ export class AdminSetupGuideController {
       let requiredCount = 0
 
       if (step.evaluatorKey === 'evalOSADAcademicStructure') {
-        const deptCount = osadDepartments.length
-        if (deptCount >= 3) {
+        const programCount = osadPrograms.length
+        if (programCount >= 3) {
           status = SETUP_STEP_STATUS.COMPLETE
-          explanation = `${deptCount} Colleges & Departments configured.`
-        } else if (deptCount > 0) {
+          explanation = `${programCount} Academic Programs configured under Colleges.`
+        } else if (programCount > 0) {
           status = SETUP_STEP_STATUS.IN_PROGRESS
-          explanation = `${deptCount} Departments configured.`
+          explanation = `${programCount} Academic Programs configured.`
         } else {
           status = SETUP_STEP_STATUS.NOT_STARTED
-          explanation = 'No Colleges or Departments created yet.'
+          explanation = 'No Academic Programs configured yet.'
         }
-        completedCount = deptCount
+        completedCount = programCount
         requiredCount = 3
       }
 
       else if (step.evaluatorKey === 'evalOSADStudentPlacement') {
-        if (osadDepartments.length === 0) {
+        if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Prerequisite missing.'
           blockingReason = 'Create Academic Structure before assigning Student accounts.'
@@ -60,24 +61,23 @@ export class AdminSetupGuideController {
         requiredCount = 100
       }
 
-      else if (step.evaluatorKey === 'evalOSADDepartmentCoordinators') {
-        const deptsWithCoord = osadDepartments.filter(d => Boolean(d.coordinator_name || d.assigned_coordinator_id || d.dean_id))
-        completedCount = deptsWithCoord.length
-        requiredCount = osadDepartments.length
+      else if (step.evaluatorKey === 'evalOSADProgramCoordinators') {
+        completedCount = osadCoordinatorAssignments.filter(assignment => assignment.status === 'active').length
+        requiredCount = osadPrograms.length
 
-        if (osadDepartments.length === 0) {
+        if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Prerequisite missing.'
-          blockingReason = 'Create Departments before assigning Coordinators.'
+          blockingReason = 'Create Academic Programs before assigning Coordinators.'
         } else if (completedCount >= requiredCount && requiredCount > 0) {
           status = SETUP_STEP_STATUS.COMPLETE
-          explanation = `${completedCount} of ${requiredCount} Departments assigned.`
+          explanation = `${completedCount} of ${requiredCount} Academic Programs assigned.`
         } else if (completedCount > 0) {
           status = SETUP_STEP_STATUS.IN_PROGRESS
-          explanation = `${completedCount} of ${requiredCount} Departments assigned.`
+          explanation = `${completedCount} of ${requiredCount} Academic Programs assigned.`
         } else {
           status = SETUP_STEP_STATUS.NOT_STARTED
-          explanation = 'No Department Coordinators assigned.'
+          explanation = 'No Program Coordinators assigned.'
         }
       }
 
@@ -117,7 +117,7 @@ export class AdminSetupGuideController {
       }
 
       else if (step.evaluatorKey === 'evalHRCollegePlacement') {
-        if (osadDepartments.length === 0) {
+        if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Waiting on OSAD.'
           blockingReason = 'OSAD must create Academic Colleges before HR placement.'
@@ -130,11 +130,11 @@ export class AdminSetupGuideController {
       }
 
       else if (step.evaluatorKey === 'evalHRCollegeDeans') {
-        const deptsWithDean = osadDepartments.filter(d => Boolean(d.dean_name && d.dean_name !== 'Unassigned'))
-        completedCount = deptsWithDean.length
-        requiredCount = osadDepartments.length
+        const personnelWithDeanRole = hrPersonnel.filter(person => person.dean_assignment_id)
+        completedCount = personnelWithDeanRole.length
+        requiredCount = Math.max(1, new Set(hrPersonnel.map(person => person.college_id).filter(Boolean)).size)
 
-        if (osadDepartments.length === 0) {
+        if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Waiting on OSAD.'
           blockingReason = 'OSAD must create Academic Colleges first.'
@@ -150,11 +150,12 @@ export class AdminSetupGuideController {
         }
       }
 
-      else if (step.evaluatorKey === 'evalHRDepartmentSecretaries') {
-        status = SETUP_STEP_STATUS.COMPLETE
-        explanation = 'Department Secretaries designated per College.'
-        completedCount = 3
-        requiredCount = 3
+      else if (step.evaluatorKey === 'evalHRQualificationReviews') {
+        const reviewed = hrPersonnel.filter(person => person.qualification_review_status === 'cleared').length
+        completedCount = reviewed
+        requiredCount = hrPersonnel.length
+        status = reviewed > 0 ? SETUP_STEP_STATUS.IN_PROGRESS : SETUP_STEP_STATUS.NOT_STARTED
+        explanation = reviewed > 0 ? `${reviewed} Personnel qualification reviews cleared.` : 'No qualification reviews completed yet.'
       }
 
       return {

@@ -1,0 +1,8 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvaluationAuditJ5.test.jsx (38 tests) 79ms
+
+ Test Files  1 passed (1)
+      Tests  38 passed (38)
+   Start at  15:02:57
+   Duration  929ms (transform 115ms, setup 13ms, collect 152ms, tests 79ms, environment 0ms, prepare 161ms)

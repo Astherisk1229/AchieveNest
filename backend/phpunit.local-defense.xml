@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+    bootstrap="vendor/codeigniter4/framework/system/Test/bootstrap.php"
+    backupGlobals="false"
+    beStrictAboutOutputDuringTests="true"
+    colors="true"
+    failOnRisky="true"
+    failOnWarning="false"
+    stopOnError="false"
+    stopOnFailure="false"
+    cacheDirectory="build/.phpunit.cache"
+>
+    <testsuites>
+        <testsuite name="Local Defense">
+            <file>tests/unit/HealthTest.php</file>
+            <file>tests/Feature/HealthEndpointTest.php</file>
+            <file>tests/Feature/AuthMeEndpointTest.php</file>
+            <file>tests/Feature/AchievementAndEventEndpointTest.php</file>
+            <file>tests/Feature/PersonnelRoleEndpointTest.php</file>
+            <file>tests/Feature/ProvisioningAndLifecycleEndpointTest.php</file>
+            <file>tests/Feature/AdminAuthorizationAndIntegrityTest.php</file>
+            <file>tests/Feature/Day1FoundationAndRoleTest.php</file>
+        </testsuite>
+    </testsuites>
+
+    <logging>
+        <testdoxHtml outputFile="build/logs/testdox.html"/>
+        <testdoxText outputFile="build/logs/testdox.txt"/>
+        <junit outputFile="build/logs/logfile.xml"/>
+    </logging>
+
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+        <exclude>
+            <directory suffix=".php">./app/Views</directory>
+            <file>./app/Config/Routes.php</file>
+        </exclude>
+    </source>
+
+    <php>
+        <server name="app.baseURL" value="http://localhost:8080/"/>
+        <server name="CODEIGNITER_SCREAM_DEPRECATIONS" value="0"/>
+        <!-- Environment Configuration for Local Defense -->
+        <env name="CI_ENVIRONMENT" value="testing"/>
+        <env name="database.tests.strictOn" value="true"/>
+    </php>
+</phpunit>

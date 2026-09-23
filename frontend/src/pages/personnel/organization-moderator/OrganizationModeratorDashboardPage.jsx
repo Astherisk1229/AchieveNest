@@ -44,6 +44,7 @@ import DigitalCertificateModal from './DigitalCertificateModal'
 import EventCardOptionsMenu from './EventCardOptionsMenu'
 import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
 import DigitalCertificatesWorkspace from './certificates/DigitalCertificatesWorkspace'
+import { AchieveNestLogo } from '../../../components/brand'
 
 
 
@@ -95,7 +96,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   const [profileData, setProfileData] = useState({
     name: 'Computer Society NDMU',
     code: 'CEAC',
-    department: 'CEAC - College of Engineering, Architecture, and Computing',
+    college: 'CEAC - College of Engineering, Architecture, and Computing',
     academic_year: 'AY 2025-2026',
     moderator_name: 'Dr. Ana Reyes',
     description: 'The premier technology organization of Notre Dame of Marbel University, dedicated to fostering excellence in computing, innovation, and leadership among its members.',
@@ -112,7 +113,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
         ...prev,
         name: orgInfo.name || prev.name,
         code: orgInfo.code || prev.code,
-        department: orgInfo.department || prev.department,
+        college: orgInfo.college || prev.college,
         academic_year: orgInfo.academic_year || prev.academic_year,
         moderator_name: orgInfo.moderator_name || prev.moderator_name,
         description: orgInfo.description || prev.description,
@@ -1299,10 +1300,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 )}
               </div>
 
-              {/* College / Department */}
+              {/* College */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  College / Department
+                  College
                 </label>
                 {isEditingProfile ? (
                   <input
@@ -1489,7 +1490,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     {orgInfo.name}
                   </h1>
                   <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
-                    {orgInfo.department} • {orgInfo.academic_year}
+                    {orgInfo.college} • {orgInfo.academic_year}
                   </p>
                 </div>
               </div>
@@ -1502,13 +1503,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <Plus className="w-4 h-4 text-white" />
                   <span>Create Event</span>
                 </button>
-                <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
-                  <svg viewBox="0 0 100 100" className="w-full h-full">
-                    <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4" />
-                    <circle cx="50" cy="50" r="28" fill="#ffffff" />
-                    <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
-                  </svg>
-                </div>
+                <div className="rounded-xl bg-white p-1"><AchieveNestLogo variant="mark" size="compact" /></div>
               </div>
             </div>
 

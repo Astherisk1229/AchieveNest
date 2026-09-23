@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import DigitalBarcodeIDCardModal from '../student/modals/DigitalBarcodeIDCardModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
 import OrganizationModeratorDashboardPage from './organization-moderator/OrganizationModeratorDashboardPage'
-import DepartmentSecretaryDashboardPage from './department-secretary/DepartmentSecretaryDashboardPage'
+import { HREvaluationSubmissionsPage } from '../hr-admin/HREvaluationSubmissionsPage'
 
 import {
   Award,
@@ -30,6 +30,9 @@ import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import PersonnelDashboardController from '../../controllers/PersonnelDashboardController'
+import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
+import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
+import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
 
 export default function PersonnelDashboardPage({ currentUser: propUser, onRoleChange }) {
   const navigate = useNavigate()
@@ -42,10 +45,12 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || 'EMP-2021-0842')
 
   // Modals state
-  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false)
   const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState('All')
+  const [evaluationPeriod, setEvaluationPeriod] = useState(null)
+
+  useEffect(() => { getCurrentPersonnelEvaluationPeriod().then((data) => setEvaluationPeriod(data?.period || null)).catch(() => setEvaluationPeriod(null)) }, [])
 
   // User Profile
   const [profile, setProfile] = useState(() => PersonnelDashboardController.getDefaultProfile(currentUser))
@@ -90,38 +95,28 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
         <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
         <OrganizationModeratorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
-      ) : (activeRoleContext === 'dean' || activeRoleContext === 'department_secretary') && activeTabParam !== 'faculty_view' ? (
-        <DepartmentSecretaryDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
+      ) : activeRoleContext === 'dean' && activeTabParam === 'workspace' ? (
+        <HREvaluationSubmissionsPage key="dean-evaluation-workspace" />
       ) : (
         <div className="space-y-8 font-sans">
 
           {/* ================= HERO SUMMARY BANNER ================= */}
-          <div className="bg-[#EFF7F0] p-6 sm:p-8 rounded-3xl shadow-xs border border-[#69A97C] relative overflow-hidden">
+          <div className="bg-[#EFF7F0] dark:bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-xs border border-[#69A97C] dark:border-emerald-900/60 relative overflow-hidden">
 
             <div className="flex items-start justify-between mb-8 relative z-10">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#149653] border border-emerald-300/30 flex items-center justify-center text-white shadow-md shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[#149653] dark:bg-emerald-600 border border-emerald-300/30 flex items-center justify-center text-white shadow-md shrink-0">
                   <Award className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-extrabold text-[#17663B] tracking-tight">Personnel Professional Portfolio</h1>
+                    <h1 className="text-2xl font-extrabold text-[#17663B] dark:text-emerald-300 tracking-tight">Personnel Professional Portfolio</h1>
                   </div>
-                  <p className="text-xs text-[#245F42] font-medium mt-0.5">
-                    {profile.full_name} • {profile.employee_id} • {profile.department}
+                  <p className="text-xs text-[#245F42] dark:text-slate-300 font-medium mt-0.5">
+                    {profile.full_name} • {profile.employee_id} • {formatPersonnelPlacement(profile)}
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsBarcodeOpen(true)}
-                className="px-3 py-2 rounded-2xl bg-[#149653] hover:bg-[#125536] border border-[#149653] text-white flex items-center gap-2 transition text-xs font-bold shadow-xs group shrink-0"
-                title="Click to expand Faculty Digital ID Barcode"
-              >
-                <QrCode className="w-4 h-4 text-white group-hover:scale-110 transition" />
-                <span className="hidden sm:inline">Digital ID Barcode</span>
-              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 relative z-10 w-full">
@@ -130,7 +125,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 to="/personnel/portfolio/edit"
                 className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
               >
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] rounded-r-full"></div>
+                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] dark:bg-emerald-500 rounded-r-full"></div>
 
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -145,7 +140,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   <span className="text-xl sm:text-2xl font-extrabold text-[#159552] dark:text-emerald-400 font-heading leading-none">
                     {accomplishments.filter(a => a.proof_file || a.attached_file_name).length}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#17663B] dark:text-[#245F42] text-[13px] font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#17663B] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800 text-[13px] font-bold">
                     Proof PDFs
                   </span>
                 </div>
@@ -161,7 +156,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
 
               {/* Card 2: Evaluation Period */}
               <div className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs transition-all duration-200 text-left overflow-hidden flex flex-col justify-between w-full">
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] rounded-r-full"></div>
+                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] dark:bg-emerald-500 rounded-r-full"></div>
 
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -173,9 +168,9 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="flex items-center z-10 relative">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#159552]/40 dark:border-emerald-500/40 text-[#17663B] dark:text-[#245F42] text-[13px] font-bold bg-white dark:bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#159552]/40 dark:border-emerald-500/40 text-[#17663B] dark:text-emerald-300 text-[13px] font-bold bg-white dark:bg-slate-900">
                     <span className="w-2 h-2 rounded-full bg-[#159552] dark:bg-emerald-400"></span>
-                    AY 2025–2026
+                    {evaluationPeriod?.academic_year_label || 'No open period'}
                   </span>
                 </div>
 
@@ -193,7 +188,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 to="/personnel/portfolio"
                 className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
               >
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] rounded-r-full"></div>
+                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] dark:bg-emerald-500 rounded-r-full"></div>
 
                 <div className="flex items-center gap-2.5 mb-2.5">
                   <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -205,19 +200,20 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
 
                 <div className="flex items-center z-10 relative">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${portfolio?.status === 'HR_APPROVED' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-[#245F42]' :
-                    portfolio?.status === 'ENDORSED_TO_HR' ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' :
-                      portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
-                        'border-amber-400 bg-amber-50/80 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800' :
+                    (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800' :
+                      (portfolio?.status === 'SUBMITTED_TO_DEP_SEC' || portfolio?.status === 'submitted' || portfolio?.status === 'in_evaluation') ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800' :
+                        'border-amber-400 bg-amber-50/80 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
                     }`}>
-                    <span className={`w-2 h-2 rounded-full ${portfolio?.status === 'HR_APPROVED' ? 'bg-[#16834a]' :
-                      portfolio?.status === 'ENDORSED_TO_HR' ? 'bg-blue-500' :
+                    <span className={`w-2 h-2 rounded-full ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'bg-[#16834a] dark:bg-emerald-400' :
+                      (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'bg-blue-500' :
                         'bg-amber-500 animate-pulse'
                       }`}></span>
                     <span className="truncate">
-                      {portfolio?.status === 'SUBMITTED_TO_DEP_SEC' ? 'Submitted to Sec' :
-                        portfolio?.status === 'ENDORSED_TO_HR' ? 'Dept Endorsed' :
-                          portfolio?.status === 'HR_APPROVED' ? 'HR Approved' : 'Draft Portfolio'}
+                      {(portfolio?.status === 'submitted' || portfolio?.status === 'SUBMITTED_TO_DEP_SEC') ? 'Submitted' :
+                        portfolio?.status === 'in_evaluation' ? 'In Evaluation' :
+                          (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'Ready for Finalization' :
+                            (portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'Approved' : 'Draft Portfolio'}
                     </span>
                   </span>
                 </div>
@@ -240,7 +236,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
               <h2 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
                 <span>Accomplishments Timeline</span>
                 {activeFilter !== 'All' && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] border border-[#cbe6d2] dark:border-emerald-800">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800">
                     Filtered: {activeFilter}
                   </span>
                 )}
@@ -249,13 +245,13 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 <button
                   type="button"
                   onClick={() => setIsSubmitOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Log Accomplishment</span>
                 </button>
                 <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  <Filter className="w-3.5 h-3.5" />
+                  <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                   <span>Showing {filteredAccomplishments.length} of {accomplishments.length} records</span>
                 </div>
               </div>
@@ -276,8 +272,8 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   key={cat}
                   type="button"
                   onClick={() => setActiveFilter(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 ${activeFilter === cat
-                    ? 'bg-[#176B43] text-white shadow-sm'
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer ${activeFilter === cat
+                    ? 'bg-[#176B43] dark:bg-emerald-600 text-white shadow-xs'
                     : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                 >
@@ -298,21 +294,21 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   return (
                     <div
                       key={item.id}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-sm transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-xs transition flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
                       <div className="flex items-center gap-4 flex-1">
-                        <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#16834a] bg-[#E7F3E9] border-[#cbe6d2]'}`}>
+                        <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#16834a] dark:text-emerald-400 bg-[#E7F3E9] dark:bg-emerald-950/60 border-[#cbe6d2] dark:border-emerald-800'}`}>
                           <IconComponent className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{item.title}</h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{item.description}</p>
+                          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{item.title}</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 line-clamp-1">{item.description}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">📅 {item.date}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-400 font-medium">📅 {item.date}</span>
                             <span className="text-slate-300 dark:text-slate-700">•</span>
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.status === 'Verified'
-                                ? 'bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-[#245F42] border border-[#cbe6d2] dark:border-emerald-800'
+                                ? 'bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800'
                                 : item.status === 'Endorsed'
                                   ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
                                   : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -330,12 +326,12 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                         <button
                           type="button"
                           onClick={() => alert(`Viewing attached proof: ${item.attached_file_name}`)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition"
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
                         >
                           <FileCheck2 className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" />
                           <span>Proof</span>
                         </button>
-                        <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-[#245F42] border border-emerald-100 dark:border-emerald-800 shrink-0">
+                        <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800 shrink-0">
                           {item.category}
                         </span>
                       </div>
@@ -351,12 +347,6 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       )}
 
       {/* MODALS */}
-      <DigitalBarcodeIDCardModal
-        user={profile}
-        isOpen={isBarcodeOpen}
-        onClose={() => setIsBarcodeOpen(false)}
-      />
-
       <EditBasicInfoModal
         isOpen={isEditInfoOpen}
         onClose={() => setIsEditInfoOpen(false)}
@@ -364,11 +354,22 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
         onSave={handleSaveBasicInfo}
       />
 
-      <PersonnelSubmissionModal
-        isOpen={isSubmitOpen}
-        onClose={() => setIsSubmitOpen(false)}
-        onSubmitAccomplishment={handleAddNewAccomplishment}
-      />
+      {usesFacultyAcademicPortfolio(currentUser) ? (
+        <FacultyAcademicSubmissionModal
+          isOpen={isSubmitOpen}
+          onClose={() => setIsSubmitOpen(false)}
+          onSubmitAccomplishment={handleAddNewAccomplishment}
+          currentUser={currentUser}
+          areaCode="A"
+          areaName="Professional Development"
+        />
+      ) : (
+        <PersonnelSubmissionModal
+          isOpen={isSubmitOpen}
+          onClose={() => setIsSubmitOpen(false)}
+          onSubmitAccomplishment={handleAddNewAccomplishment}
+        />
+      )}
     </div>
   )
 }

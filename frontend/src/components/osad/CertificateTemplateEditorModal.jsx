@@ -1,315 +1,96 @@
-import React, { useState } from 'react'
-import { X, Sparkles, ShieldCheck, Eye, Save, AlertCircle, Plus, Trash2 } from 'lucide-react'
-import CertificateTemplateRenderer from '../../services/CertificateTemplateRenderer'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, Check, Redo2, Save, Send, Undo2, WifiOff } from 'lucide-react'
+import { Button } from '../ui/button'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
+import CertificateStudioPanels from './certificate-studio/CertificateStudioPanels'
+import CertificateStudioPreview from './certificate-studio/CertificateStudioPreview'
+import { PREVIEW_SCENARIOS, STUDIO_LAYOUT_DEFAULTS, STUDIO_SECTIONS, detectStudioIssues, normalizeStudioDraft } from './certificate-studio/certificateStudioConfig'
 
-export default function CertificateTemplateEditorModal({ isOpen, onClose, onPublish }) {
-  const [name, setName] = useState('New OSAD Certificate Template')
-  const [allowedContexts, setAllowedContexts] = useState(['event', 'award'])
-  const [heading, setHeading] = useState('OFFICIAL CERTIFICATE OF EXCELLENCE')
-  const [recipientLeadIn, setRecipientLeadIn] = useState('This certificate is proudly awarded to')
-  const [body, setBody] = useState('In recognition of outstanding performance and contribution to {{event_title}} hosted by {{organization_name}} on {{event_date}}.')
-  const [themeId, setThemeId] = useState('emerald_gold')
-  const [borderStyle, setBorderStyle] = useState('classic_ornate')
-  
-  const [signatories, setSignatories] = useState([
-    { slotId: 'sig-1', title: 'OSAD Director', name: 'Director Marcus Vance' },
-    { slotId: 'sig-2', title: 'Faculty Moderator', name: 'Prof. Grace Tan' }
-  ])
+const REQUIRED_FIELDS = new Set(['recipient_name', 'activity_title', 'issuer_name'])
+const ISSUANCE_FIELDS = new Set(['issued_date', 'certificate_number', 'verification_url'])
+const clone = value => JSON.parse(JSON.stringify(value))
+const messageFrom = error => error?.error?.message || error?.message || 'The governed template operation could not be completed.'
 
-  const [activeTab, setActiveTab] = useState('content') // 'content' | 'layout' | 'signatories' | 'preview'
+export default function CertificateTemplateEditorModal({ isOpen = true, onClose, family, registry, onSave, onValidate, onPublish, isBusy = false }) {
+  const sourceDraft = family?.draft_version
+  const [draft, setDraft] = useState(null)
+  const [savedSnapshot, setSavedSnapshot] = useState('')
+  const [activeSection, setActiveSection] = useState('design')
+  const [focusedField, setFocusedField] = useState('body')
+  const [scenario, setScenario] = useState('standard')
+  const [zoom, setZoom] = useState('fit')
+  const [showGuides, setShowGuides] = useState(false)
   const [error, setError] = useState('')
+  const [backendIssues, setBackendIssues] = useState([])
+  const [saveState, setSaveState] = useState('Saved')
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [assetNotice, setAssetNotice] = useState('')
+  const [fontNotice, setFontNotice] = useState('')
+  const [mobileView, setMobileView] = useState('inspector')
+  const undoStack = useRef([])
+  const redoStack = useRef([])
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (!isOpen || !sourceDraft) return
+    const next = normalizeStudioDraft(sourceDraft)
+    setDraft(next); setSavedSnapshot(JSON.stringify(next)); setBackendIssues(sourceDraft.governance?.validation?.issues || []); setSaveState('Saved')
+    undoStack.current = []; redoStack.current = []
+  }, [isOpen, sourceDraft])
 
-  const handleAddSignatory = () => {
-    setSignatories([
-      ...signatories,
-      { slotId: `sig-${Date.now()}`, title: 'Official Signatory', name: 'Signatory Name' }
-    ])
-  }
+  const dirty = Boolean(draft && JSON.stringify(draft) !== savedSnapshot)
+  const scenarioData = useMemo(() => PREVIEW_SCENARIOS[scenario] || {}, [scenario])
+  const layoutIssues = useMemo(() => detectStudioIssues(draft, scenarioData), [draft, scenarioData])
+  const issues = [...backendIssues, ...layoutIssues.filter(item => !backendIssues.some(issue => issue.code === item.code))]
+  const validationPassed = sourceDraft?.governance?.validation?.status === 'PASS' && !dirty && issues.length === 0
 
-  const handleRemoveSignatory = (idx) => {
-    setSignatories(signatories.filter((_, i) => i !== idx))
-  }
+  useEffect(() => { if (!dirty) return undefined; const protect = event => { event.preventDefault(); event.returnValue = '' }; window.addEventListener('beforeunload', protect); return () => window.removeEventListener('beforeunload', protect) }, [dirty])
 
-  const handleSave = (e) => {
-    e.preventDefault()
-    if (!name.trim()) {
-      setError('Template name is required.')
-      return
-    }
-    if (!body.trim()) {
-      setError('Certificate body text is required.')
-      return
-    }
-
-    onPublish({
-      familyData: {
-        name,
-        allowedContexts
-      },
-      versionData: {
-        contentSchema: {
-          heading,
-          recipientLeadIn,
-          body,
-          footerNote: 'Notre Dame of Marbel University • Office of Student Affairs & Services'
-        },
-        layoutSchema: {
-          themeId,
-          borderStyle
-        },
-        signatorySlots: signatories
-      }
-    })
-    onClose()
-  }
-
-  const renderedBody = CertificateTemplateRenderer.renderBody(body, {
-    recipient_name: 'MARIA CLARA SANTOS',
-    event_title: 'Computer Society Tech Summit 2026',
-    organization_name: 'Computer Society NDMU',
-    event_date: 'February 20, 2026',
-    academic_year: 'AY 2025-2026'
+  const commit = updater => setDraft(current => {
+    const next = typeof updater === 'function' ? updater(current) : updater
+    if (JSON.stringify(next) === JSON.stringify(current)) return current
+    undoStack.current.push(clone(current)); if (undoStack.current.length > 50) undoStack.current.shift(); redoStack.current = []
+    setSaveState('Unsaved changes'); setBackendIssues([])
+    return next
   })
+  const undo = () => { if (!undoStack.current.length) return; const previous = undoStack.current.pop(); redoStack.current.push(clone(draft)); setDraft(previous); setSaveState('Unsaved changes') }
+  const redo = () => { if (!redoStack.current.length) return; const next = redoStack.current.pop(); undoStack.current.push(clone(draft)); setDraft(next); setSaveState('Unsaved changes') }
+  const updateLayout = patch => commit(current => ({ ...current, layout_schema: { ...current.layout_schema, ...patch } }))
+  const updateContent = (field, value) => commit(current => ({ ...current, content_schema: { ...current.content_schema, [field]: value } }))
+  const updateSlots = slots => commit(current => ({ ...current, signatory_slots: slots }))
+  const insertField = field => {
+    const token = field.token || `{{${field.code}}}`
+    commit(current => {
+      const currentValue = current.content_schema[focusedField] || ''
+      const placeholder_contract = current.placeholder_contract.some(item => item.name === field.code) ? current.placeholder_contract : [...current.placeholder_contract, { name: field.code, requirement_type: ISSUANCE_FIELDS.has(field.code) ? 'RESOLVED_AT_ISSUANCE' : REQUIRED_FIELDS.has(field.code) ? 'REQUIRED' : 'OPTIONAL' }]
+      return { ...current, content_schema: { ...current.content_schema, [focusedField]: `${currentValue}${currentValue ? ' ' : ''}${token}` }, placeholder_contract }
+    })
+  }
+  const setRequirement = (name, requirement_type) => commit(current => ({ ...current, placeholder_contract: current.placeholder_contract.some(item => item.name === name) ? current.placeholder_contract.map(item => item.name === name ? { ...item, requirement_type } : item) : [...current.placeholder_contract, { name, requirement_type }] }))
+  const save = async () => { setError(''); setSaveState('Saving…'); try { const version = await onSave(sourceDraft.id, { content_schema: draft.content_schema, layout_schema: draft.layout_schema, placeholder_contract: draft.placeholder_contract, signatory_slots: draft.signatory_slots, asset_bindings: draft.asset_bindings, change_summary: draft.change_summary, expected_token: sourceDraft.concurrency_token }); const next = normalizeStudioDraft(version); setDraft(next); setSavedSnapshot(JSON.stringify(next)); setSaveState('Saved'); undoStack.current = []; redoStack.current = [] } catch (nextError) { setError(messageFrom(nextError)); setSaveState('Save failed') } }
+  const validate = async () => { setError(''); try { const result = await onValidate(sourceDraft.id, sourceDraft.concurrency_token); setBackendIssues(result.issues || []) } catch (nextError) { setError(messageFrom(nextError)); setBackendIssues(nextError?.error?.issues || []) } }
+  const publish = async () => { setPublishOpen(false); setError(''); try { await onPublish(sourceDraft.id, sourceDraft.concurrency_token) } catch (nextError) { setError(messageFrom(nextError)); setBackendIssues(nextError?.error?.issues || []) } }
+  const requestClose = () => dirty ? setDiscardOpen(true) : onClose()
+  const readiness = [
+    { label: 'Purpose configured', pass: Boolean(family?.certificate_purpose) }, { label: 'Required fields present', pass: draft?.placeholder_contract.some(item => item.requirement_type === 'REQUIRED') },
+    { label: 'No unknown placeholders', pass: !backendIssues.some(item => String(item.code).includes('PLACEHOLDER')) }, { label: 'Signatory slots valid', pass: draft?.signatory_slots.length > 0 && draft.signatory_slots.length <= 3 },
+    { label: 'Preview renders', pass: Boolean(draft) }, { label: 'No overflow issues', pass: layoutIssues.length === 0 }, { label: 'Assets available', pass: true }, { label: 'No unsaved changes', pass: !dirty }
+  ]
+  if (!isOpen || !family || !sourceDraft || !draft) return null
+  const publishSummary = `This version will be used for future ${family.certificate_purpose} certificates. Published v${family.current_published_version?.version_number || '—'} will remain in Version History. Existing certificates will not change.`
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#131e2e] rounded-3xl w-full max-w-5xl max-h-[90vh] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden font-sans">
-        
-        {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/40">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-[#064e2b] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                Create OSAD Certificate Template
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Design and publish official university certificate templates for Awards and Events.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Modal Body: Split Pane (Editor Form vs Live Preview) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-y-auto">
-          
-          {/* Left Pane: Configuration Form (5 cols) */}
-          <form onSubmit={handleSave} className="lg:col-span-5 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800 space-y-5">
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Template Family Title</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Certificate of Leadership & Merit"
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Allowed Usage Contexts</label>
-              <div className="flex gap-4 text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allowedContexts.includes('event')}
-                    onChange={(e) => {
-                      if (e.target.checked) setAllowedContexts([...allowedContexts, 'event'])
-                      else setAllowedContexts(allowedContexts.filter(c => c !== 'event'))
-                    }}
-                    className="accent-[#064e2b]"
-                  />
-                  <span>Organization Events</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allowedContexts.includes('award')}
-                    onChange={(e) => {
-                      if (e.target.checked) setAllowedContexts([...allowedContexts, 'award'])
-                      else setAllowedContexts(allowedContexts.filter(c => c !== 'award'))
-                    }}
-                    className="accent-[#064e2b]"
-                  />
-                  <span>OSAD Award Categories</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Certificate Heading</label>
-              <input
-                type="text"
-                value={heading}
-                onChange={(e) => setHeading(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Recipient Lead-In Text</label>
-              <input
-                type="text"
-                value={recipientLeadIn}
-                onChange={(e) => setRecipientLeadIn(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Body Text (with Placeholders)</label>
-                <span className="text-[10px] text-slate-400 font-bold">Use {"{{event_title}}"}, {"{{organization_name}}"}</span>
-              </div>
-              <textarea
-                rows={3}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white focus:outline-hidden focus:border-[#064e2b]"
-              />
-            </div>
-
-            {/* Signatory Slots Configuration */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Signatory Slots</label>
-                <button
-                  type="button"
-                  onClick={handleAddSignatory}
-                  className="text-[10px] font-extrabold text-[#064e2b] dark:text-emerald-400 hover:underline flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Signatory</span>
-                </button>
-              </div>
-
-              {signatories.map((sig, idx) => (
-                <div key={sig.slotId} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <input
-                    type="text"
-                    value={sig.title}
-                    onChange={(e) => {
-                      const copy = [...signatories]
-                      copy[idx].title = e.target.value
-                      setSignatories(copy)
-                    }}
-                    placeholder="Title"
-                    className="w-1/2 px-2 py-1 text-[11px] font-bold rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                  <input
-                    type="text"
-                    value={sig.name}
-                    onChange={(e) => {
-                      const copy = [...signatories]
-                      copy[idx].name = e.target.value
-                      setSignatories(copy)
-                    }}
-                    placeholder="Name"
-                    className="w-1/2 px-2 py-1 text-[11px] font-bold rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                  {signatories.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSignatory(idx)}
-                      className="text-slate-400 hover:text-rose-500 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 flex items-center gap-3">
-              <button
-                type="submit"
-                className="flex-1 py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#143326] text-white font-extrabold text-xs transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Save className="w-4 h-4" />
-                <span>Publish Certificate Template</span>
-              </button>
-            </div>
-          </form>
-
-          {/* Right Pane: Live Certificate Print-Accurate Preview (7 cols) */}
-          <div className="lg:col-span-7 p-6 bg-slate-100 dark:bg-slate-950 flex flex-col justify-between space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Eye className="w-4 h-4 text-[#064e2b] dark:text-emerald-400" />
-                <span>Sample Live Preview (Not Issued)</span>
-              </span>
-              <span className="text-[10px] font-extrabold px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                WATERMARK PREVIEW
-              </span>
-            </div>
-
-            {/* Rendered Certificate Card */}
-            <div className="bg-white text-slate-900 rounded-2xl p-8 border-4 border-emerald-900 shadow-xl space-y-6 relative overflow-hidden font-serif">
-              {/* Decorative Corner Ornaments */}
-              <div className="absolute top-2 left-2 w-8 h-8 border-t-2 border-l-2 border-emerald-900" />
-              <div className="absolute top-2 right-2 w-8 h-8 border-t-2 border-r-2 border-emerald-900" />
-              <div className="absolute bottom-2 left-2 w-8 h-8 border-b-2 border-l-2 border-emerald-900" />
-              <div className="absolute bottom-2 right-2 w-8 h-8 border-b-2 border-r-2 border-emerald-900" />
-
-              <div className="text-center space-y-2">
-                <p className="text-[10px] tracking-widest uppercase font-sans font-bold text-slate-500">
-                  Notre Dame of Marbel University • Koronadal City
-                </p>
-                <h3 className="text-xl font-bold tracking-tight text-emerald-950 uppercase">
-                  {heading}
-                </h3>
-              </div>
-
-              <div className="text-center space-y-3 py-2">
-                <p className="text-xs italic text-slate-600 font-sans">{recipientLeadIn}</p>
-                <h2 className="text-2xl font-extrabold text-slate-900 tracking-wide underline decoration-emerald-600 underline-offset-8">
-                  MARIA CLARA SANTOS
-                </h2>
-                <p className="text-xs font-sans text-slate-700 max-w-md mx-auto leading-relaxed pt-2">
-                  {renderedBody}
-                </p>
-              </div>
-
-              {/* Signatories Row */}
-              <div className="pt-6 border-t border-slate-200 grid grid-cols-2 gap-6 text-center font-sans">
-                {signatories.map(s => (
-                  <div key={s.slotId} className="space-y-1">
-                    <div className="border-b border-slate-400 w-3/4 mx-auto pb-1">
-                      <span className="text-xs font-bold text-slate-900 block">{s.name}</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase block">{s.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <p className="text-[10px] text-slate-400 text-center font-medium">
-              Official certificate numbers e.g. <code className="font-mono text-slate-600 dark:text-slate-300">NDMU-CERT-2026-XXXXX</code> are assigned automatically upon issuance.
-            </p>
-          </div>
-
-        </div>
-
-      </div>
+  return <main className="-m-4 min-h-[calc(100vh-4rem)] bg-slate-100 text-slate-950 selection:bg-emerald-200 selection:text-emerald-950 dark:bg-[#0b1420] dark:text-white dark:selection:bg-emerald-800 sm:-m-6 lg:-m-8">
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-[#111c2a] sm:px-5"><div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5"><button type="button" onClick={requestClose} aria-label="Back to certificate templates" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800"><ArrowLeft className="h-4 w-4" /></button><div className="min-w-0"><p className="truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">Certificate Templates</p><div className="flex items-center gap-2"><h1 className="truncate text-base font-semibold tracking-[-0.02em] sm:text-xl">{family.name}</h1><span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-200">Draft v{sourceDraft.version_number}</span></div></div></div>
+      <div className="flex flex-wrap items-center justify-end gap-1.5"><span aria-live="polite" className={`mr-1 flex items-center gap-1.5 text-xs font-medium ${saveState === 'Save failed' ? 'text-rose-700 dark:text-rose-300' : dirty ? 'text-amber-700 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>{!dirty && saveState === 'Saved' ? <Check className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" /> : <span className={`h-1.5 w-1.5 rounded-full ${saveState === 'Saving…' ? 'animate-pulse bg-sky-500 motion-reduce:animate-none' : saveState === 'Save failed' ? 'bg-rose-500' : dirty ? 'bg-amber-500' : 'bg-emerald-600'}`}/>}<span className="hidden sm:inline">{saveState === 'Save failed' ? 'Save failed' : saveState === 'Saving…' ? 'Saving…' : dirty ? 'Unsaved changes' : saveState}</span></span><button type="button" aria-label="Undo" title="Undo" disabled={!undoStack.current.length} onClick={undo} className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-30 dark:hover:bg-slate-800"><Undo2 className="h-4 w-4" /></button><button type="button" aria-label="Redo" title="Redo" disabled={!redoStack.current.length} onClick={redo} className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600 disabled:opacity-30 dark:hover:bg-slate-800"><Redo2 className="h-4 w-4" /></button><Button variant="outline" disabled={isBusy || !dirty} onClick={save} className="h-9 gap-1.5 rounded-lg px-3 text-xs shadow-none"><Save className="h-3.5 w-3.5" />{saveState === 'Saving…' ? 'Saving…' : 'Save Draft'}</Button><Button disabled={isBusy || !validationPassed} onClick={() => setPublishOpen(true)} className="h-9 gap-1.5 rounded-lg bg-emerald-700 px-3 text-xs shadow-sm hover:bg-emerald-800"><Send className="h-3.5 w-3.5" />{isBusy ? 'Working…' : 'Publish'}</Button></div>
+    </div>{error && <div role="status" className="mt-2 flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300"><WifiOff className="h-3.5 w-3.5"/><span className="font-semibold">Server unavailable.</span><span className="hidden text-slate-500 dark:text-slate-400 sm:inline">Preview remains available. Save and Publish may be unavailable.</span></div>}</header>
+    <nav aria-label="Certificate Studio steps" className="overflow-x-auto border-b border-slate-200 bg-white px-3 dark:border-slate-800 dark:bg-[#111c2a] sm:px-5"><ol className="flex w-max min-w-full gap-5 sm:gap-8">{STUDIO_SECTIONS.map((item, index) => <li key={item.id}><button type="button" aria-current={activeSection === item.id ? 'step' : undefined} onClick={() => { setActiveSection(item.id); setMobileView('inspector') }} className={`relative flex min-h-12 items-center gap-2 whitespace-nowrap px-1 text-xs outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${activeSection === item.id ? 'font-semibold text-emerald-800 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-emerald-600 dark:text-emerald-300' : 'font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}><span aria-hidden="true" className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] ${activeSection === item.id ? 'border-emerald-600 text-emerald-700 dark:text-emerald-300' : 'border-slate-300 dark:border-slate-700'}`}>{index + 1}</span>{item.label}</button></li>)}</ol></nav>
+    <div className="flex border-b border-slate-200 bg-white p-1.5 dark:border-slate-800 dark:bg-[#111c2a] md:hidden"><button type="button" onClick={()=>setMobileView('inspector')} className={`flex-1 rounded-md py-2 text-xs font-semibold ${mobileView==='inspector'?'bg-slate-100 text-emerald-800 dark:bg-slate-800 dark:text-emerald-300':'text-slate-500'}`}>Inspector</button><button type="button" onClick={()=>setMobileView('preview')} className={`flex-1 rounded-md py-2 text-xs font-semibold ${mobileView==='preview'?'bg-slate-100 text-emerald-800 dark:bg-slate-800 dark:text-emerald-300':'text-slate-500'}`}>Preview</button></div>
+    <div className="grid min-h-[calc(100vh-10rem)] grid-cols-1 md:grid-cols-[minmax(19rem,35%)_minmax(0,1fr)]">
+      <aside className={`${mobileView==='preview'?'hidden md:block':'block'} max-h-none overflow-y-auto border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-[#131e2e] md:max-h-[calc(100vh-10rem)] md:border-b-0 md:border-r`} aria-label={`${activeSection} controls`}><CertificateStudioPanels activeSection={activeSection} draft={draft} family={family} registry={registry} focusedField={focusedField} setFocusedField={setFocusedField} onContent={updateContent} onLayout={updateLayout} onSlots={updateSlots} onInsertField={insertField} onRequirement={setRequirement} onResetDesign={() => updateLayout(STUDIO_LAYOUT_DEFAULTS)} onAssetFile={event => event.target.files?.[0] && setAssetNotice(`${event.target.files[0].name} selected for governed upload in Plan 2.`)} onFontFile={event => event.target.files?.[0] && setFontNotice(`${event.target.files[0].name} selected. Licensing and embedding are handled in Plan 2.`)} assetNotice={assetNotice} fontNotice={fontNotice} readiness={readiness} issues={issues} onValidate={validate} isBusy={isBusy} onNavigate={setActiveSection} onRestorePublished={() => family.current_published_version && commit(normalizeStudioDraft(family.current_published_version))} onChangeSummary={value => commit(current => ({ ...current, change_summary: value }))} /></aside>
+      <div className={`${mobileView==='preview'?'block':'hidden md:block'} min-w-0`}><CertificateStudioPreview draft={draft} scenarioData={scenarioData} scenario={scenario} setScenario={setScenario} zoom={zoom} setZoom={setZoom} showGuides={showGuides} setShowGuides={setShowGuides} issues={layoutIssues} reviewMode={activeSection==='publishing'} /></div>
     </div>
-  )
+    <ConfirmDialog open={discardOpen} title="Discard unsaved studio changes?" message="Your content and design changes have not been saved." confirmLabel="Discard changes" onConfirm={onClose} onCancel={() => setDiscardOpen(false)} />
+    <ConfirmDialog open={publishOpen} title={`Publish ${family.name} v${sourceDraft.version_number}?`} message={publishSummary} confirmLabel={`Publish v${sourceDraft.version_number}`} cancelLabel="Cancel" onConfirm={publish} onCancel={() => setPublishOpen(false)} isProcessing={isBusy} />
+  </main>
 }

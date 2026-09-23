@@ -27,36 +27,50 @@ export default class AchievementModel {
   #portfolio_id
   #portfolio_name
   #portfolio_status
+  #evidence_id
+  #evidence
+  #ocr_metadata
+  #category_metadata
 
   constructor(data = {}) {
     this.#id = data.id || `ach_${Math.random().toString(36).substr(2, 9)}`
-    this.#student_id = data.student_id || '2024-00000'
-    this.#student_name = data.student_name || 'Anonymous Student'
-    this.#program = data.program || 'BS Computer Science'
+    this.#student_id = data.student_id || data.personnel_profile_id || '2024-00000'
+    this.#student_name = data.student_name || data.personnel_name || 'Anonymous'
+    this.#program = data.program || ''
     this.#title = data.title || 'Untitled Achievement'
     this.#event_name = data.event_name || ''
-    this.#issuer = data.issuer || ''
-    this.#location = data.location || data.issuer || ''
-    this.#category = data.category || 'Academic'
+    this.#issuer = data.issuer || data.organizer_or_publisher || ''
+    this.#location = data.location || data.organizer_or_publisher || data.issuer || ''
+    this.#category = data.category || data.category_code || 'Unclassified'
     this.#scope_level = data.scope_level || 'Institutional / Campus-Wide'
     this.#rank_conferred = data.rank_conferred || 'Participant / Special Award'
     this.#academic_year = data.academic_year || 'AY 2025-2026'
     this.#semester = data.semester || '1st Semester'
     this.#description = data.description || ''
-    this.#attached_file_name = data.attached_file_name || 'supporting_document.pdf'
-    this.#date = data.date || new Date().toISOString().split('T')[0]
-    this.#status = data.status || 'Pending Review' // 'Pending Review' | 'Verified' | 'Returned' | 'Draft'
-    this.#return_remarks = data.return_remarks || ''
-    this.#docs_count = Number(data.docs_count) || 1
+    this.#attached_file_name = data.primary_evidence?.original_filename || data.evidence?.[0]?.original_filename || ''
+    this.#date = data.date || data.occurrence_date || data.date_achieved || new Date().toISOString().split('T')[0]
+    this.#status = data.status === 'submitted' ? 'Pending Review' : (data.status === 'verified' ? 'Verified' : (data.status === 'rejected' ? 'Returned' : (data.status || 'Pending Review')))
+    this.#return_remarks = data.return_remarks || data.rejection_reason || ''
+    this.#docs_count = Number(data.docs_count) || (Array.isArray(data.evidence) ? data.evidence.length : 0)
     this.#participation_photo_name = data.participation_photo_name || ''
     this.#is_favorited = Boolean(data.is_favorited)
     this.#portfolio_id = data.portfolio_id || null
     this.#portfolio_name = data.portfolio_name || (data.portfolio_id ? 'AY 2025-2026 Personnel Ranking Portfolio' : 'Not attached')
     this.#portfolio_status = data.portfolio_status || (data.status === 'Verified' ? 'Verified in Portfolio' : data.portfolio_id ? 'Included in Active Portfolio' : 'Available for Portfolio')
+    this.#evidence_id = data.evidence_id || data.primary_evidence?.id || data.evidence?.[0]?.id || null
+    this.#evidence = Array.isArray(data.evidence) ? data.evidence : []
+    this.#ocr_metadata = data.ocr_metadata || null
+    this.#category_metadata = typeof data.category_metadata === 'string'
+      ? (() => { try { return JSON.parse(data.category_metadata || '{}') } catch { return {} } })()
+      : (data.category_metadata || {})
   }
 
   // Encapsulated Getters
   get id() { return this.#id }
+  get evidence_id() { return this.#evidence_id || this.#evidence?.[0]?.id || null }
+  get evidence() { return this.#evidence }
+  get ocr_metadata() { return this.#ocr_metadata }
+  get category_metadata() { return this.#category_metadata }
   get student_id() { return this.#student_id }
   get student_name() { return this.#student_name }
   get program() { return this.#program }
@@ -177,7 +191,11 @@ export default class AchievementModel {
       is_favorited: this.#is_favorited,
       portfolio_id: this.#portfolio_id,
       portfolio_name: this.#portfolio_name,
-      portfolio_status: this.#portfolio_status
+      portfolio_status: this.#portfolio_status,
+      evidence_id: this.#evidence_id,
+      evidence: this.#evidence,
+      ocr_metadata: this.#ocr_metadata,
+      category_metadata: this.#category_metadata
     }
   }
 

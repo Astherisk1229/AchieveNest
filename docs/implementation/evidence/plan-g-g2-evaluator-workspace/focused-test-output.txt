@@ -1,0 +1,23 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelEvaluatorWorkspaceG2.test.jsx
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvaluatorWorkspaceG2.test.jsx (12 tests) 13ms
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 1. Access: should allow assigned Dean within same college to load workspace
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 2. Access: should deny cross-college Dean from opening evaluation
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 3. Access: should allow HR evaluator to access HR-routed evaluations
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 4. Access: should deny Department Secretary from accessing evaluator workspace
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 5. Access: should deny self-review when candidate accesses own evaluation
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 6. Snapshot: should display historical submitted snapshot and ignore live portfolio edits
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 7. Administrators Scale: should render Areas A, B, C with deterministic scoring metadata
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 8. Administrators Scale: should display judgment criteria (B.3, B.6) with pending status and max allowed limits
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 9. Non-Teaching Scale: should render Area A as evaluator-only read-only structure
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 10. Non-Teaching Scale: should render Area B submitted items and B.5 judgment pending
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 11. Evidence: should inspect valid evidence reference and handle missing evidence gracefully
+   ✓ Plan G — Phase G2: Evaluator Workspace, Snapshot Review & Evidence Inspection > 12. Direct URL Guard: should reject opening evaluation not in active evaluation state
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  08:14:23
+   Duration  1.09s (transform 190ms, setup 41ms, collect 225ms, tests 13ms, environment 1ms, prepare 255ms)

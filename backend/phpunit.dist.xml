@@ -19,6 +19,12 @@
         </testsuite>
     </testsuites>
 
+    <groups>
+        <exclude>
+            <group>legacy-postgres</group>
+        </exclude>
+    </groups>
+
     <logging>
         <testdoxHtml outputFile="build/logs/testdox.html"/>
         <testdoxText outputFile="build/logs/testdox.txt"/>

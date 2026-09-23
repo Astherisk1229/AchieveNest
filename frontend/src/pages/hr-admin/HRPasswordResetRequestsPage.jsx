@@ -63,7 +63,7 @@ export default function HRPasswordResetRequestsPage() {
       (r.institutional_id || '').toLowerCase().includes(term) ||
       (r.institutional_email || '').toLowerCase().includes(term) ||
       (r.designation || '').toLowerCase().includes(term) ||
-      (r.department_id || '').toLowerCase().includes(term)
+      (r.college_id || r.administrative_unit_id || '').toLowerCase().includes(term)
     )
   }, [requests, searchTerm])
 

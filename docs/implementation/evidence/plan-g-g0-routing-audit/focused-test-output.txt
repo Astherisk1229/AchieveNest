@@ -1,0 +1,12 @@
+> achievenest@0.0.0 test
+> vitest run --run src/controllers/__tests__/PersonnelReviewerRoutingG0.test.jsx
+
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelReviewerRoutingG0.test.jsx (15 tests) 25ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  07:54:44
+   Duration  1.46s (transform 208ms, setup 17ms, collect 283ms, tests 25ms, environment 0ms, prepare 428ms)

@@ -1,0 +1,15 @@
+Test Files  159 passed (159)
+      Tests  1883 passed (1883)
+   Duration  78.14s
+
+Master Regression Summary — Plan K Phase K0 Baseline:
+- Test Files: 159 passed (159 total)
+- Test Cases: 1,883 passed (1,883 total)
+- Failures: 0
+- Exit Code: 0
+
+Breakdown by Key Personnel Track Suites:
+- Plan K Phase K0 Audit Suite: 40/40 passed
+- Plan D2 Final Closure Suite: 42/42 passed
+- Plan D2 Consolidated Pack: 227/227 passed
+- Plan A/B/C/D/E/F/G/H/I/J Regressions: 100% passed (0 failures)

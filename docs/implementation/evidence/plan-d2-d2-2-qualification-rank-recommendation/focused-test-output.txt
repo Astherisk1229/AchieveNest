@@ -1,0 +1,52 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelRankRecommendationD2Phase2.test.jsx (40 tests) 1240ms
+
+ Test Files  1 passed (1)
+      Tests  40 passed (40)
+   Start at  17:35:46
+   Duration  2.81s (transform 307ms, setup 11ms, collect 921ms, tests 1.24s, environment 0ms, prepare 175ms)
+
+================================================================================
+40/40 TESTS PASSED — PERSONNEL EVALUATION TRACK PLAN D2 PHASE D2-2 FOCUSED SUITE
+================================================================================
+1. doctoral Full-Time qualification resolves through Plan E (PROF_1 / PROFI_1)
+2. master's/professional graduate Full-Time path resolves through Plan E (ASST_1)
+3. licensed-professional path respects verified licensure context (ASST_1)
+4. baccalaureate/non-board Full-Time path resolves through Plan E (INST_1)
+5. Full-Time recommendation exists in Full-Time 26-rank catalog
+6. doctoral Part-Time path resolves through Plan E Part-Time mapping (PROF_LECTURER)
+7. master's/professional graduate Part-Time path resolves correct title (SR_LECTURER)
+8. professional-board Part-Time path respects Plan E (SR_LECTURER)
+9. baccalaureate Part-Time path resolves Lecturer (LECTURER)
+10. Part-Time recommendation exists in Part-Time 4-title catalog
+11. new record with no rank preselects recommendation
+12. recommendation remains editable and overridable
+13. manual valid alternate selection remains possible
+14. selected value saves through D2-1 persistence
+15. existing saved rank remains selected on edit
+16. qualification change refreshes recommendation only without mutating current rank
+17. recommendation does not overwrite saved rank on existing personnel
+18. higher qualification does not auto-promote
+19. lower mapped recommendation does not auto-downgrade
+20. stale resolver response ignored via sequence ID check
+21. resolver loading state shown
+22. resolver error keeps current rank untouched
+23. no-result state does not invent recommendation
+24. Faculty Status change reruns recommendation in correct catalog
+25. Full-Time resolver cannot populate Part-Time title
+26. Part-Time resolver cannot populate Full-Time rank
+27. resolver/catalog mismatch rejected
+28. recommendation endpoint performs no rank mutation
+29. repeated same request deterministic and idempotent
+30. recommendation does not create Promotion Decision
+31. recommendation does not create rank progression history
+32. Position / Job Title not used to infer rank
+33. Personnel Group/Organizational Side rules unchanged
+34. evaluation-summary projection unchanged
+35. D2-1 master-data dropdown behavior preserved
+36. D2-0 audit tests pass
+37. D2-1 master-data suite contracts pass
+38. Plan E initial rank base ranks pass
+39. Plans A–J regressions preserved
+40. confirms full Phase D2-2 qualification-driven recommendation integration

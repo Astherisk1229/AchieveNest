@@ -20,7 +20,7 @@ const DEFAULT_PERSONNEL = [
     full_name: 'Dr. Maria Santos',
     email: 'faculty@ndmu.edu.ph',
     college: 'CEAC - College of Engineering, Architecture, and Computing',
-    department: 'Department of Computer Studies',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
     academic_rank: 'Associate Professor II',
     employment_status: 'Full-Time Permanent',
     tenure_years: 9,
@@ -34,7 +34,7 @@ const DEFAULT_PERSONNEL = [
     full_name: 'Prof. Ricardo Gomez',
     email: 'coordinator@ndmu.edu.ph',
     college: 'CEAC - College of Engineering, Architecture, and Computing',
-    department: 'Department of Engineering',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSCE', name: 'BS Civil Engineering' }],
     academic_rank: 'Assistant Professor IV',
     employment_status: 'Full-Time Permanent',
     tenure_years: 11,
@@ -48,7 +48,7 @@ const DEFAULT_PERSONNEL = [
     full_name: 'Dr. Ana Reyes',
     email: 'moderator@ndmu.edu.ph',
     college: 'CEAC - College of Engineering, Architecture, and Computing',
-    department: 'Department of Computer Studies',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSIT', name: 'BS Information Technology' }],
     academic_rank: 'Associate Professor I',
     employment_status: 'Full-Time Permanent',
     tenure_years: 7,
@@ -62,7 +62,7 @@ const DEFAULT_PERSONNEL = [
     full_name: 'Dr. Gabriel Mendoza',
     email: 'gmendoza@ndmu.edu.ph',
     college: 'CBA - College of Business Administration',
-    department: 'Department of Business Management',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSBA', name: 'BS Business Administration' }],
     academic_rank: 'Full Professor I',
     employment_status: 'Full-Time Permanent',
     tenure_years: 15,
@@ -76,7 +76,7 @@ const DEFAULT_PERSONNEL = [
     full_name: 'Engr. Sarah Cruz',
     email: 'scruz@ndmu.edu.ph',
     college: 'CAS - College of Arts and Sciences',
-    department: 'Department of Physical Sciences',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSPHY', name: 'BS Physics' }],
     academic_rank: 'Instructor III',
     employment_status: 'Full-Time Probationary',
     tenure_years: 4,
@@ -93,7 +93,7 @@ const DEFAULT_ACCOMPLISHMENTS = [
     faculty_id: 'EMP-2021-0842',
     faculty_name: 'Dr. Maria Santos',
     college: 'CEAC',
-    department: 'Computer Studies',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
     category: 'Research Publication',
     date_completed: '2026-03-15',
     publisher_or_issuer: 'IEEE Philippine Section Journal (Scopus Indexed)',
@@ -108,7 +108,7 @@ const DEFAULT_ACCOMPLISHMENTS = [
     faculty_id: 'EMP-2015-0120',
     faculty_name: 'Prof. Ricardo Gomez',
     college: 'CEAC',
-    department: 'Engineering',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSCE', name: 'BS Civil Engineering' }],
     category: 'Extension Service',
     date_completed: '2026-02-28',
     publisher_or_issuer: 'Provincial Government of South Cotabato & NDMU Community Extension',
@@ -123,7 +123,7 @@ const DEFAULT_ACCOMPLISHMENTS = [
     faculty_id: 'EMP-2019-0881',
     faculty_name: 'Dr. Ana Reyes',
     college: 'CEAC',
-    department: 'Computer Studies',
+    personnel_classification: 'academic', program_affiliations: [{ code: 'BSIT', name: 'BS Information Technology' }],
     category: 'Faculty Training / Seminar',
     date_completed: '2026-01-20',
     publisher_or_issuer: 'Singapore Institute of Technology',
@@ -170,7 +170,7 @@ const DEFAULT_AUDIT_LOGS = [
     admin_name: 'Director Evelyn Tan (HR Director)',
     action_type: 'ROLE_ASSIGNMENT',
     target_personnel: 'Dr. Maria Santos (EMP-2021-0842)',
-    details: 'Appointed as Department Secretary for Department of Computer Studies.'
+    details: 'Historical governance record retained from the predecessor system.'
   },
   {
     id: 'log_002',
@@ -213,7 +213,7 @@ class HRController {
     const jsonDTO = newEntity.toJSON()
     raw.unshift(jsonDTO)
     localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(raw))
-    this.logAudit('PERSONNEL_ACCOUNT_CREATED', newEntity.full_name, `Created personnel account (${newEntity.employee_id}) for ${newEntity.department}.`)
+    this.logAudit('PERSONNEL_ACCOUNT_CREATED', newEntity.full_name, `Created personnel account (${newEntity.employee_id}) with an institutional affiliation.`)
     return jsonDTO
   }
 
@@ -273,10 +273,6 @@ class HRController {
     localStorage.setItem(STORAGE_KEY_PERSONNEL, JSON.stringify(updated))
     this.logAudit('ROLE_ASSIGNMENT', targetName, `Assigned as Dean for ${collegeName}.`)
     return updated.map(item => new PersonnelEntity(item))
-  }
-
-  assignDepartmentSecretary(id, departmentName) {
-    return this.assignDean(id, departmentName)
   }
 
   revokePersonnelRole(id, roleKey) {
@@ -498,7 +494,7 @@ class HRController {
         employee_id: 'EMP-2026-1042',
         user_type: 'personnel',
         target_office: 'hr',
-        department: 'Department of Computer Studies',
+        personnel_classification: 'academic', program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
         college: 'CEAC',
         remarks: 'Forgot portal passkey after institutional 2FA update.',
         status: 'pending',
@@ -511,7 +507,7 @@ class HRController {
         employee_id: 'EMP-2026-2189',
         user_type: 'personnel',
         target_office: 'hr',
-        department: 'Department of Engineering',
+        personnel_classification: 'academic', program_affiliations: [{ code: 'BSCE', name: 'BS Civil Engineering' }],
         college: 'CEAC',
         remarks: 'Locked out of account after 3 consecutive wrong password attempts.',
         status: 'pending',
@@ -524,7 +520,7 @@ class HRController {
         employee_id: 'EMP-2021-0842',
         user_type: 'personnel',
         target_office: 'hr',
-        department: 'Department of Computer Studies',
+        personnel_classification: 'academic', program_affiliations: [{ code: 'BSIT', name: 'BS Information Technology' }],
         college: 'CEAC',
         remarks: 'Requested temporary passkey for new device authentication.',
         status: 'approved',

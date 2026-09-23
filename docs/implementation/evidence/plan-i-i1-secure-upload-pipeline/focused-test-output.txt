@@ -1,0 +1,9 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelSecureUploadPipelineI1.test.jsx (33 tests) 17ms
+ ✓ src/controllers/__tests__/PersonnelEvidenceStorageAuditI0.test.jsx (24 tests) 15ms
+
+ Test Files  2 passed (2)
+      Tests  57 passed (57)
+   Start at  09:49:27
+   Duration  1.17s (transform 267ms, setup 21ms, collect 783ms, tests 32ms, environment 1ms, prepare 464ms)

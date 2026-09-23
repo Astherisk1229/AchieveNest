@@ -1,0 +1,6 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ Test Files  141 passed (141)
+      Tests  1247 passed (1247)
+   Start at  09:54:08
+   Duration  61.00s (transform 7.18s, setup 704ms, collect 45.43s, tests 14.17s, environment 51ms, prepare 42.24s)

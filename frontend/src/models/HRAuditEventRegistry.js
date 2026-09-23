@@ -116,7 +116,7 @@ export const EVENT_REGISTRY = {
   },
   ASSIGNMENT_UPDATED: {
     code: 'ASSIGNMENT_UPDATED',
-    label: 'Department Assignment Updated',
+    label: 'Placement Assignment Updated',
     category: AUDIT_CATEGORIES.RANK_ASSIGNMENT,
     aliases: ['ROLE_ASSIGNMENT']
   },

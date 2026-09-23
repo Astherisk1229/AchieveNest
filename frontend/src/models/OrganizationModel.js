@@ -6,7 +6,7 @@ export default class OrganizationModel {
   #id
   #name
   #code
-  #department
+  #college
   #academic_year
   #moderator_name
   #logo_url
@@ -22,14 +22,14 @@ export default class OrganizationModel {
     this.#id = data.id || 'org-cs-ndmu'
     this.#name = data.name || 'Computer Society NDMU'
     this.#code = data.code || 'CEAC'
-    this.#department = data.department || 'College of Engineering, Architecture, and Computing'
+    this.#college = data.college || 'College of Engineering, Architecture, and Technology'
     this.#academic_year = data.academic_year || 'AY 2025-2026'
     this.#moderator_name = data.moderator_name || 'Dr. Ana Reyes'
     this.#logo_url = data.logo_url || null
     this.#active_members = data.active_members || 45
     this.#description = data.description || 'The premier technology organization of Notre Dame of Marbel University, dedicated to fostering excellence in computing, innovation, and leadership among its members.'
     this.#contact_email = data.contact_email || 'comsoc@ndmu.edu.ph'
-    this.#college_dept = data.college_dept || 'CEAC - College of Engineering, Architecture, and Computing'
+    this.#college_dept = data.college_dept || 'College of Engineering, Architecture, and Technology'
     this.#facebook_url = data.facebook_url || 'https://facebook.com/ComSocNDMU'
     this.#established_year = data.established_year || '1998'
     this.#social_status = data.social_status || 'Facebook Active'
@@ -39,7 +39,7 @@ export default class OrganizationModel {
   get id() { return this.#id }
   get name() { return this.#name }
   get code() { return this.#code }
-  get department() { return this.#department }
+  get college() { return this.#college }
   get academic_year() { return this.#academic_year }
   get moderator_name() { return this.#moderator_name }
   get logo_url() { return this.#logo_url }
@@ -57,7 +57,7 @@ export default class OrganizationModel {
       id: this.#id,
       name: this.#name,
       code: this.#code,
-      department: this.#department,
+      college: this.#college,
       academic_year: this.#academic_year,
       moderator_name: this.#moderator_name,
       logo_url: this.#logo_url,

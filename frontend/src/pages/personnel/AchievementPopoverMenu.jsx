@@ -202,14 +202,14 @@ export default function AchievementPopoverMenu({
           <span>Open in Preview Viewer</span>
         </button>
 
-        {/* Action 2: View Details & Score */}
+        {/* Action 2: View record details */}
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpenPreview(achievement); onClose() }}
           className="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-50 font-semibold transition cursor-pointer"
         >
           <Info className="w-4 h-4 text-slate-400" />
-          <span>Details & Points Breakdown</span>
+          <span>View Details & Evidence</span>
         </button>
 
         {/* Action 3: Add/View in Portfolio */}

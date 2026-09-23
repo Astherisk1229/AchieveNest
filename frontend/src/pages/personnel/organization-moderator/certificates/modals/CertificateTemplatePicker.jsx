@@ -1,66 +1,44 @@
-/**
- * CertificateTemplatePicker.jsx
- * Step 3 of Certificate Issuance Modal.
- * Pick from active OSAD-published Event certificate templates.
- */
-
 import React from 'react'
-import { Sparkles, Check, ShieldCheck, Lock } from 'lucide-react'
+import { AlertCircle, Check, LoaderCircle, Lock } from 'lucide-react'
 
-export default function CertificateTemplatePicker({ templates = [], selectedTemplateId, setSelectedTemplateId }) {
+export default function CertificateTemplatePicker({ recipient, onSelectTemplate, isLoading = false }) {
+  const templates = recipient?.compatibleTemplates || []
+
   return (
-    <div className="space-y-4 font-sans">
-      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
-        <Lock className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-        <span>
-          <strong>OSAD Governance Active:</strong> Organization Moderators may select active OSAD-published templates. Template design, seals, and layout cannot be altered during issuance.
-        </span>
+    <section className="space-y-4" aria-labelledby="compatible-template-heading">
+      <div>
+        <h3 id="compatible-template-heading" className="text-sm font-extrabold text-slate-900 dark:text-white">Compatible published templates</h3>
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">Only variants returned for the backend-resolved certificate purpose are shown.</p>
+      </div>
+      <div className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-xs leading-relaxed text-blue-900 dark:bg-blue-950/50 dark:text-blue-200">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        Template purpose and compatibility cannot be overridden in this workspace.
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {templates.map(tpl => {
-          const isSelected = selectedTemplateId === tpl.id
-          return (
-            <div
-              key={tpl.id}
-              onClick={() => setSelectedTemplateId(tpl.id)}
-              className={`p-4 rounded-2xl border transition cursor-pointer relative flex flex-col justify-between space-y-3 ${
-                isSelected
-                  ? 'bg-emerald-50/70 border-emerald-500 dark:bg-emerald-950/60 dark:border-emerald-500 shadow-md ring-2 ring-emerald-500/20'
-                  : 'bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-800 hover:border-slate-300'
-              }`}
-            >
-              {isSelected && (
-                <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                  <Check className="w-4 h-4" />
+      {templates.length === 0 ? (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200" role="status">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          A published compatible certificate template is not available.
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {templates.map(template => {
+            const selected = template.versionId === recipient.template?.versionId
+            return (
+              <button key={template.versionId} type="button" onClick={() => onSelectTemplate(template)} disabled={isLoading} aria-pressed={selected} className={`min-w-0 rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40 ${selected ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-extrabold text-slate-900 dark:text-white">{template.name}</p>
+                    <p className="mt-1 break-words text-xs text-slate-600 dark:text-slate-300">{[template.code, template.version && `Version ${template.version}`].filter(Boolean).join(' • ') || 'Published template'}</p>
+                  </div>
+                  {selected && <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-white"><Check className="h-4 w-4" aria-hidden="true" /></span>}
                 </div>
-              )}
-
-              <div className="space-y-1.5 pr-6">
-                <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] text-[10px] font-black uppercase tracking-wider">
-                  {tpl.code} • {tpl.version}
-                </span>
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white pt-1">
-                  {tpl.title}
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {tpl.description}
-                </p>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  OSAD Accredited
-                </span>
-                <span className="text-emerald-700 dark:text-emerald-400 font-extrabold">
-                  {tpl.signatorySlots.length} Signatories
-                </span>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {isLoading && <p className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300" role="status"><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> Rechecking readiness for the selected template…</p>}
+    </section>
   )
 }

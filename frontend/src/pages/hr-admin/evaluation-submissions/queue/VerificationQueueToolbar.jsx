@@ -4,7 +4,6 @@ import { Search } from 'lucide-react'
 export default function VerificationQueueToolbar({
   search, setSearch,
   collegeFilter, setCollegeFilter,
-  deptFilter, setDeptFilter,
   submissionType, setSubmissionType
 }) {
   return (
@@ -35,18 +34,6 @@ export default function VerificationQueueToolbar({
             <option value="CEAC">CEAC - Engineering &amp; Computing</option>
             <option value="CBA">CBA - Business Administration</option>
             <option value="CAS">CAS - Arts &amp; Sciences</option>
-          </select>
-
-          <select
-            value={deptFilter}
-            onChange={e => setDeptFilter(e.target.value)}
-            className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-extrabold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#69A97C]"
-          >
-            <option value="ALL">All Departments</option>
-            <option value="Department of Computer Studies">Computer Studies</option>
-            <option value="Department of Engineering">Engineering</option>
-            <option value="Department of Business Management">Business Management</option>
-            <option value="Department of Physical Sciences">Physical Sciences</option>
           </select>
 
           <select

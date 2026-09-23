@@ -1,0 +1,8 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelWorkflowStatusSyncJ4.test.jsx (33 tests) 17ms
+
+ Test Files  1 passed (1)
+      Tests  33 passed (33)
+   Start at  14:53:56
+   Duration  1.72s (transform 275ms, setup 22ms, collect 188ms, tests 17ms, environment 0ms, prepare 489ms)

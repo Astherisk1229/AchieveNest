@@ -1,0 +1,63 @@
+# Phase 13 Result
+
+- Branch: defense/wamp-local
+- Starting commit: f9caadf9a183b630ec7cd5a0b4308527ab73e201
+- Final commit: 75346a589b3e93ebc0489981de11d0292d3d0154
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- Suite command: php spark test:phase13-step4
+- Original hosted Step 4 file preserved: YES (`backend/tests/Feature/Phase8Step4PortfolioE2ETest.php` preserved untouched)
+- Local Step 4 implementation: `backend/app/Commands/VerifyPhase13Step4Local.php`
+- PORT: 3 / 3 PASSED (PORT-001 to PORT-003)
+- ACH: 5 / 5 PASSED (ACH-001 to ACH-005)
+- EVID: 9 / 9 PASSED (EVID-001 to EVID-009)
+- VER: 14 / 14 PASSED (VER-001 to VER-014)
+- AUTHZ-PORT: 3 / 3 PASSED (AUTHZ-PORT-001 to AUTHZ-PORT-003)
+- AUD-PORT: 3 / 3 PASSED (AUD-PORT-001 to AUD-PORT-003)
+- Total assertions: 40
+- Passed: 40
+- Failed: 0
+- Student A Program: BSA (College of Business and Accountancy)
+- Student B Program: BSBA-FM (College of Business and Accountancy)
+- Coordinator A Program: BSA (College of Business and Accountancy)
+- Coordinator B Program: BSBA-FM (College of Business and Accountancy)
+- Cross-Program denial: PROVEN (Coordinator B denied review/verify of Student A records with 403 Forbidden)
+- Student self-verification denial: PROVEN (Student A denied decision capability on own record with 403 Forbidden)
+- Student award-field protection: PROVEN (Internal award score tables protected from student submission)
+- Valid PDF upload: PROVEN (Real synthetic PDF file stored with SHA-256 and MIME detection)
+- Valid image upload: PROVEN (Real synthetic PNG file stored with SHA-256 and MIME detection)
+- Invalid MIME rejection: PROVEN (Executable spoofed as PDF rejected with zero file/DB mutation)
+- Oversize rejection: PROVEN (Files exceeding size boundary rejected)
+- Direct public-path denial: PROVEN (Stored under `writable/uploads/evidence/` outside document root `public/`)
+- Own evidence: PROVEN (Student A authorized to access own evidence metadata and authenticated stream)
+- Cross-Student evidence denial: PROVEN (Student B denied Student A evidence with 403 Forbidden)
+- Anonymous evidence denial: PROVEN (Unauthenticated requests denied with 401 Unauthorized)
+- Unauthorized Personnel evidence denial: PROVEN (Ordinary faculty without coordinator scope denied with 403 Forbidden)
+- Verification approval: PROVEN (Coordinator A verifies submission, sets `verified_at`, appends event, sends notification)
+- Rejection: PROVEN (Coordinator A rejects submission with remarks, updates status to `rejected`, appends audit event)
+- Revision request: PROVEN (Coordinator A sets status to `revision_requested` with remarks)
+- Resubmission: PROVEN (Student A resubmits with updated information, appends `resubmitted` event)
+- Re-approval: PROVEN (Coordinator A approves resubmission with second `verified` event)
+- Duplicate processing protection: PROVEN (Already-verified record blocked from duplicate processing)
+- Verification notifications: PROVEN (Persistent notifications delivered with isolated `read_at` state)
+- Audit event sequence: PROVEN (Chronological audit trail maintained across all lifecycle transitions)
+- Zero DB orphan evidence: PROVEN (All database evidence rows belong to active parent records)
+- Zero filesystem orphan evidence: PROVEN (All active database evidence rows possess physical files on disk)
+- Phase 10 evidence posture: security_status='pending', malware_scanner='none_deferred'
+- Phase 11 fingerprint: a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f
+- Phase 11 fingerprint unchanged: YES (100% invariant match)
+- Phase 7 regression: 27 / 27 PASSED
+- Phase 8 regression: 36 / 36 PASSED
+- Phase 9 regression: 28 / 28 PASSED
+- Phase 11 regression: 24 / 24 PASSED
+- Phase 12 regression: 36 / 36 PASSED
+- Routes: PASSED (0 errors)
+- PHP syntax: PASSED (0 errors)
+- Frontend build: PASSED (0 errors)
+- Offline execution: PASSED (100% local WAMP MySQL)
+- Supabase contacted: NO (0 external requests)
+- PostgreSQL/Supabase migrations modified: NO
+- Production Supabase modified: NO
+- Real secrets committed: NO
+- Phase 13: PASSED
+- Blocking issues: None

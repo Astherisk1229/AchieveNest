@@ -16,6 +16,7 @@ export const CANONICAL_ACCOUNT_TYPES = {
 
 export const CANONICAL_ROLES = {
   PERSONNEL: 'personnel',
+  DEPARTMENT_HEAD: 'department_head',
   PROGRAM_COORDINATOR: 'program_coordinator',
   ORGANIZATION_MODERATOR: 'organization_moderator',
   DEAN: 'dean',
@@ -60,11 +61,17 @@ export function normalizeRoleContext(roleStr = '') {
     case 'faculty':
     case 'personnel':
     case 'staff':
+    case 'academic_personnel':
+    case 'non_academic_personnel':
       return CANONICAL_ROLES.PERSONNEL
 
     case 'program_coordinator':
     case 'coordinator':
       return CANONICAL_ROLES.PROGRAM_COORDINATOR
+
+    case 'department_head':
+    case 'department head':
+      return CANONICAL_ROLES.DEPARTMENT_HEAD
 
     case 'organization_moderator':
     case 'org_moderator':
@@ -107,6 +114,7 @@ export function getValidRolesForAccountType(accountType = '') {
     case CANONICAL_ACCOUNT_TYPES.PERSONNEL:
       return [
         CANONICAL_ROLES.PERSONNEL,
+        CANONICAL_ROLES.DEPARTMENT_HEAD,
         CANONICAL_ROLES.DEAN,
         CANONICAL_ROLES.PROGRAM_COORDINATOR,
         CANONICAL_ROLES.ORGANIZATION_MODERATOR
@@ -240,6 +248,106 @@ export function getProgramCoordinatorAssignments(user = {}) {
  */
 export function getDeanAssignment(user = {}) {
   return getRoleAssignments(user).find(a => a.role_key === CANONICAL_ROLES.DEAN) || null
+}
+
+export function getDepartmentHeadAssignments(user = {}) {
+  return getRoleAssignments(user).filter(a => a.role_key === CANONICAL_ROLES.DEPARTMENT_HEAD)
+}
+
+export const PERSONNEL_DASHBOARD_CONTEXTS = Object.freeze([
+  CANONICAL_ROLES.PERSONNEL,
+  CANONICAL_ROLES.DEPARTMENT_HEAD,
+  CANONICAL_ROLES.PROGRAM_COORDINATOR,
+  CANONICAL_ROLES.ORGANIZATION_MODERATOR
+])
+
+import { DEAN_ROUTES } from '../config/deanRoutes'
+
+/**
+ * Workspace availability is a UI/session validation rule, never API authority.
+ * Scoped workspaces additionally require a currently scoped active assignment from /auth/me.
+ */
+export function isWorkspaceAvailable(user = {}, workspace = '') {
+  const accountType = normalizeAccountType(user.account_type || user.user_type)
+  const role = normalizeRoleContext(workspace)
+  const assigned = normalizeAssignedRoles(user.assigned_roles || user.roles, accountType)
+  if (!isValidAccountRoleCombination(accountType, role) || !assigned.includes(role)) return false
+  if (role === CANONICAL_ROLES.DEAN) {
+    const assignment = getDeanAssignment(user)
+    return Boolean(assignment?.scope_type === 'college' && assignment?.scope_id)
+  }
+  if (role === CANONICAL_ROLES.DEPARTMENT_HEAD) {
+    return getDepartmentHeadAssignments(user)
+      .some(assignment => assignment.scope_type === 'department' && assignment.scope_id)
+  }
+  if (role === CANONICAL_ROLES.PROGRAM_COORDINATOR) {
+    return getProgramCoordinatorAssignments(user)
+      .some(assignment => assignment.scope_type === 'academic_program' && assignment.scope_id)
+  }
+  if (role === CANONICAL_ROLES.ORGANIZATION_MODERATOR) {
+    return getOrganizationModeratorAssignments(user)
+      .some(assignment => assignment.scope_type === 'organization' && assignment.scope_id)
+  }
+  return true
+}
+
+export function getWorkspaceLandingRoute(workspace = '') {
+  switch (normalizeRoleContext(workspace)) {
+    case CANONICAL_ROLES.DEAN: return DEAN_ROUTES.DASHBOARD
+    case CANONICAL_ROLES.PERSONNEL: return '/personnel/dashboard?tab=overview'
+    case CANONICAL_ROLES.DEPARTMENT_HEAD: return '/personnel/dashboard?tab=overview'
+    case CANONICAL_ROLES.PROGRAM_COORDINATOR: return '/personnel/dashboard?tab=overview'
+    case CANONICAL_ROLES.ORGANIZATION_MODERATOR: return '/personnel/dashboard?tab=overview'
+    default: return '/personnel/dashboard?tab=overview'
+  }
+}
+
+export const ROUTE_OWNERSHIP_TYPES = Object.freeze({
+  WORKSPACE: 'workspace',
+  SHARED: 'shared',
+  UNKNOWN: 'unknown'
+})
+
+const SHARED_PERSONNEL_UTILITY_ROUTES = new Set([
+  '/personnel/account',
+  '/personnel/settings',
+  '/personnel/notifications'
+])
+
+const PERSONNEL_OWNED_ROUTES = new Set([
+  '/personnel/portfolio',
+  '/personnel/portfolio/edit',
+  '/personnel/achievements'
+])
+
+/**
+ * Describes whether a route owns a workspace or preserves the current context.
+ * Authorization remains the responsibility of the route guards.
+ */
+export function resolveRouteOwnership(pathname = '', workspaceHint = '') {
+  const path = String(pathname || '').replace(/\/+$/, '') || '/'
+
+  if (SHARED_PERSONNEL_UTILITY_ROUTES.has(path)) {
+    return { type: ROUTE_OWNERSHIP_TYPES.SHARED }
+  }
+  if (path === DEAN_ROUTES.DASHBOARD ||
+      path === DEAN_ROUTES.FACULTY_RANKING_REVIEWS ||
+      path.startsWith(`${DEAN_ROUTES.FACULTY_RANKING_REVIEWS}/`) ||
+      path === DEAN_ROUTES.COLLEGE_PERSONNEL ||
+      path.startsWith(`${DEAN_ROUTES.COLLEGE_PERSONNEL}/`)) {
+    return { type: ROUTE_OWNERSHIP_TYPES.WORKSPACE, workspace: CANONICAL_ROLES.DEAN }
+  }
+  if (path === '/personnel/dashboard') {
+    const hintedWorkspace = normalizeRoleContext(workspaceHint)
+    const workspace = PERSONNEL_DASHBOARD_CONTEXTS.includes(hintedWorkspace)
+      ? hintedWorkspace
+      : CANONICAL_ROLES.PERSONNEL
+    return { type: ROUTE_OWNERSHIP_TYPES.WORKSPACE, workspace }
+  }
+  if (PERSONNEL_OWNED_ROUTES.has(path)) {
+    return { type: ROUTE_OWNERSHIP_TYPES.WORKSPACE, workspace: CANONICAL_ROLES.PERSONNEL }
+  }
+  return { type: ROUTE_OWNERSHIP_TYPES.UNKNOWN }
 }
 
 /**

@@ -4,7 +4,6 @@ namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
-use App\Services\SupabaseAdminAuthService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -14,14 +13,9 @@ class ProvisioningController extends Controller
     use ResponseTrait;
 
     protected AuthenticatedActorService $actorService;
-    protected SupabaseAdminAuthService $adminAuthService;
-
-    public function __construct(
-        ?AuthenticatedActorService $actorService = null,
-        ?SupabaseAdminAuthService $adminAuthService = null
-    ) {
+    public function __construct(?AuthenticatedActorService $actorService = null)
+    {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
-        $this->adminAuthService = $adminAuthService ?? new SupabaseAdminAuthService();
     }
 
     public function options()
@@ -104,29 +98,10 @@ class ProvisioningController extends Controller
 
         $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName, $suffix])));
 
-        // Step 1: Create Supabase Auth user first (or mock/fallback if in offline test mode)
-        $authUserId = null;
-        $createdInAuth = false;
-
-        try {
-            if ($this->adminAuthService->isConfigured()) {
-                $authUser = $this->adminAuthService->createUser($email, $initialPassword, [
-                    'full_name'        => $fullName,
-                    'institutional_id' => $instId,
-                    'account_type'     => 'student',
-                ]);
-                $authUserId = $authUser['id'] ?? null;
-                $createdInAuth = true;
-            } else {
-                // If service is not configured (e.g. unit tests without Supabase network access), generate valid UUID
-                $authUserId = (string) service('uuid')->uuid4();
-            }
-        } catch (Throwable $e) {
-            return $this->respond(['error' => ['code' => 'AUTH_CREATION_FAILED', 'message' => 'Failed to create Supabase Auth identity: ' . $e->getMessage()]], 500);
-        }
+        $authUserId = (string) service('uuid')->uuid4();
 
         if ($authUserId === null || trim($authUserId) === '') {
-            return $this->respond(['error' => ['code' => 'AUTH_CREATION_FAILED', 'message' => 'Supabase Auth did not return a valid user UUID.']], 500);
+            return $this->respond(['error' => ['code' => 'AUTH_CREATION_FAILED', 'message' => 'Unable to generate a local user UUID.']], 500);
         }
 
         // Step 2: Database transaction to insert profile & roles with profiles.id = auth.users.id
@@ -182,11 +157,6 @@ class ProvisioningController extends Controller
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
-
-            // Compensating transaction: Delete the newly created Auth user to prevent orphan identity
-            if ($createdInAuth && $authUserId !== null) {
-                $this->adminAuthService->deleteUser($authUserId);
-            }
 
             return $this->respond(['error' => ['code' => 'PROVISIONING_FAILED', 'message' => 'Failed to create student account: ' . $e->getMessage()]], 500);
         }
@@ -264,28 +234,10 @@ class ProvisioningController extends Controller
 
         $fullName = trim(implode(' ', array_filter([$firstName, $middleName, $lastName, $suffix])));
 
-        // Step 1: Create Supabase Auth user first
-        $authUserId = null;
-        $createdInAuth = false;
-
-        try {
-            if ($this->adminAuthService->isConfigured()) {
-                $authUser = $this->adminAuthService->createUser($email, $initialPassword, [
-                    'full_name'        => $fullName,
-                    'institutional_id' => $instId,
-                    'account_type'     => 'personnel',
-                ]);
-                $authUserId = $authUser['id'] ?? null;
-                $createdInAuth = true;
-            } else {
-                $authUserId = (string) service('uuid')->uuid4();
-            }
-        } catch (Throwable $e) {
-            return $this->respond(['error' => ['code' => 'AUTH_CREATION_FAILED', 'message' => 'Failed to create Supabase Auth identity: ' . $e->getMessage()]], 500);
-        }
+        $authUserId = (string) service('uuid')->uuid4();
 
         if ($authUserId === null || trim($authUserId) === '') {
-            return $this->respond(['error' => ['code' => 'AUTH_CREATION_FAILED', 'message' => 'Supabase Auth did not return a valid user UUID.']], 500);
+            return $this->respond(['error' => ['code' => 'AUTH_CREATION_FAILED', 'message' => 'Unable to generate a local user UUID.']], 500);
         }
 
         // Step 2: Database transaction with profiles.id = auth.users.id
@@ -341,11 +293,6 @@ class ProvisioningController extends Controller
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
-
-            // Compensating transaction: Delete the newly created Auth user
-            if ($createdInAuth && $authUserId !== null) {
-                $this->adminAuthService->deleteUser($authUserId);
-            }
 
             return $this->respond(['error' => ['code' => 'PROVISIONING_FAILED', 'message' => 'Failed to create personnel account: ' . $e->getMessage()]], 500);
         }
@@ -570,31 +517,7 @@ class ProvisioningController extends Controller
                 ? trim((string) $row['full_name'])
                 : trim(implode(' ', array_filter([$firstName, $middleName, $lastName, $suffix])));
 
-            // Step 1: Auth creation first
-            $authUserId = null;
-            $createdInAuth = false;
-
-            try {
-                if ($this->adminAuthService->isConfigured()) {
-                    $authUser = $this->adminAuthService->createUser($email, $initialPassword, [
-                        'full_name'        => $fullName,
-                        'institutional_id' => $instId,
-                        'account_type'     => $rosterType,
-                    ]);
-                    $authUserId = $authUser['id'] ?? null;
-                    $createdInAuth = true;
-                } else {
-                    $authUserId = (string) service('uuid')->uuid4();
-                }
-            } catch (Throwable $e) {
-                $failed[] = [
-                    'row_number'       => $rowNum,
-                    'institutional_id' => $instId,
-                    'email'            => $email,
-                    'reason'           => 'Auth creation failed: ' . $e->getMessage(),
-                ];
-                continue;
-            }
+            $authUserId = (string) service('uuid')->uuid4();
 
             if ($authUserId === null || trim($authUserId) === '') {
                 $failed[] = [
@@ -669,11 +592,6 @@ class ProvisioningController extends Controller
                 ];
             } catch (Throwable $e) {
                 $db->transRollback();
-
-                // Compensating deletion
-                if ($createdInAuth && $authUserId !== null) {
-                    $this->adminAuthService->deleteUser($authUserId);
-                }
 
                 $failed[] = [
                     'row_number'       => $rowNum,

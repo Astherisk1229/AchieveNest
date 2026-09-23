@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-09-09T10:27:15+08:00",
+  "command": "npx vitest run --reporter=verbose",
+  "numTotalTestSuites": 144,
+  "numPassedTestSuites": 144,
+  "numFailedTestSuites": 0,
+  "numTotalTests": 1323,
+  "numPassedTests": 1323,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "durationSeconds": 63.85,
+  "success": true,
+  "phase": "Plan I — Phase I4: Evidence Versioning, Replacement & Owner-Authorized Deletion Cleanup",
+  "plansCovered": [
+    "Plan A: Accomplishment Classification & Claim Persistence (Phases A0-A4)",
+    "Plan B: Portfolio Reflection & Submission Invariants (Phases B0-B4)",
+    "Plan C: Submission, Versioning & Return Workflows (Phases C0-C4)",
+    "Plan D: Faculty & Staff Track Partitioning & Eligibility (Phases D0-D4)",
+    "Plan E: Rank & Title Progression Rules (Phases E0-E4)",
+    "Plan F: Rating Scales, Ceiling Rules & Scoring Engine (Phases F0-F4)",
+    "Plan G: Reviewer Routing, Deliberation & Scoring (Phases G0-G4)",
+    "Plan H: Finalization, Deliberation & Promotion Decision (Phases H0-H4)",
+    "Plan I: Storage Audit (I0), Secure Upload (I1), Evidence Identity (I2), Authorized Preview (I3), Versioning & Deletion Cleanup (I4)"
+  ],
+  "i0_risk_closures": {
+    "RISK-I0-01": "CLOSED - Reviewer preview URL uses authenticated evidence_id streaming",
+    "RISK-I0-02": "CLOSED - Owner-authorized complete deletion unlinks physical files and purges database records",
+    "RISK-I0-03": "CLOSED - personnel_evaluation_items explicitly stores evidence_id UUID FK",
+    "RISK-I0-04": "CLOSED - SHA-256 duplicate advisory detection implemented with privacy protections"
+  }
+}

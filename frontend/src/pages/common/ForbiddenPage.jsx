@@ -7,6 +7,7 @@ import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft, Home } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { AchieveNestLogo } from '../../components/brand'
 
 export default function ForbiddenPage() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function ForbiddenPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 font-sans">
       <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl text-center space-y-6">
+        <div className="mx-auto w-fit rounded-lg bg-white p-1"><AchieveNestLogo variant="mark" size="compact" /></div>
         
         {/* Icon Header */}
         <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/50 flex items-center justify-center text-amber-600 dark:text-amber-400 mx-auto shadow-xs">

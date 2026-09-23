@@ -3,12 +3,12 @@ import PersonnelPortfolioModel from '../models/PersonnelPortfolioModel.js'
 
 /**
  * HRRankingController.js
- * MVC Controller managing HR global university ranking masterboard, department secretary assignments,
+ * MVC Controller managing the HR global university ranking masterboard,
  * final score audit overrides, and official ranking score lock (`HR_APPROVED`).
  */
 export default class HRRankingController {
   /**
-   * Fetches all personnel portfolios across all university departments.
+   * Fetches all personnel portfolios across the university.
    * @returns {Array<PersonnelPortfolioModel>}
    */
   static getAllPortfolios() {
@@ -17,9 +17,9 @@ export default class HRRankingController {
   }
 
   /**
-   * Filters portfolios by department, college, search query, or status.
+   * Filters portfolios by institutional affiliation, search query, or status.
    */
-  static filterMasterboard(searchQuery = '', departmentFilter = 'All', statusFilter = 'All') {
+  static filterMasterboard(searchQuery = '', affiliationFilter = 'All', statusFilter = 'All') {
     const all = HRRankingController.getAllPortfolios()
     const q = searchQuery.toLowerCase().trim()
 
@@ -28,12 +28,12 @@ export default class HRRankingController {
         p.personnel_name.toLowerCase().includes(q) ||
         p.personnel_id.toLowerCase().includes(q) ||
         p.academic_rank.toLowerCase().includes(q) ||
-        p.department_name.toLowerCase().includes(q)
+        (p.college_name || p.college_code || '').toLowerCase().includes(q)
 
-      const matchesDept = departmentFilter === 'All' || p.department_id === departmentFilter
+      const matchesAffiliation = affiliationFilter === 'All' || p.college_id === affiliationFilter || p.college_code === affiliationFilter
       const matchesStatus = statusFilter === 'All' || p.status === statusFilter
 
-      return matchesSearch && matchesDept && matchesStatus
+      return matchesSearch && matchesAffiliation && matchesStatus
     })
   }
 
@@ -67,22 +67,4 @@ export default class HRRankingController {
     return model
   }
 
-  /**
-   * HR returns portfolio back to Department Secretary if evaluation error found.
-   */
-  static returnToDepSec(portfolioId, hrOfficerName = 'HR Director', remarks = '') {
-    if (!remarks || !remarks.trim()) {
-      throw new Error('Mandatory feedback remarks required when returning portfolio to Department Secretary.')
-    }
-
-    const list = PersonnelPortfolioController.getRawStorage()
-    const index = list.findIndex(p => p.id === portfolioId)
-    if (index < 0) throw new Error('Portfolio not found.')
-
-    const model = new PersonnelPortfolioModel(list[index])
-    model.transitionStatus('UNDER_DEP_SEC_REVIEW', hrOfficerName, 'Human Resources', `HR Audit Return: ${remarks.trim()}`)
-
-    PersonnelPortfolioController.persistPortfolio(model)
-    return model
-  }
 }

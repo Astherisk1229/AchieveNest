@@ -58,3 +58,90 @@ export function parseFullName(fullName) {
 export function formatLastNameFirst(fullName) {
   return parseFullName(fullName).formatted
 }
+
+const CONNECTOR_WORDS = new Set([
+  'of',
+  'and',
+  'the',
+  'for',
+  'in',
+  'on',
+  'at',
+  'to',
+  'by',
+  'with'
+])
+
+/**
+ * Pure helper for non-destructive organization name formatting suggestions.
+ * Capitalizes meaningful words, keeps middle connector words lowercase,
+ * preserves all-caps acronyms, handles hyphens, slashes, and punctuation.
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+export function formatOrganizationNameSuggestion(input) {
+  if (!input || typeof input !== 'string') return ''
+
+  const collapsed = input.trim().replace(/\s+/g, ' ')
+  if (!collapsed) return ''
+
+  const tokens = collapsed.split(' ')
+
+  const formatWordSegment = (word, isFirstWord) => {
+    if (!word) return ''
+
+    const lower = word.toLowerCase()
+    if (!isFirstWord && CONNECTOR_WORDS.has(lower)) {
+      return lower
+    }
+
+    // If already all-caps and length >= 2 (e.g. "PSITS", "NDMU", "IT", "CS"), preserve it
+    if (word.length >= 2 && word === word.toUpperCase() && /[A-Z]/.test(word)) {
+      return word
+    }
+
+    // Preserve alphanumeric words starting with digits e.g. "21st", "3A"
+    if (/^\d+[a-zA-Z]*/.test(word)) {
+      return word
+    }
+
+    // Standard title casing
+    return lower.charAt(0).toUpperCase() + lower.slice(1)
+  }
+
+  const formatToken = (token, isFirstToken) => {
+    // Separate surrounding punctuation like parentheses, quotes, brackets
+    const match = token.match(/^([^a-zA-Z0-9]*)(.*?)([^a-zA-Z0-9]*)$/)
+    if (!match) return token
+
+    const [, leadingPunct, coreText, trailingPunct] = match
+    if (!coreText) return token
+
+    // Handle hyphenated sub-segments e.g. "socio-cultural", "student-led"
+    if (coreText.includes('-')) {
+      const parts = coreText.split('-')
+      const formattedParts = parts.map((part, idx) =>
+        formatWordSegment(part, isFirstToken && idx === 0)
+      )
+      return leadingPunct + formattedParts.join('-') + trailingPunct
+    }
+
+    // Handle slash sub-segments e.g. "IT/CS"
+    if (coreText.includes('/')) {
+      const parts = coreText.split('/')
+      const formattedParts = parts.map((part, idx) =>
+        formatWordSegment(part, isFirstToken && idx === 0)
+      )
+      return leadingPunct + formattedParts.join('/') + trailingPunct
+    }
+
+    // Format single core word
+    const formattedCore = formatWordSegment(coreText, isFirstToken)
+    return leadingPunct + formattedCore + trailingPunct
+  }
+
+  const formattedTokens = tokens.map((token, idx) => formatToken(token, idx === 0))
+  return formattedTokens.join(' ')
+}
+

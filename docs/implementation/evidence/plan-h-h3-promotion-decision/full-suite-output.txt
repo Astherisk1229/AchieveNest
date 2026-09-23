@@ -1,0 +1,9 @@
+> achievenest@0.0.0 test
+> vitest run --run
+
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ Test Files  138 passed (138)
+      Tests  1172 passed (1172)
+   Start at  09:18:40
+   Duration  64.06s (transform 10.48s, setup 672ms, collect 52.28s, tests 13.33s, environment 52ms, prepare 42.35s)

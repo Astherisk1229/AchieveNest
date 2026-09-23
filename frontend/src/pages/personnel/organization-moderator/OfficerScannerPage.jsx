@@ -19,6 +19,7 @@ import {
 
 import OrganizationController from '../../../controllers/OrganizationController'
 import AttendanceController from '../../../controllers/AttendanceController'
+import { AchieveNestLogo } from '../../../components/brand'
 
 export default function OfficerScannerPage() {
   const { eventId } = useParams()
@@ -162,15 +163,9 @@ export default function OfficerScannerPage() {
       <div className="bg-[#EFF7F0] border-b border-[#69A97C] p-4 sticky top-0 z-40 shadow-xl">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
-                <circle cx="50" cy="50" r="28" fill="#ffffff" />
-                <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
-              </svg>
-            </div>
+            <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
             <div>
-              <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight">AchieveNest Gateway</h1>
+              <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight">Attendance Gateway</h1>
               <p className="text-[10px] text-[#245F42] font-bold uppercase tracking-wider">NDMU Student Officer Scanner</p>
             </div>
           </div>

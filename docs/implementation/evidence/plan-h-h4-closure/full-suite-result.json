@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-09-09T09:32:35+08:00",
+  "framework": "vitest",
+  "version": "3.2.7",
+  "testFilesPassed": 139,
+  "testFilesTotal": 139,
+  "testsPassed": 1190,
+  "testsFailed": 0,
+  "testsTotal": 1190,
+  "exitCode": 0,
+  "durationSeconds": 73.04
+}

@@ -56,7 +56,7 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
       id: String(Date.now()),
       student_id: manualIdInput,
       name: 'Registered NDMU Student',
-      course: 'CEAC Department',
+      course: 'CEAC College',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       officer_name: `${activeOfficer.full_name} (${activeOfficer.position.split(' ')[0]})`
     }
@@ -76,7 +76,7 @@ export default function AttendanceScannerModal({ isOpen, onClose, activeEvent })
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-lg text-[#17663B]">AchieveNest Student Officer Gateway</h3>
+                <h3 className="font-extrabold text-lg text-[#17663B]">Student Officer Gateway</h3>
                 {activeOfficer ? (
                   <span className="px-2 py-0.5 rounded-full bg-[#E7F5EA] text-[#17663B] border border-[#BBDCC3] text-[10px] font-bold">
                     Active Officer: {activeOfficer.name}

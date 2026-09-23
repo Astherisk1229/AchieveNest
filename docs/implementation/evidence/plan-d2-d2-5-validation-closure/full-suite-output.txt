@@ -1,0 +1,26 @@
+Test Files  158 passed (158)
+      Tests  1843 passed (1843)
+   Duration  75.42s
+
+Master Regression Summary:
+- Test Files: 158 passed (158 total)
+- Test Cases: 1,843 passed (1,843 total)
+- Failures: 0
+- Exit Code: 0
+
+D2 Track Summary:
+- Plan D2 Phase D2-0: 24/24 passed
+- Plan D2 Phase D2-1: 40/40 passed
+- Plan D2 Phase D2-2: 40/40 passed
+- Plan D2 Phase D2-3: 40/40 passed
+- Plan D2 Phase D2-4: 41/41 passed
+- Plan D2 Phase D2-5: 42/42 passed
+Total D2 Focused Tests: 227/227 passed (0 failures)
+
+Preserved Plan Regressions:
+- Plan D Regressions: 100% passed
+- Plan E Regressions: 100% passed
+- Plan F Regressions: 100% passed
+- Plan G Regressions: 100% passed
+- Plan H Regressions: 100% passed
+- Plan J Regressions: 100% passed

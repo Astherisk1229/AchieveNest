@@ -1,0 +1,37 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvaluationScoringF4.test.jsx (24 tests) 18ms
+   ✓ Personnel Evaluation Track — Plan F — Phase F4: Server-Side Calculation, Validation, Cap Enforcement & Explainability Suite (24)
+     ✓ 1. Scale, Security & Forged-Payload Rejection (5)
+       ✓ rejects invalid or unsupported rule version
+       ✓ rejects cross-scale category submissions (Administrators publication on Non-Teaching scale)
+       ✓ rejects Area A accomplishment mutation on Non-Teaching scale
+       ✓ recalculates authoritative points and ignores client-forged score fields
+       ✓ rejects item when required documentary evidence proof is missing
+     ✓ 2. Administrators Scale Deterministic Scoring & Trace (8)
+       ✓ scores A.1 Ph.D. Degree (40 pts) and MA Degree (20 pts)
+       ✓ scores A.1 Ph.D. Units (2 pts per 3 units, max 10) with capping and explanation
+       ✓ scores A.2 Active Membership: Member (5 pts) and Officer (10 pts)
+       ✓ scores A.3 Seminars/Trainings across all scopes and enforces 20 pts ceiling
+       ✓ scores B.1 Speaker/Consultant using 4-factor additive formula with factor breakdown
+       ✓ scores B.2 Publication using 2-factor additive sum (Scope + Publication Type)
+       ✓ marks B.3 Conduct of Research as awaiting_evaluator with max 40 ceiling
+       ✓ scores B.4 Awards across the 8-cell matrix accurately
+       ✓ marks B.6 Creative Work as awaiting_evaluator with max 20 ceiling
+       ✓ scores C.1 Extra-Curricular (max 30), C.2 Community (max 30), and C.3 Years of Service (max 10)
+     ✓ 3. Non-Teaching Scale Deterministic Scoring & Trace (5)
+       ✓ scores B.1 School Activities: Moderator (30 pts), Trainer (20 pts), Service (10 pts)
+       ✓ scores B.2 Community Involvement: Church (25 pts), Charity (5 pts)
+       ✓ scores B.3 Years at NDMU: server-derived 1 pt / 2 yrs (Max 10)
+       ✓ scores B.4 Invited as Judge/Lecturer: 5 pts per qualifying invitation (Max 30)
+       ✓ marks B.5 Recognition / Meritorious Award as awaiting_evaluator with max 30 ceiling
+     ✓ 4. Cap Enforcement Hierarchy & Evaluation Totals (2)
+       ✓ enforces Administrators Area caps (Area A 70, Area B 50, Area C 40) and Overall Max 160
+       ✓ marks evaluation as provisional_pending_evaluator when unresolved judgment items exist
+     ✓ 5. Evaluator Accepted Value Validation (2)
+       ✓ validates that evaluator accepted score is within [0, max_points]
+       ✓ rejects negative evaluator scores and scores exceeding criterion maximum
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Duration  1.12s

@@ -1,0 +1,8 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ Test Files  149 passed (149)
+      Tests  1486 passed (1486)
+   Start at  11:23:42
+   Duration  109.48s (transform 20.20s, setup 2.10s, collect 91.88s, tests 35.32s, environment 71ms, prepare 61.02s)
+
+JSON report written to C:/Users/Admin/Documents/AchieveNest/frontend/vitest-results-j2.json

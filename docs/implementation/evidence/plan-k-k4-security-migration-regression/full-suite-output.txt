@@ -1,0 +1,7 @@
+Full frontend master regression
+Test Files: 164 passed (164)
+Tests: 2080 passed (2080)
+Duration: 103.26s
+
+Initial attempt: timed out after 188.23s without a final result.
+Rerun: completed successfully.

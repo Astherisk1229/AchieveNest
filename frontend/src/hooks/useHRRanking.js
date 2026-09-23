@@ -8,23 +8,23 @@ import HRRankingController from '../controllers/HRRankingController.js'
 export function useHRRanking() {
   const [portfolios, setPortfolios] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState('All')
+  const [affiliationFilter, setAffiliationFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('ENDORSED_TO_HR') // default view endorsed
   const [selectedAuditPortfolio, setSelectedAuditPortfolio] = useState(null)
   const [error, setError] = useState(null)
 
   const reload = useCallback(() => {
-    const list = HRRankingController.filterMasterboard(searchQuery, departmentFilter, statusFilter)
+    const list = HRRankingController.filterMasterboard(searchQuery, affiliationFilter, statusFilter)
     setPortfolios(list)
     if (selectedAuditPortfolio) {
       const updated = list.find(p => p.id === selectedAuditPortfolio.id)
       if (updated) setSelectedAuditPortfolio(updated)
     }
-  }, [searchQuery, departmentFilter, statusFilter, selectedAuditPortfolio])
+  }, [searchQuery, affiliationFilter, statusFilter, selectedAuditPortfolio])
 
   useEffect(() => {
     reload()
-  }, [searchQuery, departmentFilter, statusFilter])
+  }, [searchQuery, affiliationFilter, statusFilter])
 
   const selectAuditPortfolio = useCallback((portfolio) => {
     setSelectedAuditPortfolio(portfolio)
@@ -57,32 +57,18 @@ export function useHRRanking() {
     }
   }, [selectedAuditPortfolio, reload])
 
-  const returnToDepSec = useCallback((hrOfficerName, remarks) => {
-    if (!selectedAuditPortfolio) return false
-    try {
-      const updated = HRRankingController.returnToDepSec(selectedAuditPortfolio.id, hrOfficerName, remarks)
-      setSelectedAuditPortfolio(updated)
-      reload()
-      return { success: true }
-    } catch (err) {
-      setError(err.message)
-      return { success: false, message: err.message }
-    }
-  }, [selectedAuditPortfolio, reload])
-
   return {
     portfolios,
     selectedAuditPortfolio,
     searchQuery,
     setSearchQuery,
-    departmentFilter,
-    setDepartmentFilter,
+    affiliationFilter,
+    setAffiliationFilter,
     statusFilter,
     setStatusFilter,
     selectAuditPortfolio,
     overrideItemScore,
     approveAndLockScore,
-    returnToDepSec,
     error,
     reload
   }

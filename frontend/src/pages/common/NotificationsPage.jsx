@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Bell, 
@@ -8,72 +8,63 @@ import {
   Trash2, 
   CheckCheck, 
   ChevronRight, 
-  ExternalLink 
+  ExternalLink,
+  Layers,
+  RefreshCw
 } from 'lucide-react'
+import notificationApiService from '../../services/notificationApiService'
 
 export default function NotificationsPage({ currentUser }) {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'unread' | 'read'
+  const [notifications, setNotifications] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Initial Notifications Data (Role-agnostic notifications)
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: 'Achievement Verified',
-      message: 'Your submission "Dean\'s Lister - First Semester AY 2025-2026" has been verified.',
-      time: '2 hours ago',
-      type: 'success',
-      isRead: false,
-      icon: CheckCircle2,
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-[#159552] dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-      targetPath: '/student/achievements',
-      navState: { highlightId: 1, filterStatus: 'Verified' },
-      actionLabel: 'View Verified Entry'
-    },
-    {
-      id: 2,
-      title: 'Revision Requested',
-      message: 'Please update your "Best Research Paper" submission with a higher resolution certificate scan.',
-      time: '5 hours ago',
-      type: 'warning',
-      isRead: false,
-      icon: AlertTriangle,
-      iconBg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-      targetPath: '/student/achievements',
-      navState: { highlightId: 5, filterStatus: 'Returned' },
-      actionLabel: 'Update Submission'
-    },
-    {
-      id: 3,
-      title: 'New Event Registered',
-      message: 'Leadership Training Workshop 2026 registration is now open for all students and faculty.',
-      time: '1 day ago',
-      type: 'info',
-      isRead: false,
-      icon: Info,
-      iconBg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-      targetPath: '/student/dashboard',
-      navState: { filterCategory: 'Leadership' },
-      actionLabel: 'Open Event Page'
-    },
-    {
-      id: 4,
-      title: 'Certificate Ready',
-      message: 'Your official verified certificate for NDMU Tech Summit 2025 is ready for download.',
-      time: '2 days ago',
-      type: 'success',
-      isRead: true,
-      icon: CheckCircle2,
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-[#159552] dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-      targetPath: '/student/portfolio',
-      navState: { openBookletModal: true },
-      actionLabel: 'Download Certificate'
+  // Load persisted notifications from backend
+  const loadNotifications = async () => {
+    try {
+      setLoading(true)
+      const res = await notificationApiService.getNotifications()
+      const list = res?.data?.notifications || []
+      
+      const mapped = list.map(item => ({
+        id: item.id,
+        title: item.title,
+        message: item.message,
+        time: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent',
+        type: item.type || 'info',
+        isRead: Boolean(item.is_read),
+        icon: item.type === 'success' || item.type === 'endorsed' ? CheckCircle2 : item.type === 'warning' || item.type === 'returned' ? AlertTriangle : Info,
+        iconBg: item.type === 'success' || item.type === 'endorsed'
+          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#159552] dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+          : item.type === 'warning' || item.type === 'returned'
+          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
+          : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+        targetPath: item.target_path || (item.entity_type === 'personnel_portfolio_submission' ? '/personnel/portfolio/edit' : null),
+        navState: { highlightId: item.entity_id },
+        actionLabel: item.type === 'returned' ? 'Update Portfolio' : 'View Details'
+      }))
+
+      setNotifications(mapped)
+    } catch (err) {
+      console.warn('Could not load notifications:', err)
+    } finally {
+      setLoading(false)
     }
-  ])
+  }
+
+  useEffect(() => {
+    loadNotifications()
+  }, [])
 
   // Bulk Actions
-  const handleMarkAllRead = () => {
-    setNotifications(notifications.map(item => ({ ...item, isRead: true })))
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationApiService.markAllAsRead()
+      setNotifications(notifications.map(item => ({ ...item, isRead: true })))
+    } catch (e) {
+      console.warn('Failed to mark all as read:', e)
+    }
   }
 
   const handleClearAll = () => {
@@ -81,9 +72,14 @@ export default function NotificationsPage({ currentUser }) {
   }
 
   // Item Actions
-  const handleMarkSingleRead = (e, id) => {
+  const handleMarkSingleRead = async (e, id) => {
     e.stopPropagation()
-    setNotifications(notifications.map(item => item.id === id ? { ...item, isRead: true } : item))
+    try {
+      await notificationApiService.markAsRead(id)
+      setNotifications(notifications.map(item => item.id === id ? { ...item, isRead: true } : item))
+    } catch (e) {
+      console.warn('Failed to mark single read:', e)
+    }
   }
 
   const handleDeleteSingle = (e, id) => {
@@ -92,8 +88,15 @@ export default function NotificationsPage({ currentUser }) {
   }
 
   // Handle Card Navigation
-  const handleNotificationClick = (item) => {
-    setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n))
+  const handleNotificationClick = async (item) => {
+    if (!item.isRead) {
+      try {
+        await notificationApiService.markAsRead(item.id)
+      } catch {
+        // ignore
+      }
+      setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n))
+    }
     if (item.targetPath) {
       navigate(item.targetPath, { state: item.navState })
     }
@@ -118,181 +121,130 @@ export default function NotificationsPage({ currentUser }) {
         {/* Left Group: Bell Icon + Notifications title & unread count */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#159552] text-white flex items-center justify-center shadow-xs shrink-0 border border-emerald-400/30">
-            <Bell className="w-5 h-5 text-white" />
+            <Bell className="w-5 h-5" />
           </div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">Notifications</h1>
-            <span className="text-slate-300 dark:text-slate-600 font-bold">•</span>
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{unreadCount} unread</span>
-          </div>
-        </div>
-
-        {/* Center Group: Filter Pill Buttons */}
-        <div className="flex items-center gap-1.5 self-center sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('all')}
-            className={`h-[34px] px-3.5 text-xs font-extrabold rounded-full transition cursor-pointer flex items-center gap-1 ${
-              activeTab === 'all'
-                ? 'bg-[#159552] text-white shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            <span>All</span>
-            <span className="text-[10px] opacity-90">({notifications.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('unread')}
-            className={`h-[34px] px-3.5 text-xs font-extrabold rounded-full transition cursor-pointer flex items-center gap-1 ${
-              activeTab === 'unread'
-                ? 'bg-[#159552] text-white shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            <span>Unread</span>
-            <span className="text-[10px] opacity-90">({unreadCount})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('read')}
-            className={`h-[34px] px-3.5 text-xs font-extrabold rounded-full transition cursor-pointer flex items-center gap-1 ${
-              activeTab === 'read'
-                ? 'bg-[#159552] text-white shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            <span>Read</span>
-            <span className="text-[10px] opacity-90">({readCount})</span>
-          </button>
-        </div>
-
-        {/* Right Group: Bulk Actions */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          <button
-            type="button"
-            onClick={handleMarkAllRead}
-            disabled={unreadCount === 0}
-            className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-extrabold flex items-center gap-1.5 shadow-2xs transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <CheckCheck className="w-3.5 h-3.5 text-[#159552] dark:text-emerald-400" />
-            <span>Mark all read</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleClearAll}
-            disabled={notifications.length === 0}
-            className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-extrabold flex items-center gap-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-            <span>Clear all</span>
-          </button>
-        </div>
-
-      </div>
-
-      {/* ================= COMPACT NOTIFICATION ROWS FEED CONTAINER ================= */}
-      <div className="bg-white dark:bg-[#131e2e] rounded-[20px] border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        {filteredNotifications.length === 0 ? (
-          <div className="p-10 text-center space-y-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#159552] dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-100 dark:border-emerald-800">
-              <Bell className="w-5 h-5" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">Notifications</h1>
+              {unreadCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white animate-pulse">
+                  {unreadCount} new
+                </span>
+              )}
             </div>
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">No notifications found</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto">
-              You have caught up on all alerts for this view filter.
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              System alerts, portfolio reviews, and workflow updates.
             </p>
           </div>
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
-            {filteredNotifications.map((item) => {
-              const IconComp = item.icon
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => handleNotificationClick(item)}
-                  className={`min-h-[104px] p-4 sm:p-[18px_20px] transition flex items-center justify-between gap-4 cursor-pointer group ${
-                    !item.isRead 
-                      ? 'bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40' 
-                      : 'bg-white dark:bg-[#131e2e] hover:bg-slate-50/80 dark:hover:bg-slate-800/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                    
-                    {/* Status Icon Container */}
-                    <div className={`w-[40px] h-[40px] rounded-2xl border flex items-center justify-center shrink-0 ${item.iconBg}`}>
-                      <IconComp className="w-4.5 h-4.5" />
-                    </div>
+        </div>
 
-                    {/* Content Column */}
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight group-hover:text-[#159552] dark:group-hover:text-emerald-400 transition">
-                          {item.title}
-                        </h3>
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#159552] dark:group-hover:text-emerald-400 opacity-0 group-hover:opacity-100 transition" />
-                      </div>
+        {/* Right Group: Action Controls */}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <CheckCheck className="w-3.5 h-3.5 text-[#159552]" />
+              <span>Mark All as Read</span>
+            </button>
+          )}
 
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-[1.4] line-clamp-2">
-                        {item.message}
-                      </p>
+          <button
+            type="button"
+            onClick={loadNotifications}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 transition cursor-pointer"
+            title="Refresh notifications"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
-                      {/* Timestamp & Actions */}
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-0.5 font-medium">
-                        <span>{item.time}</span>
-
-                        {item.actionLabel && (
-                          <>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <span className="font-extrabold text-[#159552] dark:text-emerald-400 group-hover:underline flex items-center gap-1">
-                              {item.actionLabel}
-                            </span>
-                          </>
-                        )}
-
-                        {!item.isRead && (
-                          <>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleMarkSingleRead(e, item.id)}
-                              className="font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:underline cursor-pointer"
-                            >
-                              Mark as read
-                            </button>
-                          </>
-                        )}
-
-                        <span className="text-slate-300 dark:text-slate-600">•</span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteSingle(e, item.id)}
-                          className="font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Right Side Unread Dot & Chevron Cues */}
-                  <div className="flex items-center gap-2 shrink-0 self-center">
-                    {!item.isRead && (
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#159552] dark:bg-emerald-400 shrink-0 shadow-xs" title="Unread notification" />
-                    )}
-                    <ChevronRight className="w-4.5 h-4.5 text-slate-300 dark:text-slate-600 group-hover:text-[#159552] dark:group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-                  </div>
-
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
+
+      {/* ================= TABS ================= */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        {['all', 'unread', 'read'].map(tab => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+              activeTab === tab
+                ? 'bg-[#159552] text-white shadow-xs'
+                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            {tab === 'all' && `All (${notifications.length})`}
+            {tab === 'unread' && `Unread (${unreadCount})`}
+            {tab === 'read' && `Read (${readCount})`}
+          </button>
+        ))}
+      </div>
+
+      {/* ================= NOTIFICATION LIST ================= */}
+      {loading ? (
+        <div className="p-12 text-center space-y-2 bg-white dark:bg-[#131e2e] rounded-2xl border border-slate-200 dark:border-slate-800">
+          <RefreshCw className="w-6 h-6 text-emerald-600 animate-spin mx-auto" />
+          <p className="text-xs font-bold text-slate-500">Loading notifications...</p>
+        </div>
+      ) : filteredNotifications.length === 0 ? (
+        <div className="p-12 text-center space-y-2 bg-white dark:bg-[#131e2e] rounded-2xl border border-slate-200 dark:border-slate-800">
+          <Bell className="w-8 h-8 text-slate-400 mx-auto" />
+          <h3 className="text-xs font-extrabold text-slate-800 dark:text-slate-200">No notifications found</h3>
+          <p className="text-[11px] text-slate-500">You're all caught up! New alerts and portfolio feedback will appear here.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredNotifications.map((item) => {
+            const Icon = item.icon
+            return (
+              <div
+                key={item.id}
+                onClick={() => handleNotificationClick(item)}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                  !item.isRead
+                    ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60 shadow-2xs'
+                    : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start gap-3 flex-1">
+                  <div className={`p-2.5 rounded-xl border shrink-0 mt-0.5 ${item.iconBg}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white leading-tight">{item.title}</h4>
+                      {!item.isRead && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">{item.message}</p>
+                    <span className="text-[10px] text-slate-400 font-bold block">{item.time}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 pt-1">
+                  {!item.isRead && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleMarkSingleRead(e, item.id)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition cursor-pointer"
+                      title="Mark as read"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {item.targetPath && (
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
     </div>
   )

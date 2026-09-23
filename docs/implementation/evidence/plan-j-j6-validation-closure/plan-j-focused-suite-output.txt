@@ -1,0 +1,14 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelEvaluationAuditJ5.test.jsx (38 tests) 66ms
+ ✓ src/controllers/__tests__/PersonnelPlanJFinalClosureJ6.test.jsx (44 tests) 87ms
+ ✓ src/controllers/__tests__/PersonnelWorkflowEventAuditJ0.test.jsx (24 tests) 17ms
+ ✓ src/controllers/__tests__/PersonnelWorkflowNotificationJ3.test.jsx (32 tests) 26ms
+ ✓ src/controllers/__tests__/PersonnelRevisionRequestWorkflowJ2.test.jsx (35 tests) 25ms
+ ✓ src/controllers/__tests__/PersonnelWorkflowEventModelJ1.test.jsx (31 tests) 31ms
+ ✓ src/controllers/__tests__/PersonnelWorkflowStatusSyncJ4.test.jsx (33 tests) 14ms
+
+ Test Files  7 passed (7)
+      Tests  237 passed (237)
+   Start at  15:16:39
+   Duration  4.33s (transform 1.38s, setup 45ms, collect 1.93s, tests 266ms, environment 2ms, prepare 4.27s)

@@ -1,0 +1,22 @@
+# Phase G3 Evidence Package Checksum Manifest
+
+**Generated**: September 9, 2026
+**Algorithm**: SHA-256
+
+```
+0b38b806a943e74e61659c26b11b6a741b211126ba0209580bc80712bc1c3d3f  accepted-points-persistence.md
+7297bab8e7bbdebb06e76fce6fcc4a084084aff26baa7e4e9c51b78af23a76f8  aggregate-recalculation.md
+5a1368616064902911554fb5c96c56499a5de14e324acff6d46e906ee847d3fb  deterministic-score-protection.md
+b577d6b9560b523f0e4e6c908c1f193dfde43954dd700683ce26cc28e64efaa3  environment.md
+d2f7cccb5176189c24e2190052d1caaec0bac58c97225072d1e838be8c3d5d87  focused-test-output.txt
+7964f8b466e1fc1931d2f7a531c3ee7de1ff715a5a7ae48915134e525e768506  full-suite-output.txt
+4ae40882688323167ccbeb4b41db9d3fbc485295b3c35d1861d660b6d0530abf  full-suite-result.json
+9d224573af42d1eacf097ed387af9a44af679ff2317e2a66cd1000e674b56b40  idempotency-tests.md
+ad994454202db49b3fb555a7a33d9f409806759aa1c42fb85d4f31ace1bd6d32  judgment-criteria-validation.md
+887c5879dd1515ff24201abdd2339f4ee633d61a6992e355c6c2595749dd93da  non-teaching-area-a-verification.md
+91fa70829da73d79e7a9da262c35eb9a7892d1ab5d9465ce680cc26ce14555dc  plan-f-integration.md
+88e4849e79962da07b2acc647ce625c1eff23b8f33c25bb71e623d2b462f45ec  reviewer-authorization-tests.md
+e7dc7b48692e43c6ac91f8d1974d13c64398e80b659257ad3b378b2928fa9d52  scoring-completion-verification.md
+cbd42ea66d9ccad6afa5a1c493db3e6fd7b649e1932ec9c8d34b0417288dfa90  self-review-protection.md
+77d61de9c89d9d22d64a06550846ade6cb55df870bb90bc60a9f92f5a9f2913b  tampering-rejection.md
+```

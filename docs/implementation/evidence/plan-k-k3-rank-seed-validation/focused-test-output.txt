@@ -1,0 +1,8 @@
+ RUN  v3.2.7 C:/Users/Admin/Documents/AchieveNest/frontend
+
+ ✓ src/controllers/__tests__/PersonnelPlanKPhaseK3RankAndSeed.test.jsx (40 tests) 14ms
+
+ Test Files  1 passed (1)
+      Tests  40 passed (40)
+   Start at  19:19:45
+   Duration  1.39s (transform 188ms, setup 9ms, collect 460ms, tests 14ms, environment 0ms, prepare 279ms)

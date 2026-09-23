@@ -1,0 +1,14 @@
+<?php
+namespace Tests\Unit;
+use PHPUnit\Framework\TestCase;
+class PublicOfficialEvaluationVerificationPhaseQTest extends TestCase
+{
+ private function source(string $p):string{return file_get_contents(ROOTPATH.$p);}
+ public function testPublicProjectionContainsOnlyApprovedFields():void{$s=$this->source('app/Services/PublicOfficialEvaluationVerificationService.php');foreach(['system_reference_number','personnel_name','ranking_cycle','document_type','generated_at','verification_status','evaluation_version']as$f)self::assertStringContainsString("'$f'",$s);foreach(['summary_payload','total_score','criteria_snapshot','evidence','credential','hr_justification','deviation_reason']as$f)self::assertStringNotContainsString($f,$s);}
+ public function testStatusesAndSafeNotFoundAreSupported():void{$s=$this->source('app/Services/PublicOfficialEvaluationVerificationService.php');self::assertStringContainsString('Current / Valid',$s);self::assertStringContainsString('Superseded',$s);$c=$this->source('app/Controllers/Api/PublicOfficialEvaluationVerificationController.php');self::assertStringContainsString('Invalid / Not Found',$c);self::assertStringContainsString(',404',$c);}
+ public function testReferenceIsOpaqueAndQrOpensPublicPage():void{$s=$this->source('app/Services/OfficialEvaluationDocumentService.php');self::assertStringContainsString("str_replace('-','',\$id)",$s);self::assertStringContainsString("'/verify/evaluation/'",$s);}
+ public function testSupersessionUsesExactCaseAndOnlyOlderVersions():void{$s=$this->source('app/Services/OfficialEvaluationDocumentService.php');foreach(['personnel_profile_id','ranking_cycle_id','ranking_track_id','evaluation_root_id','classification','document_type']as$f)self::assertStringContainsString("'$f'=>",$s);self::assertStringContainsString("where('evaluation_version <'",$s);self::assertStringContainsString("'status'=>'superseded'",$s);self::assertStringContainsString("'superseded_by_document_id'=>\$id",$s);}
+ public function testOldReferenceIsNotRewrittenOrDeleted():void{$s=$this->source('app/Services/OfficialEvaluationDocumentService.php');self::assertStringNotContainsString("delete()",$s);self::assertStringNotContainsString("'reference_number'=>\$reference",substr($s,strpos($s,'foreach($older')));}
+ public function testNoPublicListingOrDownloadRouteExists():void{$r=$this->source('app/Config/Routes.php');self::assertStringContainsString("public/official-evaluation-documents/(:segment)/verify",$r);self::assertStringNotContainsString("public/official-evaluation-documents',",$r);self::assertStringNotContainsString('public/official-evaluation-documents/(:segment)/download',$r);self::assertStringContainsString("official-evaluation-documents/(:segment)/download",$r);}
+ public function testPrivateDownloadAuthorizationRemains():void{$s=$this->source('app/Services/OfficialEvaluationDocumentService.php');self::assertStringContainsString('$this->assertPrintAccess($actor)',$s);}
+}

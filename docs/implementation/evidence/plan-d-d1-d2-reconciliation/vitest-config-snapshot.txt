@@ -1,0 +1,38 @@
+# Vitest Configuration Snapshot & Package Scripts
+# Captured: 2026-09-08 22:28:59 +08:00
+
+## 1. frontend/vite.config.js
+--------------------------------------------------------------------------------
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+  test: {
+    testTimeout: 15000,
+  }
+})
+--------------------------------------------------------------------------------
+
+## 2. frontend/package.json (scripts excerpt)
+--------------------------------------------------------------------------------
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "lint": "oxlint",
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:coverage": "vitest run --coverage",
+  "preview": "vite preview"
+}
+--------------------------------------------------------------------------------
+
+## 3. Discovered Test Files Inclusion Patterns
+- Default Vitest include globs: `**/*.{test,spec}.?(c|m)[jt]s?(x)`
+- Total test files matching: 115 files
+- Test root directory: `c:\Users\Admin\Documents\AchieveNest\frontend\src`

@@ -30,7 +30,7 @@ final class GovernCertificateAssets extends Migration
             CONSTRAINT fk_certificate_binding_template FOREIGN KEY (template_version_id) REFERENCES certificate_template_versions(id) ON DELETE CASCADE,
             CONSTRAINT fk_certificate_binding_asset_version FOREIGN KEY (asset_version_id) REFERENCES certificate_asset_versions(id) ON DELETE RESTRICT
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-        foreach (['certificate_assets','certificate_asset_versions','certificate_template_asset_bindings'] as $table) if (! $this->db->tableExists($table)) throw new RuntimeException("Certificate asset table {$table} was not created.");
+        foreach (['certificate_assets','certificate_asset_versions','certificate_template_asset_bindings'] as $table) if (! $this->db->tableExists($table, false)) throw new RuntimeException("Certificate asset table {$table} was not created.");
     }
 
     public function down(): void

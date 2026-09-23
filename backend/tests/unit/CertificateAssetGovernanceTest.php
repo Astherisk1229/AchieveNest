@@ -37,7 +37,7 @@ final class CertificateAssetGovernanceTest extends CIUnitTestCase
     {
         $migration=file_get_contents(APPPATH.'Phase2/Database/Migrations/2026-09-23-000018_GovernCertificateAssets.php');
         $governance=file_get_contents(APPPATH.'Services/CertificateTemplateGovernanceService.php');
-        foreach(['certificate_assets','certificate_asset_versions','certificate_template_asset_bindings','ON DELETE RESTRICT'] as $needle)self::assertStringContainsString($needle,$migration);
+        foreach(['certificate_assets','certificate_asset_versions','certificate_template_asset_bindings','ON DELETE RESTRICT','tableExists($table, false)'] as $needle)self::assertStringContainsString($needle,$migration);
         foreach(['FONT_NOT_EMBEDDABLE','ASSET_RENDERER_UNSUPPORTED','syncAssetBindings','asset_version_ids'] as $needle)self::assertStringContainsString($needle,$governance);
     }
 }

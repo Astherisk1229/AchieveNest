@@ -56,54 +56,12 @@ export default function useStudentAchievements() {
     setPopoverState({ achievement: null, targetElement: null, position: { x: 0, y: 0 } })
   }, [])
 
-  const uploadEvidence = useCallback(async (recordId, evidence = []) => {
-    for (const entry of evidence) {
-      const file = entry instanceof File ? entry : entry?.file
-      if (!file) continue
-      const form = new FormData()
-      form.append('file', file)
-      form.append('evidence_type', entry?.evidence_type || 'certificate')
-      await portfolioService.addEvidence(recordId, form)
-    }
-  }, [])
-
-  const addAchievement = useCallback(async data => {
-    const { evidence = [], submit_now: submitNow = false, ...recordData } = data || {}
-    // A new record is always created as a draft first so multipart evidence can
-    // be persisted before the backend is asked to place it in the review queue.
-    const result = await portfolioService.createRecord({ ...recordData, evidence: [], submit_now: false })
-    const id = result?.data?.id || result?.id
-    if (!id) throw new Error('Backend did not return the created portfolio UUID.')
-    await uploadEvidence(id, evidence)
-    if (submitNow) await portfolioService.resubmitRecord(id)
-    await refreshData()
-    return id
-  }, [refreshData, uploadEvidence])
-
-  const resubmitAchievement = useCallback(async (id, data) => {
-    const { evidence = [], submit_now: _submitNow, ...recordData } = data || {}
-    await portfolioService.updateRecord(id, recordData)
-    await uploadEvidence(id, evidence)
-    await portfolioService.resubmitRecord(id)
-    await refreshData()
-    return id
-  }, [refreshData, uploadEvidence])
-
-  const updateAchievement = useCallback(async (id, data) => {
-    const { evidence = [], submit_now: submitNow = false, ...recordData } = data || {}
-    await portfolioService.updateRecord(id, recordData)
-    await uploadEvidence(id, evidence)
-    if (submitNow) await portfolioService.resubmitRecord(id)
-    await refreshData()
-    return id
-  }, [refreshData, uploadEvidence])
-
   return {
     achievements, filteredAchievements, stats, loading, error, taxonomy,
     searchTerm, setSearchTerm, selectedCategory, setSelectedCategory,
     selectedStatus, setSelectedStatus, sortOrder, setSortOrder,
     viewMode, setViewMode, popoverState, setPopoverState,
     handleOpenPopover, handleClosePopover, previewItem, setPreviewItem,
-    addAchievement, updateAchievement, resubmitAchievement, refreshData
+    refreshData
   }
 }

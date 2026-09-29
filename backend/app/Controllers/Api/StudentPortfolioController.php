@@ -6,6 +6,9 @@ use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
 use App\Services\LocalEvidenceStorageService;
 use App\Services\PortfolioStructuredMetadataValidator;
+use App\Services\StudentAchievementEvidenceUploadPolicy;
+use App\Services\StudentEvidenceClamAvScanner;
+use App\Services\StudentEvidencePaddleOcrService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -17,6 +20,12 @@ class StudentPortfolioController extends Controller
     protected AuthorizationService $authz;
     protected LocalEvidenceStorageService $storage;
     protected PortfolioStructuredMetadataValidator $metadataValidator;
+    protected ?\CodeIgniter\Database\BaseConnection $db;
+    protected ?StudentEvidenceClamAvScanner $scanner = null;
+    protected ?StudentEvidencePaddleOcrService $ocr = null;
+
+    /** Scanner identity recorded on evidence rows; matches the canonical lifecycle scanner. */
+    private const MALWARE_SCANNER_ID = 'clamav_1_5_4';
 
     private const PROTECTED_STUDENT_FIELDS = [
         'status', 'verification_status', 'verifier_id', 'verified_by', 'verified_at',
@@ -27,11 +36,18 @@ class StudentPortfolioController extends Controller
     public function __construct(
         ?AuthorizationService $authz = null,
         ?LocalEvidenceStorageService $storage = null,
-        ?PortfolioStructuredMetadataValidator $metadataValidator = null
+        ?PortfolioStructuredMetadataValidator $metadataValidator = null,
+        ?\CodeIgniter\Database\BaseConnection $db = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->storage = $storage ?? new LocalEvidenceStorageService();
         $this->metadataValidator = $metadataValidator ?? new PortfolioStructuredMetadataValidator();
+        $this->db = $db;
+    }
+
+    protected function getDb(): \CodeIgniter\Database\BaseConnection
+    {
+        return $this->db ?? db_connect('default');
     }
 
     public function options(): mixed
@@ -125,7 +141,7 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
         }
 
-        $db = db_connect();
+        $db = $this->getDb();
         $statusFilter = trim((string) $this->request->getGet('status'));
         $categoryFilter = trim((string) $this->request->getGet('category_id'));
 
@@ -165,6 +181,7 @@ class StudentPortfolioController extends Controller
         foreach ($records as &$rec) {
             $evidenceRows = $db->table('student_portfolio_evidence')
                 ->where('portfolio_record_id', $rec['id'])
+                ->where('status', 'active')
                 ->get()->getResultArray();
             $rec['evidence'] = array_map(fn (array $item): array => $this->storage->formatSafeEvidence($item, 'student'), $evidenceRows);
             $rec['evidence_count'] = count($rec['evidence']);
@@ -179,6 +196,8 @@ class StudentPortfolioController extends Controller
             }
         }
         unset($rec);
+
+        $records = $this->attachActiveCertificates($records, $db);
 
         return $this->respond(['data' => ['records' => $records]], 200);
     }
@@ -198,7 +217,7 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record UUID.']], 422);
         }
 
-        $db = db_connect();
+        $db = $this->getDb();
         $record = $db->table('student_portfolio_records spr')
             ->select([
                 'spr.*',
@@ -227,6 +246,7 @@ class StudentPortfolioController extends Controller
 
         $evidence = $db->table('student_portfolio_evidence')
             ->where('portfolio_record_id', $id)
+            ->where('status', 'active')
             ->get()->getResultArray();
 
         $safeEvidence = array_map(function ($ev) {
@@ -236,6 +256,9 @@ class StudentPortfolioController extends Controller
         if (($actor['profile']['account_type'] ?? '') === 'student') {
             $record = $this->stripStudentScoringFields($record);
         }
+
+        $enriched = $this->attachActiveCertificates([$record], $db);
+        $record = $enriched[0] ?? $record;
 
         $events = $db->table('student_portfolio_verification_events ve')
             ->select(['ve.*', 'p.full_name AS actor_name'])
@@ -251,6 +274,169 @@ class StudentPortfolioController extends Controller
                 'events'   => $events,
             ],
         ], 200);
+    }
+
+    /**
+     * Resolves certificate lifecycle projection for a set of portfolio records in batch.
+     *
+     * Precedence: ISSUED > REVOKED > SUPERSEDED > NONE
+     *
+     * @param array<int, array> $records
+     * @return array<int, array>
+     */
+    private function attachActiveCertificates(array $records, ?\CodeIgniter\Database\BaseConnection $db = null): array
+    {
+        if (empty($records)) {
+            return [];
+        }
+
+        $db ??= $this->getDb();
+        $recordIds = array_values(array_filter(array_column($records, 'id')));
+        if (empty($recordIds)) {
+            foreach ($records as &$rec) {
+                $rec['certificate'] = null;
+            }
+            unset($rec);
+            return $records;
+        }
+
+        $certRows = [];
+        if ($db->tableExists('certificate_issuances')) {
+            $certRows = $db->table('certificate_issuances')
+                ->select([
+                    'id',
+                    'certificate_number',
+                    'public_verification_id',
+                    'status',
+                    'issued_at',
+                    'source_record_id',
+                    'supersedes_certificate_id',
+                    'superseded_by_certificate_id',
+                    'revoked_at',
+                    'created_at',
+                ])
+                ->whereIn('source_record_id', $recordIds)
+                ->where('source_record_type', 'student_portfolio_record')
+                ->orderBy('created_at', 'DESC')
+                ->get()->getResultArray();
+        }
+
+        // Group rows by source_record_id and index by certificate ID
+        $groupedBySource = [];
+        $certById = [];
+        foreach ($certRows as $cert) {
+            $srcId = $cert['source_record_id'];
+            $groupedBySource[$srcId][] = $cert;
+            $certById[$cert['id']] = $cert;
+        }
+
+        $certMap = [];
+        foreach ($recordIds as $recId) {
+            $rows = $groupedBySource[$recId] ?? [];
+            if (empty($rows)) {
+                $certMap[$recId] = null;
+                continue;
+            }
+
+            // Find candidates based on deterministic precedence: ISSUED > REVOKED > SUPERSEDED
+            $issuedCert = null;
+            $revokedCert = null;
+            $supersededCert = null;
+
+            foreach ($rows as $row) {
+                if ($row['status'] === 'ISSUED' && $issuedCert === null) {
+                    $issuedCert = $row;
+                } elseif ($row['status'] === 'REVOKED' && $revokedCert === null) {
+                    $revokedCert = $row;
+                } elseif ($row['status'] === 'SUPERSEDED' && $supersededCert === null) {
+                    $supersededCert = $row;
+                }
+            }
+
+            if ($issuedCert !== null) {
+                $prevCert = null;
+                if (!empty($issuedCert['supersedes_certificate_id'])) {
+                    $pred = $certById[$issuedCert['supersedes_certificate_id']] ?? null;
+                    if (!$pred) {
+                        $pred = $db->table('certificate_issuances')->where('id', $issuedCert['supersedes_certificate_id'])->get()->getRowArray();
+                    }
+                    if ($pred) {
+                        $prevCert = [
+                            'id'                     => $pred['id'],
+                            'certificate_number'     => $pred['certificate_number'],
+                            'status'                 => $pred['status'],
+                            'verification_url'       => '/verify/certificate/' . $pred['public_verification_id'],
+                        ];
+                    }
+                }
+
+                $certMap[$recId] = [
+                    'id'                     => $issuedCert['id'],
+                    'certificate_number'     => $issuedCert['certificate_number'],
+                    'public_verification_id' => $issuedCert['public_verification_id'],
+                    'status'                 => 'ISSUED',
+                    'issued_at'              => $issuedCert['issued_at'],
+                    'verification_url'       => '/verify/certificate/' . $issuedCert['public_verification_id'],
+                    'pdf_url'                => '/api/v1/certificates/' . $issuedCert['id'] . '/pdf',
+                    'downloadable'           => true,
+                    'replacement'            => null,
+                    'previous_certificate'   => $prevCert,
+                ];
+            } elseif ($revokedCert !== null) {
+                $certMap[$recId] = [
+                    'id'                     => $revokedCert['id'],
+                    'certificate_number'     => $revokedCert['certificate_number'],
+                    'public_verification_id' => $revokedCert['public_verification_id'],
+                    'status'                 => 'REVOKED',
+                    'issued_at'              => $revokedCert['issued_at'],
+                    'verification_url'       => '/verify/certificate/' . $revokedCert['public_verification_id'],
+                    'pdf_url'                => null,
+                    'downloadable'           => false,
+                    'replacement'            => null,
+                    'previous_certificate'   => null,
+                ];
+            } elseif ($supersededCert !== null) {
+                $replacement = null;
+                if (!empty($supersededCert['superseded_by_certificate_id'])) {
+                    $rep = $certById[$supersededCert['superseded_by_certificate_id']] ?? null;
+                    if (!$rep) {
+                        $rep = $db->table('certificate_issuances')->where('id', $supersededCert['superseded_by_certificate_id'])->get()->getRowArray();
+                    }
+                    if ($rep) {
+                        $replacement = [
+                            'id'                     => $rep['id'],
+                            'certificate_number'     => $rep['certificate_number'],
+                            'public_verification_id' => $rep['public_verification_id'],
+                            'status'                 => $rep['status'],
+                            'verification_url'       => '/verify/certificate/' . $rep['public_verification_id'],
+                            'pdf_url'                => $rep['status'] === 'ISSUED' ? ('/api/v1/certificates/' . $rep['id'] . '/pdf') : null,
+                        ];
+                    }
+                }
+
+                $certMap[$recId] = [
+                    'id'                     => $supersededCert['id'],
+                    'certificate_number'     => $supersededCert['certificate_number'],
+                    'public_verification_id' => $supersededCert['public_verification_id'],
+                    'status'                 => 'SUPERSEDED',
+                    'issued_at'              => $supersededCert['issued_at'],
+                    'verification_url'       => '/verify/certificate/' . $supersededCert['public_verification_id'],
+                    'pdf_url'                => null,
+                    'downloadable'           => false,
+                    'replacement'            => $replacement,
+                    'previous_certificate'   => null,
+                ];
+            } else {
+                $certMap[$recId] = null;
+            }
+        }
+
+        foreach ($records as &$rec) {
+            $rec['certificate'] = $certMap[$rec['id']] ?? null;
+        }
+        unset($rec);
+
+        return $records;
     }
 
     /**
@@ -308,10 +494,6 @@ class StudentPortfolioController extends Controller
                 $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
             }
         }
-        if (($changes['title'] ?? $record['title']) === '') {
-            return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'Title is required.']], 422);
-        }
-
         $db->table('student_portfolio_records')->where('id', $id)->update($changes);
         return $this->respond(['data' => ['message' => 'Portfolio record updated.', 'id' => $id, 'status' => $record['status']]], 200);
     }
@@ -353,8 +535,10 @@ class StudentPortfolioController extends Controller
             ]], 422);
         }
 
-        if ($title === '' || $categoryId === '') {
-            return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'Title and category_id are required.']], 422);
+        // Drafts may be created before a title is known (evidence-first entry).
+        // resubmitRecord() enforces title and all other completeness rules.
+        if ($categoryId === '') {
+            return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'category_id is required.']], 422);
         }
 
         $taxResult = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
@@ -578,10 +762,23 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'FILE_REQUIRED', 'message' => 'A valid evidence file is required in multipart/form-data.']], 400);
         }
 
-        $val = $this->storage->validateFile($file->getTempName(), $file->getClientName());
-        if (! $val['success']) {
-            $status = $val['error_code'] === 'FILE_TOO_LARGE' ? 413 : ($val['error_code'] === 'UNSUPPORTED_FILE_TYPE' ? 415 : 422);
-            return $this->respond(['error' => ['code' => $val['error_code'], 'message' => $val['error_message']]], $status);
+        $val = (new StudentAchievementEvidenceUploadPolicy($this->storage))->validate($file->getTempName(), $file->getClientName());
+        if (! ($val['success'] ?? false)) {
+            $code = (string) ($val['error_code'] ?? 'STUDENT_EVIDENCE_TYPE_NOT_ALLOWED');
+            $status = match ($code) {
+                'FILE_TOO_LARGE' => 413,
+                'UNSUPPORTED_FILE_TYPE', 'STUDENT_EVIDENCE_TYPE_NOT_ALLOWED' => 415,
+                default => 422,
+            };
+            // Student evidence is limited to PDF/JPEG/PNG even though the shared storage
+            // validator also accepts DOC/DOCX, so its message is not reused for type errors.
+            $message = match ($code) {
+                'FILE_TOO_LARGE' => 'Evidence files may be at most 10 MiB.',
+                'STUDENT_EVIDENCE_PDF_PAGE_LIMIT_EXCEEDED' => 'PDF evidence may have at most 2 pages.',
+                'UNSUPPORTED_FILE_TYPE', 'STUDENT_EVIDENCE_TYPE_NOT_ALLOWED' => 'Only PDF, JPEG, or PNG evidence is accepted.',
+                default => (string) ($val['error_message'] ?? 'The evidence file was rejected.'),
+            };
+            return $this->respond(['error' => ['code' => $code, 'message' => $message]], $status);
         }
 
         $evidenceType = trim((string) ($this->request->getPost('evidence_type') ?? 'certificate'));
@@ -618,7 +815,7 @@ class StudentPortfolioController extends Controller
             'uploaded_by'         => $actor['profile']['id'],
             'uploaded_at'         => $now,
             'security_status'     => 'pending',
-            'malware_scanner'     => 'none_deferred',
+            'malware_scanner'     => 'clamav_pending',
             'status'              => 'active',
         ];
 
@@ -642,6 +839,166 @@ class StudentPortfolioController extends Controller
                 'evidence' => $this->storage->formatSafeEvidence($evidenceRow, 'student'),
             ],
         ]);
+    }
+
+    /**
+     * POST /api/v1/portfolio/{id}/evidence/{evidenceId}/scan
+     * Owner-only malware scan (ClamAV). OCR is a separate request (see readEvidence) so a
+     * slow scan and a slow OCR run never share one HTTP request.
+     * Fails closed: when the scanner is unavailable, security_status stays 'pending'.
+     */
+    public function scanEvidence(string $id, string $evidenceId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+        if (! ValidationHelper::validateUuid($id) || ! ValidationHelper::validateUuid($evidenceId)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record or evidence UUID.']], 422);
+        }
+
+        $db = $this->getDb();
+        $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
+        if ($record === null) {
+            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+        }
+        if (! $this->authz->portfolio()->canEdit($actor, $record)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the owner of a draft or returned record can scan its evidence.']], 403);
+        }
+
+        $evidence = $db->table('student_portfolio_evidence')
+            ->where('id', $evidenceId)
+            ->where('portfolio_record_id', $id)
+            ->where('status', 'active')
+            ->get()->getRowArray();
+        if ($evidence === null) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Active evidence not found for this record.']], 404);
+        }
+
+        $path = $this->storage->resolveAbsolutePath((string) $evidence['storage_path']);
+        if ($path === null || ! is_file($path)) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_FILE_UNAVAILABLE', 'message' => 'The stored evidence file could not be found.']], 422);
+        }
+
+        $scan = ($this->scanner ??= new StudentEvidenceClamAvScanner())->scan($path);
+        $now = date('Y-m-d H:i:s');
+        $response = ['scan' => $scan];
+
+        if (($scan['status'] ?? '') === 'clean') {
+            $db->table('student_portfolio_evidence')->where('id', $evidenceId)->update([
+                'security_status'       => 'clean',
+                'malware_scanner'       => self::MALWARE_SCANNER_ID,
+                'security_validated_at' => $now,
+            ]);
+        } elseif (($scan['status'] ?? '') === 'infected') {
+            // The schema allows status active|archived|deleted, so rejected files are archived.
+            $db->table('student_portfolio_evidence')->where('id', $evidenceId)->update([
+                'security_status'       => 'rejected',
+                'status'                => 'archived',
+                'malware_scanner'       => self::MALWARE_SCANNER_ID,
+                'security_validated_at' => $now,
+            ]);
+        }
+
+        $fresh = $db->table('student_portfolio_evidence')->where('id', $evidenceId)->get()->getRowArray();
+        $response['evidence'] = $this->storage->formatSafeEvidence($fresh ?? $evidence, 'student');
+
+        return $this->respond(['data' => $response], 200);
+    }
+
+    /**
+     * POST /api/v1/portfolio/{id}/evidence/{evidenceId}/ocr
+     * Owner-only advisory OCR for evidence that already passed the security scan.
+     * OCR failure is reported as data (ocr_error); it never blocks manual entry.
+     */
+    public function readEvidence(string $id, string $evidenceId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+        if (! ValidationHelper::validateUuid($id) || ! ValidationHelper::validateUuid($evidenceId)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record or evidence UUID.']], 422);
+        }
+
+        $db = $this->getDb();
+        $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
+        if ($record === null) {
+            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+        }
+        if (! $this->authz->portfolio()->canEdit($actor, $record)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the owner of a draft or returned record can read its evidence.']], 403);
+        }
+
+        $evidence = $db->table('student_portfolio_evidence')
+            ->where('id', $evidenceId)
+            ->where('portfolio_record_id', $id)
+            ->where('status', 'active')
+            ->get()->getRowArray();
+        if ($evidence === null) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Active evidence not found for this record.']], 404);
+        }
+        if (($evidence['security_status'] ?? '') !== 'clean') {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_SCANNED', 'message' => 'Evidence must pass the security scan before it can be read.']], 409);
+        }
+
+        $path = $this->storage->resolveAbsolutePath((string) $evidence['storage_path']);
+        if ($path === null || ! is_file($path)) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_FILE_UNAVAILABLE', 'message' => 'The stored evidence file could not be found.']], 422);
+        }
+
+        try {
+            $mime = (string) ($evidence['detected_mime_type'] ?? $evidence['mime_type'] ?? '');
+            $ocr = ($this->ocr ??= new StudentEvidencePaddleOcrService())->extract($path, $mime);
+
+            return $this->respond(['data' => ['ocr' => $ocr]], 200);
+        } catch (Throwable) {
+            return $this->respond(['data' => ['ocr' => null, 'ocr_error' => 'OCR assistance was unavailable. You can continue with manual entry.']], 200);
+        }
+    }
+
+    /**
+     * DELETE /api/v1/portfolio/{id}/evidence/{evidenceId}
+     * Owner-only soft removal while the record is editable. The file and row are kept.
+     */
+    public function removeEvidence(string $id, string $evidenceId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+        if (! ValidationHelper::validateUuid($id) || ! ValidationHelper::validateUuid($evidenceId)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record or evidence UUID.']], 422);
+        }
+
+        $db = $this->getDb();
+        $evidence = $db->table('student_portfolio_evidence spe')
+            ->select(['spe.*', 'spr.student_profile_id'])
+            ->join('student_portfolio_records spr', 'spr.id = spe.portfolio_record_id')
+            ->where('spe.id', $evidenceId)
+            ->where('spe.portfolio_record_id', $id)
+            ->get()->getRowArray();
+        if ($evidence === null) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Evidence not found for this record.']], 404);
+        }
+        if (! $this->authz->evidence()->canDeleteStudentEvidence($actor, $evidence)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the owner of a draft or returned record can remove its evidence.']], 403);
+        }
+
+        if (($evidence['status'] ?? '') === 'active') {
+            // Soft delete only; the protected file is never removed from storage.
+            $db->table('student_portfolio_evidence')
+                ->where('id', $evidenceId)
+                ->where('status', 'active')
+                ->update(['status' => 'deleted']);
+        }
+
+        $fresh = $db->table('student_portfolio_evidence')->where('id', $evidenceId)->get()->getRowArray();
+
+        return $this->respond(['data' => [
+            'message'  => 'Evidence removed from this record.',
+            'evidence' => $this->storage->formatSafeEvidence($fresh ?? $evidence, 'student'),
+        ]], 200);
     }
 
     /**
@@ -707,9 +1064,13 @@ class StudentPortfolioController extends Controller
         $evidenceCount = $db->table('student_portfolio_evidence')
             ->where('portfolio_record_id', $id)
             ->where('status', 'active')
+            ->where('security_status', 'clean')
             ->countAllResults();
         if ($evidenceCount < 1) {
-            return $this->respond(['error' => ['code' => 'EVIDENCE_REQUIRED', 'message' => 'Persisted supporting evidence is required before submission.']], 422);
+            return $this->respond(['error' => [
+                'code' => 'CLEAN_EVIDENCE_REQUIRED',
+                'message' => 'At least one supporting evidence file that passed the security scan is required before submission.',
+            ]], 422);
         }
 
         $duplicate = $db->table('student_portfolio_records')
@@ -752,10 +1113,12 @@ class StudentPortfolioController extends Controller
                 'id'                  => $this->genUuid(),
                 'portfolio_record_id' => $id,
                 'actor_profile_id'    => $actor['profile']['id'],
-                'action'              => 'resubmitted',
+                'action'              => $record['status'] === 'draft' ? 'submitted' : 'resubmitted',
                 'previous_status'     => $record['status'],
                 'new_status'          => 'submitted',
-                'remarks'             => 'Resubmitted after addressing revision remarks',
+                'remarks'             => $record['status'] === 'draft'
+                    ? 'Submitted for Program Coordinator verification'
+                    : 'Resubmitted after addressing revision remarks',
                 'occurred_at'         => $now,
             ]);
 

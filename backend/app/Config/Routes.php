@@ -88,10 +88,16 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->post('certificates/readiness', 'Api\CertificateController::readiness');
     $routes->post('certificates/issue', 'Api\CertificateController::issue');
     $routes->get('certificates/verify/(:segment)', 'Api\CertificateController::verify/$1');
+    $routes->get('certificates/(:segment)/pdf', 'Api\CertificateController::pdf/$1');
+    $routes->post('certificates/(:segment)/revoke', 'Api\CertificateController::revoke/$1');
+    $routes->post('certificates/(:segment)/reissue', 'Api\CertificateController::reissue/$1');
     $routes->options('certificates/templates', 'Api\CertificateController::options');
     $routes->options('certificates/readiness', 'Api\CertificateController::options');
     $routes->options('certificates/issue', 'Api\CertificateController::options');
     $routes->options('certificates/verify/(:segment)', 'Api\CertificateController::options');
+    $routes->options('certificates/(:segment)/pdf', 'Api\CertificateController::options');
+    $routes->options('certificates/(:segment)/revoke', 'Api\CertificateController::options');
+    $routes->options('certificates/(:segment)/reissue', 'Api\CertificateController::options');
 
     // OSAD governed certificate template authoring
     $routes->get('certificate-templates/placeholders', 'Api\CertificateTemplateController::placeholders');
@@ -146,6 +152,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->delete('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::delete/$1');
     $routes->options('hr/ranking-cycles', 'Api\RankingCycleController::options');
     $routes->options('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::options');
+    $routes->get('hr/ranking-cycles/(:segment)/tracks/(:segment)/workspace/(:segment)', 'Api\RankingCycleWorkspaceController::show/$1/$2/$3');
+    $routes->options('hr/ranking-cycles/(:segment)/tracks/(:segment)/workspace/(:segment)', 'Api\RankingCycleWorkspaceController::options');
     $routes->get('reviewer/ranking-cycles/(:segment)/tracks/(:segment)/personnel', 'Api\ReviewerRankingRosterController::index/$1/$2');
     $routes->options('reviewer/ranking-cycles/(:segment)/tracks/(:segment)/personnel', 'Api\ReviewerRankingRosterController::options');
     $routes->post('hr/personnel-evaluation-periods', 'Api\PersonnelEvaluationPeriodController::create');
@@ -189,16 +197,35 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->post('verification/(:segment)/decide', 'Api\VerificationQueueController::decide/$1');
     $routes->options('verification/(:segment)/decide', 'Api\VerificationQueueController::options');
 
-    // Official Events & Certificates
+    // Official Events, Venues & Certificates
+    $routes->get('event-venues', 'Api\EventVenueController::index');
+    $routes->options('event-venues', 'Api\EventVenueController::options');
     $routes->get('events', 'Api\EventController::index');
     $routes->options('events', 'Api\EventController::options');
     $routes->post('events', 'Api\EventController::create');
+    $routes->patch('events/(:segment)', 'Api\EventController::update/$1');
+    $routes->options('events/(:segment)', 'Api\EventController::options');
+    $routes->post('events/(:segment)/cancel', 'Api\EventController::cancel/$1');
+    $routes->options('events/(:segment)/cancel', 'Api\EventController::options');
     $routes->post('events/(:segment)/participants', 'Api\EventController::addParticipants/$1');
     $routes->options('events/(:segment)/participants', 'Api\EventController::options');
     $routes->get('events/(:segment)/certificate-candidates', 'Api\EventCertificateCandidateController::candidates/$1');
     $routes->post('events/(:segment)/certificate-source-records/resolve', 'Api\EventCertificateCandidateController::resolve/$1');
     $routes->options('events/(:segment)/certificate-candidates', 'Api\EventCertificateCandidateController::options');
     $routes->options('events/(:segment)/certificate-source-records/resolve', 'Api\EventCertificateCandidateController::options');
+
+    // Attendance Domain (R4 Step 2B)
+    $routes->get('events/(:segment)/attendance-sessions', 'Api\AttendanceController::listSessionsForEvent/$1');
+    $routes->post('events/(:segment)/attendance-sessions', 'Api\AttendanceController::createSession/$1');
+    $routes->options('events/(:segment)/attendance-sessions', 'Api\AttendanceController::options');
+    $routes->get('attendance-sessions/(:segment)', 'Api\AttendanceController::getSession/$1');
+    $routes->patch('attendance-sessions/(:segment)/status', 'Api\AttendanceController::transitionSessionStatus/$1');
+    $routes->options('attendance-sessions/(:segment)/status', 'Api\AttendanceController::options');
+    $routes->get('attendance-sessions/(:segment)/records', 'Api\AttendanceController::listSessionRecords/$1');
+    $routes->options('attendance-sessions/(:segment)/records', 'Api\AttendanceController::options');
+    $routes->post('attendance-sessions/(:segment)/check-in', 'Api\AttendanceController::checkIn/$1');
+    $routes->options('attendance-sessions/(:segment)/check-in', 'Api\AttendanceController::options');
+    $routes->options('attendance-sessions/(:segment)', 'Api\AttendanceController::options');
 
     // =========================================================================
     // HR Personnel Directory & Governance (Phases 3-7, 14-15)
@@ -345,6 +372,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('reviewer/recommended-ranks/(:segment)/confirm', 'Api\RecommendedRankController::options');
 
     // Phase O — HR final rank review and decision reconsideration versioning.
+    $routes->get('reviewer/evaluations/(:segment)/phase-o', 'Api\HrFinalRankReviewController::context/$1');
+    $routes->options('reviewer/evaluations/(:segment)/phase-o', 'Api\HrFinalRankReviewController::options');
     $routes->post('hr/recommended-ranks/(:segment)/finalize', 'Api\HrFinalRankReviewController::finalize/$1');
     $routes->post('hr/recommended-ranks/(:segment)/return-for-reconsideration', 'Api\HrFinalRankReviewController::returnForReconsideration/$1');
     $routes->post('reviewer/hr-final-rank-reviews/(:segment)/begin-reconsideration', 'Api\HrFinalRankReviewController::beginReconsideration/$1');
@@ -418,6 +447,10 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // Final points-summary report
     $routes->get('hr/evaluations/(:segment)/report', 'Api\HREvaluationController::getReport/$1');
     $routes->options('hr/evaluations/(:segment)/report', 'Api\HREvaluationController::options');
+    $routes->get('personnel/evaluations/(:segment)/result', 'Api\HREvaluationController::getResult/$1');
+    $routes->get('personnel/evaluations/(:segment)/result/print', 'Api\HREvaluationController::printableResult/$1');
+    $routes->options('personnel/evaluations/(:segment)/result', 'Api\HREvaluationController::options');
+    $routes->options('personnel/evaluations/(:segment)/result/print', 'Api\HREvaluationController::options');
 
     // Deficiency / Additional Evidence Workflow
     $routes->post('hr/evaluations/(:segment)/deficiencies', 'Api\HREvaluationController::createDeficiency/$1');
@@ -459,6 +492,20 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // =========================================================================
     $routes->get('portfolio/categories', 'Api\StudentPortfolioController::categories');
     $routes->options('portfolio/categories', 'Api\StudentPortfolioController::options');
+    $routes->post('student/evidence/(:segment)/ocr', 'Api\StudentEvidenceOcrController::extract/$1');
+    $routes->options('student/evidence/(:segment)/ocr', 'Api\StudentEvidenceOcrController::options');
+    $routes->get('student/achievement-schema', 'Api\StudentAchievementSchemaController::index');
+    $routes->get('student/achievement-schema/(:segment)', 'Api\StudentAchievementSchemaController::show/$1');
+    $routes->options('student/achievement-schema', 'Api\StudentAchievementSchemaController::options');
+    $routes->options('student/achievement-schema/(:segment)', 'Api\StudentAchievementSchemaController::options');
+    $routes->post('student/achievements/drafts', 'Api\StudentAchievementLifecycleController::create');
+    $routes->get('student/achievements/(:segment)', 'Api\StudentAchievementLifecycleController::show/$1');
+    $routes->put('student/achievements/(:segment)', 'Api\StudentAchievementLifecycleController::save/$1');
+    $routes->post('student/achievements/(:segment)/evidence', 'Api\StudentAchievementLifecycleController::upload/$1');
+    $routes->get('student/achievements/(:segment)/evidence/(:segment)/preview', 'Api\StudentAchievementLifecycleController::preview/$1/$2');
+    $routes->delete('student/achievements/(:segment)/evidence/(:segment)', 'Api\StudentAchievementLifecycleController::remove/$1/$2');
+    $routes->post('student/achievements/(:segment)/evidence/(:segment)/scan', 'Api\StudentAchievementLifecycleController::scan/$1/$2');
+    $routes->post('student/achievements/(:segment)/submit', 'Api\StudentAchievementLifecycleController::submit/$1');
     $routes->post('ocr/extract', 'Api\OcrController::extract');
     $routes->post('ocr/extract-evidence/(:segment)', 'Api\OcrController::extractEvidence/$1');
     $routes->options('ocr/extract', 'Api\OcrController::options');
@@ -470,6 +517,12 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('portfolio/(:segment)', 'Api\StudentPortfolioController::options');
     $routes->post('portfolio/(:segment)/evidence', 'Api\StudentPortfolioController::addEvidence/$1');
     $routes->options('portfolio/(:segment)/evidence', 'Api\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/evidence/(:segment)/scan', 'Api\StudentPortfolioController::scanEvidence/$1/$2');
+    $routes->options('portfolio/(:segment)/evidence/(:segment)/scan', 'Api\StudentPortfolioController::options');
+    $routes->post('portfolio/(:segment)/evidence/(:segment)/ocr', 'Api\StudentPortfolioController::readEvidence/$1/$2');
+    $routes->options('portfolio/(:segment)/evidence/(:segment)/ocr', 'Api\StudentPortfolioController::options');
+    $routes->delete('portfolio/(:segment)/evidence/(:segment)', 'Api\StudentPortfolioController::removeEvidence/$1/$2');
+    $routes->options('portfolio/(:segment)/evidence/(:segment)', 'Api\StudentPortfolioController::options');
     $routes->post('portfolio/(:segment)/verify', 'Api\StudentPortfolioController::verifyRecord/$1');
     $routes->options('portfolio/(:segment)/verify', 'Api\StudentPortfolioController::options');
     $routes->post('portfolio/(:segment)/request-revision', 'Api\StudentPortfolioController::requestRevision/$1');
@@ -488,7 +541,9 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->post('osad/colleges', 'Api\CollegeController::create');
     $routes->options('osad/colleges', 'Api\CollegeController::options');
     $routes->get('osad/colleges/(:segment)', 'Api\CollegeController::show/$1');
+    $routes->patch('osad/colleges/(:segment)/status', 'Api\CollegeController::updateStatus/$1');
     $routes->options('osad/colleges/(:segment)', 'Api\CollegeController::options');
+    $routes->options('osad/colleges/(:segment)/status', 'Api\CollegeController::options');
     $routes->get('osad/colleges/(:segment)/logo', 'Api\CollegeController::logo/$1');
     $routes->options('osad/colleges/(:segment)/logo', 'Api\CollegeController::options');
     $routes->get('osad/academic-programs', 'Api\CollegeController::listPrograms');
@@ -513,6 +568,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('osad/organizations', 'Api\OrganizationController::options');
     $routes->get('osad/organizations/(:segment)', 'Api\OrganizationController::show/$1');
     $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
+    $routes->get('osad/organizations/(:segment)/moderator-candidates', 'Api\OrganizationController::moderatorCandidates/$1');
+    $routes->options('osad/organizations/(:segment)/moderator-candidates', 'Api\OrganizationController::options');
     $routes->get('osad/organizations/(:segment)/logo', 'Api\OrganizationController::logo/$1');
     $routes->post('osad/organizations/(:segment)/logo', 'Api\OrganizationController::updateLogo/$1');
     $routes->delete('osad/organizations/(:segment)/logo', 'Api\OrganizationController::deleteLogo/$1');

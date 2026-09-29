@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { useLocation, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrentUser } from '../../services/authService'
-import AchievementSubmissionModal from './modals/AchievementSubmissionModal'
+import AchievementSubmissionModal from './modals/PortfolioAchievementSubmissionModal'
 import StudentAchievementPopoverMenu from './StudentAchievementPopoverMenu'
 import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewModal'
 import useStudentAchievements from '../../hooks/useStudentAchievements'
 import portfolioService from '../../services/portfolioService'
+import StudentCertificateBadge from '../../components/common/StudentCertificateBadge'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -63,9 +64,7 @@ export default function StudentAchievementsPage({ currentUser }) {
     handleClosePopover,
     previewItem,
     setPreviewItem,
-    addAchievement,
-    updateAchievement,
-    resubmitAchievement,
+    refreshData,
     taxonomy
   } = useStudentAchievements()
 
@@ -107,21 +106,6 @@ export default function StudentAchievementsPage({ currentUser }) {
   const getCategoryIcon = (catName) => {
     const found = categoryDefs.find(c => c.name === catName)
     return found ? found.icon : Trophy
-  }
-
-  // Submission / Edit / Resubmit Handler
-  const handleSubmitAchievement = async (formData) => {
-    if (editingItem) {
-      if (editingItem.status === 'Returned' && formData.submit_now) {
-        await resubmitAchievement(editingItem.id, formData)
-      } else {
-        await updateAchievement(editingItem.id, formData)
-      }
-      setEditingItem(null)
-    } else {
-      await addAchievement(formData)
-    }
-    setIsSubmitOpen(false)
   }
 
   const handleDownloadProof = async (item) => {
@@ -377,6 +361,11 @@ export default function StudentAchievementsPage({ currentUser }) {
                             {item.title}
                           </h3>
                           <p className="text-xs text-[#64748B] dark:text-[#B1C0B6] font-medium mt-1">{item.location}</p>
+                          {item.certificate && (
+                            <div className="pt-2">
+                              <StudentCertificateBadge certificate={item.certificate} />
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Bottom Row: Date & Status Pill */}
@@ -455,6 +444,10 @@ export default function StudentAchievementsPage({ currentUser }) {
                           {item.status === 'Returned' && <RotateCcw className="w-3 h-3 text-[#B54747]" />}
                           <span>{item.status}</span>
                         </span>
+
+                        {item.certificate && (
+                          <StudentCertificateBadge certificate={item.certificate} showNumber={false} />
+                        )}
 
                         <button
                           type="button"
@@ -586,10 +579,10 @@ export default function StudentAchievementsPage({ currentUser }) {
       {/* Achievement Submission & Edit Modal */}
       <AchievementSubmissionModal
         isOpen={isSubmitOpen}
-        onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
-        onSubmitAchievement={handleSubmitAchievement}
-        initialData={editingItem}
+        editingRecordId={editingItem?.id || null}
         taxonomy={taxonomy}
+        onSaved={refreshData}
+        onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
       />
     </>
   )

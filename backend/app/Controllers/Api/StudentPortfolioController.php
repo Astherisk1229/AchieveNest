@@ -183,7 +183,7 @@ class StudentPortfolioController extends Controller
                 ->where('portfolio_record_id', $rec['id'])
                 ->where('status', 'active')
                 ->get()->getResultArray();
-            $rec['evidence'] = array_map(fn (array $item): array => $this->storage->formatSafeEvidence($item, 'student'), $evidenceRows);
+            $rec['evidence'] = array_map(fn (array $item): array => $this->storage->formatSafeEvidence($item, 'student', false), $evidenceRows);
             $rec['evidence_count'] = count($rec['evidence']);
             $latestDecision = $db->table('student_portfolio_verification_events')
                 ->where('portfolio_record_id', $rec['id'])
@@ -250,7 +250,7 @@ class StudentPortfolioController extends Controller
             ->get()->getResultArray();
 
         $safeEvidence = array_map(function ($ev) {
-            return $this->storage->formatSafeEvidence($ev, 'student');
+            return $this->storage->formatSafeEvidence($ev, 'student', false);
         }, $evidence);
 
         if (($actor['profile']['account_type'] ?? '') === 'student') {
@@ -1178,6 +1178,19 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Program Coordinator or OSAD role required.']], 403);
         }
 
+        // Default: records awaiting action. ?status=all adds decided records for history views.
+        $requested = strtolower(trim((string) $this->request->getGet('status')));
+        $allowed = ['submitted', 'revision_requested', 'verified', 'rejected'];
+        $statuses = match (true) {
+            $requested === '' => ['submitted', 'revision_requested'],
+            $requested === 'all' => $allowed,
+            in_array($requested, $allowed, true) => [$requested],
+            default => null,
+        };
+        if ($statuses === null) {
+            return $this->respond(['error' => ['code' => 'INVALID_STATUS_FILTER', 'message' => 'status must be submitted, revision_requested, verified, rejected, or all.']], 422);
+        }
+
         $db = db_connect();
         $builder = $db->table('student_portfolio_records spr')
             ->select([
@@ -1197,7 +1210,7 @@ class StudentPortfolioController extends Controller
             ->join('profiles p', 'p.id = spr.student_profile_id')
             ->join('student_program_enrollments spe', 'spe.student_profile_id = spr.student_profile_id AND spe.is_active = 1')
             ->join('academic_programs ap', 'ap.id = spe.academic_program_id')
-            ->whereIn('spr.status', ['submitted', 'revision_requested'])
+            ->whereIn('spr.status', $statuses)
             ->orderBy('spr.submitted_at', 'ASC');
 
         $this->authz->portfolio()->scopeVerificationQuery($actor, $builder);
@@ -1205,9 +1218,19 @@ class StudentPortfolioController extends Controller
         $queue = $builder->get()->getResultArray();
 
         foreach ($queue as &$item) {
-            $item['evidence'] = $db->table('student_portfolio_evidence')
+            // Reviewer-safe evidence only: no storage paths or internal hashes, active files only.
+            $rows = $db->table('student_portfolio_evidence')
                 ->where('portfolio_record_id', $item['id'])
+                ->where('status', 'active')
                 ->get()->getResultArray();
+            $item['evidence'] = array_map(fn (array $row): array => $this->storage->formatSafeEvidence($row, 'student', false), $rows);
+            $item['evidence_count'] = count($item['evidence']);
+            $latestDecision = $db->table('student_portfolio_verification_events')
+                ->where('portfolio_record_id', $item['id'])
+                ->whereIn('action', ['revision_requested', 'rejected'])
+                ->orderBy('occurred_at', 'DESC')
+                ->get(1)->getRowArray();
+            $item['latest_remarks'] = $latestDecision['remarks'] ?? null;
         }
         unset($item);
 

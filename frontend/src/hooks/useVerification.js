@@ -1,18 +1,41 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import portfolioService from '../services/portfolioService'
 
-const normalize = record => ({
-  ...record,
-  status: record.status === 'verified' ? 'Verified'
-    : record.status === 'revision_requested' ? 'Returned'
-      : record.status === 'rejected' ? 'Rejected' : 'Pending',
-  category: record.category_name || record.category || 'Uncategorized',
-  date: record.occurrence_date || record.submitted_at || record.created_at,
-  student_id: record.student_id_number || record.student_id,
-  program: record.program_name || record.program,
-  attached_file_name: record.evidence?.[0]?.original_filename || '',
-  return_remarks: record.latest_remarks || record.return_remarks || ''
+/** Backend status → coordinator UI label. One label per real backend status. */
+export const STATUS_LABELS = Object.freeze({
+  submitted: 'Pending',
+  revision_requested: 'Returned',
+  verified: 'Verified',
+  rejected: 'Rejected'
 })
+
+export const STATUS_FILTERS = ['All', 'Pending', 'Returned', 'Verified', 'Rejected']
+
+/** Formats an API rejection ({ error: { code, message } }) verbatim for display. */
+export function formatApiError(error, fallback = 'The request failed.') {
+  const body = error?.error || error?.data?.error || null
+  const message = body?.message || error?.message || fallback
+  const code = body?.code || null
+  return code ? `${message} (${code})` : message
+}
+
+export const normalizeQueueRecord = record => {
+  const status = String(record.status || '').toLowerCase()
+  const evidence = Array.isArray(record.evidence) ? record.evidence : []
+  return {
+    ...record,
+    canonical_status: status,
+    status: STATUS_LABELS[status] || status,
+    category: record.category_name || record.category || 'Uncategorized',
+    date: record.occurrence_date || record.submitted_at || record.created_at,
+    student_id: record.student_id_number || record.student_id,
+    program: record.program_name || record.program,
+    evidence,
+    docs_count: Number(record.evidence_count ?? evidence.length),
+    attached_file_name: evidence[0]?.original_filename || '',
+    return_remarks: record.latest_remarks || record.return_remarks || ''
+  }
+}
 
 export function useVerification() {
   const [allSubmissions, setAllSubmissions] = useState([])
@@ -25,11 +48,12 @@ export function useVerification() {
     setLoading(true)
     setError(null)
     try {
-      const records = await portfolioService.fetchCoordinatorQueue()
-      setAllSubmissions(records.map(normalize))
+      // 'all' so the Verified/Rejected filters and metrics reflect real decided records.
+      const records = await portfolioService.fetchCoordinatorQueue({ status: 'all' })
+      setAllSubmissions(records.map(normalizeQueueRecord))
     } catch (err) {
       setAllSubmissions([])
-      setError(err?.response?.data?.error?.message || err?.message || 'Failed to load verification queue.')
+      setError(formatApiError(err, 'Failed to load verification queue.'))
     } finally {
       setLoading(false)
     }
@@ -54,6 +78,13 @@ export function useVerification() {
     await refreshQueue()
   }, [refreshQueue])
 
+  const handleReject = useCallback(async (id, remarks) => {
+    await portfolioService.rejectRecord(id, remarks)
+    await refreshQueue()
+  }, [refreshQueue])
+
+  const loadRecordDetail = useCallback(id => portfolioService.fetchRecord(id), [])
+
   const handleExportCSVReport = useCallback(programScope => {
     const headers = ['Record ID', 'Student ID', 'Student', 'Program', 'Title', 'Status']
     const rows = allSubmissions.map(item => [item.id, item.student_id, item.student_name, item.program, item.title, item.status])
@@ -71,7 +102,8 @@ export function useVerification() {
     pendingCount: allSubmissions.filter(item => item.status === 'Pending').length,
     verifiedCount: allSubmissions.filter(item => item.status === 'Verified').length,
     returnedCount: allSubmissions.filter(item => item.status === 'Returned').length,
+    rejectedCount: allSubmissions.filter(item => item.status === 'Rejected').length,
     searchQuery, setSearchQuery, statusFilter, setStatusFilter,
-    handleApprove, handleReturn, handleExportCSVReport, refreshQueue
+    handleApprove, handleReturn, handleReject, loadRecordDetail, handleExportCSVReport, refreshQueue
   }
 }

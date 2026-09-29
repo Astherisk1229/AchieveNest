@@ -104,8 +104,9 @@ export const portfolioService = {
     return res?.data || res
   },
 
-  async fetchCoordinatorQueue() {
-    const res = await apiClient.get('/program-coordinator/verification-queue')
+  // status: 'submitted' | 'revision_requested' | 'verified' | 'rejected' | 'all' (default: awaiting action)
+  async fetchCoordinatorQueue(params = {}) {
+    const res = await apiClient.get('/program-coordinator/verification-queue', { params })
     return res?.data?.queue || res?.queue || []
   },
 

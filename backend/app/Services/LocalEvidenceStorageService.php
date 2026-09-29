@@ -286,10 +286,10 @@ class LocalEvidenceStorageService
     /**
      * Formats safe evidence response for frontend API output (no physical path leakage).
      */
-    public function formatSafeEvidence(array $evidence, string $domain = 'student'): array
+    public function formatSafeEvidence(array $evidence, string $domain = 'student', bool $includeIntegrityHash = true): array
     {
         $id = $evidence['id'] ?? '';
-        return [
+        $formatted = [
             'id'                => $id,
             'portfolio_record_id' => $evidence['portfolio_record_id'] ?? null,
             'accomplishment_id' => $evidence['accomplishment_id'] ?? null,
@@ -304,5 +304,11 @@ class LocalEvidenceStorageService
             'uploaded_at'       => $evidence['uploaded_at'] ?? '',
             'download_endpoint' => sprintf('/api/v1/evidence/%s/%s/download', $domain, $id),
         ];
+        if (! $includeIntegrityHash) {
+            // Reviewer-facing responses do not need internal integrity hashes.
+            unset($formatted['sha256']);
+        }
+
+        return $formatted;
     }
 }

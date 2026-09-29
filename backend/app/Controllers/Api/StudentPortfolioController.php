@@ -1086,19 +1086,24 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'DUPLICATE_ACHIEVEMENT', 'message' => 'A matching achievement record already exists. Review the existing record instead of submitting a duplicate.']], 409);
         }
 
-        $routing = $db->table('student_program_enrollments spe')
-            ->select('spe.academic_program_id, pca.personnel_profile_id AS coordinator_profile_id')
-            ->join('program_coordinator_assignments pca', 'pca.academic_program_id = spe.academic_program_id AND pca.is_active = 1')
-            ->where('spe.student_profile_id', $record['student_profile_id'])
-            ->where('spe.is_active', 1)
-            ->orderBy('spe.effective_from', 'DESC')
-            ->get(1)->getRowArray();
-        if ($routing === null || empty($routing['coordinator_profile_id'])) {
+        // Same program-resolution rule as coordinator scoping and canVerify().
+        $program = $this->authz->portfolio()->resolveStudentProgram((string) $record['student_profile_id']);
+        if ($program['status'] === 'ambiguous') {
+            return $this->respond(['error' => [
+                'code' => 'AMBIGUOUS_ACTIVE_STUDENT_PROGRAM',
+                'message' => 'You have more than one active program enrollment. Contact OSAD to correct your enrollment before submitting.',
+            ]], 422);
+        }
+        $coordinators = $program['program_id'] !== null
+            ? $this->authz->portfolio()->activeCoordinatorIds($program['program_id'])
+            : [];
+        if (count($coordinators) !== 1) {
             return $this->respond(['error' => [
                 'code' => 'VERIFICATION_ROUTING_UNAVAILABLE',
-                'message' => 'No active Program Coordinator is assigned to your current program. Contact OSAD before submitting.',
+                'message' => 'No single active Program Coordinator is assigned to your current program. Contact OSAD before submitting.',
             ]], 503);
         }
+        $routing = ['academic_program_id' => $program['program_id'], 'coordinator_profile_id' => $coordinators[0]];
 
         $now = date('Y-m-d H:i:s');
         $db->transStart();
@@ -1274,24 +1279,26 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
         }
 
-        // Phase 3 Rule: Only reviewable states can be verified / transitioned
-        $reviewableStates = ['submitted'];
-        if (! in_array($record['status'], $reviewableStates, true)) {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'INVALID_STATE_TRANSITION',
-                    'message' => "Records in '{$record['status']}' state cannot be decided upon. Must be in a reviewable state.",
-                ],
-            ], 422);
-        }
-
-        // Centralized object-level verification policy check
-        if (! $this->authz->portfolio()->canVerify($actor, $record)) {
-            // Distinguish specific denial reasons for clear error reporting
+        // Scope first: an unauthorized actor gets 403 whatever the record's state.
+        if (! $this->authz->portfolio()->canReviewStudent($actor, $record)) {
             if ($record['student_profile_id'] === $actor['profile']['id']) {
                 return $this->respond(['error' => ['code' => 'SELF_VERIFICATION_FORBIDDEN', 'message' => 'Students cannot verify their own submissions.']], 403);
             }
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not the authorized active Program Coordinator for this student program.']], 403);
+        }
+
+        // Only 'submitted' records can be decided. Already-decided records get 409.
+        if (in_array($record['status'], ['verified', 'rejected', 'revision_requested'], true)) {
+            return $this->respond(['error' => [
+                'code'    => 'DECISION_ALREADY_RECORDED',
+                'message' => "A decision was already recorded for this submission (current status: {$record['status']}).",
+            ]], 409);
+        }
+        if ($record['status'] !== 'submitted') {
+            return $this->respond(['error' => [
+                'code'    => 'INVALID_STATE_TRANSITION',
+                'message' => "Records in '{$record['status']}' state cannot be decided upon. Must be in a reviewable state.",
+            ]], 422);
         }
 
         $json = $this->request->getJSON(true) ?? [];
@@ -1312,26 +1319,40 @@ class StudentPortfolioController extends Controller
             $evidenceCount = $db->table('student_portfolio_evidence')
                 ->where('portfolio_record_id', $id)
                 ->where('status', 'active')
+                ->where('security_status', 'clean')
                 ->countAllResults();
 
             if ($evidenceCount === 0) {
                 return $this->respond([
                     'error' => [
-                        'code'    => 'MISSING_EVIDENCE_FOR_VERIFICATION',
-                        'message' => 'Cannot verify a portfolio record without active supporting evidence attachments.',
+                        'code'    => 'CLEAN_EVIDENCE_REQUIRED',
+                        'message' => 'Cannot verify a portfolio record without active supporting evidence that passed the security scan.',
                     ],
                 ], 422);
             }
         }
         $now = date('Y-m-d H:i:s');
 
-        $db->transStart();
+        // Race-safe: the status change only applies while the record is still 'submitted'.
+        // A concurrent decision that already moved it affects 0 rows and is refused with 409.
+        $db->transBegin();
         try {
-            $db->table('student_portfolio_records')->where('id', $id)->update([
-                'status'      => $targetStatus,
-                'verified_at' => $targetStatus === 'verified' ? $now : null,
-                'updated_at'  => $now,
-            ]);
+            $db->table('student_portfolio_records')
+                ->where('id', $id)
+                ->where('status', 'submitted')
+                ->update([
+                    'status'      => $targetStatus,
+                    'verified_at' => $targetStatus === 'verified' ? $now : null,
+                    'updated_at'  => $now,
+                ]);
+
+            if ($db->affectedRows() !== 1) {
+                $db->transRollback();
+                return $this->respond(['error' => [
+                    'code'    => 'DECISION_ALREADY_RECORDED',
+                    'message' => 'Another decision was recorded for this submission first.',
+                ]], 409);
+            }
 
             $db->table('student_portfolio_verification_events')->insert([
                 'id'                  => $this->genUuid(),
@@ -1344,13 +1365,14 @@ class StudentPortfolioController extends Controller
                 'occurred_at'         => $now,
             ]);
 
-            $db->transComplete();
+            if ($db->transStatus() === false) {
+                $db->transRollback();
+                return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'The verification decision could not be committed.']], 500);
+            }
+            $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
             return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'Failed to record decision: ' . $e->getMessage()]], 500);
-        }
-        if ($db->transStatus() === false) {
-            return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'The verification decision could not be committed.']], 500);
         }
 
 

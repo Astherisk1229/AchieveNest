@@ -110,21 +110,25 @@ class StudentPortfolioPolicy
      */
     public function canVerify(array $actor, array $record): bool
     {
+        return (string) ($record['status'] ?? 'draft') === 'submitted'
+            && $this->canReviewStudent($actor, $record);
+    }
+
+    /**
+     * Scope-only check used before state checks, so an unauthorized coordinator always gets 403
+     * regardless of the record's status:
+     * - not the student owner (no self-verification);
+     * - active Program Coordinator of the student's single active program.
+     */
+    public function canReviewStudent(array $actor, array $record): bool
+    {
         $actorId = (string) ($actor['profile']['id'] ?? '');
         $studentProfileId = (string) ($record['student_profile_id'] ?? '');
-        $status = (string) ($record['status'] ?? 'draft');
 
-        // Rule 1: No self-verification under any circumstance
-        if ($actorId !== '' && $actorId === $studentProfileId) {
+        if ($actorId === '' || $actorId === $studentProfileId) {
             return false;
         }
 
-        // Rule 2: Must be in a verifiable status
-        if ($status !== 'submitted') {
-            return false;
-        }
-
-        // Rule 3: Must be an active Program Coordinator for the student's current program
         $coordinatorProgramIds = $this->getCoordinatorProgramIds($actor);
         if (empty($coordinatorProgramIds)) {
             return false;
@@ -164,12 +168,7 @@ class StudentPortfolioPolicy
             if (! empty($coordinatorProgramIds)) {
                 $builder->whereIn(
                     'spr.student_profile_id',
-                    static function (BaseBuilder $sub) use ($coordinatorProgramIds) {
-                        return $sub->select('student_profile_id')
-                            ->from('student_program_enrollments')
-                            ->whereIn('academic_program_id', $coordinatorProgramIds)
-                            ->where('is_active', 1);
-                    }
+                    static fn (BaseBuilder $sub) => self::studentsInPrograms($sub, $coordinatorProgramIds)
                 );
             }
 
@@ -224,12 +223,7 @@ class StudentPortfolioPolicy
         if (! empty($coordinatorProgramIds)) {
             $builder->whereIn(
                 'spr.student_profile_id',
-                static function (BaseBuilder $sub) use ($coordinatorProgramIds) {
-                    return $sub->select('student_profile_id')
-                        ->from('student_program_enrollments')
-                        ->whereIn('academic_program_id', $coordinatorProgramIds)
-                        ->where('is_active', 1);
-                }
+                static fn (BaseBuilder $sub) => self::studentsInPrograms($sub, $coordinatorProgramIds)
             );
             $builder->where('spr.student_profile_id !=', $actorId);
             return $builder;
@@ -264,18 +258,66 @@ class StudentPortfolioPolicy
         return array_values(array_unique($collegeIds));
     }
 
+    /**
+     * The one program-resolution rule used by list scoping, verification and submission routing:
+     * the student's active enrollment(s) in active academic programs. Exactly one program is
+     * authoritative; zero or several (ambiguous) resolve to no program.
+     *
+     * @return array{status: 'none'|'single'|'ambiguous', program_id: ?string}
+     */
+    public function resolveStudentProgram(string $studentProfileId): array
+    {
+        $rows = db_connect()->table('student_program_enrollments spe')
+            ->select('spe.academic_program_id')
+            ->join('academic_programs ap', "ap.id = spe.academic_program_id AND ap.status = 'active'")
+            ->where('spe.student_profile_id', $studentProfileId)
+            ->where('spe.is_active', 1)
+            ->get()
+            ->getResultArray();
+        $programIds = array_values(array_unique(array_column($rows, 'academic_program_id')));
+
+        return match (count($programIds)) {
+            0 => ['status' => 'none', 'program_id' => null],
+            1 => ['status' => 'single', 'program_id' => (string) $programIds[0]],
+            default => ['status' => 'ambiguous', 'program_id' => null],
+        };
+    }
+
+    /** Active Program Coordinators (active assignment and active profile) of a program. */
+    public function activeCoordinatorIds(string $programId): array
+    {
+        $rows = db_connect()->table('program_coordinator_assignments pca')
+            ->select('pca.personnel_profile_id')
+            ->join('profiles p', "p.id = pca.personnel_profile_id AND p.status = 'active'")
+            ->where('pca.academic_program_id', $programId)
+            ->where('pca.is_active', 1)
+            ->get()
+            ->getResultArray();
+
+        return array_values(array_unique(array_map('strval', array_column($rows, 'personnel_profile_id'))));
+    }
+
     protected function getStudentCurrentProgramId(string $studentProfileId): ?string
     {
-        $db = db_connect();
-        $row = $db->table('student_program_enrollments')
-            ->select('academic_program_id')
-            ->where('student_profile_id', $studentProfileId)
-            ->where('is_active', 1)
-            ->orderBy('effective_from', 'DESC')
-            ->get()
-            ->getRowArray();
+        return $this->resolveStudentProgram($studentProfileId)['program_id'];
+    }
 
-        return $row['academic_program_id'] ?? null;
+    /**
+     * Subquery: students whose single active enrollment (in an active program) is one of $programIds.
+     * The database guarantees at most one active enrollment per student (uq_active_student_enrollment);
+     * students with ambiguous active programs are excluded, matching resolveStudentProgram().
+     */
+    private static function studentsInPrograms(BaseBuilder $sub, array $programIds): BaseBuilder
+    {
+        $db = db_connect();
+        $in = implode(',', array_map(static fn (string $id): string => (string) $db->escape($id), $programIds));
+
+        return $sub->select('spe.student_profile_id')
+            ->from('student_program_enrollments spe')
+            ->join('academic_programs ap', "ap.id = spe.academic_program_id AND ap.status = 'active'")
+            ->where('spe.is_active', 1)
+            ->groupBy('spe.student_profile_id')
+            ->having("COUNT(DISTINCT spe.academic_program_id) = 1 AND MAX(spe.academic_program_id) IN ({$in})", null, false);
     }
 
     protected function getStudentCurrentCollegeId(string $studentProfileId): ?string

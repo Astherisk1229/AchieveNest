@@ -81,7 +81,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // Achievements & Portfolio Domain
     $routes->get('achievements', 'Api\AchievementController::index');
     $routes->options('achievements', 'Api\AchievementController::options');
-    $routes->post('achievements', 'Api\AchievementController::create');
 
     // Governed student certificates
     $routes->get('certificates/templates', 'Api\CertificateController::templates');
@@ -191,11 +190,9 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('personnel/portfolio/submissions/(:segment)', 'Api\PersonnelPortfolioSubmissionController::options');
     $routes->options('personnel/portfolio/submissions/(:segment)/items/(:segment)', 'Api\PersonnelPortfolioSubmissionController::options');
 
-    // Verification Queue & Decisions
+    // Verification queue (read-only). Decisions go through /portfolio/{id}/verify|request-revision|reject.
     $routes->get('verification/queue', 'Api\VerificationQueueController::queue');
     $routes->options('verification/queue', 'Api\VerificationQueueController::options');
-    $routes->post('verification/(:segment)/decide', 'Api\VerificationQueueController::decide/$1');
-    $routes->options('verification/(:segment)/decide', 'Api\VerificationQueueController::options');
 
     // Official Events, Venues & Certificates
     $routes->get('event-venues', 'Api\EventVenueController::index');

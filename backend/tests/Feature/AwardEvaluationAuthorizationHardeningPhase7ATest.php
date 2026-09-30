@@ -18,6 +18,9 @@ final class AwardEvaluationAuthorizationHardeningPhase7ATest extends CIUnitTestC
     public static function sensitiveEndpointProvider(): array
     {
         return [
+            // Step 4: rubric point values are OSAD-only; students and other roles get 403.
+            'award catalog' => ['listAwards', []],
+            'award detail' => ['showAward', ['award-id']],
             'candidate list' => ['listAllCandidates', []],
             'legacy score' => ['campusJournalismScore', ['student-id']],
             'legacy candidate generation' => ['campusJournalismCandidates', []],
@@ -99,7 +102,7 @@ final class AwardEvaluationAuthorizationHardeningPhase7ATest extends CIUnitTestC
         $this->assertSame(200, $response->getStatusCode());
     }
 
-    public function testCatalogAndAwardDetailRemainAuthenticatedReadableByDesign(): void
+    public function testCatalogAndAwardDetailEndpointsStillExistForOsad(): void
     {
         $source = file_get_contents(APPPATH . 'Controllers/Api/AwardEvaluationController.php');
 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, Link, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrentUser } from '../../services/authService'
+import portfolioService from '../../services/portfolioService'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../components/ui/avatar'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
@@ -28,6 +29,30 @@ import {
   Check
 } from 'lucide-react'
 
+const STATUS_VIEW = {
+  submitted: { status: 'Pending Review', statusType: 'pending', icon: Clock },
+  revision_requested: { status: 'Returned', statusType: 'returned', icon: RotateCcw },
+  verified: { status: 'Verified', statusType: 'verified', icon: CheckCircle2 },
+  rejected: { status: 'Rejected', statusType: 'rejected', icon: FileText }
+}
+
+/** Maps one /portfolio record to a dashboard timeline item. */
+export function toTimelineItem(record) {
+  const view = STATUS_VIEW[String(record.status || '').toLowerCase()] || STATUS_VIEW.submitted
+  return {
+    id: record.id,
+    title: record.title || 'Untitled achievement',
+    description: record.description || record.subcategory_name || '',
+    date: record.start_date || record.occurrence_date || record.submitted_at || '',
+    status: view.status,
+    statusType: view.statusType,
+    category: record.category_name || 'Uncategorized',
+    issuer: record.organizer_or_body || '',
+    hasProof: Number(record.evidence_count ?? (record.evidence || []).length) > 0,
+    icon: view.icon
+  }
+}
+
 export default function StudentDashboardPage({ currentUser }) {
   const navigate = useNavigate()
   const outletCtx = useOutletContext()
@@ -36,77 +61,28 @@ export default function StudentDashboardPage({ currentUser }) {
   const [activeStatFilter, setActiveStatFilter] = useState('all') // 'all' | 'verified' | 'pending' | 'returned' | 'proofs'
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All')
 
-  const student = activeUser || {
-    full_name: 'Maria Santos',
-    student_id: '2024-01234',
-    program: 'BS Information Technology',
-    college: 'College of Information Technology',
-    avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+  const student = {
+    full_name: activeUser?.full_name || '',
+    student_id: activeUser?.student_id || activeUser?.institutional_id || '',
+    college: activeUser?.college || activeUser?.college_name || '',
+    avatar_url: activeUser?.avatar_url || null
   }
 
   // All Timeline Items Data
-  const allTimelineItems = [
-    {
-      id: 1,
-      title: "Dean's Lister - First Semester AY 2025-2026",
-      description: 'Awarded for achieving a GPA of 1.25 and academic excellence across all core CS subjects.',
-      date: 'Dec 15, 2025',
-      status: 'Verified',
-      statusType: 'verified',
-      category: 'Academic',
-      issuer: 'NDMU CITE / DOST Region XII',
-      hasProof: true,
-      icon: BookOpen
-    },
-    {
-      id: 2,
-      title: 'Student Council President',
-      description: 'Elected as Supreme Student Council President representing 5,000+ NDMU undergraduate students.',
-      date: 'Jan 10, 2026',
-      status: 'Verified',
-      statusType: 'verified',
-      category: 'Leadership',
-      issuer: 'NDMU OSAD / COMELEC',
-      hasProof: true,
-      icon: Users
-    },
-    {
-      id: 3,
-      title: 'Community Outreach Volunteer Lead',
-      description: 'Spearheaded IT literacy workshops for 120+ high school students in Barangay Zone III.',
-      date: 'Mar 20, 2025',
-      status: 'Pending Review',
-      statusType: 'pending',
-      category: 'Community',
-      issuer: 'Koronadal City LGU / NDMU CES',
-      hasProof: false,
-      icon: Heart
-    },
-    {
-      id: 4,
-      title: 'Basketball Intramurals Champion',
-      description: 'Led CITE Wildcats Men Basketball Team to victory in NDMU University Intramurals 2026.',
-      date: 'Feb 14, 2026',
-      status: 'Verified',
-      statusType: 'verified',
-      category: 'Sports',
-      issuer: 'NDMU Athletics Office',
-      hasProof: true,
-      icon: Trophy
-    },
-    {
-      id: 5,
-      title: 'Special Project Resubmission Required',
-      description: 'Returned by Program Coordinator for missing high-resolution certificate attachment scan.',
-      date: 'Jan 05, 2026',
-      status: 'Returned',
-      statusType: 'returned',
-      category: 'Academic',
-        issuer: 'NDMU BSCS Academic Program',
-      hasProof: false,
-      icon: RotateCcw
-    }
-  ]
+  // Timeline items come from the student's own /portfolio records (no sample data).
+  const [records, setRecords] = useState([])
+  const [loadError, setLoadError] = useState('')
+  useEffect(() => {
+    let active = true
+    portfolioService.fetchRecords()
+      .then(rows => { if (active) setRecords(Array.isArray(rows) ? rows : []) })
+      .catch(err => { if (active) setLoadError(err?.error?.message || 'Your achievements could not be loaded.') })
+    return () => { active = false }
+  }, [])
+
+  const allTimelineItems = useMemo(() => records
+    .filter(record => String(record.status || '').toLowerCase() !== 'draft')
+    .map(record => toTimelineItem(record)), [records])
 
   // 5 Interactive Stat Cards Header Configuration
   const stats = [
@@ -171,7 +147,7 @@ export default function StudentDashboardPage({ currentUser }) {
               <Avatar size="lg" className="border-2 border-[#176B43]/40 shadow-md">
                 <AvatarImage src={student.avatar_url} alt={student.full_name} />
                 <AvatarFallback className="bg-[#176B43] text-white">
-                  {student.full_name ? student.full_name.split(' ').map(n => n[0]).join('') : 'MS'}
+                  {student.full_name ? student.full_name.split(' ').map(n => n[0]).join('') : '?'}
                 </AvatarFallback>
                 <AvatarBadge className="student-profile-verification-badge" title="Verified Student Profile">
                   <Check />
@@ -287,6 +263,8 @@ export default function StudentDashboardPage({ currentUser }) {
           </div>
         </div>
 
+        {loadError && <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-2xl">{loadError}</div>}
+
         {/* ================= ACCOMPLISHMENTS TIMELINE SECTION ================= */}
         <div id="achievements-timeline" className="scroll-mt-6 space-y-3">
 
@@ -311,7 +289,7 @@ export default function StudentDashboardPage({ currentUser }) {
 
           {/* Category Filter Pills Row */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {['All', 'Academic', 'Leadership', 'Community', 'Sports'].map((cat) => {
+            {['All', ...Array.from(new Set(allTimelineItems.map(item => item.category)))].map((cat) => {
               const isSelected = selectedCategoryFilter === cat
               return (
                 <button

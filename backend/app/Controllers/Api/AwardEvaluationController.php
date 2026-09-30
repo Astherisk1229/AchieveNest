@@ -93,6 +93,10 @@ class AwardEvaluationController extends Controller
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
+        // Rubric point values are OSAD administrative data (Step 4: never exposed to students).
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
 
         $db = db_connect();
         $awards = $db->table('award_definitions')
@@ -153,6 +157,9 @@ class AwardEvaluationController extends Controller
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
         }
         $db = db_connect();
         $award = $db->table('award_definitions')->where('id', $awardId)->where('status', 'active')->get()->getRowArray();

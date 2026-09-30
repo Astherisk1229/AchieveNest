@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { 
   X, 
   FileText, 
@@ -20,79 +20,34 @@ import {
 } from 'lucide-react'
 import { generatePortfolioPdf } from '../../../services/portfolioPdfGenerator'
 
-const DEFAULT_PORTFOLIO_ACHIEVEMENTS = Object.freeze([
-  {
-    id: 1,
-    title: "Dean's Lister - First Semester AY 2025-2026",
-    event_name: '12th SOCCSKSARGEN IT Summit',
-    issuer: 'NDMU CITE / DOST Region XII',
-    category: 'Academic',
-    scope_level: 'Regional (Region XII)',
-    rank_conferred: "Dean's Lister",
-    academic_year: 'AY 2025-2026',
-    semester: '1st Semester',
-    date: 'Dec 15, 2025',
+const parseMetadata = value => {
+  if (!value) return {}
+  if (typeof value === 'object') return value
+  try { return JSON.parse(value) || {} } catch { return {} }
+}
+
+/** Maps a real verified /portfolio record into the booklet item shape (no scoring data). */
+export function toExportItem(record) {
+  const metadata = parseMetadata(record.structured_metadata)
+  return {
+    id: record.id,
+    title: record.title || 'Untitled achievement',
+    event_name: record.subcategory_name || '',
+    issuer: record.organizer_or_body || '',
+    category: record.category_name || record.category || 'Achievement',
+    date: record.start_date || record.occurrence_date || record.verified_at || '',
+    academic_year: metadata.academic_year || '',
     status: 'Verified',
-    verifier: 'Dr. Maria Santos • Program Coordinator',
-    description: 'Awarded for achieving a Grade Point Average of 1.25 and demonstrating academic excellence across all CS subjects.',
-    image_url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600&auto=format&fit=crop&q=80',
-    points: 10
-  },
-  {
-    id: 2,
-    title: 'Student Council President',
-    event_name: 'NDMU Supreme Student Council Election',
-    issuer: 'NDMU OSAD / COMELEC',
-    category: 'Leadership',
-    scope_level: 'Institutional / Campus-Wide',
-    rank_conferred: 'Leadership Officer / Lead',
-    academic_year: 'AY 2025-2026',
-    semester: '1st Semester',
-    date: 'Jan 10, 2026',
-    status: 'Verified',
-    verifier: 'Prof. Juan Dela Cruz • OSAD Moderator',
-    description: 'Elected as Supreme Student Council President representing 5,000+ NDMU undergraduate students.',
-    image_url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80',
-    points: 10
-  },
-  {
-    id: 3,
-    title: 'Basketball Intramurals Champion',
-    event_name: 'NDMU Palaro Intramurals 2026',
-    issuer: 'NDMU Athletics Office',
-    category: 'Sports',
-    scope_level: 'Institutional / Campus-Wide',
-    rank_conferred: 'Champion / 1st Place',
-    academic_year: 'AY 2025-2026',
-    semester: '2nd Semester',
-    date: 'Feb 14, 2026',
-    status: 'Verified',
-    verifier: 'Coach Robert Tan • Sports Director',
-    description: 'Led CITE Wildcats Men Basketball Team to victory in NDMU University Intramurals.',
-    image_url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&auto=format&fit=crop&q=80',
-    points: 10
-  },
-  {
-    id: 4,
-    title: 'Community Extension Volunteer Lead',
-    event_name: 'Koronadal City Barangay Outreach',
-    issuer: 'Koronadal City LGU / NDMU CES',
-    category: 'Community',
-    scope_level: 'Local / City Level',
-    rank_conferred: 'Participant / Special Award',
-    academic_year: 'AY 2024-2025',
-    semester: '2nd Semester',
-    date: 'Mar 20, 2025',
-    status: 'Verified',
-    verifier: 'Mrs. Elena Ramos • CES Head',
-    description: 'Spearheaded IT literacy workshops for 120+ high school students in Barangay Zone III.',
-    image_url: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=600&auto=format&fit=crop&q=80',
-    points: 5
+    description: record.description || '',
+    evidence: Array.isArray(record.evidence) ? record.evidence : []
   }
-])
+}
 
 export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, achievements }) {
-  const initialAchievements = achievements || DEFAULT_PORTFOLIO_ACHIEVEMENTS
+  // Only verified records may appear in the official export.
+  const initialAchievements = useMemo(() => (Array.isArray(achievements) ? achievements : [])
+    .filter(record => String(record.status || '').toLowerCase() === 'verified')
+    .map(toExportItem), [achievements])
 
   // Structure Toggles
   const [template, setTemplate] = useState('ndmu_dossier') // 'ndmu_dossier' | 'modern_clean' | 'executive_1page'
@@ -102,7 +57,9 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
   const [sortNewestFirst, setSortNewestFirst] = useState(true)
 
   // Track checked state per achievement ID
-  const [selectedIds, setSelectedIds] = useState([1, 2, 3, 4])
+  const [selectedIds, setSelectedIds] = useState([])
+  const idsKey = initialAchievements.map(item => item.id).join(',')
+  useEffect(() => { setSelectedIds(initialAchievements.map(item => item.id)) }, [idsKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
 
   const toggleItemSelection = (id) => {
@@ -133,7 +90,6 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
   // Recalculated Dynamic Stats
   const dynamicTotal = activeAchievements.length
   const dynamicVerified = activeAchievements.filter(a => a.status === 'Verified').length
-  const dynamicPoints = activeAchievements.reduce((sum, item) => sum + (item.points || 0), 0)
 
   // Construct Multi-Page Sequence Array
   const pagesList = useMemo(() => {
@@ -188,7 +144,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
   const activePage = pagesList[safePageIndex] || { type: 'cover', title: 'Cover Page' }
 
   const handlePrintPDF = () => {
-    generatePortfolioPdf(`NDMU_Portfolio_${student?.student_id || '2024-01234'}`)
+    generatePortfolioPdf(`NDMU_Portfolio_${student?.student_id || ''}`)
   }
 
   if (!isOpen) return null
@@ -299,8 +255,8 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
 
                     {/* Student Info Footer Card */}
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center space-y-1">
-                      <p className="text-xs font-extrabold text-slate-900">{student?.full_name || 'Maria Santos'}</p>
-                      <p className="text-[11px] text-slate-600 font-semibold">{student?.student_id || '2024-01234'} • {student?.program || 'BS Computer Science'}</p>
+                      <p className="text-xs font-extrabold text-slate-900">{student?.full_name || ''}</p>
+                      <p className="text-[11px] text-slate-600 font-semibold">{student?.student_id || ''} • {student?.program || ''}</p>
                       <p className="text-[10px] text-slate-400 font-medium pt-0.5">Academic Year 2025–2026 • Verified via AchieveNest</p>
                     </div>
                   </div>
@@ -319,7 +275,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                       </div>
 
                       {/* Recalculated Executive Metrics Box */}
-                      <div className="grid grid-cols-3 gap-2 bg-[#eef7f0] p-2.5 rounded-xl border border-[#cbe6d2] mb-3 text-center">
+                      <div className="grid grid-cols-2 gap-2 bg-[#eef7f0] p-2.5 rounded-xl border border-[#cbe6d2] mb-3 text-center">
                         <div>
                           <p className="text-sm font-black text-[#064e2b]">{dynamicTotal}</p>
                           <p className="text-[8px] font-bold text-slate-500 uppercase">Selected Items</p>
@@ -327,10 +283,6 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                         <div>
                           <p className="text-sm font-black text-[#064e2b]">{dynamicVerified}</p>
                           <p className="text-[8px] font-bold text-slate-500 uppercase">Verified Records</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-amber-700">{dynamicPoints}</p>
-                          <p className="text-[8px] font-bold text-slate-500 uppercase">Points Conferred</p>
                         </div>
                       </div>
 
@@ -405,12 +357,10 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                       </div>
 
                       <div className="grid grid-cols-2 gap-1.5 text-[9.5px] text-slate-600 pt-1 border-t border-slate-200/80 font-medium">
-                        <div><strong>Issuer:</strong> {activePage.item.issuer}</div>
-                        <div><strong>Scope:</strong> {activePage.item.scope_level}</div>
-                        <div><strong>Rank:</strong> {activePage.item.rank_conferred}</div>
-                        <div><strong>Conferred:</strong> {activePage.item.date}</div>
-                        <div><strong>Term:</strong> {activePage.item.academic_year} • {activePage.item.semester}</div>
-                        <div><strong>Verifier:</strong> {activePage.item.verifier}</div>
+                        <div><strong>Issuer:</strong> {activePage.item.issuer || '—'}</div>
+                        <div><strong>Date:</strong> {activePage.item.date || '—'}</div>
+                        {activePage.item.academic_year && <div><strong>Academic year:</strong> {activePage.item.academic_year}</div>}
+                        <div><strong>Status:</strong> Verified by the Program Coordinator</div>
                       </div>
 
                       <p className="text-[9px] text-slate-500 font-normal italic pt-1 border-t border-slate-200/60 truncate">
@@ -420,11 +370,13 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
 
                     {/* BOTTOM 60-65% ATTACHED CERTIFICATE SCAN CONTAINER */}
                     <div className="flex-1 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 p-2 flex flex-col items-center justify-center relative overflow-hidden min-h-[220px]">
-                      <img
-                        src={activePage.item.image_url}
-                        alt={activePage.item.title}
-                        className="w-full h-full object-contain rounded-lg shadow-sm"
-                      />
+                      <div className="space-y-1 text-center text-[10px] text-slate-600">
+                        <FileText className="mx-auto h-6 w-6 text-[#16834a]" />
+                        <p className="font-bold">Supporting evidence on file</p>
+                        {activePage.item.evidence.length === 0
+                          ? <p>No evidence file listed.</p>
+                          : activePage.item.evidence.map(file => <p key={file.id} className="truncate">{file.original_filename}</p>)}
+                      </div>
                       <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-slate-900/80 backdrop-blur-md text-white text-[8px] font-bold flex items-center gap-1">
                         <QrCode className="w-3 h-3 text-amber-400" />
                         <span>Verified Digital Proof</span>

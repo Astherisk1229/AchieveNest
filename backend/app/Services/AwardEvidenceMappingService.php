@@ -31,6 +31,7 @@ class AwardEvidenceMappingService
     public const REASON_SOCIOCULTURAL_NON_COMPETITION = 'SOCIOCULTURAL_NON_COMPETITION_RECORD';
     public const REASON_ROLE_NOT_MET = 'ROLE_REQUIREMENT_NOT_MET';
     public const REASON_SCOPE_NOT_MET = 'SCOPE_REQUIREMENT_NOT_MET';
+    public const REASON_JOURNALISM_SEMINAR_ZERO = 'JOURNALISM_SEMINAR_ZERO_POINTS';
 
     public function __construct($db = null, ?AwardEligibilityService $eligibilityService = null)
     {
@@ -76,25 +77,8 @@ class AwardEvidenceMappingService
         }
 
         $studentId = $studentArr['id'] ?? '';
-        if ($records === null && $this->db !== null) {
-            if (method_exists($this->db, 'table')) {
-                $records = $this->db->table('student_portfolio_records')
-                    ->where('student_profile_id', $studentId)
-                    ->get()->getResultArray();
-            } elseif ($this->db instanceof \mysqli) {
-                $eStd = $this->db->real_escape_string($studentId);
-                $res = $this->db->query("SELECT * FROM student_portfolio_records WHERE student_profile_id = '{$eStd}'");
-                $records = [];
-                if ($res) {
-                    while ($r = $res->fetch_assoc()) {
-                        $records[] = $r;
-                    }
-                }
-            } else {
-                $records = [];
-            }
-        } elseif ($records === null) {
-            $records = [];
+        if ($records === null) {
+            $records = $this->loadVerifiedRecordsForStudent((string) $studentId);
         }
 
         // 3. Load Computable Criteria for the Award
@@ -126,52 +110,56 @@ class AwardEvidenceMappingService
             $eval = $this->evaluateRecordRelevanceForAward($awardCode, $rec, $criteria);
 
             if ($eval['relevant']) {
-                $matchedCritId = $eval['matched_criterion_id'];
-                $matchedCompId = $eval['matched_component_id'] ?? null;
-                $subsectionKey = "{$matchedCritId}:{$matchedCompId}:" . ($rec['source_record_id'] ?? $rec['title'] ?? $recId);
-
-                // Check duplicate within same scoring subsection boundary
-                if (isset($seenSubsectionKeys[$subsectionKey])) {
+                // A record may legitimately satisfy several criteria/components; every match is kept.
+                // Only matches that reference a real award_criteria.id are accepted.
+                $matches = isset($eval['matched_criteria']) && is_array($eval['matched_criteria'])
+                    ? $eval['matched_criteria']
+                    : [[
+                        'criterion_id' => $eval['matched_criterion_id'] ?? null,
+                        'component_id' => $eval['matched_component_id'] ?? null,
+                        'mapping_rule' => $eval['mapping_rule'] ?? null,
+                    ]];
+                $matches = array_values(array_filter($matches, static fn(array $m): bool => ! empty($m['criterion_id'])));
+                if ($matches === []) {
                     $excludedRecords[] = [
                         'record_id' => $recId,
                         'title'     => $rec['title'] ?? '',
-                        'reason'    => self::REASON_DUPLICATE_SAME_SUBSECTION,
-                        'message'   => 'Duplicate evidence for the same activity/result within the same scoring subsection.',
+                        'reason'    => self::REASON_CATEGORY_NOT_RELEVANT,
+                        'message'   => 'No computable criterion of this award accepts this record.',
                     ];
                     continue;
                 }
 
-                $seenSubsectionKeys[$subsectionKey] = true;
-                if (isset($eval['matched_criteria']) && is_array($eval['matched_criteria'])) {
-                    foreach ($eval['matched_criteria'] as $mc) {
-                        $relevantRecords[] = [
-                            'record_id'             => $recId,
-                            'title'                 => $rec['title'] ?? '',
-                            'category_code'         => $eval['category_code'],
-                            'subcategory_code'      => $eval['subcategory_code'],
-                            'matched_criterion_id'  => $mc['criterion_id'],
-                            'matched_component_id'  => $mc['component_id'],
-                            'mapping_rule'          => $mc['mapping_rule'],
-                            'structured_metadata'   => $eval['metadata'],
-                            'verification_status'   => 'verified',
-                        ];
-                        $matchedCriterionIds[$mc['criterion_id']] = true;
+                $sourceIdentity = (string) ($rec['source_record_id'] ?? $recId);
+                $acceptedMatches = 0;
+                foreach ($matches as $mc) {
+                    // Duplicate guard keyed on (criterion, component, source activity) for each match separately.
+                    $subsectionKey = $mc['criterion_id'] . ':' . ($mc['component_id'] ?? '') . ':' . $sourceIdentity;
+                    if (isset($seenSubsectionKeys[$subsectionKey])) {
+                        continue;
                     }
-                } else {
-                    $matchedCritId = $eval['matched_criterion_id'] ?? ($criteria[0]['id'] ?? 'CRIT_DEFAULT');
-                    $matchedCompId = $eval['matched_component_id'] ?? 'COMP_DEFAULT';
-                    $matchedCriterionIds[$matchedCritId] = true;
-
+                    $seenSubsectionKeys[$subsectionKey] = true;
+                    $acceptedMatches++;
                     $relevantRecords[] = [
                         'record_id'             => $recId,
                         'title'                 => $rec['title'] ?? '',
                         'category_code'         => $eval['category_code'],
                         'subcategory_code'      => $eval['subcategory_code'],
-                        'matched_criterion_id'  => $matchedCritId,
-                        'matched_component_id'  => $matchedCompId,
-                        'mapping_rule'          => $eval['mapping_rule'],
+                        'matched_criterion_id'  => $mc['criterion_id'],
+                        'matched_component_id'  => $mc['component_id'] ?? null,
+                        'mapping_rule'          => $mc['mapping_rule'] ?? null,
                         'structured_metadata'   => $eval['metadata'],
                         'verification_status'   => 'verified',
+                    ];
+                    $matchedCriterionIds[$mc['criterion_id']] = true;
+                }
+
+                if ($acceptedMatches === 0) {
+                    $excludedRecords[] = [
+                        'record_id' => $recId,
+                        'title'     => $rec['title'] ?? '',
+                        'reason'    => self::REASON_DUPLICATE_SAME_SUBSECTION,
+                        'message'   => 'Duplicate evidence for the same activity/result within the same scoring subsection.',
                     ];
                 }
             } else {
@@ -240,7 +228,7 @@ class AwardEvidenceMappingService
                     'relevant'             => true,
                     'category_code'        => 'CAMPUS_JOURNALISM',
                     'subcategory_code'     => $subCode,
-                    'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-journ-pub',
+                    'matched_criterion_id' => $matchedCrit['id'] ?? null,
                     'matched_component_id' => $matchedComp,
                     'mapping_rule'         => 'RULE_JOURNALISM_PUBLICATION',
                     'metadata'             => $meta,
@@ -253,7 +241,7 @@ class AwardEvidenceMappingService
                     'relevant'             => true,
                     'category_code'        => 'LEADERSHIP_POSITION',
                     'subcategory_code'     => $subCode,
-                    'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-journ-lead',
+                    'matched_criterion_id' => $matchedCrit['id'] ?? null,
                     'matched_component_id' => 'COMP_JOURN_LEAD_ROLE',
                     'mapping_rule'         => 'RULE_JOURNALISM_LEADERSHIP',
                     'metadata'             => $meta,
@@ -266,7 +254,7 @@ class AwardEvidenceMappingService
                     'relevant'             => true,
                     'category_code'        => 'CITATION_RECOGNITION',
                     'subcategory_code'     => $subCode,
-                    'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-journ-lead',
+                    'matched_criterion_id' => $matchedCrit['id'] ?? null,
                     'matched_component_id' => 'COMP_JOURN_LEAD_AWARDS',
                     'mapping_rule'         => 'RULE_JOURNALISM_AWARDS',
                     'metadata'             => $meta,
@@ -295,7 +283,7 @@ class AwardEvidenceMappingService
                 if ($compType !== null || (! $placement && ! $eventLevel)) {
                     $matchedCrit = $this->findCriterionByCode($criteria, ['SKILL', 'SKILLS']);
                     $matches[] = [
-                        'criterion_id' => $matchedCrit['id'] ?? 'crit-sports-skills',
+                        'criterion_id' => $matchedCrit['id'] ?? null,
                         'component_id' => 'COMP_SPORTS_SKILLS',
                         'mapping_rule' => 'RULE_SPORTS_SKILLS',
                     ];
@@ -303,7 +291,7 @@ class AwardEvidenceMappingService
                 if ($eventLevel !== null) {
                     $matchedCrit = $this->findCriterionByCode($criteria, ['MEETS', 'PARTICIPATION', 'MEET']);
                     $matches[] = [
-                        'criterion_id' => $matchedCrit['id'] ?? 'crit-sports-meets',
+                        'criterion_id' => $matchedCrit['id'] ?? null,
                         'component_id' => 'COMP_SPORTS_PARTICIPATION',
                         'mapping_rule' => 'RULE_SPORTS_PARTICIPATION',
                     ];
@@ -311,7 +299,7 @@ class AwardEvidenceMappingService
                 if ($placement !== null) {
                     $matchedCrit = $this->findCriterionByCode($criteria, ['AWARDS', 'PLACEMENT', 'AWARD']);
                     $matches[] = [
-                        'criterion_id' => $matchedCrit['id'] ?? 'crit-sports-awards',
+                        'criterion_id' => $matchedCrit['id'] ?? null,
                         'component_id' => 'COMP_SPORTS_AWARDS',
                         'mapping_rule' => 'RULE_SPORTS_AWARDS',
                     ];
@@ -322,9 +310,9 @@ class AwardEvidenceMappingService
                     'category_code'        => 'SPORTS',
                     'subcategory_code'     => $subCode,
                     'matched_criteria'     => $matches,
-                    'matched_criterion_id' => $matches[0]['criterion_id'] ?? 'crit-sports',
-                    'matched_component_id' => $matches[0]['component_id'] ?? 'COMP_SPORTS',
-                    'mapping_rule'         => $matches[0]['mapping_rule'] ?? 'RULE_SPORTS',
+                    'matched_criterion_id' => $matches[0]['criterion_id'] ?? null,
+                    'matched_component_id' => $matches[0]['component_id'] ?? null,
+                    'mapping_rule'         => $matches[0]['mapping_rule'] ?? null,
                     'metadata'             => $meta,
                 ];
             }
@@ -351,7 +339,7 @@ class AwardEvidenceMappingService
                 if ($perfType !== null || (! $placement && ! $eventLevel)) {
                     $matchedCrit = $this->findCriterionByCode($criteria, ['SKILL', 'SKILLS']);
                     $matches[] = [
-                        'criterion_id' => $matchedCrit['id'] ?? 'crit-socio-skills',
+                        'criterion_id' => $matchedCrit['id'] ?? null,
                         'component_id' => 'COMP_SOCIO_SKILLS',
                         'mapping_rule' => 'RULE_SOCIOCULTURAL_SKILLS',
                     ];
@@ -359,7 +347,7 @@ class AwardEvidenceMappingService
                 if ($eventLevel !== null) {
                     $matchedCrit = $this->findCriterionByCode($criteria, ['MEETS', 'PARTICIPATION', 'SHOWCASES']);
                     $matches[] = [
-                        'criterion_id' => $matchedCrit['id'] ?? 'crit-socio-meets',
+                        'criterion_id' => $matchedCrit['id'] ?? null,
                         'component_id' => 'COMP_SOCIO_PARTICIPATION',
                         'mapping_rule' => 'RULE_SOCIOCULTURAL_PARTICIPATION',
                     ];
@@ -367,7 +355,7 @@ class AwardEvidenceMappingService
                 if ($placement !== null) {
                     $matchedCrit = $this->findCriterionByCode($criteria, ['AWARDS', 'PLACEMENT', 'AWARD']);
                     $matches[] = [
-                        'criterion_id' => $matchedCrit['id'] ?? 'crit-socio-awards',
+                        'criterion_id' => $matchedCrit['id'] ?? null,
                         'component_id' => 'COMP_SOCIO_AWARDS',
                         'mapping_rule' => 'RULE_SOCIOCULTURAL_AWARDS',
                     ];
@@ -378,9 +366,9 @@ class AwardEvidenceMappingService
                     'category_code'        => 'SOCIO_CULTURAL_PERFORMING_ARTS',
                     'subcategory_code'     => $subCode,
                     'matched_criteria'     => $matches,
-                    'matched_criterion_id' => $matches[0]['criterion_id'] ?? 'crit-socio',
-                    'matched_component_id' => $matches[0]['component_id'] ?? 'COMP_SOCIO',
-                    'mapping_rule'         => $matches[0]['mapping_rule'] ?? 'RULE_SOCIO',
+                    'matched_criterion_id' => $matches[0]['criterion_id'] ?? null,
+                    'matched_component_id' => $matches[0]['component_id'] ?? null,
+                    'mapping_rule'         => $matches[0]['mapping_rule'] ?? null,
                     'metadata'             => $meta,
                 ];
             }
@@ -394,7 +382,7 @@ class AwardEvidenceMappingService
                 'relevant'             => true,
                 'category_code'        => 'LEADERSHIP_POSITION',
                 'subcategory_code'     => $subCode,
-                'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-lead',
+                'matched_criterion_id' => $matchedCrit['id'] ?? null,
                 'matched_component_id' => $subCode,
                 'mapping_rule'         => 'RULE_LEADERSHIP_INVOLVEMENT',
                 'metadata'             => $meta,
@@ -407,7 +395,7 @@ class AwardEvidenceMappingService
                 'relevant'             => true,
                 'category_code'        => 'CHURCH_MINISTRY_INVOLVEMENT',
                 'subcategory_code'     => $subCode,
-                'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-church',
+                'matched_criterion_id' => $matchedCrit['id'] ?? null,
                 'matched_component_id' => $subCode,
                 'mapping_rule'         => 'RULE_CHURCH_MINISTRY_INVOLVEMENT',
                 'metadata'             => $meta,
@@ -424,7 +412,7 @@ class AwardEvidenceMappingService
                 'relevant'             => true,
                 'category_code'        => 'COMMUNITY_SERVICE_VOLUNTEERISM',
                 'subcategory_code'     => $subCode,
-                'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-service',
+                'matched_criterion_id' => $matchedCrit['id'] ?? null,
                 'matched_component_id' => $subCode,
                 'mapping_rule'         => 'RULE_COMMUNITY_SERVICE',
                 'metadata'             => $meta,
@@ -442,7 +430,7 @@ class AwardEvidenceMappingService
                 'relevant'             => true,
                 'category_code'        => 'ORG_MEMBERSHIP_PARTICIPATION',
                 'subcategory_code'     => $subCode,
-                'matched_criterion_id' => $matchedCrit['id'] ?? 'crit-member',
+                'matched_criterion_id' => $matchedCrit['id'] ?? null,
                 'matched_component_id' => $subCode,
                 'mapping_rule'         => 'RULE_ORGANIZATION_MEMBERSHIP',
                 'metadata'             => $meta,
@@ -509,35 +497,15 @@ class AwardEvidenceMappingService
             return [];
         }
 
-        $award = null;
-        $students = [];
-
-        if (method_exists($this->db, 'table')) {
-            $award = $this->db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
-            if ($award === null || $award['status'] !== 'active') {
-                return [];
-            }
-            $students = $this->db->table('profiles')
-                ->where('account_type', 'student')
-                ->where('status', 'active')
-                ->orderBy('full_name', 'ASC')
-                ->get()->getResultArray();
-        } elseif ($this->db instanceof \mysqli) {
-            $eAward = $this->db->real_escape_string($awardId);
-            $aRes = $this->db->query("SELECT * FROM award_definitions WHERE id = '{$eAward}' AND status = 'active' LIMIT 1");
-            if ($aRes && $row = $aRes->fetch_assoc()) {
-                $award = $row;
-            }
-            if ($award === null) {
-                return [];
-            }
-            $sRes = $this->db->query("SELECT * FROM profiles WHERE account_type = 'student' AND status = 'active' ORDER BY full_name ASC");
-            if ($sRes) {
-                while ($sRow = $sRes->fetch_assoc()) {
-                    $students[] = $sRow;
-                }
-            }
+        $award = $this->db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
+        if ($award === null || $award['status'] !== 'active') {
+            return [];
         }
+        $students = $this->db->table('profiles')
+            ->where('account_type', 'student')
+            ->where('status', 'active')
+            ->orderBy('full_name', 'ASC')
+            ->get()->getResultArray();
 
         $studentsForEvaluation = [];
 
@@ -579,21 +547,27 @@ class AwardEvidenceMappingService
                 ->get()->getResultArray();
         }
 
-        if ($this->db instanceof \mysqli) {
-            $escapedId = $this->db->real_escape_string($awardId);
-            $res = $this->db->query("SELECT * FROM award_criteria WHERE award_definition_id = '{$escapedId}' AND is_portfolio_computable = 1 ORDER BY sort_order ASC");
-            $critList = [];
-            if ($res) {
-                while ($row = $res->fetch_assoc()) {
-                    $critList[] = $row;
-                }
-            }
-            if (! empty($critList)) {
-                return $critList;
-            }
+        return (array) ($award['criteria'] ?? []);
+    }
+
+    /**
+     * Loads the student's verified records joined to the taxonomy so category/subcategory codes are present.
+     * Bound query-builder parameters only.
+     */
+    protected function loadVerifiedRecordsForStudent(string $studentId): array
+    {
+        if ($studentId === '' || ! is_object($this->db) || ! method_exists($this->db, 'table')) {
+            return [];
         }
 
-        return (array) ($award['criteria'] ?? []);
+        return $this->db->table('student_portfolio_records spr')
+            ->select('spr.*, pc.code AS category_code, ps.code AS subcategory_code')
+            ->join('portfolio_categories pc', 'pc.id = spr.category_id')
+            ->join('portfolio_subcategories ps', 'ps.id = spr.subcategory_id', 'left')
+            ->where('spr.student_profile_id', $studentId)
+            ->where('spr.status', 'verified')
+            ->orderBy('spr.id', 'ASC')
+            ->get()->getResultArray();
     }
 
     /**
@@ -609,7 +583,8 @@ class AwardEvidenceMappingService
                 }
             }
         }
-        return ! empty($criteria) ? $criteria[0] : null;
+        // No fallback to an unrelated criterion: an unmatched record contributes nothing.
+        return null;
     }
 
     /**

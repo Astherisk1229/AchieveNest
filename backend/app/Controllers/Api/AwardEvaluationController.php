@@ -923,7 +923,7 @@ class AwardEvaluationController extends Controller
         }
 
         try {
-            $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile_id'] ?? null);
+            $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile']['id'] ?? null);
             return $this->respond(['data' => $workspace], 200);
         } catch (Throwable $e) {
             log_message('error', '[AwardEvaluationController::studentAwardReview] ' . $e->getMessage());
@@ -958,7 +958,7 @@ class AwardEvaluationController extends Controller
                 $studentId,
                 $manualScores,
                 $notes,
-                $actor['profile_id'] ?? null,
+                $actor['profile']['id'] ?? null,
                 $finalize
             );
             return $this->respond(['data' => $result], 200);
@@ -996,7 +996,7 @@ class AwardEvaluationController extends Controller
                 $studentId,
                 $manualScores,
                 $notes,
-                $actor['profile_id'] ?? null,
+                $actor['profile']['id'] ?? null,
                 true // Finalize
             );
             return $this->respond(['data' => $result], 200);
@@ -1025,7 +1025,7 @@ class AwardEvaluationController extends Controller
         }
 
         try {
-            $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile_id'] ?? null);
+            $workspace = $this->reviewService->getStudentReviewWorkspace($awardId, $studentId, $actor['profile']['id'] ?? null);
             return $this->respond([
                 'data' => [
                     'award_id'          => $awardId,

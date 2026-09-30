@@ -9,10 +9,17 @@ use Throwable;
 class AwardEvaluationService
 {
     protected BaseConnection $db;
+    protected ?AwardScoringService $scoringService;
+    protected ?AwardEvaluationPersistenceService $persistenceService;
 
-    public function __construct(?BaseConnection $db = null)
-    {
+    public function __construct(
+        ?BaseConnection $db = null,
+        ?AwardScoringService $scoringService = null,
+        ?AwardEvaluationPersistenceService $persistenceService = null
+    ) {
         $this->db = $db ?? db_connect();
+        $this->scoringService = $scoringService;
+        $this->persistenceService = $persistenceService;
     }
 
     private function genUuid(): string
@@ -46,8 +53,9 @@ class AwardEvaluationService
 
     /**
      * Evaluates a single student for a specific award definition and cycle.
-     * Computes raw scores strictly from verified student portfolio records.
-     * Transactional and idempotent.
+     * Points come only from AwardScoringService (the single rubric engine) applied to verified
+     * student_portfolio_records; persistence goes through AwardEvaluationPersistenceService.
+     * Transactional and idempotent: one evaluation row per (cycle, award, student).
      */
     public function evaluateStudentAward(
         string $cycleId,
@@ -74,331 +82,47 @@ class AwardEvaluationService
             throw new RuntimeException('Active student profile not found.');
         }
 
-        // Fetch criteria for this award
-        $criteria = $this->db->table('award_criteria')
-            ->where('award_definition_id', $awardId)
-            ->orderBy('sort_order', 'ASC')
-            ->get()->getResultArray();
-
-        // Fetch all verified portfolio records for this student
-        $verifiedRecords = $this->db->table('student_portfolio_records')
-            ->where('student_profile_id', $studentProfileId)
-            ->where('status', 'verified')
-            ->get()->getResultArray();
-
-        $totalRawScore = 0.0;
-        $totalMaxComputable = 0.0;
-        $criterionEvaluations = [];
-
-        foreach ($criteria as $criterion) {
-            $isComputable = (int) ($criterion['is_portfolio_computable'] ?? 1) === 1;
-            if (! $isComputable) {
-                continue;
-            }
-
-            $critId = $criterion['id'];
-            $critMaxPoints = (float) $criterion['max_points'];
-            $totalMaxComputable += $critMaxPoints;
-
-            // Fetch scoring rules for this criterion
-            $rules = $this->db->table('award_scoring_rules')
-                ->where('criterion_id', $critId)
-                ->orderBy('sort_order', 'ASC')
-                ->get()->getResultArray();
-
-            $critEarnedPoints = 0.0;
-            $evidenceItems = [];
-            $usedRecordIds = [];
-
-            if (empty($rules)) {
-                // Direct criterion-level taxonomy domain mapping
-                $critCode = strtoupper($criterion['code']);
-                $targetCatCodes = [];
-
-                if (str_contains($critCode, 'JOURN_PUB')) {
-                    $targetCatCodes = ['CAMPUS_JOURNALISM', 'CITATION_RECOGNITION'];
-                } elseif (str_contains($critCode, 'JOURN') || str_contains($critCode, 'PUB')) {
-                    $targetCatCodes = ['CAMPUS_JOURNALISM', 'LEADERSHIP_POSITION', 'CITATION_RECOGNITION'];
-                } elseif (str_contains($critCode, 'SPORT') || str_contains($critCode, 'ATHL')) {
-                    $targetCatCodes = ['SPORTS', 'CITATION_RECOGNITION'];
-                } elseif (str_contains($critCode, 'CULT') || str_contains($critCode, 'ART') || str_contains($critCode, 'PERF')) {
-                    $targetCatCodes = ['SOCIO_CULTURAL_PERFORMING_ARTS', 'CITATION_RECOGNITION'];
-                } elseif (str_contains($critCode, 'MINISTRY')) {
-                    $targetCatCodes = ['CHURCH_MINISTRY_INVOLVEMENT', 'COMMUNITY_SERVICE_VOLUNTEERISM'];
-                } elseif (str_contains($critCode, 'COMMUNITY') || str_contains($critCode, 'SERVICE') || str_contains($critCode, 'VOL') || str_contains($critCode, 'COMM')) {
-                    $targetCatCodes = ['COMMUNITY_SERVICE_VOLUNTEERISM', 'CHURCH_MINISTRY_INVOLVEMENT'];
-                } elseif (str_contains($critCode, 'COCURR') || str_contains($critCode, 'EXTR') || str_contains($critCode, 'MEM') || str_contains($critCode, 'CONTRIB')) {
-                    $targetCatCodes = ['ORG_MEMBERSHIP_PARTICIPATION', 'LEADERSHIP_POSITION', 'SEMINAR_TRAINING'];
-                } elseif (str_contains($critCode, 'ACAD') || str_contains($critCode, 'RES') || str_contains($critCode, 'SCHOLASTIC') || str_contains($critCode, 'INNOVATION') || str_contains($critCode, 'RECOG') || str_contains($critCode, 'MERIT') || str_contains($critCode, 'HOLISTIC')) {
-                    $targetCatCodes = ['CITATION_RECOGNITION', 'SEMINAR_TRAINING'];
-                } elseif (str_contains($critCode, 'DEVELOPMENT') || str_contains($critCode, 'SEMINAR') || str_contains($critCode, 'GROWTH') || str_contains($critCode, 'CONF') || str_contains($critCode, 'COMPETITION') || str_contains($critCode, 'TRAINING')) {
-                    $targetCatCodes = ['SEMINAR_TRAINING', 'CITATION_RECOGNITION'];
-                } elseif (str_contains($critCode, 'LEAD') || str_contains($critCode, 'GOV')) {
-                    $targetCatCodes = ['LEADERSHIP_POSITION', 'ORG_MEMBERSHIP_PARTICIPATION'];
-                } else {
-                    $targetCatCodes = ['LEADERSHIP_POSITION', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'SEMINAR_TRAINING'];
-                }
-
-                $matchingCats = $this->db->table('portfolio_categories')
-                    ->whereIn('code', $targetCatCodes)
-                    ->get()->getResultArray();
-                $matchingCatIds = array_column($matchingCats, 'id');
-
-                $pointsPerRecord = 15.0; // Standard 15 points per verified record up to max
-
-                foreach ($verifiedRecords as $rec) {
-                    $recId = $rec['id'];
-                    if (in_array($recId, $usedRecordIds, true)) {
-                        continue;
-                    }
-
-                    if (in_array($rec['category_id'], $matchingCatIds, true)) {
-                        $pointsToAdd = min($pointsPerRecord, max(0.0, $critMaxPoints - $critEarnedPoints));
-                        if ($pointsToAdd > 0) {
-                            $critEarnedPoints += $pointsToAdd;
-                            $usedRecordIds[] = $recId;
-                            $evidenceItems[] = [
-                                'portfolio_record_id' => $recId,
-                                'scoring_rule_id'     => null,
-                                'points_effect'       => $pointsToAdd,
-                                'basis_snapshot'      => json_encode([
-                                    'title'           => $rec['title'],
-                                    'category_id'     => $rec['category_id'],
-                                    'subcategory_id'  => $rec['subcategory_id'],
-                                    'criterion_code'  => $criterion['code'],
-                                ]),
-                            ];
-                        }
-                    }
-                }
-            } else {
-                foreach ($rules as $rule) {
-                    $ruleId = $rule['id'];
-                    $ruleType = $rule['rule_type'];
-                    $rulePoints = (float) ($rule['points'] ?? 10.0);
-                    $ruleMaxPoints = $rule['max_points'] !== null ? (float) $rule['max_points'] : $critMaxPoints;
-
-                    // Load portfolio mappings for this rule or criterion
-                    $mappings = $this->db->table('award_portfolio_mappings')
-                        ->where('scoring_rule_id', $ruleId)
-                        ->where('is_active', 1)
-                        ->get()->getResultArray();
-
-                    if (empty($mappings)) {
-                        $mappings = $this->db->table('award_evidence_mapping_rules')
-                            ->where('criterion_id', $critId)
-                            ->where('is_active', 1)
-                            ->get()->getResultArray();
-                    }
-
-                    $ruleEarned = 0.0;
-
-                    foreach ($mappings as $map) {
-                        $mapCatId = $map['portfolio_category_id'];
-                        $mapSubId = $map['portfolio_subcategory_id'];
-
-                        foreach ($verifiedRecords as $rec) {
-                            $recId = $rec['id'];
-
-                            // Avoid double counting same record within the same criterion
-                            if (in_array($recId, $usedRecordIds, true)) {
-                                continue;
-                            }
-
-                            $matches = false;
-                            if ($mapSubId !== null && $mapSubId !== '') {
-                                $matches = ($rec['category_id'] === $mapCatId && $rec['subcategory_id'] === $mapSubId);
-                            } else {
-                                $matches = ($rec['category_id'] === $mapCatId);
-                            }
-
-                            if ($matches) {
-                                $pointsToAdd = $rulePoints > 0 ? $rulePoints : 10.0;
-                                if ($ruleEarned + $pointsToAdd > $ruleMaxPoints) {
-                                    $pointsToAdd = max(0.0, $ruleMaxPoints - $ruleEarned);
-                                }
-
-                                if ($pointsToAdd > 0) {
-                                    $ruleEarned += $pointsToAdd;
-                                    $usedRecordIds[] = $recId;
-                                    $evidenceItems[] = [
-                                        'portfolio_record_id' => $recId,
-                                        'scoring_rule_id'     => $ruleId,
-                                        'points_effect'       => $pointsToAdd,
-                                        'basis_snapshot'      => json_encode([
-                                            'title'           => $rec['title'],
-                                            'category_id'     => $rec['category_id'],
-                                            'subcategory_id'  => $rec['subcategory_id'],
-                                            'rule_code'       => $rule['code'],
-                                            'rule_name'       => $rule['name'],
-                                        ]),
-                                    ];
-                                }
-                            }
-                        }
-                    }
-
-                    $critEarnedPoints += $ruleEarned;
-                }
-            }
-
-            // Cap criterion points at criterion max_points
-            $finalCritPoints = min($critEarnedPoints, $critMaxPoints);
-            $totalRawScore += $finalCritPoints;
-
-            $criterionEvaluations[] = [
-                'criterion_id'   => $critId,
-                'awarded_points' => $finalCritPoints,
-                'max_points'     => $critMaxPoints,
-                'evidence'       => $evidenceItems,
-            ];
-        }
-
-        if ($totalMaxComputable <= 0.0) {
-            $totalMaxComputable = 100.0;
-        }
-
-        $potentialPercent = round(($totalRawScore / $totalMaxComputable) * 100.0, 2);
-        $threshold = (float) $award['candidate_threshold_percent'];
-        $qualifies = ($potentialPercent >= $threshold);
-        $now = date('Y-m-d H:i:s');
-
-        // Atomic Database Persistence
-        $this->db->transStart();
-
-        // Check if evaluation already exists for this cycle + award + student
-        $existingEval = $this->db->table('student_award_evaluations')
-            ->where('cycle_id', $cycleId)
-            ->where('award_definition_id', $awardId)
-            ->where('student_profile_id', $studentProfileId)
-            ->get()->getRowArray();
-
-        $evalId = $existingEval['id'] ?? $this->genUuid();
-
-        if ($existingEval !== null) {
-            // Remove existing child scores and evidence for clean recalculation
-            $oldCritScores = $this->db->table('student_award_criterion_scores')
-                ->where('evaluation_id', $evalId)
-                ->get()->getResultArray();
-            $oldCritIds = array_column($oldCritScores, 'id');
-            if (! empty($oldCritIds)) {
-                $this->db->table('student_award_score_evidence')
-                    ->whereIn('criterion_score_id', $oldCritIds)
-                    ->delete();
-                $this->db->table('student_award_criterion_scores')
-                    ->where('evaluation_id', $evalId)
-                    ->delete();
-            }
-
-            $this->db->table('student_award_evaluations')->where('id', $evalId)->update([
-                'evaluator_profile_id'      => $evaluatorProfileId,
-                'status'                    => 'calculated',
-                'raw_score'                 => $totalRawScore,
-                'max_computable_score'      => $totalMaxComputable,
-                'potential_score'           => $potentialPercent,
-                'qualifies_portfolio_based' => $qualifies ? 1 : 0,
-                'evaluated_at'              => $now,
-                'updated_at'                => $now,
-            ]);
-        } else {
-            $this->db->table('student_award_evaluations')->insert([
-                'id'                        => $evalId,
-                'cycle_id'                  => $cycleId,
-                'award_definition_id'       => $awardId,
-                'student_profile_id'        => $studentProfileId,
-                'evaluator_profile_id'      => $evaluatorProfileId,
-                'status'                    => 'calculated',
-                'raw_score'                 => $totalRawScore,
-                'max_computable_score'      => $totalMaxComputable,
-                'potential_score'           => $potentialPercent,
-                'qualifies_portfolio_based' => $qualifies ? 1 : 0,
-                'evaluated_at'              => $now,
-                'created_at'                => $now,
-                'updated_at'                => $now,
-            ]);
-        }
-
-        // Insert criterion scores & score evidence
-        foreach ($criterionEvaluations as $ce) {
-            $critScoreId = $this->genUuid();
-            $this->db->table('student_award_criterion_scores')->insert([
-                'id'             => $critScoreId,
-                'evaluation_id'  => $evalId,
-                'criterion_id'   => $ce['criterion_id'],
-                'awarded_points' => $ce['awarded_points'],
-                'max_points'     => $ce['max_points'],
-                'created_at'     => $now,
-                'updated_at'     => $now,
-            ]);
-
-            foreach ($ce['evidence'] as $ev) {
-                $this->db->table('student_award_score_evidence')->insert([
-                    'id'                  => $this->genUuid(),
-                    'criterion_score_id'  => $critScoreId,
-                    'portfolio_record_id' => $ev['portfolio_record_id'],
-                    'scoring_rule_id'     => $ev['scoring_rule_id'],
-                    'points_effect'       => $ev['points_effect'],
-                    'basis_snapshot'      => $ev['basis_snapshot'],
-                    'created_at'          => $now,
-                ]);
-            }
-        }
-
-        // Maintain award_interview_eligibilities for portfolio_based pathway
-        $existingElig = $this->db->table('award_interview_eligibilities')
-            ->where('cycle_id', $cycleId)
-            ->where('award_definition_id', $awardId)
-            ->where('student_profile_id', $studentProfileId)
-            ->where('eligibility_source', 'portfolio_based')
-            ->get()->getRowArray();
-
-        if ($qualifies) {
-            if ($existingElig !== null) {
-                $this->db->table('award_interview_eligibilities')->where('id', $existingElig['id'])->update([
-                    'evaluation_id'   => $evalId,
-                    'potential_score' => $potentialPercent,
-                    'status'          => 'eligible',
-                ]);
-            } else {
-                $this->db->table('award_interview_eligibilities')->insert([
-                    'id'                  => $this->genUuid(),
-                    'cycle_id'            => $cycleId,
-                    'award_definition_id' => $awardId,
-                    'student_profile_id'  => $studentProfileId,
-                    'eligibility_source'  => 'portfolio_based',
-                    'pathway'             => 'automated_threshold',
-                    'evaluation_id'       => $evalId,
-                    'dean_nomination_id'  => null,
-                    'potential_score'     => $potentialPercent,
-                    'eligible_at'         => $now,
-                    'status'              => 'eligible',
-                ]);
-            }
-        } else {
-            if ($existingElig !== null) {
-                $this->db->table('award_interview_eligibilities')->where('id', $existingElig['id'])->delete();
-            }
-        }
-
-        $this->db->transComplete();
-
-        if ($this->db->transStatus() === false) {
-            throw new RuntimeException('Failed to persist award evaluation.');
-        }
+        $scoring = $this->scoringService()->scoreStudentForAward($award, $student);
+        $persisted = $this->persistenceService()->persistPortfolioEvaluation(
+            $cycle,
+            $award,
+            $studentProfileId,
+            $scoring,
+            $evaluatorProfileId
+        );
 
         return [
-            'evaluation_id'             => $evalId,
+            'evaluation_id'             => $persisted['evaluation_id'],
             'cycle_id'                  => $cycleId,
             'award_definition_id'       => $awardId,
             'student_profile_id'        => $studentProfileId,
-            'raw_score'                 => $totalRawScore,
-            'max_computable_score'      => $totalMaxComputable,
-            'potential_percent'         => $potentialPercent,
-            'candidate_threshold'       => $threshold,
-            'qualifies_portfolio_based' => $qualifies,
-            'outcome'                   => $qualifies ? 'Potential Candidate / Eligible for Interview' : 'Not Qualified for Interview',
-            'criteria'                  => $criterionEvaluations,
+            'is_eligible'               => (bool) ($scoring['is_eligible'] ?? false),
+            'scoring_status'            => $scoring['scoring_status'] ?? null,
+            'scoring_version'           => $persisted['scoring_version'],
+            'scoring_model_version_id'  => $persisted['scoring_model_version_id'],
+            'raw_score'                 => $persisted['raw_score'],
+            'raw_portfolio_score'       => $persisted['raw_score'],
+            'max_computable_score'      => $persisted['max_computable_score'],
+            'computable_max_score'      => $persisted['max_computable_score'],
+            'potential_percent'         => $persisted['potential_percent'],
+            'candidate_threshold'       => $persisted['candidate_threshold'],
+            'qualifies_portfolio_based' => $persisted['qualifies_portfolio_based'],
+            'outcome'                   => $persisted['qualifies_portfolio_based'] ? 'Potential Candidate / Eligible for Interview' : 'Not Qualified for Interview',
+            'criteria'                  => $persisted['criteria'],
+            'contributing_evidence'     => $scoring['contributing_evidence'] ?? [],
+            'scoring_warnings'          => $scoring['scoring_warnings'] ?? [],
+            'diagnostics'               => $scoring['diagnostics'] ?? [],
         ];
+    }
+
+    protected function scoringService(): AwardScoringService
+    {
+        return $this->scoringService ??= new AwardScoringService($this->db);
+    }
+
+    protected function persistenceService(): AwardEvaluationPersistenceService
+    {
+        return $this->persistenceService ??= new AwardEvaluationPersistenceService($this->db);
     }
 
     /**

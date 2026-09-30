@@ -572,8 +572,10 @@ class AwardReviewService
         $evalId = null;
 
         if (method_exists($this->db, 'table')) {
-            // Upsert student_award_evaluations
+            // Upsert student_award_evaluations for the active cycle only (one row per cycle/award/student).
+            $cycleId = $this->getActiveCycleId();
             $existing = $this->db->table('student_award_evaluations')
+                ->where('cycle_id', $cycleId)
                 ->where('award_definition_id', $awardId)
                 ->where('student_profile_id', $studentId)
                 ->get()->getRowArray();
@@ -589,7 +591,6 @@ class AwardReviewService
                     ]);
             } else {
                 $evalId = $this->genUuid();
-                $cycleId = $this->getActiveCycleId();
                 $this->db->table('student_award_evaluations')->insert([
                     'id'                   => $evalId,
                     'cycle_id'             => $cycleId,
@@ -672,20 +673,17 @@ class AwardReviewService
      */
     protected function getActiveCycleId(): string
     {
-        if ($this->db !== null) {
-            if (method_exists($this->db, 'table')) {
-                $cycle = $this->db->table('award_cycles')->where('status', 'active')->get()->getRowArray();
-                if ($cycle) {
-                    return $cycle['id'];
-                }
-            } elseif ($this->db instanceof \mysqli) {
-                $res = $this->db->query("SELECT id FROM award_cycles WHERE status = 'active' LIMIT 1");
-                if ($res && $row = $res->fetch_assoc()) {
-                    return $row['id'];
-                }
-            }
+        // Same resolution as AwardEvaluationService::resolveActiveCycle(); no hardcoded fallback cycle.
+        $cycle = $this->db !== null && method_exists($this->db, 'table')
+            ? $this->db->table('award_cycles')
+                ->whereIn('status', ['active', 'evaluating'])
+                ->orderBy('start_date', 'DESC')
+                ->get()->getRowArray()
+            : null;
+        if (! $cycle) {
+            throw new RuntimeException('ACTIVE_CYCLE_REQUIRED: no active award cycle.');
         }
-        return '50000000-0000-0000-0000-000000000001';
+        return (string) $cycle['id'];
     }
 
     /**

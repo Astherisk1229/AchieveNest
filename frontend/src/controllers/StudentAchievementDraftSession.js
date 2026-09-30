@@ -6,6 +6,7 @@
  *
  * Invariants:
  * - No backend record is created until it is needed (first evidence upload or first save).
+ * - Evidence comes first: a draft may be created before a category is chosen (unclassified draft).
  * - Exactly one record per session: every later call reuses the same record id.
  * - A failed save stops submission; nothing reports success unless the backend accepted it.
  * - Status, reviewer, and scoring are never sent; the backend owns them.
@@ -68,9 +69,33 @@ export function toApiError(error, fallbackMessage = 'The request could not be co
   return normalized
 }
 
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+/**
+ * Converts an OCR date to YYYY-MM-DD only when it is unambiguous:
+ * "2026-05-28", "May 28, 2026", "28 May 2026" (full or 3-letter month names).
+ * Numeric forms such as 05/06/2026 are ambiguous (day vs month) and return null.
+ */
+export function parseOcrDate(value) {
+  const text = String(value || '').trim().replace(/\s+/g, ' ')
+  if (DATE_PATTERN.test(text)) return text
+  const monthIndex = name => MONTHS.findIndex(month => month === name.toLowerCase() || (name.length === 3 && month.startsWith(name.toLowerCase())))
+  const build = (year, month, day) => {
+    if (month < 0 || day < 1 || day > 31) return null
+    const date = new Date(Date.UTC(year, month, day))
+    if (date.getUTCMonth() !== month || date.getUTCDate() !== day) return null
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+  let match = text.match(/^([A-Za-z]+)\.? (\d{1,2}), (\d{4})$/)
+  if (match) return build(Number(match[3]), monthIndex(match[1]), Number(match[2]))
+  match = text.match(/^(\d{1,2}) ([A-Za-z]+)\.?,? (\d{4})$/)
+  if (match) return build(Number(match[3]), monthIndex(match[2]), Number(match[1]))
+  return null
+}
+
 /**
  * Applies advisory OCR suggestions only to fields the student has not touched and that are empty.
- * start_date is filled only when the OCR value is already an ISO date (YYYY-MM-DD).
+ * start_date is filled only when the OCR date converts unambiguously (see parseOcrDate).
  */
 export function applyOcrSuggestions(formData, suggestions = [], touched = {}) {
   const next = { ...formData }
@@ -78,13 +103,51 @@ export function applyOcrSuggestions(formData, suggestions = [], touched = {}) {
   const map = { activity_title: 'title', organizer_granting_body: 'organizer_or_body', start_date_raw: 'start_date' }
   suggestions.forEach(item => {
     const field = map[item?.key]
-    const value = String(item?.value || '').trim()
+    let value = String(item?.value || '').trim()
     if (!field || !value || touched[field] || String(next[field] || '').trim() !== '') return
-    if (field === 'start_date' && !DATE_PATTERN.test(value)) return
+    if (field === 'start_date') {
+      value = parseOcrDate(value)
+      if (!value) return
+    }
     next[field] = value
     applied[field] = true
   })
   return { formData: next, applied }
+}
+
+const normalizeText = value => String(value ?? '').trim().replace(/[\u2012-\u2015]/g, '-').replace(/\s+/g, ' ').toLowerCase()
+
+/**
+ * Fills category-specific details from OCR suggestions whose key equals the field key
+ * (organization_name, position_title, academic_year). Only empty fields are filled.
+ * Dropdowns are never guessed: a select is filled only when the OCR text is exactly one of its
+ * options (label or value, ignoring case, spacing and dash style). position_level is tried against
+ * the certificate's role text with the same exact rule. Anything else stays blank for the student.
+ */
+export function applyOcrToDetails(metadata = {}, suggestions = [], fields = []) {
+  const next = { ...metadata }
+  const applied = {}
+  const byKey = {}
+  suggestions.forEach(item => { if (item?.key && item.value && byKey[item.key] === undefined) byKey[item.key] = String(item.value).trim() })
+  fields.forEach(field => {
+    if (!field?.key || ![undefined, null, ''].includes(next[field.key])) return
+    const candidates = field.key === 'position_level' ? [byKey.position_level, byKey.position_title] : [byKey[field.key]]
+    for (const candidate of candidates) {
+      if (!candidate) continue
+      if (field.type === 'select') {
+        const option = (field.options || []).find(item => normalizeText(item.label) === normalizeText(candidate) || normalizeText(item.value) === normalizeText(candidate))
+        if (!option) continue
+        next[field.key] = option.value
+      } else if (['text', 'textarea', undefined].includes(field.type)) {
+        next[field.key] = candidate
+      } else {
+        continue
+      }
+      applied[field.key] = true
+      break
+    }
+  })
+  return { metadata: next, applied }
 }
 
 export function validateEvidenceFile(file) {
@@ -140,15 +203,9 @@ export class StudentAchievementDraftSession {
     }
   }
 
-  /** Creates the draft on first need. Concurrent callers share one creation request. */
+  /** Creates the draft on first need (a category is not required yet). Concurrent callers share one creation request. */
   async ensureDraft(payload) {
     if (this.recordId) return this.recordId
-    if (!payload?.category_id) {
-      const error = new Error('Choose a category before uploading evidence or saving.')
-      error.code = 'CATEGORY_REQUIRED'
-      error.fieldErrors = { category_id: 'Category is required.' }
-      throw error
-    }
     if (!this.creating) {
       this.creating = this.service.createRecord({ ...payload, submit_now: false })
         .then(result => {

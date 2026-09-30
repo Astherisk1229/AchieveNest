@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import StudentAchievementDraftSession, {
   applyOcrSuggestions,
+  applyOcrToDetails,
+  parseOcrDate,
   buildRecordPayload,
   parseStructuredMetadata,
   toApiError,
@@ -34,11 +36,12 @@ describe('StudentAchievementDraftSession', () => {
     expect(service.updateRecord).not.toHaveBeenCalled()
   })
 
-  it('refuses to create a draft before a category is chosen', async () => {
+  it('creates an unclassified draft when evidence comes before the category', async () => {
     const service = makeService()
     const session = new StudentAchievementDraftSession(service)
-    await expect(session.uploadEvidence(pdf(), buildRecordPayload({ formData: {} }))).rejects.toMatchObject({ code: 'CATEGORY_REQUIRED' })
-    expect(service.createRecord).not.toHaveBeenCalled()
+    await session.uploadEvidence(pdf(), buildRecordPayload({ formData: {} }))
+    expect(service.createRecord).toHaveBeenCalledTimes(1)
+    expect(service.createRecord.mock.calls[0][0]).toMatchObject({ category_id: null, subcategory_id: null, submit_now: false })
   })
 
   it('creates exactly one draft even when two uploads start together', async () => {
@@ -128,18 +131,56 @@ describe('payload and validation helpers', () => {
     for (const key of ['status', 'points', 'verified_by', 'student_profile_id', 'submit_now']) expect(payload).not.toHaveProperty(key)
   })
 
-  it('applies OCR suggestions only to untouched empty fields and ISO dates', () => {
+  it('applies OCR suggestions only to untouched empty fields and converts unambiguous dates', () => {
     const { formData, applied } = applyOcrSuggestions(
       { title: '', organizer_or_body: 'Typed by student', start_date: '' },
       [
         { key: 'activity_title', value: 'Leadership Summit' },
         { key: 'organizer_granting_body', value: 'OCR organizer' },
-        { key: 'start_date_raw', value: 'August 1, 2025' }
+        { key: 'start_date_raw', value: 'May 28, 2026' }
       ],
       { organizer_or_body: true }
     )
-    expect(formData).toEqual({ title: 'Leadership Summit', organizer_or_body: 'Typed by student', start_date: '' })
-    expect(applied).toEqual({ title: true })
+    expect(formData).toEqual({ title: 'Leadership Summit', organizer_or_body: 'Typed by student', start_date: '2026-05-28' })
+    expect(applied).toEqual({ title: true, start_date: true })
+  })
+
+  it('converts only unambiguous OCR dates', () => {
+    expect(parseOcrDate('May 28, 2026')).toBe('2026-05-28')
+    expect(parseOcrDate('28 May 2026')).toBe('2026-05-28')
+    expect(parseOcrDate('Aug. 1, 2025')).toBe('2025-08-01')
+    expect(parseOcrDate('2025-08-01')).toBe('2025-08-01')
+    expect(parseOcrDate('05/06/2026')).toBeNull()
+    expect(parseOcrDate('February 30, 2026')).toBeNull()
+    expect(parseOcrDate('sometime in May')).toBeNull()
+  })
+
+  it('fills details from the document; dropdowns only on an exact option match', () => {
+    const fields = [
+      { key: 'organization_name', type: 'text' },
+      { key: 'position_title', type: 'text' },
+      { key: 'position_level', type: 'select', options: [{ value: 'executive', label: 'Executive Officer (President / VP / Governor)' }] },
+      { key: 'academic_year', type: 'select', options: [{ value: '2025-2026', label: 'AY 2025-2026' }] }
+    ]
+    const suggestions = [
+      { key: 'organization_name', value: 'Association of Computing Students' },
+      { key: 'position_title', value: 'Student Organization President' },
+      { key: 'academic_year', value: '2025\u20132026' }
+    ]
+    const { metadata, applied } = applyOcrToDetails({ schema_version: '1.0' }, suggestions, fields)
+    expect(metadata).toEqual({
+      schema_version: '1.0',
+      organization_name: 'Association of Computing Students',
+      position_title: 'Student Organization President',
+      academic_year: '2025-2026'
+    })
+    expect(metadata.position_level).toBeUndefined() // 'Student Organization President' is not an option: left blank
+    expect(applied).toEqual({ organization_name: true, position_title: true, academic_year: true })
+
+    const exact = applyOcrToDetails({}, [{ key: 'position_title', value: 'executive officer (president / vp / governor)' }], fields)
+    expect(exact.metadata.position_level).toBe('executive')
+    const kept = applyOcrToDetails({ organization_name: 'Typed' }, suggestions, fields)
+    expect(kept.metadata.organization_name).toBe('Typed')
   })
 
   it('requires clean active evidence and complete details before submission', () => {

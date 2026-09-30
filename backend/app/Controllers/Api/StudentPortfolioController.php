@@ -156,7 +156,7 @@ class StudentPortfolioController extends Controller
                 'p.full_name AS student_name',
                 'p.institutional_id AS student_id_number',
             ])
-            ->join('portfolio_categories pc', 'pc.id = spr.category_id')
+            ->join('portfolio_categories pc', 'pc.id = spr.category_id', 'left') // unclassified drafts have no category
             ->join('portfolio_subcategories ps', 'ps.id = spr.subcategory_id', 'left')
             ->join('profiles p', 'p.id = spr.student_profile_id')
             ->orderBy('spr.created_at', 'DESC');
@@ -230,7 +230,7 @@ class StudentPortfolioController extends Controller
                 'p.institutional_id AS student_id_number',
                 'p.email AS student_email',
             ])
-            ->join('portfolio_categories pc', 'pc.id = spr.category_id')
+            ->join('portfolio_categories pc', 'pc.id = spr.category_id', 'left') // unclassified drafts have no category
             ->join('portfolio_subcategories ps', 'ps.id = spr.subcategory_id', 'left')
             ->join('profiles p', 'p.id = spr.student_profile_id')
             ->where('spr.id', $id)
@@ -471,10 +471,25 @@ class StudentPortfolioController extends Controller
         if (($error = $this->protectedPayloadError($json)) !== null) {
             return $this->respond(['error' => $error], 422);
         }
-        $categoryId = trim((string) ($json['category_id'] ?? $record['category_id']));
+        $categoryId = trim((string) ($json['category_id'] ?? $record['category_id'] ?? ''));
         $subcategoryId = array_key_exists('subcategory_id', $json)
             ? (! empty($json['subcategory_id']) ? trim((string) $json['subcategory_id']) : null)
             : ($record['subcategory_id'] ?? null);
+        if ($categoryId === '') {
+            // Still unclassified: only drafts may stay without a category (DB CHECK enforces this).
+            if ($record['status'] !== 'draft' || $subcategoryId !== null) {
+                return $this->respond(['error' => ['code' => 'CATEGORY_REQUIRED', 'message' => 'Choose a category for this achievement.']], 422);
+            }
+            $changes = ['category_id' => null, 'subcategory_id' => null, 'structured_metadata' => json_encode(['schema_version' => '1.0']), 'updated_at' => date('Y-m-d H:i:s')];
+            foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
+                if (array_key_exists($field, $json)) {
+                    $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
+                }
+            }
+            $db->table('student_portfolio_records')->where('id', $id)->update($changes);
+
+            return $this->respond(['data' => ['message' => 'Portfolio record updated.', 'id' => $id, 'status' => $record['status']]], 200);
+        }
         $taxonomy = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
         if (! $taxonomy['valid']) {
             return $this->respond(['error' => $taxonomy['error']], 422);
@@ -542,7 +557,31 @@ class StudentPortfolioController extends Controller
         // Drafts may be created before a title is known (evidence-first entry).
         // resubmitRecord() enforces title and all other completeness rules.
         if ($categoryId === '') {
-            return $this->respond(['error' => ['code' => 'MISSING_FIELDS', 'message' => 'category_id is required.']], 422);
+            // Evidence-first entry: an unclassified draft (no category yet). Category, subcategory and
+            // their details are validated when the student classifies it (update) and again at submit.
+            if ($subcategoryId !== null) {
+                return $this->respond(['error' => ['code' => 'CATEGORY_REQUIRED', 'message' => 'Choose a category before a subcategory.']], 422);
+            }
+            $recordId = $this->genUuid();
+            $now = date('Y-m-d H:i:s');
+            db_connect()->table('student_portfolio_records')->insert([
+                'id'                  => $recordId,
+                'student_profile_id'  => $actor['profile']['id'],
+                'category_id'         => null,
+                'subcategory_id'      => null,
+                'title'               => $title,
+                'organizer_or_body'   => $organizer,
+                'occurrence_date'     => $occurrenceDate ?? $startDate,
+                'start_date'          => $startDate,
+                'end_date'            => $endDate,
+                'description'         => $description,
+                'structured_metadata' => json_encode(['schema_version' => '1.0']),
+                'status'              => 'draft',
+                'created_at'          => $now,
+                'updated_at'          => $now,
+            ]);
+
+            return $this->respondCreated(['data' => ['message' => 'Draft created.', 'id' => $recordId, 'status' => 'draft']]);
         }
 
         $taxResult = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
@@ -853,6 +892,9 @@ class StudentPortfolioController extends Controller
      */
     public function scanEvidence(string $id, string $evidenceId): mixed
     {
+        // The external process may run up to StudentEvidenceClamAvScanner::TIMEOUT_SECONDS (60 s). On Windows PHP's
+        // max_execution_time counts wall-clock time (often 30 s), which killed the request mid-run.
+        set_time_limit(StudentEvidenceClamAvScanner::TIMEOUT_SECONDS + 30);
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
@@ -917,6 +959,9 @@ class StudentPortfolioController extends Controller
      */
     public function readEvidence(string $id, string $evidenceId): mixed
     {
+        // The external process may run up to StudentEvidencePaddleOcrService::TIMEOUT_SECONDS (60 s). On Windows PHP's
+        // max_execution_time counts wall-clock time (often 30 s), which killed the request mid-run.
+        set_time_limit(StudentEvidencePaddleOcrService::TIMEOUT_SECONDS + 30);
         $actor = $this->resolveActor();
         if ($actor === null) {
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);

@@ -25,6 +25,14 @@ describe('PortfolioAchievementSubmissionModal', () => {
     expect(portfolioService.createRecord).not.toHaveBeenCalled()
   })
 
+  it('orders the form evidence, basic information, category, then details, with upload open before a category', () => {
+    const html = renderToStaticMarkup(<PortfolioAchievementSubmissionModal isOpen onClose={vi.fn()} taxonomy={taxonomy} />)
+    const order = ['Upload supporting evidence', 'Basic information', 'Category and subcategory', 'Choose a subcategory to see the details it needs.'].map(text => html.indexOf(text))
+    expect(order.every(index => index >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(html).toMatch(/id="evidence-file-input"(?![^>]*disabled)/)
+  })
+
   it('renders nothing when closed', () => {
     expect(renderToStaticMarkup(<PortfolioAchievementSubmissionModal isOpen={false} onClose={vi.fn()} />)).toBe('')
   })

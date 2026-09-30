@@ -7,6 +7,7 @@ import portfolioService from '../../../services/portfolioService'
 import StudentAchievementDraftSession, {
   ACCEPTED_EVIDENCE_TYPES,
   applyOcrSuggestions,
+  applyOcrToDetails,
   buildRecordPayload,
   parseStructuredMetadata,
   validateForSubmit
@@ -17,13 +18,15 @@ const PREVIEWABLE = ['application/pdf', 'image/jpeg', 'image/png']
 
 const evidenceLabel = item => {
   if (item.security_status === 'clean') return 'Ready for submission'
-  if (item.security_status === 'rejected') return 'Rejected by the security check'
-  return 'Not yet checked'
+  if (item.security_status === 'rejected') return 'Failed the security check'
+  return 'Security check pending'
 }
 
 /**
  * Student achievement entry backed by the single system of record (student_portfolio_records).
- * Evidence is uploaded and security-checked early; OCR suggestions are advisory only.
+ * Order: evidence -> basic information -> category/subcategory -> additional information.
+ * Evidence may be uploaded before a category is chosen (unclassified draft). OCR runs only after a
+ * clean security scan and only suggests values; dropdowns are filled only on an exact option match.
  * No record is created until the first evidence upload or the first "Save draft".
  */
 export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, onSaved, editingRecordId = null, taxonomy = [] }) {
@@ -37,6 +40,8 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
   const touchedRef = useRef({})
   touchedRef.current = touched
   const [ocrApplied, setOcrApplied] = useState({})
+  const [ocrSuggestions, setOcrSuggestions] = useState([])
+  const [detailsFromDocument, setDetailsFromDocument] = useState({})
   const [categoryId, setCategoryId] = useState('')
   const [subcategoryId, setSubcategoryId] = useState('')
   const [structuredMetadata, setStructuredMetadata] = useState({ schema_version: '1.0' })
@@ -63,7 +68,7 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
     if (!isOpen) return undefined
     let active = true
     sessionRef.current = new StudentAchievementDraftSession(portfolioService)
-    setFormData(EMPTY_FORM); setTouched({}); setOcrApplied({}); setCategoryId(''); setSubcategoryId('')
+    setFormData(EMPTY_FORM); setTouched({}); setOcrApplied({}); setOcrSuggestions([]); setDetailsFromDocument({}); setCategoryId(''); setSubcategoryId('')
     setStructuredMetadata({ schema_version: '1.0' }); setEvidence([]); setStatus(null); setRevisionRemarks('')
     setErrors({}); setMessage(null); setScanMessage(''); setFullPreview(null)
     if (editingRecordId) {
@@ -108,6 +113,17 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
     return () => { cancelled = true; urls.forEach(url => URL.revokeObjectURL(url)) }
   }, [isOpen, evidence])
 
+  // Once a subcategory is chosen, fill its empty details from the document (exact matches only for dropdowns).
+  useEffect(() => {
+    if (!subcategoryId || ocrSuggestions.length === 0) return
+    const fields = getSubcategorySchema(subcategoryId)?.fields || []
+    setStructuredMetadata(previous => {
+      const { metadata, applied } = applyOcrToDetails(previous, ocrSuggestions, fields)
+      if (Object.keys(applied).length) setDetailsFromDocument(current => ({ ...current, ...applied }))
+      return Object.keys(applied).length ? metadata : previous
+    })
+  }, [subcategoryId, ocrSuggestions])
+
   const syncStatusFromSession = () => setStatus(sessionRef.current?.status ?? null)
 
   const showError = error => {
@@ -123,12 +139,12 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
   }
 
   const chooseCategory = value => {
-    setCategoryId(value); setSubcategoryId(''); setStructuredMetadata({ schema_version: '1.0' })
+    setCategoryId(value); setSubcategoryId(''); setStructuredMetadata({ schema_version: '1.0' }); setDetailsFromDocument({})
     setErrors(previous => { const next = { ...previous }; delete next.category_id; delete next.subcategory_id; return next })
   }
 
   const chooseSubcategory = value => {
-    setSubcategoryId(value); setStructuredMetadata({ schema_version: '1.0' })
+    setSubcategoryId(value); setStructuredMetadata({ schema_version: '1.0' }); setDetailsFromDocument({})
     setErrors(previous => { const next = { ...previous }; delete next.subcategory_id; return next })
   }
 
@@ -139,10 +155,11 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
   }
 
   const runScan = async evidenceId => {
-    setScanMessage('Checking your document…')
+    setScanMessage('Running the security scan on your document…')
     const result = await sessionRef.current.scanEvidence(evidenceId)
+    const unavailable = 'Security scanner unavailable. Select "Retry scan" to try again. You can keep entering the details manually; submission stays locked until the scan passes, and the document is read only after it passes.'
     if (!result.ok) {
-      setScanMessage('We could not check this document yet. Use "Check again" before submitting.')
+      setScanMessage(unavailable)
       return
     }
     const scanStatus = result.scan?.status
@@ -150,6 +167,7 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
       setScanMessage('Your document passed the security check. Reading it for details…')
       const read = await sessionRef.current.readEvidence(evidenceId)
       const suggestions = read.ocr?.review_suggestions || []
+      setOcrSuggestions(suggestions)
       setFormData(previous => {
         const { formData: next, applied } = applyOcrSuggestions(previous, suggestions, touchedRef.current)
         if (Object.keys(applied).length) setOcrApplied(current => ({ ...current, ...applied }))
@@ -159,9 +177,9 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
         ? 'Your document is ready. Review any details we filled from it.'
         : read.ok ? 'Your document is ready.' : 'Your document is ready. We could not read details from it, so please enter them manually.')
     } else if (scanStatus === 'infected') {
-      setScanMessage('This document failed the security check and cannot be used.')
+      setScanMessage('This document failed the security check. It was not read and cannot be submitted. Remove it and upload a different file.')
     } else {
-      setScanMessage('The security check is unavailable right now. Use "Check again" before submitting.')
+      setScanMessage(unavailable)
     }
   }
 
@@ -240,7 +258,7 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#16834a]">Student achievements</p>
           <h2 id={titleId} className="mt-1 text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">{editingRecordId ? 'Edit achievement' : 'Add achievement'}</h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Choose a category, upload your proof, review what we found, then complete the details.</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">Upload your proof, review what we found, choose the category, then complete the details.</p>
         </div>
         <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close form"><X size={20}/></button>
       </header>
@@ -252,8 +270,45 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
 
         <div className="grid gap-6 lg:grid-cols-[minmax(300px,0.8fr)_minmax(0,1.2fr)]">
           <aside className="h-fit rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:sticky lg:top-0">
-            <section aria-label="Classification">
-              <h3 className="font-bold text-slate-900 dark:text-white">Classification</h3>
+            <section aria-label="Supporting evidence">
+              <div className="flex items-center gap-2"><ShieldCheck className="text-[#16834a]" size={19}/><h3 className="font-bold text-slate-900 dark:text-white">Evidence</h3></div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">PDF, JPG, or PNG · up to 10 MiB · PDFs up to two pages.</p>
+              <label className={`mt-4 flex min-h-32 flex-col items-center justify-center rounded-2xl border border-dashed px-4 text-center ${editable ? 'cursor-pointer border-[#a9c6b1] bg-[#f6fbf7] hover:border-[#16834a]' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+                <Upload className="mb-2 text-[#16834a]"/>
+                <span className="text-sm font-bold">Upload supporting evidence</span>
+                <span className="mt-1 text-xs text-slate-500">Start here: choose a document.</span>
+                <input id="evidence-file-input" className="sr-only" type="file" accept={ACCEPTED_EVIDENCE_TYPES.join(',')} onChange={uploadEvidence} disabled={busy || !editable}/>
+              </label>
+              <input ref={replaceInputRef} className="sr-only" type="file" accept={ACCEPTED_EVIDENCE_TYPES.join(',')} onChange={uploadEvidence} disabled={busy || !editable} aria-label="Choose replacement document"/>
+              {errors.evidence && <p className="mt-2 text-xs text-rose-700">{errors.evidence}</p>}
+              {scanMessage && <p aria-live="polite" className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{busy && <LoaderCircle className="mr-2 inline animate-spin" size={14}/>}{scanMessage}</p>}
+              <div className="mt-4 space-y-3">
+                {evidenceList.map(item => <div key={item.id} className="overflow-hidden rounded-xl border border-slate-200 text-xs dark:border-slate-800">
+                  {previews[item.id] && ((item.detected_mime_type || item.mime_type) === 'application/pdf'
+                    ? <iframe title={`First page of ${item.original_filename}`} src={`${previews[item.id]}#page=1&view=FitH`} className="h-40 w-full border-0"/>
+                    : <img src={previews[item.id]} alt={`Preview of ${item.original_filename}`} className="h-40 w-full object-contain"/>)}
+                  <div className="flex items-center gap-2 p-3">
+                    <FileText className="shrink-0 text-[#16834a]" size={17}/>
+                    <div className="min-w-0 flex-1"><p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.original_filename}</p><p className="text-slate-500">{evidenceLabel(item)}</p></div>
+                    {previews[item.id] && <button type="button" onClick={() => setFullPreview(item)} className="rounded p-2 hover:bg-slate-100" aria-label={`View ${item.original_filename}`}><Eye size={16}/></button>}
+                    {editable && item.security_status === 'pending' && <button type="button" disabled={busy} onClick={() => recheck(item)} className="rounded px-2 py-1 text-[#126b3c] hover:bg-emerald-50" aria-label={`Retry the security scan for ${item.original_filename}`}>Retry scan</button>}
+                    {editable && <button type="button" disabled={busy} onClick={() => { replaceTargetRef.current = item; replaceInputRef.current?.click() }} className="rounded p-2 text-[#126b3c] hover:bg-emerald-50" aria-label={`Replace ${item.original_filename}`}><RefreshCw size={16}/></button>}
+                    {editable && <button type="button" disabled={busy} onClick={() => removeEvidence(item)} className="rounded p-2 text-rose-700 hover:bg-rose-50" aria-label={`Remove ${item.original_filename}`}><Trash2 size={16}/></button>}
+                  </div>
+                </div>)}
+              </div>
+            </section>
+          </aside>
+
+          <div className="space-y-5">
+            <section aria-label="Basic information" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="font-bold text-slate-900 dark:text-white">Basic information</h3>
+              {Object.values(ocrApplied).some(Boolean) && <p className="mt-1 text-xs text-emerald-800">Some fields were filled from your document. Your entries are always what gets saved.</p>}
+              <div className="mt-4"><SharedAchievementFields formData={formData} onChange={handleSharedChange} errors={errors} disabled={busy || !editable}/></div>
+            </section>
+            <section aria-label="Classification" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="font-bold text-slate-900 dark:text-white">Category and subcategory</h3>
+              <p className="mt-1 text-xs text-slate-500">Choose these yourself. The document never decides the category.</p>
               <label className="mt-3 block text-xs font-bold text-slate-700 dark:text-slate-300" htmlFor="achievement-category">Category<span className="text-rose-600"> *</span>
                 <select id="achievement-category" name="category_id" value={categoryId} onChange={event => chooseCategory(event.target.value)} disabled={busy || !editable} className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
                   <option value="">Select a category</option>
@@ -270,45 +325,9 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
               {errors.subcategory_id && <p className="mt-1 text-xs text-rose-700">{errors.subcategory_id}</p>}
             </section>
 
-            <section aria-label="Supporting evidence" className="mt-6 border-t border-slate-100 pt-5 dark:border-slate-800">
-              <div className="flex items-center gap-2"><ShieldCheck className="text-[#16834a]" size={19}/><h3 className="font-bold text-slate-900 dark:text-white">Evidence</h3></div>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">PDF, JPG, or PNG · up to 10 MiB · PDFs up to two pages.</p>
-              <label className={`mt-4 flex min-h-32 flex-col items-center justify-center rounded-2xl border border-dashed px-4 text-center ${categoryId && editable ? 'cursor-pointer border-[#a9c6b1] bg-[#f6fbf7] hover:border-[#16834a]' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                <Upload className="mb-2 text-[#16834a]"/>
-                <span className="text-sm font-bold">Upload supporting evidence</span>
-                <span className="mt-1 text-xs text-slate-500">{categoryId ? 'Choose a document.' : 'Select a category first.'}</span>
-                <input id="evidence-file-input" className="sr-only" type="file" accept={ACCEPTED_EVIDENCE_TYPES.join(',')} onChange={uploadEvidence} disabled={busy || !editable || !categoryId}/>
-              </label>
-              <input ref={replaceInputRef} className="sr-only" type="file" accept={ACCEPTED_EVIDENCE_TYPES.join(',')} onChange={uploadEvidence} disabled={busy || !editable} aria-label="Choose replacement document"/>
-              {errors.evidence && <p className="mt-2 text-xs text-rose-700">{errors.evidence}</p>}
-              {scanMessage && <p aria-live="polite" className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{busy && <LoaderCircle className="mr-2 inline animate-spin" size={14}/>}{scanMessage}</p>}
-              <div className="mt-4 space-y-3">
-                {evidenceList.map(item => <div key={item.id} className="overflow-hidden rounded-xl border border-slate-200 text-xs dark:border-slate-800">
-                  {previews[item.id] && ((item.detected_mime_type || item.mime_type) === 'application/pdf'
-                    ? <iframe title={`First page of ${item.original_filename}`} src={`${previews[item.id]}#page=1&view=FitH`} className="h-40 w-full border-0"/>
-                    : <img src={previews[item.id]} alt={`Preview of ${item.original_filename}`} className="h-40 w-full object-contain"/>)}
-                  <div className="flex items-center gap-2 p-3">
-                    <FileText className="shrink-0 text-[#16834a]" size={17}/>
-                    <div className="min-w-0 flex-1"><p className="truncate font-semibold text-slate-800 dark:text-slate-100">{item.original_filename}</p><p className="text-slate-500">{evidenceLabel(item)}</p></div>
-                    {previews[item.id] && <button type="button" onClick={() => setFullPreview(item)} className="rounded p-2 hover:bg-slate-100" aria-label={`View ${item.original_filename}`}><Eye size={16}/></button>}
-                    {editable && item.security_status === 'pending' && <button type="button" disabled={busy} onClick={() => recheck(item)} className="rounded px-2 py-1 text-[#126b3c] hover:bg-emerald-50" aria-label={`Check ${item.original_filename} again`}>Check again</button>}
-                    {editable && <button type="button" disabled={busy} onClick={() => { replaceTargetRef.current = item; replaceInputRef.current?.click() }} className="rounded p-2 text-[#126b3c] hover:bg-emerald-50" aria-label={`Replace ${item.original_filename}`}><RefreshCw size={16}/></button>}
-                    {editable && <button type="button" disabled={busy} onClick={() => removeEvidence(item)} className="rounded p-2 text-rose-700 hover:bg-rose-50" aria-label={`Remove ${item.original_filename}`}><Trash2 size={16}/></button>}
-                  </div>
-                </div>)}
-              </div>
-            </section>
-          </aside>
-
-          <div className="space-y-5">
-            <section aria-label="Basic information" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <h3 className="font-bold text-slate-900 dark:text-white">Basic information</h3>
-              {Object.values(ocrApplied).some(Boolean) && <p className="mt-1 text-xs text-emerald-800">Some fields were filled from your document. Your entries are always what gets saved.</p>}
-              <div className="mt-4"><SharedAchievementFields formData={formData} onChange={handleSharedChange} errors={errors} disabled={busy || !editable}/></div>
-            </section>
             <section aria-label="Additional information" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               {subcategoryId
-                ? <StructuredDetailsFields subcategoryId={subcategoryId} structuredMetadata={structuredMetadata} onChange={setStructuredMetadata} errors={errors} disabled={busy || !editable}/>
+                ? <>{Object.values(detailsFromDocument).some(Boolean) && <p className="mb-3 text-xs text-emerald-800">Some details were filled from your document. Check them; your entries are what gets saved.</p>}<StructuredDetailsFields subcategoryId={subcategoryId} structuredMetadata={structuredMetadata} onChange={setStructuredMetadata} errors={errors} disabled={busy || !editable}/></>
                 : <p className="text-sm text-slate-500">Choose a subcategory to see the details it needs.</p>}
             </section>
           </div>
@@ -318,7 +337,7 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
       <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-white px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-7 dark:border-slate-800 dark:bg-slate-900">
         <button type="button" onClick={onClose} className="min-h-11 rounded-xl px-3 text-sm font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300">Close</button>
         {editable && <div className="flex gap-2">
-          <button type="button" disabled={busy || !categoryId} onClick={saveDraft} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-bold text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100"><Save className="mr-2 inline" size={16}/>Save draft</button>
+          <button type="button" disabled={busy} onClick={saveDraft} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-bold text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100"><Save className="mr-2 inline" size={16}/>Save draft</button>
           <button type="button" disabled={busy || !cleanEvidence} onClick={submit} className="min-h-11 rounded-xl bg-[#16834a] px-4 text-sm font-bold text-white hover:bg-[#126b3c] disabled:opacity-50"><Send className="mr-2 inline" size={16}/>{status === 'revision_requested' ? 'Resubmit for review' : 'Submit for review'}</button>
         </div>}
       </footer>

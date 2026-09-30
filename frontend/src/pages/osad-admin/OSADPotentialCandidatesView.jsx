@@ -1,9 +1,15 @@
 import React from 'react'
-import { AlertTriangle, ArrowRight, Search, Users } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Printer, Search, Users } from 'lucide-react'
 import OSADAwardAuthorityBadge from '../../components/osad/OSADAwardAuthorityBadge'
 import OSADAwardPageShell from '../../components/osad/OSADAwardPageShell'
 import { OSADEmptyState, OSADErrorState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 import useAwardPotentialCandidates from '../../hooks/useAwardPotentialCandidates'
+import { formatDate } from '../../utils/achievementDates'
+
+const today = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function Score({ candidate }) {
   if (['CONFIGURATION_ERROR', 'THRESHOLD_CONFIGURATION_ERROR', 'AWARD_AUTHORITY_PENDING'].includes(candidate.scoring_status)) {
@@ -39,7 +45,7 @@ function Status({ candidate }) {
 }
 
 function ReviewAction() {
-  return <span className="inline-flex min-h-11 items-center gap-1.5 px-3 py-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300">Review Candidate <ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
+  return <span className="print-hide inline-flex min-h-11 items-center gap-1.5 px-3 py-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300">View summary <ArrowRight className="h-4 w-4" aria-hidden="true" /></span>
 }
 
 const keyboardActivate = (event, action) => {
@@ -64,8 +70,11 @@ export default function OSADPotentialCandidatesView({ award, onBack, onCatalog, 
   const hasControls = state.model.candidates.length > 0
   const filteredEmpty = hasControls && state.candidates.length === 0
 
+  const printable = !state.authorityPending && !state.loading && !state.error && state.candidates.length > 0
+
   return <OSADAwardPageShell title="Potential Candidates" description={award?.name || 'Award candidate worklist'} icon={Users}
     badge={<OSADAwardAuthorityBadge value={award?.authority_status} />}
+    actions={printable && <button type="button" onClick={() => window.print()} className="print-hide inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><Printer className="h-4 w-4" aria-hidden="true" /> Print / Export PDF</button>}
     breadcrumbs={[{ label: 'Awards & Criteria', onClick: onCatalog }, { label: award?.name || 'Award', onClick: onBack }, { label: 'Potential Candidates' }]}>
     <div className="space-y-5">
       <section className="max-w-3xl space-y-3" aria-label="Candidate discovery qualification">
@@ -79,7 +88,7 @@ export default function OSADPotentialCandidatesView({ award, onBack, onCatalog, 
       {hasControls && <div className="flex flex-col gap-3 border-y border-slate-200 py-4 dark:border-slate-800 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
           <label className="relative block w-full sm:max-w-sm"><span className="sr-only">Search students</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" /><input type="search" value={state.search} onChange={(event) => state.setSearch(event.target.value)} placeholder="Search student…" className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-white" /></label>
-          <label><span className="sr-only">Filter review status</span><select value={state.status} onChange={(event) => state.setStatus(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">{state.statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+          {state.statusOptions.length > 2 && <label><span className="sr-only">Filter status</span><select value={state.status} onChange={(event) => state.setStatus(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">{state.statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>}
         </div>
         <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300"><span>Sort</span><select value={state.sort} onChange={(event) => state.setSort(event.target.value)} className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"><option value="SCORE_DESC">Highest Potential Score</option><option value="SCORE_ASC">Lowest Potential Score</option><option value="NAME">Student Name</option><option value="RECENT">Recently Identified</option></select></label>
       </div>}
@@ -89,14 +98,19 @@ export default function OSADPotentialCandidatesView({ award, onBack, onCatalog, 
         : state.error ? <OSADErrorState title="We couldn't load potential candidates." message="Your data hasn't been changed." onRetry={state.reload} retryLabel="Try again" />
         : !hasControls ? <OSADEmptyState icon={Users} title="No potential candidates yet" description="No students currently meet the portfolio candidate-discovery requirements for this award. Candidate results update as verified achievements become available." actionLabel="View Criteria" onAction={onBack} />
         : filteredEmpty ? <OSADSearchEmptyState title={state.search ? `No candidates found for “${state.search}”.` : 'No candidates match this review status.'} description={state.search ? 'Try another name or clear the search.' : 'Choose another workflow status to continue.'} onReset={() => { state.setSearch(''); state.setStatus('ALL') }} resetLabel="Clear search and filters" />
-        : <>
+        : <div className="print-area space-y-3">
+          <div className="hidden print-show text-slate-950">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-800">AchieveNest</p>
+            <h2 className="text-lg font-bold">Potential Candidates — {award?.name}</h2>
+            <p className="text-sm">{qualificationAvailable ? `Required score ${award.raw_qualifying_score} / ${award.computable_max_score} · Threshold ${award.candidate_threshold_percent}% · ` : ''}Printed {formatDate(today())}{state.search ? ` · Search: “${state.search}”` : ''}</p>
+          </div>
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200" aria-live="polite">{state.candidates.length} potential {state.candidates.length === 1 ? 'candidate' : 'candidates'}</p>
-          <section className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#131e2e] md:block" aria-label="Potential candidate worklist">
-            <table className="w-full table-fixed border-collapse text-left text-sm"><thead className="bg-slate-50 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300"><tr><th scope="col" className="w-[27%] px-4 py-3">Student</th><th scope="col" className="w-[21%] px-4 py-3">Program</th><th scope="col" className="w-[22%] px-4 py-3">Portfolio score</th><th scope="col" className="w-[18%] px-4 py-3">Review status</th><th scope="col" className="w-[12%] px-4 py-3"><span className="sr-only">Action</span></th></tr></thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{state.candidates.map((candidate) => <tr key={candidate.id} tabIndex={0} onClick={() => onSelectStudent?.(candidate)} onKeyDown={(event) => keyboardActivate(event, () => onSelectStudent?.(candidate))} aria-label={`Review ${candidate.student_name || 'candidate'}`} className="cursor-pointer align-top hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:hover:bg-slate-900/60"><th scope="row" className="px-4 py-4 font-semibold text-slate-900 dark:text-white"><span className="block truncate">{candidate.student_name || 'Name unavailable'}</span></th><td className="px-4 py-4 text-slate-600 dark:text-slate-300"><span className="block truncate">{candidate.program || 'Program unavailable'}</span></td><td className="px-4 py-4"><Score candidate={candidate} /></td><td className="px-4 py-4"><Status candidate={candidate} /></td><td className="px-4 py-3 text-right"><ReviewAction /></td></tr>)}</tbody></table>
+          <section className="print-show hidden overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#131e2e] md:block" aria-label="Potential candidate worklist">
+            <table className="w-full table-fixed border-collapse text-left text-sm"><thead className="bg-slate-50 text-xs font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300"><tr><th scope="col" className="w-[27%] px-4 py-3">Student</th><th scope="col" className="w-[21%] px-4 py-3">Program</th><th scope="col" className="w-[22%] px-4 py-3">Portfolio score</th><th scope="col" className="w-[18%] px-4 py-3">Status</th><th scope="col" className="print-hide w-[12%] px-4 py-3"><span className="sr-only">Action</span></th></tr></thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">{state.candidates.map((candidate) => <tr key={candidate.id} tabIndex={0} onClick={() => onSelectStudent?.(candidate)} onKeyDown={(event) => keyboardActivate(event, () => onSelectStudent?.(candidate))} aria-label={`Review ${candidate.student_name || 'candidate'}`} className="cursor-pointer align-top hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:hover:bg-slate-900/60"><th scope="row" className="px-4 py-4 font-semibold text-slate-900 dark:text-white"><span className="block truncate">{candidate.student_name || 'Name unavailable'}</span>{candidate.student_id_number && <span className="block truncate text-xs font-normal text-slate-500">{candidate.student_id_number}</span>}</th><td className="px-4 py-4 text-slate-600 dark:text-slate-300"><span className="block truncate">{candidate.program || 'Program unavailable'}</span></td><td className="px-4 py-4"><Score candidate={candidate} /></td><td className="px-4 py-4"><Status candidate={candidate} /></td><td className="print-hide px-4 py-3 text-right"><ReviewAction /></td></tr>)}</tbody></table>
           </section>
-          <section className="divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800 md:hidden" aria-label="Potential candidate worklist">{state.candidates.map((candidate) => <article role="link" tabIndex={0} key={candidate.id} aria-label={`Review ${candidate.student_name || 'candidate'}`} onClick={() => onSelectStudent?.(candidate)} onKeyDown={(event) => keyboardActivate(event, () => onSelectStudent?.(candidate))} className="w-full cursor-pointer space-y-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"><div><h3 className="font-semibold text-slate-900 dark:text-white">{candidate.student_name || 'Name unavailable'}</h3><p className="text-sm text-slate-500">{candidate.program || 'Program unavailable'}</p></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><Score candidate={candidate} /><Status candidate={candidate} /></div><ReviewAction /></article>)}</section>
-        </>}
+          <section className="print-hide divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-800 dark:border-slate-800 md:hidden" aria-label="Potential candidate worklist">{state.candidates.map((candidate) => <article role="link" tabIndex={0} key={candidate.id} aria-label={`Review ${candidate.student_name || 'candidate'}`} onClick={() => onSelectStudent?.(candidate)} onKeyDown={(event) => keyboardActivate(event, () => onSelectStudent?.(candidate))} className="w-full cursor-pointer space-y-3 py-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"><div><h3 className="font-semibold text-slate-900 dark:text-white">{candidate.student_name || 'Name unavailable'}</h3><p className="text-sm text-slate-500">{candidate.program || 'Program unavailable'}</p></div><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><Score candidate={candidate} /><Status candidate={candidate} /></div><ReviewAction /></article>)}</section>
+        </div>}
     </div>
   </OSADAwardPageShell>
 }

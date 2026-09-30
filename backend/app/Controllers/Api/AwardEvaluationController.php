@@ -10,6 +10,7 @@ use App\Services\AwardScoringService;
 use App\Services\AwardReviewService;
 use App\Services\AwardPotentialCandidateService;
 use App\Services\AwardApiContractService;
+use App\Services\AwardCandidateDiscoveryService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use InvalidArgumentException;
@@ -27,6 +28,7 @@ class AwardEvaluationController extends Controller
     protected AwardReviewService $reviewService;
 
     protected AwardPotentialCandidateService $candidateService;
+    protected ?AwardCandidateDiscoveryService $discoveryService;
 
     public function __construct(
         ?AuthorizationService $authz = null,
@@ -35,8 +37,10 @@ class AwardEvaluationController extends Controller
         ?AwardEvidenceMappingService $mappingService = null,
         ?AwardScoringService $scoringService = null,
         ?AwardReviewService $reviewService = null,
-        ?AwardPotentialCandidateService $candidateService = null
+        ?AwardPotentialCandidateService $candidateService = null,
+        ?AwardCandidateDiscoveryService $discoveryService = null
     ) {
+        $this->discoveryService = $discoveryService;
         $this->authz = $authz ?? new AuthorizationService();
         $this->awardService = $awardService ?? new AwardEvaluationService();
         $this->eligibilityService = $eligibilityService ?? new AwardEligibilityService();
@@ -106,46 +110,7 @@ class AwardEvaluationController extends Controller
             ->get()->getResultArray();
 
         foreach ($awards as &$award) {
-            $version = $db->table('award_scoring_model_versions')
-                ->where('award_definition_id', $award['id'])
-                ->where('status', 'published')
-                ->orderBy('version_number', 'DESC')
-                ->get()->getRowArray();
-            $criteria = $db->table('award_criteria')
-                ->where('award_definition_id', $award['id'])
-                ->orderBy('sort_order', 'ASC')
-                ->get()->getResultArray();
-
-            $computableMaximum = 0.0;
-
-            foreach ($criteria as &$crit) {
-                $rules = $db->table('award_scoring_rules')->where('criterion_id', $crit['id'])->where('is_active', 1)->orderBy('sort_order', 'ASC')->get()->getResultArray();
-                $rulesByComponent = [];
-                foreach ($rules as $rule) {
-                    if (! empty($rule['criterion_component_id'])) {
-                        $rulesByComponent[$rule['criterion_component_id']] = $rule;
-                    }
-                }
-                $components = $db->table('award_criterion_components')
-                    ->where('criterion_id', $crit['id'])
-                    ->orderBy('sort_order', 'ASC')
-                    ->get()->getResultArray();
-                $crit['components'] = array_map(
-                    static fn(array $component): array => AwardApiContractService::criterionComponent($component, $rulesByComponent[$component['id']] ?? null),
-                    $components
-                );
-                $criterionRule = count($rules) === 1 ? $rules[0] : null;
-                $crit = AwardApiContractService::criterion(array_merge($crit, $criterionRule ?? []));
-                if (! $crit['human_only']) {
-                    $computableMaximum += (float) ($crit['max_points'] ?? 0.0);
-                }
-            }
-            unset($crit);
-
-            $award['criteria'] = $criteria;
-            $award['human_only_criteria'] = array_values(array_filter($criteria, static fn(array $criterion): bool => $criterion['human_only']));
-            $award['computable_max_score'] = $computableMaximum;
-            $award = AwardApiContractService::award($award, $version);
+            $award = AwardCandidateDiscoveryService::describeAward($db, $award);
         }
         unset($award);
 
@@ -166,33 +131,7 @@ class AwardEvaluationController extends Controller
         if ($award === null) {
             return $this->respond(['error' => ['code' => 'AWARD_NOT_FOUND', 'message' => 'Award not found.']], 404);
         }
-        $version = $db->table('award_scoring_model_versions')->where('award_definition_id', $awardId)->where('status', 'published')->orderBy('version_number', 'DESC')->get()->getRowArray();
-        $criteria = $db->table('award_criteria')->where('award_definition_id', $awardId)->orderBy('sort_order', 'ASC')->get()->getResultArray();
-        $computableMaximum = 0.0;
-        foreach ($criteria as &$criterion) {
-            $rules = $db->table('award_scoring_rules')->where('criterion_id', $criterion['id'])->where('is_active', 1)->orderBy('sort_order', 'ASC')->get()->getResultArray();
-            $rulesByComponent = [];
-            foreach ($rules as $rule) {
-                if (! empty($rule['criterion_component_id'])) {
-                    $rulesByComponent[$rule['criterion_component_id']] = $rule;
-                }
-            }
-            $components = $db->table('award_criterion_components')->where('criterion_id', $criterion['id'])->orderBy('sort_order', 'ASC')->get()->getResultArray();
-            $criterion['components'] = array_map(
-                static fn(array $component): array => AwardApiContractService::criterionComponent($component, $rulesByComponent[$component['id']] ?? null),
-                $components
-            );
-            $criterionRule = count($rules) === 1 ? $rules[0] : null;
-            $criterion = AwardApiContractService::criterion(array_merge($criterion, $criterionRule ?? []));
-            if (! $criterion['human_only']) {
-                $computableMaximum += (float) ($criterion['max_points'] ?? 0.0);
-            }
-        }
-        unset($criterion);
-        $award['criteria'] = $criteria;
-        $award['human_only_criteria'] = array_values(array_filter($criteria, static fn(array $criterion): bool => $criterion['human_only']));
-        $award['computable_max_score'] = $computableMaximum;
-        return $this->respond(['data' => AwardApiContractService::award($award, $version)], 200);
+        return $this->respond(['data' => AwardCandidateDiscoveryService::describeAward($db, $award)], 200);
     }
 
     /**
@@ -1111,14 +1050,55 @@ class AwardEvaluationController extends Controller
         }
 
         try {
-            $result = $this->candidateService->getPotentialCandidatesForAward($awardId);
+            // Computed from the points of approved achievements; no manual evaluation step.
+            $result = $this->discovery()->candidatesForAward($awardId);
             return $this->respond(['data' => $result], 200);
-        } catch (InvalidArgumentException $e) {
-            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => $e->getMessage()]], 404);
         } catch (Throwable $e) {
-            log_message('error', '[AwardEvaluationController::listPotentialCandidates] ' . $e->getMessage());
-            return $this->respond(['error' => ['code' => 'FETCH_CANDIDATES_FAILED', 'message' => 'Failed to list potential candidates.']], 500);
+            return $this->discoveryError($e, 'listPotentialCandidates', 'FETCH_CANDIDATES_FAILED', 'Failed to list potential candidates.');
         }
+    }
+
+    /**
+     * GET /api/v1/osad/awards/{awardId}/students/{studentId}/evaluation-summary
+     * View-only evaluation summary: the approved achievements that earned points for this award.
+     */
+    public function evaluationSummary(string $awardId, string $studentId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if ($this->awardEvaluationForbidden($actor)) {
+            return $this->forbiddenAwardEvaluationResponse();
+        }
+
+        try {
+            return $this->respond(['data' => $this->discovery()->summaryForStudent($awardId, $studentId)], 200);
+        } catch (Throwable $e) {
+            return $this->discoveryError($e, 'evaluationSummary', 'FETCH_SUMMARY_FAILED', 'Failed to load the evaluation summary.');
+        }
+    }
+
+    /** Created on first use so authorization failures never touch the database. */
+    private function discovery(): AwardCandidateDiscoveryService
+    {
+        return $this->discoveryService ??= new AwardCandidateDiscoveryService();
+    }
+
+    private function discoveryError(Throwable $e, string $action, string $code, string $message): mixed
+    {
+        $known = [
+            'AWARD_NOT_FOUND' => [404, 'Award not found.'],
+            'STUDENT_NOT_FOUND' => [404, 'Student not found.'],
+            'AWARD_AUTHORITY_PENDING' => [409, 'This award\'s criteria are pending authority approval.'],
+            'AWARD_CONFIGURATION_ERROR' => [422, 'This award\'s scoring configuration is incomplete.'],
+        ];
+        if (isset($known[$e->getMessage()])) {
+            [$status, $text] = $known[$e->getMessage()];
+            return $this->respond(['error' => ['code' => $e->getMessage(), 'message' => $text]], $status);
+        }
+        log_message('error', '[AwardEvaluationController::' . $action . '] ' . $e->getMessage());
+        return $this->respond(['error' => ['code' => $code, 'message' => $message]], 500);
     }
 
     /**

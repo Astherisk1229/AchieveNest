@@ -9,7 +9,7 @@ import CriterionRenderer from '../../components/osad/criteria/CriterionRenderer'
 import HumanOnlyCriteria from '../../components/osad/criteria/HumanOnlyCriteria'
 import AwardCriteriaModel from '../../models/AwardCriteriaModel'
 
-export default function OSADAwardDetailPage({ award, onCatalog, onOpenEvaluationPool, onOpenCandidates }) {
+export default function OSADAwardDetailPage({ award, onCatalog, onOpenCandidates }) {
   const model = useMemo(() => new AwardCriteriaModel(award), [award])
 
   return (
@@ -24,9 +24,6 @@ export default function OSADAwardDetailPage({ award, onCatalog, onOpenEvaluation
       ]}
       actions={
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={onOpenEvaluationPool} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-            Students for evaluation
-          </button>
           <button
             type="button"
             onClick={onOpenCandidates}

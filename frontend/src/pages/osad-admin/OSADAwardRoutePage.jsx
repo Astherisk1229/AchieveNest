@@ -5,19 +5,17 @@ import { OSADErrorState, OSADLoadingState } from '../../components/osad/OSADStat
 import OSADAwardsAndCriteriaPage from './OSADAwardsAndCriteriaPage'
 import OSADAwardDetailPage from './OSADAwardDetailPage'
 import OSADPotentialCandidatesView from './OSADPotentialCandidatesView'
-import OSADStudentsForEvaluationView from './OSADStudentsForEvaluationView'
-import OSADStudentAwardReviewWorkspace from './OSADStudentAwardReviewWorkspace'
-import OSADEvaluationSummaryPreviewPage from './OSADEvaluationSummaryPreviewPage'
+import OSADEvaluationSummaryView from './OSADEvaluationSummaryView'
 
 export default function OSADAwardRoutePage({ view = 'catalog' }) {
   const navigate = useNavigate()
   const { awardId, studentId } = useParams()
   const [award, setAward] = useState(null)
-  const [loading, setLoading] = useState(!['catalog', 'summary-preview'].includes(view))
+  const [loading, setLoading] = useState(view !== 'catalog')
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (['catalog', 'summary-preview'].includes(view)) return
+    if (view === 'catalog') return
 
     let active = true
     setLoading(true)
@@ -38,15 +36,8 @@ export default function OSADAwardRoutePage({ view = 'catalog' }) {
 
   if (view === 'catalog') {
     return (
-      <OSADAwardsAndCriteriaPage
-        onSelectAward={(item) => navigate(`/osad/awards/${item.id}`)}
-        onPreviewEvaluationSummary={() => navigate('/osad/awards/evaluation-summary-preview')}
-      />
+      <OSADAwardsAndCriteriaPage onSelectAward={(item) => navigate(`/osad/awards/${item.id}`)} />
     )
-  }
-
-  if (view === 'summary-preview') {
-    return <OSADEvaluationSummaryPreviewPage onBack={() => navigate('/osad/awards')} />
   }
 
   if (loading) return <OSADLoadingState message="Loading award workspace…" />
@@ -57,27 +48,15 @@ export default function OSADAwardRoutePage({ view = 'catalog' }) {
   const catalog = () => navigate('/osad/awards')
   const detail = () => navigate(`/osad/awards/${award.id}`)
   const candidates = () => navigate(`/osad/awards/${award.id}/candidates`)
-  const evaluationPool = () => navigate(`/osad/awards/${award.id}/evaluations`)
 
   if (view === 'detail') {
-    return <OSADAwardDetailPage award={award} onCatalog={catalog} onOpenCandidates={candidates} onOpenEvaluationPool={evaluationPool} />
-  }
-
-  if (view === 'evaluations') {
-    return <OSADStudentsForEvaluationView award={award} onBack={detail} onSelectStudent={(student) => navigate(`/osad/awards/${award.id}/candidates/${student.id || student.student_profile_id}/review`)} />
+    return <OSADAwardDetailPage award={award} onCatalog={catalog} onOpenCandidates={candidates} />
   }
 
   if (view === 'candidates') {
     return <OSADPotentialCandidatesView award={award} onBack={detail} onCatalog={catalog} onSelectStudent={(student) => navigate(`/osad/awards/${award.id}/candidates/${student.id || student.student_id || student.student_profile_id}/review`)} />
   }
 
-  return (
-    <OSADStudentAwardReviewWorkspace
-      award={award}
-      awardId={award.id}
-      studentId={studentId}
-      onBack={candidates}
-      onFinalized={() => {}}
-    />
-  )
+  // View-only Student Evaluation Summary for this award (no manual scoring or decisions).
+  return <OSADEvaluationSummaryView award={award} studentId={studentId} onBack={candidates} onAward={detail} onCatalog={catalog} />
 }

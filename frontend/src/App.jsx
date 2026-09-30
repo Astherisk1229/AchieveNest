@@ -227,9 +227,7 @@ function AppContent() {
             <Route element={<LayoutShell allowedAccountTypes={['osad_admin']} requiredRoles={['osad_staff']} />}>
               <Route path="/osad/dashboard" element={<OSADDashboardPage />} />
               <Route path="/osad/awards" element={<OSADAwardRoutePage view="catalog" />} />
-              <Route path="/osad/awards/evaluation-summary-preview" element={<OSADAwardRoutePage view="summary-preview" />} />
               <Route path="/osad/awards/:awardId" element={<OSADAwardRoutePage view="detail" />} />
-              <Route path="/osad/awards/:awardId/evaluations" element={<OSADAwardRoutePage view="evaluations" />} />
               <Route path="/osad/awards/:awardId/candidates" element={<OSADAwardRoutePage view="candidates" />} />
               <Route path="/osad/awards/:awardId/candidates/:studentId/review" element={<OSADAwardRoutePage view="review" />} />
               <Route path="/osad/certificate-templates/:familyId/versions/:versionId/edit" element={<CertificateStudioPage />} />

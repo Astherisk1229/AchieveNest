@@ -450,3 +450,18 @@
 
 
 
+
+/* Print / Save as PDF for OSAD documents: only the element marked .print-area is printed. */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff !important; }
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area {
+    position: absolute; left: 0; top: 0;
+    width: 100% !important; min-height: 0 !important;
+    padding: 0 !important; box-shadow: none !important;
+  }
+  .print-hide { display: none !important; }
+  .print-show { display: block !important; }
+}

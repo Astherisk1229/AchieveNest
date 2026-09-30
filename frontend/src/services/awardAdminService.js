@@ -160,6 +160,19 @@ export async function fetchPotentialCandidates(awardId) {
 }
 
 /**
+ * View-only evaluation summary of one student for one award (approved achievements that earned points).
+ * @param {string} awardId
+ * @param {string} studentId
+ */
+export async function fetchEvaluationSummary(awardId, studentId) {
+  const response = await apiClient.get(`/osad/awards/${awardId}/students/${studentId}/evaluation-summary`, {
+    headers: getAuthHeaders()
+  })
+
+  return response?.data || response
+}
+
+/**
  * Fetches all evaluated results for an award (Potential Candidates + Below Threshold).
  * @param {string} awardId
  */

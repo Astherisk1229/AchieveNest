@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Controllers\Api\AwardEvaluationController;
 use App\Services\AuthenticatedActorService;
 use App\Services\AuthorizationService;
-use App\Services\AwardPotentialCandidateService;
+use App\Services\AwardCandidateDiscoveryService;
 use App\Services\Policies\AwardPolicy;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\Test\CIUnitTestCase;
@@ -37,6 +37,7 @@ final class AwardEvaluationAuthorizationHardeningPhase7ATest extends CIUnitTestC
             'candidate classification' => ['classifyPotentialCandidate', ['award-id', 'student-id']],
             'candidate status' => ['studentCandidateStatus', ['award-id', 'student-id']],
             'potential candidates' => ['listPotentialCandidates', ['award-id']],
+            'evaluation summary' => ['evaluationSummary', ['award-id', 'student-id']],
             'evaluated results' => ['listEvaluatedResults', ['award-id']],
         ];
     }
@@ -80,11 +81,12 @@ final class AwardEvaluationAuthorizationHardeningPhase7ATest extends CIUnitTestC
     {
         $actorService = $this->createMock(AuthenticatedActorService::class);
         $actorService->method('resolveActor')->willReturn($this->osadActor());
-        $candidateService = $this->createMock(AwardPotentialCandidateService::class);
-        $candidateService->expects($this->once())
-            ->method('getPotentialCandidatesForAward')
+        // Candidates are computed from approved-achievement points by AwardCandidateDiscoveryService.
+        $discovery = $this->createMock(AwardCandidateDiscoveryService::class);
+        $discovery->expects($this->once())
+            ->method('candidatesForAward')
             ->with('award-id')
-            ->willReturn(['award_id' => 'award-id', 'candidates' => []]);
+            ->willReturn(['award' => ['id' => 'award-id'], 'cycle' => null, 'total_potential_candidates' => 0, 'potential_candidates' => []]);
 
         $controller = new AwardEvaluationController(
             new AuthorizationService($actorService),
@@ -93,7 +95,8 @@ final class AwardEvaluationAuthorizationHardeningPhase7ATest extends CIUnitTestC
             null,
             null,
             null,
-            $candidateService
+            null,
+            $discovery
         );
         $controller->initController(service('request'), service('response'), service('logger'));
 

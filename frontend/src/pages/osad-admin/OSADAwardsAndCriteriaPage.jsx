@@ -1,5 +1,5 @@
 import React from 'react'
-import { FileText, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import AwardCatalogRow from '../../components/osad/AwardCatalogRow'
 import AwardCatalogSkeleton from '../../components/osad/AwardCatalogSkeleton'
 import AwardSearch from '../../components/osad/AwardSearch'
@@ -7,7 +7,7 @@ import OSADAwardPageShell from '../../components/osad/OSADAwardPageShell'
 import { OSADEmptyState, OSADErrorState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 import useAwardCatalog from '../../hooks/useAwardCatalog'
 
-export default function OSADAwardsAndCriteriaPage({ onSelectAward, onPreviewEvaluationSummary }) {
+export default function OSADAwardsAndCriteriaPage({ onSelectAward }) {
   const catalog = useAwardCatalog()
 
   return (
@@ -15,16 +15,6 @@ export default function OSADAwardsAndCriteriaPage({ onSelectAward, onPreviewEval
       title="Awards & Criteria"
       description="Review the criteria used by AchieveNest to identify potential award candidates."
       icon={Trophy}
-      actions={(
-        <button
-          type="button"
-          onClick={onPreviewEvaluationSummary}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-emerald-300 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-emerald-700 dark:hover:text-emerald-300 motion-reduce:transition-none"
-        >
-          <FileText className="h-4 w-4" aria-hidden="true" />
-          Preview Evaluation Summary
-        </button>
-      )}
     >
       <section aria-labelledby="award-catalog-heading" className="space-y-4">
         <AwardSearch value={catalog.searchTerm} onChange={catalog.setSearchTerm} onClear={() => catalog.setSearchTerm('')} />

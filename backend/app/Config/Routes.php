@@ -608,6 +608,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('osad/awards/(:segment)/students/(:segment)/candidate-status', 'Api\AwardEvaluationController::studentCandidateStatus/$1/$2');
     $routes->options('osad/awards/(:segment)/students/(:segment)/candidate-status', 'Api\AwardEvaluationController::options');
     $routes->get('osad/awards/(:segment)/potential-candidates', 'Api\AwardEvaluationController::listPotentialCandidates/$1');
+    $routes->get('osad/awards/(:segment)/students/(:segment)/evaluation-summary', 'Api\AwardEvaluationController::evaluationSummary/$1/$2');
+    $routes->options('osad/awards/(:segment)/students/(:segment)/evaluation-summary', 'Api\AwardEvaluationController::options');
     $routes->options('osad/awards/(:segment)/potential-candidates', 'Api\AwardEvaluationController::options');
     $routes->get('osad/awards/(:segment)/evaluated-results', 'Api\AwardEvaluationController::listEvaluatedResults/$1');
     $routes->options('osad/awards/(:segment)/evaluated-results', 'Api\AwardEvaluationController::options');

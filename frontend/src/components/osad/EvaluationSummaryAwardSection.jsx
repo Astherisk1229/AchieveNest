@@ -17,9 +17,12 @@ export default function EvaluationSummaryAwardSection({ award }) {
           </tr>
         </thead>
         <tbody>
+          {award.rows.length === 0 && (
+            <tr className="border-b border-slate-200"><td colSpan={3} className="px-1.5 py-1.5 text-slate-600">No approved achievements have earned points for this award.</td></tr>
+          )}
           {award.rows.map((row) => (
-            <tr key={`${award.id}-${row.evidence}-${row.criterion}`} className="border-b border-slate-200 align-top">
-              <td className="px-1.5 py-1.5">{row.evidence}</td>
+            <tr key={row.key || `${award.id}-${row.evidence}-${row.criterion}`} className="border-b border-slate-200 align-top">
+              <td className="px-1.5 py-1.5">{row.evidenceNode ?? row.evidence}</td>
               <td className="px-1.5 py-1.5">{row.criterion}</td>
               <td className="px-1.5 py-1.5 text-right tabular-nums">{row.points}</td>
             </tr>

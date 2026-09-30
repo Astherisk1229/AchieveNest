@@ -8,6 +8,7 @@ import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewMo
 import useStudentAchievements from '../../hooks/useStudentAchievements'
 import portfolioService from '../../services/portfolioService'
 import StudentCertificateBadge from '../../components/common/StudentCertificateBadge'
+import EvidenceThumbnail from '../../components/common/EvidenceThumbnail'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -313,7 +314,8 @@ export default function StudentAchievementsPage({ currentUser }) {
                       className="bg-white dark:bg-[#1D2A23] border border-[#DCE6DF] dark:border-[#374B3F] hover:border-[#9FC9AA] overflow-hidden flex flex-col justify-between group cursor-pointer relative shadow-xs hover:shadow-md transition-all duration-200"
                     >
                       {/* Green Certificate Banner Top Graphic */}
-                      <div className="bg-[#EAF4EC] dark:bg-[#26382E] h-32 p-4 flex flex-col items-center justify-center text-white relative border-b border-[#C6DDCC] dark:border-[#374B3F]">
+                      <div className="h-32 relative border-b border-[#C6DDCC] dark:border-[#374B3F]">
+                        <EvidenceThumbnail evidence={item.evidence?.[0]} className="h-32" />
                         
                         {/* Hover Action Buttons Top Right (Favorite Star & 3-Dot Menu) */}
                         <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition z-10">
@@ -328,10 +330,7 @@ export default function StudentAchievementsPage({ currentUser }) {
                           </button>
                         </div>
                         
-                        <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1D2A23] border border-[#C6DDCC] dark:border-[#374B3F] flex items-center justify-center text-[#16834A] dark:text-[#59AD7C] mb-1 shadow-xs">
-                          <CategoryIcon className="w-5 h-5 text-[#16834A] dark:text-[#59AD7C]" />
-                        </div>
-                        <span className="text-[10px] font-extrabold tracking-widest uppercase text-[#356148] dark:text-[#BCD0C1]">CERTIFICATE PROOF</span>
+
                       </div>
 
                       {/* Card Content Body */}
@@ -358,9 +357,10 @@ export default function StudentAchievementsPage({ currentUser }) {
                           </div>
                           
                           <h3 className="text-sm font-extrabold text-[#102A43] dark:text-[#E6EFE9] group-hover:text-[#16834A] dark:group-hover:text-emerald-400 transition leading-snug">
-                            {item.title}
+                            {item.display_title}
                           </h3>
                           <p className="text-xs text-[#64748B] dark:text-[#B1C0B6] font-medium mt-1">{item.location}</p>
+                          {item.saved_label && <p className="text-[11px] text-[#718096] dark:text-[#87978D] mt-1">{item.saved_label}</p>}
                           {item.certificate && (
                             <div className="pt-2">
                               <StudentCertificateBadge certificate={item.certificate} />
@@ -370,7 +370,7 @@ export default function StudentAchievementsPage({ currentUser }) {
 
                         {/* Card Bottom Row: Date & Status Pill */}
                         <div className="flex items-center justify-between pt-3 border-t border-[#DDE6DF] dark:border-[#374B3F] text-xs">
-                          <span className="text-[#718096] dark:text-[#87978D] text-[11px] font-medium">{item.date}</span>
+                          <span className="text-[#718096] dark:text-[#87978D] text-[11px] font-medium">{item.display_date}</span>
                           
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                             item.status === 'Verified'
@@ -410,8 +410,8 @@ export default function StudentAchievementsPage({ currentUser }) {
                           <CategoryIcon className="w-5 h-5 text-[#16834A]" />
                         </div>
                         <div className="truncate">
-                          <h3 className="text-sm font-bold text-[#102A43] dark:text-[#E6EFE9] group-hover:text-[#16834A] dark:group-hover:text-emerald-400 transition truncate">{item.title}</h3>
-                          <p className="text-xs text-[#64748B] dark:text-[#B1C0B6]">{item.location} • {item.date}</p>
+                          <h3 className="text-sm font-bold text-[#102A43] dark:text-[#E6EFE9] group-hover:text-[#16834A] dark:group-hover:text-emerald-400 transition truncate">{item.display_title}</h3>
+                          <p className="text-xs text-[#64748B] dark:text-[#B1C0B6]">{[item.location, item.display_date].filter(Boolean).join(' • ')}</p>
                         </div>
                       </div>
 

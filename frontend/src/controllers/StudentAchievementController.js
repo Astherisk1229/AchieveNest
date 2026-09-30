@@ -1,3 +1,5 @@
+import { NO_ACTIVITY_DATE, formatDateRange, formatDateTime } from '../utils/achievementDates'
+
 /**
  * Stateless presentation helpers for backend-authoritative Student portfolio records.
  * Canonical records are never read from or written to browser storage here.
@@ -22,11 +24,18 @@ class StudentAchievementController {
       ...record,
       id: record.id,
       title: record.title || '',
+      display_title: record.title || 'Untitled draft',
       category: record.category_name || record.category || 'Uncategorized',
-      date: record.occurrence_date || record.start_date || record.created_at || '',
+      // The activity date only; the record's creation time is never shown as the achievement date.
+      date: record.start_date || record.occurrence_date || '',
+      display_date: formatDateRange(record.start_date || record.occurrence_date, record.end_date) || NO_ACTIVITY_DATE,
+      saved_label: status === 'draft' ? `Saved ${formatDateTime(record.updated_at || record.created_at)}` : '',
+      // "Newest" = most recently changed, so a just-saved or just-submitted achievement appears first.
+      sort_key: record.updated_at || record.submitted_at || record.created_at || '',
       event_name: record.organizer_or_body || '',
       issuer: record.organizer_or_body || '',
-      location: record.location || record.organizer_or_body || '',
+      location: record.organizer_or_body || '',
+      subcategory: record.subcategory_name || '',
       status: statusLabels[status] || status,
       canonical_status: status,
       attached_file_name: evidence[0]?.original_filename || record.attached_file_name || '',
@@ -56,7 +65,7 @@ class StudentAchievementController {
 
     return [...result].sort((a, b) => {
       if (sortOrder === 'title') return a.title.localeCompare(b.title)
-      const delta = new Date(a.date || 0) - new Date(b.date || 0)
+      const delta = String(a.sort_key || '').localeCompare(String(b.sort_key || ''))
       return sortOrder === 'oldest' ? delta : -delta
     })
   }

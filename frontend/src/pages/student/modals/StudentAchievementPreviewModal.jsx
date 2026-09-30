@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { AlertCircle, CheckCircle2, Clock, Download, ExternalLink, FileText, Pencil, RotateCcw, ShieldAlert, ShieldCheck, ShieldQuestion, X, XCircle } from 'lucide-react'
 import StudentCertificateSection from '../../../components/common/StudentCertificateSection'
 import EvidenceThumbnail, { evidenceMime, useEvidenceObjectUrl } from '../../../components/common/EvidenceThumbnail'
-import { getSubcategorySchema } from '../../../config/portfolioFormSchemaRegistry'
-import { parseStructuredMetadata } from '../../../controllers/StudentAchievementDraftSession'
+import { detailRows } from '../../../utils/achievementDetails'
 import portfolioService from '../../../services/portfolioService'
 import { formatDateTime } from '../../../utils/achievementDates'
 
@@ -22,19 +21,6 @@ function securityLabel(evidence) {
   return { text: 'Security check pending', icon: ShieldQuestion, className: 'text-amber-700' }
 }
 
-/** Category-specific details as label/value pairs, using the subcategory form's own labels. */
-export function detailRows(subcategoryId, metadataValue) {
-  const metadata = parseStructuredMetadata(metadataValue)
-  const fields = getSubcategorySchema(subcategoryId)?.fields || []
-  return fields
-    .filter(field => ![undefined, null, ''].includes(metadata[field.key]))
-    .map(field => {
-      const raw = metadata[field.key]
-      const option = (field.options || []).find(item => item.value === raw)
-      return { key: field.key, label: field.label, value: option ? option.label : String(raw) }
-    })
-}
-
 function Field({ label, children }) {
   return <div><dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-0.5 text-sm font-medium text-slate-900 dark:text-slate-100">{children}</dd></div>
 }
@@ -43,6 +29,8 @@ function Field({ label, children }) {
  * Document-first achievement preview: the real uploaded document on the left, the student's
  * entered details on the right. Shows only data that exists; nothing is defaulted or invented.
  */
+export { detailRows }
+
 export default function StudentAchievementPreviewModal({ achievement, isOpen, onClose, onEdit, onDownload, onResubmit }) {
   const [events, setEvents] = useState([])
   const [activeEvidenceId, setActiveEvidenceId] = useState(null)

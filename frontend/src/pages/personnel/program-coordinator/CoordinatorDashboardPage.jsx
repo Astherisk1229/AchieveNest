@@ -6,7 +6,9 @@ import { useStudentRoster } from '../../../hooks/useStudentRoster'
 import CoordinatorMetricsSidebar from './CoordinatorMetricsSidebar'
 import { calculateAverageReviewTime } from '../../../utils/verificationMetrics'
 import { AchieveNestLogo } from '../../../components/brand'
-import { CoordinatorDecisionActions, CoordinatorRecordReview } from './CoordinatorReviewParts'
+import { CoordinatorDecisionActions } from './CoordinatorReviewParts'
+import CoordinatorSubmissionReview from './CoordinatorSubmissionReview'
+import { formatDateRange } from '../../../utils/achievementDates'
 import { 
   Shield, 
   ShieldCheck,
@@ -673,104 +675,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     {/* Student Detail Content Body (SCROLLS INSIDE RIGHT CARD) */}
                     <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
 
-                      {/* Achievement Title Box */}
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Achievement Title</p>
-                        <h3 className="text-lg font-extrabold text-slate-900 leading-snug">{workspaceItem.title}</h3>
-                      </div>
-
-                      {/* Structured Metadata Grid */}
-                      <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4.5 space-y-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-4">
-                          
-                          {/* Category */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Category</p>
-                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80">
-                              {workspaceItem.category}
-                            </span>
-                          </div>
-
-                          {/* Scope Level */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Scope Level</p>
-                            <p className="text-xs font-bold text-slate-900">{workspaceItem.scope_level}</p>
-                          </div>
-
-                          {/* Rank / Position */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Rank / Position</p>
-                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-800 text-xs font-bold border border-blue-200/80">
-                              {workspaceItem.rank_conferred || 'Participant'}
-                            </span>
-                          </div>
-
-                          {/* Date Conferred */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Date Conferred</p>
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                              <Calendar className="w-3.5 h-3.5 text-[#16834a]" />
-                              <span>{workspaceItem.date}</span>
-                            </div>
-                          </div>
-
-                          {/* Academic Year */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Academic Year</p>
-                            <p className="text-xs font-bold text-slate-900">{workspaceItem.academic_year || 'AY 2025-2026'}</p>
-                          </div>
-
-                          {/* Semester */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Term / Semester</p>
-                            <p className="text-xs font-bold text-slate-900">{workspaceItem.semester || '1st Semester'}</p>
-                          </div>
-
-                        </div>
-                      </div>
-
-                      {/* Event Name & Issuing Body Cards */}
-                      {(workspaceItem.event_name || workspaceItem.issuer) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {workspaceItem.event_name && (
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
-                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Event / Competition Name</p>
-                              <p className="text-xs font-bold text-slate-900 leading-snug">{workspaceItem.event_name}</p>
-                            </div>
-                          )}
-                          {workspaceItem.issuer && (
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
-                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Issuing Body / Organization</p>
-                              <p className="text-xs font-bold text-slate-900 leading-snug">{workspaceItem.issuer}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Narrative Description */}
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Narrative Description</p>
-                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
-                          <p className="text-xs text-slate-800 font-medium leading-relaxed">{workspaceItem.description}</p>
-                        </div>
-                      </div>
-
-                      {/* Supporting documents, previews and verification history (GET /portfolio/{id}) */}
-                      <div className="space-y-3 pt-2 border-t border-slate-100">
-                        <CoordinatorRecordReview item={workspaceItem} loadRecordDetail={loadRecordDetail} />
-                      </div>
-
-                      {/* Previous Returned Remarks Display */}
-                      {workspaceItem.return_remarks && (
-                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/80 space-y-1">
-                          <p className="text-[11px] text-amber-800 font-bold uppercase tracking-wide">Previous Return Remarks</p>
-                          <p className="text-xs text-amber-900 font-medium leading-relaxed">{workspaceItem.return_remarks}</p>
-                        </div>
-                      )}
-
-
+                      <CoordinatorSubmissionReview item={workspaceItem} loadRecordDetail={loadRecordDetail} />
                     </div>
-
                     {/* Decision Dock: Approve / Return / Reject (remarks required to return or reject) */}
                     <CoordinatorDecisionActions
                       item={workspaceItem}
@@ -1133,34 +1039,14 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                   </span>
                                 </div>
 
-                                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                   <div>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Category</p>
-                                    <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                      {item.category}
-                                    </span>
+                                    <p className="font-bold text-slate-800">{[item.category, item.subcategory_name].filter(Boolean).join(' › ')}</p>
                                   </div>
                                   <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Scope Level</p>
-                                    <p className="font-bold text-slate-800">{item.scope_level}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Rank / Position</p>
-                                    <span className="inline-block px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-100">
-                                      {item.rank_conferred || 'Participant'}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Date Conferred</p>
-                                    <p className="font-bold text-slate-800">{item.date}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Academic Year</p>
-                                    <p className="font-bold text-slate-800">{item.academic_year || 'AY 2025-2026'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Semester</p>
-                                    <p className="font-bold text-slate-800">{item.semester || '1st Semester'}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Activity date</p>
+                                    <p className="font-bold text-slate-800">{formatDateRange(item.start_date || item.occurrence_date, item.end_date) || 'Not provided'}</p>
                                   </div>
                                 </div>
 
@@ -1470,7 +1356,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
       {/* REVIEW & DECISION MODAL */}
       {selectedReviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+          <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
             <button
               type="button"
               onClick={() => setSelectedReviewItem(null)}
@@ -1491,20 +1377,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
             </div>
 
             <div className="space-y-4 text-xs overflow-y-auto px-6 pb-4 min-h-0 flex-1">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-bold text-slate-900 text-sm">{selectedReviewItem.title}</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                    {selectedReviewItem.category}
-                  </span>
-                </div>
-                <p className="text-slate-600 font-medium">Submitted by: <strong className="text-slate-900">{selectedReviewItem.student_name}</strong> ({selectedReviewItem.student_id})</p>
-                {selectedReviewItem.organizer_or_body && <p className="text-slate-600">Organizer / issuing body: {selectedReviewItem.organizer_or_body}</p>}
-                {selectedReviewItem.description && <p className="text-slate-500 leading-relaxed">{selectedReviewItem.description}</p>}
-                <p className="text-slate-500">Status: <strong className="text-slate-800">{selectedReviewItem.status}</strong></p>
-              </div>
-
-              <CoordinatorRecordReview item={selectedReviewItem} loadRecordDetail={loadRecordDetail} />
+              <CoordinatorSubmissionReview item={selectedReviewItem} loadRecordDetail={loadRecordDetail} />
             </div>
 
             <CoordinatorDecisionActions

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { formatDateTime } from '../../../utils/achievementDates'
 import { CheckCircle2, Download, Eye, FileText, RotateCcw, X, XCircle } from 'lucide-react'
 import portfolioService from '../../../services/portfolioService'
 import { formatApiError } from '../../../hooks/useVerification'
@@ -116,7 +117,7 @@ export function CoordinatorEventTimeline({ events = [] }) {
   if (!events.length) return null
   return <ol className="space-y-2">
     {events.map(event => <li key={event.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-xs">
-      <p className="font-bold text-slate-900">{ACTION_LABELS[event.action] || event.action}<span className="ml-2 font-medium text-slate-500">{event.occurred_at}</span></p>
+      <p className="font-bold text-slate-900">{ACTION_LABELS[event.action] || event.action}<span className="ml-2 font-medium text-slate-500">{formatDateTime(event.occurred_at) || event.occurred_at}</span></p>
       {event.actor_name && <p className="text-slate-600">By {event.actor_name}</p>}
       {event.remarks && <p className="mt-1 text-slate-700">{event.remarks}</p>}
     </li>)}

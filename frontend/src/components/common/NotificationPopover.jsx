@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Bell, CheckCheck, ChevronRight, RefreshCw } from 'lucide-react'
 import notificationApiService from '../../services/notificationApiService'
+import { notificationTarget, portalFromPath } from '../../utils/notificationPresentation'
 
 export default function NotificationPopover() {
   const navigate = useNavigate()
@@ -21,10 +22,8 @@ export default function NotificationPopover() {
         title: n.title,
         message: n.message,
         type: n.type || 'info',
-        targetPath: n.target_path
-          || (n.entity_type === 'student_portfolio_records' ? '/student/achievements' : null)
-          || (['personnel_evaluations', 'personnel_portfolio_submission'].includes(n.entity_type) ? '/personnel/portfolio/edit' : null),
-        navState: { highlightId: n.entity_id },
+        targetPath: notificationTarget(n, portalFromPath(location.pathname))?.path || null,
+        navState: notificationTarget(n, portalFromPath(location.pathname))?.state || null,
         time: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
         is_read: Boolean(n.is_read)
       }))

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import campusBanner from '../../../assets/ndmu_campus_banner.png'
 import { useVerification } from '../../../hooks/useVerification'
@@ -118,6 +118,19 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   const [sortBy, setSortBy] = useState('Newest')
 
 
+
+  // Notification deep link: /personnel/dashboard?tab=workspace&record=<id> selects that submission.
+  const linkedRecordId = searchParams ? searchParams.get('record') : null
+  useEffect(() => {
+    if (!linkedRecordId) return
+    const linked = (allSubmissions || []).find(item => item.id === linkedRecordId)
+    if (linked) {
+      setStatusFilter('All')
+      setSelectedWorkspaceItem(linked)
+      // Consume the link so a later refresh or decision does not re-select it.
+      setSearchParams({ tab: 'workspace' }, { replace: true })
+    }
+  }, [linkedRecordId, allSubmissions, setStatusFilter, setSearchParams])
 
   const triggerToast = (msg) => {
     setToastMessage(msg)

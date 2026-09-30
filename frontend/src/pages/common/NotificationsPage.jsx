@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { 
   Bell, 
   CheckCircle2, 
@@ -10,12 +10,18 @@ import {
   ChevronRight, 
   ExternalLink,
   Layers,
-  RefreshCw
+  RefreshCw,
+  XCircle,
+  Send
 } from 'lucide-react'
 import notificationApiService from '../../services/notificationApiService'
+import { actionLabel, notificationTarget, notificationTone, portalFromPath, TONE_CLASSES } from '../../utils/notificationPresentation'
+
+const TONE_ICONS = { success: CheckCircle2, warning: AlertTriangle, danger: XCircle, submitted: Send, info: Info }
 
 export default function NotificationsPage({ currentUser }) {
   const navigate = useNavigate()
+  const portal = portalFromPath(useLocation().pathname)
   const [activeTab, setActiveTab] = useState('all') // 'all' | 'unread' | 'read'
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,23 +33,23 @@ export default function NotificationsPage({ currentUser }) {
       const res = await notificationApiService.getNotifications()
       const list = res?.data?.notifications || []
       
-      const mapped = list.map(item => ({
-        id: item.id,
-        title: item.title,
-        message: item.message,
-        time: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent',
-        type: item.type || 'info',
-        isRead: Boolean(item.is_read),
-        icon: item.type === 'success' || item.type === 'endorsed' ? CheckCircle2 : item.type === 'warning' || item.type === 'returned' ? AlertTriangle : Info,
-        iconBg: item.type === 'success' || item.type === 'endorsed'
-          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#159552] dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-          : item.type === 'warning' || item.type === 'returned'
-          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'
-          : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-        targetPath: item.target_path || (item.entity_type === 'personnel_portfolio_submission' ? '/personnel/portfolio/edit' : null),
-        navState: { highlightId: item.entity_id },
-        actionLabel: item.type === 'returned' ? 'Update Portfolio' : 'View Details'
-      }))
+      const mapped = list.map(item => {
+        const tone = notificationTone(item.type)
+        const target = notificationTarget(item, portal)
+        return {
+          id: item.id,
+          title: item.title,
+          message: item.message,
+          time: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent',
+          type: item.type || 'info',
+          isRead: Boolean(item.is_read),
+          icon: TONE_ICONS[tone],
+          iconBg: TONE_CLASSES[tone],
+          targetPath: target?.path || null,
+          navState: target?.state || null,
+          actionLabel: actionLabel(item.type, portal)
+        }
+      })
 
       setNotifications(mapped)
     } catch (err) {

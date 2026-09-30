@@ -996,6 +996,13 @@ class AwardScoringService
         foreach ($filtered as $ev) {
             $meta = $ev['structured_metadata'] ?? [];
             $role = strtoupper(trim((string) ($meta['role'] ?? '')));
+            // Step 5b: the seeded subcategory states the role (PUBLICATION_OFFICER / PUBLICATION_MEMBER_CONTRIBUTOR).
+            $subCode = strtoupper(trim((string) ($ev['subcategory_code'] ?? '')));
+            if ($subCode === 'PUBLICATION_OFFICER') {
+                $role = 'OFFICER';
+            } elseif ($subCode === 'PUBLICATION_MEMBER_CONTRIBUTOR') {
+                $role = 'CONTRIBUTOR';
+            }
             if (str_contains($role, 'OFFICER') || str_contains($role, 'EDITOR')) {
                 $pts = 3.0;
             } elseif (str_contains($role, 'CONTRIBUTOR')) {

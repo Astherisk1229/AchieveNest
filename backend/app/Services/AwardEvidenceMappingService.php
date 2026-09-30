@@ -84,6 +84,7 @@ class AwardEvidenceMappingService
         // 3. Load Computable Criteria for the Award
         $awardId = $awardArr['id'];
         $criteria = $this->loadComputableCriteriaForAward($awardId, $awardArr);
+        $mappingRules = $this->loadMappingRulesForAward($awardId, $awardArr);
 
         $awardCode = strtoupper(trim((string) ($awardArr['code'] ?? '')));
         $relevantRecords = [];
@@ -107,7 +108,7 @@ class AwardEvidenceMappingService
             }
 
             // Evaluate relevance against the award
-            $eval = $this->evaluateRecordRelevanceForAward($awardCode, $rec, $criteria);
+            $eval = $this->evaluateRecordRelevanceForAward($awardCode, $rec, $criteria, $mappingRules);
 
             if ($eval['relevant']) {
                 // A record may legitimately satisfy several criteria/components; every match is kept.
@@ -197,7 +198,7 @@ class AwardEvidenceMappingService
     /**
      * Evaluates a single record's relevance against an award's computable criteria.
      */
-    public function evaluateRecordRelevanceForAward(string $awardCode, array $rec, array $criteria): array
+    public function evaluateRecordRelevanceForAward(string $awardCode, array $rec, array $criteria, array $mappingRules = []): array
     {
         $catCode = strtoupper(trim((string) ($rec['category_code'] ?? $rec['category'] ?? '')));
         $subCode = strtoupper(trim((string) ($rec['subcategory_code'] ?? $rec['subcategory'] ?? '')));
@@ -208,6 +209,26 @@ class AwardEvidenceMappingService
         // 1. Campus Journalism Award
         if ($awardCode === 'CAMPUS_JOURNALISM_AWARD') {
             if ($catCode === 'CAMPUS_JOURNALISM') {
+                // The subcategory decides the criterion/component through the seeded
+                // award_evidence_mapping_rules (NEWS_ITEM -> COMP_JOURN_NEWS, PUBLICATION_OFFICER -> COMP_JOURN_LEAD_ROLE, ...).
+                if (! empty($rec['subcategory_id'])) {
+                    $routed = $this->routeBySubcategory($rec, $criteria, $mappingRules);
+                    if ($routed === null) {
+                        return [
+                            'relevant' => false,
+                            'reason'   => self::REASON_SUBCATEGORY_NOT_RELEVANT,
+                            'message'  => "Subcategory [{$subCode}] has no active mapping to a computable criterion of this award.",
+                        ];
+                    }
+                    return $routed + [
+                        'relevant'         => true,
+                        'category_code'    => 'CAMPUS_JOURNALISM',
+                        'subcategory_code' => $subCode,
+                        'metadata'         => $meta,
+                    ];
+                }
+
+                // Legacy records without a subcategory: route by the publication_type detail field.
                 $pubType = strtolower(trim((string) ($meta['publication_type'] ?? '')));
                 $matchedComp = match ($pubType) {
                     'news', 'news item' => 'COMP_JOURN_NEWS',
@@ -548,6 +569,54 @@ class AwardEvidenceMappingService
         }
 
         return (array) ($award['criteria'] ?? []);
+    }
+
+    /**
+     * Active seeded mapping rules (award_evidence_mapping_rules) for this award's computable criteria,
+     * with the component code. Only rows whose criterion belongs to this award are returned, so the
+     * legacy rows that point at criteria of older award definitions are ignored.
+     */
+    protected function loadMappingRulesForAward(string $awardId, array $award): array
+    {
+        if (! is_object($this->db) || ! method_exists($this->db, 'table')) {
+            return (array) ($award['mapping_rules'] ?? []);
+        }
+
+        return $this->db->table('award_evidence_mapping_rules r')
+            ->select('r.id, r.rule_code, r.criterion_id, r.criterion_component_id, r.portfolio_category_id, r.portfolio_subcategory_id, r.priority, acc.code AS component_code')
+            ->join('award_criteria c', 'c.id = r.criterion_id')
+            ->join('award_criterion_components acc', 'acc.id = r.criterion_component_id', 'left')
+            ->where('c.award_definition_id', $awardId)
+            ->where('c.is_portfolio_computable', 1)
+            ->where('r.is_active', 1)
+            ->orderBy('r.priority', 'ASC')
+            ->orderBy('r.rule_code', 'ASC')
+            ->get()->getResultArray();
+    }
+
+    /**
+     * Exact subcategory match against the seeded mapping rules. Returns null when no rule maps the
+     * record's subcategory to one of the given computable criteria.
+     */
+    protected function routeBySubcategory(array $rec, array $criteria, array $mappingRules): ?array
+    {
+        $subcategoryId = (string) ($rec['subcategory_id'] ?? '');
+        $criterionIds = array_column($criteria, 'id');
+        foreach ($mappingRules as $rule) {
+            if ((string) ($rule['portfolio_subcategory_id'] ?? '') !== $subcategoryId || $subcategoryId === '') {
+                continue;
+            }
+            if (! in_array($rule['criterion_id'], $criterionIds, true) || empty($rule['component_code'])) {
+                continue;
+            }
+            return [
+                'matched_criterion_id' => (string) $rule['criterion_id'],
+                'matched_component_id' => (string) $rule['component_code'],
+                'mapping_rule'         => (string) $rule['rule_code'],
+            ];
+        }
+
+        return null;
     }
 
     /**

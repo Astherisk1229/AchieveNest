@@ -93,7 +93,13 @@ final class CampusJournalismSubcategoryRoutingHttpProofTest extends CIUnitTestCa
         }
         self::assertEqualsWithDelta(10.0, $byComponent['COMP_JOURN_NEWS'], 0.001);
         self::assertEqualsWithDelta(4.0, $byComponent['COMP_JOURN_COLUMN'], 0.001);
-        self::assertContains($conflicting, array_column($this->componentContributions($publication, 'COMP_JOURN_NEWS'), 'evidence_id'));
+        // 6 news records exceed the 10-pt cap, so which 5 receive the post-cap allocation depends on
+        // record order. Check that the conflicting record was counted in the News component (its trace),
+        // and never in the Column component.
+        $newsTrace = array_column($this->componentTrace($publication, 'COMP_JOURN_NEWS'), 'record_id');
+        self::assertContains($conflicting, $newsTrace);
+        self::assertCount(6, $newsTrace);
+        self::assertNotContains($conflicting, array_column($this->componentTrace($publication, 'COMP_JOURN_COLUMN'), 'record_id'));
         self::assertContains($column, array_column($publication['contributions'], 'evidence_id'));
 
         // Officer 3 + Member/Contributor 2 = 5 (Leadership Involvement cap 5).
@@ -109,9 +115,14 @@ final class CampusJournalismSubcategoryRoutingHttpProofTest extends CIUnitTestCa
         self::assertEqualsWithDelta(19.0, (float) $score['raw_portfolio_score'], 0.001);
     }
 
-    private function componentContributions(array $criterion, string $componentCode): array
+    private function componentTrace(array $criterion, string $componentCode): array
     {
-        return array_values(array_filter($criterion['contributions'], static fn(array $c): bool => ($c['component_code'] ?? null) === $componentCode));
+        foreach ($criterion['components'] as $component) {
+            if (($component['component_code'] ?? null) === $componentCode) {
+                return $component['evidence_trace'] ?? [];
+            }
+        }
+        self::fail("Component {$componentCode} missing.");
     }
 
     private function sorted(array $values, array $expectedOrder): array

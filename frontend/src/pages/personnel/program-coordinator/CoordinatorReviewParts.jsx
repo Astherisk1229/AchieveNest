@@ -109,7 +109,7 @@ export function CoordinatorEvidenceList({ evidence = [] }) {
   </div>
 }
 
-const ACTION_LABELS = { verified: 'Verified', revision_requested: 'Returned for revision', rejected: 'Rejected', submitted: 'Submitted', resubmitted: 'Resubmitted' }
+const ACTION_LABELS = { verified: 'Verified', revision_requested: 'Returned for revision', rejected: 'Rejected', submitted: 'Submitted', resubmitted: 'Resubmitted', scoring_requested: 'Award matching requested', criteria_scored: 'Award criteria matched', scoring_failed: 'Award matching deferred (OSAD will retry)' }
 
 /** Verification history from GET /portfolio/{id} (student_portfolio_verification_events). */
 export function CoordinatorEventTimeline({ events = [] }) {

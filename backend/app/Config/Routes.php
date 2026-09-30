@@ -572,6 +572,12 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->delete('osad/organizations/(:segment)/logo', 'Api\OrganizationController::deleteLogo/$1');
     $routes->options('osad/organizations/(:segment)/logo', 'Api\OrganizationController::options');
 
+    // OSAD automatic criterion contributions (Step 6)
+    $routes->post('osad/scoring/records/(:segment)/rescore', 'Api\ApprovedAchievementScoringController::rescore/$1');
+    $routes->options('osad/scoring/records/(:segment)/rescore', 'Api\ApprovedAchievementScoringController::options');
+    $routes->get('osad/scoring/records/(:segment)/contributions', 'Api\ApprovedAchievementScoringController::contributions/$1');
+    $routes->options('osad/scoring/records/(:segment)/contributions', 'Api\ApprovedAchievementScoringController::options');
+
     // OSAD Awards & Explainable Scoring Basis
     $routes->get('osad/awards', 'Api\AwardEvaluationController::listAwards');
     $routes->options('osad/awards', 'Api\AwardEvaluationController::options');

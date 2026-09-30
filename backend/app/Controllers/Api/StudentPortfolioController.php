@@ -6,6 +6,7 @@ use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
 use App\Services\LocalEvidenceStorageService;
 use App\Services\PortfolioStructuredMetadataValidator;
+use App\Services\ApprovedAchievementScoringService;
 use App\Services\StudentAchievementEvidenceUploadPolicy;
 use App\Services\StudentEvidenceClamAvScanner;
 use App\Services\StudentEvidencePaddleOcrService;
@@ -260,12 +261,15 @@ class StudentPortfolioController extends Controller
         $enriched = $this->attachActiveCertificates([$record], $db);
         $record = $enriched[0] ?? $record;
 
-        $events = $db->table('student_portfolio_verification_events ve')
+        $eventQuery = $db->table('student_portfolio_verification_events ve')
             ->select(['ve.*', 'p.full_name AS actor_name'])
             ->join('profiles p', 'p.id = ve.actor_profile_id', 'left')
-            ->where('ve.portfolio_record_id', $id)
-            ->orderBy('ve.occurred_at', 'ASC')
-            ->get()->getResultArray();
+            ->where('ve.portfolio_record_id', $id);
+        if (($actor['profile']['account_type'] ?? '') === 'student') {
+            // Award scoring activity is never shown to students.
+            $eventQuery->whereNotIn('ve.action', ApprovedAchievementScoringService::SCORING_ACTIONS);
+        }
+        $events = $eventQuery->orderBy('ve.occurred_at', 'ASC')->get()->getResultArray();
 
         return $this->respond([
             'data' => [
@@ -1365,6 +1369,20 @@ class StudentPortfolioController extends Controller
                 'occurred_at'         => $now,
             ]);
 
+            if ($targetStatus === 'verified') {
+                // Committed with the approval: scoring was requested for this record.
+                $db->table('student_portfolio_verification_events')->insert([
+                    'id'                  => $this->genUuid(),
+                    'portfolio_record_id' => $id,
+                    'actor_profile_id'    => $actor['profile']['id'],
+                    'action'              => 'scoring_requested',
+                    'previous_status'     => $targetStatus,
+                    'new_status'          => $targetStatus,
+                    'remarks'             => null,
+                    'occurred_at'         => $now,
+                ]);
+            }
+
             if ($db->transStatus() === false) {
                 $db->transRollback();
                 return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'The verification decision could not be committed.']], 500);
@@ -1397,13 +1415,42 @@ class StudentPortfolioController extends Controller
             // A notification failure must not roll back the decision.
         }
 
-        return $this->respond([
-            'data' => [
-                'message' => "Record successfully {$targetStatus}.",
-                'id'      => $id,
-                'status'  => $targetStatus,
-                'action'  => $actionName,
-            ],
-        ], 200);
+        $data = [
+            'message' => "Record successfully {$targetStatus}.",
+            'id'      => $id,
+            'status'  => $targetStatus,
+            'action'  => $actionName,
+        ];
+        if ($targetStatus === 'verified') {
+            // Scoring runs in its own transaction; a failure never undoes the approval.
+            // This response goes to the reviewing coordinator only.
+            $data['scoring_status'] = $this->scoreApprovedRecord($id, (string) $actor['profile']['id']);
+        }
+
+        return $this->respond(['data' => $data], 200);
+    }
+
+    /**
+     * Runs automatic criterion matching for an approved record. Returns 'SCORED' or 'DEFERRED'.
+     * On failure it records a scoring_failed event carrying only the error code.
+     */
+    protected function scoreApprovedRecord(string $recordId, string $actorId): string
+    {
+        $scoring = new ApprovedAchievementScoringService();
+        try {
+            $scoring->scoreApprovedRecord($recordId, $actorId, 'approval');
+            return 'SCORED';
+        } catch (Throwable $e) {
+            $code = ApprovedAchievementScoringService::errorCode($e);
+            log_message('error', '[StudentPortfolioController::scoreApprovedRecord] record {id}: {code} {message}', [
+                'id' => $recordId, 'code' => $code, 'message' => $e->getMessage(),
+            ]);
+            try {
+                $scoring->audit($recordId, $actorId, 'scoring_failed', 'error_code=' . $code);
+            } catch (Throwable $auditError) {
+                log_message('error', '[StudentPortfolioController::scoreApprovedRecord] scoring_failed event not written: ' . $auditError->getMessage());
+            }
+            return 'DEFERRED';
+        }
     }
 }

@@ -23,6 +23,8 @@ final class VerificationDecisionSecurityHttpProofTest extends CIUnitTestCase
     protected $db;
     private array $tokens = [];
     private array $recordIds = [];
+    private ?string $student = null;
+    private string $startedAt = '';
 
     protected function setUp(): void
     {
@@ -32,6 +34,7 @@ final class VerificationDecisionSecurityHttpProofTest extends CIUnitTestCase
         $config->default = $config->local_defense;
         $config->defaultGroup = 'local_defense';
         \CodeIgniter\Config\Factories::injectMock('config', 'Database', $config);
+        $this->startedAt = date('Y-m-d H:i:s', time() - 1);
     }
 
     protected function tearDown(): void
@@ -43,6 +46,7 @@ final class VerificationDecisionSecurityHttpProofTest extends CIUnitTestCase
     public function testDecisionsAreRaceSafeCleanEvidenceGatedAndScoped(): void
     {
         [$student, $coordinator, $programId] = $this->routableStudentAndCoordinator();
+        $this->student = $student;
         $outsider = $this->coordinatorOutside($programId);
         $coordinatorToken = $this->token($coordinator);
         $outsiderToken = $this->token($outsider);
@@ -238,6 +242,16 @@ final class VerificationDecisionSecurityHttpProofTest extends CIUnitTestCase
     {
         foreach ($this->tokens as $token) {
             $this->db->table('local_auth_sessions')->where('token_hash', hash('sha256', $token))->delete();
+        }
+        // Step 6: approvals now score automatically. Remove the contributions and scoring events this run created.
+        if ($this->student !== null && $this->db->tableExists('student_achievement_criterion_contributions')) {
+            $studentRecords = array_column($this->db->table('student_portfolio_records')->select('id')->where('student_profile_id', $this->student)->get()->getResultArray(), 'id');
+            if ($studentRecords !== []) {
+                $this->db->table('student_achievement_criterion_contributions')->whereIn('portfolio_record_id', $studentRecords)->where('created_at >=', $this->startedAt)->delete();
+                $this->db->table('student_portfolio_verification_events')->whereIn('portfolio_record_id', $studentRecords)
+                    ->whereIn('action', ['scoring_requested', 'criteria_scored', 'scoring_failed'])->where('occurred_at >=', $this->startedAt)->delete();
+            }
+            $this->db->table('student_achievement_criterion_contributions')->whereIn('portfolio_record_id', $this->recordIds ?: ['-'])->delete();
         }
         $storage = new LocalEvidenceStorageService();
         foreach ($this->recordIds as $recordId) {

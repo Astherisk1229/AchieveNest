@@ -7,6 +7,7 @@ import {
 import PersonnelActionsMenu from './PersonnelActionsMenu'
 import { Select, SelectItem } from '../../../components/ui/select'
 import { isAcademicPersonnel, formatPersonnelClassification } from '../../../utils/personnelPlacement'
+import { applyPersonnelFilters, NOT_RECORDED } from '../../../utils/personnelDirectoryFilters'
 
 // Normalized search string helper
 const normalizeSearchValue = (value) =>
@@ -159,59 +160,18 @@ export default function PersonnelDirectoryTable({
       list = list.filter(p => matchesPersonnelSearch(p, search))
     }
 
-    // 2. Personnel Group Filter (Plan D1)
-    if (groupFilter !== 'ALL') {
-      list = list.filter(p => {
-        const grp = (p.personnel_group || (p.personnel_classification === 'academic' ? 'faculty' : 'non_teaching_faculty')).toLowerCase()
-        return grp === groupFilter
-      })
-    }
-
-    // 3. Organizational Side Filter (Plan D1)
+    // 2–9. Structured filters (see utils/personnelDirectoryFilters.js)
+    list = applyPersonnelFilters(list, {
+      group: groupFilter,
+      engagement: engagementFilter,
+      appointment: employmentStatusFilter,
+      college: collegeFilter,
+      department: unitFilter,
+      role: roleFilter,
+      status: statusFilter
+    })
     if (sideFilter !== 'ALL') {
-      list = list.filter(p => {
-        const side = (p.organizational_side || p.personnel_classification || 'academic').toLowerCase()
-        return side === sideFilter
-      })
-    }
-
-    // 4. Faculty Engagement Filter (Plan D2)
-    if (engagementFilter !== 'ALL') {
-      list = list.filter(p => {
-        const eng = (p.faculty_engagement || '').toLowerCase()
-        return eng === engagementFilter
-      })
-    }
-
-    // 5. Employment Status Filter (Plan D2)
-    if (employmentStatusFilter !== 'ALL') {
-      list = list.filter(p => {
-        const emp = (p.employment_status || '').toLowerCase()
-        return emp === employmentStatusFilter
-      })
-    }
-
-    // 6. College Filter
-    if (collegeFilter !== 'ALL') {
-      list = list.filter(p => p.college_code === collegeFilter || p.college_id === collegeFilter)
-    }
-
-    // 7. Administrative Unit Filter
-    if (unitFilter !== 'ALL') {
-      list = list.filter(p => p.administrative_unit_code === unitFilter || p.administrative_unit_id === unitFilter)
-    }
-
-    // 8. Governance Role Filter
-    if (roleFilter !== 'ALL') {
-      list = list.filter(p => (p.assigned_roles || []).some(r => {
-        const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
-        return key === roleFilter
-      }))
-    }
-
-    // 9. Status Filter
-    if (statusFilter !== 'ALL') {
-      list = list.filter(p => (p.status || p.employment_status) === statusFilter)
+      list = list.filter(p => (p.organizational_side || p.personnel_classification || '').toLowerCase() === sideFilter)
     }
 
     // 10. Sorting
@@ -403,6 +363,7 @@ export default function PersonnelDirectoryTable({
             <SelectItem value="ALL">All Appointments</SelectItem>
             <SelectItem value="permanent">Permanent</SelectItem>
             <SelectItem value="probationary">Probationary</SelectItem>
+            <SelectItem value={NOT_RECORDED}>Not recorded</SelectItem>
           </Select>
 
           {/* College Filter */}
@@ -454,6 +415,7 @@ export default function PersonnelDirectoryTable({
             <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
           </Select>
 

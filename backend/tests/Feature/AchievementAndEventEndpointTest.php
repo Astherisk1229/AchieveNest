@@ -14,8 +14,15 @@ use CodeIgniter\Test\FeatureTestTrait;
 use Config\App;
 use Config\Database;
 
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class AchievementAndEventEndpointTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     use FeatureTestTrait;
 
     private static string $modJpiaProfileId = 'd0000000-0000-0000-0001-000000000010';

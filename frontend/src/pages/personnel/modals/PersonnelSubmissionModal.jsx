@@ -20,7 +20,8 @@ import {
   Scan,
   RefreshCw,
   FileSearch,
-  Wand2
+  Wand2,
+  ArrowLeft
 } from 'lucide-react'
 
 import RankingCriteriaModel from '../../../models/RankingCriteriaModel.js'
@@ -57,7 +58,46 @@ const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfiden
   )
 }
 
-export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, initialCategory = '', editingItem = null, existingAchievements = [] }) {
+const AREA_CATEGORY_OPTIONS = Object.freeze({
+  B: [
+    ['B.1 Guest Lecturer / Consultant / Judge', 'B.1 Lectures, Speakerships & Consultancy'],
+    ['B.2 Publication', 'B.2 Scholarly Publications'],
+    ['B.3 Conduct of Research', 'B.3 Research Projects'],
+    ['B.4 Professional Recognition or Awards', 'B.4 Professional Recognitions & Awards'],
+    ['B.5 Production of Instructional Materials', 'B.5 Instructional Materials'],
+    ['B.6 Creative Work', 'B.6 Creative Work & Exhibitions']
+  ],
+  C: [
+    ['C.1 Extra-Curricular Activities', 'C.1 Institutional Service & Committees'],
+    ['C.2 Community Involvement', 'C.2 Community & Extension Involvement']
+  ]
+})
+
+const normalizeEntryArea = (areaCode) => ['B', 'C'].includes(String(areaCode || '').toUpperCase())
+  ? String(areaCode).toUpperCase()
+  : 'B'
+
+const categoryBelongsToArea = (category, areaCode) => String(category || '').startsWith(`${areaCode}.`)
+
+const categoryForArea = (candidate, areaCode) => {
+  const normalizedArea = normalizeEntryArea(areaCode)
+  if (categoryBelongsToArea(candidate, normalizedArea)) return candidate
+  return AREA_CATEGORY_OPTIONS[normalizedArea][0][0]
+}
+
+export default function PersonnelSubmissionModal({
+  isOpen,
+  onClose,
+  onSubmitAccomplishment,
+  initialCategory = '',
+  editingItem = null,
+  existingAchievements = [],
+  areaCode = 'B',
+  areaName = '',
+  presentation = 'modal'
+}) {
+  const lockedAreaCode = normalizeEntryArea(areaCode)
+  const isPage = presentation === 'page'
   // Helper for Academic Year Infer
   const inferAcademicYear = (dateStr) => {
     if (!dateStr || String(dateStr).trim() === '') return ''
@@ -70,7 +110,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   }
 
   // Active Category State
-  const [category, setCategory] = useState(initialCategory || 'A.1 Degree/s')
+  const [category, setCategory] = useState(() => categoryForArea(initialCategory, lockedAreaCode))
   const [dateAchieved, setDateAchieved] = useState('')
   const [academicYear, setAcademicYear] = useState('')
 
@@ -144,15 +184,17 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
   useEffect(() => {
     if (editingItem) {
-      setCategory(editingItem.category || 'A.1 Degree/s')
+      setCategory(categoryForArea(editingItem.category, lockedAreaCode))
       setDateAchieved(editingItem.date_achieved || '')
       setAcademicYear(editingItem.academic_year || inferAcademicYear(editingItem.date_achieved))
       setDescription(editingItem.description || '')
       setScopeLevel(editingItem.scope_level || '')
     } else if (initialCategory) {
-      setCategory(initialCategory)
+      setCategory(categoryForArea(initialCategory, lockedAreaCode))
+    } else {
+      setCategory(categoryForArea('', lockedAreaCode))
     }
-  }, [initialCategory, editingItem])
+  }, [initialCategory, editingItem, lockedAreaCode])
 
   // Helper to mark a field as manually edited
   const markFieldEdited = (fieldName) => {
@@ -169,6 +211,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   }
 
   const handleCategoryChange = (nextCategory) => {
+    if (!categoryBelongsToArea(nextCategory, lockedAreaCode)) return
     setCategory(nextCategory)
     markFieldEdited('category')
     if (!ocrResult?.rawText || !nextCategory.startsWith('A.1')) return
@@ -201,8 +244,11 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         const fields = res.extractedFields
 
         // 1. Auto-select suggested NDMU category only if user hasn't manually chosen one
-        if (res.detectedCategory && !manuallyEdited.category) {
-          setCategory(res.detectedCategory)
+        const areaMatchedCategory = categoryBelongsToArea(res.detectedCategory, lockedAreaCode)
+          ? res.detectedCategory
+          : null
+        if (areaMatchedCategory && !manuallyEdited.category) {
+          setCategory(areaMatchedCategory)
         }
 
         // 2. Set Date & Academic Year if detected and not manually edited
@@ -213,11 +259,11 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
         // 3. Map Category Specific Fields & Track Badges without overwriting manual user inputs
         const newBadges = {
-          category: !manuallyEdited.category && !!res.detectedCategory,
+          category: !manuallyEdited.category && !!areaMatchedCategory,
           dateAchieved: !manuallyEdited.dateAchieved && !!fields.date
         }
 
-        const catToApply = (!manuallyEdited.category && res.detectedCategory) ? res.detectedCategory : category
+        const catToApply = (!manuallyEdited.category && areaMatchedCategory) ? areaMatchedCategory : category
 
         if (catToApply.startsWith('A.1')) {
           if (fields.title && (res.fields.title.confidence || 0) >= 85 && !manuallyEdited.degreeTitle) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
@@ -391,37 +437,48 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className={isPage
+      ? 'mx-auto w-full max-w-6xl font-sans'
+      : 'fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 font-sans backdrop-blur-sm sm:p-4'}>
+      <div className={isPage
+        ? 'flex min-h-[calc(100vh-8rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)]'
+        : 'flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_-28px_rgba(15,23,42,0.65)]'}>
 
         {/* ================= MODAL HEADER WITH LIVE ESTIMATED POINTS BADGE ================= */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 shrink-0">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white p-5 sm:px-7">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#16834a] text-white flex items-center justify-center shadow-md">
-              <Award className="w-5 h-5" />
-            </div>
+            {isPage ? (
+              <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-200 text-emerald-800 transition hover:border-emerald-700 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" aria-label="Back to portfolio">
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+            ) : (
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#16834a] text-white shadow-[0_8px_20px_-12px_rgba(22,131,74,0.8)]">
+                <Award className="h-5 w-5" aria-hidden="true" />
+              </div>
+            )}
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                  {editingItem ? 'Edit Accomplishment' : 'Log New Accomplishment'}
+                  {editingItem ? 'Edit accomplishment' : 'Add accomplishment'}
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#EFF7F0] text-[#16834a] text-[11px] font-extrabold shadow-2xs border border-[#cbe6d2]">
-                  NDMU Ranking Record
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                  Area {lockedAreaCode}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Category-Tailored Fields • {academicYear ? `Academic Year (${academicYear})` : 'Date-Derived Academic Year'}
+              <p className="mt-0.5 text-xs font-medium text-slate-600">
+                {areaName || 'Non-teaching portfolio evidence'} · Upload proof, review the category, then complete the required details.
               </p>
             </div>
           </div>
 
-          <button
+          {!isPage && <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
+            aria-label="Close accomplishment form"
           >
             <X className="w-4 h-4" />
-          </button>
+          </button>}
         </div>
 
         {/* Error Alert Message */}
@@ -513,7 +570,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         )}
 
         {/* ================= CATEGORY-TAILORED ADAPTIVE FORM SCROLLABLE BODY ================= */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
+        <form onSubmit={handleSubmit} className={`flex-1 space-y-5 text-xs ${isPage ? 'mx-auto w-full max-w-4xl overflow-visible p-5 sm:p-7' : 'overflow-y-auto p-5'}`}>
 
           {/* ================= STEP 1: UPLOAD & OCR SCAN CERTIFICATE ================= */}
           <div className="p-4 rounded-3xl bg-slate-50 border border-slate-200/80 space-y-3">
@@ -579,23 +636,9 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
               onChange={(e) => handleCategoryChange(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
             >
-              <optgroup label="Area A: Professional Development">
-                <option value="A.1 Degree/s">A.1 Degrees & Advanced Units</option>
-                <option value="A.2 Active Membership to Prof Orgs">A.2 Active Membership to Professional Organizations</option>
-                <option value="A.3 Attendance to Seminars/Trainings">A.3 Attendance to Seminars & Trainings</option>
-              </optgroup>
-              <optgroup label="Area B: Productivity & Creative Work">
-                <option value="B.1 Guest Lecturer / Consultant / Judge">B.1 Lectures, Speakerships & Consultancy</option>
-                <option value="B.2 Publication">B.2 Scholarly Publications (Journals, Books, Articles)</option>
-                <option value="B.3 Conduct of Research">B.3 Conduct of Research Projects</option>
-                <option value="B.4 Professional Recognition or Awards">B.4 Professional Recognitions & Awards</option>
-                <option value="B.5 Production of Instructional Materials">B.5 Instructional Materials / Manuals</option>
-                <option value="B.6 Creative Work">B.6 Creative Work & Exhibitions</option>
-              </optgroup>
-              <optgroup label="Area C: Service & Leadership">
-                <option value="C.1 Extra-Curricular Activities">C.1 Institutional Service & Committees</option>
-                <option value="C.2 Community Involvement">C.2 Community & Extension Involvement</option>
-              </optgroup>
+              {AREA_CATEGORY_OPTIONS[lockedAreaCode].map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </div>
 
@@ -1093,7 +1136,7 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
           </div>
 
           {/* ================= MODAL FOOTER ================= */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+          <div className={`flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white pt-4 ${isPage ? 'sticky bottom-0 -mx-5 px-5 pb-1 sm:-mx-7 sm:px-7' : ''}`}>
             <button
               type="button"
               onClick={onClose}

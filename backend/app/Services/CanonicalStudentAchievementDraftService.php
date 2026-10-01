@@ -22,7 +22,7 @@ final class CanonicalStudentAchievementDraftService
         try {
             $this->db->table('achievement_records')->insert(['id'=>$record,'owner_profile_id'=>$owner,'owner_domain'=>'STUDENT','current_version_id'=>null,'canonical_status'=>'active','created_by_profile_id'=>$owner,'created_at'=>$now,'updated_at'=>$now]);
             $this->db->table('achievement_record_versions')->insert(['id'=>$version,'achievement_record_id'=>$record,'version_number'=>1,'previous_version_id'=>null,'contract_code'=>null,'submission_state'=>'draft','source_type'=>'OWNER_ENTRY','created_by_profile_id'=>$owner,'revision_token'=>1,'created_at'=>$now]);
-            $this->db->table('achievement_records')->where('id',$record)->update(['current_version_id'=>$version]); $this->commit();
+            $this->db->table('achievement_records')->where('id',$record)->where('owner_profile_id',$owner)->where('owner_domain','STUDENT')->where('current_version_id',null)->update(['current_version_id'=>$version]); $this->commit();
         } catch (Throwable $e) { $this->db->transRollback(); throw $e; }
         return $this->read($owner, $record);
     }
@@ -37,7 +37,38 @@ final class CanonicalStudentAchievementDraftService
         $v=$this->editable($owner,$record); $contract=$contract===null?null:strtoupper(trim($contract)); if($contract==='')$contract=null;
         if($contract===null&&$fields!==[])throw new RuntimeException('STUDENT_ACHIEVEMENT_CONTRACT_REQUIRED_FOR_FIELDS');
         if($contract!==null){$this->contracts->resolveContract($contract);if(($v['contract_code']??null)!==null&&$v['contract_code']!==$contract)throw new RuntimeException('STUDENT_ACHIEVEMENT_CONTRACT_CHANGE_REQUIRES_NEW_DRAFT');$allowed=array_flip($this->contracts->allowedDetailFields($contract));foreach($fields as $key=>$value)if(!is_string($key)||!isset($allowed[$key])||(!is_scalar($value)&&$value!==null))throw new RuntimeException('STUDENT_ACHIEVEMENT_DRAFT_FIELD_NOT_ALLOWED');}
-        $this->db->transBegin();try{if($contract!==null)$this->db->table('achievement_record_versions')->where('id',$v['id'])->update(['contract_code'=>$contract]);foreach($fields as $k=>$value){$b=$this->db->table('achievement_version_draft_fields')->where('record_version_id',$v['id'])->where('field_key',$k);$data=['field_value'=>json_encode($value,JSON_THROW_ON_ERROR),'updated_by_profile_id'=>$owner];if($b->countAllResults())$b->update($data);else $this->db->table('achievement_version_draft_fields')->insert(['record_version_id'=>$v['id'],'field_key'=>$k]+$data);} $this->commit();}catch(Throwable $e){$this->db->transRollback();throw $e;}return $this->read($owner,$record);
+        $ownedVersion = fn () => $this->db->table('achievement_records')
+            ->select('current_version_id')->where('id', $record)
+            ->where('owner_profile_id', $owner)->where('owner_domain', 'STUDENT')
+            ->where('canonical_status', 'active');
+        $this->db->transBegin();
+        try {
+            if ($contract !== null) {
+                $this->db->table('achievement_record_versions')
+                    ->where('id', $v['id'])->where('achievement_record_id', $record)
+                    ->whereIn('id', $ownedVersion())->update(['contract_code' => $contract]);
+            }
+            foreach ($fields as $key => $value) {
+                $exists = $this->db->table('achievement_version_draft_fields')
+                    ->where('record_version_id', $v['id'])->where('field_key', $key)
+                    ->whereIn('record_version_id', $ownedVersion())->countAllResults();
+                $data = ['field_value' => json_encode($value, JSON_THROW_ON_ERROR), 'updated_by_profile_id' => $owner];
+                if ($exists) {
+                    // Counts reset query-builder predicates. Always build the update afresh.
+                    $this->db->table('achievement_version_draft_fields')
+                        ->where('record_version_id', $v['id'])->where('field_key', $key)
+                        ->whereIn('record_version_id', $ownedVersion())->update($data);
+                } else {
+                    $this->db->table('achievement_version_draft_fields')
+                        ->insert(['record_version_id' => $v['id'], 'field_key' => $key] + $data);
+                }
+            }
+            $this->commit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            throw $e;
+        }
+        return $this->read($owner, $record);
     }
     public function submit(string $owner,string $record): array
     {

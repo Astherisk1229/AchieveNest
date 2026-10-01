@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Search, ShieldCheck, UserCheck, UserPlus, Calendar, AlertTriangle } from 'lucide-react'
 import { assignDeanRole } from '../../../services/hrAdminService'
-import { isAcademicPersonnel } from '../../../utils/personnelPlacement'
 
 export default function AssignDeanModal({ isOpen, onClose, targetCollege = null, personnelList = [], onAssigned }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -36,7 +35,7 @@ export default function AssignDeanModal({ isOpen, onClose, targetCollege = null,
   // Eligible academic personnel affiliated with this College
   const eligiblePersonnel = personnelList.filter(p => {
     if (!p) return false
-    const isAcademic = isAcademicPersonnel(p) || p.organizational_side === 'academic' || p.personnel_classification === 'academic'
+    const isAcademic = p.personnel_group === 'faculty'
     const matchesCollege = Boolean(p.college_id) && p.college_id === targetCollege.id
     const q = searchQuery.toLowerCase().trim()
     const matchesQuery = !q ||

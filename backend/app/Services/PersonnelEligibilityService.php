@@ -40,9 +40,19 @@ class PersonnelEligibilityService
         elseif (!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'], true)) $reasons[] = 'Evaluation period is not open.';
 
         $service = null;
+        // HR master-data fields the service requirement depends on (HR → Personnel Directory → Edit Master Data).
+        $missing = [];
+        $hrSource = 'HR → Personnel Directory → Edit Master Data';
+        $startDate = trim((string)($person['employment_start_date'] ?? ''));
+        $cutoff = $period ? substr((string)$period['evaluation_end_at'],0,10) : null;
+        if ($startDate === '') $missing[] = ['field'=>'employment_start_date','label'=>'Employment start date','detail'=>'Not recorded in HR master data; years of service cannot be calculated.','source'=>$hrSource];
+        if (trim((string)($person['employment_status'] ?? '')) === '') $missing[] = ['field'=>'employment_status','label'=>'Employment status (Permanent or Probationary)','detail'=>'Not recorded in HR master data.','source'=>$hrSource];
         if ($period) {
-            try { $service = $this->duration->calculate($person['employment_start_date'] ?? null, substr((string)$period['evaluation_end_at'],0,10)); }
-            catch (\Throwable $e) { $reasons[] = 'Employment start date is invalid.'; }
+            try { $service = $this->duration->calculate($person['employment_start_date'] ?? null, $cutoff); }
+            catch (\Throwable $e) {
+                $reasons[] = 'Employment start date is invalid.';
+                $missing[] = ['field'=>'employment_start_date','label'=>'Employment start date','detail'=>'Recorded value ('.$startDate.') is invalid or later than the service cutoff ('.$cutoff.').','source'=>$hrSource];
+            }
         }
         $status = strtolower((string)($person['employment_status'] ?? ''));
         $serviceYears = $service ? round(((int)$service['total_months']) / 12, 2) : null;
@@ -61,7 +71,10 @@ class PersonnelEligibilityService
         elseif($annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
         $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
         $eligibility=$hardFailure?'not_eligible':(($serviceStatus==='passed'&&$annualStatus==='passed'&&$period)?'eligible':'pending');
-        $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;return$result;
+        $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;
+        // Reported only while the service requirement is unresolved; it does not change the decision above.
+        $result['missing_hr_requirements']=$serviceStatus==='pending'?$missing:[];
+        return$result;
     }
 
     private function resolvePeriod(string $reference): ?array

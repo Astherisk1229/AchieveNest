@@ -8,13 +8,35 @@ import HRController from '../controllers/HRController'
 import { provisioningService } from '../services/provisioningService'
 import { fetchPasswordResetRequests, executePasswordReset } from '../services/passwordResetAdminService'
 import { fetchHRAudit, fetchHRDashboard, fetchPersonnelDirectory, assignDeanRole, revokeDeanRole } from '../services/hrAdminService'
+import { uniquePersonnel } from '../utils/personnelDirectoryFilters'
 
 const ALL_RESOURCES = ['directory', 'dashboard', 'passwordResets', 'audit']
+
+// The directory API is paged (max 100 per page). Filters and search run in the browser,
+// so every page is loaded; otherwise personnel beyond the first page could never match.
+const DIRECTORY_PAGE_SIZE = 100
+const DIRECTORY_MAX_PAGES = 50
+export async function fetchAllPersonnelDirectoryPages() {
+  const first = await fetchPersonnelDirectory({ per_page: DIRECTORY_PAGE_SIZE, page: 1 })
+  const firstData = first?.data || first || {}
+  const personnel = Array.isArray(firstData.personnel) ? [...firstData.personnel] : []
+  const total = Number(firstData.total) || personnel.length
+  let page = 1
+  while (personnel.length < total && page < DIRECTORY_MAX_PAGES) {
+    page += 1
+    const next = await fetchPersonnelDirectory({ per_page: DIRECTORY_PAGE_SIZE, page })
+    const rows = (next?.data || next || {}).personnel
+    if (!Array.isArray(rows) || rows.length === 0) break
+    personnel.push(...rows)
+  }
+  return { data: { ...firstData, personnel } }
+}
 
 export function useHR({ resources = ALL_RESOURCES } = {}) {
   const resourceKey = [...resources].sort().join('|')
   const [activeTab, setActiveTab] = useState('overview')
   const [personnelList, setPersonnelList] = useState([])
+  const [directorySummary, setDirectorySummary] = useState(null)
   const [accomplishments, setAccomplishments] = useState([])
   const [serviceAwards, setServiceAwards] = useState([])
   const [auditLogs, setAuditLogs] = useState([])
@@ -53,7 +75,7 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
       const enabled = new Set(resourceKey.split('|').filter(Boolean))
       const requests = []
       const names = []
-      if (enabled.has('directory')) { names.push('directory'); requests.push(fetchPersonnelDirectory({ per_page: 100 })) }
+      if (enabled.has('directory')) { names.push('directory'); requests.push(fetchAllPersonnelDirectoryPages()) }
       if (enabled.has('dashboard')) { names.push('dashboard'); requests.push(fetchHRDashboard()) }
       if (enabled.has('passwordResets')) { names.push('passwordResets'); requests.push(fetchPasswordResetRequests('all')) }
       if (enabled.has('audit')) { names.push('audit'); requests.push(fetchHRAudit({ per_page: 50 })) }
@@ -68,12 +90,14 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
       if (dirResult?.status === 'fulfilled') {
         const directory = dirResult.value?.data || dirResult.value || {}
         const list = Array.isArray(directory.personnel) ? directory.personnel : []
-        setPersonnelList(list.map(person => ({
+        setDirectorySummary(directory.summary || null)
+        setPersonnelList(uniquePersonnel(list).map(person => ({
           ...person,
           employee_id: person.institutional_id || person.employee_id,
           email: person.institutional_email || person.email,
           college: person.college_name || person.college_code || person.college || 'Pending placement',
-          employment_status: person.employment_status || person.status || 'permanent',
+          // Appointment as recorded by HR (permanent / probationary) or null; never the account status or a default.
+          employment_status: person.employment_status || null,
           academic_rank: person.current_rank_title || person.academic_rank || person.designation || 'Personnel',
           assigned_roles: person.assigned_roles || []
         })))
@@ -232,6 +256,7 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
     activeTab,
     setActiveTab,
     personnelList,
+    directorySummary,
     filteredPersonnel,
     accomplishments,
     pendingEndorsements,

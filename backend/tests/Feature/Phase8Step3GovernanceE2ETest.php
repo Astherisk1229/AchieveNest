@@ -7,6 +7,7 @@ use CodeIgniter\Test\FeatureTestTrait;
 use PDO;
 
 #[\PHPUnit\Framework\Attributes\Group('legacy-postgres')]
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class Phase8Step3GovernanceE2ETest extends CIUnitTestCase
 {
     use FeatureTestTrait;
@@ -35,6 +36,7 @@ final class Phase8Step3GovernanceE2ETest extends CIUnitTestCase
 
     public static function setUpBeforeClass(): void
     {
+        \Tests\Support\ManualProofGate::requireOptIn(true);
         parent::setUpBeforeClass();
 
         $lines = file(APPPATH . '../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

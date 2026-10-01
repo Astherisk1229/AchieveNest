@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, FileText, FileWarning, LoaderCircle, Minus, Plus, RotateCcw } from 'lucide-react'
+import { ExternalLink, FileText, FileWarning, LoaderCircle, Minus, Plus, RotateCcw, RotateCw } from 'lucide-react'
 import personnelAccomplishmentService from '../../../services/personnelAccomplishmentService'
 
 const formatBytes = (value) => {
@@ -9,11 +9,12 @@ const formatBytes = (value) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function FacultyDocumentViewer({ evidence = null, localFile = null, localPreviewUrl = '', onPersistedReady }) {
+export default function FacultyDocumentViewer({ evidence = null, localFile = null, localPreviewUrl = '', onPersistedReady, scanning = false, fill = false, viewportRef = null, highlight = false }) {
   const [persistedUrl, setPersistedUrl] = useState('')
   const [persistedState, setPersistedState] = useState(evidence?.id ? 'loading' : 'idle')
   const [reloadKey, setReloadKey] = useState(0)
   const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -21,6 +22,7 @@ export default function FacultyDocumentViewer({ evidence = null, localFile = nul
     setPersistedUrl('')
     setPersistedState(evidence?.id ? 'loading' : 'idle')
     setZoom(1)
+    setRotation(0)
     if (!evidence?.id) return undefined
 
     personnelAccomplishmentService.getEvidenceBlobUrl(evidence.id)
@@ -70,8 +72,8 @@ export default function FacultyDocumentViewer({ evidence = null, localFile = nul
   if (!source && !evidence) return null
 
   return (
-    <section aria-labelledby="faculty-document-viewer-title" className="flex min-h-0 flex-col overflow-hidden rounded-2xl bg-slate-950 shadow-[0_14px_35px_-22px_rgba(15,23,42,.8)]">
-      <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-slate-900 px-4 py-3 text-white">
+    <section aria-labelledby="faculty-document-viewer-title" className={`flex min-h-0 flex-col overflow-hidden bg-slate-950 ${fill ? 'h-full' : 'rounded-2xl shadow-[0_14px_35px_-22px_rgba(15,23,42,.8)]'}`}>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-900 px-4 py-2.5 text-white">
         <div className="min-w-0">
           <h3 id="faculty-document-viewer-title" className="truncate text-sm font-extrabold">{label}</h3>
           <p className="mt-0.5 truncate text-xs text-slate-300">{filename}{formatBytes(byteSize) ? ` · ${formatBytes(byteSize)}` : ''}</p>
@@ -82,16 +84,18 @@ export default function FacultyDocumentViewer({ evidence = null, localFile = nul
             <span className="w-11 text-center text-xs tabular-nums text-slate-300">{Math.round(zoom * 100)}%</span>
             <button type="button" onClick={() => setZoom((value) => Math.min(3, value + 0.25))} disabled={zoom >= 3} className="rounded-lg p-2 text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white disabled:opacity-40" aria-label="Zoom in"><Plus className="h-4 w-4" /></button>
             <button type="button" onClick={() => setZoom(1)} className="rounded-lg p-2 text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white" aria-label="Fit image to viewer"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setRotation((value) => (value + 90) % 360)} className="rounded-lg p-2 text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white" aria-label="Rotate document 90 degrees"><RotateCw className="h-4 w-4" /></button>
           </div>
         )}
       </header>
       {statusText && <p role="status" className="bg-amber-50 px-4 py-2 text-xs font-semibold leading-5 text-amber-950">{statusText}</p>}
-      <div className="relative flex h-[25rem] min-h-0 items-center justify-center overflow-auto bg-slate-200 lg:h-[calc(94vh-15rem)] lg:min-h-[31rem]">
+      <div ref={viewportRef} tabIndex={0} aria-label="Document preview" className={`relative flex min-h-0 items-center justify-center overflow-auto bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 ${fill ? 'flex-1' : 'h-[25rem] lg:h-[calc(94vh-15rem)] lg:min-h-[31rem]'} ${highlight ? 'faculty-doc-flash' : ''}`}>
+        {scanning && <div aria-hidden="true" className="faculty-scan-overlay pointer-events-none absolute inset-0 z-10"><span className="faculty-scan-line" /></div>}
         {localPreviewUrl && persistedUrl && evidence && String(evidence.detected_mime_type || evidence.mime_type || '').startsWith('image/') && <img src={persistedUrl} alt="" aria-hidden="true" className="hidden" onLoad={confirmPersistedRender} onError={failPersistedRender} />}
         {localPreviewUrl && persistedUrl && evidence && (evidence.detected_mime_type || evidence.mime_type) === 'application/pdf' && <iframe src={persistedUrl} title="Saved document preview verification" className="hidden" onLoad={confirmPersistedRender} />}
         {!source && persistedState === 'loading' && <div role="status" className="flex items-center gap-2 text-sm font-semibold text-slate-700"><LoaderCircle className="h-5 w-5 animate-spin" />Loading your document…</div>}
         {!source && persistedState === 'failed' && <div role="alert" className="max-w-sm p-6 text-center text-sm text-slate-800"><FileWarning className="mx-auto mb-3 h-8 w-8 text-amber-700" /><strong>Unable to load the saved document preview.</strong><p className="mt-2 text-slate-600">It remains safely stored, and you can continue entering the details.</p><div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setReloadKey((value) => value + 1)} className="rounded-lg bg-emerald-800 px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-600">Retry Preview</button><button type="button" onClick={() => personnelAccomplishmentService.downloadEvidenceBlob(evidence.id, filename)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600"><ExternalLink className="h-3.5 w-3.5" />Open Document</button></div></div>}
-        {source && isImage && <img src={source} alt={`${label}: ${filename}`} onLoad={showingPersisted ? confirmPersistedRender : undefined} onError={showingPersisted ? failPersistedRender : undefined} className="max-h-full max-w-full origin-center object-contain transition-transform duration-200" style={{ transform: `scale(${zoom})` }} />}
+        {source && isImage && <img src={source} alt={`${label}: ${filename}`} onLoad={showingPersisted ? confirmPersistedRender : undefined} onError={showingPersisted ? failPersistedRender : undefined} className="max-h-full max-w-full origin-center object-contain transition-transform duration-200" style={{ transform: `rotate(${rotation}deg) scale(${zoom})` }} />}
         {source && isPdf && <iframe src={`${source}#toolbar=1&navpanes=0&view=FitH`} title={`${label}: ${filename}`} onLoad={showingPersisted ? confirmPersistedRender : undefined} className="h-full w-full border-0 bg-white" />}
         {source && !isImage && !isPdf && <div className="max-w-sm p-6 text-center text-sm text-slate-800"><FileText className="mx-auto mb-3 h-8 w-8" /><strong>{label}</strong><p className="mt-2 break-all text-slate-600">{filename}</p><p className="mt-1 text-slate-600">{mimeType || 'Document'}{formatBytes(byteSize) ? ` · ${formatBytes(byteSize)}` : ''}</p></div>}
       </div>

@@ -7,7 +7,7 @@ import PersonnelDetailDrawer from './modals/PersonnelDetailDrawer'
 import OrganizationalDataIssuesModal from './modals/OrganizationalDataIssuesModal'
 
 const matches = (value, query) => String(value || '').toLowerCase().includes(query)
-const isTeaching = person => person.personnel_group === 'faculty' && person.organizational_side === 'academic'
+const isTeaching = person => person.personnel_group === 'faculty'
 const isNonTeachingFaculty = person => person.personnel_group === 'non_teaching_faculty'
 
 function PersonnelTable({ people, onSelect }) {

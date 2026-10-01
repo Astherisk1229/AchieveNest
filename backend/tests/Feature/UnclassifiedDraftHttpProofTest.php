@@ -13,8 +13,15 @@ use CodeIgniter\Test\CIUnitTestCase;
  *
  * @group http-proof
  */
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class UnclassifiedDraftHttpProofTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     private const BASE = 'http://127.0.0.1:8080/api/v1';
     private const LEADERSHIP = '8461c4f3-3f7d-4e1a-a5ff-c4c5941ef646';
     private const CLUB = '40000001-0001-0000-0000-000000000003';

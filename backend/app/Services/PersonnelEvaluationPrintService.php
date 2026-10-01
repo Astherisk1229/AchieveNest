@@ -232,9 +232,8 @@ class PersonnelEvaluationPrintService
         ));
 
         // 3. Personnel Identity Section (Official Form Fields Only)
-        $side = strtolower((string) ($evaluationRecord['organizational_side'] ?? $evaluationRecord['personnel_classification'] ?? ''));
         $group = strtolower((string) ($evaluationRecord['personnel_group'] ?? ''));
-        $isAcademic = ($side === 'academic' || $group === 'faculty');
+        $isAcademic = $group === 'faculty';
 
         $deptDisplay = (string) ($evaluationRecord['department_display'] ?? ($evaluationRecord['department_name'] ?? ($evaluationRecord['department'] ?? '')));
         if ($deptDisplay === '' || $deptDisplay === 'Department') {

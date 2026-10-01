@@ -125,7 +125,6 @@ class PersonnelReviewerRoutingRegistry
     public static function resolveReviewerRoute(array $personnelContext): array
     {
         $group = strtolower(trim((string)($personnelContext['personnel_group'] ?? '')));
-        $side = strtolower(trim((string)($personnelContext['organizational_side'] ?? '')));
         $isDean = !empty($personnelContext['is_dean']);
         $isVpAcademics = !empty($personnelContext['is_vp_academics']);
         $isVpAdmin = !empty($personnelContext['is_vp_administration']);
@@ -168,52 +167,29 @@ class PersonnelReviewerRoutingRegistry
             ];
         }
 
-        // 2. Canonical group + side routing
-        if ($group === 'faculty' && $side === 'academic') {
+        // 2. Personnel group is the sole classification input. Institutional
+        // assignment still determines which Dean receives a Faculty record.
+        if ($group === 'faculty') {
             return [
                 'authorized_reviewer_role' => self::REVIEWER_ROLE_DEAN,
                 'scope_type' => 'COLLEGE_ACADEMIC_SCOPE',
                 'target_college_id' => $collegeId,
-                'routing_reason' => 'Faculty + Academic personnel route to active Dean of assigned college.',
+                'routing_reason' => 'Faculty personnel route to the active Dean of their assigned college.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
                 'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
             ];
         }
 
-        if ($group === 'faculty' && $side === 'non_academic') {
+        if ($group === 'non_teaching_faculty') {
             return [
                 'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
                 'scope_type' => 'UNIVERSITY_HR_SCOPE',
                 'target_college_id' => null,
-                'routing_reason' => 'Faculty + Non-Academic personnel route to HR Office.',
+                'routing_reason' => 'Non-Teaching Faculty personnel route to the HR Office.',
                 'status' => 'resolved',
                 'reason_code' => self::REASON_ROUTE_ASSIGNED,
                 'authoritative_source' => 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)',
-            ];
-        }
-
-        if ($group === 'non_teaching_faculty' && $side === 'academic') {
-            return [
-                'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
-                'scope_type' => 'UNIVERSITY_HR_SCOPE',
-                'target_college_id' => null,
-                'routing_reason' => 'Non-Teaching Faculty + Academic personnel route to HR Office.',
-                'status' => 'resolved',
-                'reason_code' => self::REASON_ROUTE_ASSIGNED,
-                'authoritative_source' => 'CHU-01 Phase 2 (Sections 2.5, 9.2, 14.1)',
-            ];
-        }
-
-        if ($group === 'non_teaching_faculty' && $side === 'non_academic') {
-            return [
-                'authorized_reviewer_role' => self::REVIEWER_ROLE_HR,
-                'scope_type' => 'UNIVERSITY_HR_SCOPE',
-                'target_college_id' => null,
-                'routing_reason' => 'Non-Teaching Faculty + Non-Academic personnel route to HR Office.',
-                'status' => 'resolved',
-                'reason_code' => self::REASON_ROUTE_ASSIGNED,
-                'authoritative_source' => 'Plan G (G0/G1) & Plan K5 Final Routing Matrix',
             ];
         }
 
@@ -222,12 +198,11 @@ class PersonnelReviewerRoutingRegistry
             'authorized_reviewer_role' => null,
             'scope_type' => null,
             'target_college_id' => null,
-            'routing_reason' => "No authoritative reviewer route is defined for classification [{$group} + {$side}].",
+            'routing_reason' => "No authoritative reviewer route is defined for personnel group [{$group}].",
             'status' => 'unresolved',
             'reason_code' => self::REASON_REVIEWER_ROUTE_UNRESOLVED,
             'inputs' => [
                 'personnel_group' => $group,
-                'organizational_side' => $side,
             ],
         ];
     }

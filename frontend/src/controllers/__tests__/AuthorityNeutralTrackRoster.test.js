@@ -33,7 +33,20 @@ describe('authority-neutral Ranking Cycle track roster', () => {
   it('allows HR rows only when the central resolver identifies explicit HR authority', () => {
     const service = read('backend/app/Services/AuthorityRankingRosterService.php')
     expect(service).toContain("return ['HR', 'institution', null]")
-    expect(service).toContain("($authority['authority_type'] ?? '') !== $authorityType")
+    // HR may only manage rows the central resolver assigns to HR; other rows are read-only.
+    expect(service).toContain("&& ($authority['authority_type'] ?? '') === $authorityType")
+    expect(service).toContain('&& $this->authorityResolver->actorMayAct($authority, $actorId)')
+    expect(service).toContain("'can_manage'=>$canManage")
+  })
+
+  it('limits the read-only institution-wide view to HR on the Annual Reviews roster only', () => {
+    const service = read('backend/app/Services/AuthorityRankingRosterService.php')
+    expect(service).toContain("$readOnlyView = $includeReadOnly && $authorityType === 'HR'")
+    expect(service).toContain('if (! $canManage && ! $readOnlyView) continue;')
+    expect(read('backend/app/Controllers/Api/ReviewerRankingRosterController.php')).toContain('$this->roster->list($actor, $cycleId, $trackKey, true)')
+    // Authorization callers keep the managed-only default.
+    expect(read('backend/app/Services/AnnualReviewImportService.php')).toContain("$this->rosterService->list($actor,$cycleId,(string)$period['personnel_group'])")
+    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain('item.can_manage === false ? <ReadOnlyActions item={item} />')
   })
 
   it('reuses the same roster for Annual Review imports and the shared page', () => {

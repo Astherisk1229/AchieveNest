@@ -12,7 +12,8 @@ import RankingCriteriaModel from '../../models/RankingCriteriaModel.js'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
-import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
+import { isPersonnelAreaEntryAllowed, usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
+import { derivePersonnelPortfolioState, derivePersonnelSubmissionActionGate } from '../../utils/personnelPortfolioState'
 import PersonnelAchievementController from '../../controllers/PersonnelAchievementController'
 import personnelAccomplishmentService, { fetchCurrentEvaluationPeriod } from '../../services/personnelAccomplishmentService'
 import portfolioConfigurationService from '../../services/portfolioConfigurationService'
@@ -95,6 +96,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const [configLoading, setConfigLoading] = useState(false)
   const [eligibility, setEligibility] = useState(null)
 
+  const isFacultyAcademic = usesFacultyAcademicPortfolio(activeUser)
+
   useEffect(() => {
     let mounted = true
     async function loadConfig() {
@@ -121,7 +124,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   }, [activeUser?.id, activeUser?.employee_id])
 
   // Active Workspace Tab ('A' | 'B' | 'C')
-  const [activeArea, setActiveArea] = useState('A')
+  const [activeArea, setActiveArea] = useState(() => isFacultyAcademic ? 'A' : 'B')
 
   // Filter States
   const [categoryFilter, setCategoryFilter] = useState('ALL')
@@ -143,21 +146,58 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const activeStatus = (portfolio?.status || latestSubmission?.status || 'draft').toLowerCase()
-  const isReturnedForRevision = activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel'
-  const isCurrentlyLocked = !isReturnedForRevision && (isLocked || ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed'].includes(activeStatus))
-  const isEditable = !isCurrentlyLocked && (activeStatus === 'draft' || isReturnedForRevision)
-  const eligibilityBlocked = !isReturnedForRevision && eligibility?.eligibility_status !== 'eligible'
+  const portfolioState = derivePersonnelPortfolioState(portfolio, latestSubmission)
+  const activeStatus = portfolioState.status
+  const isReturnedForRevision = portfolioState.isReturnedForRevision
+  const isCurrentlyLocked = isLocked || portfolioState.isLocked
+  const isEditable = portfolioState.isEditable && !isLocked
+  const submissionActionGate = derivePersonnelSubmissionActionGate({
+    portfolioState: { ...portfolioState, isEditable },
+    evaluationPeriod,
+    eligibilityStatus: eligibility?.eligibility_status,
+    isSubmitting
+  })
+  const eligibilityBlocked = submissionActionGate.eligibilityBlocked
 
   const showToast = (msg) => {
     setFeedbackMessage(msg)
     setTimeout(() => setFeedbackMessage(''), 3500)
   }
 
-  const isFacultyAcademic = usesFacultyAcademicPortfolio(activeUser)
+  const portfolioAreas = useMemo(() => {
+    const configuredAreas = workspaceConfig?.areas || (isFacultyAcademic
+      ? [
+        { area_code: 'A', name: 'Area A: Professional Development' },
+        { area_code: 'B', name: 'Area B: Productivity' },
+        { area_code: 'C', name: 'Area C: Service & Leadership' }
+      ]
+      : [
+        { area_code: 'A', name: 'Area A: Performance & Personal Indicators' },
+        { area_code: 'B', name: 'Area B: Professional Development & Technical Capability' },
+        { area_code: 'C', name: 'Area C: Institutional Service & Community Extension' }
+      ])
+
+    return configuredAreas.map((area) => {
+      if (isFacultyAcademic || area.area_code !== 'A') return area
+
+      return {
+        ...area,
+        name: 'Area A: Performance & Personal Indicators',
+        description: 'Official performance and supervisor assessment indicators are completed by authorized evaluators. Personnel cannot add accomplishments here.',
+        entry_policy: 'personnel_entry_disallowed_read_only',
+        is_personnel_entry_allowed: false
+      }
+    })
+  }, [isFacultyAcademic, workspaceConfig])
 
   // Open Canonical Plan A Submission Modal for Targeted Area
   const handleOpenAddAccomplishment = (areaKey = activeArea) => {
+    const areaConfig = portfolioAreas.find((area) => area.area_code === areaKey)
+    if (!isPersonnelAreaEntryAllowed(activeUser, areaKey, areaConfig)) {
+      showToast('Area A is evaluator-managed for Non-teaching Faculty. Add portfolio evidence in Area B or Area C.')
+      return
+    }
+
     let defaultCat = ''
     if (isFacultyAcademic) {
       defaultCat = areaKey === 'A'
@@ -311,15 +351,31 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
   const allPortfolioItems = [...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])]
   const persistedEvidenceCount = allPortfolioItems.filter(hasValidPersonnelEvidence).length
-  const periodUnavailableReason = !evaluationPeriod
-    ? 'No personnel evaluation period is currently open for submission.'
-    : !evaluationPeriod.can_submit
-      ? 'The current personnel evaluation period is outside its submission window.'
-      : ''
+  const periodUnavailableReason = submissionActionGate.periodUnavailableReason
 
   // Categories for active dropdown
   const currentHierarchy = ['A', 'B', 'C'].includes(activeArea) ? RankingCriteriaModel.CATEGORIES_HIERARCHY[activeArea] : null
   const availableCategories = currentHierarchy ? Object.keys(currentHierarchy.categories) : []
+
+  const submissionAreaCode = editingAccomplishment?.category_area?.replace('area', '') || activeArea
+  const submissionAreaName = (portfolioAreas.find((area) => area.area_code === submissionAreaCode)?.name || '')
+    .replace(/^Area\s+[ABC]\s*:\s*/i, '')
+
+  if (isSubmissionModalOpen && !isFacultyAcademic) {
+    return (
+      <PersonnelSubmissionModal
+        isOpen={isSubmissionModalOpen}
+        presentation="page"
+        onClose={() => { setIsSubmissionModalOpen(false); setEditingAccomplishment(null) }}
+        onSubmitAccomplishment={handleSaveAccomplishment}
+        initialCategory={initialSubmissionCategory}
+        editingItem={editingAccomplishment}
+        existingAchievements={allPortfolioItems}
+        areaCode={submissionAreaCode}
+        areaName={submissionAreaName}
+      />
+    )
+  }
 
   return (
     <>
@@ -351,7 +407,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
               <div>
                 <div className="font-extrabold text-sm">Portfolio Submitted & Locked Under Review</div>
                 <div className="text-xs font-medium text-amber-800 dark:text-amber-300 mt-0.5">
-                  Your portfolio snapshot is currently in <strong>{portfolio?.status || latestSubmission?.status || 'submitted'}</strong> state and is immutable. Personnel may view submitted records, but no changes can be made while under evaluation.
+                  Your portfolio snapshot is currently in <strong>{submissionStatus}</strong> state and is immutable. Personnel may view submitted records, but no changes can be made while under evaluation.
                 </div>
               </div>
             </div>
@@ -455,7 +511,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
                 'bg-slate-100 text-slate-700 border border-slate-300'
               }`}>
-                STATUS: {portfolio?.status || latestSubmission?.status || 'DRAFT'}
+                STATUS: {submissionStatus}
               </span>
               <span className="text-xs font-bold text-[#245F42] hidden md:inline">
                 {evaluationPeriod ? `${evaluationPeriod.period_name} • ${evaluationPeriod.academic_year_label} · ${evaluationPeriod.semester_label}` : 'No evaluation period open'}
@@ -502,7 +558,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 <button
                   type="button"
                   onClick={handleSubmitPortfolio}
-                  disabled={isSubmitting || Boolean(periodUnavailableReason) || eligibilityBlocked}
+                  disabled={submissionActionGate.disabled}
                   className={`px-4 py-1.5 rounded-xl disabled:opacity-50 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer ${
                     isReturnedForRevision
                       ? 'bg-emerald-600 hover:bg-emerald-700 ring-2 ring-emerald-400/50'
@@ -592,7 +648,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 activeStatus === 'returned_for_revision' || activeStatus === 'returned_to_personnel' ? 'text-rose-700' :
                 'text-slate-800'
               }`}>
-                {portfolio?.status || latestSubmission?.status || 'DRAFT'}
+                {submissionStatus}
               </div>
               <div className={`text-[10px] font-medium ${
                 isCurrentlyLocked ? 'text-amber-700 font-semibold' : 'text-slate-500'
@@ -666,11 +722,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
         {/* ================= 3. WORKSPACE CATEGORY TABS ================= */}
         <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-3 scrollbar-none">
-          {(workspaceConfig?.areas || [
-            { area_code: 'A', name: 'Area A: Professional Development' },
-            { area_code: 'B', name: 'Area B: Productivity' },
-            { area_code: 'C', name: 'Area C: Service & Leadership' }
-          ]).map((area) => {
+          {portfolioAreas.map((area) => {
             const isSelected = activeArea === area.area_code
             const itemCount = area.area_code === 'A'
               ? (portfolio?.area_a_items?.length || 0)
@@ -691,7 +743,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 {area.area_code === 'B' && <BookOpen className="w-4 h-4 area-tab-icon" />}
                 {area.area_code === 'C' && <Heart className="w-4 h-4 area-tab-icon" />}
                 <span>{area.name}</span>
-                {area.entry_policy === 'personnel_entry_disallowed_read_only' ? (
+                {!isPersonnelAreaEntryAllowed(activeUser, area.area_code, area) ? (
                   <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-200 font-semibold">
                     Read-Only
                   </span>
@@ -708,7 +760,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         {/* ================= 4. ACTIVE TAB CONTENT WORKBENCH ================= */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-2xs space-y-5">
           {(() => {
-            const currentAreaConfig = (workspaceConfig?.areas || []).find(a => a.area_code === activeArea) || {
+            const currentAreaConfig = portfolioAreas.find(a => a.area_code === activeArea) || {
               area_code: activeArea,
               name: activeArea === 'A' ? 'Area A: Professional Development' : activeArea === 'B' ? 'Area B: Productivity & Creative Work' : 'Area C: Service & Leadership',
               description: activeArea === 'A' ? 'Educational degrees, certifications, memberships, and seminars.' : activeArea === 'B' ? 'Publications, journal articles, keynote lectures, and research grants.' : 'Committee leadership, faculty adviserships, and extension projects.',
@@ -716,7 +768,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
               entry_policy: 'personnel_entry_allowed'
             }
 
-            const isDisallowed = currentAreaConfig.entry_policy === 'personnel_entry_disallowed_read_only' || currentAreaConfig.is_personnel_entry_allowed === false
+            const isDisallowed = !isPersonnelAreaEntryAllowed(activeUser, activeArea, currentAreaConfig)
 
             return (
               <>
@@ -934,7 +986,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                       <button
                         type="button"
                         onClick={() => setViewingAccomplishment(item)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:border-emerald-600 hover:bg-emerald-50 text-slate-700 font-extrabold text-xs flex items-center gap-1 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
+                        className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-white hover:border-emerald-600 hover:bg-emerald-50 text-emerald-800 font-extrabold text-xs flex items-center gap-1 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-600/30"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>View</span>
@@ -974,8 +1026,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       </div>
 
       {/* Canonical Accomplishment Submission & Edit Modal */}
-      {isSubmissionModalOpen && (
-        isFacultyAcademic ? (
+      {isSubmissionModalOpen && isFacultyAcademic && (
           <FacultyAcademicSubmissionModal
             isOpen={isSubmissionModalOpen}
             onClose={() => { setIsSubmissionModalOpen(false); setEditingAccomplishment(null) }}
@@ -983,18 +1034,9 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             initialCategory={initialSubmissionCategory}
             editingItem={editingAccomplishment}
             currentUser={activeUser}
-            areaCode={editingAccomplishment?.category_area?.replace('area', '') || activeArea}
-            areaName={((workspaceConfig?.areas || []).find((area) => area.area_code === (editingAccomplishment?.category_area?.replace('area', '') || activeArea))?.name || '').replace(/^Area\s+[ABC]\s*:\s*/i, '')}
+            areaCode={submissionAreaCode}
+            areaName={submissionAreaName}
           />
-        ) : (
-          <PersonnelSubmissionModal
-            isOpen={isSubmissionModalOpen}
-            onClose={() => { setIsSubmissionModalOpen(false); setEditingAccomplishment(null) }}
-            onSubmitAccomplishment={handleSaveAccomplishment}
-            initialCategory={initialSubmissionCategory}
-            editingItem={editingAccomplishment}
-          />
-        )
       )}
 
       {/* Edit Basic Info Modal */}

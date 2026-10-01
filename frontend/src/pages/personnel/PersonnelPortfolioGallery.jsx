@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { derivePersonnelPortfolioState } from '../../utils/personnelPortfolioState'
 import {
   Folder,
   Calendar,
@@ -17,7 +18,8 @@ import {
   Filter,
   Layers,
   History,
-  BookOpen
+  BookOpen,
+  Award
 } from 'lucide-react'
 
 export default function PersonnelPortfolioGallery({
@@ -26,7 +28,8 @@ export default function PersonnelPortfolioGallery({
   submissionHistory = [],
   activeAcademicYear = 'AY 2026-2027',
   onOpenBooklet,
-  onOpenFeedback
+  onOpenFeedback,
+  onViewResult
 }) {
   const navigate = useNavigate()
   const [filterStatus, setFilterStatus] = useState('ALL') // 'ALL' | 'DRAFT' | 'SUBMITTED' | 'FINALIZED'
@@ -41,8 +44,8 @@ export default function PersonnelPortfolioGallery({
       (portfolio?.area_b_items?.length || 0) +
       (portfolio?.area_c_items?.length || 0)
 
-    const rawCurrentStatus = latestSubmission?.status || portfolio?.status || 'draft'
-    const normalizedCurrentStatus = rawCurrentStatus.toLowerCase()
+    const normalizedCurrentStatus = derivePersonnelPortfolioState(portfolio, latestSubmission).status
+    const rawCurrentStatus = normalizedCurrentStatus
 
     // Determine current AY
     const currentAY = latestSubmission?.academic_year || portfolio?.academic_year || activeAcademicYear
@@ -354,11 +357,12 @@ export default function PersonnelPortfolioGallery({
                       {isFinalized && (
                         <button
                           type="button"
-                          onClick={() => onOpenBooklet && onOpenBooklet(card)}
-                          className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-                          title="Export PDF / Certificate"
+                          onClick={() => onViewResult && onViewResult(card)}
+                          className="px-3 py-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition cursor-pointer inline-flex items-center gap-1"
+                          title="View completed evaluation result"
                         >
-                          <Download className="w-3.5 h-3.5" />
+                          <Award className="w-3.5 h-3.5" />
+                          <span>View Evaluation Result</span>
                         </button>
                       )}
                     </>

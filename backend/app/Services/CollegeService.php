@@ -211,6 +211,34 @@ class CollegeService
     }
 
     /**
+     * Updates only the College lifecycle. Dependents intentionally remain untouched.
+     */
+    public function updateCollegeStatus(string $id, string $status): array
+    {
+        $status = strtolower(trim($status));
+        if (! in_array($status, ['active', 'inactive'], true)) {
+            throw new InvalidArgumentException('College status must be active or inactive.');
+        }
+
+        $existing = $this->db->table('colleges')->select('id, status')->where('id', $id)->get()->getRowArray();
+        if (! $existing) {
+            throw new InvalidArgumentException('College not found.');
+        }
+
+        if ($existing['status'] !== $status) {
+            $updated = $this->db->table('colleges')->where('id', $id)->update([
+                'status' => $status,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            if (! $updated) {
+                throw new RuntimeException('College lifecycle update failed.');
+            }
+        }
+
+        return $this->getCollege($id) ?? throw new RuntimeException('College could not be reloaded after lifecycle update.');
+    }
+
+    /**
      * Atomically creates a College, optional branding logo, and optional nested Academic Programs.
      */
     public function createCollege(array $data, ?UploadedFile $logoFile = null): array
@@ -420,6 +448,153 @@ class CollegeService
         ];
     }
 
+    /** Friendly names for tables that reference a College (used in delete-blocked messages). */
+    private const COLLEGE_REFERENCE_LABELS = [
+        'academic_programs' => 'Academic programs',
+        'administrative_units' => 'Departments / administrative units',
+        'dean_assignments' => 'Dean assignments (including history)',
+        'personnel_college_affiliations' => 'Personnel college affiliations',
+        'events' => 'Events',
+        'organizations' => 'Student organizations',
+        'award_evaluation_summary_reports' => 'Award evaluation reports',
+        'dean_student_nominations' => 'Dean student nominations',
+        'award_candidate_manual_decisions' => 'Award candidate decisions',
+    ];
+
+    /**
+     * Updates a College's identity (name, code, description, badge color) and optionally replaces its logo.
+     * Programs, Dean assignment and lifecycle status are not touched here.
+     */
+    public function updateCollege(string $id, array $data, ?UploadedFile $logoFile = null): array
+    {
+        $existing = $this->db->table('colleges')->where('id', $id)->get()->getRowArray();
+        if (! $existing) {
+            throw new InvalidArgumentException('College not found.');
+        }
+
+        $name = array_key_exists('name', $data) ? trim((string) $data['name']) : (string) $existing['name'];
+        $code = array_key_exists('code', $data) ? strtoupper(trim((string) $data['code'])) : (string) $existing['code'];
+        $description = array_key_exists('description', $data) ? (trim((string) $data['description']) ?: null) : ($existing['description'] ?? null);
+        $badgeColor = array_key_exists('acronym_badge_color', $data) ? trim((string) $data['acronym_badge_color']) : ($existing['acronym_badge_color'] ?? null);
+
+        if ($name === '') throw new InvalidArgumentException('College name is required.');
+        if (mb_strlen($name) > 150) throw new InvalidArgumentException('College name must not exceed 150 characters.');
+        if ($code === '') throw new InvalidArgumentException('College code / acronym is required.');
+        if (mb_strlen($code) > 20) throw new InvalidArgumentException('College code must not exceed 20 characters.');
+        if ($this->db->table('colleges')->where('code', $code)->where('id !=', $id)->countAllResults() > 0) {
+            throw new InvalidArgumentException("College code '{$code}' already exists.");
+        }
+        if ($badgeColor !== null && $badgeColor !== '') {
+            if (! preg_match('/^#[0-9A-Fa-f]{6}$/', $badgeColor)) {
+                throw new InvalidArgumentException('Acronym badge color must be a valid 6-digit hex string (e.g. #16834A).');
+            }
+            $badgeColor = strtoupper($badgeColor);
+        } else {
+            $badgeColor = null;
+        }
+
+        $logoMetadata = null;
+        if ($logoFile !== null && $logoFile->isValid()) {
+            if ($logoFile->hasMoved()) throw new InvalidArgumentException('Uploaded logo file has already been processed.');
+            if ($logoFile->getSize() > self::MAX_LOGO_SIZE_BYTES) throw new InvalidArgumentException('Logo file size must not exceed 5 MB.');
+            $effectiveMime = $this->detectMimeType($logoFile->getTempName()) ?: $logoFile->getMimeType();
+            if (! array_key_exists($effectiveMime, self::ALLOWED_MIME_TYPES)) {
+                throw new InvalidArgumentException('Invalid image format. Allowed formats: JPEG, PNG, WebP.');
+            }
+            $logoMetadata = ['original_name' => pathinfo($logoFile->getClientName(), PATHINFO_BASENAME), 'mime_type' => $effectiveMime, 'extension' => self::ALLOWED_MIME_TYPES[$effectiveMime]];
+        }
+
+        $now = date('Y-m-d H:i:s.u');
+        $update = ['code' => $code, 'name' => $name, 'description' => $description, 'acronym_badge_color' => $badgeColor, 'updated_at' => $now];
+        $stagedLogoPath = null;
+        $previousLogoKey = $existing['logo_storage_key'] ?? null;
+
+        $this->db->transBegin();
+        try {
+            if ($logoMetadata !== null && $logoFile !== null) {
+                $storageSubdir = 'colleges/' . $id;
+                $targetDir = $this->storageRoot . '/' . $storageSubdir;
+                if (! is_dir($targetDir)) @mkdir($targetDir, 0755, true);
+                $filename = 'logo_' . $this->genUuid() . '.' . $logoMetadata['extension'];
+                $logoFile->move($targetDir, $filename);
+                $stagedLogoPath = $targetDir . '/' . $filename;
+                $update += ['logo_storage_key' => $storageSubdir . '/' . $filename, 'logo_original_name' => $logoMetadata['original_name'], 'logo_mime_type' => $logoMetadata['mime_type'], 'logo_updated_at' => $now];
+            }
+            $this->db->table('colleges')->where('id', $id)->update($update);
+            if ($this->db->transStatus() === false) throw new RuntimeException('Database transaction status failed during College update.');
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            if ($stagedLogoPath !== null && file_exists($stagedLogoPath)) @unlink($stagedLogoPath);
+            throw $e;
+        }
+
+        // Remove the replaced logo only after the new one is committed.
+        if ($stagedLogoPath !== null && $previousLogoKey) {
+            $oldPath = $this->storageRoot . '/' . $previousLogoKey;
+            if (is_file($oldPath)) @unlink($oldPath);
+        }
+
+        return $this->getCollege($id) ?? throw new RuntimeException('College could not be reloaded after update.');
+    }
+
+    /**
+     * Lists every record that still references a College. Scans all columns named like
+     * "*college_id*" in the live schema, so tables added by later migrations are covered too.
+     */
+    public function findCollegeReferences(string $id): array
+    {
+        $references = [];
+        foreach ($this->db->listTables() as $table) {
+            if ($table === 'colleges') continue;
+            foreach ($this->db->getFieldNames($table) as $field) {
+                if (! str_contains(strtolower($field), 'college_id')) continue;
+                $count = $this->db->table($table)->where($field, $id)->countAllResults();
+                if ($count > 0) {
+                    $references[] = ['table' => $table, 'column' => $field, 'label' => self::COLLEGE_REFERENCE_LABELS[$table] ?? str_replace('_', ' ', ucfirst($table)), 'count' => $count];
+                }
+            }
+        }
+        return $references;
+    }
+
+    /**
+     * Permanently deletes an archived College that nothing references. Colleges with programs,
+     * Dean history, affiliations or other linked records are never deleted; archive them instead.
+     */
+    public function deleteCollege(string $id): array
+    {
+        $college = $this->db->table('colleges')->where('id', $id)->get()->getRowArray();
+        if (! $college) {
+            throw new InvalidArgumentException('College not found.');
+        }
+        if (($college['status'] ?? '') !== 'inactive') {
+            throw new RuntimeException('COLLEGE_NOT_ARCHIVED: Archive this College before deleting it.');
+        }
+        $references = $this->findCollegeReferences($id);
+        if ($references !== []) {
+            throw new CollegeInUseException($references);
+        }
+
+        $this->db->transBegin();
+        try {
+            $this->db->table('colleges')->where('id', $id)->delete();
+            if ($this->db->transStatus() === false) throw new RuntimeException('Database transaction status failed during College deletion.');
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            throw $e;
+        }
+
+        if (! empty($college['logo_storage_key'])) {
+            $logoPath = $this->storageRoot . '/' . $college['logo_storage_key'];
+            if (is_file($logoPath)) @unlink($logoPath);
+            @rmdir(dirname($logoPath));
+        }
+
+        return ['id' => $college['id'], 'code' => $college['code'], 'name' => $college['name']];
+    }
+
     /**
      * Retrieves logo file path and mime for streaming.
      */
@@ -621,6 +796,9 @@ class CollegeService
         $college = $this->db->table('colleges')->where('id', $collegeId)->get()->getRowArray();
         if (! $college) {
             throw new InvalidArgumentException('College not found.');
+        }
+        if (($college['status'] ?? '') !== 'active') {
+            throw new InvalidArgumentException('Coordinator assignments cannot be changed for an archived College.');
         }
 
         $program = $this->db->table('academic_programs')->where('id', $programId)->get()->getRowArray();
@@ -924,9 +1102,12 @@ class CollegeService
      */
     public function updatePersonnelCoordinatorAssignments(string $collegeId, string $profileId, array $submittedProgramIds, ?string $actorProfileId = null): array
     {
-        $college = $this->db->table('colleges')->where('id', $collegeId)->get()->getRowArray();
+        $college = $this->db->table('colleges')->select('id, status')->where('id', $collegeId)->get()->getRowArray();
         if (! $college) {
             throw new InvalidArgumentException('College not found.');
+        }
+        if (($college['status'] ?? '') !== 'active') {
+            throw new InvalidArgumentException('Coordinator assignments cannot be changed for an archived College.');
         }
 
         $personnel = $this->db->table('profiles')->where('id', $profileId)->get()->getRowArray();

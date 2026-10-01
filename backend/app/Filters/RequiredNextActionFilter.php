@@ -4,6 +4,7 @@ namespace App\Filters;
 
 use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
+use App\Services\AuthorizationHeader;
 use App\Services\RestrictedSessionRoutePolicy;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
@@ -13,7 +14,11 @@ class RequiredNextActionFilter implements FilterInterface
 {
     protected RestrictedSessionRoutePolicy $routePolicy;
 
-    public function __construct(?RestrictedSessionRoutePolicy $routePolicy = null)
+    public function __construct(
+        ?RestrictedSessionRoutePolicy $routePolicy = null,
+        private ?AuthenticatedActorService $actorService = null,
+        private ?\CodeIgniter\Database\BaseConnection $database = null
+    )
     {
         $this->routePolicy = $routePolicy ?? new RestrictedSessionRoutePolicy();
     }
@@ -30,13 +35,13 @@ class RequiredNextActionFilter implements FilterInterface
         }
 
         // 2. Check for Bearer token (Unauthenticated public requests proceed to their respective controllers)
-        $authorization = $request->getHeaderLine('Authorization');
+        $authorization = AuthorizationHeader::fromRequest($request);
         if ($authorization === '' || ! preg_match('/^Bearer\s+(.+)$/i', $authorization)) {
             return $request;
         }
 
         // 3. Resolve authenticated actor
-        $actorService = new AuthenticatedActorService();
+        $actorService = $this->actorService ??= new AuthenticatedActorService();
         $actor = $actorService->resolveActor($authorization);
 
         if ($actor === null) {
@@ -52,7 +57,7 @@ class RequiredNextActionFilter implements FilterInterface
         }
 
         // 4. Resolve canonical lifecycle and credential integrity
-        $db = db_connect();
+        $db = $this->database ?? db_connect();
         $credRow = $db->table('local_auth_credentials')
             ->where('profile_id', $profileId)
             ->get()

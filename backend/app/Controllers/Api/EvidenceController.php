@@ -176,12 +176,15 @@ class EvidenceController extends Controller
         }
 
         $db = db_connect();
-        $evidence = $db->table('personnel_accomplishment_evidence pae')
+        $builder = $db->table('personnel_accomplishment_evidence pae')
             ->select(['pae.*', 'pa.personnel_profile_id'])
-            ->join('personnel_accomplishments pa', 'pa.id = pae.accomplishment_id', 'left')
-            ->where('pae.evidence_id', $evidenceId)
-            ->orWhere('pae.id', $evidenceId)
-            ->get()->getRowArray();
+            ->join('personnel_accomplishments pa', 'pa.id = pae.accomplishment_id', 'left');
+        if ($db->fieldExists('evidence_id', 'personnel_accomplishment_evidence')) {
+            $builder->groupStart()->where('pae.evidence_id', $evidenceId)->orWhere('pae.id', $evidenceId)->groupEnd();
+        } else {
+            $builder->where('pae.id', $evidenceId);
+        }
+        $evidence = $builder->get()->getRowArray();
 
         if ($evidence === null) {
             return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Personnel evidence record not found.']], 404);

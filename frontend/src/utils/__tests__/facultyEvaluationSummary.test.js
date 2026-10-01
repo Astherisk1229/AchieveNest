@@ -29,7 +29,14 @@ describe('official Faculty evaluation summary mapping', () => {
       category_metadata: row.subcategory ? { subcategory_code: row.subcategory } : {},
       accepted_points: row.weight
     }))
-    const summary = buildFacultyEvaluationSummary({ evaluation: { id: 'version-7', evaluation_status: 'completed' }, items })
+    const summary = buildFacultyEvaluationSummary({
+      evaluation: { id: 'version-7', evaluation_status: 'completed' },
+      items,
+      criteriaSnapshot: {
+        version: { total_max_points: 160, passing_score: 120 },
+        area_caps: { A: 70, B: 50, C: 40 }
+      }
+    })
     expect(summary.document_status).toBe('final')
     expect(summary.portfolio_version_id).toBe('version-7')
     expect(summary.areas.A.points_earned).toBe(70)
@@ -41,6 +48,6 @@ describe('official Faculty evaluation summary mapping', () => {
   })
 
   it('keeps an unconfirmed evaluation in draft state', () => {
-    expect(buildFacultyEvaluationSummary({ evaluation: { status: 'in_evaluation', version_id: 'v2' } })).toMatchObject({ document_status: 'draft', portfolio_version_id: 'v2' })
+    expect(buildFacultyEvaluationSummary({ evaluation: { status: 'in_evaluation', version_id: 'v2' } })).toMatchObject({ document_status: 'draft', portfolio_version_id: 'v2', maximum_score: null, passing_score: null })
   })
 })

@@ -503,7 +503,7 @@ export default function OnboardPersonnelModal({
               </span>
             </div>
 
-            {/* Personnel Group & Side */}
+            {/* Personnel group and assignment type */}
             <div className="grid sm:grid-cols-2 gap-4 pt-1 border-t border-emerald-200/40 dark:border-emerald-800/40">
               <fieldset className="space-y-1.5">
                 <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Personnel Group</legend>
@@ -520,15 +520,15 @@ export default function OnboardPersonnelModal({
               </fieldset>
 
               <fieldset className="space-y-1.5">
-                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Organizational Side</legend>
+                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Assignment Type</legend>
                 <div className="flex gap-3">
                   <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="organizationalSide" checked={form.organizationalSide === 'academic'} onChange={() => setOrganizationalSide('academic')} />
-                    <span>Academic</span>
+                    <span>College</span>
                   </label>
                   <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="organizationalSide" checked={form.organizationalSide === 'non_academic'} onChange={() => setOrganizationalSide('non_academic')} />
-                    <span>Non-Academic</span>
+                    <span>Office / Unit</span>
                   </label>
                 </div>
               </fieldset>

@@ -44,9 +44,8 @@ export const evaluationScaleAssignmentService = {
    */
   resolveScaleFromContextSync(context = {}) {
     const group = (context.personnel_group || '').toLowerCase().trim()
-    const side = (context.organizational_side || '').toLowerCase().trim()
 
-    if (group === 'faculty' && side === 'academic') {
+    if (group === 'faculty') {
       return {
         scale_code: EVALUATION_SCALE_CODES.ADMINISTRATORS,
         scale_title: 'Rating Sheet for Administrators & Academic Personnel',
@@ -56,17 +55,7 @@ export const evaluationScaleAssignmentService = {
       }
     }
 
-    if (group === 'non_teaching_faculty' && side === 'academic') {
-      return {
-        scale_code: EVALUATION_SCALE_CODES.ADMINISTRATORS,
-        scale_title: 'Rating Sheet for Administrators & Academic Personnel',
-        rule_version: EVALUATION_RULE_VERSION,
-        assignment_status: 'assigned',
-        reason_code: 'scale_assigned_successfully',
-      }
-    }
-
-    if (group === 'non_teaching_faculty' && side === 'non_academic') {
+    if (group === 'non_teaching_faculty') {
       return {
         scale_code: EVALUATION_SCALE_CODES.NON_TEACHING,
         scale_title: 'Non-Teaching Personnel Rating Sheet for Ranking (Appendix N)',

@@ -26,21 +26,43 @@ class AnnualReviewWorkbookParser
             if(trim($cells['A6']??'')!=='Name:' || trim($cells['F7']??'')!=='SY:') throw new RuntimeException('UNSUPPORTED_TEMPLATE: Name or school-year labels do not match the approved template.');
             $name=trim($cells['B6']??''); if($name==='') throw new RuntimeException('MISSING_PERSONNEL_NAME: Workbook personnel name is missing.');
             preg_match_all('/\b\d{4}\s*-\s*\d{4}\b/',(string)($cells['G7']??''),$yearMatches); $context=array_map(fn($v)=>preg_replace('/\s+/','',$v),$yearMatches[0]??[]);
-            if(count($context)!==2 || $context!==array_values($requiredYears)) throw new RuntimeException('UNSUPPORTED_TEMPLATE: Workbook does not contain the two required consecutive school years.');
+            $required=array_values($requiredYears);
+            if(count($context)!==2 || $context!==$required) throw new RuntimeException('SCHOOL_YEAR_MISMATCH: The SY field (G7) reads "'.trim((string)($cells['G7']??'')).'", but this ranking cycle requires '.$required[0].' and '.$required[1].'.');
             $labels=[trim($cells['A39']??''),trim($cells['A40']??'')];
-            foreach($requiredYears as $i=>$year) if(!str_contains($labels[$i]??'',$year) || stripos($labels[$i],'Performance Rating')===false) throw new RuntimeException('UNSUPPORTED_TEMPLATE: Performance Rating labels do not match the approved template.');
+            foreach($labels as $label) if(stripos($label,'Performance Rating')===false) throw new RuntimeException('UNSUPPORTED_TEMPLATE: Performance Rating labels do not match the approved template.');
+            $ratingYears=array_map(function($label){ preg_match('/\b\d{4}\s*-\s*\d{4}\b/',$label,$m); return isset($m[0])?preg_replace('/\s+/','',$m[0]):'no school year'; },$labels);
+            if($ratingYears!==$required) throw new RuntimeException('SCHOOL_YEAR_MISMATCH: The Performance Rating rows (A39–A40) are for '.$ratingYears[0].' and '.$ratingYears[1].', but this ranking cycle requires '.$required[0].' and '.$required[1].'. The SY field (G7) already lists the required years, so update the rating rows and their scores to match.');
+            // Workbook header fields, located by label: "Present Rank" = current rank,
+            // "Applied Status" = rank applied for this cycle (not a workflow status).
+            $presentRank=$this->labelValue($cells,'present rank'); $appliedStatus=$this->labelValue($cells,'applied status');
             $ratings=[]; foreach(['C39','C40'] as $ref){$raw=trim($cells[$ref]??'');$ratings[]=$raw===''?null:$this->normalizeRating($raw);}
             $status=$this->twoReviewStatus($ratings[0],$ratings[1]);
             $reason=$status==='pending'?'Second required annual review is missing.':($status==='not_passed'?'Two annual reviews are not both passing.':null);
-            return ['template_identifier'=>'SUMMARY_1ST_2ND_V1','detected_personnel_name'=>$name,'review_1_school_year'=>$requiredYears[0],'review_1_rating'=>$ratings[0],'review_2_school_year'=>$requiredYears[1],'review_2_rating'=>$ratings[1],'two_review_status'=>$status,'two_review_reason'=>$reason,'validation_status'=>'valid','validation_issues'=>[]];
+            return ['template_identifier'=>'SUMMARY_1ST_2ND_V1','detected_personnel_name'=>$name,'review_1_school_year'=>$requiredYears[0],'review_1_rating'=>$ratings[0],'review_2_school_year'=>$requiredYears[1],'review_2_rating'=>$ratings[1],'two_review_status'=>$status,'two_review_reason'=>$reason,'validation_status'=>'valid','validation_issues'=>[],'present_rank'=>$presentRank,'applied_status'=>$appliedStatus];
         } finally { $zip->close(); }
     }
     public function normalizeName(string $name): string { $name=preg_replace('/\b(mr|mrs|ms|dr|prof)\.?\s+/i','',$name);$name=preg_replace('/,\s*[A-Z][A-Z., -]{1,20}$/i','',$name);return mb_strtolower(trim(preg_replace('/\s+/',' ',$name))); }
     public function normalizeRating(string $raw): string { $key=mb_strtolower(trim(preg_replace('/\s+/',' ',$raw))); if(!isset(self::RATINGS[$key])) throw new RuntimeException('INVALID_RATING: Unknown Performance Rating text.'); return strtolower(str_replace(' ','_',self::RATINGS[$key])); }
     public function twoReviewStatus(?string $first,?string $second):string{return($first&&$second)?(($this->passing($first)&&$this->passing($second))?'passed':'not_passed'):'pending';}
     private function passing(string $rating): bool { return in_array($rating,['outstanding','very_satisfactory','satisfactory'],true); }
-    private function xml(ZipArchive $zip,string $path): \SimpleXMLElement { $raw=$zip->getFromName($path); if($raw===false) throw new RuntimeException('MALFORMED_WORKBOOK: Required workbook part is unreadable.'); $xml=simplexml_load_string($raw); if(!$xml) throw new RuntimeException('MALFORMED_WORKBOOK: Workbook XML is invalid.'); return $xml; }
-    private function sharedStrings(ZipArchive $zip): array { if($zip->locateName('xl/sharedStrings.xml')===false)return[];$xml=$this->xml($zip,'xl/sharedStrings.xml');$xml->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$out=[];foreach($xml->xpath('//m:si')?:[] as $si){$si->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$parts=[];foreach($si->xpath('.//m:t')?:[] as $t)$parts[]=(string)$t;$out[]=implode('',$parts);}return$out; }
-    private function sheetPath(ZipArchive $zip,string $wanted): ?string { $wb=$this->xml($zip,'xl/workbook.xml');$wb->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$rels=$this->xml($zip,'xl/_rels/workbook.xml.rels');$rels->registerXPathNamespace('r','http://schemas.openxmlformats.org/package/2006/relationships');foreach($wb->xpath('//m:sheet')?:[] as $sheet){if((string)$sheet['name']!==$wanted)continue;$attrs=$sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships');$id=(string)$attrs['id'];foreach($rels->xpath('//r:Relationship')?:[] as $rel)if((string)$rel['Id']===$id){$target=ltrim((string)$rel['Target'],'/');return str_starts_with($target,'xl/')?$target:'xl/'.$target;}}return null; }
-    private function cells(\SimpleXMLElement $xml,array $shared): array { $xml->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$out=[];foreach($xml->xpath('//m:c')?:[] as $cell){$ref=(string)$cell['r'];$type=(string)$cell['t'];if($type==='s')$value=$shared[(int)$cell->v]??'';elseif($type==='inlineStr'){$parts=[];foreach($cell->xpath('.//m:t')?:[] as $t)$parts[]=(string)$t;$value=implode('',$parts);}else$value=(string)$cell->v;$out[$ref]=$value;}return$out; }
+    /** Value for a label cell: text after "Label:" in the same cell, else the first non-empty cell to its right on the same row. */
+    public function labelValue(array $cells,string $label): ?string
+    {
+        foreach($cells as $ref=>$value){
+            $text=trim(preg_replace('/\s+/',' ',(string)$value));
+            if(!preg_match('/^'.preg_quote($label,'/').'\s*:?\s*(.*)$/i',$text,$m)) continue;
+            if(trim($m[1])!=='') return trim($m[1]);
+            if(!preg_match('/^([A-Z]+)(\d+)$/',(string)$ref,$p)) continue;
+            $col=$this->columnIndex($p[1]);
+            for($c=$col+1;$c<=$col+8;$c++){ $next=trim((string)($cells[$this->columnLetters($c).$p[2]]??'')); if($next!=='') return str_ends_with($next,':')?null:$next; }
+            return null;
+        }
+        return null;
+    }
+    private function columnIndex(string $letters): int { $n=0; foreach(str_split($letters) as $ch) $n=$n*26+(ord($ch)-64); return $n; }
+    private function columnLetters(int $n): string { $s=''; while($n>0){ $m=($n-1)%26; $s=chr(65+$m).$s; $n=intdiv($n-1,26); } return $s; }
+    protected function xml(ZipArchive $zip,string $path): \SimpleXMLElement { $raw=$zip->getFromName($path); if($raw===false) throw new RuntimeException('MALFORMED_WORKBOOK: Required workbook part is unreadable.'); $xml=simplexml_load_string($raw); if(!$xml) throw new RuntimeException('MALFORMED_WORKBOOK: Workbook XML is invalid.'); return $xml; }
+    protected function sharedStrings(ZipArchive $zip): array { if($zip->locateName('xl/sharedStrings.xml')===false)return[];$xml=$this->xml($zip,'xl/sharedStrings.xml');$xml->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$out=[];foreach($xml->xpath('//m:si')?:[] as $si){$si->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$parts=[];foreach($si->xpath('.//m:t')?:[] as $t)$parts[]=(string)$t;$out[]=implode('',$parts);}return$out; }
+    protected function sheetPath(ZipArchive $zip,string $wanted): ?string { $wb=$this->xml($zip,'xl/workbook.xml');$wb->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$rels=$this->xml($zip,'xl/_rels/workbook.xml.rels');$rels->registerXPathNamespace('r','http://schemas.openxmlformats.org/package/2006/relationships');foreach($wb->xpath('//m:sheet')?:[] as $sheet){if((string)$sheet['name']!==$wanted)continue;$attrs=$sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships');$id=(string)$attrs['id'];foreach($rels->xpath('//r:Relationship')?:[] as $rel)if((string)$rel['Id']===$id){$target=ltrim((string)$rel['Target'],'/');return str_starts_with($target,'xl/')?$target:'xl/'.$target;}}return null; }
+    protected function cells(\SimpleXMLElement $xml,array $shared): array { $xml->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$out=[];foreach($xml->xpath('//m:c')?:[] as $cell){$ref=(string)$cell['r'];$type=(string)$cell['t'];if($type==='s')$value=$shared[(int)$cell->v]??'';elseif($type==='inlineStr'){$cell->registerXPathNamespace('m','http://schemas.openxmlformats.org/spreadsheetml/2006/main');$parts=[];foreach($cell->xpath('.//m:t')?:[] as $t)$parts[]=(string)$t;$value=implode('',$parts);}else$value=(string)$cell->v;$out[$ref]=$value;}return$out; }
 }

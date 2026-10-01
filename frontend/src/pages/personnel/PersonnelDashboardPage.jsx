@@ -30,11 +30,12 @@ import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import PersonnelDashboardController from '../../controllers/PersonnelDashboardController'
+import personnelAccomplishmentService from '../../services/personnelAccomplishmentService'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
 
-export default function PersonnelDashboardPage({ currentUser: propUser, onRoleChange }) {
+export default function PersonnelDashboardPage({ currentUser: propUser, onRoleChange, initialAccomplishments = null }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const activeTabParam = searchParams.get('tab')
@@ -42,7 +43,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const currentUser = propUser || authUser || getCurrentUser()
   const activeRoleContext = currentUser?.active_role_context || authRoleContext || 'personnel'
 
-  const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || 'EMP-2021-0842')
+  const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || currentUser?.id)
 
   // Modals state
   const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
@@ -65,8 +66,23 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
     if (onRoleChange) onRoleChange(newRole, updatedUser)
   }
 
-  // Accomplishments Mock / State
-  const [accomplishments, setAccomplishments] = useState(() => PersonnelDashboardController.getDefaultAccomplishments())
+  // Accomplishments loaded from the backend for the signed-in personnel
+  const [accomplishments, setAccomplishments] = useState(() => initialAccomplishments || [])
+  const [accomplishmentsLoading, setAccomplishmentsLoading] = useState(!initialAccomplishments)
+
+  const reloadAccomplishments = async () => {
+    setAccomplishmentsLoading(true)
+    try {
+      setAccomplishments(await PersonnelDashboardController.loadAccomplishments())
+    } finally {
+      setAccomplishmentsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!initialAccomplishments) reloadAccomplishments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSaveBasicInfo = (updatedData) => {
     setProfile(prev => ({
@@ -76,8 +92,22 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
     }))
   }
 
-  const handleAddNewAccomplishment = (newEntry) => {
-    setAccomplishments(prev => PersonnelDashboardController.addNewAccomplishment(prev, newEntry))
+  // Persists the entry (unless the modal already saved it), then refreshes from the server.
+  // Errors are re-thrown so the submission modal can show them.
+  const handleAddNewAccomplishment = async (newEntry, file = null, persistence = null) => {
+    if (!persistence?.alreadyPersisted) {
+      await PersonnelDashboardController.saveAccomplishment(newEntry, file)
+    }
+    await reloadAccomplishments()
+    return true
+  }
+
+  const handleViewProof = async (item) => {
+    try {
+      await personnelAccomplishmentService.downloadEvidenceBlob(item.evidence_id, item.attached_file_name || 'proof_document.pdf')
+    } catch (err) {
+      alert('Failed to load proof file: ' + (err?.message || 'File not found'))
+    }
   }
 
   const filteredAccomplishments = PersonnelDashboardController.filterAccomplishments(accomplishments, activeFilter)
@@ -113,7 +143,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                     <h1 className="text-2xl font-extrabold text-[#17663B] dark:text-emerald-300 tracking-tight">Personnel Professional Portfolio</h1>
                   </div>
                   <p className="text-xs text-[#245F42] dark:text-slate-300 font-medium mt-0.5">
-                    {profile.full_name} • {profile.employee_id} • {formatPersonnelPlacement(profile)}
+                    {[profile.full_name, profile.employee_id || 'Employee ID not set', formatPersonnelPlacement(profile)].filter(Boolean).join(' • ')}
                   </p>
                 </div>
               </div>
@@ -138,7 +168,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
 
                 <div className="translate-x-2.5 flex items-center gap-2 z-10 relative">
                   <span className="text-xl sm:text-2xl font-extrabold text-[#159552] dark:text-emerald-400 font-heading leading-none">
-                    {accomplishments.filter(a => a.proof_file || a.attached_file_name).length}
+                    {accomplishments.filter(a => a.evidence_id).length}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#17663B] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800 text-[13px] font-bold">
                     Proof PDFs
@@ -284,9 +314,15 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
 
             {/* Timeline Card Items */}
             <div className="space-y-3">
-              {filteredAccomplishments.length === 0 ? (
+              {accomplishmentsLoading ? (
                 <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500 text-xs">
-                  No accomplishment entries found under "{activeFilter}" category filter.
+                  Loading your accomplishments...
+                </div>
+              ) : filteredAccomplishments.length === 0 ? (
+                <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center text-slate-400 dark:text-slate-500 text-xs">
+                  {accomplishments.length === 0
+                    ? 'No accomplishments logged yet. Use "Log Accomplishment" to add your first record.'
+                    : `No accomplishment entries found under "${activeFilter}" category filter.`}
                 </div>
               ) : (
                 filteredAccomplishments.map((item) => {
@@ -323,14 +359,16 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                       </div>
 
                       <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                        {item.evidence_id && (
                         <button
                           type="button"
-                          onClick={() => alert(`Viewing attached proof: ${item.attached_file_name}`)}
+                          onClick={() => handleViewProof(item)}
                           className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
                         >
                           <FileCheck2 className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" />
                           <span>Proof</span>
                         </button>
+                        )}
                         <span className="text-xs font-semibold px-3.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800 shrink-0">
                           {item.category}
                         </span>

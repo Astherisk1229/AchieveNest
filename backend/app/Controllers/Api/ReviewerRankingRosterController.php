@@ -23,9 +23,9 @@ class ReviewerRankingRosterController extends Controller
     {
         $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
         if (! $actor) return $this->failUnauthorized('UNAUTHORIZED');
-        try { return $this->respond(['data'=>$this->roster->list($actor, $cycleId, $trackKey)]); }
+        try { return $this->respond(['data'=>$this->roster->list($actor, $cycleId, $trackKey, true)]); }
         catch (InvalidArgumentException $error) { return $this->fail(['error'=>['code'=>strtok($error->getMessage(), ':'), 'message'=>$error->getMessage()]], 404); }
         catch (RuntimeException $error) { $status = str_starts_with($error->getMessage(), 'FORBIDDEN') ? 403 : 409; return $this->fail(['error'=>['code'=>strtok($error->getMessage(), ':'), 'message'=>$error->getMessage()]], $status); }
-        catch (Throwable) { return $this->failServerError('Unexpected error retrieving the ranking-track roster.'); }
+        catch (Throwable $error) { log_message('error', '[ReviewerRankingRosterController] ' . get_class($error) . ': ' . $error->getMessage() . ' @ ' . $error->getFile() . ':' . $error->getLine()); return $this->failServerError('Unexpected error retrieving the ranking-track roster.'); }
     }
 }

@@ -167,6 +167,15 @@ export async function assignOrganizationModerator(organizationId, personnelProfi
   return response?.data?.organization || response?.organization || response?.data || response
 }
 
+export async function fetchOrganizationModeratorCandidates(organizationId) {
+  const response = await apiClient.get(
+    `/osad/organizations/${organizationId}/moderator-candidates`,
+    { headers: getAuthHeaders() }
+  )
+
+  return response?.data?.personnel || response?.personnel || []
+}
+
 /**
  * Returns the URL to view/fetch an organization's logo.
  * @param {string} id
@@ -175,5 +184,4 @@ export function getOrganizationLogoUrl(id) {
   const baseURL = apiClient.defaults?.baseURL || '/api/v1'
   return `${baseURL}/osad/organizations/${id}/logo`
 }
-
 

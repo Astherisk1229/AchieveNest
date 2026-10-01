@@ -213,6 +213,8 @@ export function HRPersonnelDirectoryPage(props) {
 
       {/* Page Header */}
       <PersonnelDirectoryHeader
+        summary={props.directorySummary || hrHook.directorySummary}
+        summaryLoading={!props.personnelList && hrHook.isLoading}
         totalCount={personnelList.length}
         pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}

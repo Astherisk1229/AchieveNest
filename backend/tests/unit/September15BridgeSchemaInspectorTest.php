@@ -7,8 +7,15 @@ use CodeIgniter\Test\CIUnitTestCase;
 use Config\Database;
 use Phase17Canonical\Database\Migrations\September15BridgeSchemaInspector;
 
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class September15BridgeSchemaInspectorTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     public function testFreshInspectionObservesSequentialDdlWithoutMetadataSnapshots(): void
     {
         Factories::reset();

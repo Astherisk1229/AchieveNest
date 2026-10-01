@@ -319,6 +319,18 @@ export default class OcrScanController {
       issuer = degreeEntities.institution.value
     }
 
+    // Explicitly labeled certificate fields ("Course/Degree: …") are more reliable
+    // than free-text heuristics, so they win when present.
+    const labeled = category?.startsWith('A.1') ? OcrScanController.extractLabeledDegreeFields(rawLines) : null
+    if (labeled?.title.value) {
+      title = labeled.title.value
+      const labeledLevel = OcrScanController.resolveDegreeLevel(title)
+      if (labeledLevel.value) degreeLevel = labeledLevel.value
+    }
+    if (labeled?.issuer.value) issuer = labeled.issuer.value
+    const labeledDate = labeled?.date.value ? OcrScanController.extractDateFromText(labeled.date.value) : ''
+    const academicPeriod = labeled?.academicPeriod.value || ''
+
     let pubType = ''
     if (uppercaseText.includes('PUBLISHED BOOK') || uppercaseText.includes('MONOGRAPH') || uppercaseText.includes('ISBN')) {
       pubType = 'Book'
@@ -374,7 +386,8 @@ export default class OcrScanController {
     return {
       title: title || '',
       issuer: issuer || '',
-      date: extractedDate || '',
+      date: labeledDate || extractedDate || '',
+      academicPeriod,
       academicYear: academicYear || '',
       scopeLevel: scopeLevel || '',
       specificRole: specificRole || '',
@@ -387,10 +400,11 @@ export default class OcrScanController {
       subType: subType || '',
       additionalDetails: title ? `Extracted via AchieveNest OCR Engine on ${new Date().toLocaleDateString()}` : '',
       fieldMetadata: degreeEntities ? {
-        title: degreeEntities.degreeTitle,
-        issuer: degreeEntities.institution,
+        title: labeled?.title.value ? labeled.title : degreeEntities.degreeTitle,
+        issuer: labeled?.issuer.value ? labeled.issuer : degreeEntities.institution,
         degreeLevel: degreeEntities.degreeLevel,
-        date: degreeEntities.date,
+        date: labeledDate ? { ...labeled.date, value: labeledDate } : degreeEntities.date,
+        academicPeriod: labeled?.academicPeriod || { value: '', confidence: 0, source: 'not_found', evidenceText: '' },
         unitsCompleted: { value: unitsCompleted, confidence: unitsCompleted ? 90 : 0, source: unitsCompleted ? 'ocr' : 'not_found', evidenceText: unitsMatch?.[0] || '' }
       } : {}
     }
@@ -418,11 +432,45 @@ export default class OcrScanController {
     }
   }
 
+  /**
+   * Reads "Label: value" pairs (or a label line followed by its value) printed on
+   * degree certificates. Date labels other than an explicit conferral date are
+   * flagged `inferred` so the form can ask faculty to verify them.
+   */
+  static extractLabeledValue(rawLines = [], labels = []) {
+    const escape = (value) => value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+    for (const label of labels) {
+      const pattern = new RegExp(`^\\s*${escape(label).replace(/\\\//g, '\\s*/\\s*')}\\s*[:\\-–]\\s*(.*)$`, 'i')
+      for (let i = 0; i < rawLines.length; i++) {
+        const match = String(rawLines[i]).match(pattern)
+        if (!match) continue
+        const value = match[1].trim() || String(rawLines[i + 1] || '').trim()
+        if (value) return { value, label }
+      }
+    }
+    return { value: '', label: '' }
+  }
+
+  static extractLabeledDegreeFields(rawLines = []) {
+    const field = (found, confidence, extra = {}) => ({ value: found.value, confidence: found.value ? confidence : 0, source: found.value ? 'ocr' : 'not_found', evidenceText: found.value, label: found.label, ...extra })
+    const title = OcrScanController.extractLabeledValue(rawLines, ['Course/Degree', 'Degree Title', 'Degree', 'Course', 'Program'])
+    const issuer = OcrScanController.extractLabeledValue(rawLines, ['School/University', 'Institution', 'University', 'School', 'College'])
+    const conferred = OcrScanController.extractLabeledValue(rawLines, ['Date Conferred', 'Date of Conferment', 'Date of Graduation'])
+    const inferred = conferred.value ? conferred : OcrScanController.extractLabeledValue(rawLines, ['Date of Certification', 'Date Issued', 'Date of Issue', 'Date'])
+    const period = OcrScanController.extractLabeledValue(rawLines, ['Academic Period', 'Period of Study', 'Inclusive Years', 'Inclusive Dates'])
+    return {
+      title: field(title, 97),
+      issuer: field(issuer, 95),
+      date: field(inferred, conferred.value ? 96 : 60, { inferred: Boolean(inferred.value && !conferred.value) }),
+      academicPeriod: field({ ...period, value: period.value.replace(/\s*[–—-]\s*/g, '–') }, 90)
+    }
+  }
+
   static resolveDegreeLevel(text = '') {
     const normalized = text.toLowerCase().replace(/[^a-z]+/g, ' ').trim()
     const aliases = [
-      { value: 'Ph.D. Degree Holder', patterns: ['doctor of philosophy', 'phd', 'ph d', 'doctorate'], confidence: 98 },
-      { value: "Master's Degree Holder", patterns: ['master of science', 'master of arts', 'master in', 'mba', 'm s', 'm a'], confidence: 97 }
+      { value: 'Ph.D. Degree Holder', patterns: ['doctor of philosophy', 'phd', 'ph d', 'doctorate', 'doctor of'], confidence: 98 },
+      { value: "Master's Degree Holder", patterns: ['master of', 'master in', 'masters', 'mba', 'm s', 'm a'], confidence: 97 }
     ]
     for (const option of aliases) {
       const match = option.patterns.find(alias => normalized.includes(alias))

@@ -23,13 +23,14 @@ function getAuthHeaders(contentType = null) {
  * Fetches all colleges with optional status filter.
  * @param {Object} filters { status }
  */
-export async function fetchColleges(filters = {}) {
+export async function fetchColleges(filters = {}, options = {}) {
   const params = {}
   if (filters.status && filters.status !== 'all') params.status = filters.status
 
   const response = await apiClient.get('/osad/colleges', {
     params,
-    headers: getAuthHeaders()
+    headers: getAuthHeaders(),
+    signal: options.signal
   })
 
   return response?.data?.colleges || response?.colleges || []
@@ -63,13 +64,43 @@ export async function createCollege(payload) {
   return response?.data || response
 }
 
+/** Archives or reactivates a College while preserving every dependent record. */
+export async function updateCollegeStatus(id, status) {
+  const response = await apiClient.patch(
+    `/osad/colleges/${id}/status`,
+    { status },
+    { headers: getAuthHeaders('application/json') }
+  )
+  return response?.data || response
+}
+
+/** Edits College identity (name, code, description, badge color) and optionally replaces the logo (FormData). */
+export async function updateCollege(id, payload) {
+  const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData
+  const response = await apiClient.post(`/osad/colleges/${id}/update`, payload, {
+    headers: getAuthHeaders(isFormData ? null : 'application/json')
+  })
+  return response?.data?.college || response?.college || null
+}
+
+/**
+ * Permanently deletes an archived College that no other record references.
+ * A 409 COLLEGE_IN_USE error carries `references` listing what still links to it.
+ */
+export async function deleteCollege(id) {
+  const response = await apiClient.delete(`/osad/colleges/${id}`, {
+    headers: getAuthHeaders('application/json')
+  })
+  return response?.data || response
+}
+
 /**
  * Returns the controlled streaming URL for a College logo.
  * @param {string} id
  */
 export function getCollegeLogoUrl(id) {
   if (!id) return null
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
+  const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
   return `${baseURL.replace(/\/$/, '')}/osad/colleges/${id}/logo`
 }
 
@@ -77,13 +108,14 @@ export function getCollegeLogoUrl(id) {
  * Fetches academic programs optionally filtered by College ID.
  * @param {Object} filters { college_id }
  */
-export async function fetchAcademicPrograms(filters = {}) {
+export async function fetchAcademicPrograms(filters = {}, options = {}) {
   const params = {}
   if (filters.college_id && filters.college_id !== 'all') params.college_id = filters.college_id
 
   const response = await apiClient.get('/osad/academic-programs', {
     params,
-    headers: getAuthHeaders()
+    headers: getAuthHeaders(),
+    signal: options.signal
   })
 
   return response?.data?.programs || response?.programs || []
@@ -183,4 +215,3 @@ export async function reassignProgramCoordinator(collegeId, programId, newCoordi
 
   return response?.data || response
 }
-

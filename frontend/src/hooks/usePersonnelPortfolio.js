@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import PersonnelPortfolioController from '../controllers/PersonnelPortfolioController.js'
 import personnelAccomplishmentService from '../services/personnelAccomplishmentService.js'
 import personnelPortfolioService from '../services/personnelPortfolioService.js'
+import { derivePersonnelPortfolioState, normalizeLatestPersonnelSubmission } from '../utils/personnelPortfolioState.js'
 
 /**
  * usePersonnelPortfolio.js
@@ -49,11 +50,7 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
         personnelPortfolioService.getSubmissionHistory().catch(() => null)
       ])
 
-      const submissionPayload = subRes?.data || null
-      const submissionHeader = submissionPayload?.submission || (submissionPayload?.status ? submissionPayload : null)
-      const subData = submissionHeader
-        ? { ...submissionHeader, items: Array.isArray(submissionPayload?.items) ? submissionPayload.items : (submissionHeader.items || []) }
-        : null
+      const subData = normalizeLatestPersonnelSubmission(subRes)
       setLatestSubmission(subData)
 
       const historyData = histRes?.data?.versions || []
@@ -189,11 +186,8 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
     }
   }, [portfolio, refreshPortfolio])
 
-  const isLocked = Boolean(
-    latestSubmission && ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed'].includes((latestSubmission.status || '').toLowerCase())
-  ) || Boolean(
-    portfolio && ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed'].includes((portfolio.status || '').toLowerCase())
-  )
+  const portfolioState = derivePersonnelPortfolioState(portfolio, latestSubmission)
+  const isLocked = portfolioState.isLocked
 
   const returnFeedback = latestSubmission?.return_feedback || (
     latestSubmission?.return_reason ? {
@@ -224,7 +218,7 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
     versionNumber,
     returnFeedback,
     isLocked,
-    submissionStatus: latestSubmission?.status || portfolio?.status || 'draft',
+    submissionStatus: portfolioState.status,
     loading,
     error,
     addItem,

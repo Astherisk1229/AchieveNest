@@ -31,15 +31,15 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
-    it('routes Faculty + Non-Academic to HR', () => {
+    it('routes Faculty to the Dean regardless of legacy side', () => {
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'faculty',
         organizational_side: 'non_academic'
       })
 
       expect(route.status).toBe('resolved')
-      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
-      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE)
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE)
       expect(route.target_college_id).toBeNull()
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
@@ -122,15 +122,15 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED)
     })
 
-    it('returns status unresolved when organizational side is missing', () => {
+    it('resolves from personnel group when organizational side is missing', () => {
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'faculty',
         organizational_side: ''
       })
 
-      expect(route.status).toBe('unresolved')
-      expect(route.authorized_reviewer_role).toBeNull()
-      expect(route.reason_code).toBe(ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED)
+      expect(route.status).toBe('resolved')
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
     it('prohibits scale code alone from determining reviewer identity', () => {

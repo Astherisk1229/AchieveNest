@@ -70,7 +70,7 @@ final class CertificateTemplateGovernanceTest extends CIUnitTestCase
         self::assertStringContainsString("certificate-template-versions/(:segment)/validate", $routes);
         self::assertStringContainsString("certificate-template-versions/(:segment)/publish", $routes);
         self::assertStringNotContainsString("certificate-template-versions/(:segment)/revoke", $routes);
-        self::assertStringNotContainsString("certificates/(:segment)/reissue", $routes);
+        self::assertStringNotContainsString("certificate-template-versions/(:segment)/reissue", $routes);
     }
 
     public function testImplementationEnforcesAuthorizationImmutabilityConcurrencyAndAuditContracts(): void

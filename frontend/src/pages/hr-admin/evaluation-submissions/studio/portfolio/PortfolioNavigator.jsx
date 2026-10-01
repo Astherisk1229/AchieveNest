@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { FileSpreadsheet, Images, LayoutList, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { usesFacultyAcademicPortfolio } from '../../../../../utils/personnelPortfolioFormat'
+import NtfPortfolioDocument from './NtfPortfolioDocument'
 
 export default function PortfolioNavigator({
   submission = {},
@@ -11,6 +13,7 @@ export default function PortfolioNavigator({
 }) {
   // Tab view: 'hr_form' (Default: Formal HR Word Document template) | 'attached_proofs' (Reverse chronological certificates) | 'list' (Compact list)
   const [tab, setTab] = useState('hr_form')
+  const isFaculty = usesFacultyAcademicPortfolio(submission)
 
   const areaAItems = evidenceItems.filter(i => i.categoryArea === 'areaA')
   const areaBItems = evidenceItems.filter(i => i.categoryArea === 'areaB')
@@ -81,6 +84,7 @@ export default function PortfolioNavigator({
 
       {/* TAB 1: FORMAL HR DOCUMENT FORM VIEW (Exact Match to Word Template) */}
       {tab === 'hr_form' && (
+        !isFaculty ? <NtfPortfolioDocument submission={submission} evidenceItems={evidenceItems} selectedEvidence={selectedEvidence} onSelectEvidence={onSelectEvidence}/> :
         <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-serif">
           {/* Formal Header */}
           <div className="text-center space-y-1 mb-6">
@@ -132,7 +136,7 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold ring-1 ring-inset ring-[#69A97C]/40'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
@@ -168,7 +172,7 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold ring-1 ring-inset ring-[#69A97C]/40'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
@@ -204,7 +208,7 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold ring-1 ring-inset ring-[#69A97C]/40'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
@@ -245,7 +249,7 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#176B43]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold ring-1 ring-inset ring-[#176B43]/40'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
@@ -281,7 +285,7 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold ring-1 ring-inset ring-[#69A97C]/40'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
@@ -322,7 +326,7 @@ export default function PortfolioNavigator({
                       onClick={() => onSelectEvidence(item)}
                       className={`cursor-pointer transition ${
                         isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
+                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold ring-1 ring-inset ring-[#69A97C]/40'
                           : 'hover:bg-slate-50 dark:hover:bg-slate-900'
                       }`}
                     >
@@ -365,7 +369,7 @@ export default function PortfolioNavigator({
                 onClick={() => onSelectEvidence(item)}
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-start justify-between gap-3 ${
                   isSelected
-                    ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 shadow-sm border-l-4'
+                    ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 shadow-sm ring-1 ring-inset ring-[#69A97C]/30'
                     : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
                 }`}
               >
@@ -407,25 +411,25 @@ export default function PortfolioNavigator({
       {tab === 'list' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area A: Professional Development</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">{isFaculty ? 'Area A: Professional Development' : 'Area A: Performance and Personal Indicators'}</h4>
             {areaAItems.map(item => (
               <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
             ))}
           </div>
 
           <div className="space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area B: Productivity &amp; Creative Work</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">{isFaculty ? 'Area B: Productivity & Creative Work' : 'Area B: Service and Leadership'}</h4>
             {areaBItems.map(item => (
               <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
             ))}
           </div>
 
-          <div className="space-y-2">
+          {isFaculty && <div className="space-y-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area C: Service &amp; Leadership</h4>
             {areaCItems.map(item => (
               <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
             ))}
-          </div>
+          </div>}
         </div>
       )}
     </div>
@@ -441,7 +445,7 @@ function EvidenceListRow({ item, isSelected, onSelect }) {
       onClick={onSelect}
       className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2 text-xs ${
         isSelected
-          ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 font-extrabold border-l-4'
+          ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 font-extrabold ring-1 ring-inset ring-[#69A97C]/30'
           : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
       }`}
     >

@@ -19,8 +19,15 @@ use CodeIgniter\Test\CIUnitTestCase;
  *
  * @group http-proof
  */
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class AwardScoringEngineHttpProofTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     private const BASE = 'http://127.0.0.1:8080/api/v1';
     private const LEADERSHIP_AWARD = '50000001-0000-0000-0000-000000000022';
     private const LEAD_CAMPUS_CRITERION = '50000002-0022-0000-0000-000000000002';

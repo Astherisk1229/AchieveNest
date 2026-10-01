@@ -560,7 +560,7 @@ class TargetProvisioningController extends Controller
         $rawSide  = $json['organizational_side'] ?? ($json['personnel_classification'] ?? null);
         
         if ($rawGroup === null) {
-            $rawGroup = ($rawSide === 'academic') ? 'faculty' : 'non_teaching_faculty';
+            return $this->respond(['error' => ['code' => 'PERSONNEL_GROUP_REQUIRED', 'message' => "personnel_group must be either 'faculty' or 'non_teaching_faculty'."]], 422);
         }
         if ($rawSide === null) {
             $rawSide = 'academic';

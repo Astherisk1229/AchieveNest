@@ -6,7 +6,8 @@ export default function StudioDecisionBar({
   totalCount = 0,
   isReadyForFinalize = false,
   onOpenReturnModal,
-  onOpenFinalizeModal
+  onOpenFinalizeModal,
+  finalizeLabel = 'Finalize Evaluation'
 }) {
   return (
     <div className="px-6 py-3 bg-white dark:bg-[#131e2e] border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 font-sans shrink-0">
@@ -18,24 +19,24 @@ export default function StudioDecisionBar({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
+        {onOpenReturnModal && <button
           type="button"
           onClick={onOpenReturnModal}
           className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Return for Revision</span>
-        </button>
+        </button>}
 
-        <button
+        {onOpenFinalizeModal && <button
           type="button"
           disabled={!isReadyForFinalize}
           onClick={onOpenFinalizeModal}
           className="px-5 py-2 rounded-xl bg-[#176B43] hover:bg-[#125334] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
         >
           <CheckCircle2 className="w-4 h-4" />
-          <span>Finalize Evaluation</span>
-        </button>
+          <span>{finalizeLabel}</span>
+        </button>}
       </div>
     </div>
   )

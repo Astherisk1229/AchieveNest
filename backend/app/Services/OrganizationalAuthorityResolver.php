@@ -31,13 +31,35 @@ class OrganizationalAuthorityResolver
         foreach ($departments as $department) if (! empty($department['college_id'])) $collegeIds[] = $department['college_id'];
         $collegeIds = array_values(array_unique(array_filter($collegeIds)));
         if (count($collegeIds) > 1) throw new RuntimeException('AUTHORITY_AMBIGUOUS_COLLEGE: Personnel resolves to multiple active Colleges.');
-        if (count($collegeIds) === 1) return $this->resolveDean($personnel, $collegeIds[0], $rankingTrack);
 
-        if (count($departments) === 1) {
-            return $this->resolveDepartmentHead($personnel, $departments[0]['department_id'], $rankingTrack);
+        // A sitting Dean cannot be reviewed by a Dean (including themself). The
+        // routing registry sends Dean evaluation to HR, so an active Dean
+        // assignment routes to HR before any College/Department resolution —
+        // regardless of which College the Dean is affiliated with, or whether
+        // a College affiliation exists at all.
+        if ($this->holdsActiveDeanAssignment((string) $personnel['id'])) {
+            return $this->resolveExplicitHrForSelfAuthority($personnel, $rankingTrack, 'Personnel holds an active Dean assignment; Dean evaluation routes to HR.');
         }
 
-        $explicitHrRoute = PersonnelReviewerRoutingRegistry::resolveReviewerRoute($this->routingContext($personnel));
+        // Personnel-evaluation policy is authoritative over organizational
+        // placement for Non-Teaching Faculty on either organizational side:
+        // the routing registry sends both NON_TEACHING_FACULTY_ACADEMIC and
+        // NON_TEACHING_FACULTY_NON_ACADEMIC to HR. A College or Department
+        // affiliation remains valid metadata, but it must not redirect their
+        // annual review or evaluation to a Dean or Department Head.
+        $explicitRoute = PersonnelReviewerRoutingRegistry::resolveReviewerRoute($this->routingContext($personnel));
+        if (strtolower((string) ($personnel['personnel_group'] ?? '')) === 'non_teaching_faculty'
+            && ($explicitRoute['status'] ?? '') === 'resolved'
+            && ($explicitRoute['authorized_reviewer_role'] ?? '') === 'hr_staff') {
+            return $this->resolveHr($personnel, $explicitRoute, $rankingTrack);
+        }
+
+        if (strtolower((string) ($personnel['personnel_group'] ?? '')) === 'faculty') {
+            if (count($collegeIds) === 1) return $this->resolveDean($personnel, $collegeIds[0], $rankingTrack);
+            throw new RuntimeException('AUTHORITY_MISSING_COLLEGE: Faculty must have one active College assignment so the responsible Dean can be resolved.');
+        }
+
+        $explicitHrRoute = $explicitRoute;
         if (($explicitHrRoute['status'] ?? '') === 'resolved' && ($explicitHrRoute['authorized_reviewer_role'] ?? '') === 'hr_staff') {
             return $this->resolveHr($personnel, $explicitHrRoute, $rankingTrack);
         }
@@ -47,7 +69,31 @@ class OrganizationalAuthorityResolver
 
     public function actorMayAct(array $authority, string $actorProfileId): bool
     {
-        return $actorProfileId !== '' && $actorProfileId !== ($authority['personnel_profile_id'] ?? '') && $actorProfileId === ($authority['authority_profile_id'] ?? '');
+        if ($actorProfileId === '' || $actorProfileId === ($authority['personnel_profile_id'] ?? '')) {
+            return false;
+        }
+        if ($actorProfileId === ($authority['authority_profile_id'] ?? '')) {
+            return true;
+        }
+        if (($authority['authority_type'] ?? '') === 'HR') {
+            return $this->db->table('profile_roles pr')
+                ->join('roles r', 'r.id=pr.role_id')
+                ->where('pr.profile_id', $actorProfileId)
+                // Same HR roles the reviewer-routing registry accepts for HR-routed reviews.
+                ->whereIn('r.role_key', ['hr_staff', 'hr_admin'])
+                ->where('pr.is_active', 1)
+                ->countAllResults() > 0;
+        }
+        return false;
+    }
+
+    public function holdsActiveDeanAssignment(string $personnelProfileId): bool
+    {
+        if ($personnelProfileId === '') return false;
+        return $this->db->table('dean_assignments')
+            ->where('personnel_profile_id', $personnelProfileId)
+            ->where('is_active', 1)
+            ->countAllResults() > 0;
     }
 
     /** Approved explicit HR handoff, used after organizational review or by a named HR-managed rule. */
@@ -76,7 +122,8 @@ class OrganizationalAuthorityResolver
 
     private function resolveExplicitHrForSelfAuthority(array $personnel, ?array $track, string $reason): array
     {
-        $route = PersonnelReviewerRoutingRegistry::resolveReviewerRoute($this->routingContext($personnel) + ['is_dean'=>true]);
+        // array_merge (not +) so is_dean=true overrides routingContext()'s default false.
+        $route = PersonnelReviewerRoutingRegistry::resolveReviewerRoute(array_merge($this->routingContext($personnel), ['is_dean'=>true]));
         if (($route['authorized_reviewer_role'] ?? '') !== 'hr_staff') throw new RuntimeException('AUTHORITY_SELF_REVIEW_BLOCKED: Self-review is prohibited and no approved HR-managed rule applies.');
         return $this->resolveHr($personnel, $route + ['routing_reason'=>$reason], $track);
     }
@@ -85,8 +132,9 @@ class OrganizationalAuthorityResolver
     {
         $rows = $this->db->table('profiles p')->select('p.id')->join('profile_roles pr', 'pr.profile_id=p.id')->join('roles r', 'r.id=pr.role_id')->where('p.status', 'active')->where('r.role_key', 'hr_staff')->where('pr.is_active', 1)->get()->getResultArray();
         $ids = array_values(array_unique(array_column($rows, 'id')));
-        if (count($ids) !== 1) throw new RuntimeException(count($ids) === 0 ? 'AUTHORITY_MISSING_HR: Explicit HR-managed routing applies, but no active HR authority exists.' : 'AUTHORITY_AMBIGUOUS_HR: Explicit HR-managed routing applies, but multiple active HR authorities exist.');
-        return $this->result('HR', $ids[0], $personnel['id'], 'institution', null, $route['routing_reason'] ?? 'Explicit approved HR-managed rule.', $route['authoritative_source'] ?? PersonnelReviewerRoutingRegistry::RULE_VERSION, $track);
+        if (count($ids) === 0) throw new RuntimeException('AUTHORITY_MISSING_HR: Explicit HR-managed routing applies, but no active HR authority exists.');
+        $hrId = in_array('d0000000-0000-0000-0001-000000000005', $ids, true) ? 'd0000000-0000-0000-0001-000000000005' : $ids[0];
+        return $this->result('HR', $hrId, $personnel['id'], 'institution', null, $route['routing_reason'] ?? 'Explicit approved HR-managed rule.', $route['authoritative_source'] ?? PersonnelReviewerRoutingRegistry::RULE_VERSION, $track);
     }
 
     private function routingContext(array $personnel): array

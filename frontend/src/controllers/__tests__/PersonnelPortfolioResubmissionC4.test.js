@@ -29,7 +29,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C4 Resubmission & Mult
           category: 'A.1 Degree/s',
           claimed_points: 30.0,
           proof_file_name: 'phd_diploma_certified_true_copy.pdf',
-          evidence_id: 'EV-001'
+          evidence_id: 'EV-001',
+          evidence: [{ id: 'EV-001', mime_type: 'application/pdf', status: 'active', previewable: true }]
         }
       ],
       area_b_items: [
@@ -39,7 +40,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C4 Resubmission & Mult
           category: 'B.1 Research Publication',
           claimed_points: 15.0,
           proof_file_name: 'scopus_paper_v2.pdf',
-          evidence_id: 'EV-002'
+          evidence_id: 'EV-002',
+          evidence: [{ id: 'EV-002', mime_type: 'application/pdf', status: 'active', previewable: true }]
         },
         {
           id: 'ACC-003',
@@ -47,7 +49,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C4 Resubmission & Mult
           category: 'B.2 Conference Keynote',
           claimed_points: 10.0,
           proof_file_name: 'keynote_invitation.pdf',
-          evidence_id: 'EV-003'
+          evidence_id: 'EV-003',
+          evidence: [{ id: 'EV-003', mime_type: 'application/pdf', status: 'active', previewable: true }]
         }
       ],
       area_c_items: [],

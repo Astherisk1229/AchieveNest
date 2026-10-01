@@ -8,32 +8,26 @@ use RuntimeException;
 class EvaluationScaleResolver
 {
     /**
-     * Resolves the canonical Evaluation Scale Code based on the Plan D classification pair.
+     * Resolves the canonical Evaluation Scale Code from the authoritative personnel group.
      *
      * @param string $personnelGroup 'faculty' | 'non_teaching_faculty'
      * @param string $organizationalSide 'academic' | 'non_academic'
      * @return string Canonical Scale Code ('ADMINISTRATORS_RANKING_SCALE' | 'NON_TEACHING_PERSONNEL_RANKING_SCALE')
      * @throws RuntimeException if the pair is invalid or rejected
      */
-    public function resolveScaleCode(string $personnelGroup, string $organizationalSide): string
+    public function resolveScaleCode(string $personnelGroup, string $organizationalSide = ''): string
     {
         $group = strtolower(trim($personnelGroup));
-        $side  = strtolower(trim($organizationalSide));
 
-        if ($group === 'faculty' && $side === 'academic') {
+        if ($group === 'faculty') {
             return 'ADMINISTRATORS_RANKING_SCALE';
         }
 
-        if ($group === 'non_teaching_faculty' && $side === 'academic') {
-            return 'ADMINISTRATORS_RANKING_SCALE';
-        }
-
-        if ($group === 'non_teaching_faculty' && $side === 'non_academic') {
+        if ($group === 'non_teaching_faculty') {
             return 'NON_TEACHING_PERSONNEL_RANKING_SCALE';
         }
 
-        // Invalid pairs such as Faculty + Non-Academic or legacy groups
-        throw new RuntimeException("Invalid personnel classification pair: [{$group} + {$side}]. Cannot resolve evaluation scale.", 422);
+        throw new RuntimeException("Invalid personnel group: [{$group}]. Cannot resolve evaluation scale.", 422);
     }
 
     /**
@@ -87,8 +81,8 @@ class EvaluationScaleResolver
         $db = Database::connect();
 
         $profile = $db->table('personnel_profiles')
-            ->select('id, personnel_group, organizational_side, faculty_engagement, employment_status, college_id')
-            ->where('id', $personnelProfileId)
+            ->select('profile_id AS id, personnel_group, organizational_side, faculty_engagement, employment_status')
+            ->where('profile_id', $personnelProfileId)
             ->get()
             ->getRowArray();
 
@@ -96,10 +90,7 @@ class EvaluationScaleResolver
             throw new RuntimeException("Personnel profile [{$personnelProfileId}] not found.", 404);
         }
 
-        $scaleCode = $this->resolveScaleCode(
-            $profile['personnel_group'] ?? '',
-            $profile['organizational_side'] ?? ''
-        );
+        $scaleCode = $this->resolveScaleCode($profile['personnel_group'] ?? '');
 
         $resolved = $this->resolveActiveScaleVersion($scaleCode, $evaluationCycleId);
 

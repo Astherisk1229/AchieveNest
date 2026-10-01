@@ -19,11 +19,10 @@ class ReviewerResolverService
         return $this->authority->resolveResponsibleAuthority($personnelProfileId, $rankingTrack);
     }
 
-    /** Legacy compatibility predicate; authority resolution itself is organization-first. */
+    /** Faculty group is the only classification input for Dean evaluation eligibility. */
     public function isDeanEvaluable(array $personnel): bool
     {
-        return strtolower((string) ($personnel['personnel_group'] ?? '')) === 'faculty'
-            && strtolower((string) ($personnel['organizational_side'] ?? $personnel['personnel_classification'] ?? '')) === 'academic';
+        return strtolower((string) ($personnel['personnel_group'] ?? '')) === 'faculty';
     }
 
     /** Explicit post-endorsement HR handoff remains separate from initial authority resolution. */

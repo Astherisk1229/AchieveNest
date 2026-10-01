@@ -212,18 +212,26 @@ class PersonnelClassificationService
         $side = $row['organizational_side'] ?? null;
         $legacy = $row['personnel_classification'] ?? null;
 
-        // If canonical active pair already exists and is valid
-        if (! empty($group) && ! empty($side)) {
-            $validation = $this->validatePair($group, $side);
-            if ($validation['valid']) {
-                $validation['status'] = 'canonical';
-                $validation['reason_code'] = self::REASON_CANONICAL_ACTIVE;
-                return $validation;
-            }
+        // A canonical personnel group is authoritative. Side remains placement
+        // metadata for compatibility and must never redefine the group.
+        $normalizedGroup = strtolower(trim((string) $group));
+        if (in_array($normalizedGroup, [self::GROUP_FACULTY, self::GROUP_NON_TEACHING_FACULTY], true)) {
+            $normalizedSide = strtolower(trim((string) $side));
+            if (! in_array($normalizedSide, [self::SIDE_ACADEMIC, self::SIDE_NON_ACADEMIC], true)) $normalizedSide = null;
+            return [
+                'valid' => true,
+                'status' => 'canonical',
+                'unresolved' => false,
+                'group' => $normalizedGroup,
+                'side' => $normalizedSide,
+                'code' => strtoupper($normalizedGroup),
+                'label' => $normalizedGroup === self::GROUP_FACULTY ? 'Faculty' : 'Non-Teaching Faculty',
+                'reason_code' => self::REASON_CANONICAL_ACTIVE,
+            ];
         }
 
         // Explicit legacy 'academic' classification mapping
-        if ($legacy === 'academic' || $group === 'faculty' || $group === 'teaching_faculty') {
+        if ($legacy === 'academic' || $group === 'teaching_faculty') {
             return [
                 'valid'       => true,
                 'status'      => 'supported',

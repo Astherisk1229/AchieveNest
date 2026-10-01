@@ -15,8 +15,15 @@ use CodeIgniter\Test\CIUnitTestCase;
  *
  * @group http-proof
  */
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class CampusJournalismSubcategoryRoutingHttpProofTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     private const BASE = 'http://127.0.0.1:8080/api/v1';
     private const JOURNALISM_AWARD = '50000001-0000-0000-0000-000000000023';
     private const PUBLICATION_CRITERION = '50000002-0023-0000-0000-000000000002';

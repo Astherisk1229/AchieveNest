@@ -7,8 +7,15 @@ use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Test\CIUnitTestCase;
 use RuntimeException;
 
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class CanonicalStudentAchievementServiceRecognitionPipelineTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
 
     private CanonicalStudentAchievementService $service;
 

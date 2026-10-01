@@ -2,6 +2,7 @@ const RATING_RESULTS = {
   outstanding: 'passed',
   very_satisfactory: 'passed',
   satisfactory: 'passed',
+  unsatisfactory: 'not_passed',
   fair: 'not_passed',
   poor: 'not_passed'
 }

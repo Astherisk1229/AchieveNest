@@ -103,6 +103,94 @@ class PersonnelPortfolioSubmissionController extends Controller
         return $db->tableExists('public.personnel_evaluation_events') ? 'public.personnel_evaluation_events' : 'personnel_evaluation_events';
     }
 
+    private function getDeficienciesTable($db): ?string
+    {
+        if ($db->tableExists('public.personnel_evaluation_deficiency_requests')) {
+            return 'public.personnel_evaluation_deficiency_requests';
+        }
+
+        return $db->tableExists('personnel_evaluation_deficiency_requests')
+            ? 'personnel_evaluation_deficiency_requests'
+            : null;
+    }
+
+    /**
+     * Project actionable deficiency requests into the personnel-safe return-feedback DTO.
+     * The exact evaluation ID provides version isolation; reviewer-only score state is never selected.
+     */
+    private function getPersonnelVisibleDeficiencies(object $db, string $evaluationId, array $items): array
+    {
+        $table = $this->getDeficienciesTable($db);
+        if ($table === null) {
+            return [];
+        }
+
+        $itemsById = [];
+        foreach ($items as $item) {
+            if (! empty($item['id'])) {
+                $itemsById[(string) $item['id']] = $item;
+            }
+        }
+
+        $rows = $db->table($table)
+            ->where('evaluation_id', $evaluationId)
+            ->whereIn('status', ['pending', 'open', 'responded'])
+            ->orderBy('created_at', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        return array_map(static function (array $row) use ($itemsById): array {
+            $itemId = $row['item_id'] ?? null;
+            $item = $itemId !== null ? ($itemsById[(string) $itemId] ?? []) : [];
+
+            return [
+                'id'                 => $row['id'],
+                'evaluation_item_id' => $itemId,
+                'criterion_code'     => $item['criterion_code'] ?? null,
+                'criterion_title'    => $item['criterion_title'] ?? null,
+                'comment'            => $row['deficiency_description'],
+                'status'             => $row['status'],
+                'response_text'      => $row['response_text'] ?? null,
+                'created_at'         => $row['created_at'] ?? null,
+                'responded_at'       => $row['responded_at'] ?? null,
+            ];
+        }, $rows);
+    }
+
+    private function withPersonnelVisibleDeficiencies(?array $feedback, array $submission, array $deficiencies): ?array
+    {
+        if ($feedback === null && empty($submission['return_reason']) && $deficiencies === []) {
+            return null;
+        }
+
+        $feedback ??= [
+            'reason'               => $submission['return_reason'] ?? null,
+            'required_corrections' => $submission['return_reason'] ?? null,
+            'returned_at'          => $submission['returned_at'] ?? null,
+        ];
+
+        $embedded = is_array($feedback['item_deficiencies'] ?? null)
+            ? $feedback['item_deficiencies']
+            : [];
+
+        // Whole-return inline comments and standalone requests can coexist. Avoid duplicating
+        // the same persisted request if a future writer also embeds its stable request ID.
+        $knownIds = [];
+        foreach ($embedded as $deficiency) {
+            if (is_array($deficiency) && ! empty($deficiency['id'])) {
+                $knownIds[(string) $deficiency['id']] = true;
+            }
+        }
+        foreach ($deficiencies as $deficiency) {
+            if (! isset($knownIds[(string) $deficiency['id']])) {
+                $embedded[] = $deficiency;
+            }
+        }
+
+        $feedback['item_deficiencies'] = $embedded;
+        return $feedback;
+    }
+
     /** Persist the portable workflow-event DTO against either legacy or canonical event columns. */
     private function persistEvaluationEvent(object $db, string $table, array $event, ?string $previousStatus, string $newStatus): void
     {
@@ -218,14 +306,17 @@ class PersonnelPortfolioSubmissionController extends Controller
         $itemsTable = $this->getItemsTable($db);
         $eventsTable = $this->getEventsTable($db);
         $personnel = $db->table('personnel_profiles pp')
-            ->select('pp.personnel_classification, pp.position_title, pca.college_id, c.name AS college_name, paua.administrative_unit_id AS department_id, au.name AS department_name, da.id AS dean_assignment_id')
+            ->select('pp.personnel_group, pp.personnel_classification, pp.position_title, pca.college_id, c.name AS college_name, paua.administrative_unit_id AS department_id, au.name AS department_name, da.id AS dean_assignment_id')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id=pp.profile_id AND pca.is_active=1', 'left')
             ->join('colleges c', 'c.id=pca.college_id', 'left')
             ->join('personnel_administrative_unit_affiliations paua', 'paua.personnel_profile_id=pp.profile_id AND paua.is_active=1', 'left')
             ->join('administrative_units au', 'au.id=paua.administrative_unit_id', 'left')
             ->join('dean_assignments da', 'da.personnel_profile_id=pp.profile_id AND da.is_active=1', 'left')
             ->where('pp.profile_id', $personnelProfileId)->get()->getRowArray() ?? [];
-        $actualGroup = ($personnel['personnel_classification'] ?? '') === 'non_academic' ? 'NON_TEACHING_FACULTY' : 'FACULTY';
+        $actualGroup = strtoupper((string) ($personnel['personnel_group'] ?? ''));
+        if (! in_array($actualGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) {
+            return $this->respond(['error'=>['code'=>'PERSONNEL_GROUP_UNRESOLVED','message'=>'A valid personnel group is required before portfolio submission.']], 422);
+        }
         if (($period['personnel_group'] ?? 'FACULTY') !== $actualGroup) return $this->respond(['error'=>['code'=>'PERSONNEL_GROUP_MISMATCH','message'=>'This ranking period does not apply to your personnel classification.']], 422);
         try { $criteriaSnapshot = (new \App\Services\RubricAdministrationService())->getScaleVersionHierarchy($period['evaluation_scale_version_id']); }
         catch (\Throwable $e) { return $this->respond(['error'=>['code'=>'CRITERIA_SNAPSHOT_FAILED','message'=>'The assigned ranking criteria could not be snapshotted.']], 422); }
@@ -621,6 +712,9 @@ class PersonnelPortfolioSubmissionController extends Controller
                 }
             }
 
+            // Non-Teaching Faculty: Area A comes from the confirmed NTF annual-review workbook as locked items.
+            (new \App\Services\NtfAnnualReviewAreaAService($db))->attach($evaluationId, $now);
+
             // 4. Record submission audit event
             $eventRow = [
                 'id'            => $this->genUuid(),
@@ -853,7 +947,7 @@ class PersonnelPortfolioSubmissionController extends Controller
         $periodSnapshot = $resolvedPeriodId ? $db->table('personnel_evaluation_periods')->where('id', $resolvedPeriodId)->get()->getRowArray() : null;
         $rootId = $existingRoot['id'] ?? $latestSubmission['evaluation_root_id'] ?? null;
         try {
-            $reviewer = (new ReviewerResolverService())->resolve($personnelProfileId, $period);
+            $reviewer = (new ReviewerResolverService())->resolve($personnelProfileId, $periodSnapshot);
         } catch (Throwable $e) {
             return $this->respond([
                 'error' => [
@@ -1003,6 +1097,9 @@ class PersonnelPortfolioSubmissionController extends Controller
                     ]);
                 }
             }
+
+            // Non-Teaching Faculty: Area A comes from the confirmed NTF annual-review workbook as locked items.
+            (new \App\Services\NtfAnnualReviewAreaAService($db))->attach($newEvaluationId, $now);
 
             // 3. Record resubmission audit event linking Version N to Version N-1 and Root
             $eventRow = [
@@ -1204,6 +1301,11 @@ class PersonnelPortfolioSubmissionController extends Controller
                 }
 
                 $versionItems = $itemsByEvalId[$sub['id']] ?? [];
+                $returnFeedback = $this->withPersonnelVisibleDeficiencies(
+                    $returnFeedback,
+                    $sub,
+                    $this->getPersonnelVisibleDeficiencies($db, (string) $sub['id'], $versionItems)
+                );
                 if ($targetProfileId === $actorProfileId) {
                     $versionItems = array_map(fn (array $item): array => $this->withoutPersonnelScoring($item), $versionItems);
                 }
@@ -1355,6 +1457,12 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'item_deficiencies'    => [],
                 ];
             }
+
+            $returnFeedback = $this->withPersonnelVisibleDeficiencies(
+                $returnFeedback,
+                $submission,
+                $this->getPersonnelVisibleDeficiencies($db, (string) $submission['id'], $items)
+            );
 
             return $this->respond([
                 'data' => [

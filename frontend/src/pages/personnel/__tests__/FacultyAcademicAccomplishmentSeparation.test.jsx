@@ -25,12 +25,10 @@ describe('AchieveNest — Faculty Academic Accomplishment Entry and Format Separ
   // 1. NON-NEGOTIABLE SEPARATION RULE & FORMAT RESOLVER
   // =========================================================================
   describe('1. Format Resolver & Non-Negotiable Separation', () => {
-    it('resolves "academic" personnel to FACULTY_ACADEMIC format', () => {
-      expect(resolvePersonnelPortfolioFormat('academic')).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
-      expect(resolvePersonnelPortfolioFormat('ACADEMIC')).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
-      expect(resolvePersonnelPortfolioFormat('faculty_academic')).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
-      expect(resolvePersonnelPortfolioFormat('teaching_faculty')).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
-      expect(usesFacultyAcademicPortfolio({ personnel_classification: 'academic' })).toBe(true)
+    it('resolves the Faculty group to FACULTY_ACADEMIC format', () => {
+      expect(resolvePersonnelPortfolioFormat('faculty')).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
+      expect(resolvePersonnelPortfolioFormat({ personnel_group: 'faculty', organizational_side: 'academic' })).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
+      expect(resolvePersonnelPortfolioFormat({ personnel_group: 'faculty', organizational_side: 'non_academic' })).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
     })
 
     it('resolves "non_academic" and "non_teaching" personnel to NON_TEACHING format', () => {
@@ -42,13 +40,14 @@ describe('AchieveNest — Faculty Academic Accomplishment Entry and Format Separ
       expect(usesFacultyAcademicPortfolio({ personnel_classification: 'non_teaching_faculty' })).toBe(false)
     })
 
-    it('does not infer format from job title or department if classification is present', () => {
+    it('does not infer format from job title, department, or legacy classification', () => {
       const user = {
+        personnel_group: 'faculty',
         job_title: 'Dean of Information Technology',
         department: 'College of IT',
         personnel_classification: 'academic'
       }
-      expect(resolvePersonnelPortfolioFormat(user.personnel_classification)).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
+      expect(resolvePersonnelPortfolioFormat(user)).toBe(PORTFOLIO_FORMATS.FACULTY_ACADEMIC)
     })
   })
 
@@ -223,15 +222,17 @@ describe('AchieveNest — Faculty Academic Accomplishment Entry and Format Separ
   })
 
   // =========================================================================
-  // 6. MODAL WIRING & SEPARATION IN WORKSPACE PAGES
+  // 6. ENTRY WORKSPACE WIRING & SEPARATION
   // =========================================================================
-  describe('6. Modal Wiring & Page Integration Separation', () => {
-    it('PersonnelPortfolioEditPage imports FacultyAcademicSubmissionModal and branches by user classification', () => {
+  describe('6. Entry Workspace Wiring & Page Integration Separation', () => {
+    it('uses an in-page, area-locked entry workspace for non-teaching personnel', () => {
       const editPagePath = path.resolve(__dirname, '../PersonnelPortfolioEditPage.jsx')
       const editPageCode = fs.readFileSync(editPagePath, 'utf8')
       expect(editPageCode).toContain('FacultyAcademicSubmissionModal')
       expect(editPageCode).toContain('usesFacultyAcademicPortfolio')
-      expect(editPageCode).toMatch(/isFacultyAcademic\s*\?\s*\(\s*<FacultyAcademicSubmissionModal/)
+      expect(editPageCode).toContain('presentation="page"')
+      expect(editPageCode).toContain('isPersonnelAreaEntryAllowed')
+      expect(editPageCode).toMatch(/isSubmissionModalOpen\s*&&\s*!isFacultyAcademic/)
     })
 
     it('PersonnelAchievementsPage branches modal by user classification', () => {

@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
+use App\Services\CanonicalPersonnelAccomplishmentService;
 use App\Services\LocalEvidenceStorageService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
@@ -15,13 +16,16 @@ class PersonnelAccomplishmentController extends Controller
 
     private AuthorizationService $authz;
     private LocalEvidenceStorageService $storage;
+    private CanonicalPersonnelAccomplishmentService $canonicalPersistence;
 
     public function __construct(
         ?AuthorizationService $authz = null,
-        ?LocalEvidenceStorageService $storage = null
+        ?LocalEvidenceStorageService $storage = null,
+        ?CanonicalPersonnelAccomplishmentService $canonicalPersistence = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->storage = $storage ?? new LocalEvidenceStorageService();
+        $this->canonicalPersistence = $canonicalPersistence ?? new CanonicalPersonnelAccomplishmentService();
     }
 
     public function options(): mixed
@@ -120,6 +124,34 @@ class PersonnelAccomplishmentController extends Controller
         return null;
     }
 
+    private function validateNtfMetadata(string $categoryCode, array $metadata): ?string
+    {
+        if (($metadata['portfolio_format'] ?? '') !== 'non_teaching_faculty') return null;
+        if ($categoryCode !== 'B.1.a'
+            || ($metadata['contract_code'] ?? '') !== 'NTF-B1A'
+            || ($metadata['criterion_code'] ?? '') !== 'B.1.a') {
+            return 'The selected NTF contract and criterion do not match.';
+        }
+        $details = is_array($metadata['details'] ?? null) ? $metadata['details'] : [];
+        foreach (['organization', 'organizer'] as $field) {
+            $value = trim((string) ($details[$field] ?? ''));
+            if ($value === '' || ! ValidationHelper::validateBoundedText($value, ValidationHelper::MAX_LABEL_LENGTH)) {
+                return "Invalid or missing NTF detail: {$field}.";
+            }
+        }
+        $role = strtoupper(trim((string) ($details['assignment_role'] ?? $details['role'] ?? '')));
+        if (! in_array($role, ['MODERATOR', 'OFFICER'], true)) return 'Invalid NTF assignment role.';
+        $start = (string) ($metadata['start_date'] ?? '');
+        $end = (string) ($metadata['end_date'] ?? '');
+        $ongoing = ($metadata['ongoing'] ?? false) === true;
+        if (! ValidationHelper::validateDateString($start)
+            || (! $ongoing && ! ValidationHelper::validateDateString($end))
+            || ($end !== '' && $start > $end)) {
+            return 'Invalid NTF assignment period.';
+        }
+        return null;
+    }
+
     private function duplicateHash(string $categoryCode, string $occurrenceDate, array $metadata): ?string
     {
         $subcategory = trim((string) ($metadata['subcategory_code'] ?? ''));
@@ -148,6 +180,45 @@ class PersonnelAccomplishmentController extends Controller
         return $db->table($table)->where('personnel_profile_id', $personnelProfileId)
             ->whereIn('status', ['submitted', 'in_evaluation', 'ready_for_finalization', 'endorsed_to_hr', 'under_hr_review'])
             ->countAllResults() > 0;
+    }
+
+    private function isNonTeachingPersonnel(string $personnelProfileId): bool
+    {
+        $db = db_connect();
+        if (! $db->tableExists('personnel_profiles')) return false;
+
+        $fields = ['personnel_classification'];
+        if ($db->fieldExists('personnel_group', 'personnel_profiles')) $fields[] = 'personnel_group';
+        if ($db->fieldExists('organizational_side', 'personnel_profiles')) $fields[] = 'organizational_side';
+        $personnel = $db->table('personnel_profiles')
+            ->select(implode(', ', $fields))
+            ->where('profile_id', $personnelProfileId)
+            ->get()
+            ->getRowArray();
+
+        if ($personnel === null) return false;
+
+        $group = strtolower(trim((string) ($personnel['personnel_group'] ?? '')));
+        $classification = strtolower(trim((string) ($personnel['organizational_side'] ?? $personnel['personnel_classification'] ?? '')));
+
+        return $group === 'non_teaching_faculty'
+            || ($group === '' && in_array($classification, ['non_academic', 'non_teaching', 'non_teaching_faculty'], true));
+    }
+
+    private function isAreaAEntry(string $categoryArea, string $category = '', string $categoryCode = ''): bool
+    {
+        return strcasecmp(trim($categoryArea), 'areaA') === 0
+            || str_starts_with(strtoupper(trim($category)), 'A.')
+            || str_starts_with(strtoupper(trim($category)), 'A ')
+            || str_starts_with(strtoupper(trim($categoryCode)), 'A.');
+    }
+
+    private function nonTeachingAreaAResponse(): mixed
+    {
+        return $this->respond(['error' => [
+            'code' => 'AREA_NOT_OPEN_TO_PERSONNEL',
+            'message' => 'Area A is evaluator-managed for Non-teaching Faculty. Add portfolio evidence in Area B or Area C.',
+        ]], 403);
     }
 
     public function index(): mixed
@@ -286,8 +357,11 @@ class PersonnelAccomplishmentController extends Controller
         $domain = trim((string) ($json['domain'] ?? ''));
         $categoryArea = trim((string) ($json['category_area'] ?? ''));
         $category = trim((string) ($json['category'] ?? ''));
-        $categoryCode = preg_match('/^([ABC]\.\d(?:\.\d)?)/', $category, $categoryMatch) ? $categoryMatch[1] : '';
+        $categoryCode = preg_match('/^([ABC]\.\d(?:\.(?:\d+|[a-z]))?)/i', $category, $categoryMatch) ? $categoryMatch[1] : '';
         $categoryMetadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : [];
+        if ($this->isNonTeachingPersonnel((string) $actor['profile']['id']) && $this->isAreaAEntry($categoryArea, $category, $categoryCode)) {
+            return $this->nonTeachingAreaAResponse();
+        }
         if ($categoryCode !== '' && $categoryArea !== '' && $categoryArea !== 'area' . $categoryCode[0]) {
             return $this->respond(['error' => ['code' => 'AREA_CLASSIFICATION_MISMATCH', 'message' => 'The selected classification does not belong to the supplied Area.']], 422);
         }
@@ -311,6 +385,8 @@ class PersonnelAccomplishmentController extends Controller
         $dateAchieved = trim((string) ($json['date_achieved'] ?? $json['occurrence_date'] ?? $json['date'] ?? ''));
         $facultyError = $this->validateFacultyMetadata($categoryCode, $categoryMetadata, $dateAchieved);
         if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
+        $ntfError = $this->validateNtfMetadata($categoryCode, $categoryMetadata);
+        if ($ntfError !== null) return $this->respond(['error' => ['code' => 'INVALID_NTF_ACCOMPLISHMENT', 'message' => $ntfError]], 422);
         $duplicateHash = $this->duplicateHash($categoryCode, $dateAchieved, $categoryMetadata);
         if ($duplicateHash !== null && db_connect()->fieldExists('duplicate_hash', 'personnel_accomplishments') && db_connect()->table('personnel_accomplishments')->where('personnel_profile_id', $actor['profile']['id'])->where('duplicate_hash', $duplicateHash)->countAllResults() > 0) {
             return $this->respond(['error' => ['code' => 'DUPLICATE_ACCOMPLISHMENT', 'message' => 'This accomplishment already exists in your portfolio.']], 409);
@@ -343,11 +419,16 @@ class PersonnelAccomplishmentController extends Controller
             if ($db->fieldExists('category_area', 'personnel_accomplishments')) $insert['category_area'] = $categoryArea ?: null;
             if ($db->fieldExists('category_metadata', 'personnel_accomplishments')) $insert['category_metadata'] = $categoryMetadata !== [] ? json_encode($categoryMetadata) : null;
             if ($db->fieldExists('duplicate_hash', 'personnel_accomplishments')) $insert['duplicate_hash'] = $duplicateHash;
-            $db->table('personnel_accomplishments')->insert($insert);
+            if ($this->canonicalPersistence->supports($categoryCode, $categoryMetadata)) {
+                $this->canonicalPersistence->create($categoryCode, $insert, $categoryMetadata);
+            } else {
+                $db->table('personnel_accomplishments')->insert($insert);
+            }
         } catch (Throwable $e) {
             if (str_contains(strtolower($e->getMessage()), 'duplicate') || str_contains($e->getMessage(), 'uq_personnel_accomplishment_duplicate')) {
                 return $this->respond(['error' => ['code' => 'DUPLICATE_ACCOMPLISHMENT', 'message' => 'This accomplishment already exists in your portfolio.']], 409);
             }
+            log_message('error', 'Personnel accomplishment canonical persistence failed: {message}', ['message' => $e->getMessage()]);
             return $this->respond(['error' => ['code' => 'CREATE_FAILED', 'message' => 'Unable to create the accomplishment.']], 500);
         }
 
@@ -397,6 +478,10 @@ class PersonnelAccomplishmentController extends Controller
         if (array_intersect($protected, array_keys($json)) !== []) return $this->respond(['error' => ['code' => 'PROTECTED_FIELDS', 'message' => 'Evaluation fields cannot be saved by Personnel.']], 422);
         $title = trim((string) ($json['title'] ?? 'Pending document review')) ?: 'Pending document review';
         $metadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : [];
+        if ($this->isNonTeachingPersonnel((string) $actor['profile']['id'])
+            && $this->isAreaAEntry((string) ($json['category_area'] ?? ''), '', (string) ($json['category_code'] ?? $metadata['criterion_code'] ?? ''))) {
+            return $this->nonTeachingAreaAResponse();
+        }
         if (mb_strlen($title) > ValidationHelper::MAX_LABEL_LENGTH || strlen(json_encode($metadata) ?: '') > 32768) return $this->respond(['error' => ['code' => 'INVALID_DRAFT', 'message' => 'Draft content exceeds the allowed size.']], 422);
         $update = ['title' => $title, 'updated_at' => date('Y-m-d H:i:s')];
         foreach (['category_code', 'category_area'] as $field) if ($db->fieldExists($field, 'personnel_accomplishments') && isset($json[$field])) $update[$field] = trim((string) $json[$field]) ?: null;
@@ -488,6 +573,10 @@ class PersonnelAccomplishmentController extends Controller
         $category = trim((string) ($json['category'] ?? ''));
         $categoryCode = preg_match('/^([ABC]\.\d(?:\.\d)?)/', $category, $categoryMatch) ? $categoryMatch[1] : ($accomplishment['category_code'] ?? '');
         $categoryMetadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : null;
+        $effectiveArea = $categoryArea !== '' ? $categoryArea : (string) ($accomplishment['category_area'] ?? '');
+        if ($isOwner && ! $isHr && $this->isNonTeachingPersonnel((string) $actor['profile']['id']) && $this->isAreaAEntry($effectiveArea, $category, (string) $categoryCode)) {
+            return $this->nonTeachingAreaAResponse();
+        }
         if ($categoryCode !== '' && $categoryArea !== '' && $categoryArea !== 'area' . $categoryCode[0]) {
             return $this->respond(['error' => ['code' => 'AREA_CLASSIFICATION_MISMATCH', 'message' => 'The selected classification does not belong to the supplied Area.']], 422);
         }
@@ -553,6 +642,14 @@ class PersonnelAccomplishmentController extends Controller
         }
         if ($this->hasLockedPortfolio((string) $actor['profile']['id'])) {
             return $this->respond(['error' => ['code' => 'PORTFOLIO_LOCKED', 'message' => 'Evidence cannot be changed while the portfolio is under review.']], 409);
+        }
+
+        $accomplishment = db_connect()->table('personnel_accomplishments')->where('id', $id)->get()->getRowArray();
+        if ($accomplishment !== null
+            && hash_equals((string) $accomplishment['personnel_profile_id'], (string) $actor['profile']['id'])
+            && $this->isNonTeachingPersonnel((string) $actor['profile']['id'])
+            && $this->isAreaAEntry((string) ($accomplishment['category_area'] ?? ''), '', (string) ($accomplishment['category_code'] ?? ''))) {
+            return $this->nonTeachingAreaAResponse();
         }
 
         $file = $this->request->getFile('file') ?? $this->request->getFile('evidence_file');

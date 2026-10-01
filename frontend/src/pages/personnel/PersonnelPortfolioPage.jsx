@@ -4,6 +4,7 @@ import ExportPortfolioPreviewModal from '../student/modals/ExportPortfolioPrevie
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import PersonnelPortfolioGallery from './PersonnelPortfolioGallery'
+import PersonnelEvaluationResultModal from './PersonnelEvaluationResultModal'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 import { AchieveNestLogo } from '../../components/brand'
 
@@ -39,6 +40,7 @@ import { getCurrentUser } from '../../services/authService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
+import personnelEvaluationResultService from '../../services/personnelEvaluationResultService'
 
 export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
@@ -57,6 +59,25 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const [isCanvaModalOpen, setIsCanvaModalOpen] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
   const [selectedSnapshot, setSelectedSnapshot] = useState(null)
+  const [evaluationResult, setEvaluationResult] = useState(null)
+  const [resultLoading, setResultLoading] = useState(false)
+  const [resultError, setResultError] = useState('')
+  const [resultOpen, setResultOpen] = useState(false)
+
+  const openCompletedResult = async (card) => {
+    setResultOpen(true)
+    setResultLoading(true)
+    setResultError('')
+    setEvaluationResult(null)
+    try {
+      const result = await personnelEvaluationResultService.fetchCompletedResult(card.id)
+      setEvaluationResult(result)
+    } catch (error) {
+      setResultError(error?.response?.data?.error?.message || error?.message || 'Your completed evaluation result could not be loaded.')
+    } finally {
+      setResultLoading(false)
+    }
+  }
 
   // Personnel Profile State
   const [personnel, setPersonnel] = useState(activeUser || {
@@ -267,6 +288,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             setSelectedSnapshot(card?.raw_snapshot || portfolio)
             setIsCanvaModalOpen(true)
           }}
+          onViewResult={openCompletedResult}
         />
 
       </div>
@@ -288,6 +310,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
         portfolio={selectedSnapshot || portfolio}
         user={personnel}
       />
+      {resultOpen && <PersonnelEvaluationResultModal result={evaluationResult} loading={resultLoading} error={resultError} onClose={() => setResultOpen(false)} />}
     </>
   )
 }

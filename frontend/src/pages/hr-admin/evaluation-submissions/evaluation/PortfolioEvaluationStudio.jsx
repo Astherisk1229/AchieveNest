@@ -4,6 +4,8 @@ import StudioDecisionBar from '../studio/StudioDecisionBar'
 import PortfolioNavigator from '../studio/portfolio/PortfolioNavigator'
 import CriterionEvaluation from '../studio/evaluation/CriterionEvaluation'
 import { calculateNDMUScores } from './rating/NDMURatingEngine'
+import { calculateNTFScores } from './rating/NTFRatingEngine'
+import { usesFacultyAcademicPortfolio } from '../../../../utils/personnelPortfolioFormat'
 
 const WORKSPACE_MODE_KEY = 'achievenest_hr_evaluation_workspace_mode_v1'
 
@@ -12,7 +14,8 @@ export default function PortfolioEvaluationStudio({
   onClose,
   onSaveProgress,
   onOpenReturnModal,
-  onOpenFinalizeModal
+  onOpenFinalizeModal,
+  finalizeLabel
 }) {
   const tenureYears = submission?.tenure_years || 0
 
@@ -23,7 +26,7 @@ export default function PortfolioEvaluationStudio({
       if (saved && ['split', 'scoring', 'preview'].includes(saved)) {
         return saved
       }
-    } catch (e) {
+    } catch {
       // Fallback
     }
     return typeof window !== 'undefined' && window.innerWidth < 768 ? 'scoring' : 'split'
@@ -32,7 +35,17 @@ export default function PortfolioEvaluationStudio({
   // Evidence items for the current evaluation
   const [evidenceItems, setEvidenceItems] = useState(() => {
     if (submission?.items && Array.isArray(submission.items) && submission.items.length > 0) {
-      return submission.items
+      // Server rows are snake_case; keep their recorded decisions (including locked NTF Area A items) visible to the progress count.
+      return submission.items.map(item => ({
+        ...item,
+        categoryArea: item.categoryArea ?? item.category_area,
+        criterionCode: item.criterionCode ?? item.criterion_code,
+        criterionKey: item.criterionKey ?? item.criterion_key,
+        title: item.title ?? item.item_description ?? item.achievement ?? item.criterion_code,
+        verificationStatus: item.verificationStatus ?? item.verification_status,
+        ratingStatus: item.ratingStatus ?? item.rating_status,
+        awardedPoints: item.awardedPoints ?? (item.awarded_points === null || item.awarded_points === undefined ? undefined : Number(item.awarded_points)),
+      }))
     }
     return []
   })
@@ -41,8 +54,10 @@ export default function PortfolioEvaluationStudio({
 
   // Live calculation of authoritative scores
   const scores = useMemo(() => {
-    return calculateNDMUScores(evidenceItems, tenureYears)
-  }, [evidenceItems, tenureYears])
+    return usesFacultyAcademicPortfolio(submission)
+      ? calculateNDMUScores(evidenceItems, tenureYears)
+      : calculateNTFScores(evidenceItems, tenureYears)
+  }, [evidenceItems, submission, tenureYears])
 
   const completedDecisionsCount = evidenceItems.filter(
     (i) => (i.verificationStatus === 'verified' && i.ratingStatus === 'rated') ||
@@ -57,7 +72,7 @@ export default function PortfolioEvaluationStudio({
       setWorkspaceMode(mode)
       try {
         sessionStorage.setItem(WORKSPACE_MODE_KEY, mode)
-      } catch (e) {
+      } catch {
         // Storage fail fallback
       }
     }
@@ -198,7 +213,8 @@ export default function PortfolioEvaluationStudio({
         totalCount={totalCount}
         isReadyForFinalize={isReadyForFinalize}
         onOpenReturnModal={onOpenReturnModal}
-        onOpenFinalizeModal={handleFinalizeClicked}
+        onOpenFinalizeModal={onOpenFinalizeModal ? handleFinalizeClicked : undefined}
+        finalizeLabel={finalizeLabel}
       />
     </div>
   )

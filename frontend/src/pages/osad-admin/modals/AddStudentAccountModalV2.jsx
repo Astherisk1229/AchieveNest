@@ -43,16 +43,28 @@ const emptyForm = () => ({
   academicYear: DEFAULT_ACADEMIC_YEAR
 })
 
+export const buildStudentProvisioningPayload = (formData) => ({
+  institutional_id: formData.institutionalId.trim(),
+  institutional_email: normalizeInstitutionalEmail(formData.institutionalEmail),
+  first_name: formData.firstName.trim(),
+  middle_name: formData.middleName.trim() || null,
+  last_name: formData.lastName.trim(),
+  suffix: formData.suffix || null,
+  college_id: formData.collegeId,
+  academic_program_id: formData.academicProgramId,
+  year_level: formData.yearLevel,
+  academic_year: formData.academicYear,
+  sex: formData.sex
+})
+
 export default function AddStudentAccountModalV2({
   isOpen,
   onClose,
-  onSubmit,
-  colleges = [],
-  degreePrograms = []
+  onSubmit
 }) {
   const credentialHook = useProvisioningCredential()
-  const [loadedColleges, setLoadedColleges] = useState(colleges)
-  const [loadedPrograms, setLoadedPrograms] = useState(degreePrograms)
+  const [loadedColleges, setLoadedColleges] = useState([])
+  const [loadedPrograms, setLoadedPrograms] = useState([])
   const [isLoadingReferences, setIsLoadingReferences] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -60,6 +72,7 @@ export default function AddStudentAccountModalV2({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [emailAvailability, setEmailAvailability] = useState('empty')
   const availabilityRequestRef = useRef({ sequence: 0, controller: null })
+  const programRequestRef = useRef({ sequence: 0, controller: null })
 
   const refs = {
     institutionalId: useRef(null),
@@ -86,6 +99,7 @@ export default function AddStudentAccountModalV2({
 
   const resetForm = () => {
     availabilityRequestRef.current.controller?.abort()
+    programRequestRef.current.controller?.abort()
     setFormData(emptyForm())
     setFieldErrors({})
     setServerError(null)
@@ -110,27 +124,57 @@ export default function AddStudentAccountModalV2({
 
   useEffect(() => {
     if (!isOpen) return
-    let mounted = true
+    const controller = new AbortController()
+    let active = true
     const load = async () => {
       setIsLoadingReferences(true)
+      setLoadedColleges([])
+      setLoadedPrograms([])
       try {
-        const [cols, progs] = await Promise.all([
-          colleges.length ? colleges : fetchColleges({ status: 'active' }),
-          degreePrograms.length ? degreePrograms : fetchAcademicPrograms()
-        ])
-        if (mounted) {
-          setLoadedColleges((cols || []).filter(c => !c.status || c.status === 'active'))
-          setLoadedPrograms((progs || []).filter(p => !p.status || p.status === 'active'))
-        }
+        const cols = await fetchColleges({ status: 'active' }, { signal: controller.signal })
+        if (active) setLoadedColleges((cols || []).filter(c => !c.status || c.status === 'active'))
       } catch (error) {
-        if (mounted) setServerError('Academic references could not be loaded. Try again before creating an account.')
+        if (active && error?.code !== 'ERR_CANCELED') setServerError('Academic colleges could not be loaded. Try again before creating an account.')
       } finally {
-        if (mounted) setIsLoadingReferences(false)
+        if (active) setIsLoadingReferences(false)
       }
     }
     load()
-    return () => { mounted = false }
-  }, [isOpen, colleges, degreePrograms])
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    programRequestRef.current.controller?.abort()
+    const sequence = programRequestRef.current.sequence + 1
+    if (!isOpen || !formData.collegeId) {
+      programRequestRef.current = { sequence, controller: null }
+      setLoadedPrograms([])
+      return
+    }
+
+    const controller = new AbortController()
+    programRequestRef.current = { sequence, controller }
+    setLoadedPrograms([])
+    setIsLoadingReferences(true)
+    fetchAcademicPrograms({ college_id: formData.collegeId }, { signal: controller.signal })
+      .then((programs) => {
+        if (programRequestRef.current.sequence !== sequence) return
+        setLoadedPrograms((programs || []).filter(p => !p.status || p.status === 'active'))
+      })
+      .catch((error) => {
+        if (programRequestRef.current.sequence === sequence && error?.code !== 'ERR_CANCELED') {
+          setServerError('Academic programs could not be loaded for the selected college.')
+        }
+      })
+      .finally(() => {
+        if (programRequestRef.current.sequence === sequence) setIsLoadingReferences(false)
+      })
+
+    return () => controller.abort()
+  }, [isOpen, formData.collegeId])
 
   const filteredPrograms = useMemo(() => {
     if (!formData.collegeId) return []
@@ -270,18 +314,7 @@ export default function AddStudentAccountModalV2({
     setIsSubmitting(true)
     setServerError(null)
     setFieldErrors({})
-    const payload = {
-      institutional_id: formData.institutionalId.trim(),
-      institutional_email: normalizeInstitutionalEmail(formData.institutionalEmail),
-      first_name: formData.firstName.trim(),
-      middle_name: formData.middleName.trim() || null,
-      last_name: formData.lastName.trim(),
-      suffix: formData.suffix || null,
-      academic_program_id: formData.academicProgramId,
-      year_level: formData.yearLevel,
-      academic_year: formData.academicYear,
-      sex: formData.sex
-    }
+    const payload = buildStudentProvisioningPayload(formData)
 
     try {
       const response = onSubmit ? await onSubmit(payload) : await provisioningService.provisionManualStudent(payload)
@@ -295,6 +328,7 @@ export default function AddStudentAccountModalV2({
       const mapped = {
         ...(fields.institutional_email ? { institutionalEmail: fields.institutional_email } : {}),
         ...(fields.institutional_id ? { institutionalId: fields.institutional_id } : {}),
+        ...(fields.college_id ? { collegeId: fields.college_id } : {}),
         ...(fields.academic_program_id ? { academicProgramId: fields.academic_program_id } : {}),
         ...(fields.year_level ? { yearLevel: fields.year_level } : {}),
         ...(fields.academic_year ? { academicYear: fields.academic_year } : {})

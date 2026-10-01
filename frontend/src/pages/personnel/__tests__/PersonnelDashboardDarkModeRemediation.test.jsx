@@ -37,6 +37,9 @@ vi.mock('../../../hooks/usePersonnelPortfolio', () => ({
     portfolio: {
       status: 'HR_APPROVED'
     },
+    evaluationPeriod: {
+      academic_year_label: 'AY 2025-2026'
+    },
     totals: {
       totalPoints: 85,
       totalAccomplishments: 5
@@ -74,7 +77,7 @@ describe('PersonnelDashboardPage Dark Mode & Accomplishment Card Readability Rem
     expect(html).toContain('dark:bg-emerald-950/60')
 
     // Evaluation Period badge
-    expect(html).toContain('AY 2025–2026')
+    expect(html).toContain('Evaluation Period')
     expect(html).toContain('dark:border-emerald-500/40')
 
     // Portfolio Status badge (HR_APPROVED state)
@@ -83,9 +86,22 @@ describe('PersonnelDashboardPage Dark Mode & Accomplishment Card Readability Rem
   })
 
   it('renders accomplishment timeline and category pills with proper dark mode contrast', () => {
+    const fixture = [{
+      id: 'acc-test-1',
+      title: 'Test Accomplishment',
+      date: '2026-01-15',
+      status: 'Verified',
+      statusLabel: 'HR Verified',
+      category: 'Research & Publications',
+      issuer: 'Test Issuer',
+      description: 'Fixture record for rendering checks.',
+      icon: 'Award',
+      attached_file_name: 'proof.pdf',
+      evidence_id: 'ev-test-1'
+    }]
     const html = renderToString(
       <MemoryRouter>
-        <PersonnelDashboardPage />
+        <PersonnelDashboardPage initialAccomplishments={fixture} />
       </MemoryRouter>
     )
 

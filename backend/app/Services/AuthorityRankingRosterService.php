@@ -19,7 +19,13 @@ class AuthorityRankingRosterService
         $this->eligibilityService ??= new PersonnelEligibilityService($this->db);
     }
 
-    public function list(array $actor, string $cycleId, string $trackKey): array
+    /**
+     * @param bool $includeReadOnly When true and the actor is HR, also return personnel managed by
+     *                              another authority (e.g. a Dean) as read-only rows. Only the
+     *                              Annual Reviews roster endpoint opts in; every authorization
+     *                              caller (imports, templates, workspace stages) keeps the default.
+     */
+    public function list(array $actor, string $cycleId, string $trackKey, bool $includeReadOnly = false): array
     {
         $cycle = $this->db->table('ranking_cycles')->where('id', $cycleId)->get()->getRowArray();
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle was not found.');
@@ -31,7 +37,7 @@ class AuthorityRankingRosterService
         [$authorityType, $scopeType, $scopeId] = $this->actorScope($actor);
         $actorId = (string) ($actor['profile']['id'] ?? '');
         $builder = $this->db->table('personnel_profiles pp')->distinct()->select(
-            'p.id,p.full_name,p.institutional_id,p.email AS institutional_email,p.avatar_url,pp.personnel_group,pp.personnel_classification,pp.organizational_side,pp.organizational_side AS placement,pp.faculty_engagement,pp.employment_status,pp.employment_start_date,pp.position_title,pp.current_rank_title,au.id AS department_id,au.name AS department_name,COALESCE(pca.college_id,au.college_id) AS college_id,c.name AS college_name,c.code AS college_code'
+            'p.id,p.full_name,p.first_name,p.last_name,p.institutional_id,p.email AS institutional_email,p.avatar_url,pp.personnel_group,pp.personnel_classification,pp.organizational_side,pp.organizational_side AS placement,pp.faculty_engagement,pp.employment_status,pp.employment_start_date,pp.position_title,pp.current_rank_title,au.id AS department_id,au.name AS department_name,COALESCE(pca.college_id,au.college_id) AS college_id,c.name AS college_name,c.code AS college_code'
         )->join('profiles p', 'p.id=pp.profile_id')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id=pp.profile_id AND pca.is_active=1', 'left')
             ->join('personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id=pp.profile_id AND pau.is_active=1', 'left')
@@ -42,21 +48,43 @@ class AuthorityRankingRosterService
         if ($scopeType === 'department') $builder->where('au.id', $scopeId)->where('au.college_id', null);
         $rows = $builder->orderBy('p.full_name')->get()->getResultArray();
 
+        $readOnlyView = $includeReadOnly && $authorityType === 'HR';
         $items = [];
         foreach ($rows as $person) {
+            $authorityIssue = null;
             try {
                 $authority = $this->authorityResolver->resolveResponsibleAuthority($person['id'], $track);
             } catch (RuntimeException $error) {
-                if (str_contains($error->getMessage(), 'AMBIGUOUS')) throw $error;
-                continue;
+                if (! $readOnlyView) {
+                    if (str_contains($error->getMessage(), 'AMBIGUOUS')) throw $error;
+                    continue;
+                }
+                $authority = null;
+                $authorityIssue = $error->getMessage();
             }
-            if (($authority['authority_type'] ?? '') !== $authorityType || ! $this->authorityResolver->actorMayAct($authority, $actorId)) continue;
+            $canManage = $authority !== null
+                && ($authority['authority_type'] ?? '') === $authorityType
+                && $this->authorityResolver->actorMayAct($authority, $actorId);
+            if (! $canManage && ! $readOnlyView) continue;
             $review = $this->db->table('personnel_annual_reviews')->where('personnel_profile_id', $person['id'])->where('evaluation_period_id', $track['id'])->where('superseded_at', null)->orderBy('created_at', 'DESC')->get()->getRowArray();
             $superseded = $this->db->table('personnel_annual_reviews')->where('personnel_profile_id', $person['id'])->where('evaluation_period_id', $track['id'])->where('superseded_at !=', null)->countAllResults();
-            $items[] = ['personnel'=>$person, 'evaluation_period_id'=>$track['id'], 'annual_review'=>$review, 'superseded_count'=>$superseded, 'eligibility'=>$this->eligibilityService->evaluateEligibility($person['id'], $track['id'])];
+            $items[] = ['personnel'=>$person, 'evaluation_period_id'=>$track['id'], 'annual_review'=>$review, 'superseded_count'=>$superseded, 'eligibility'=>$this->eligibilityService->evaluateEligibility($person['id'], $track['id']),
+                'can_manage'=>$canManage, 'responsible_authority'=>$this->authoritySummary($authority, $authorityIssue)];
         }
 
-        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>$track['period_name'], 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED'], true)], 'total_personnel'=>count($items), 'personnel'=>$items];
+        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED'], true)], 'total_personnel'=>count($items), 'personnel'=>$items];
+    }
+
+    private function authoritySummary(?array $authority, ?string $issue): array
+    {
+        if ($authority === null) {
+            return ['status'=>'unresolved', 'authority_type'=>null, 'authority_name'=>null, 'reason'=>trim((string) preg_replace('/^[A-Z_]+:\s*/', '', (string) $issue))];
+        }
+        $name = null;
+        if (! empty($authority['authority_profile_id']) && ($authority['authority_type'] ?? '') !== 'HR') {
+            $name = $this->db->table('profiles')->select('full_name')->where('id', $authority['authority_profile_id'])->get()->getRow('full_name');
+        }
+        return ['status'=>'resolved', 'authority_type'=>$authority['authority_type'] ?? null, 'authority_name'=>$name, 'reason'=>$authority['reason'] ?? null];
     }
 
     private function trackGroup(string $key): string

@@ -696,6 +696,9 @@ class OrganizationService
         if (! $org) {
             throw new InvalidArgumentException('Organization not found.');
         }
+        if (($org['status'] ?? '') !== 'active') {
+            throw new InvalidArgumentException('Only active organizations may receive moderator assignments.');
+        }
 
         $personnel = $this->db->table('profiles')
             ->select('id, account_type, status')
@@ -719,6 +722,15 @@ class OrganizationService
             if ($eligible === null) {
                 throw new InvalidArgumentException('College-based Organization moderators must be affiliated with the Organization College.');
             }
+        }
+
+        $current = $this->db->table('organization_moderator_assignments')
+            ->where('organization_id', $organizationId)
+            ->where('is_active', 1)
+            ->get()
+            ->getRowArray();
+        if (($current['personnel_profile_id'] ?? null) === $personnelProfileId) {
+            return $this->getOrganization($organizationId);
         }
 
         $this->db->transBegin();
@@ -755,6 +767,35 @@ class OrganizationService
         }
 
         return $this->getOrganization($organizationId);
+    }
+
+    /** Lists authoritative active personnel eligible to moderate an organization. */
+    public function listModeratorCandidates(string $organizationId): array
+    {
+        $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
+        if (! $org) {
+            throw new InvalidArgumentException('Organization not found.');
+        }
+        if (($org['status'] ?? '') !== 'active') {
+            throw new InvalidArgumentException('Archived or inactive organizations cannot receive moderator assignments.');
+        }
+
+        $builder = $this->db->table('profiles p')
+            ->select('p.id, p.full_name, p.institutional_id AS employee_id, p.email, p.designation_title AS academic_rank')
+            ->join('personnel_profiles pp', 'pp.profile_id = p.id', 'left')
+            ->where('p.status', 'active')
+            ->whereIn('p.account_type', ['personnel', 'hr_admin', 'osad_admin']);
+
+        if (($org['scope'] ?? '') === 'college' && ! empty($org['college_id'])) {
+            $builder->select('c.code AS college_code, c.name AS college')
+                ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1')
+                ->join('colleges c', 'c.id = pca.college_id')
+                ->where('pca.college_id', $org['college_id']);
+        }
+
+        return $builder->distinct()->orderBy('p.full_name', 'ASC')
+            ->get()
+            ->getResultArray();
     }
 
     /**

@@ -6,9 +6,10 @@ const root = path.resolve(import.meta.dirname, '../../../..')
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8')
 
 describe('Personnel evaluation period architecture', () => {
-  it('provides a discoverable HR setup route and navigation item', () => {
+  it('keeps criteria governance routable without a separate Ranking Setup navigation item', () => {
     expect(read('frontend/src/App.jsx')).toContain('/hr/personnel-evaluation-setup')
-    expect(read('frontend/src/config/navigationCatalog.js')).toContain("label: 'Ranking Setup'")
+    expect(read('frontend/src/config/navigationCatalog.js')).not.toContain("label: 'Ranking Setup'")
+    expect(read('frontend/src/config/navigationCatalog.js')).toContain("label: 'Ranking Cycles'")
   })
 
   it('uses server-managed period identity for Faculty submission', () => {

@@ -17,8 +17,15 @@ use CodeIgniter\Test\CIUnitTestCase;
  *
  * @group http-proof
  */
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class AwardCandidateDiscoveryHttpProofTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     private const BASE = 'http://127.0.0.1:8080/api/v1';
     private const SSG_SUBCATEGORY = '40000001-0001-0000-0000-000000000001';
 
@@ -93,6 +100,48 @@ final class AwardCandidateDiscoveryHttpProofTest extends CIUnitTestCase
         $item = $data['items'][array_search($recordId, array_column($data['items'], 'record_id'), true)];
         self::assertNotEmpty($item['evidence'], 'The summary must link the approved record\'s document.');
         self::assertStringNotContainsString('storage_path', json_encode($item['evidence']));
+
+        // The award portfolio lists every approved achievement that belongs to this award, counted or not.
+        $portfolio = array_column($data['portfolio'], null, 'record_id');
+        self::assertArrayHasKey($recordId, $portfolio, 'The approved record must appear in the award portfolio.');
+        self::assertTrue($portfolio[$recordId]['counted']);
+        foreach ($data['portfolio'] as $entry) {
+            self::assertSame('verified', $this->recordStatus($entry['record_id']));
+            self::assertSame($entry['counted'], (float) $entry['points'] > 0);
+            if (! $entry['counted']) {
+                self::assertNotEmpty($entry['not_counted_reason'], 'A not-counted achievement must say why.');
+            }
+        }
+        $countedPoints = array_sum(array_map(static fn(array $e): float => (float) $e['points'], $data['portfolio']));
+        self::assertLessThanOrEqual((float) $data['raw_portfolio_score'] + 0.001, $countedPoints);
+        foreach ($data['items'] as $scoredItem) {
+            self::assertArrayHasKey($scoredItem['record_id'], $portfolio, 'Every point-earning item must also be in the portfolio.');
+        }
+
+        // Both lists are newest first by achievement date (start_date, else occurrence_date), in the same order.
+        self::assertSame('ACHIEVEMENT_DATE_DESC', $data['ordering']);
+        foreach (['items', 'portfolio'] as $list) {
+            $dates = array_map(static fn(array $row): string => (string) ($row['activity_date'] ?? ''), $data[$list]);
+            $dated = array_values(array_filter($dates, static fn(string $d): bool => $d !== ''));
+            $sorted = $dated;
+            rsort($sorted);
+            self::assertSame($sorted, $dated, $list . ' must be newest first.');
+        }
+        $summaryOrder = array_values(array_unique(array_column($data['items'], 'record_id')));
+        $portfolioCounted = array_values(array_column(array_filter($data['portfolio'], static fn(array $e): bool => $e['counted']), 'record_id'));
+        self::assertSame($summaryOrder, $portfolioCounted, 'Summary rows and counted portfolio entries must be in the same order.');
+        $fixtureDate = $this->db->table('student_portfolio_records')->select('start_date')->where('id', $recordId)->get()->getRowArray()['start_date'];
+        self::assertSame(substr((string) $fixtureDate, 0, 10), $portfolio[$recordId]['activity_date']);
+        foreach ($data['portfolio'] as $entry) {
+            if (! $entry['counted']) {
+                self::assertNotEmpty($entry['reason_code']);
+            }
+            foreach ($entry['evidence'] as $file) {
+                self::assertContains($file['file_kind'], ['pdf', 'image', 'other']);
+                self::assertNotEmpty($file['original_filename']);
+            }
+        }
+        self::assertIsBool($data['scoring_in_sync']);
 
         // Totals equal the active contribution rows of this student, award and cycle.
         $expected = (float) $this->db->query(

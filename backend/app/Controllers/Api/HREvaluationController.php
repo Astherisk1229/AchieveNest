@@ -4,9 +4,12 @@ namespace App\Controllers\Api;
 
 use App\Helpers\ValidationHelper;
 use App\Services\AuthenticatedActorService;
+use App\Services\ClassificationAwarePersonnelFinalizationService;
+use App\Services\PersonnelCompletedEvaluationResultService;
 use App\Services\ReviewerResolverService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -34,13 +37,29 @@ class HREvaluationController extends Controller
 
     protected AuthenticatedActorService $actorService;
     protected ReviewerResolverService $reviewerResolver;
+    protected ClassificationAwarePersonnelFinalizationService $finalizationService;
+    protected PersonnelCompletedEvaluationResultService $completedResultService;
 
     public function __construct(
         ?AuthenticatedActorService $actorService = null,
-        ?ReviewerResolverService $reviewerResolver = null
+        ?ReviewerResolverService $reviewerResolver = null,
+        ?ClassificationAwarePersonnelFinalizationService $finalizationService = null,
+        ?PersonnelCompletedEvaluationResultService $completedResultService = null
     ) {
         $this->actorService     = $actorService     ?? new AuthenticatedActorService();
         $this->reviewerResolver = $reviewerResolver ?? new ReviewerResolverService();
+        $this->finalizationService = $finalizationService ?? new ClassificationAwarePersonnelFinalizationService(null, $this->reviewerResolver);
+        $this->completedResultService = $completedResultService ?? new PersonnelCompletedEvaluationResultService();
+    }
+
+    /** Archived ranking tracks are historical and read-only for every evaluation mutation. */
+    private function archivedPeriodResponse(array $evaluation): mixed
+    {
+        $periodId = (string) ($evaluation['evaluation_period_id'] ?? '');
+        if ($periodId === '') return null;
+        $status = db_connect()->table('personnel_evaluation_periods')->select('status')->where('id', $periodId)->get()->getRowArray()['status'] ?? null;
+        if ($status !== 'ARCHIVED') return null;
+        return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_ARCHIVED', 'message' => 'This ranking cycle is archived and read-only.']], 409);
     }
 
     public function options(): mixed
@@ -102,18 +121,19 @@ class HREvaluationController extends Controller
         $existing = $db->table('personnel_evaluation_reports')->where('evaluation_id', $evaluation['id'])->orderBy('generated_at', 'DESC')->get()->getRowArray();
         if ($existing) return $existing;
         $person = $db->table('profiles')->select('id,full_name,institutional_id')->where('id', $evaluation['personnel_profile_id'])->get()->getRowArray() ?? [];
+        $criteria = is_string($evaluation['criteria_snapshot'] ?? null) ? json_decode($evaluation['criteria_snapshot'], true) : ($evaluation['criteria_snapshot'] ?? []);
         $snapshot = [
             'evaluation_id' => $evaluation['id'], 'evaluation_version' => (int) ($evaluation['version_number'] ?? 1),
             'personnel' => $person, 'assignment' => ['college' => $evaluation['college_name_snapshot'] ?? null, 'department' => $evaluation['department_name_snapshot'] ?? null, 'position' => $evaluation['position_title_snapshot'] ?? null],
             'evaluation_period' => ['id' => $evaluation['evaluation_period_id'] ?? null, 'name' => $evaluation['period_name_snapshot'] ?? null, 'academic_year' => $evaluation['academic_year'] ?? null],
             'criteria_version_id' => $evaluation['evaluation_scale_version_id'] ?? null,
+            'criteria_snapshot' => $criteria,
             'portfolio_version' => (int) ($evaluation['version_number'] ?? 1),
             'evaluator' => ['profile_id' => $actor['profile']['id'], 'full_name' => $actor['profile']['full_name'] ?? null, 'role' => in_array('dean', $actor['roles'] ?? [], true) ? 'Dean' : (in_array('department_head', $actor['roles'] ?? [], true) ? 'Department Head' : 'HR')],
-            'items' => array_map(static fn(array $item): array => ['id'=>$item['id'],'achievement'=>$item['item_description'],'criterion_code'=>$item['criterion_code'] ?? null,'criterion_key'=>$item['criterion_key'] ?? null,'decision'=>($item['verification_status'] ?? '')==='verified'?'approved':'rejected','configured_points'=>(float)($item['configured_points_snapshot'] ?? 0),'awarded_points'=>(float)($item['awarded_points'] ?? 0),'rejection_reason'=>$item['rejection_reason'] ?? null], $items),
+            'items' => array_map(static fn(array $item): array => ['id'=>$item['id'],'achievement'=>$item['item_description'],'criterion_code'=>$item['criterion_code'] ?? null,'criterion_key'=>$item['criterion_key'] ?? null,'decision'=>($item['verification_status'] ?? '')==='verified'?'approved':'rejected','verification_status'=>$item['verification_status'] ?? null,'configured_points'=>(float)($item['configured_points_snapshot'] ?? 0),'awarded_points'=>(float)($item['awarded_points'] ?? 0),'rejection_reason'=>$item['rejection_reason'] ?? null,'criterion_snapshot'=>is_string($item['criterion_snapshot']??null)?json_decode($item['criterion_snapshot'],true):($item['criterion_snapshot']??[]),'evidence_snapshot'=>is_string($item['evidence_snapshot']??null)?json_decode($item['evidence_snapshot'],true):($item['evidence_snapshot']??[])], $items),
             'section_totals' => ['A'=>$totals['areaA_score'],'B'=>$totals['areaB_score'],'C'=>$totals['areaC_score']], 'grand_total'=>$totals['total_score'],
             'status'=>$status, 'completed_at'=>date('c'),
         ];
-        $criteria = is_string($evaluation['criteria_snapshot'] ?? null) ? json_decode($evaluation['criteria_snapshot'], true) : ($evaluation['criteria_snapshot'] ?? []);
         $passingScore = (float) ($criteria['version']['passing_score'] ?? $criteria['sheet']['passing_score'] ?? 0);
         $snapshot['official_summary'] = (new \App\Services\PersonnelEvaluationSummaryService())->build($evaluation, $items, $criteria, $totals);
         $row=['id'=>$this->genUuid(),'evaluation_id'=>$evaluation['id'],'generated_by'=>$actor['profile']['id'],'report_payload'=>json_encode($snapshot,JSON_UNESCAPED_UNICODE),'summary_score'=>$totals['total_score'],'passing_status'=>$passingScore > 0 && $totals['total_score'] >= $passingScore ? 'passed' : 'not_passed','generated_at'=>date('Y-m-d H:i:s')];
@@ -219,7 +239,7 @@ class HREvaluationController extends Controller
         $db = db_connect();
         return (int) $db->table('personnel_evaluation_deficiency_requests')
             ->where('evaluation_id', $evaluationId)
-            ->whereIn('status', ['open', 'responded'])
+            ->whereIn('status', ['pending', 'open', 'responded'])
             ->countAllResults();
     }
 
@@ -248,12 +268,19 @@ class HREvaluationController extends Controller
                 'pe.department_id_snapshot AS department_id',
                 'pe.department_name_snapshot AS department_name',
                 'evaluator.full_name AS evaluator_name',
+                'pp.personnel_group',
             ])
             ->select('NULL AS email', false)
             ->join('profiles p', 'p.id = pe.personnel_profile_id')
+            ->join('personnel_profiles pp', 'pp.profile_id = pe.personnel_profile_id')
             ->join('profiles evaluator', 'evaluator.id = pe.evaluator_profile_id', 'left')
-            ->where('pe.evaluator_profile_id', $actor['profile']['id'])
             ->orderBy('pe.submitted_at', 'DESC');
+
+        // Organizational reviewers see only their assigned queue. HR must also
+        // see Dean-endorsed Faculty cases so it can perform the mandatory Phase O review.
+        if (! $this->isHrAdmin($actor)) {
+            $builder->where('pe.evaluator_profile_id', $actor['profile']['id']);
+        }
 
         if ($status && $status !== 'ALL') {
             $builder->where('pe.status', $status);
@@ -312,9 +339,13 @@ class HREvaluationController extends Controller
                 'pe.department_name_snapshot AS department',
                 'pe.college_name_snapshot AS college',
                 'evaluator.full_name AS evaluator_name',
+                'pp.personnel_group',
+                'pp.employment_start_date',
             ])
+            ->select('TIMESTAMPDIFF(YEAR, pp.employment_start_date, CURDATE()) AS tenure_years', false)
             ->select('NULL AS email', false)
             ->join('profiles p', 'p.id = pe.personnel_profile_id')
+            ->join('personnel_profiles pp', 'pp.profile_id = pe.personnel_profile_id')
             ->join('profiles evaluator', 'evaluator.id = pe.evaluator_profile_id', 'left')
             ->where('pe.id', $id)
             ->get()
@@ -322,12 +353,6 @@ class HREvaluationController extends Controller
 
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
-        }
-
-        // Phase O owns terminal rank-decision finalization. The legacy score-only endpoint
-        // must not bypass confirmed Recommended Rank review or reconsideration versioning.
-        if ($db->tableExists('personnel_hr_final_rank_reviews')) {
-            return $this->respond(['error' => ['code' => 'HR_FINAL_RANK_REVIEW_REQUIRED', 'message' => 'Finalize the confirmed Recommended Rank through the HR final-rank review endpoint.']], 409);
         }
 
         // Access control: HR Admin, assigned evaluator, or subject Personnel
@@ -395,6 +420,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         // State machine: must be in 'submitted'
         $transitionError = $this->validateTransition($evaluation['status'], 'in_evaluation');
@@ -411,6 +437,9 @@ class HREvaluationController extends Controller
                 return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_NOT_ONGOING', 'message' => 'Evaluation can begin only after HR starts evaluation for this period.']], 422);
             }
         }
+
+        // Non-Teaching Faculty submissions made before the NTF workbook existed get their locked Area A items now.
+        (new \App\Services\NtfAnnualReviewAreaAService($db))->attach($id);
 
         // Phase 8: Qualification Gate — must be cleared before evaluation can start
         if (! $this->isSubmissionEligibilityCleared($evaluation)) {
@@ -434,8 +463,8 @@ class HREvaluationController extends Controller
             ], 422);
         }
 
-        // Verify that the calling actor IS the resolved evaluator
-        if ($actor['profile']['id'] !== $resolved['evaluator_profile_id']) {
+        // Verify that the calling actor is an authorized evaluator for this Personnel
+        if (! $this->reviewerResolver->isValidEvaluatorActor($actor, $resolved)) {
             return $this->respond([
                 'error' => [
                     'code'    => 'EVALUATOR_MISMATCH',
@@ -444,17 +473,19 @@ class HREvaluationController extends Controller
             ], 403);
         }
 
+        $activeEvaluatorId = $resolved['authority_type'] === 'HR' ? $actor['profile']['id'] : $resolved['evaluator_profile_id'];
+
         $db->transBegin();
         try {
             $db->table('personnel_evaluations')->where('id', $id)->update([
                 'status'                => 'in_evaluation',
-                'evaluator_profile_id'  => $resolved['evaluator_profile_id'],
+                'evaluator_profile_id'  => $activeEvaluatorId,
                 'evaluation_started_at' => date('Y-m-d H:i:s'),
                 'updated_at'            => date('Y-m-d H:i:s'),
             ]);
 
             $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'evaluation_started', $evaluation['status'], 'in_evaluation', "Evaluation started by {$actor['profile']['full_name']} (role: {$resolved['evaluator_role']})", [
-                    'evaluator_profile_id' => $resolved['evaluator_profile_id'],
+                    'evaluator_profile_id' => $activeEvaluatorId,
                     'evaluator_role'       => $resolved['evaluator_role'],
                     'evaluator_college_id' => $resolved['evaluator_college_id'],
                 ]);
@@ -491,6 +522,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         // Decisions are mutable only inside the active Dean/HR evaluation stage.
         if ($evaluation['status'] !== 'in_evaluation') {
@@ -526,6 +558,7 @@ class HREvaluationController extends Controller
         if ($item === null) {
             return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
         }
+        if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This Area A item comes from the confirmed NTF annual-review workbook and cannot be changed here.']], 409);
 
         $db->table('personnel_evaluation_items')->where('id', $itemId)->update([
             'verification_status' => $status,
@@ -560,6 +593,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         // Decisions are mutable only inside the active Dean/HR evaluation stage.
         if ($evaluation['status'] !== 'in_evaluation') {
@@ -580,6 +614,7 @@ class HREvaluationController extends Controller
         if ($item === null) {
             return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
         }
+        if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This Area A item comes from the confirmed NTF annual-review workbook and cannot be changed here.']], 409);
 
         // Enforce: item must be verified before rating
         if ($item['verification_status'] !== 'verified') {
@@ -648,6 +683,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         $transitionError = $this->validateTransition($evaluation['status'], 'returned_for_revision');
         if ($transitionError !== null) {
@@ -694,6 +730,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         $transitionError = $this->validateTransition($evaluation['status'], 'ready_for_finalization');
         if ($transitionError !== null) {
@@ -763,6 +800,35 @@ class HREvaluationController extends Controller
         if (! ValidationHelper::validateUuid($id)) {
             return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid evaluation ID.']], 422);
         }
+
+        $evaluationRow = db_connect()->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
+        if ($evaluationRow !== null && ($archived = $this->archivedPeriodResponse($evaluationRow)) !== null) return $archived;
+
+        try {
+            $result = $this->finalizationService->finalize($actor, $id);
+            return $this->respond(['data' => [
+                'message' => $result['idempotent']
+                    ? 'Non-Teaching Faculty evaluation was already finalized.'
+                    : 'Non-Teaching Faculty evaluation successfully finalized.',
+                'report_id' => $result['report_id'],
+                'grand_total' => $result['grand_total'],
+                'final_snapshot' => $result['final_snapshot'],
+                'idempotent' => $result['idempotent'],
+            ]], 200);
+        } catch (RuntimeException $e) {
+            $code = $e->getMessage();
+            $status = match ($code) {
+                'EVALUATION_NOT_FOUND' => 404,
+                'NTF_FINALIZATION_HR_AUTHORITY_REQUIRED', 'NTF_FINALIZATION_EVALUATOR_MISMATCH' => 403,
+                'HR_FINAL_RANK_REVIEW_REQUIRED', 'EVALUATION_ALREADY_COMPLETED' => 409,
+                default => 422,
+            };
+            return $this->respond(['error' => ['code' => $code, 'message' => 'Personnel evaluation finalization could not be completed.']], $status);
+        }
+
+        /* Superseded legacy score-only implementation retained temporarily for
+         * Phase 8C report reconciliation. It is unreachable because the
+         * classification-aware service above owns every terminal response. */
 
         $db = db_connect();
 
@@ -961,39 +1027,62 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
-        $db = db_connect();
-        $evaluation = $db->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
-
-        if ($evaluation === null) {
-            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
+        try {
+            $result = $this->completedResultService->get($actor, $id);
+            $isOwner = (string) ($actor['profile']['id'] ?? '') === (string) $result['personnel']['profile_id'];
+            if (! $isOwner) {
+                $reviewerReport = db_connect()->table('personnel_evaluation_reports')
+                    ->where('evaluation_id', $id)->orderBy('generated_at', 'DESC')->get()->getRowArray();
+                if ($reviewerReport) {
+                    $reviewerReport['snapshot'] = is_string($reviewerReport['report_payload'] ?? null)
+                        ? json_decode($reviewerReport['report_payload'], true)
+                        : ($reviewerReport['report_payload'] ?? null);
+                    return $this->respond(['data' => ['report' => $reviewerReport, 'result' => $result]], 200);
+                }
+            }
+            // Keep the established `report` envelope while making its payload a
+            // sanitized, immutable completed-result read model.
+            return $this->respond(['data' => ['report' => [
+                'id' => $result['result_snapshot']['report_id'],
+                'evaluation_id' => $result['evaluation']['version_id'],
+                'summary_score' => $result['scores']['total'],
+                'passing_status' => $result['scores']['passing_status'],
+                'generated_at' => $result['result_snapshot']['generated_at'],
+                'snapshot' => $result,
+            ], 'result' => $result]], 200);
+        } catch (RuntimeException $e) {
+            $code = $e->getMessage();
+            $status = match ($code) {
+                'EVALUATION_NOT_FOUND', 'RESULT_REPORT_NOT_FOUND' => 404,
+                'RESULT_ACCESS_DENIED' => 403,
+                'RESULT_NOT_RELEASED' => 409,
+                default => 422,
+            };
+            return $this->respond(['error' => ['code' => $code, 'message' => $code === 'RESULT_NOT_RELEASED'
+                ? 'Evaluation results are released to Personnel only after completion.'
+                : 'Evaluation result is unavailable.']], $status);
         }
+    }
 
-        $actorId   = $actor['profile']['id'];
-        $canAccess = $this->isHrAdmin($actor)
-            || $actorId === ($evaluation['evaluator_profile_id'] ?? null)
-            || $actorId === ($evaluation['originating_evaluator_profile_id'] ?? null)
-            || $actorId === ($evaluation['personnel_profile_id'] ?? null);
+    public function getResult(string $id): mixed
+    {
+        return $this->getReport($id);
+    }
 
-        if (! $canAccess) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Access denied.']], 403);
+    public function printableResult(string $id): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        try {
+            $result = $this->completedResultService->get($actor, $id);
+            $html = (new \App\Services\PersonnelCompletedEvaluationResultHtmlRenderer())->render($result);
+            return $this->response->setStatusCode(200)->setHeader('Content-Type', 'text/html; charset=UTF-8')
+                ->setHeader('Cache-Control', 'private, no-store')->setBody($html);
+        } catch (RuntimeException $e) {
+            $code = $e->getMessage();
+            $status = match ($code) {'EVALUATION_NOT_FOUND', 'RESULT_REPORT_NOT_FOUND' => 404, 'RESULT_ACCESS_DENIED' => 403, 'RESULT_NOT_RELEASED' => 409, default => 422};
+            return $this->respond(['error' => ['code' => $code, 'message' => 'Printable evaluation result is unavailable.']], $status);
         }
-
-        if (! in_array($evaluation['status'], ['ready_for_finalization', 'completed'], true)) {
-            return $this->respond(['error' => ['code' => 'NOT_FINALIZED', 'message' => 'Report is available after Dean endorsement.']], 422);
-        }
-
-        $report = $db->table('personnel_evaluation_reports')
-            ->where('evaluation_id', $id)
-            ->orderBy('generated_at', 'DESC')
-            ->get()
-            ->getRowArray();
-
-        if ($report === null) {
-            return $this->respond(['error' => ['code' => 'REPORT_NOT_FOUND', 'message' => 'Report not found for this evaluation.']], 404);
-        }
-
-        $report['snapshot'] = is_string($report['report_payload'] ?? null) ? json_decode($report['report_payload'], true) : ($report['report_payload'] ?? null);
-        return $this->respond(['data' => ['report' => $report]], 200);
     }
 
     // =========================================================================
@@ -1012,6 +1101,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         if ($evaluation['status'] === 'completed') {
             return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'Completed evaluations cannot have new deficiency requests.']], 409);
@@ -1024,6 +1114,10 @@ class HREvaluationController extends Controller
         $json   = $this->request->getJSON(true) ?? [];
         $reason = trim((string) ($json['reason'] ?? ''));
         $itemId = trim((string) ($json['evaluation_item_id'] ?? ''));
+        if ($itemId !== '') {
+            $lockedItem = $db->table('personnel_evaluation_items')->where(['id' => $itemId, 'evaluation_id' => $id])->get()->getRowArray();
+            if ($lockedItem && \App\Services\NtfAnnualReviewAreaAService::isLocked($lockedItem)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'Deficiency requests cannot target Area A items locked from the NTF annual-review workbook.']], 409);
+        }
 
         if (! ValidationHelper::validateBoundedText($reason, ValidationHelper::MAX_REASON_LENGTH)) {
             return $this->respond(['error' => ['code' => 'REASON_REQUIRED', 'message' => 'A reason (1-500 characters) is required.']], 422);
@@ -1033,19 +1127,19 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_ITEM_ID', 'message' => 'Invalid evaluation_item_id.']], 422);
         }
 
+        $defId = $this->genUuid();
         $db->table('personnel_evaluation_deficiency_requests')->insert([
-            'evaluation_id'      => $id,
-            'evaluation_item_id' => $itemId !== '' ? $itemId : null,
-            'requested_by'       => $actor['profile']['id'],
-            'requested_from'     => $evaluation['personnel_profile_id'],
-            'reason'             => $reason,
-            'status'             => 'open',
-            'created_at'         => date('Y-m-d H:i:s'),
-            'responded_at'       => null,
-            'resolved_at'        => null,
+            'id'                     => $defId,
+            'evaluation_id'          => $id,
+            'item_id'                => $itemId !== '' ? $itemId : null,
+            'requested_by'           => $actor['profile']['id'],
+            'deficiency_description' => $reason,
+            'status'                 => 'pending',
+            'created_at'             => date('Y-m-d H:i:s'),
+            'responded_at'           => null,
         ]);
 
-        return $this->respond(['data' => ['message' => 'Deficiency request created.', 'status' => 'open']], 201);
+        return $this->respond(['data' => ['message' => 'Deficiency request created.', 'id' => $defId, 'status' => 'pending']], 201);
     }
 
     // =========================================================================
@@ -1094,7 +1188,13 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
-        $db  = db_connect();
+        $db         = db_connect();
+        $evaluation = $db->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
+        if ($evaluation === null) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
+        }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
+
         $def = $db->table('personnel_evaluation_deficiency_requests')
             ->where('id', $defId)
             ->where('evaluation_id', $id)
@@ -1105,20 +1205,25 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Deficiency request not found.']], 404);
         }
 
-        // Only the Personnel who was requested_from may respond
-        if ($actor['profile']['id'] !== $def['requested_from']) {
+        // Only the subject Personnel may respond
+        if ($actor['profile']['id'] !== $evaluation['personnel_profile_id']) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the subject Personnel may respond to this deficiency request.']], 403);
         }
 
-        if ($def['status'] !== 'open') {
+        if (! in_array($def['status'], ['pending', 'open'], true)) {
             return $this->respond(['error' => ['code' => 'ALREADY_RESPONDED', 'message' => 'This deficiency request has already been responded to or resolved.']], 422);
         }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $responseText = trim((string) ($json['response_text'] ?? $json['response'] ?? ''));
 
         $db->table('personnel_evaluation_deficiency_requests')
             ->where('id', $defId)
             ->update([
-                'status'       => 'responded',
-                'responded_at' => date('Y-m-d H:i:s'),
+                'status'        => 'responded',
+                'response_text' => $responseText !== '' ? $responseText : null,
+                'responded_at'  => date('Y-m-d H:i:s'),
+                'updated_at'    => date('Y-m-d H:i:s'),
             ]);
 
         return $this->respond(['data' => ['message' => 'Response recorded. The evaluator will review your submission.', 'status' => 'responded']], 200);
@@ -1141,6 +1246,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         if (! $this->isEvaluatorOrHr($actor, $evaluation)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator or HR Admin may resolve deficiency requests.']], 403);
@@ -1156,7 +1262,7 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Deficiency request not found.']], 404);
         }
 
-        if (! in_array($def['status'], ['open', 'responded'], true)) {
+        if (! in_array($def['status'], ['pending', 'open', 'responded'], true)) {
             return $this->respond(['error' => ['code' => 'ALREADY_RESOLVED', 'message' => 'Deficiency request is already resolved or cancelled.']], 422);
         }
 
@@ -1164,9 +1270,8 @@ class HREvaluationController extends Controller
             ->where('id', $defId)
             ->update([
                 'status'       => 'resolved',
-                'resolved_at'  => date('Y-m-d H:i:s'),
-                'resolved_by'  => $actor['profile']['id'],
                 'responded_at' => $def['responded_at'] ?? date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
             ]);
 
         return $this->respond(['data' => ['message' => 'Deficiency request resolved.', 'status' => 'resolved']], 200);
@@ -1188,6 +1293,7 @@ class HREvaluationController extends Controller
         if ($evaluation === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
 
         if (! $this->isEvaluatorOrHr($actor, $evaluation)) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator or HR Admin may cancel deficiency requests.']], 403);
@@ -1203,7 +1309,7 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Deficiency request not found.']], 404);
         }
 
-        if (! in_array($def['status'], ['open', 'responded'], true)) {
+        if (! in_array($def['status'], ['pending', 'open', 'responded'], true)) {
             return $this->respond(['error' => ['code' => 'CANNOT_CANCEL', 'message' => 'Only open or responded deficiency requests can be cancelled.']], 422);
         }
 
@@ -1211,9 +1317,8 @@ class HREvaluationController extends Controller
             ->where('id', $defId)
             ->update([
                 'status'       => 'cancelled',
-                'resolved_at'  => date('Y-m-d H:i:s'),
-                'resolved_by'  => $actor['profile']['id'],
                 'responded_at' => $def['responded_at'] ?? date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
             ]);
 
         return $this->respond(['data' => ['message' => 'Deficiency request cancelled.', 'status' => 'cancelled']], 200);

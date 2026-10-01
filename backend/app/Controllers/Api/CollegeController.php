@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use App\Services\AuthenticatedActorService;
 use App\Services\AuthorizationService;
 use App\Services\CollegeService;
+use App\Services\StudentAchievementRoutingService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use InvalidArgumentException;
@@ -17,15 +18,19 @@ class CollegeController extends Controller
     protected AuthenticatedActorService $actorService;
     protected AuthorizationService $authService;
     protected CollegeService $collegeService;
+    protected StudentAchievementRoutingService $studentRoutingService;
 
     public function __construct(
         ?AuthenticatedActorService $actorService = null,
         ?AuthorizationService $authService = null,
-        ?CollegeService $collegeService = null
+        ?CollegeService $collegeService = null,
+        ?StudentAchievementRoutingService $studentRoutingService = null
     ) {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
         $this->authService = $authService ?? new AuthorizationService();
         $this->collegeService = $collegeService ?? new CollegeService();
+        $this->studentRoutingService = $studentRoutingService
+            ?? new StudentAchievementRoutingService();
     }
 
     public function options()
@@ -85,6 +90,104 @@ class CollegeController extends Controller
             return $this->respond(['college' => $college], 200);
         } catch (Throwable $e) {
             return $this->respond(['error' => ['code' => 'FETCH_FAILED', 'message' => $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * PATCH /api/v1/osad/colleges/{id}/status
+     * Archives or reactivates a College without changing any dependent record.
+     */
+    public function updateStatus(string $id)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
+        }
+        if (! $this->checkOSADAuthorization($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage the College lifecycle.']], 403);
+        }
+
+        $payload = $this->request->getJSON(true) ?? [];
+
+        try {
+            $college = $this->collegeService->updateCollegeStatus($id, (string) ($payload['status'] ?? ''));
+            return $this->respond([
+                'message' => $college['status'] === 'inactive'
+                    ? 'College archived successfully. Existing programs and historical records were preserved.'
+                    : 'College reactivated successfully.',
+                'college' => $college,
+            ], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'VALIDATION_ERROR', 'message' => $e->getMessage()]], 422);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Failed to update College lifecycle: ' . $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/osad/colleges/{id}/update
+     * Edits College identity (name, code, description, badge color) and optionally replaces the logo.
+     * POST (not PUT) so multipart logo uploads are parsed.
+     */
+    public function update(string $id)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
+        }
+        if (! $this->checkOSADAuthorization($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
+        }
+
+        $json = $this->request->getJSON(true);
+        $post = $this->request->getPost();
+        $payload = is_array($json) && count($json) > 0 ? $json : (is_array($post) ? $post : []);
+        $logoFile = null;
+        if ($this->request->getFile('logo') !== null && $this->request->getFile('logo')->isValid()) {
+            $logoFile = $this->request->getFile('logo');
+        }
+
+        try {
+            $college = $this->collegeService->updateCollege($id, $payload, $logoFile);
+            log_message('info', '[CollegeController] College ' . $id . ' updated by ' . ($actor['profile']['id'] ?? 'unknown'));
+            return $this->respond(['message' => 'College updated successfully.', 'college' => $college], 200);
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'College not found.' ? 404 : 422;
+            return $this->respond(['error' => ['code' => $status === 404 ? 'NOT_FOUND' : 'VALIDATION_ERROR', 'message' => $e->getMessage()]], $status);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Failed to update College: ' . $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * DELETE /api/v1/osad/colleges/{id}
+     * Permanently deletes an archived College that no other record references.
+     */
+    public function delete(string $id)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
+        }
+        if (! $this->checkOSADAuthorization($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
+        }
+
+        try {
+            $deleted = $this->collegeService->deleteCollege($id);
+            log_message('notice', '[CollegeController] College ' . $deleted['code'] . ' (' . $id . ') deleted by ' . ($actor['profile']['id'] ?? 'unknown'));
+            return $this->respond(['message' => 'College deleted permanently.', 'college' => $deleted], 200);
+        } catch (\App\Services\CollegeInUseException $e) {
+            return $this->respond(['error' => ['code' => 'COLLEGE_IN_USE', 'message' => 'This College is still linked to other records. Keep it archived, or remove these links first.', 'references' => $e->references()]], 409);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => $e->getMessage()]], 404);
+        } catch (\RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'COLLEGE_NOT_ARCHIVED')) {
+                return $this->respond(['error' => ['code' => 'COLLEGE_NOT_ARCHIVED', 'message' => 'Archive this College before deleting it.']], 409);
+            }
+            return $this->respond(['error' => ['code' => 'DELETE_FAILED', 'message' => 'Failed to delete College: ' . $e->getMessage()]], 500);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'DELETE_FAILED', 'message' => 'Failed to delete College: ' . $e->getMessage()]], 500);
         }
     }
 
@@ -335,8 +438,32 @@ class CollegeController extends Controller
         }
 
         try {
-            $actorProfileId = $actor['profile_id'] ?? null;
+            $actorProfileId = $actor['profile']['id']
+                ?? $actor['profile_id']
+                ?? null;
             $result = $this->collegeService->reassignCoordinator($id, $programId, $newCoordinatorId, $actorProfileId);
+
+            try {
+                $result['pending_achievement_routing']
+                    = $this->studentRoutingService
+                        ->reconcilePendingForProgram(
+                            $programId,
+                            is_string($actorProfileId)
+                                ? $actorProfileId
+                                : null
+                        );
+            } catch (Throwable $routingError) {
+                log_message(
+                    'error',
+                    'Program coordinator was assigned, but pending student '
+                    . 'achievement routing reconciliation failed: {message}',
+                    ['message' => $routingError->getMessage()]
+                );
+                $result['pending_achievement_routing'] = [
+                    'status' => 'retry_required',
+                ];
+            }
+
             return $this->respond($result, 200);
         } catch (InvalidArgumentException $e) {
             return $this->respond(['error' => ['code' => 'VALIDATION_ERROR', 'message' => $e->getMessage()]], 422);
@@ -345,4 +472,3 @@ class CollegeController extends Controller
         }
     }
 }
-

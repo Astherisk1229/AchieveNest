@@ -11,7 +11,7 @@ use RuntimeException;
  * Server-Authoritative Scale Assignment Service for Plan F — Phase F1.
  *
  * Decides exactly one evaluation scale per Personnel evaluation context based on
- * the canonical Plan D classification pair (Personnel Group + Organizational Side).
+ * the canonical Personnel Group.
  * Enforces the authoritative assignment matrix frozen in Phase F0.
  */
 class EvaluationScaleAssignmentService
@@ -68,12 +68,12 @@ class EvaluationScaleAssignmentService
         $side = strtolower(trim((string)($context['organizational_side'] ?? '')));
         $cycleId = $context['evaluation_cycle_id'] ?? '2025-2026';
 
-        if ($group === '' || $side === '') {
-            throw new RuntimeException("Incomplete personnel classification context: personnel_group and organizational_side are required.", 422);
+        if ($group === '') {
+            throw new RuntimeException("Incomplete personnel classification context: personnel_group is required.", 422);
         }
 
         try {
-            $scaleCode = EvaluationInstrumentRegistry::resolveScaleCode($group, $side);
+            $scaleCode = EvaluationInstrumentRegistry::resolveScaleCode($group);
         } catch (RuntimeException $e) {
             return [
                 'personnel_profile_id' => $profileId,
@@ -156,9 +156,9 @@ class EvaluationScaleAssignmentService
     {
         $resolved = $this->resolveScaleForPersonnel($personnelProfileId);
         if ($resolved['assignment_status'] === 'assigned') {
-            return "Assigned [{$resolved['scale_title']}] based on canonical classification [{$resolved['personnel_group']} + {$resolved['organizational_side']}].";
+            return "Assigned [{$resolved['scale_title']}] based on personnel group [{$resolved['personnel_group']}].";
         }
 
-        return "Scale assignment rejected: unsupported classification combination [{$resolved['personnel_group']} + {$resolved['organizational_side']}].";
+        return "Scale assignment rejected: unsupported personnel group [{$resolved['personnel_group']}].";
     }
 }

@@ -11,6 +11,23 @@ function responseBytes(data) {
 }
 
 /**
+ * Browser FormData requests must not inherit the JSON default header. When a
+ * Content-Type is supplied without the browser-generated multipart boundary,
+ * PHP receives an empty uploaded-files collection and reports FILE_REQUIRED.
+ */
+function removeMultipartContentType(headers) {
+  if (!headers) return
+
+  if (typeof headers.delete === 'function') {
+    headers.delete('Content-Type')
+    return
+  }
+
+  delete headers['Content-Type']
+  delete headers['content-type']
+}
+
+/**
  * AchieveNest REST API Client Layer
  * Pre-configured Axios instance with JWT Bearer Token interceptors and error handlers.
  */
@@ -26,6 +43,12 @@ const apiClient = axios.create({
 // Request Interceptor: Attach JWT Bearer Token from local storage or session storage
 apiClient.interceptors.request.use(
   async (config) => {
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      // Leave Content-Type unset so XMLHttpRequest/fetch supplies the required
+      // multipart boundary. This applies to every protected file upload.
+      removeMultipartContentType(config.headers)
+    }
+
     if (performanceLoggingEnabled) {
       config.metadata = {
         requestId: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,

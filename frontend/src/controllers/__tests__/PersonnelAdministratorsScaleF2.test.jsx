@@ -45,13 +45,10 @@ describe('Personnel Evaluation Track — Plan F — Phase F2: Administrators Ran
       expect(RankingCriteriaModel.AREA_CEILINGS.AREA_C).toBe(40)
     })
 
-    it('applies strictly to Faculty + Academic and Non-Teaching Faculty + Academic', () => {
-      expect(adminInstrument.applicability).toEqual([
-        { personnel_group: 'faculty', organizational_side: 'academic' },
-        { personnel_group: 'non_teaching_faculty', organizational_side: 'academic' }
-      ])
+    it('applies strictly to the Faculty personnel group', () => {
+      expect(adminInstrument.applicability).toEqual([{ personnel_group: 'faculty' }])
       expect(evaluationInstrumentRegistry.resolveScaleCode('faculty', 'academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
-      expect(evaluationInstrumentRegistry.resolveScaleCode('non_teaching_faculty', 'academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
+      expect(evaluationInstrumentRegistry.resolveScaleCode('faculty', 'non_academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
     })
   })
 

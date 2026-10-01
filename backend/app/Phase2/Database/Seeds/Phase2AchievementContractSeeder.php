@@ -114,7 +114,7 @@ class Phase2AchievementContractSeeder extends Seeder
             ['S02-PROJECT_CONTRIBUTOR', 'Project Contributor', 'ORG_MEMBERSHIP_PARTICIPATION', 'PROJECT_CONTRIBUTOR'],
 
             // Student 03 — Community Service / Volunteerism
-            ['S03-UNIVERSITY_BASED_SERVICE', 'University-Based Service', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'UNIVERSITY_BASED_SERVICE'],
+            ['S03-UNIVERSITY_BASED_SERVICE', 'School / University-Based Service', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'UNIVERSITY_BASED_SERVICE'],
             ['S03-COMMUNITY_BASED_SERVICE', 'Community-Based Service', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'COMMUNITY_BASED_SERVICE'],
             ['S03-CHURCH_BASED_SERVICE', 'Church-Based Service', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'CHURCH_BASED_SERVICE'],
             ['S03-ENVIRONMENTAL_SERVICE', 'Environmental Service', 'COMMUNITY_SERVICE_VOLUNTEERISM', 'ENVIRONMENTAL_SERVICE'],

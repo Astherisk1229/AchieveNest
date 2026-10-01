@@ -35,9 +35,8 @@ import {
 
 
 
-import useOrganization from '../../../hooks/useOrganization'
-import AttendanceController from '../../../controllers/AttendanceController'
 import OrganizationController from '../../../controllers/OrganizationController'
+import useOrganization from '../../../hooks/useOrganization'
 import EventCreationModal from './EventCreationModal'
 import AttendanceScannerModal from './AttendanceScannerModal'
 import DigitalCertificateModal from './DigitalCertificateModal'
@@ -55,26 +54,81 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   const rawTab = searchParams.get('tab')
   const activeTab = (!rawTab || rawTab === 'dashboard' || rawTab === 'overview') ? 'dashboard' : rawTab
 
-  const { orgInfo, events, metrics, createEvent, updateEvent, archiveEvent } = useOrganization()
+  const {
+    orgInfo,
+    events,
+    metrics,
+    createEvent,
+    updateEvent,
+    cancelEvent,
+    attendanceSessions,
+    attendanceSessionsLoading,
+    attendanceSessionsError,
+    activeAttendanceSession,
+    attendanceRecords,
+    attendanceRecordsLoading,
+    attendanceRecordsError,
+    loadAttendanceSessions,
+    createAttendanceSession,
+    selectAttendanceSession,
+    openAttendanceSession,
+    closeAttendanceSession,
+    loadAttendanceRecords
+  } = useOrganization()
 
   // Selected Active Event for Attendance Monitoring
-  const [activeAttendanceEvtId, setActiveAttendanceEvtId] = useState('evt-1')
-  const activeEvt = (events && events.length > 0) ? (events.find(e => e.id === activeAttendanceEvtId) || events[0]) : { id: 'evt-1', title: 'Computer Society Tech Summit 2026', venue: 'NDMU Convention Center' }
+  const [activeAttendanceEvtId, setActiveAttendanceEvtId] = useState('')
+  const activeEvt = (events && events.length > 0)
+    ? (events.find(e => e.id === activeAttendanceEvtId) || events[0])
+    : null
 
-  // Attendance Session state with safe fallback
-  const [session, setSession] = useState(() => AttendanceController.getSession(activeAttendanceEvtId) || { session_status: 'Active', scanned_list: [] })
+  // Canonical Session Selection & Creation State
+  const [selectedSessionId, setSelectedSessionId] = useState(null)
+  const [isCreateSessionModalOpen, setIsCreateSessionModalOpen] = useState(false)
+  const [sessionFormData, setSessionFormData] = useState({
+    session_name: '',
+    session_type: 'general',
+    check_in_start: '',
+    check_in_end: ''
+  })
+  const [sessionFormError, setSessionFormError] = useState(null)
+  const [sessionFormSubmitting, setSessionFormSubmitting] = useState(false)
+  const [attendanceActionError, setAttendanceActionError] = useState(null)
+  const [attendanceActionLoading, setAttendanceActionLoading] = useState(false)
   const [showCopiedToast, setShowCopiedToast] = useState(false)
 
-  // Real-time listener for attendance updates from Officer Scans
+  // Sync active attendance event
   useEffect(() => {
-    const handleUpdate = () => {
-      const updated = AttendanceController.getSession(activeAttendanceEvtId)
-      if (updated) setSession({ ...updated })
+    if (events && events.length > 0) {
+      if (!activeAttendanceEvtId || !events.some(e => e.id === activeAttendanceEvtId)) {
+        setActiveAttendanceEvtId(events[0].id)
+      }
     }
-    handleUpdate()
-    window.addEventListener('achievenest_attendance_update', handleUpdate)
-    return () => window.removeEventListener('achievenest_attendance_update', handleUpdate)
-  }, [activeAttendanceEvtId])
+  }, [events, activeAttendanceEvtId])
+
+  // Load attendance sessions when active event changes
+  useEffect(() => {
+    if (activeAttendanceEvtId) {
+      setAttendanceActionError(null)
+      loadAttendanceSessions(activeAttendanceEvtId).catch(() => {})
+    }
+  }, [activeAttendanceEvtId, loadAttendanceSessions])
+
+  // Sync selected session and load records
+  useEffect(() => {
+    if (attendanceSessions && attendanceSessions.length > 0) {
+      const match = attendanceSessions.find(s => s.id === selectedSessionId)
+      if (match) {
+        selectAttendanceSession(match.id).catch(() => {})
+      } else {
+        setSelectedSessionId(attendanceSessions[0].id)
+        selectAttendanceSession(attendanceSessions[0].id).catch(() => {})
+      }
+    } else {
+      setSelectedSessionId(null)
+      selectAttendanceSession(null).catch(() => {})
+    }
+  }, [attendanceSessions])
 
 
   // Modal states
@@ -185,13 +239,26 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     setIsCreateOpen(true)
   }
 
-  // Handler for archiving event
-  const handleArchiveEvent = (evtId) => {
-    if (window.confirm('Are you sure you want to archive this event?')) {
-      archiveEvent(evtId)
+  // Canonical cancellation preserves the persisted Event record.
+  const handleCancelEvent = async (evtId) => {
+    if (
+      window.confirm(
+        'Are you sure you want to cancel this event? The Event record will be preserved.'
+      )
+    ) {
+      try {
+        await cancelEvent(evtId)
+      } catch (error) {
+        const message = (
+          error?.error?.message
+          ?? error?.message
+          ?? 'Unable to cancel the Event.'
+        )
+
+        alert(message)
+      }
     }
   }
-
   const handleOpenScanner = (evt) => {
     setSelectedEvent(evt || events[0])
     setIsScannerOpen(true)
@@ -231,14 +298,107 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   }
 
 
-  // Session Control Actions
-  const handleSessionControl = (newStatus) => {
-    AttendanceController.updateSessionStatus(activeAttendanceEvtId, newStatus)
-    setSession({ ...AttendanceController.getSession(activeAttendanceEvtId) })
+  // Canonical Session Handlers (R4 Step 2C-A)
+  const handleOpenCreateSessionModal = () => {
+    setSessionFormError(null)
+    const eventDate = activeEvt?.date || activeEvt?.start_time?.slice(0, 10) || new Date().toISOString().slice(0, 10)
+    setSessionFormData({
+      session_name: '',
+      session_type: 'general',
+      check_in_start: `${eventDate}T08:00`,
+      check_in_end: `${eventDate}T12:00`
+    })
+    setIsCreateSessionModalOpen(true)
+  }
+
+  const handleCreateSessionSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    setSessionFormError(null)
+
+    if (!sessionFormData.session_name.trim()) {
+      setSessionFormError('Session name is required.')
+      return
+    }
+
+    if (!sessionFormData.check_in_start || !sessionFormData.check_in_end) {
+      setSessionFormError('Check-in start and end times are required.')
+      return
+    }
+
+    const startTs = new Date(sessionFormData.check_in_start).getTime()
+    const endTs = new Date(sessionFormData.check_in_end).getTime()
+
+    if (isNaN(startTs) || isNaN(endTs) || endTs <= startTs) {
+      setSessionFormError('Check-in end time must be later than start time.')
+      return
+    }
+
+    setSessionFormSubmitting(true)
+    try {
+      const created = await createAttendanceSession(activeAttendanceEvtId, {
+        session_name: sessionFormData.session_name.trim(),
+        session_type: sessionFormData.session_type,
+        check_in_start: sessionFormData.check_in_start.replace('T', ' ') + (sessionFormData.check_in_start.length === 16 ? ':00' : ''),
+        check_in_end: sessionFormData.check_in_end.replace('T', ' ') + (sessionFormData.check_in_end.length === 16 ? ':00' : '')
+      })
+      setIsCreateSessionModalOpen(false)
+      if (created?.id) {
+        setSelectedSessionId(created.id)
+        selectAttendanceSession(created.id).catch(() => {})
+      }
+    } catch (err) {
+      setSessionFormError(err?.response?.data?.error?.message || err?.message || 'Failed to create attendance session.')
+    } finally {
+      setSessionFormSubmitting(false)
+    }
+  }
+
+  const handleOpenSession = async (sessionId) => {
+    setAttendanceActionError(null)
+    setAttendanceActionLoading(true)
+    try {
+      await openAttendanceSession(sessionId, activeAttendanceEvtId)
+    } catch (err) {
+      setAttendanceActionError(err?.response?.data?.error?.message || err?.message || 'Failed to open attendance session.')
+    } finally {
+      setAttendanceActionLoading(false)
+    }
+  }
+
+  const handleCloseSession = async (sessionId) => {
+    setAttendanceActionError(null)
+    setAttendanceActionLoading(true)
+    try {
+      await closeAttendanceSession(sessionId, activeAttendanceEvtId)
+      setConfirmModalAction(null)
+    } catch (err) {
+      setAttendanceActionError(err?.response?.data?.error?.message || err?.message || 'Failed to close attendance session.')
+    } finally {
+      setAttendanceActionLoading(false)
+    }
   }
 
   const handleExportCSV = () => {
-    AttendanceController.exportCSV(activeAttendanceEvtId, activeEvt?.title || 'Event')
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+      return
+    }
+    const headers = ['Student ID', 'Full Name', 'Email / Designation', 'Verification Method', 'Checked In At', 'Verified By']
+    const rows = attendanceRecords.map(r => [
+      `"${r.institutional_id || r.student_id || ''}"`,
+      `"${r.full_name || ''}"`,
+      `"${r.email || r.designation_title || ''}"`,
+      `"${r.verification_method || ''}"`,
+      `"${r.checked_in_at || ''}"`,
+      `"${r.scanned_by_name || 'Server Authorized'}"`
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `Attendance_${activeEvt?.title?.replace(/[^a-zA-Z0-9]/g, '_') || 'Session'}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const renderBannerGraphic = (bannerType) => {
@@ -261,15 +421,15 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   const upcomingCount = events.filter(e => e.status === 'Upcoming').length
   const ongoingCount = events.filter(e => e.status === 'Ongoing').length
   const completedCount = events.filter(e => e.status === 'Completed').length
-  const archivedCount = events.filter(e => e.status === 'Archived').length
+  const cancelledCount = events.filter(e => e.status === 'Cancelled').length
 
   // Filtered Events List for Manage Events Workspace
   const filteredEventsList = events.filter(evt => {
     if (eventsFilter === 'Upcoming' && evt.status !== 'Upcoming') return false
     if (eventsFilter === 'Ongoing' && evt.status !== 'Ongoing') return false
     if (eventsFilter === 'Completed' && evt.status !== 'Completed') return false
-    if (eventsFilter === 'Archived' && evt.status !== 'Archived') return false
-    if (eventsFilter === 'All' && evt.status === 'Archived') return false
+    if (eventsFilter === 'Cancelled' && evt.status !== 'Cancelled') return false
+    if (eventsFilter === 'All' && evt.status === 'Cancelled') return false
 
     if (eventsSearchTerm.trim()) {
       const query = eventsSearchTerm.toLowerCase()
@@ -334,24 +494,22 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 </button>
 
                 <button
-                  onClick={() => {
-                    AttendanceController.exportCSV(selectedEventDetail.id, selectedEventDetail.title)
-                  }}
+                  onClick={() => handleGoToAttendanceSession(selectedEventDetail.id)}
                   className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Export Attendance CSV</span>
+                  <span>View Attendance</span>
                 </button>
 
                 <button
                   onClick={() => {
-                    handleArchiveEvent(selectedEventDetail.id)
+                    handleCancelEvent(selectedEventDetail.id)
                     handleBackToManageEvents()
                   }}
                   className="px-3.5 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Archive</span>
+                  <span>Cancel Event</span>
                 </button>
               </div>
             </div>
@@ -369,7 +527,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         : selectedEventDetail.status === 'Completed'
                           ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                          : selectedEventDetail.status === 'Archived'
+                          : selectedEventDetail.status === 'Cancelled'
                             ? 'bg-slate-200 text-slate-600 border border-slate-300'
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}>
@@ -486,15 +644,16 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Officer Session Status</p>
-                  <p className="text-sm font-extrabold text-slate-900 mt-1 flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${AttendanceController.getSession(selectedEventDetail.id)?.session_status === 'Active' ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'
-                      }`}></span>
-                    {AttendanceController.getSession(selectedEventDetail.id)?.session_status === 'Active' ? 'LIVE SCANNING OPEN' : 'PRE-START / PAUSED'}
-                  </p>
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Attendance Monitoring</p>
+                  <button
+                    onClick={() => handleGoToAttendanceSession(selectedEventDetail.id)}
+                    className="text-xs font-extrabold text-[#16834a] hover:underline flex items-center gap-1 mt-1 text-left"
+                  >
+                    <span>Manage Live Sessions & Records →</span>
+                  </button>
                   <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                    Attendance Window: {selectedEventDetail.attendance_start_time || '08:30'} - {selectedEventDetail.attendance_end_time || '09:30'}
+                    View canonical check-ins
                   </p>
                 </div>
 
@@ -742,44 +901,20 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(() => {
-                      const sessionLogs = AttendanceController.getSession(selectedEventDetail.id)?.scanned_list || []
-                      const filteredLogs = sessionLogs.filter(item => {
-                        if (!rosterSearchTerm.trim()) return true
-                        const q = rosterSearchTerm.toLowerCase()
-                        return (
-                          item.full_name?.toLowerCase().includes(q) ||
-                          item.student_id?.toLowerCase().includes(q) ||
-                          item.program?.toLowerCase().includes(q) ||
-                          item.officer_name?.toLowerCase().includes(q)
-                        )
-                      })
-
-                      if (filteredLogs.length === 0) {
-                        return (
-                          <tr>
-                            <td colSpan={5} className="py-10 text-center text-slate-400 font-medium">
-                              No checked-in participants matching search filter.
-                            </td>
-                          </tr>
-                        )
-                      }
-
-                      return filteredLogs.map((item) => (
-                        <tr key={item.id} className="hover:bg-emerald-50/20 transition">
-                          <td className="p-3.5 font-extrabold text-slate-900 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
-                              {item.full_name ? item.full_name[0] : 'S'}
-                            </div>
-                            <span>{item.full_name}</span>
-                          </td>
-                          <td className="p-3.5 font-mono font-bold text-emerald-700">{item.student_id}</td>
-                          <td className="p-3.5 font-medium text-slate-600">{item.program}</td>
-                          <td className="p-3.5 font-bold text-slate-800">{item.scanned_at}</td>
-                          <td className="p-3.5 text-slate-500 font-medium">{item.officer_name}</td>
-                        </tr>
-                      ))
-                    })()}
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
+                        <div className="space-y-3 max-w-sm mx-auto">
+                          <p className="text-xs">Attendance sessions and verified student records are managed in the Attendance Monitoring Hub.</p>
+                          <button
+                            onClick={() => handleGoToAttendanceSession(selectedEventDetail.id)}
+                            className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#16834a] border border-emerald-200 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                            <span>Go to Attendance Monitoring</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -836,7 +971,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     : 'bg-[#E7F3E9] text-slate-700 hover:bg-emerald-100'
                     }`}
                 >
-                  All ({allEventsCount - archivedCount})
+                  All ({allEventsCount - cancelledCount})
                 </button>
 
                 <button
@@ -870,13 +1005,13 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                 </button>
 
                 <button
-                  onClick={() => setEventsFilter('Archived')}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Archived'
+                  onClick={() => setEventsFilter('Cancelled')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 cursor-pointer ${eventsFilter === 'Cancelled'
                     ? 'bg-slate-800 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
-                  Archived ({archivedCount})
+                  Archived ({cancelledCount})
                 </button>
               </div>
 
@@ -935,7 +1070,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         : evt.status === 'Completed'
                           ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                          : evt.status === 'Archived'
+                          : evt.status === 'Cancelled'
                             ? 'bg-slate-200 text-slate-600 border border-slate-300'
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}>
@@ -965,8 +1100,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         onLaunchScanner={(e) => handleOpenScanner(e)}
                         onEditEvent={(e) => handleOpenEditModal(e)}
                         onPreviewCertificates={(e) => handleOpenCertificates(e)}
-                        onExportCSV={(e) => AttendanceController.exportCSV(e.id, e.title)}
-                        onArchiveEvent={(id) => handleArchiveEvent(id)}
+                        onExportCSV={(e) => handleGoToAttendanceSession(e.id)}
+                        onCancelEvent={(id) => handleCancelEvent(id)}
                       />
                     </div>
 
@@ -979,193 +1114,542 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. CLEAN & ELEGANT ATTENDANCE MONITORING HUB                              */}
+      {/* 2. CANONICAL ATTENDANCE MONITORING & SESSION MANAGEMENT (R4 Step 2C-A)    */}
       {/* ========================================================================= */}
       {activeTab === 'attendance' && (
         <div className="space-y-6 animate-in fade-in duration-200">
 
-          {/* Top Header Card with Clean Event Selector */}
+          {/* Top Header Card with Clean Event Selector & Create Session Action */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#16834a] border border-emerald-100 flex items-center justify-center shrink-0">
                 <QrCode className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                  Attendance Monitoring Hub
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                    Attendance Monitoring Hub
+                  </h1>
+                  {activeEvt && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      activeEvt.status === 'Ongoing'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : activeEvt.status === 'Completed'
+                          ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                          : activeEvt.status === 'Cancelled'
+                            ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                            : activeEvt.status === 'Draft'
+                              ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}>
+                      Event: {activeEvt.status}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-500 font-medium">
-                  Select Event & Monitor Live Student Barcode Check-ins by Officers
+                  Manage Attendance Sessions & View Canonical Student Check-ins
                 </p>
               </div>
             </div>
 
-            {/* Clean Event Selector Dropdown */}
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:block">EVENT:</label>
-              <select
-                value={activeAttendanceEvtId}
-                onChange={(e) => setActiveAttendanceEvtId(e.target.value)}
-                className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#16834a] cursor-pointer shadow-xs"
+            {/* Event Selector & New Session Button */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider hidden sm:block">EVENT:</label>
+                <select
+                  value={activeAttendanceEvtId}
+                  onChange={(e) => setActiveAttendanceEvtId(e.target.value)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none focus:border-[#16834a] cursor-pointer shadow-xs"
+                >
+                  {events.map(evt => (
+                    <option key={evt.id} value={evt.id}>{evt.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleOpenCreateSessionModal}
+                disabled={activeEvt?.status === 'Completed' || activeEvt?.status === 'Cancelled'}
+                title={activeEvt?.status === 'Completed' || activeEvt?.status === 'Cancelled' ? 'Cannot create sessions for completed or cancelled events.' : 'Create a new attendance session for this event'}
+                className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
               >
-                {events.filter(e => e.status !== 'Archived').map(evt => (
-                  <option key={evt.id} value={evt.id}>{evt.title}</option>
-                ))}
-              </select>
+                <Plus className="w-4 h-4" />
+                <span>New Session</span>
+              </button>
             </div>
           </div>
 
-          {/* Share Officer Scanner Access Link Box */}
-          <div className="bg-[#EFF7F0] text-[#17663B] p-6 sm:p-7 rounded-3xl shadow-xl border border-[#69A97C] space-y-4 relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-              <div className="space-y-1">
-                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-[#245F42] border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider">
-                  OFFICER ACCESS LINK GENERATED
-                </span>
-                <h3 className="text-lg font-extrabold text-white">Share Scanner Link with Student Officers</h3>
-                <p className="text-xs text-[#245F42]/80">
-                  Forward this link to assigned Student Officers standing at entrance gates to scan student barcodes.
-                </p>
-              </div>
+          {/* Session Selector / List View */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#16834a]" />
+                Attendance Sessions for {activeEvt?.title || 'Selected Event'} ({attendanceSessions.length})
+              </h2>
+              {attendanceSessionsLoading && (
+                <span className="text-xs text-slate-400 font-medium">Loading sessions...</span>
+              )}
+            </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            {attendanceSessionsError && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{attendanceSessionsError}</span>
+                </div>
                 <button
-                  onClick={handleCopyOfficerLink}
-                  className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                  onClick={() => loadAttendanceSessions(activeAttendanceEvtId)}
+                  className="px-3 py-1 bg-rose-100 hover:bg-rose-200 rounded-lg text-rose-900 font-bold text-xs transition cursor-pointer"
                 >
-                  <Copy className="w-4 h-4" />
-                  <span>Copy Officer Link</span>
+                  Retry
                 </button>
-
-                <a
-                  href={`/scanner/${activeAttendanceEvtId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition border border-white/20 flex items-center gap-2 cursor-pointer"
-                >
-                  <ExternalLink className="w-4 h-4 text-[#245F42]" />
-                  <span>Open Mobile Scanner Tab</span>
-                </a>
               </div>
-            </div>
+            )}
 
-            {/* Display Link Container */}
-            <div className="p-3.5 rounded-2xl bg-[#EFF7F0] border border-[#69A97C] font-mono text-xs text-[#245F42] flex items-center justify-between gap-2 overflow-x-auto relative z-10">
-              <span className="truncate">{window.location.origin}/scanner/{activeAttendanceEvtId}</span>
-              <span className="text-[10px] font-sans font-bold text-emerald-400 bg-emerald-950 px-2.5 py-1 rounded-md shrink-0 border border-emerald-800">
-                Window: {session?.attendance_start_time || '08:30'} - {session?.attendance_end_time || '09:30'}
-              </span>
-            </div>
+            {!attendanceSessionsLoading && attendanceSessions.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#16834a] border border-emerald-100 flex items-center justify-center mx-auto">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div className="space-y-1 max-w-md mx-auto">
+                  <h3 className="text-sm font-extrabold text-slate-800">
+                    No attendance sessions have been configured for this event yet.
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Configure an attendance session to specify check-in time windows and track verified student attendance.
+                  </p>
+                </div>
+                {activeEvt?.status !== 'Completed' && activeEvt?.status !== 'Cancelled' && (
+                  <button
+                    onClick={handleOpenCreateSessionModal}
+                    className="px-4 py-2 bg-[#16834a] hover:bg-[#236e3e] text-white rounded-xl text-xs font-bold transition shadow-xs inline-flex items-center gap-2 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create First Session</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {attendanceSessions.map((sess) => {
+                  const isSelected = sess.id === (activeAttendanceSession?.id || selectedSessionId)
+                  return (
+                    <div
+                      key={sess.id}
+                      onClick={() => {
+                        setSelectedSessionId(sess.id)
+                        selectAttendanceSession(sess.id)
+                      }}
+                      className={`p-4 rounded-2xl border transition text-left cursor-pointer space-y-2.5 ${
+                        isSelected
+                          ? 'border-[#16834a] bg-emerald-50/40 shadow-sm ring-1 ring-[#16834a]/30'
+                          : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5 min-w-0">
+                          <h4 className="text-xs font-extrabold text-slate-900 truncate">
+                            {sess.session_name}
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                            {sess.session_type}
+                          </span>
+                        </div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                          sess.status === 'open'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 animate-pulse'
+                            : sess.status === 'closed'
+                              ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
+                        }`}>
+                          {sess.status === 'open' ? '● Open' : sess.status === 'closed' ? 'Closed' : 'Scheduled'}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 pt-1 border-t border-slate-100">
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate">{sess.check_in_start} - {sess.check_in_end}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Session Controls & Live Scanned Stream Table */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-6">
+          {/* Active Session Details & Controls (if a session is selected) */}
+          {activeAttendanceSession && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-6">
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
 
-              {/* Current Session Status Indicator */}
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${session?.session_status === 'Active' ? 'bg-emerald-500 animate-ping' : session?.session_status === 'Closed' ? 'bg-slate-400' : 'bg-amber-500'
+                {/* Current Session Status Indicator */}
+                <div className="flex items-center gap-3">
+                  <div className={`w-3.5 h-3.5 rounded-full ${
+                    activeAttendanceSession.status === 'open'
+                      ? 'bg-emerald-500 animate-ping'
+                      : activeAttendanceSession.status === 'closed'
+                        ? 'bg-slate-400'
+                        : 'bg-amber-500'
                   }`}></div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-slate-400">Current Session Status</p>
-                  <p className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                    {session?.session_status === 'Active' ? '● LIVE SCANNING OPEN' : session?.session_status === 'Closed' ? 'CLOSED' : '🔒 PRE-START LOCKED (WAITING COUNTDOWN)'}
-                  </p>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Selected Session: {activeAttendanceSession.session_name}</p>
+                    <p className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                      {activeAttendanceSession.status === 'open'
+                        ? '● LIVE SCANNING OPEN'
+                        : activeAttendanceSession.status === 'closed'
+                          ? 'CLOSED'
+                          : '🔒 SCHEDULED (NOT STARTED)'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                      Window: {activeAttendanceSession.check_in_start} - {activeAttendanceSession.check_in_end}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Session Lifecycle Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {activeAttendanceSession.status === 'scheduled' && (
+                    <button
+                      onClick={() => handleOpenSession(activeAttendanceSession.id)}
+                      disabled={attendanceActionLoading || activeEvt?.status === 'Draft' || activeEvt?.status === 'Completed' || activeEvt?.status === 'Cancelled'}
+                      title={
+                        activeEvt?.status === 'Draft'
+                          ? 'Draft events cannot open attendance sessions. Publish event first.'
+                          : activeEvt?.status === 'Completed' || activeEvt?.status === 'Cancelled'
+                            ? 'Cannot open sessions for completed or cancelled events.'
+                            : 'Open this session for attendee check-ins'
+                      }
+                      className="px-4 py-2 rounded-xl bg-emerald-50 text-[#16834a] hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>Open Session</span>
+                    </button>
+                  )}
+
+                  {activeAttendanceSession.status === 'open' && (
+                    <button
+                      onClick={() => setConfirmModalAction('Closed')}
+                      disabled={attendanceActionLoading}
+                      className="px-4 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:opacity-50 border border-rose-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Close Session</span>
+                    </button>
+                  )}
+
+                  {activeAttendanceSession.status === 'closed' && (
+                    <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Session Closed</span>
+                    </span>
+                  )}
+
+                  <button
+                    onClick={handleExportCSV}
+                    disabled={attendanceRecords.length === 0}
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Action Error Banner */}
+              {attendanceActionError && (
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{attendanceActionError}</span>
+                  </div>
+                  <button
+                    onClick={() => setAttendanceActionError(null)}
+                    className="text-xs font-bold text-rose-700 hover:underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
+              {/* Share Officer Scanner Access Link Box (Integration boundary for Step 2C-B) */}
+              <div className="bg-[#EFF7F0] text-[#17663B] p-5 rounded-2xl shadow-sm border border-[#69A97C] space-y-3 relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+                  <div className="space-y-0.5">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-[#245F42] border border-emerald-400/30 text-[10px] font-extrabold uppercase tracking-wider">
+                      OFFICER ACCESS LINK
+                    </span>
+                    <h3 className="text-sm font-extrabold text-[#17663B]">Student Officer Scanner Gateway</h3>
+                    <p className="text-[11px] text-[#245F42]/80">
+                      Forward link to assigned Student Officers standing at entrance gates to scan student barcodes.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={handleCopyOfficerLink}
+                      className="px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Link</span>
+                    </button>
+
+                    <a
+                      href={`/scanner/${activeAttendanceEvtId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 rounded-xl bg-white/70 hover:bg-white text-[#17663B] font-bold text-xs transition border border-[#69A97C] flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-[#17663B]" />
+                      <span>Open Scanner Tab</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/80 border border-[#69A97C]/50 font-mono text-xs text-[#245F42] flex items-center justify-between gap-2 overflow-x-auto relative z-10">
+                  <span className="truncate">{window.location.origin}/scanner/{activeAttendanceEvtId}</span>
+                  <span className="text-[10px] font-sans font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded shrink-0 border border-emerald-200">
+                    Session: {activeAttendanceSession.session_name}
+                  </span>
                 </div>
               </div>
 
-              {/* Session Controls (Triggers Safety Confirmation Modal when closing) */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {session?.session_status !== 'Active' && (
-                  <button
-                    onClick={() => handleSessionControl('Active')}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-50 text-[#16834a] hover:bg-emerald-100 border border-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span>Force Open Session</span>
-                  </button>
+              {/* Canonical Verified Attendance Records Table */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <Users className="w-4.5 h-4.5 text-[#16834a]" />
+                    Verified Attendance Records ({attendanceRecords.length} Checked In)
+                  </h3>
+                  {attendanceRecordsLoading ? (
+                    <span className="text-xs text-slate-400 font-medium">Loading records...</span>
+                  ) : (
+                    <button
+                      onClick={() => loadAttendanceRecords(activeAttendanceSession.id)}
+                      className="text-xs text-[#16834a] hover:underline font-bold"
+                    >
+                      Refresh
+                    </button>
+                  )}
+                </div>
+
+                {attendanceRecordsError && (
+                  <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{attendanceRecordsError}</span>
+                    </div>
+                    <button
+                      onClick={() => loadAttendanceRecords(activeAttendanceSession.id)}
+                      className="px-3 py-1 bg-rose-100 hover:bg-rose-200 rounded-lg text-rose-900 font-bold text-xs transition cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 )}
 
-                {session?.session_status === 'Active' && (
-                  <button
-                    onClick={() => handleSessionControl('Locked')}
-                    className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>Pause / Lock Session</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => setConfirmModalAction('Closed')}
-                  className="px-3.5 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                  <span>Close Session</span>
-                </button>
-
-                <button
-                  onClick={handleExportCSV}
-                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Export Attendance CSV</span>
-                </button>
-              </div>
-
-            </div>
-
-            {/* Live Scanned Participant Stream Table */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <Users className="w-4.5 h-4.5 text-[#16834a]" />
-                  Live Scanned Participant Stream ({(session?.scanned_list || []).length} Checked In)
-                </h3>
-                <span className="text-xs text-slate-500 font-medium">Auto-synced live</span>
-              </div>
-
-              <div className="overflow-x-auto border border-slate-200/80 rounded-2xl">
-                <table className="w-full text-left text-xs font-sans">
-                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200/80">
-                    <tr>
-                      <th className="p-3.5">Student Name</th>
-                      <th className="p-3.5">Student ID</th>
-                      <th className="p-3.5">Program & Course</th>
-                      <th className="p-3.5">Scanned Timestamp</th>
-                      <th className="p-3.5">Verified Officer</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(!session?.scanned_list || session.scanned_list.length === 0) ? (
+                <div className="overflow-x-auto border border-slate-200/80 rounded-2xl">
+                  <table className="w-full text-left text-xs font-sans">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200/80">
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                          No student barcodes scanned yet. Forward officer link to start check-ins.
-                        </td>
+                        <th className="p-3.5">Student Name</th>
+                        <th className="p-3.5">Student ID</th>
+                        <th className="p-3.5">Email / Program</th>
+                        <th className="p-3.5">Method</th>
+                        <th className="p-3.5">Checked-in Timestamp</th>
+                        <th className="p-3.5">Verified By</th>
                       </tr>
-                    ) : (
-                      session.scanned_list.map((item) => (
-                        <tr key={item.id} className="hover:bg-emerald-50/20 transition">
-                          <td className="p-3.5 font-extrabold text-slate-900 flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
-                              {item.full_name ? item.full_name[0] : 'S'}
-                            </div>
-                            <span>{item.full_name}</span>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {attendanceRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
+                            No attendance records recorded for this session yet.
                           </td>
-                          <td className="p-3.5 font-mono font-bold text-emerald-700">{item.student_id}</td>
-                          <td className="p-3.5 font-medium text-slate-600">{item.program}</td>
-                          <td className="p-3.5 font-bold text-slate-800">{item.scanned_at}</td>
-                          <td className="p-3.5 text-slate-600 font-medium">{item.officer_name}</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        attendanceRecords.map((item) => (
+                          <tr key={item.id} className="hover:bg-emerald-50/20 transition">
+                            <td className="p-3.5 font-extrabold text-slate-900 flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                {item.full_name ? item.full_name[0] : 'S'}
+                              </div>
+                              <span>{item.full_name}</span>
+                            </td>
+                            <td className="p-3.5 font-mono font-bold text-emerald-700">{item.institutional_id || item.student_id}</td>
+                            <td className="p-3.5 font-medium text-slate-600">{item.email || item.designation_title || 'Student'}</td>
+                            <td className="p-3.5">
+                              <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[10px] font-bold">
+                                {item.verification_method}
+                              </span>
+                            </td>
+                            <td className="p-3.5 font-bold text-slate-800">{item.checked_in_at}</td>
+                            <td className="p-3.5 text-slate-600 font-medium">{item.scanned_by_name || 'Server Authorized'}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* Create Attendance Session Modal */}
+          {isCreateSessionModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
+                <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-400">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-base text-white">Create Attendance Session</h3>
+                      <p className="text-xs text-slate-400">Configure check-in window for {activeEvt?.title}</p>
+                      {(activeEvt?.date || activeEvt?.time) && (
+                        <p className="text-[11px] text-emerald-400 font-medium mt-0.5">
+                          Event Schedule: {activeEvt?.date} • {activeEvt?.time}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsCreateSessionModalOpen(false)}
+                    className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateSessionSubmit} className="p-6 space-y-4">
+                  {sessionFormError && (
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{sessionFormError}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Session Name *</label>
+                    <input
+                      type="text"
+                      value={sessionFormData.session_name}
+                      onChange={(e) => setSessionFormData({ ...sessionFormData, session_name: e.target.value })}
+                      placeholder="e.g. Morning Plenary Session"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] focus:bg-white transition"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700">Session Type *</label>
+                    <select
+                      value={sessionFormData.session_type}
+                      onChange={(e) => setSessionFormData({ ...sessionFormData, session_type: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] focus:bg-white transition"
+                    >
+                      <option value="general">General</option>
+                      <option value="morning">Morning</option>
+                      <option value="afternoon">Afternoon</option>
+                      <option value="breakout">Breakout</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Check-in Starts *</label>
+                      <input
+                        type="datetime-local"
+                        value={sessionFormData.check_in_start}
+                        onChange={(e) => setSessionFormData({ ...sessionFormData, check_in_start: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] focus:bg-white transition"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700">Check-in Ends *</label>
+                      <input
+                        type="datetime-local"
+                        value={sessionFormData.check_in_end}
+                        onChange={(e) => setSessionFormData({ ...sessionFormData, check_in_end: e.target.value })}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] focus:bg-white transition"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateSessionModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={sessionFormSubmitting}
+                      className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] disabled:opacity-50 text-white font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer"
+                    >
+                      {sessionFormSubmitting ? (
+                        <span>Creating...</span>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4" />
+                          <span>Create Session</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
+          )}
 
-          </div>
+          {/* Close Session Confirmation Modal */}
+          {confirmModalAction === 'Closed' && activeAttendanceSession && (
+            <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900">
+                      Confirm Session Closure
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">Terminal Lifecycle Transition</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium leading-relaxed">
+                  Are you sure you want to <strong>permanently close</strong> attendance session <strong>{activeAttendanceSession.session_name}</strong>? Closed sessions cannot be re-opened for new check-ins.
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => setConfirmModalAction(null)}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={() => handleCloseSession(activeAttendanceSession.id)}
+                    disabled={attendanceActionLoading}
+                    className="px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Confirm & Close</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       )}
@@ -1602,7 +2086,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
             {/* 2x2 Events Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {events.filter(e => e.status !== 'Archived').map((evt) => {
+              {events.filter(e => e.status !== 'Cancelled').map((evt) => {
                 const isOngoing = evt.status === 'Ongoing'
                 const isCompleted = evt.status === 'Completed'
 
@@ -1639,8 +2123,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                           onLaunchScanner={(e) => handleOpenScanner(e)}
                           onEditEvent={(e) => handleOpenEditModal(e)}
                           onPreviewCertificates={(e) => handleOpenCertificates(e)}
-                          onExportCSV={(e) => AttendanceController.exportCSV(e.id, e.title)}
-                          onArchiveEvent={(id) => handleArchiveEvent(id)}
+                          onExportCSV={(e) => handleGoToAttendanceSession(e.id)}
+                          onCancelEvent={(id) => handleCancelEvent(id)}
                         />
                       </div>
 
@@ -1729,7 +2213,14 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           <AttendanceScannerModal
             isOpen={isScannerOpen}
             onClose={() => setIsScannerOpen(false)}
-            activeEvent={selectedEvent}
+            activeEvent={selectedEvent || activeEvt}
+            activeSession={activeAttendanceSession}
+            attendanceRecords={attendanceRecords}
+            onCheckInSuccess={async () => {
+              if (activeAttendanceSession?.id) {
+                await loadAttendanceRecords(activeAttendanceSession.id)
+              }
+            }}
           />
 
           <DigitalCertificateModal
@@ -1781,9 +2272,12 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   </button>
 
                   <button
-                    onClick={() => {
-                      handleSessionControl(confirmModalAction)
-                      setConfirmModalAction(null)
+                    onClick={async () => {
+                      if (confirmModalAction === 'Closed' && activeAttendanceSession?.id) {
+                        await handleCloseSession(activeAttendanceSession.id)
+                      } else {
+                        setConfirmModalAction(null)
+                      }
                     }}
                     className={`px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white ${confirmModalAction === 'Closed' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#16834a] hover:bg-[#236e3e]'
                       }`}

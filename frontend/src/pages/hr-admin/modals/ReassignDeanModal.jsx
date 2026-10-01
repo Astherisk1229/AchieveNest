@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Search, ShieldCheck, UserCheck, RefreshCw, Calendar, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react'
 import { reassignCollegeDean } from '../../../services/hrAdminService'
-import { isAcademicPersonnel } from '../../../utils/personnelPlacement'
 
 export default function ReassignDeanModal({ isOpen, onClose, targetCollege = null, currentDean = null, personnelList = [], onReassigned }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -43,7 +42,7 @@ export default function ReassignDeanModal({ isOpen, onClose, targetCollege = nul
   const eligiblePersonnel = personnelList.filter(p => {
     if (!p) return false
     if (currentDean && p.id === currentDean.profile_id) return false // Cannot reassign to same person
-    const isAcademic = isAcademicPersonnel(p) || p.organizational_side === 'academic' || p.personnel_classification === 'academic'
+    const isAcademic = p.personnel_group === 'faculty'
     const matchesCollege = Boolean(p.college_id) && p.college_id === targetCollege.id
     const q = searchQuery.toLowerCase().trim()
     const matchesQuery = !q ||

@@ -41,11 +41,13 @@ const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnel
 const HROrganizationalStructurePage = lazy(() => import('./pages/hr-admin/HROrganizationalStructurePage'))
 const PersonnelEvaluationSetupPage = lazy(() => import('./pages/hr-admin/PersonnelEvaluationSetupPage'))
 const HRRankingCyclesPage = lazy(() => import('./pages/hr-admin/HRRankingCyclesPage'))
+const EvaluationSummaryPage = lazy(() => import('./pages/hr-admin/EvaluationSummaryPage'))
 const HRAuditTrailPage = lazy(() => import('./pages/hr-admin/HRAuditTrailPage'))
 const HRPasswordResetRequestsPage = lazy(() => import('./pages/hr-admin/HRPasswordResetRequestsPage'))
 
 const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
 const OSADAwardRoutePage = lazy(() => import('./pages/osad-admin/OSADAwardRoutePage'))
+const OSADAwardCandidateReviewPage = lazy(() => import('./pages/osad-admin/OSADAwardCandidateReviewPage'))
 const CertificateStudioPage = lazy(() => import('./pages/osad-admin/CertificateStudioPage'))
 const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
 const PublicCertificateVerificationPage = lazy(() => import('./pages/common/PublicCertificateVerificationPage'))
@@ -205,6 +207,7 @@ function AppContent() {
               <Route path="/hr/personnel-evaluation-setup" element={<PersonnelEvaluationSetupPage />} />
               <Route path="/hr/ranking-cycles" element={<HRRankingCyclesPage />} />
               <Route path="/hr/ranking-cycles/:cycleId" element={<HRRankingCyclesPage />} />
+              <Route path="/hr/ranking-cycles/:cycleId/:trackKey/results/:evaluationId/summary" element={<EvaluationSummaryPage />} />
               <Route path="/hr/ranking-cycles/:cycleId/:trackKey/:stage" element={<HRRankingCyclesPage />} />
               <Route path="/hr/personnel/:personnelId/rank-placement" element={<RankPlacementPage role="hr" />} />
               <Route path="/hr/audit-trail" element={<HRAuditTrailPage />} />
@@ -227,6 +230,7 @@ function AppContent() {
             <Route element={<LayoutShell allowedAccountTypes={['osad_admin']} requiredRoles={['osad_staff']} />}>
               <Route path="/osad/dashboard" element={<OSADDashboardPage />} />
               <Route path="/osad/awards" element={<OSADAwardRoutePage view="catalog" />} />
+              <Route path="/osad/candidates" element={<OSADAwardCandidateReviewPage />} />
               <Route path="/osad/awards/:awardId" element={<OSADAwardRoutePage view="detail" />} />
               <Route path="/osad/awards/:awardId/candidates" element={<OSADAwardRoutePage view="candidates" />} />
               <Route path="/osad/awards/:awardId/candidates/:studentId/review" element={<OSADAwardRoutePage view="review" />} />

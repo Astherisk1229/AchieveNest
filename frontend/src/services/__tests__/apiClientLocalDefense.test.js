@@ -42,6 +42,18 @@ describe('Phase 16 — ApiClient Local-Defense Interceptors', () => {
     expect(resultConfig.headers.Authorization).toBeUndefined()
   })
 
+  it('API-FE-004: Removes the JSON default header for browser FormData so the multipart boundary is generated', async () => {
+    const form = new FormData()
+    form.append('file', new File(['evidence'], 'evidence.png', { type: 'image/png' }))
+
+    const config = { data: form, headers: { 'Content-Type': 'application/json' } }
+    const interceptor = apiClient.interceptors.request.handlers[0].fulfilled
+    const resultConfig = await interceptor(config)
+
+    expect(resultConfig.headers['Content-Type']).toBeUndefined()
+    expect(resultConfig.headers.Authorization).toBeUndefined()
+  })
+
   it('API-FE-003: Clears stored credentials and dispatches event upon 401 unauthenticated response', async () => {
     localStorage.setItem('achievenest_access_token', 'expired.token')
     localStorage.setItem('achievenest_current_user', JSON.stringify({ id: '1' }))

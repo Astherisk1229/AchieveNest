@@ -12,9 +12,10 @@ class EvidencePolicy
 
     public function __construct(
         ?StudentPortfolioPolicy $portfolioPolicy = null,
-        ?PersonnelPolicy $personnelPolicy = null
+        ?PersonnelPolicy $personnelPolicy = null,
+        private ?\CodeIgniter\Database\BaseConnection $db = null
     ) {
-        $this->portfolioPolicy = $portfolioPolicy ?? new StudentPortfolioPolicy();
+        $this->portfolioPolicy = $portfolioPolicy ?? new StudentPortfolioPolicy($this->db);
         $this->personnelPolicy = $personnelPolicy ?? new PersonnelPolicy();
     }
 
@@ -38,7 +39,7 @@ class EvidencePolicy
         // 2. Fetch parent portfolio record and delegate to portfolio viewing policy
         $portfolioRecordId = (string) ($evidence['portfolio_record_id'] ?? $evidence['record_id'] ?? '');
         if ($portfolioRecordId !== '') {
-            $db = db_connect();
+            $db = $this->db ?? db_connect();
             $record = $db->table('student_portfolio_records')
                 ->where('id', $portfolioRecordId)
                 ->get()
@@ -77,7 +78,7 @@ class EvidencePolicy
 
         $portfolioRecordId = (string) ($evidence['portfolio_record_id'] ?? $evidence['record_id'] ?? '');
         if ($portfolioRecordId !== '') {
-            $db = db_connect();
+            $db = $this->db ?? db_connect();
             $record = $db->table('student_portfolio_records')
                 ->where('id', $portfolioRecordId)
                 ->get()
@@ -116,7 +117,7 @@ class EvidencePolicy
 
         // 3. Dean assigned to the Personnel's college
         if (in_array('dean', $roles, true) && $ownerId !== '') {
-            $db = db_connect();
+            $db = $this->db ?? db_connect();
             $deanAssignment = $db->table('dean_assignments')
                 ->where('personnel_profile_id', $actorId)
                 ->where('is_active', 1)

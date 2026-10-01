@@ -176,6 +176,13 @@ export default function OSADStudentOrganizationsPage({
                       {categoryLabel}
                     </span>
                   </div>
+                  <span className={`inline-flex w-fit px-2 py-0.5 rounded-full border text-[10px] font-extrabold uppercase ${
+                    org.status === 'archived'
+                      ? 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                      : org.status === 'inactive'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                  }`}>{org.status || 'active'}</span>
 
                   <div className="flex items-start gap-3">
                     {/* Organization Logo or Initials Fallback */}
@@ -232,6 +239,7 @@ export default function OSADStudentOrganizationsPage({
 
                     <button
                       type="button"
+                      disabled={org.status !== 'active'}
                       onClick={(e) => {
                         e.stopPropagation()
                         if (typeof setPersonnelSelectorTarget === 'function') {
@@ -243,7 +251,7 @@ export default function OSADStudentOrganizationsPage({
                           })
                         }
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-emerald-50 text-[#064e2b] dark:text-[#245F42] font-extrabold text-[11px] border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-emerald-50 text-[#064e2b] dark:text-[#245F42] font-extrabold text-[11px] border border-slate-200 dark:border-slate-700 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 shadow-2xs"
                     >
                       <ShieldCheck className="w-3 h-3 text-[#16834a]" />
                       <span>{moderatorName !== 'Unassigned' ? 'Reassign' : 'Assign'}</span>

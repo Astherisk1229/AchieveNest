@@ -148,7 +148,8 @@ class TargetHRPersonnelController extends Controller
             $hasPositionCol   ? 'pp.position_title' : "p.designation_title AS position_title",
             $hasRankCol       ? 'pp.current_rank_title' : "pp.rank_level AS current_rank_title",
             $hasQualCol       ? 'pp.qualification_summary' : "NULL AS qualification_summary",
-            'pca.college_id', 'c.code AS college_code', 'c.name AS college_name',
+            // College: direct affiliation, else the department's College (same rule as OrganizationalAuthorityResolver).
+            'COALESCE(pca.college_id, au.college_id) AS college_id', 'c.code AS college_code', 'c.name AS college_name',
             'pau.administrative_unit_id', 'au.code AS administrative_unit_code',
             'au.name AS administrative_unit_name',
             "(SELECT da.id FROM dean_assignments da
@@ -173,9 +174,9 @@ class TargetHRPersonnelController extends Controller
             ->join('local_auth_credentials lac', 'lac.profile_id = p.id', 'left')
             ->join('personnel_profiles pp', 'pp.profile_id = p.id')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1', 'left')
-            ->join('colleges c', 'c.id = pca.college_id', 'left')
             ->join('personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id = p.id AND pau.is_active = 1', 'left')
             ->join('administrative_units au', 'au.id = pau.administrative_unit_id', 'left')
+            ->join('colleges c', 'c.id = COALESCE(pca.college_id, au.college_id)', 'left', false)
             ->where('p.account_type', 'personnel');
 
         if ($search !== '') {
@@ -186,7 +187,7 @@ class TargetHRPersonnelController extends Controller
                 ->groupEnd();
         }
         if ($collegeId !== '') {
-            $builder->where('pca.college_id', $collegeId);
+            $builder->groupStart()->where('pca.college_id', $collegeId)->orWhere('au.college_id', $collegeId)->groupEnd();
         }
         if ($administrativeUnitId !== '') {
             $builder->where('pau.administrative_unit_id', $administrativeUnitId);
@@ -206,7 +207,7 @@ class TargetHRPersonnelController extends Controller
         if (in_array($employmentStatus, ['permanent', 'probationary'], true)) {
             $builder->where('pp.employment_status', $employmentStatus);
         }
-        if (in_array($status, ['active', 'suspended', 'archived'], true)) {
+        if (in_array($status, ['active', 'suspended', 'inactive', 'archived'], true)) {
             $builder->where('p.status', $status);
         }
 
@@ -337,7 +338,37 @@ class TargetHRPersonnelController extends Controller
             'page'      => $pagination['page'],
             'per_page'  => $pagination['per_page'],
             'personnel' => $rows,
+            'summary'   => $this->directorySummary($db, $hasGroupCol, $hasSideCol),
         ]], 200);
+    }
+
+    /**
+     * Directory-wide headcount by personnel group. Independent of the current page and filters,
+     * and grouped with the same classification resolver used for each directory row.
+     */
+    private function directorySummary($db, bool $hasGroupCol, bool $hasSideCol): array
+    {
+        $select = ['p.id', 'p.status', 'pp.personnel_classification'];
+        if ($hasGroupCol) $select[] = 'pp.personnel_group';
+        if ($hasSideCol) $select[] = 'pp.organizational_side';
+        $people = $db->table('profiles p')->select(implode(',', $select))
+            ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+            ->where('p.account_type', 'personnel')
+            ->get()->getResultArray();
+
+        $summary = ['total_personnel' => 0, 'total_faculty' => 0, 'total_non_teaching' => 0, 'total_unclassified' => 0, 'total_archived' => 0];
+        $seen = [];
+        foreach ($people as $person) {
+            if (isset($seen[$person['id']])) continue;
+            $seen[$person['id']] = true;
+            $summary['total_personnel']++;
+            if (($person['status'] ?? '') === 'archived') $summary['total_archived']++;
+            $group = $this->classificationService->resolveFromRecord($person)['group'] ?? null;
+            if ($group === 'faculty') $summary['total_faculty']++;
+            elseif ($group === 'non_teaching_faculty') $summary['total_non_teaching']++;
+            else $summary['total_unclassified']++;
+        }
+        return $summary;
     }
 
     private function recordPerformanceTiming(
@@ -600,7 +631,7 @@ class TargetHRPersonnelController extends Controller
         }
 
         $now = date('Y-m-d H:i:s');
-        $priorGroup = $currentPersonnel['personnel_group'] ?? ($currentPersonnel['personnel_classification'] === 'academic' ? 'faculty' : 'non_teaching_faculty');
+        $priorGroup = $currentPersonnel['personnel_group'] ?? null;
         $priorSide  = $currentPersonnel['organizational_side'] ?? $currentPersonnel['personnel_classification'];
 
         $db->transBegin();

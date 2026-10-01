@@ -24,10 +24,7 @@ export const EVALUATION_INSTRUMENTS = Object.freeze({
     source_document_id: 'NDMU-DOC-EVAL-ADMIN-2026-V1',
     overall_max_points: 160.0,
     passing_score: 120.0,
-    applicability: [
-      { personnel_group: 'faculty', organizational_side: 'academic' },
-      { personnel_group: 'non_teaching_faculty', organizational_side: 'academic' },
-    ],
+    applicability: [{ personnel_group: 'faculty' }],
     areas: {
       AREA_A: {
         area_code: 'AREA_A',
@@ -263,9 +260,7 @@ export const EVALUATION_INSTRUMENTS = Object.freeze({
     source_document_id: 'NDMU-DOC-EVAL-NON-TEACHING-2026-V1',
     overall_max_points: 150.0,
     passing_score: 75.0,
-    applicability: [
-      { personnel_group: 'non_teaching_faculty', organizational_side: 'non_academic' },
-    ],
+    applicability: [{ personnel_group: 'non_teaching_faculty' }],
     areas: {
       AREA_A: {
         area_code: 'AREA_A',
@@ -384,21 +379,17 @@ export const evaluationInstrumentRegistry = {
   /**
    * Resolves canonical scale code for a personnel combination.
    */
-  resolveScaleCode(personnelGroup, organizationalSide) {
+  resolveScaleCode(personnelGroup) {
     const group = (personnelGroup || '').toLowerCase().trim()
-    const side = (organizationalSide || '').toLowerCase().trim()
 
-    if (group === 'faculty' && side === 'academic') {
+    if (group === 'faculty') {
       return this.SCALE_CODES.ADMINISTRATORS
     }
-    if (group === 'non_teaching_faculty' && side === 'academic') {
-      return this.SCALE_CODES.ADMINISTRATORS
-    }
-    if (group === 'non_teaching_faculty' && side === 'non_academic') {
+    if (group === 'non_teaching_faculty') {
       return this.SCALE_CODES.NON_TEACHING
     }
 
-    throw new Error(`Invalid personnel classification combination: [${group} + ${side}]. No authoritative evaluation scale assigned.`)
+    throw new Error(`Invalid personnel group: [${group}]. No authoritative evaluation scale assigned.`)
   },
 
   /**

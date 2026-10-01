@@ -149,6 +149,10 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::show/$1');
     $routes->patch('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::update/$1');
     $routes->delete('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::delete/$1');
+    $routes->post('hr/ranking-cycles/(:segment)/tracks', 'Api\RankingCycleController::addTracks/$1');
+    $routes->patch('hr/ranking-cycles/(:segment)/schedule', 'Api\RankingCycleController::schedule/$1');
+    $routes->post('hr/ranking-cycles/(:segment)/archive', 'Api\RankingCycleController::archive/$1');
+    $routes->options('hr/ranking-cycles/(:segment)/(:segment)', 'Api\RankingCycleController::options');
     $routes->options('hr/ranking-cycles', 'Api\RankingCycleController::options');
     $routes->options('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::options');
     $routes->get('hr/ranking-cycles/(:segment)/tracks/(:segment)/workspace/(:segment)', 'Api\RankingCycleWorkspaceController::show/$1/$2/$3');
@@ -274,6 +278,14 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('annual-review-imports/history/(:segment)', 'Api\AnnualReviewImportController::history/$1');
     $routes->get('annual-review-imports/(:segment)/file', 'Api\AnnualReviewImportController::file/$1');
     $routes->options('annual-review-imports/(:any)', 'Api\AnnualReviewImportController::options');
+    $routes->get('hr/ntf-annual-review/settings', 'Api\NtfAnnualReviewTemplateController::showSettings');
+    $routes->put('hr/ntf-annual-review/settings/rating-scale', 'Api\NtfAnnualReviewTemplateController::saveRatingScale');
+    $routes->put('hr/ntf-annual-review/settings/signatories', 'Api\NtfAnnualReviewTemplateController::saveSignatories');
+    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template', 'Api\NtfAnnualReviewTemplateController::blank/$1');
+    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template/prefilled.zip', 'Api\NtfAnnualReviewTemplateController::prefilledZip/$1');
+    $routes->post('hr/ntf-annual-review/tracks/(:segment)/template/prefilled.zip', 'Api\NtfAnnualReviewTemplateController::selectedPrefilledZip/$1');
+    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template/personnel/(:segment)', 'Api\NtfAnnualReviewTemplateController::prefilled/$1/$2');
+    $routes->options('hr/ntf-annual-review/(:any)', 'Api\NtfAnnualReviewTemplateController::options');
 
     // Personnel Eligibility Endpoints (Plan D1 Companion)
     $routes->get('personnel/eligibility/current', 'Api\PersonnelEligibilityController::current');
@@ -544,6 +556,9 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('osad/colleges', 'Api\CollegeController::options');
     $routes->get('osad/colleges/(:segment)', 'Api\CollegeController::show/$1');
     $routes->patch('osad/colleges/(:segment)/status', 'Api\CollegeController::updateStatus/$1');
+    $routes->post('osad/colleges/(:segment)/update', 'Api\CollegeController::update/$1');
+    $routes->options('osad/colleges/(:segment)/update', 'Api\CollegeController::options');
+    $routes->delete('osad/colleges/(:segment)', 'Api\CollegeController::delete/$1');
     $routes->options('osad/colleges/(:segment)', 'Api\CollegeController::options');
     $routes->options('osad/colleges/(:segment)/status', 'Api\CollegeController::options');
     $routes->get('osad/colleges/(:segment)/logo', 'Api\CollegeController::logo/$1');

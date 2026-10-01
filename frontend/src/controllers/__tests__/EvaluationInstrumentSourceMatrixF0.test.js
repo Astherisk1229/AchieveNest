@@ -20,9 +20,9 @@ describe('Plan F — Phase F0: Authoritative Evaluation Instrument Freeze & Cano
       expect(scale).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
     })
 
-    it('maps Non-Teaching Faculty + Academic to ADMINISTRATORS_RANKING_SCALE', () => {
+    it('maps Non-Teaching Faculty to NON_TEACHING_PERSONNEL_RANKING_SCALE regardless of legacy side', () => {
       const scale = evaluationInstrumentRegistry.resolveScaleCode('non_teaching_faculty', 'academic')
-      expect(scale).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
+      expect(scale).toBe(EVALUATION_SCALE_CODES.NON_TEACHING)
     })
 
     it('maps Non-Teaching Faculty + Non-Academic to NON_TEACHING_PERSONNEL_RANKING_SCALE', () => {
@@ -30,10 +30,8 @@ describe('Plan F — Phase F0: Authoritative Evaluation Instrument Freeze & Cano
       expect(scale).toBe(EVALUATION_SCALE_CODES.NON_TEACHING)
     })
 
-    it('throws explicit error on unconfirmed Faculty + Non-Academic combination', () => {
-      expect(() => {
-        evaluationInstrumentRegistry.resolveScaleCode('faculty', 'non_academic')
-      }).toThrow(/Invalid personnel classification combination/)
+    it('maps Faculty to the Faculty scale regardless of legacy side', () => {
+      expect(evaluationInstrumentRegistry.resolveScaleCode('faculty', 'non_academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
     })
   })
 

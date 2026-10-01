@@ -6,6 +6,15 @@ use CodeIgniter\Database\BaseBuilder;
 
 class StudentPortfolioPolicy
 {
+    public function __construct(private ?\CodeIgniter\Database\BaseConnection $db = null)
+    {
+    }
+
+    private function getDb(): \CodeIgniter\Database\BaseConnection
+    {
+        return $this->db ??= db_connect();
+    }
+
     /**
      * Determines whether an actor can view a single student portfolio record.
      */
@@ -267,7 +276,7 @@ class StudentPortfolioPolicy
      */
     public function resolveStudentProgram(string $studentProfileId): array
     {
-        $rows = db_connect()->table('student_program_enrollments spe')
+        $rows = $this->getDb()->table('student_program_enrollments spe')
             ->select('spe.academic_program_id')
             ->join('academic_programs ap', "ap.id = spe.academic_program_id AND ap.status = 'active'")
             ->where('spe.student_profile_id', $studentProfileId)
@@ -286,7 +295,7 @@ class StudentPortfolioPolicy
     /** Active Program Coordinators (active assignment and active profile) of a program. */
     public function activeCoordinatorIds(string $programId): array
     {
-        $rows = db_connect()->table('program_coordinator_assignments pca')
+        $rows = $this->getDb()->table('program_coordinator_assignments pca')
             ->select('pca.personnel_profile_id')
             ->join('profiles p', "p.id = pca.personnel_profile_id AND p.status = 'active'")
             ->where('pca.academic_program_id', $programId)
@@ -309,7 +318,7 @@ class StudentPortfolioPolicy
      */
     private static function studentsInPrograms(BaseBuilder $sub, array $programIds): BaseBuilder
     {
-        $db = db_connect();
+        $db = $sub->db();
         $in = implode(',', array_map(static fn (string $id): string => (string) $db->escape($id), $programIds));
 
         return $sub->select('spe.student_profile_id')
@@ -322,7 +331,7 @@ class StudentPortfolioPolicy
 
     protected function getStudentCurrentCollegeId(string $studentProfileId): ?string
     {
-        $db = db_connect();
+        $db = $this->getDb();
         $row = $db->table('student_program_enrollments spe')
             ->select('ap.college_id')
             ->join('academic_programs ap', 'ap.id = spe.academic_program_id')

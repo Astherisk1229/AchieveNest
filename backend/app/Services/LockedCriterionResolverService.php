@@ -12,9 +12,29 @@ final class LockedCriterionResolverService
         'C1_MODERATOR' => 'C.1.1', 'C1_COACH' => 'C.1.2', 'C1_COMMITTEE' => 'C.1.3', 'C1_SERVICE' => 'C.1.4',
         'C2_CHURCH' => 'C.2.1', 'C2_CIVIC' => 'C.2.2', 'C2_CHARITY' => 'C.2.3',
     ];
+    private const CONTRACT_CRITERION_MAP = [
+        'NTF-B1A' => [
+            'personnel_group' => 'NON_TEACHING_FACULTY',
+            'criterion_code' => 'B.1.a',
+            'category_code' => 'B.1',
+            'subcategory_code' => 'B.1.1',
+        ],
+    ];
 
     public function resolve(array $snapshot, string $categoryCode, array $metadata): array
     {
+        $contractCode = strtoupper(trim((string) ($metadata['contract_code'] ?? '')));
+        $contractMapping = self::CONTRACT_CRITERION_MAP[$contractCode] ?? null;
+        $forcedSubcategoryCode = null;
+        if ($contractMapping !== null) {
+            $snapshotGroup = strtoupper(trim((string) ($snapshot['sheet']['applies_to'] ?? '')));
+            if ($snapshotGroup !== $contractMapping['personnel_group']
+                || strcasecmp($categoryCode, $contractMapping['criterion_code']) !== 0) {
+                throw new RuntimeException("CRITERION_MAPPING_INVALID: {$categoryCode} does not match {$contractCode} in this locked criteria version.");
+            }
+            $categoryCode = $contractMapping['category_code'];
+            $forcedSubcategoryCode = $contractMapping['subcategory_code'];
+        }
         $category = $this->findCategory($snapshot, $categoryCode);
         if ($category === null) throw new RuntimeException("CRITERION_MAPPING_INVALID: {$categoryCode} is not part of the locked criteria version.");
         if ((int) ($category['requires_manual_hr_rule'] ?? 0) === 1 && empty($category['subcategories']) && empty($category['options'])) {
@@ -22,7 +42,7 @@ final class LockedCriterionResolverService
         }
         $details = is_array($metadata['details'] ?? null) ? $metadata['details'] : [];
         $submittedSubtype = strtoupper(trim((string) ($metadata['subcategory_code'] ?? '')));
-        $subcategoryCode = self::SUBCATEGORY_MAP[$submittedSubtype] ?? null;
+        $subcategoryCode = $forcedSubcategoryCode ?? self::SUBCATEGORY_MAP[$submittedSubtype] ?? null;
         if ($categoryCode === 'A.2' && preg_match('/officer|president|chair|director/i', (string) ($details['membership_role'] ?? ''))) $subcategoryCode = 'A.2.2';
         if ($subcategoryCode !== null) {
             foreach ($category['subcategories'] ?? [] as $row) {

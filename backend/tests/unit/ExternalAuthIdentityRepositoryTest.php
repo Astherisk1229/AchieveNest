@@ -7,8 +7,15 @@ use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Test\CIUnitTestCase;
 use Throwable;
 
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class ExternalAuthIdentityRepositoryTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     private const DATABASE = 'achievenest_phase17m_google_auth_test';
     private const PROFILE_A = '53530000-0000-4000-8000-000000000001';
     private const PROFILE_B = '53530000-0000-4000-8000-000000000002';

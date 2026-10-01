@@ -55,7 +55,7 @@ class AuthController extends Controller
      */
     public function me()
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
+        $authorization = $this->getAuthorizationHeader();
         if ($authorization === '') {
             return $this->respond([
                 'error' => [
@@ -224,7 +224,7 @@ class AuthController extends Controller
      */
     public function logout()
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
+        $authorization = $this->getAuthorizationHeader();
         if ($authorization !== '' && preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches)) {
             $token = trim($matches[1]);
             $this->localTokenService->revokeSession($token, 'logout');
@@ -242,7 +242,7 @@ class AuthController extends Controller
      */
     public function changePassword()
     {
-        $authorization = $this->request->getHeaderLine('Authorization');
+        $authorization = $this->getAuthorizationHeader();
         if ($authorization === '') {
             return $this->respond([
                 'error' => [
@@ -305,5 +305,10 @@ class AuthController extends Controller
         }
 
         return $this->respond(['data' => $result['data']], 200);
+    }
+
+    private function getAuthorizationHeader(): string
+    {
+        return \App\Services\AuthorizationHeader::fromRequest($this->request);
     }
 }

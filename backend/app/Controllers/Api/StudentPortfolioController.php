@@ -40,15 +40,43 @@ class StudentPortfolioController extends Controller
         ?PortfolioStructuredMetadataValidator $metadataValidator = null,
         ?\CodeIgniter\Database\BaseConnection $db = null
     ) {
-        $this->authz = $authz ?? new AuthorizationService();
+        $this->db = $db ?? db_connect();
+        $portfolioPolicy = new \App\Services\Policies\StudentPortfolioPolicy($this->db);
+        $this->authz = $authz ?? new AuthorizationService(
+            actorService: new \App\Services\AuthenticatedActorService(db: $this->db),
+            portfolioPolicy: $portfolioPolicy,
+            evidencePolicy: new \App\Services\Policies\EvidencePolicy($portfolioPolicy, db: $this->db)
+        );
         $this->storage = $storage ?? new LocalEvidenceStorageService();
-        $this->metadataValidator = $metadataValidator ?? new PortfolioStructuredMetadataValidator();
-        $this->db = $db;
+        $this->metadataValidator = $metadataValidator ?? new PortfolioStructuredMetadataValidator($this->db);
     }
 
     protected function getDb(): \CodeIgniter\Database\BaseConnection
     {
-        return $this->db ?? db_connect('default');
+        return $this->db ??= db_connect();
+    }
+
+    /** Every state/content mutation serializes on its parent record, before validation. */
+    protected function lockRecord(\CodeIgniter\Database\BaseConnection $db, string $id): ?array
+    {
+        $table = $db->escapeIdentifiers($db->prefixTable('student_portfolio_records'));
+        // SQLite is used only for isolated, single-connection unit fixtures.
+        $lock = $db->DBDriver === 'MySQLi' ? ' FOR UPDATE' : '';
+        return $db->query("SELECT * FROM {$table} WHERE id = ?{$lock}", [$id])->getRowArray();
+    }
+
+    private function beginMutation(\CodeIgniter\Database\BaseConnection $db): void
+    {
+        if (!$db->transBegin()) {
+            throw new \RuntimeException('PORTFOLIO_TRANSACTION_START_FAILED');
+        }
+    }
+
+    private function commitMutation(\CodeIgniter\Database\BaseConnection $db): void
+    {
+        if (!$db->transStatus() || !$db->transCommit()) {
+            throw new \RuntimeException('PORTFOLIO_TRANSACTION_FAILED');
+        }
     }
 
     public function options(): mixed
@@ -103,7 +131,7 @@ class StudentPortfolioController extends Controller
      */
     public function categories(): mixed
     {
-        $db = db_connect();
+        $db = $this->getDb();
         $categories = $db->table('portfolio_categories')
             ->where('status', 'active')
             ->orderBy('sort_order', 'ASC')
@@ -457,64 +485,77 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid record UUID.']], 422);
         }
 
-        $db = db_connect();
-        $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
-        if ($record === null) {
-            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
-        }
-        if (! $this->authz->portfolio()->canSubmit($actor, $record)
-            || ! in_array($record['status'], ['draft', 'revision_requested'], true)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only your own draft or revision-requested record can be edited.']], 403);
-        }
-
-        $json = $this->request->getJSON(true) ?? [];
-        if (($error = $this->protectedPayloadError($json)) !== null) {
-            return $this->respond(['error' => $error], 422);
-        }
-        $categoryId = trim((string) ($json['category_id'] ?? $record['category_id'] ?? ''));
-        $subcategoryId = array_key_exists('subcategory_id', $json)
-            ? (! empty($json['subcategory_id']) ? trim((string) $json['subcategory_id']) : null)
-            : ($record['subcategory_id'] ?? null);
-        if ($categoryId === '') {
-            // Still unclassified: only drafts may stay without a category (DB CHECK enforces this).
-            if ($record['status'] !== 'draft' || $subcategoryId !== null) {
-                return $this->respond(['error' => ['code' => 'CATEGORY_REQUIRED', 'message' => 'Choose a category for this achievement.']], 422);
+        $db = $this->getDb();
+        $this->beginMutation($db);
+        $mutationOpen = true;
+        try {
+            $record = $this->lockRecord($db, $id);
+            if ($record === null) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
             }
-            $changes = ['category_id' => null, 'subcategory_id' => null, 'structured_metadata' => json_encode(['schema_version' => '1.0']), 'updated_at' => date('Y-m-d H:i:s')];
+            if (! $this->authz->portfolio()->canSubmit($actor, $record)
+                || ! in_array($record['status'], ['draft', 'revision_requested'], true)) {
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only your own draft or revision-requested record can be edited.']], 403);
+            }
+
+            $json = $this->request->getJSON(true) ?? [];
+            if (($error = $this->protectedPayloadError($json)) !== null) {
+                return $this->respond(['error' => $error], 422);
+            }
+            $categoryId = trim((string) ($json['category_id'] ?? $record['category_id'] ?? ''));
+            $subcategoryId = array_key_exists('subcategory_id', $json)
+                ? (! empty($json['subcategory_id']) ? trim((string) $json['subcategory_id']) : null)
+                : ($record['subcategory_id'] ?? null);
+            if ($categoryId === '') {
+                // Still unclassified: only drafts may stay without a category (DB CHECK enforces this).
+                if ($record['status'] !== 'draft' || $subcategoryId !== null) {
+                    return $this->respond(['error' => ['code' => 'CATEGORY_REQUIRED', 'message' => 'Choose a category for this achievement.']], 422);
+                }
+                $changes = ['category_id' => null, 'subcategory_id' => null, 'structured_metadata' => json_encode(['schema_version' => '1.0']), 'updated_at' => date('Y-m-d H:i:s')];
+                foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
+                    if (array_key_exists($field, $json)) {
+                        $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
+                    }
+                }
+                $db->table('student_portfolio_records')->where('id', $id)->where('student_profile_id', $actor['profile']['id'])->where('status', $record['status'])->update($changes);
+                $this->commitMutation($db);
+                $mutationOpen = false;
+
+                return $this->respond(['data' => ['message' => 'Portfolio record updated.', 'id' => $id, 'status' => $record['status']]], 200);
+            }
+            $taxonomy = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
+            if (! $taxonomy['valid']) {
+                return $this->respond(['error' => $taxonomy['error']], 422);
+            }
+
+            $existingMetadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true) ?: [];
+            $metadata = is_array($json['structured_metadata'] ?? null) ? $json['structured_metadata'] : $existingMetadata;
+            $metadataResult = $this->metadataValidator->validateMetadata($categoryId, $subcategoryId, $metadata, false);
+            if (! $metadataResult['valid']) {
+                return $this->respond(['error' => ['code' => 'INVALID_STRUCTURED_METADATA', 'message' => 'Structured metadata validation failed.', 'errors' => $metadataResult['errors']]], 422);
+            }
+
+            $changes = [
+                'category_id' => $categoryId,
+                'subcategory_id' => $subcategoryId,
+                'structured_metadata' => json_encode($metadataResult['sanitized_metadata']),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
             foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
                 if (array_key_exists($field, $json)) {
                     $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
                 }
             }
-            $db->table('student_portfolio_records')->where('id', $id)->update($changes);
-
+            $db->table('student_portfolio_records')->where('id', $id)->where('student_profile_id', $actor['profile']['id'])->where('status', $record['status'])->update($changes);
+                $this->commitMutation($db);
+                $mutationOpen = false;
             return $this->respond(['data' => ['message' => 'Portfolio record updated.', 'id' => $id, 'status' => $record['status']]], 200);
-        }
-        $taxonomy = $this->metadataValidator->validateTaxonomyPair($categoryId, $subcategoryId);
-        if (! $taxonomy['valid']) {
-            return $this->respond(['error' => $taxonomy['error']], 422);
-        }
-
-        $existingMetadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true) ?: [];
-        $metadata = is_array($json['structured_metadata'] ?? null) ? $json['structured_metadata'] : $existingMetadata;
-        $metadataResult = $this->metadataValidator->validateMetadata($categoryId, $subcategoryId, $metadata, false);
-        if (! $metadataResult['valid']) {
-            return $this->respond(['error' => ['code' => 'INVALID_STRUCTURED_METADATA', 'message' => 'Structured metadata validation failed.', 'errors' => $metadataResult['errors']]], 422);
-        }
-
-        $changes = [
-            'category_id' => $categoryId,
-            'subcategory_id' => $subcategoryId,
-            'structured_metadata' => json_encode($metadataResult['sanitized_metadata']),
-            'updated_at' => date('Y-m-d H:i:s'),
-        ];
-        foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
-            if (array_key_exists($field, $json)) {
-                $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
+        } finally {
+            // Also releases the lock on validation errors and early returns.
+            if ($mutationOpen) {
+                $db->transRollback();
             }
         }
-        $db->table('student_portfolio_records')->where('id', $id)->update($changes);
-        return $this->respond(['data' => ['message' => 'Portfolio record updated.', 'id' => $id, 'status' => $record['status']]], 200);
     }
 
     /**
@@ -564,7 +605,7 @@ class StudentPortfolioController extends Controller
             }
             $recordId = $this->genUuid();
             $now = date('Y-m-d H:i:s');
-            db_connect()->table('student_portfolio_records')->insert([
+            $this->getDb()->table('student_portfolio_records')->insert([
                 'id'                  => $recordId,
                 'student_profile_id'  => $actor['profile']['id'],
                 'category_id'         => null,
@@ -604,7 +645,7 @@ class StudentPortfolioController extends Controller
         }
         $sanitizedMetadata = $metaResult['sanitized_metadata'];
 
-        $db = db_connect();
+        $db = $this->getDb();
 
         // Sports Metadata Rule
         $isSports = strtolower($category['code'] ?? '') === 'sports' || stripos($category['name'] ?? '', 'sport') !== false;
@@ -790,7 +831,7 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_RECORD_ID', 'message' => 'Invalid portfolio record UUID.']], 422);
         }
 
-        $db = db_connect();
+        $db = $this->getDb();
         $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
         if ($record === null) {
             return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
@@ -864,11 +905,19 @@ class StudentPortfolioController extends Controller
 
         $db->transStart();
         try {
+            // F04: upload preparation may overlap submission; revalidate under the parent lock.
+            $currentRecord = $this->lockRecord($db, $id);
+            if ($currentRecord === null || !$this->authz->evidence()->canUploadStudentEvidence($actor, $currentRecord)) {
+                throw new \RuntimeException('RECORD_NOT_EDITABLE');
+            }
             $db->table('student_portfolio_evidence')->insert($evidenceRow);
             $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
             $this->storage->deletePhysicalFile($stored['storage_path']);
+            if ($e->getMessage() === 'RECORD_NOT_EDITABLE') {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_EDITABLE', 'message' => 'The record changed while uploading. Reload before trying again.']], 409);
+            }
             return $this->respond(['error' => ['code' => 'DATABASE_ERROR', 'message' => 'Failed to persist evidence record.']], 500);
         }
         if ($db->transStatus() === false) {
@@ -927,29 +976,47 @@ class StudentPortfolioController extends Controller
         }
 
         $scan = ($this->scanner ??= new StudentEvidenceClamAvScanner())->scan($path);
-        $now = date('Y-m-d H:i:s');
-        $response = ['scan' => $scan];
+        // The external scanner runs without a lock. Persist its result only after revalidation.
+        $this->beginMutation($db);
+        $mutationOpen = true;
+        try {
+            $currentRecord = $this->lockRecord($db, $id);
+            $activeEvidence = $db->table('student_portfolio_evidence')->where('id', $evidenceId)
+                ->where('portfolio_record_id', $id)->where('status', 'active')->countAllResults();
+            if ($currentRecord === null || !$this->authz->portfolio()->canEdit($actor, $currentRecord) || $activeEvidence !== 1) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_EDITABLE', 'message' => 'The record or evidence changed while scanning. Reload before trying again.']], 409);
+            }
+            $now = date('Y-m-d H:i:s');
+            $response = ['scan' => $scan];
 
-        if (($scan['status'] ?? '') === 'clean') {
-            $db->table('student_portfolio_evidence')->where('id', $evidenceId)->update([
-                'security_status'       => 'clean',
-                'malware_scanner'       => self::MALWARE_SCANNER_ID,
-                'security_validated_at' => $now,
-            ]);
-        } elseif (($scan['status'] ?? '') === 'infected') {
-            // The schema allows status active|archived|deleted, so rejected files are archived.
-            $db->table('student_portfolio_evidence')->where('id', $evidenceId)->update([
-                'security_status'       => 'rejected',
-                'status'                => 'archived',
-                'malware_scanner'       => self::MALWARE_SCANNER_ID,
-                'security_validated_at' => $now,
-            ]);
+            if (($scan['status'] ?? '') === 'clean') {
+                $db->table('student_portfolio_evidence')->where('id', $evidenceId)->update([
+                    'security_status'       => 'clean',
+                    'malware_scanner'       => self::MALWARE_SCANNER_ID,
+                    'security_validated_at' => $now,
+                ]);
+            } elseif (($scan['status'] ?? '') === 'infected') {
+                // The schema allows status active|archived|deleted, so rejected files are archived.
+                $db->table('student_portfolio_evidence')->where('id', $evidenceId)->update([
+                    'security_status'       => 'rejected',
+                    'status'                => 'archived',
+                    'malware_scanner'       => self::MALWARE_SCANNER_ID,
+                    'security_validated_at' => $now,
+                ]);
+            }
+
+            $fresh = $db->table('student_portfolio_evidence')->where('id', $evidenceId)->get()->getRowArray();
+            $response['evidence'] = $this->storage->formatSafeEvidence($fresh ?? $evidence, 'student');
+
+            $this->commitMutation($db);
+
+            $mutationOpen = false;
+            return $this->respond(['data' => $response], 200);
+        } finally {
+            if ($mutationOpen) {
+                $db->transRollback();
+            }
         }
-
-        $fresh = $db->table('student_portfolio_evidence')->where('id', $evidenceId)->get()->getRowArray();
-        $response['evidence'] = $this->storage->formatSafeEvidence($fresh ?? $evidence, 'student');
-
-        return $this->respond(['data' => $response], 200);
     }
 
     /**
@@ -1021,33 +1088,47 @@ class StudentPortfolioController extends Controller
         }
 
         $db = $this->getDb();
-        $evidence = $db->table('student_portfolio_evidence spe')
-            ->select(['spe.*', 'spr.student_profile_id'])
-            ->join('student_portfolio_records spr', 'spr.id = spe.portfolio_record_id')
-            ->where('spe.id', $evidenceId)
-            ->where('spe.portfolio_record_id', $id)
-            ->get()->getRowArray();
-        if ($evidence === null) {
-            return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Evidence not found for this record.']], 404);
-        }
-        if (! $this->authz->evidence()->canDeleteStudentEvidence($actor, $evidence)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the owner of a draft or returned record can remove its evidence.']], 403);
-        }
+        $this->beginMutation($db);
+        $mutationOpen = true;
+        try {
+            if ($this->lockRecord($db, $id) === null) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+            }
+            $evidence = $db->table('student_portfolio_evidence spe')
+                ->select(['spe.*', 'spr.student_profile_id'])
+                ->join('student_portfolio_records spr', 'spr.id = spe.portfolio_record_id')
+                ->where('spe.id', $evidenceId)
+                ->where('spe.portfolio_record_id', $id)
+                ->get()->getRowArray();
+            if ($evidence === null) {
+                return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Evidence not found for this record.']], 404);
+            }
+            if (! $this->authz->evidence()->canDeleteStudentEvidence($actor, $evidence)) {
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the owner of a draft or returned record can remove its evidence.']], 403);
+            }
 
-        if (($evidence['status'] ?? '') === 'active') {
-            // Soft delete only; the protected file is never removed from storage.
-            $db->table('student_portfolio_evidence')
-                ->where('id', $evidenceId)
-                ->where('status', 'active')
-                ->update(['status' => 'deleted']);
+            if (($evidence['status'] ?? '') === 'active') {
+                // Soft delete only; the protected file is never removed from storage.
+                $db->table('student_portfolio_evidence')
+                    ->where('id', $evidenceId)
+                    ->where('status', 'active')
+                    ->update(['status' => 'deleted']);
+            }
+
+            $fresh = $db->table('student_portfolio_evidence')->where('id', $evidenceId)->get()->getRowArray();
+
+            $this->commitMutation($db);
+
+            $mutationOpen = false;
+            return $this->respond(['data' => [
+                'message'  => 'Evidence removed from this record.',
+                'evidence' => $this->storage->formatSafeEvidence($fresh ?? $evidence, 'student'),
+            ]], 200);
+        } finally {
+            if ($mutationOpen) {
+                $db->transRollback();
+            }
         }
-
-        $fresh = $db->table('student_portfolio_evidence')->where('id', $evidenceId)->get()->getRowArray();
-
-        return $this->respond(['data' => [
-            'message'  => 'Evidence removed from this record.',
-            'evidence' => $this->storage->formatSafeEvidence($fresh ?? $evidence, 'student'),
-        ]], 200);
     }
 
     /**
@@ -1061,130 +1142,148 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
-        $db = db_connect();
-        $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
-        if ($record === null) {
-            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
-        }
-
-        if (! $this->authz->portfolio()->canSubmit($actor, $record)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Can only resubmit your own draft or revision-requested record.']], 403);
-        }
-
-        $taxonomy = $this->metadataValidator->validateTaxonomyPair(
-            (string) ($record['category_id'] ?? ''),
-            ! empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null
-        );
-        if (! $taxonomy['valid'] || empty($record['subcategory_id'])) {
-            return $this->respond(['error' => [
-                'code' => 'INCOMPLETE_CLASSIFICATION',
-                'message' => 'A valid category and matching subcategory are required before submission.',
-            ]], 422);
-        }
-
-        $metadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true);
-        $metadataResult = $this->metadataValidator->validateMetadata(
-            (string) $record['category_id'],
-            (string) $record['subcategory_id'],
-            is_array($metadata) ? $metadata : [],
-            true
-        );
-        if (! $metadataResult['valid']) {
-            return $this->respond(['error' => [
-                'code' => 'INVALID_STRUCTURED_METADATA',
-                'message' => 'Complete all required achievement details before submission.',
-                'errors' => $metadataResult['errors'],
-            ]], 422);
-        }
-
-        $title = trim((string) ($record['title'] ?? ''));
-        $organizer = trim((string) ($record['organizer_or_body'] ?? ''));
-        $startDate = trim((string) ($record['start_date'] ?? $record['occurrence_date'] ?? ''));
-        if (mb_strlen($title) < 3 || $organizer === '' || $startDate === '') {
-            return $this->respond(['error' => [
-                'code' => 'INCOMPLETE_COMMON_DETAILS',
-                'message' => 'Title, organizer or issuing body, and start date are required before submission.',
-            ]], 422);
-        }
-        if (! empty($record['end_date']) && (string) $record['end_date'] < $startDate) {
-            return $this->respond(['error' => ['code' => 'INVALID_DATE_RANGE', 'message' => 'End date cannot be before start date.']], 422);
-        }
-
-        $evidenceCount = $db->table('student_portfolio_evidence')
-            ->where('portfolio_record_id', $id)
-            ->where('status', 'active')
-            ->where('security_status', 'clean')
-            ->countAllResults();
-        if ($evidenceCount < 1) {
-            return $this->respond(['error' => [
-                'code' => 'CLEAN_EVIDENCE_REQUIRED',
-                'message' => 'At least one supporting evidence file that passed the security scan is required before submission.',
-            ]], 422);
-        }
-
-        $duplicate = $db->table('student_portfolio_records')
-            ->where('student_profile_id', $record['student_profile_id'])
-            ->where('category_id', $record['category_id'])
-            ->where('subcategory_id', $record['subcategory_id'])
-            ->where('title', $title)
-            ->where('start_date', $startDate)
-            ->where('id !=', $id)
-            ->whereNotIn('status', ['rejected'])
-            ->countAllResults();
-        if ($duplicate > 0) {
-            return $this->respond(['error' => ['code' => 'DUPLICATE_ACHIEVEMENT', 'message' => 'A matching achievement record already exists. Review the existing record instead of submitting a duplicate.']], 409);
-        }
-
-        // Same program-resolution rule as coordinator scoping and canVerify().
-        $program = $this->authz->portfolio()->resolveStudentProgram((string) $record['student_profile_id']);
-        if ($program['status'] === 'ambiguous') {
-            return $this->respond(['error' => [
-                'code' => 'AMBIGUOUS_ACTIVE_STUDENT_PROGRAM',
-                'message' => 'You have more than one active program enrollment. Contact OSAD to correct your enrollment before submitting.',
-            ]], 422);
-        }
-        $coordinators = $program['program_id'] !== null
-            ? $this->authz->portfolio()->activeCoordinatorIds($program['program_id'])
-            : [];
-        if (count($coordinators) !== 1) {
-            return $this->respond(['error' => [
-                'code' => 'VERIFICATION_ROUTING_UNAVAILABLE',
-                'message' => 'No single active Program Coordinator is assigned to your current program. Contact OSAD before submitting.',
-            ]], 503);
-        }
-        $routing = ['academic_program_id' => $program['program_id'], 'coordinator_profile_id' => $coordinators[0]];
-
-        $now = date('Y-m-d H:i:s');
-        $db->transStart();
+        $db = $this->getDb();
+        $this->beginMutation($db);
+        $mutationOpen = true;
         try {
-            $db->table('student_portfolio_records')->where('id', $id)->update([
-                'status'       => 'submitted',
-                'submitted_at' => $now,
-                'updated_at'   => $now,
-            ]);
+            $record = $this->lockRecord($db, $id);
+            if ($record === null) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
+            }
 
-            $db->table('student_portfolio_verification_events')->insert([
-                'id'                  => $this->genUuid(),
-                'portfolio_record_id' => $id,
-                'actor_profile_id'    => $actor['profile']['id'],
-                'action'              => $record['status'] === 'draft' ? 'submitted' : 'resubmitted',
-                'previous_status'     => $record['status'],
-                'new_status'          => 'submitted',
-                'remarks'             => $record['status'] === 'draft'
-                    ? 'Submitted for Program Coordinator verification'
-                    : 'Resubmitted after addressing revision remarks',
-                'occurred_at'         => $now,
-            ]);
+            if (! $this->authz->portfolio()->canSubmit($actor, $record)) {
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Can only resubmit your own draft or revision-requested record.']], 403);
+            }
 
-            $db->transComplete();
-        } catch (Throwable $e) {
-            $db->transRollback();
-            return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'Failed to resubmit: ' . $e->getMessage()]], 500);
+            $taxonomy = $this->metadataValidator->validateTaxonomyPair(
+                (string) ($record['category_id'] ?? ''),
+                ! empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null
+            );
+            if (! $taxonomy['valid'] || empty($record['subcategory_id'])) {
+                return $this->respond(['error' => [
+                    'code' => 'INCOMPLETE_CLASSIFICATION',
+                    'message' => 'A valid category and matching subcategory are required before submission.',
+                ]], 422);
+            }
+
+            $metadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true);
+            $metadataResult = $this->metadataValidator->validateMetadata(
+                (string) $record['category_id'],
+                (string) $record['subcategory_id'],
+                is_array($metadata) ? $metadata : [],
+                true
+            );
+            if (! $metadataResult['valid']) {
+                return $this->respond(['error' => [
+                    'code' => 'INVALID_STRUCTURED_METADATA',
+                    'message' => 'Complete all required achievement details before submission.',
+                    'errors' => $metadataResult['errors'],
+                ]], 422);
+            }
+
+            $title = trim((string) ($record['title'] ?? ''));
+            $organizer = trim((string) ($record['organizer_or_body'] ?? ''));
+            $startDate = trim((string) ($record['start_date'] ?? $record['occurrence_date'] ?? ''));
+            if (mb_strlen($title) < 3 || $organizer === '' || $startDate === '') {
+                return $this->respond(['error' => [
+                    'code' => 'INCOMPLETE_COMMON_DETAILS',
+                    'message' => 'Title, organizer or issuing body, and start date are required before submission.',
+                ]], 422);
+            }
+            if (! empty($record['end_date']) && (string) $record['end_date'] < $startDate) {
+                return $this->respond(['error' => ['code' => 'INVALID_DATE_RANGE', 'message' => 'End date cannot be before start date.']], 422);
+            }
+
+            $evidenceCount = $db->table('student_portfolio_evidence')
+                ->where('portfolio_record_id', $id)
+                ->where('status', 'active')
+                ->where('security_status', 'clean')
+                ->countAllResults();
+            if ($evidenceCount < 1) {
+                return $this->respond(['error' => [
+                    'code' => 'CLEAN_EVIDENCE_REQUIRED',
+                    'message' => 'At least one supporting evidence file that passed the security scan is required before submission.',
+                ]], 422);
+            }
+
+            $duplicate = $db->table('student_portfolio_records')
+                ->where('student_profile_id', $record['student_profile_id'])
+                ->where('category_id', $record['category_id'])
+                ->where('subcategory_id', $record['subcategory_id'])
+                ->where('title', $title)
+                ->where('start_date', $startDate)
+                ->where('id !=', $id)
+                ->whereNotIn('status', ['rejected'])
+                ->countAllResults();
+            if ($duplicate > 0) {
+                return $this->respond(['error' => ['code' => 'DUPLICATE_ACHIEVEMENT', 'message' => 'A matching achievement record already exists. Review the existing record instead of submitting a duplicate.']], 409);
+            }
+
+            // Same program-resolution rule as coordinator scoping and canVerify().
+            $program = $this->authz->portfolio()->resolveStudentProgram((string) $record['student_profile_id']);
+            if ($program['status'] === 'ambiguous') {
+                return $this->respond(['error' => [
+                    'code' => 'AMBIGUOUS_ACTIVE_STUDENT_PROGRAM',
+                    'message' => 'You have more than one active program enrollment. Contact OSAD to correct your enrollment before submitting.',
+                ]], 422);
+            }
+            $coordinators = $program['program_id'] !== null
+                ? $this->authz->portfolio()->activeCoordinatorIds($program['program_id'])
+                : [];
+            if (count($coordinators) !== 1) {
+                return $this->respond(['error' => [
+                    'code' => 'VERIFICATION_ROUTING_UNAVAILABLE',
+                    'message' => 'No single active Program Coordinator is assigned to your current program. Contact OSAD before submitting.',
+                ]], 503);
+            }
+            $routing = ['academic_program_id' => $program['program_id'], 'coordinator_profile_id' => $coordinators[0]];
+
+            $now = date('Y-m-d H:i:s');
+            try {
+                $db->table('student_portfolio_records')->where('id', $id)
+                    ->where('student_profile_id', $actor['profile']['id'])
+                    ->where('status', $record['status'])->update([
+                    'status'       => 'submitted',
+                    'submitted_at' => $now,
+                    'updated_at'   => $now,
+                ]);
+
+                if ($db->affectedRows() !== 1) {
+                    $db->transRollback();
+                    $mutationOpen = false;
+                    return $this->respond(['error' => ['code' => 'SUBMISSION_STATE_CHANGED', 'message' => 'The record changed before submission. Reload and try again.']], 409);
+                }
+
+                $db->table('student_portfolio_verification_events')->insert([
+                    'id'                  => $this->genUuid(),
+                    'portfolio_record_id' => $id,
+                    'actor_profile_id'    => $actor['profile']['id'],
+                    'action'              => $record['status'] === 'draft' ? 'submitted' : 'resubmitted',
+                    'previous_status'     => $record['status'],
+                    'new_status'          => 'submitted',
+                    'remarks'             => $record['status'] === 'draft'
+                        ? 'Submitted for Program Coordinator verification'
+                        : 'Resubmitted after addressing revision remarks',
+                    'occurred_at'         => $now,
+                ]);
+
+                $this->commitMutation($db);
+
+                $mutationOpen = false;
+            } catch (Throwable $e) {
+                $db->transRollback();
+                $mutationOpen = false;
+                return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'Failed to resubmit: ' . $e->getMessage()]], 500);
+            }
+            if ($db->transStatus() === false) {
+                return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'The submission transaction could not be committed.']], 500);
+            }
+        } finally {
+            // Also releases the lock on validation errors and early returns.
+            if ($mutationOpen) {
+                $db->transRollback();
+            }
         }
-        if ($db->transStatus() === false) {
-            return $this->respond(['error' => ['code' => 'RESUBMIT_FAILED', 'message' => 'The submission transaction could not be committed.']], 500);
-        }
-
 
         // Notifications are auxiliary. Queue visibility is derived from the
         // persisted submitted record and authoritative program assignment.
@@ -1245,7 +1344,7 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_STATUS_FILTER', 'message' => 'status must be submitted, revision_requested, verified, rejected, or all.']], 422);
         }
 
-        $db = db_connect();
+        $db = $this->getDb();
         $builder = $db->table('student_portfolio_records spr')
             ->select([
                 'spr.*',
@@ -1322,122 +1421,133 @@ class StudentPortfolioController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
 
-        $db = db_connect();
-        $record = $db->table('student_portfolio_records')->where('id', $id)->get()->getRowArray();
-        if ($record === null) {
-            return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
-        }
-
-        // Scope first: an unauthorized actor gets 403 whatever the record's state.
-        if (! $this->authz->portfolio()->canReviewStudent($actor, $record)) {
-            if ($record['student_profile_id'] === $actor['profile']['id']) {
-                return $this->respond(['error' => ['code' => 'SELF_VERIFICATION_FORBIDDEN', 'message' => 'Students cannot verify their own submissions.']], 403);
+        $db = $this->getDb();
+        $this->beginMutation($db);
+        $mutationOpen = true;
+        try {
+            $record = $this->lockRecord($db, $id);
+            if ($record === null) {
+                return $this->respond(['error' => ['code' => 'RECORD_NOT_FOUND', 'message' => 'Portfolio record not found.']], 404);
             }
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not the authorized active Program Coordinator for this student program.']], 403);
-        }
 
-        // Only 'submitted' records can be decided. Already-decided records get 409.
-        if (in_array($record['status'], ['verified', 'rejected', 'revision_requested'], true)) {
-            return $this->respond(['error' => [
-                'code'    => 'DECISION_ALREADY_RECORDED',
-                'message' => "A decision was already recorded for this submission (current status: {$record['status']}).",
-            ]], 409);
-        }
-        if ($record['status'] !== 'submitted') {
-            return $this->respond(['error' => [
-                'code'    => 'INVALID_STATE_TRANSITION',
-                'message' => "Records in '{$record['status']}' state cannot be decided upon. Must be in a reviewable state.",
-            ]], 422);
-        }
+            // Scope first: an unauthorized actor gets 403 whatever the record's state.
+            if (! $this->authz->portfolio()->canReviewStudent($actor, $record)) {
+                if ($record['student_profile_id'] === $actor['profile']['id']) {
+                    return $this->respond(['error' => ['code' => 'SELF_VERIFICATION_FORBIDDEN', 'message' => 'Students cannot verify their own submissions.']], 403);
+                }
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not the authorized active Program Coordinator for this student program.']], 403);
+            }
 
-        $json = $this->request->getJSON(true) ?? [];
-        $remarks = trim((string) ($json['remarks'] ?? ''));
+            // Only 'submitted' records can be decided. Already-decided records get 409.
+            if (in_array($record['status'], ['verified', 'rejected', 'revision_requested'], true)) {
+                return $this->respond(['error' => [
+                    'code'    => 'DECISION_ALREADY_RECORDED',
+                    'message' => "A decision was already recorded for this submission (current status: {$record['status']}).",
+                ]], 409);
+            }
+            if ($record['status'] !== 'submitted') {
+                return $this->respond(['error' => [
+                    'code'    => 'INVALID_STATE_TRANSITION',
+                    'message' => "Records in '{$record['status']}' state cannot be decided upon. Must be in a reviewable state.",
+                ]], 422);
+            }
 
-        // Phase 3 Rules: VR-3.6 & VR-3.7 (Revision and Rejection require non-empty remarks)
-        if (in_array($targetStatus, ['revision_requested', 'rejected'], true) && $remarks === '') {
-            return $this->respond([
-                'error' => [
-                    'code'    => 'REMARKS_REQUIRED',
-                    'message' => "A specific explanation remark is mandatory when requesting revisions or rejecting a submission.",
-                ],
-            ], 422);
-        }
+            $json = $this->request->getJSON(true) ?? [];
+            $remarks = trim((string) ($json['remarks'] ?? ''));
 
-        // Phase 3 Rule: VR-3.5 (Evidence must exist at verification time)
-        if ($targetStatus === 'verified') {
-            $evidenceCount = $db->table('student_portfolio_evidence')
-                ->where('portfolio_record_id', $id)
-                ->where('status', 'active')
-                ->where('security_status', 'clean')
-                ->countAllResults();
-
-            if ($evidenceCount === 0) {
+            // Phase 3 Rules: VR-3.6 & VR-3.7 (Revision and Rejection require non-empty remarks)
+            if (in_array($targetStatus, ['revision_requested', 'rejected'], true) && $remarks === '') {
                 return $this->respond([
                     'error' => [
-                        'code'    => 'CLEAN_EVIDENCE_REQUIRED',
-                        'message' => 'Cannot verify a portfolio record without active supporting evidence that passed the security scan.',
+                        'code'    => 'REMARKS_REQUIRED',
+                        'message' => "A specific explanation remark is mandatory when requesting revisions or rejecting a submission.",
                     ],
                 ], 422);
             }
-        }
-        $now = date('Y-m-d H:i:s');
 
-        // Race-safe: the status change only applies while the record is still 'submitted'.
-        // A concurrent decision that already moved it affects 0 rows and is refused with 409.
-        $db->transBegin();
-        try {
-            $db->table('student_portfolio_records')
-                ->where('id', $id)
-                ->where('status', 'submitted')
-                ->update([
-                    'status'      => $targetStatus,
-                    'verified_at' => $targetStatus === 'verified' ? $now : null,
-                    'updated_at'  => $now,
-                ]);
-
-            if ($db->affectedRows() !== 1) {
-                $db->transRollback();
-                return $this->respond(['error' => [
-                    'code'    => 'DECISION_ALREADY_RECORDED',
-                    'message' => 'Another decision was recorded for this submission first.',
-                ]], 409);
-            }
-
-            $db->table('student_portfolio_verification_events')->insert([
-                'id'                  => $this->genUuid(),
-                'portfolio_record_id' => $id,
-                'actor_profile_id'    => $actor['profile']['id'],
-                'action'              => $actionName,
-                'previous_status'     => $record['status'],
-                'new_status'          => $targetStatus,
-                'remarks'             => $remarks !== '' ? $remarks : null,
-                'occurred_at'         => $now,
-            ]);
-
+            // Phase 3 Rule: VR-3.5 (Evidence must exist at verification time)
             if ($targetStatus === 'verified') {
-                // Committed with the approval: scoring was requested for this record.
+                $evidenceCount = $db->table('student_portfolio_evidence')
+                    ->where('portfolio_record_id', $id)
+                    ->where('status', 'active')
+                    ->where('security_status', 'clean')
+                    ->countAllResults();
+
+                if ($evidenceCount === 0) {
+                    return $this->respond([
+                        'error' => [
+                            'code'    => 'CLEAN_EVIDENCE_REQUIRED',
+                            'message' => 'Cannot verify a portfolio record without active supporting evidence that passed the security scan.',
+                        ],
+                    ], 422);
+                }
+            }
+            $now = date('Y-m-d H:i:s');
+
+            // Race-safe: the status change only applies while the record is still 'submitted'.
+            // A concurrent decision that already moved it affects 0 rows and is refused with 409.
+            try {
+                $db->table('student_portfolio_records')
+                    ->where('id', $id)
+                    ->where('status', 'submitted')
+                    ->update([
+                        'status'      => $targetStatus,
+                        'verified_at' => $targetStatus === 'verified' ? $now : null,
+                        'updated_at'  => $now,
+                    ]);
+
+                if ($db->affectedRows() !== 1) {
+                    $db->transRollback();
+                    $mutationOpen = false;
+                    return $this->respond(['error' => [
+                        'code'    => 'DECISION_ALREADY_RECORDED',
+                        'message' => 'Another decision was recorded for this submission first.',
+                    ]], 409);
+                }
+
                 $db->table('student_portfolio_verification_events')->insert([
                     'id'                  => $this->genUuid(),
                     'portfolio_record_id' => $id,
                     'actor_profile_id'    => $actor['profile']['id'],
-                    'action'              => 'scoring_requested',
-                    'previous_status'     => $targetStatus,
+                    'action'              => $actionName,
+                    'previous_status'     => $record['status'],
                     'new_status'          => $targetStatus,
-                    'remarks'             => null,
+                    'remarks'             => $remarks !== '' ? $remarks : null,
                     'occurred_at'         => $now,
                 ]);
-            }
 
-            if ($db->transStatus() === false) {
+                if ($targetStatus === 'verified') {
+                    // Committed with the approval: scoring was requested for this record.
+                    $db->table('student_portfolio_verification_events')->insert([
+                        'id'                  => $this->genUuid(),
+                        'portfolio_record_id' => $id,
+                        'actor_profile_id'    => $actor['profile']['id'],
+                        'action'              => 'scoring_requested',
+                        'previous_status'     => $targetStatus,
+                        'new_status'          => $targetStatus,
+                        'remarks'             => null,
+                        'occurred_at'         => $now,
+                    ]);
+                }
+
+                if ($db->transStatus() === false) {
+                    $db->transRollback();
+                    $mutationOpen = false;
+                    return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'The verification decision could not be committed.']], 500);
+                }
+                $this->commitMutation($db);
+                $mutationOpen = false;
+            } catch (Throwable $e) {
                 $db->transRollback();
-                return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'The verification decision could not be committed.']], 500);
+                $mutationOpen = false;
+                return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'Failed to record decision: ' . $e->getMessage()]], 500);
             }
-            $db->transCommit();
-        } catch (Throwable $e) {
-            $db->transRollback();
-            return $this->respond(['error' => ['code' => 'DECISION_FAILED', 'message' => 'Failed to record decision: ' . $e->getMessage()]], 500);
+        } finally {
+            // Also releases the lock on validation errors and early returns.
+            if ($mutationOpen) {
+                $db->transRollback();
+            }
         }
-
 
         try {
             $notifMsg = "Your portfolio submission '{$record['title']}' has been updated to {$targetStatus}.";
@@ -1481,7 +1591,7 @@ class StudentPortfolioController extends Controller
      */
     protected function scoreApprovedRecord(string $recordId, string $actorId): string
     {
-        $scoring = new ApprovedAchievementScoringService();
+        $scoring = new ApprovedAchievementScoringService($this->getDb());
         try {
             $scoring->scoreApprovedRecord($recordId, $actorId, 'approval');
             return 'SCORED';

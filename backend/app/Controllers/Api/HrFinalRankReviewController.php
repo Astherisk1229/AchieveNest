@@ -11,6 +11,7 @@ class HrFinalRankReviewController extends Controller
  use ResponseTrait;
  public function __construct(private ?AuthorizationService $authz=null,private ?HrFinalRankReviewService $service=null){$this->authz??=new AuthorizationService();$this->service??=new HrFinalRankReviewService();}
  public function options():mixed{return$this->respond(null,204);}
+ public function context(string $evaluationId):mixed{$a=$this->actor();if(!$a)return$this->unauthorized();try{return$this->respond(['data'=>$this->service->context($a,$evaluationId)]);}catch(Throwable $e){return$this->error($e);}}
  public function finalize(string $id):mixed{$a=$this->actor();if(!$a)return$this->unauthorized();$j=$this->json();try{return$this->respond(['data'=>$this->service->finalize($a,$id,(string)($j['rank_code']??''),$j['justification']??null)]);}catch(Throwable $e){return$this->error($e);}}
  public function returnForReconsideration(string $id):mixed{$a=$this->actor();if(!$a)return$this->unauthorized();$j=$this->json();try{return$this->respond(['data'=>$this->service->returnForReconsideration($a,$id,(string)($j['reason']??''))]);}catch(Throwable $e){return$this->error($e);}}
  public function beginReconsideration(string $id):mixed{$a=$this->actor();if(!$a)return$this->unauthorized();try{return$this->respondCreated(['data'=>$this->service->beginReconsideration($a,$id)]);}catch(Throwable $e){return$this->error($e);}}

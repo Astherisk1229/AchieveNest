@@ -14,7 +14,7 @@ class DeanEligibilityService
                     p.account_type='personnel' AS account_type_personnel,
                     p.status='active' AS active_profile,
                     pp.profile_id IS NOT NULL AS personnel_profile_exists,
-                    pp.personnel_classification='academic' AS academic_personnel,
+                    pp.personnel_group='faculty' AS academic_personnel,
                     EXISTS(SELECT 1 FROM personnel_college_affiliations pca
                            WHERE pca.personnel_profile_id=p.id AND pca.college_id=? AND pca.is_active=1) AS active_college_affiliation
              FROM profiles p LEFT JOIN personnel_profiles pp ON pp.profile_id=p.id WHERE p.id=? LIMIT 1",

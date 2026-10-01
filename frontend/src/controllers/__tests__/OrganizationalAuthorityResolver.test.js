@@ -9,8 +9,9 @@ const adapter = read('backend/app/Services/ReviewerResolverService.php')
 const annualReview = read('backend/app/Services/DeanAnnualReviewService.php')
 
 describe('central organizational authority resolution', () => {
-  it('resolves College personnel through exactly one active Dean before other routes', () => {
-    expect(resolver.indexOf('return $this->resolveDean')).toBeLessThan(resolver.indexOf('return $this->resolveDepartmentHead'))
+  it('resolves Faculty through exactly one active Dean of the assigned College', () => {
+    expect(resolver).toContain("personnel_group'] ?? '')) === 'faculty'")
+    expect(resolver).toContain('return $this->resolveDean')
     expect(resolver).toContain('AUTHORITY_MISSING_DEAN')
     expect(resolver).toContain('AUTHORITY_AMBIGUOUS_DEAN')
   })
@@ -22,10 +23,10 @@ describe('central organizational authority resolution', () => {
     expect(resolver).toContain("result('DEPARTMENT_HEAD'")
   })
 
-  it('uses HR only for an explicit approved HR-managed route and rejects ambiguity', () => {
+  it('uses HR for the explicit Non-Teaching Faculty route', () => {
     expect(resolver).toContain('PersonnelReviewerRoutingRegistry::resolveReviewerRoute')
     expect(resolver).toContain("=== 'hr_staff'")
-    expect(resolver).toContain('AUTHORITY_AMBIGUOUS_HR')
+    expect(resolver).toContain("=== 'non_teaching_faculty'")
     expect(resolver).toContain("result('HR'")
   })
 

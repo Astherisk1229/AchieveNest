@@ -52,7 +52,7 @@ class DeanWorkspaceController extends Controller
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id=pp.profile_id AND pca.is_active=1')
             ->where('pca.college_id', $collegeId)->get()->getResultArray();
         $ids = array_column($people, 'profile_id');
-        $faculty = array_values(array_filter($people, fn($p) => ($p['personnel_group'] ?? '') === 'faculty' && ($p['organizational_side'] ?? '') === 'academic'));
+        $faculty = array_values(array_filter($people, fn($p) => ($p['personnel_group'] ?? '') === 'faculty'));
         $facultyIds = array_column($faculty, 'profile_id');
         $actorProfileId = $scope['actor']['profile']['id'] ?? null;
         $deanEvaluableIds = array_values(array_filter($facultyIds, static fn($id) => $id !== $actorProfileId));
@@ -106,15 +106,10 @@ class DeanWorkspaceController extends Controller
         $seen=[]; $result=[]; $eligibilityService=new \App\Services\PersonnelEligibilityService($db);
         foreach($rows as $row){ if(isset($seen[$row['id']])) continue; $seen[$row['id']]=true;
             $isSelf=$row['id']===($scope['actor']['profile']['id']??null);
-            $eligible=($row['personnel_group']==='faculty' && $row['organizational_side']==='academic' && !$isSelf);
+            $eligible=($row['personnel_group']==='faculty' && !$isSelf);
             $evaluation=$period ? $db->table('personnel_evaluations')->select('id,status,version_number,submitted_at')->where('personnel_profile_id',$row['id'])->where('evaluation_period_id',$period['id'])->orderBy('version_number','DESC')->get()->getRowArray() : null;
             $roles=$db->table('profile_roles pr')->select('r.role_key,r.display_name')->join('roles r','r.id=pr.role_id')->where('pr.profile_id',$row['id'])->where('pr.is_active',1)->orderBy('r.display_name')->get()->getResultArray();
-            $classificationLabel=match (($row['personnel_group']??'').'|'.($row['organizational_side']??'')) {
-                'faculty|academic' => 'Faculty · Academic',
-                'faculty|non_academic' => 'Faculty · Non-Academic',
-                'non_teaching_faculty|academic', 'non_teaching_faculty|non_academic' => 'Non-teaching Faculty',
-                default => 'Non-Teaching Faculty',
-            };
+            $classificationLabel=($row['personnel_group']??'') === 'faculty' ? 'Faculty' : 'Non-Teaching Faculty';
             $statusKey=null; $statusLabel=null;
             if ($period) {
                 if (!$eligible) { $statusKey='hr_managed'; $statusLabel='HR-managed'; }
@@ -178,7 +173,6 @@ class DeanWorkspaceController extends Controller
             ->where('pe.evaluation_period_id', $period['id'])
             ->where('pca.college_id', $scope['college_id'])
             ->where('pp.personnel_group', 'faculty')
-            ->where('pp.organizational_side', 'academic')
             ->where('pe.personnel_profile_id !=', $scope['actor']['profile']['id'])
             ->orderBy('pe.submitted_at', 'ASC')->get()->getResultArray();
 

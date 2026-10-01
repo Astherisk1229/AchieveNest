@@ -32,7 +32,9 @@ describe('HR Dashboard operational home contract', () => {
   it('loads narrowly owned data instead of the broad useHR hook', () => {
     expect(dashboard).toContain('fetchHRDashboard')
     expect(dashboard).toContain('fetchHRAudit({ per_page: 5 })')
-    expect(dashboard).toContain('getCurrentPersonnelEvaluationPeriod')
+    expect(dashboard).toContain('listRankingCycles')
+    expect(dashboard).toContain('featuredCycle(cycles)')
+    expect(dashboard).not.toContain('getCurrentPersonnelEvaluationPeriod')
     expect(dashboard).not.toContain("from '../../hooks/useHR'")
   })
 

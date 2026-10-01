@@ -6,9 +6,9 @@ class AuthenticatedActorService
 {
     protected LocalTokenService $localTokenService;
 
-    public function __construct(?LocalTokenService $localTokenService = null)
+    public function __construct(?LocalTokenService $localTokenService = null, private ?\CodeIgniter\Database\BaseConnection $db = null)
     {
-        $this->localTokenService = $localTokenService ?? new LocalTokenService();
+        $this->localTokenService = $localTokenService ?? new LocalTokenService($this->db);
     }
 
     /**
@@ -24,7 +24,8 @@ class AuthenticatedActorService
      */
     public function resolveActor(?string $authorizationHeader = null): ?array
     {
-        $header = trim((string) $authorizationHeader);
+        $header = AuthorizationHeader::fromRequest(service('request'), $authorizationHeader);
+
         if ($header === '' || ! preg_match('/^Bearer\s+(.+)$/i', $header, $matches)) {
             return null;
         }
@@ -42,7 +43,7 @@ class AuthenticatedActorService
             return null;
         }
 
-        $db = db_connect();
+        $db = $this->db ?? db_connect();
         $profile = $db->table('profiles')
             ->where('id', $authUserId)
             ->get()

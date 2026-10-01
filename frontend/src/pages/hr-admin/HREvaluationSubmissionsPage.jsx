@@ -9,7 +9,7 @@ import ReturnForRevisionModal from './evaluation-submissions/evaluation/actions/
 import FinalizeEvaluationModal from './evaluation-submissions/evaluation/actions/FinalizeEvaluationModal'
 import hrEvaluationService from '../../services/hrEvaluationService'
 import periodService from '../../services/personnelEvaluationPeriodService'
-import FacultyEvaluationSummary from '../../components/evaluation/FacultyEvaluationSummary'
+import FacultyPhaseOWorkspace from '../../components/evaluation/FacultyPhaseOWorkspace'
 
 export function HREvaluationSubmissionsPage(props) {
   // Queue State: 'submitted' | 'in_evaluation' | 'ready_for_finalization' | 'returned_for_revision' | 'completed'
@@ -28,7 +28,7 @@ export function HREvaluationSubmissionsPage(props) {
   const [toastMsg, setToastMsg] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [loadError, setLoadError] = useState(null)
-  const [summaryReport, setSummaryReport] = useState(null)
+  const [phaseOEvaluation, setPhaseOEvaluation] = useState(null)
 
   const loadSubmissions = useCallback(async () => {
     try {
@@ -76,13 +76,17 @@ export function HREvaluationSubmissionsPage(props) {
       const matchesTab =
         sub.status === activeTab ||
         (activeTab === 'submitted' && (sub.status === 'submitted' || sub.status === 'pending')) ||
-        (activeTab === 'in_evaluation' && (sub.status === 'in_evaluation' || sub.status === 'in_review')) ||
+        (activeTab === 'in_evaluation' && (
+          sub.status === 'in_evaluation' ||
+          sub.status === 'in_review' ||
+          (props.lockStatus && (sub.status === 'ready_for_finalization' || sub.status === 'ready_finalization'))
+        )) ||
         (activeTab === 'returned_for_revision' && (sub.status === 'returned_for_revision' || sub.status === 'returned')) ||
         (activeTab === 'ready_for_finalization' && (sub.status === 'ready_for_finalization' || sub.status === 'ready_finalization'))
 
       return matchesSearch && matchesCollege && matchesTab
     })
-  }, [baseSubmissions, search, collegeFilter, activeTab])
+  }, [baseSubmissions, search, collegeFilter, activeTab, props.lockStatus])
 
   // Zero-Safe Counts
   const counts = useMemo(() => ({
@@ -95,9 +99,12 @@ export function HREvaluationSubmissionsPage(props) {
 
   const handleInspect = async (sub) => {
     try {
-      if (['ready_for_finalization', 'completed'].includes(sub.status)) {
-        const result = await hrEvaluationService.getReport(sub.id)
-        setSummaryReport(result.report?.snapshot || result.report?.report_payload || result.report)
+      if (sub.status === 'ready_for_finalization' && String(sub.personnel_group || '').toUpperCase() === 'FACULTY') {
+        setPhaseOEvaluation(sub)
+        return
+      }
+      if (sub.status === 'completed') {
+        showToast('Open completed evaluation summaries from Ranking Cycles → Results.')
         return
       }
       if (sub.status === 'submitted') await hrEvaluationService.start(sub.id)
@@ -131,7 +138,7 @@ export function HREvaluationSubmissionsPage(props) {
       await hrEvaluationService.finalize(subId, scores)
       await loadSubmissions()
       const totalPts = scores.grandTotalAwarded ?? scores.total_score ?? scores.totalScore ?? 0
-      showToast(`Successfully finalized evaluation for ${finalizingSubmission?.faculty_name || 'personnel'} (${Number(totalPts).toFixed(2)} / 160.00 Points).`)
+      showToast(`Successfully finalized evaluation for ${finalizingSubmission?.faculty_name || 'personnel'} with a score of ${Number(totalPts).toFixed(2)}.`)
       setFinalizingSubmission(null)
       setEvaluatingSubmission(null)
     } catch (error) {
@@ -148,7 +155,7 @@ export function HREvaluationSubmissionsPage(props) {
           <span>{toastMsg}</span>
         </div>
       )}
-      {summaryReport && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-4 sm:p-8"><FacultyEvaluationSummary report={summaryReport} onClose={() => setSummaryReport(null)} /></div>}
+      {phaseOEvaluation && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-4 sm:p-8"><div className="mx-auto max-w-4xl"><FacultyPhaseOWorkspace evaluationId={phaseOEvaluation.id} mode="hr" onChanged={loadSubmissions} onClose={() => setPhaseOEvaluation(null)} /></div></div>}
 
       {/* The cycle shell supplies context when this queue is embedded. */}
       {!props.embedded && <VerificationQueueHeader stats={counts} />}

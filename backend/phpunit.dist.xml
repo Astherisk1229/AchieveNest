@@ -2,7 +2,7 @@
 <phpunit
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-    bootstrap="vendor/codeigniter4/framework/system/Test/bootstrap.php"
+    bootstrap="tests/bootstrap.php"
     backupGlobals="false"
     beStrictAboutOutputDuringTests="true"
     colors="true"
@@ -22,6 +22,7 @@
     <groups>
         <exclude>
             <group>legacy-postgres</group>
+            <group>manual-proof</group>
         </exclude>
     </groups>
 

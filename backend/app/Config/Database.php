@@ -355,6 +355,22 @@ class Database extends Config
     {
         parent::__construct();
 
+        if (defined('ENVIRONMENT') && ENVIRONMENT === 'testing') {
+            // Never inherit a working database or DSN from .env in automated tests.
+            $this->tests = [
+                'DSN' => '', 'hostname' => '', 'username' => '', 'password' => '',
+                'database' => ':memory:', 'DBDriver' => 'SQLite3', 'DBPrefix' => 'db_',
+                'pConnect' => false, 'DBDebug' => true, 'charset' => 'utf8',
+                'DBCollat' => '', 'swapPre' => '', 'encrypt' => false,
+                'compress' => false, 'strictOn' => true, 'failover' => [],
+                'port' => 0, 'foreignKeys' => true, 'busyTimeout' => 1000,
+                'dateFormat' => ['date' => 'Y-m-d', 'datetime' => 'Y-m-d H:i:s', 'time' => 'H:i:s'],
+            ];
+            $this->defaultGroup = 'tests';
+            self::enableTestIsolation();
+            return;
+        }
+
         // Keep local defense, hosted development, and automated tests isolated.
         $runtimeTarget = getenv('ACHIEVENEST_ENV') ?: env('ACHIEVENEST_ENV');
         if ($runtimeTarget === 'phase2-writer-test') {
@@ -420,8 +436,34 @@ class Database extends Config
             $this->defaultGroup = 'local_defense';
         } elseif (ENVIRONMENT === 'development') {
             $this->defaultGroup = 'development';
-        } elseif (ENVIRONMENT === 'testing') {
-            $this->defaultGroup = 'tests';
         }
+    }
+
+    public static function enableTestIsolation(): void
+    {
+        if (! defined('ENVIRONMENT') || ENVIRONMENT !== 'testing') {
+            throw new \LogicException('Test isolation is only available in testing mode.');
+        }
+        if (! static::$factory instanceof \App\Database\Testing\GuardedDatabaseFactory) {
+            static::$instances = [];
+            static::$factory = new \App\Database\Testing\GuardedDatabaseFactory();
+        }
+    }
+
+    public static function connect($group = null, bool $getShared = true)
+    {
+        if (defined('ENVIRONMENT') && ENVIRONMENT === 'testing') {
+            self::enableTestIsolation();
+            if ($group instanceof \CodeIgniter\Database\BaseConnection) {
+                if (! $group instanceof \App\Database\Testing\Connection) {
+                    throw new \RuntimeException('TEST_DATABASE_NOT_DISPOSABLE: unguarded connection.');
+                }
+            } else {
+                $name = is_string($group) ? $group : 'tests';
+                $config = is_array($group) ? $group : (config(self::class)->{$name} ?? []);
+                \App\Database\Testing\DatabaseIdentityGuard::assertConfiguration($config, is_array($group) ? '' : $name);
+            }
+        }
+        return parent::connect($group, $getShared);
     }
 }

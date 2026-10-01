@@ -3,6 +3,9 @@ import apiClient from './apiClient'
 const unwrap = response => response?.data || response
 
 export const hrEvaluationService = {
+  async workspace(cycleId, trackKey, stage) {
+    return unwrap(await apiClient.get(`/hr/ranking-cycles/${encodeURIComponent(cycleId)}/tracks/${encodeURIComponent(trackKey)}/workspace/${encodeURIComponent(stage)}`))
+  },
   async list(params = {}) {
     const data = unwrap(await apiClient.get('/reviewer/evaluations', { params }))
     return data?.evaluations || []

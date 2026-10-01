@@ -196,6 +196,16 @@ final class CanonicalStudentAchievementService
                 strtoupper(trim((string) $contract['contract_code'])),
                 $normalized
             );
+        } elseif ($categoryCode === 'SOCIO_CULTURAL_PERFORMING_ARTS') {
+            $normalized = $this->validateSocioCulturalPayload(
+                strtoupper(trim((string) $contract['contract_code'])),
+                $normalized
+            );
+        } elseif ($categoryCode === 'CAMPUS_JOURNALISM') {
+            $normalized = $this->validateCampusJournalismPayload(
+                strtoupper(trim((string) $contract['contract_code'])),
+                $normalized
+            );
         }
 
         return $normalized;
@@ -2426,6 +2436,492 @@ final class CanonicalStudentAchievementService
 
         return $payload;
     }
+    private function validateSocioCulturalPayload(
+        string $contractCode,
+        array $payload
+    ): array {
+        $contractToDiscipline = [
+            'S08-DANCE' => 'DANCE',
+            'S08-VOCAL_SINGING' => 'VOCAL_SINGING',
+            'S08-INSTRUMENTAL' => 'INSTRUMENTAL',
+            'S08-THEATER' => 'THEATER',
+            'S08-CULTURAL_PERFORMANCE' => 'CULTURAL_PERFORMANCE',
+            'S08-PERFORMING_ARTS' => 'PERFORMING_ARTS',
+            'S08-OTHER_APPROVED_DISCIPLINE'
+                => 'OTHER_APPROVED_DISCIPLINE',
+        ];
+
+        $contractCode = strtoupper(trim($contractCode));
+
+        if (! isset($contractToDiscipline[$contractCode])) {
+            throw new RuntimeException(
+                'STUDENT_SOCIO_CULTURAL_CONTRACT_UNSUPPORTED'
+            );
+        }
+
+        $requiredFields = [
+            'discipline',
+            'event_type',
+            'participation_type',
+            'placement_result',
+            'event_competition_title',
+            'organizer_issuing_organization',
+            'event_start_date',
+        ];
+
+        foreach ($requiredFields as $field) {
+            if (
+                ! array_key_exists($field, $payload)
+                || trim((string) $payload[$field]) === ''
+            ) {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_REQUIRED_FIELD_MISSING:'
+                    . $field
+                );
+            }
+        }
+
+        $normalizeSpaces = static function (string $value): string {
+            $value = trim($value);
+            $normalized = preg_replace('/\s+/', ' ', $value);
+
+            return $normalized === null ? $value : $normalized;
+        };
+
+        $normalizeComparison = static function (
+            string $value
+        ) use ($normalizeSpaces): string {
+            return strtolower($normalizeSpaces(str_replace(
+                ['_', '/', '-'],
+                ' ',
+                $value
+            )));
+        };
+
+        $discipline = strtoupper(trim((string) $payload['discipline']));
+
+        if ($discipline !== $contractToDiscipline[$contractCode]) {
+            throw new RuntimeException(
+                'STUDENT_SOCIO_CULTURAL_CONTRACT_DISCIPLINE_MISMATCH'
+            );
+        }
+
+        $payload['discipline'] = $discipline;
+        $specifiedDiscipline = null;
+
+        if (
+            array_key_exists('specified_discipline', $payload)
+            && $payload['specified_discipline'] !== null
+        ) {
+            $specifiedDiscipline = $normalizeSpaces(
+                (string) $payload['specified_discipline']
+            );
+        }
+
+        $seededDisciplines = [
+            'DANCE',
+            'VOCAL_SINGING',
+            'INSTRUMENTAL',
+            'THEATER',
+            'CULTURAL_PERFORMANCE',
+            'PERFORMING_ARTS',
+        ];
+
+        if ($discipline === 'OTHER_APPROVED_DISCIPLINE') {
+            if ($specifiedDiscipline === null || $specifiedDiscipline === '') {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_SPECIFIED_DISCIPLINE_REQUIRED'
+                );
+            }
+
+            $comparison = $normalizeComparison($specifiedDiscipline);
+
+            if (
+                in_array($comparison, ['other', 'discipline'], true)
+            ) {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_SPECIFIED_DISCIPLINE_GENERIC'
+                );
+            }
+
+            foreach ($seededDisciplines as $seededDiscipline) {
+                if (
+                    $comparison
+                    === $normalizeComparison($seededDiscipline)
+                ) {
+                    throw new RuntimeException(
+                        'STUDENT_SOCIO_CULTURAL_SPECIFIED_DISCIPLINE_DUPLICATES_SEEDED'
+                    );
+                }
+            }
+
+            $payload['specified_discipline'] = $specifiedDiscipline;
+        } else {
+            if ($specifiedDiscipline !== null && $specifiedDiscipline !== '') {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_SPECIFIED_DISCIPLINE_NOT_ALLOWED'
+                );
+            }
+
+            if (array_key_exists('specified_discipline', $payload)) {
+                $payload['specified_discipline'] = null;
+            }
+        }
+
+        $eventType = strtoupper(trim((string) $payload['event_type']));
+        $allowedEventTypes = [
+            'PRISAA',
+            'NDEA_OR_EQUIVALENT',
+            'UNIVERSITY_LEVEL_COMPETITION',
+            'OTHER_APPROVED_EVENT',
+        ];
+
+        if (! in_array($eventType, $allowedEventTypes, true)) {
+            throw new RuntimeException(
+                'STUDENT_SOCIO_CULTURAL_EVENT_TYPE_INVALID'
+            );
+        }
+
+        $payload['event_type'] = $eventType;
+        $specifiedEventType = null;
+
+        if (
+            array_key_exists('specified_event_type', $payload)
+            && $payload['specified_event_type'] !== null
+        ) {
+            $specifiedEventType = $normalizeSpaces(
+                (string) $payload['specified_event_type']
+            );
+        }
+
+        if ($eventType === 'OTHER_APPROVED_EVENT') {
+            if ($specifiedEventType === null || $specifiedEventType === '') {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_SPECIFIED_EVENT_REQUIRED'
+                );
+            }
+
+            $comparison = $normalizeComparison($specifiedEventType);
+
+            if (
+                in_array(
+                    $comparison,
+                    ['other', 'event', 'competition'],
+                    true
+                )
+            ) {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_SPECIFIED_EVENT_GENERIC'
+                );
+            }
+
+            foreach ($allowedEventTypes as $seededEventType) {
+                if (
+                    $comparison
+                    === $normalizeComparison($seededEventType)
+                ) {
+                    throw new RuntimeException(
+                        'STUDENT_SOCIO_CULTURAL_SPECIFIED_EVENT_DUPLICATES_SEEDED'
+                    );
+                }
+            }
+
+            $payload['specified_event_type'] = $specifiedEventType;
+        } else {
+            if ($specifiedEventType !== null && $specifiedEventType !== '') {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_SPECIFIED_EVENT_NOT_ALLOWED'
+                );
+            }
+
+            if (array_key_exists('specified_event_type', $payload)) {
+                $payload['specified_event_type'] = null;
+            }
+        }
+
+        $competitionLevel = null;
+
+        if (
+            array_key_exists('competition_level', $payload)
+            && $payload['competition_level'] !== null
+            && trim((string) $payload['competition_level']) !== ''
+        ) {
+            $competitionLevel = strtoupper(
+                trim((string) $payload['competition_level'])
+            );
+        }
+
+        if (
+            $competitionLevel !== null
+            && ! in_array(
+                $competitionLevel,
+                ['LOCAL', 'REGIONAL', 'NATIONAL'],
+                true
+            )
+        ) {
+            throw new RuntimeException(
+                'STUDENT_SOCIO_CULTURAL_COMPETITION_LEVEL_INVALID'
+            );
+        }
+
+        $payload['competition_level'] = $competitionLevel;
+        $payload['participation_type'] = $this->requireControlledValue(
+            $payload,
+            'participation_type',
+            ['INDIVIDUAL', 'GROUP_ENSEMBLE'],
+            'STUDENT_SOCIO_CULTURAL_PARTICIPATION_TYPE_REQUIRED',
+            'STUDENT_SOCIO_CULTURAL_PARTICIPATION_TYPE_INVALID'
+        );
+        $payload['placement_result'] = $this->requireControlledValue(
+            $payload,
+            'placement_result',
+            [
+                'PARTICIPANT',
+                'BRONZE_3RD_PLACE',
+                'SILVER_2ND_PLACE',
+                'GOLD_1ST_PLACE_CHAMPION',
+            ],
+            'STUDENT_SOCIO_CULTURAL_PLACEMENT_RESULT_REQUIRED',
+            'STUDENT_SOCIO_CULTURAL_PLACEMENT_RESULT_INVALID'
+        );
+        $payload['event_competition_title'] = $this->requireNonBlankText(
+            $payload,
+            'event_competition_title',
+            'STUDENT_SOCIO_CULTURAL_REQUIRED_FIELD_MISSING'
+        );
+        $payload['organizer_issuing_organization'] = $this->requireNonBlankText(
+            $payload,
+            'organizer_issuing_organization',
+            'STUDENT_SOCIO_CULTURAL_REQUIRED_FIELD_MISSING'
+        );
+
+        $startDateValue = trim((string) $payload['event_start_date']);
+        $startDate = $this->parseExactDate(
+            $startDateValue,
+            'STUDENT_SOCIO_CULTURAL_EVENT_START_DATE_INVALID'
+        );
+        $payload['event_start_date'] = $startDateValue;
+
+        if (
+            ! array_key_exists('event_end_date', $payload)
+            || $payload['event_end_date'] === null
+            || trim((string) $payload['event_end_date']) === ''
+        ) {
+            $payload['event_end_date'] = null;
+        } else {
+            $endDateValue = trim((string) $payload['event_end_date']);
+            $endDate = $this->parseExactDate(
+                $endDateValue,
+                'STUDENT_SOCIO_CULTURAL_EVENT_END_DATE_INVALID'
+            );
+
+            if ($endDate < $startDate) {
+                throw new RuntimeException(
+                    'STUDENT_SOCIO_CULTURAL_EVENT_DATE_ORDER_INVALID'
+                );
+            }
+
+            $payload['event_end_date'] = $endDateValue;
+        }
+
+        $this->normalizeOptionalNotes($payload);
+
+        return $payload;
+    }
+
+    private function validateCampusJournalismPayload(
+        string $contractCode,
+        array $payload
+    ): array {
+        $contractToRecordType = [
+            'S09-NEWS_ITEM' => 'NEWS_ITEM',
+            'S09-LITERARY_WORK' => 'LITERARY_WORK',
+            'S09-COLUMN' => 'COLUMN',
+            'S09-EDITORIAL' => 'EDITORIAL',
+            'S09-PUBLICATION_MEMBER_CONTRIBUTOR'
+                => 'PUBLICATION_MEMBER_CONTRIBUTOR',
+            'S09-PUBLICATION_OFFICER' => 'PUBLICATION_OFFICER',
+        ];
+
+        $contractCode = strtoupper(trim($contractCode));
+
+        if (! isset($contractToRecordType[$contractCode])) {
+            throw new RuntimeException(
+                'STUDENT_CAMPUS_JOURNALISM_CONTRACT_UNSUPPORTED'
+            );
+        }
+
+        $recordType = $this->requireControlledValue(
+            $payload,
+            'record_type',
+            array_values($contractToRecordType),
+            'STUDENT_CAMPUS_JOURNALISM_RECORD_TYPE_REQUIRED',
+            'STUDENT_CAMPUS_JOURNALISM_RECORD_TYPE_INVALID'
+        );
+
+        if ($recordType !== $contractToRecordType[$contractCode]) {
+            throw new RuntimeException(
+                'STUDENT_CAMPUS_JOURNALISM_CONTRACT_RECORD_TYPE_MISMATCH'
+            );
+        }
+
+        $payload['record_type'] = $recordType;
+        $payload['publication_outlet'] = $this->requireNonBlankText(
+            $payload,
+            'publication_outlet',
+            'STUDENT_CAMPUS_JOURNALISM_REQUIRED_FIELD_MISSING'
+        );
+        $payload['publication_role'] = $this->requireNonBlankText(
+            $payload,
+            'publication_role',
+            'STUDENT_CAMPUS_JOURNALISM_REQUIRED_FIELD_MISSING'
+        );
+
+        $outputRecordTypes = [
+            'NEWS_ITEM',
+            'LITERARY_WORK',
+            'COLUMN',
+            'EDITORIAL',
+        ];
+
+        if (in_array($recordType, $outputRecordTypes, true)) {
+            $payload['title_of_work'] = $this->requireNonBlankText(
+                $payload,
+                'title_of_work',
+                'STUDENT_CAMPUS_JOURNALISM_REQUIRED_FIELD_MISSING'
+            );
+
+            if (
+                ! array_key_exists('publication_date', $payload)
+                || trim((string) $payload['publication_date']) === ''
+            ) {
+                throw new RuntimeException(
+                    'STUDENT_CAMPUS_JOURNALISM_REQUIRED_FIELD_MISSING:publication_date'
+                );
+            }
+
+            $publicationDate = trim((string) $payload['publication_date']);
+            $this->parseExactDate(
+                $publicationDate,
+                'STUDENT_CAMPUS_JOURNALISM_PUBLICATION_DATE_INVALID'
+            );
+            $payload['publication_date'] = $publicationDate;
+
+            foreach (['role_start_date', 'role_end_date'] as $field) {
+                if (
+                    array_key_exists($field, $payload)
+                    && $payload[$field] !== null
+                    && trim((string) $payload[$field]) !== ''
+                ) {
+                    throw new RuntimeException(
+                        'STUDENT_CAMPUS_JOURNALISM_ROLE_DATE_NOT_ALLOWED'
+                    );
+                }
+
+                if (array_key_exists($field, $payload)) {
+                    $payload[$field] = null;
+                }
+            }
+        } else {
+            foreach (['title_of_work', 'publication_date'] as $field) {
+                if (
+                    array_key_exists($field, $payload)
+                    && $payload[$field] !== null
+                    && trim((string) $payload[$field]) !== ''
+                ) {
+                    throw new RuntimeException(
+                        'STUDENT_CAMPUS_JOURNALISM_OUTPUT_FIELD_NOT_ALLOWED:'
+                        . $field
+                    );
+                }
+
+                if (array_key_exists($field, $payload)) {
+                    $payload[$field] = null;
+                }
+            }
+
+            if (
+                ! array_key_exists('role_start_date', $payload)
+                || trim((string) $payload['role_start_date']) === ''
+            ) {
+                throw new RuntimeException(
+                    'STUDENT_CAMPUS_JOURNALISM_REQUIRED_FIELD_MISSING:role_start_date'
+                );
+            }
+
+            $roleStartDateValue = trim(
+                (string) $payload['role_start_date']
+            );
+            $roleStartDate = $this->parseExactDate(
+                $roleStartDateValue,
+                'STUDENT_CAMPUS_JOURNALISM_ROLE_START_DATE_INVALID'
+            );
+            $payload['role_start_date'] = $roleStartDateValue;
+
+            if (
+                ! array_key_exists('role_end_date', $payload)
+                || $payload['role_end_date'] === null
+                || trim((string) $payload['role_end_date']) === ''
+            ) {
+                $payload['role_end_date'] = null;
+            } else {
+                $roleEndDateValue = trim(
+                    (string) $payload['role_end_date']
+                );
+                $roleEndDate = $this->parseExactDate(
+                    $roleEndDateValue,
+                    'STUDENT_CAMPUS_JOURNALISM_ROLE_END_DATE_INVALID'
+                );
+
+                if ($roleEndDate < $roleStartDate) {
+                    throw new RuntimeException(
+                        'STUDENT_CAMPUS_JOURNALISM_ROLE_DATE_ORDER_INVALID'
+                    );
+                }
+
+                $payload['role_end_date'] = $roleEndDateValue;
+            }
+        }
+
+        $this->normalizeOptionalNotes($payload);
+
+        return $payload;
+    }
+
+    private function parseExactDate(
+        string $value,
+        string $errorCode
+    ): \DateTimeImmutable {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = \DateTimeImmutable::getLastErrors();
+
+        if (
+            $date === false
+            || (
+                $errors !== false
+                && (
+                    $errors['warning_count'] > 0
+                    || $errors['error_count'] > 0
+                )
+            )
+            || $date->format('Y-m-d') !== $value
+        ) {
+            throw new RuntimeException($errorCode);
+        }
+
+        return $date;
+    }
+
+    private function normalizeOptionalNotes(array &$payload): void
+    {
+        if (! array_key_exists('additional_notes', $payload)) {
+            return;
+        }
+
+        $notes = trim((string) $payload['additional_notes']);
+        $payload['additional_notes'] = $notes !== '' ? $notes : null;
+    }
+
     private function validateRecognitionPayload(
         string $contractCode,
         array $payload

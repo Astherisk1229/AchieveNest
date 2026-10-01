@@ -102,11 +102,274 @@ final class CertificateIssuanceService
         }
     }
 
+    public function revoke(array $actor, string $certificateId, array $request): array
+    {
+        $actorId = (string)($actor['profile']['id'] ?? '');
+        $key = trim((string)($request['idempotency_key'] ?? ''));
+        if ($actorId === '' || !in_array('osad_staff', $actor['roles'] ?? [], true)) throw new RuntimeException('UNAUTHORIZED_REVOCATION');
+        if ($key === '' || strlen($key) > 120) throw new RuntimeException('IDEMPOTENCY_KEY_REQUIRED');
+        $reason = trim((string)($request['reason'] ?? ''));
+        if ($reason === '') throw new RuntimeException('REVOCATION_REASON_REQUIRED');
+        if (strlen($reason) > 1000) throw new RuntimeException('REVOCATION_REASON_TOO_LONG');
+        $details = isset($request['reason_details']) ? trim((string)$request['reason_details']) : null;
+
+        $hash = hash('sha256', json_encode($this->canonical($request + ['certificate_id' => $certificateId, 'action' => 'revoke']), JSON_UNESCAPED_SLASHES));
+        $existing = $this->db->table('certificate_idempotency')->where(['actor_profile_id' => $actorId, 'idempotency_key' => $key])->get()->getRowArray();
+        if ($existing) return $this->replay($existing, $hash);
+
+        $this->db->transBegin();
+        try {
+            $this->write($this->db->table('certificate_idempotency')->insert([
+                'id' => $this->identity->uuid(),
+                'actor_profile_id' => $actorId,
+                'idempotency_key' => $key,
+                'request_hash' => $hash,
+                'response_json' => null,
+            ]));
+
+            $cert = $this->db->table('certificate_issuances')->where('id', $certificateId)->get()->getRowArray();
+            if (!$cert) throw new RuntimeException('CERTIFICATE_NOT_FOUND');
+
+            $locked = $this->db->query('SELECT * FROM certificate_issuances WHERE id = ? FOR UPDATE', [$certificateId])->getRowArray();
+            if (!$locked) throw new RuntimeException('CERTIFICATE_NOT_FOUND');
+
+            if ($locked['status'] === 'REVOKED') throw new RuntimeException('CERTIFICATE_ALREADY_REVOKED');
+            if ($locked['status'] === 'SUPERSEDED') throw new RuntimeException('CERTIFICATE_ALREADY_SUPERSEDED');
+            if ($locked['status'] !== 'ISSUED') throw new RuntimeException('CERTIFICATE_NOT_IN_ISSUABLE_STATE');
+
+            $revokedAt = date('Y-m-d H:i:s');
+            $fullReason = $details !== null && $details !== '' ? ($reason . ' - ' . $details) : $reason;
+
+            $this->write($this->db->table('certificate_issuances')->where('id', $certificateId)->update([
+                'status' => 'REVOKED',
+                'revoked_at' => $revokedAt,
+                'revoked_by' => $actorId,
+                'revocation_reason' => $fullReason,
+            ]));
+
+            $response = [
+                'status' => 'REVOKED',
+                'revoked' => true,
+                'certificate' => [
+                    'id' => $locked['id'],
+                    'certificate_number' => $locked['certificate_number'],
+                    'public_verification_id' => $locked['public_verification_id'],
+                    'verification_url' => '/verify/certificate/' . $locked['public_verification_id'],
+                    'status' => 'REVOKED',
+                    'revoked_at' => $revokedAt,
+                    'revocation_reason' => $reason,
+                ],
+            ];
+
+            $this->finishIdempotency($actorId, $key, $response);
+            $this->audit($actorId, 'CERTIFICATE_REVOKED', 'certificate_issuance', $certificateId, 'success', [
+                'certificate_number' => $locked['certificate_number'],
+                'student_id' => $locked['student_id'],
+                'reason' => $reason,
+            ]);
+
+            $this->commit();
+            return $response;
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            $this->db->resetTransStatus();
+            if ($this->isDuplicate($e)) {
+                $existing = $this->db->table('certificate_idempotency')->where(['actor_profile_id' => $actorId, 'idempotency_key' => $key])->get()->getRowArray();
+                if ($existing) return $this->replay($existing, $hash);
+            }
+            throw $e;
+        }
+    }
+
+    public function reissue(array $actor, string $oldCertificateId, array $request): array
+    {
+        $actorId = (string)($actor['profile']['id'] ?? '');
+        $key = trim((string)($request['idempotency_key'] ?? ''));
+        if ($actorId === '' || !in_array('osad_staff', $actor['roles'] ?? [], true)) throw new RuntimeException('UNAUTHORIZED_REISSUE');
+        if ($key === '' || strlen($key) > 120) throw new RuntimeException('IDEMPOTENCY_KEY_REQUIRED');
+        $reason = trim((string)($request['reissue_reason'] ?? ''));
+        if ($reason === '') throw new RuntimeException('REISSUE_REASON_REQUIRED');
+        if (strlen($reason) > 100) throw new RuntimeException('REISSUE_REASON_TOO_LONG');
+        $details = isset($request['reissue_reason_details']) ? trim((string)$request['reissue_reason_details']) : null;
+
+        $hash = hash('sha256', json_encode($this->canonical($request + ['old_certificate_id' => $oldCertificateId, 'action' => 'reissue']), JSON_UNESCAPED_SLASHES));
+        $existing = $this->db->table('certificate_idempotency')->where(['actor_profile_id' => $actorId, 'idempotency_key' => $key])->get()->getRowArray();
+        if ($existing) return $this->replay($existing, $hash);
+
+        $this->db->transBegin();
+        try {
+            $this->write($this->db->table('certificate_idempotency')->insert([
+                'id' => $this->identity->uuid(),
+                'actor_profile_id' => $actorId,
+                'idempotency_key' => $key,
+                'request_hash' => $hash,
+                'response_json' => null,
+            ]));
+
+            $old = $this->db->table('certificate_issuances')->where('id', $oldCertificateId)->get()->getRowArray();
+            if (!$old) throw new RuntimeException('CERTIFICATE_NOT_FOUND');
+
+            $lockedOld = $this->db->query('SELECT * FROM certificate_issuances WHERE id = ? FOR UPDATE', [$oldCertificateId])->getRowArray();
+            if (!$lockedOld) throw new RuntimeException('CERTIFICATE_NOT_FOUND');
+
+            if ($lockedOld['status'] === 'REVOKED') throw new RuntimeException('CERTIFICATE_REVOKED');
+            if ($lockedOld['status'] === 'SUPERSEDED') throw new RuntimeException('CERTIFICATE_ALREADY_SUPERSEDED');
+            if ($lockedOld['status'] !== 'ISSUED') throw new RuntimeException('CERTIFICATE_NOT_IN_ISSUABLE_STATE');
+
+            $source = $this->source((string)$lockedOld['source_record_id']);
+            if (!$source) throw new RuntimeException('SOURCE_RECORD_NOT_FOUND');
+            $student = $this->db->table('profiles')->where('id', $lockedOld['student_id'])->get()->getRowArray();
+            if (!$student || ($student['account_type'] ?? '') !== 'student') throw new RuntimeException('RECIPIENT_MUST_BE_STUDENT');
+
+            $eligibility = $this->eligibility->resolve($source + ['structured_attributes' => json_decode($source['structured_metadata'] ?? '{}', true) ?: []]);
+            $purpose = (string)($eligibility['eligible_purpose'] ?? $lockedOld['certificate_purpose']);
+
+            $templateVersionId = (string)($request['template_version_id'] ?? $lockedOld['template_version_id']);
+            $template = $this->template($templateVersionId);
+            if (!$template) {
+                $familyTemplate = $this->db->table('certificate_template_versions ctv')
+                    ->select('ctv.*, ctf.id template_family_id, ctf.certificate_purpose, ctf.status family_status')
+                    ->join('certificate_template_families ctf', 'ctf.id=ctv.family_id')
+                    ->where('ctf.id', $lockedOld['template_family_id'])
+                    ->where('ctv.status', 'active')
+                    ->where('ctf.status', 'active')
+                    ->orderBy('ctv.version_number', 'DESC')
+                    ->get()->getRowArray();
+                if ($familyTemplate) {
+                    $familyTemplate['placeholder_contract'] = json_decode($familyTemplate['placeholder_contract_json'] ?? '[]', true) ?: [];
+                    $familyTemplate['signatory_slots'] = json_decode($familyTemplate['signatory_slots_json'] ?? '[]', true) ?: [];
+                    $familyTemplate['status'] = 'PUBLISHED';
+                    $template = $familyTemplate;
+                }
+            }
+            if (!$template) throw new RuntimeException('MISSING_PUBLISHED_TEMPLATE');
+
+            $signatoryResolution = $this->signatoryResolver->resolve($this->db, $template, (array)($request['signatories'] ?? []));
+            $data = $this->dataResolver->resolve($source, $student, $purpose, ['name' => 'Notre Dame of Marbel University / OSAD']);
+
+            $ready = $this->readiness->evaluate($eligibility, $template, $data, $signatoryResolution['signatories'], false);
+            $ready['blocking_reasons'] = array_values(array_unique([...$ready['blocking_reasons'], ...$signatoryResolution['reason_codes']]));
+            if ($ready['blocking_reasons'] !== []) {
+                $ready['status'] = $eligibility['eligibility_status'] === 'ELIGIBLE' ? 'ELIGIBLE_NOT_ISSUABLE' : 'NOT_ELIGIBLE';
+            }
+            if ($ready['status'] !== 'ISSUABLE') {
+                $response = ['status' => 'BLOCKED', 'code' => 'READINESS_CHANGED', 'reissued' => false, 'readiness' => $ready];
+                $this->finishIdempotency($actorId, $key, $response);
+                $this->audit($actorId, 'CERTIFICATE_REISSUE_BLOCKED', 'certificate_issuance', $oldCertificateId, 'denied', ['reason_codes' => $ready['blocking_reasons']]);
+                $this->commit();
+                return $response;
+            }
+
+            $year = (int)date('Y');
+            $this->db->query('INSERT IGNORE INTO certificate_number_sequences (issue_year,next_value) VALUES (?,1)', [$year]);
+            $sequenceRow = $this->db->query('SELECT next_value FROM certificate_number_sequences WHERE issue_year=? FOR UPDATE', [$year])->getRowArray();
+            $sequence = (int)($sequenceRow['next_value'] ?? 0);
+            if ($sequence < 1) throw new RuntimeException('CERTIFICATE_SEQUENCE_UNAVAILABLE');
+            $this->write($this->db->table('certificate_number_sequences')->where('issue_year', $year)->update(['next_value' => $sequence + 1]));
+
+            $newId = $this->identity->uuid();
+            $newNumber = $this->identity->number($sequence, $year);
+            $newPublic = $this->identity->publicId();
+            $issuedAt = date('Y-m-d H:i:s');
+            $verificationUrl = '/verify/certificate/' . $newPublic;
+
+            $data += ['issued_date' => substr($issuedAt, 0, 10), 'certificate_number' => $newNumber, 'verification_url' => $verificationUrl];
+            $identity = ['id' => $newId, 'certificate_number' => $newNumber, 'public_verification_id' => $newPublic, 'verification_url' => $verificationUrl, 'issued_at' => $issuedAt];
+            $snapshot = $this->snapshotBuilder->build($identity, $student, $source, $purpose, $data, $template, $signatoryResolution['signatories']);
+
+            // Transition old certificate from ISSUED to SUPERSEDED first to free current_identity constraint
+            $this->write($this->db->table('certificate_issuances')->where('id', $oldCertificateId)->update([
+                'status' => 'SUPERSEDED',
+                'superseded_by_certificate_id' => $newId,
+                'reissue_reason' => $reason,
+                'reissue_reason_details' => $details,
+            ]));
+
+            // Insert new certificate
+            $this->write($this->db->table('certificate_issuances')->insert([
+                'id' => $newId,
+                'certificate_number' => $newNumber,
+                'public_verification_id' => $newPublic,
+                'student_id' => $student['id'],
+                'source_record_type' => 'student_portfolio_record',
+                'source_record_id' => $source['id'],
+                'certificate_purpose' => $purpose,
+                'template_family_id' => $template['template_family_id'],
+                'template_version_id' => $template['id'],
+                'status' => 'ISSUED',
+                'issued_by' => $actorId,
+                'issued_at' => $issuedAt,
+                'supersedes_certificate_id' => $oldCertificateId,
+            ]));
+
+            // Insert new snapshot
+            $this->write($this->db->table('certificate_issuance_snapshots')->insert([
+                'id' => $this->identity->uuid(),
+                'certificate_issuance_id' => $newId,
+                'snapshot_json' => json_encode($snapshot, JSON_UNESCAPED_SLASHES),
+            ]));
+
+            $response = [
+                'status' => 'ISSUED',
+                'reissued' => true,
+                'old_certificate_id' => $oldCertificateId,
+                'certificate' => $identity + [
+                    'certificate_purpose' => $purpose,
+                    'student_id' => $student['id'],
+                    'source_record_id' => $source['id'],
+                    'template_version_id' => $template['id'],
+                    'status' => 'ISSUED',
+                    'supersedes_certificate_id' => $oldCertificateId,
+                ],
+                'readiness' => $ready,
+            ];
+
+            $this->finishIdempotency($actorId, $key, $response);
+            $this->audit($actorId, 'CERTIFICATE_REISSUED', 'certificate_issuance', $newId, 'success', [
+                'old_certificate_id' => $oldCertificateId,
+                'new_certificate_id' => $newId,
+                'student_id' => $student['id'],
+                'reason' => $reason,
+            ]);
+            $this->audit($actorId, 'CERTIFICATE_SUPERSEDED', 'certificate_issuance', $oldCertificateId, 'success', [
+                'superseded_by_certificate_id' => $newId,
+                'reason' => $reason,
+            ]);
+
+            $this->commit();
+            return $response;
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            $this->db->resetTransStatus();
+            if ($this->isDuplicate($e)) {
+                $existing = $this->db->table('certificate_idempotency')->where(['actor_profile_id' => $actorId, 'idempotency_key' => $key])->get()->getRowArray();
+                if ($existing) return $this->replay($existing, $hash);
+            }
+            throw $e;
+        }
+    }
+
     public function verify(string $publicId): ?array
     {
         $row=$this->db->table('certificate_issuances ci')->select('ci.*,cis.snapshot_json')->join('certificate_issuance_snapshots cis','cis.certificate_issuance_id=ci.id')->where('ci.public_verification_id',$publicId)->get()->getRowArray();
         if(!$row)return null; $snapshot=json_decode($row['snapshot_json'],true)?:[];
-        return ['status'=>$row['status'],'certificate_number'=>$row['certificate_number'],'recipient_name'=>$snapshot['recipient']['name']??null,'certificate_purpose'=>$row['certificate_purpose'],'title'=>$snapshot['source_record']['title']??null,'issued_at'=>$row['issued_at'],'issuer_name'=>$snapshot['organizer_and_issuer']['issuer_name']??null,'replacement_available'=>!empty($row['superseded_by_certificate_id'])];
+        $replacementPublicId = null;
+        if (!empty($row['superseded_by_certificate_id'])) {
+            $rep = $this->db->table('certificate_issuances')->select('public_verification_id')->where('id', $row['superseded_by_certificate_id'])->get()->getRowArray();
+            $replacementPublicId = $rep['public_verification_id'] ?? null;
+        }
+        return [
+            'status'=>$row['status'],
+            'certificate_number'=>$row['certificate_number'],
+            'recipient_name'=>$snapshot['recipient']['name']??null,
+            'certificate_purpose'=>$row['certificate_purpose'],
+            'title'=>$snapshot['source_record']['title']??null,
+            'issued_at'=>$row['issued_at'],
+            'issuer_name'=>$snapshot['organizer_and_issuer']['issuer_name']??null,
+            'replacement_available'=>!empty($row['superseded_by_certificate_id']),
+            'replacement_public_verification_id'=>$replacementPublicId,
+            'replacement_url'=>$replacementPublicId ? '/verify/certificate/'.$replacementPublicId : null,
+        ];
     }
 
     private function source(string $id): ?array { return $this->db->table('student_portfolio_records spr')->select('spr.*,pc.code category_code,pc.name category_name,ps.code subcategory_code')->join('portfolio_categories pc','pc.id=spr.category_id')->join('portfolio_subcategories ps','ps.id=spr.subcategory_id','left')->where('spr.id',$id)->get()->getRowArray(); }

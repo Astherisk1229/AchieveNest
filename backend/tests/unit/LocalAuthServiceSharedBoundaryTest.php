@@ -9,8 +9,15 @@ use App\Services\LocalTokenService;
 use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Test\CIUnitTestCase;
 
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class LocalAuthServiceSharedBoundaryTest extends CIUnitTestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \Tests\Support\ManualProofGate::requireOptIn(false);
+        parent::setUpBeforeClass();
+    }
+
     private const DATABASE = 'achievenest_phase17m_google_auth_test';
     private const PASSWORD = 'Correct-Password-56!';
 

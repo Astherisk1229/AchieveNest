@@ -23,9 +23,6 @@ export const FACULTY_SUMMARY_ROWS = Object.freeze([
   ['C.3', '3. No. of Years at NDMU', 'C', 10]
 ].map(([code, criterion, area, weight, subcategory, parent]) => ({ code, criterion, area, weight, subcategory, parent })))
 
-export const FACULTY_AREA_CAPS = Object.freeze({ A: 70, B: 50, C: 40 })
-export const FACULTY_GRAND_TOTAL_CAP = 160
-export const FACULTY_PASSING_SCORE = 120
 const FINAL_STATUSES = new Set(['completed', 'completed_scored', 'confirmed', 'finalized'])
 
 const parseObject = (value) => {
@@ -63,12 +60,25 @@ export function buildFacultyEvaluationSummaryRows(items = []) {
   })
 }
 
-export function buildFacultyEvaluationSummary({ evaluation = {}, items = [] } = {}) {
+const numeric = value => Number.isFinite(Number(value)) ? Number(value) : null
+
+const frozenLimits = (criteriaSnapshot = {}) => {
+  const version = criteriaSnapshot.version || {}
+  const sheet = criteriaSnapshot.sheet || {}
+  const maximumScore = numeric(version.total_max_points ?? version.overall_maximum ?? sheet.overall_max_points ?? sheet.total_points ?? criteriaSnapshot.maximum_score)
+  const passingScore = numeric(version.passing_score ?? sheet.passing_score ?? criteriaSnapshot.passing_score)
+  const areaCaps = criteriaSnapshot.area_caps || version.area_caps || sheet.area_caps || {}
+  return { maximumScore, passingScore, areaCaps }
+}
+
+export function buildFacultyEvaluationSummary({ evaluation = {}, items = [], criteriaSnapshot = {} } = {}) {
   const rows = buildFacultyEvaluationSummaryRows(items)
-  const areas = Object.fromEntries(Object.entries(FACULTY_AREA_CAPS).map(([area, cap]) => {
+  const limits = frozenLimits(criteriaSnapshot)
+  const areas = Object.fromEntries(['A', 'B', 'C'].map(area => {
+    const cap = numeric(limits.areaCaps[area])
     const areaRows = rows.filter((row) => row.area === area)
     const rawPoints = areaRows.reduce((sum, row) => sum + row.points_earned, 0)
-    return [area, { area, cap, raw_points: rawPoints, points_earned: Math.min(cap, rawPoints), rows: areaRows }]
+    return [area, { area, cap, raw_points: rawPoints, points_earned: cap === null ? rawPoints : Math.min(cap, rawPoints), rows: areaRows }]
   }))
   const rawTotal = Object.values(areas).reduce((sum, area) => sum + area.points_earned, 0)
   const status = String(evaluation.evaluation_status || evaluation.status || '').toLowerCase()
@@ -79,9 +89,9 @@ export function buildFacultyEvaluationSummary({ evaluation = {}, items = [] } = 
     portfolio_version_id: portfolioVersionId,
     areas,
     raw_total: rawTotal,
-    grand_total: Math.min(FACULTY_GRAND_TOTAL_CAP, rawTotal),
-    maximum_score: FACULTY_GRAND_TOTAL_CAP,
-    passing_score: FACULTY_PASSING_SCORE,
+    grand_total: limits.maximumScore === null ? rawTotal : Math.min(limits.maximumScore, rawTotal),
+    maximum_score: limits.maximumScore,
+    passing_score: limits.passingScore,
     approval: {
       recommended_for_approval: '',
       chair: '',

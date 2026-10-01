@@ -276,6 +276,8 @@ export default function EditMasterDataModal({
         position_title: form.positionTitle.trim() || 'Personnel',
         current_rank_title: form.currentRankTitle.trim() || null,
         qualification_summary: form.qualificationSummary.trim() || null,
+        personnel_group: form.personnelGroup,
+        organizational_side: form.organizationalSide,
         college_id: form.organizationalSide === 'academic' ? form.collegeId : null,
         academic_program_ids: form.organizationalSide === 'academic' ? form.academicProgramIds : [],
         administrative_unit_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null,
@@ -380,6 +382,13 @@ export default function EditMasterDataModal({
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
+              <fieldset className="space-y-1.5 sm:col-span-2">
+                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Personnel Group</legend>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold"><input type="radio" name="editPersonnelGroup" checked={form.personnelGroup === 'faculty'} onChange={() => update('personnelGroup', 'faculty')}/><span>Faculty</span></label>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold"><input type="radio" name="editPersonnelGroup" checked={form.personnelGroup === 'non_teaching_faculty'} onChange={() => update('personnelGroup', 'non_teaching_faculty')}/><span>Non-Teaching Faculty</span></label>
+                </div>
+              </fieldset>
               {/* Engagement */}
               <fieldset className="space-y-1.5">
                 <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">

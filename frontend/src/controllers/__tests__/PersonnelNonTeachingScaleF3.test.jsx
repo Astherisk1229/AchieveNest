@@ -13,15 +13,16 @@ describe('Personnel Evaluation Track — Plan F — Phase F3: Non-Teaching Perso
   // 1. SCALE APPLICABILITY & LIMITS
   // =========================================================================
   describe('1. Scale Applicability & Canonical Limits', () => {
-    it('applies strictly to Non-Teaching Faculty on the Non-Academic side', () => {
+    it('applies strictly to the Non-Teaching Faculty personnel group', () => {
       const resolvedScale = evaluationInstrumentRegistry.resolveScaleCode('non_teaching_faculty', 'non_academic')
       expect(resolvedScale).toBe(EVALUATION_SCALE_CODES.NON_TEACHING)
       expect(resolvedScale).toBe('NON_TEACHING_PERSONNEL_RANKING_SCALE')
     })
 
-    it('rejects other personnel combinations from resolving to Non-Teaching scale', () => {
+    it('ignores legacy side while keeping Faculty on its own scale', () => {
       expect(evaluationInstrumentRegistry.resolveScaleCode('faculty', 'academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
-      expect(evaluationInstrumentRegistry.resolveScaleCode('non_teaching_faculty', 'academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
+      expect(evaluationInstrumentRegistry.resolveScaleCode('faculty', 'non_academic')).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
+      expect(evaluationInstrumentRegistry.resolveScaleCode('non_teaching_faculty', 'academic')).toBe(EVALUATION_SCALE_CODES.NON_TEACHING)
     })
 
     it('freezes exact canonical limits: Total Max 150, Passing 75, Area A 90, Area B 60', () => {

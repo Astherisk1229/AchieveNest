@@ -43,10 +43,15 @@ final class EventSourceRecordBridgeService
             $fact=['category_code'=>$categoryCode,'subcategory_id'=>$subcategory['id'],'participation_role'=>$input['participation_role']??null,'verified_engagement_outcome'=>$input['verified_engagement_outcome']??null,'placement'=>$input['placement']??null];
             $mappingReasons=$this->mappers->validate($fact);
             $fingerprint=hash('sha256',json_encode([$studentId,$eventId,$category['id'],$subcategory['id'],$this->normalized($fact),$attributes],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            $attendanceVerified = $this->hasCanonicalAttendanceEvidence($eventId, $studentId);
             $existing=$this->db->table('event_student_source_records')->where(['event_id'=>$eventId,'student_profile_id'=>$studentId,'fact_fingerprint'=>$fingerprint])->get()->getRowArray();
-            if($existing){$results[]=['student_id'=>$studentId,'event_participation_id'=>$existing['id'],'bridge_status'=>$existing['bridge_status'],'reason_codes'=>json_decode($existing['reason_codes']??'[]',true)?:[]];continue;}
+            if($existing){
+                $this->db->table('event_student_source_records')->where('id',$existing['id'])->update(['attendance_verified'=>$attendanceVerified ? 1 : 0]);
+                $results[]=['student_id'=>$studentId,'event_participation_id'=>$existing['id'],'bridge_status'=>$existing['bridge_status'],'reason_codes'=>json_decode($existing['reason_codes']??'[]',true)?:[]];
+                continue;
+            }
             $id=$this->uuid();$reasons=$mappingReasons;$status=$reasons?'BLOCKED':'READY_TO_CREATE';
-            $this->db->table('event_student_source_records')->insert(['id'=>$id,'event_id'=>$eventId,'student_profile_id'=>$studentId,'category_id'=>$category['id'],'subcategory_id'=>$subcategory['id'],'participation_role'=>$fact['participation_role'],'verified_engagement_outcome'=>$fact['verified_engagement_outcome'],'placement'=>$fact['placement'],'structured_attributes'=>json_encode($attributes),'attendance_verified'=>(int)!empty($input['attendance_verified']),'facts_finalized'=>(int)!empty($input['facts_finalized']),'verification_status'=>in_array($input['verification_status']??'pending',['pending','verified','rejected','archived'],true)?$input['verification_status']:'pending','fact_fingerprint'=>$fingerprint,'bridge_status'=>$status,'reason_codes'=>json_encode($reasons),'created_by'=>$actorId]);
+            $this->db->table('event_student_source_records')->insert(['id'=>$id,'event_id'=>$eventId,'student_profile_id'=>$studentId,'category_id'=>$category['id'],'subcategory_id'=>$subcategory['id'],'participation_role'=>$fact['participation_role'],'verified_engagement_outcome'=>$fact['verified_engagement_outcome'],'placement'=>$fact['placement'],'structured_attributes'=>json_encode($attributes),'attendance_verified'=>$attendanceVerified ? 1 : 0,'facts_finalized'=>(int)!empty($input['facts_finalized']),'verification_status'=>in_array($input['verification_status']??'pending',['pending','verified','rejected','archived'],true)?$input['verification_status']:'pending','fact_fingerprint'=>$fingerprint,'bridge_status'=>$status,'reason_codes'=>json_encode($reasons),'created_by'=>$actorId]);
             $results[]=['student_id'=>$studentId,'event_participation_id'=>$id,'bridge_status'=>$status,'reason_codes'=>$reasons];
         }
         return $results;
@@ -55,19 +60,61 @@ final class EventSourceRecordBridgeService
     public function candidates(string $eventId): array
     {
         $this->assertSchema();
-        return $this->db->table('event_student_source_records es')
-            ->select('es.id event_participation_id,es.event_id,es.student_profile_id student_id,p.full_name student_name,p.institutional_id student_number,es.source_record_id,spr.title source_title,pc.code source_category,pc.name category_name,ps.code source_subcategory,ps.name subcategory_name,es.verification_status')
+        $attendedMap = array_flip($this->getCanonicalAttendanceProfileIdsForEvent($eventId));
+        $rows = $this->db->table('event_student_source_records es')
+            ->select('es.id event_participation_id,es.event_id,es.student_profile_id student_id,p.full_name student_name,p.institutional_id student_number,es.source_record_id,spr.title source_title,pc.code source_category,pc.name category_name,ps.code source_subcategory,ps.name subcategory_name,es.verification_status,es.attendance_verified')
             ->join('profiles p','p.id=es.student_profile_id')->join('student_portfolio_records spr','spr.id=es.source_record_id')->join('portfolio_categories pc','pc.id=es.category_id')->join('portfolio_subcategories ps','ps.id=es.subcategory_id','left')
             ->where('es.event_id',$eventId)->whereIn('es.bridge_status',['CREATED','LINKED_EXISTING','UPDATED'])->where('es.source_record_id IS NOT NULL',null,false)
             ->orderBy('p.full_name')->get()->getResultArray();
+
+        return array_map(function($row) use ($attendedMap) {
+            $row['attendance_verified'] = isset($attendedMap[$row['student_id']]);
+            return $row;
+        }, $rows);
+    }
+
+    public function hasCanonicalAttendanceEvidence(string $eventId, string $studentProfileId): bool
+    {
+        if (!$this->db->tableExists('attendance_records') || !$this->db->tableExists('attendance_sessions')) {
+            return false;
+        }
+        $row = $this->db->table('attendance_records ar')
+            ->select('1')
+            ->join('attendance_sessions s', 's.id = ar.session_id')
+            ->where('s.event_id', $eventId)
+            ->where('s.status', 'closed')
+            ->where('ar.attendee_profile_id', $studentProfileId)
+            ->limit(1)
+            ->get()
+            ->getRowArray();
+        return $row !== null;
+    }
+
+    public function getCanonicalAttendanceProfileIdsForEvent(string $eventId): array
+    {
+        if (!$this->db->tableExists('attendance_records') || !$this->db->tableExists('attendance_sessions')) {
+            return [];
+        }
+        $rows = $this->db->table('attendance_records ar')
+            ->select('DISTINCT ar.attendee_profile_id', false)
+            ->join('attendance_sessions s', 's.id = ar.session_id')
+            ->where('s.event_id', $eventId)
+            ->where('s.status', 'closed')
+            ->get()
+            ->getResultArray();
+        return array_column($rows, 'attendee_profile_id');
     }
 
     private function resolveFact(array $event,array $fact,string $actorId): array
     {
+        $attendanceVerified = $this->hasCanonicalAttendanceEvidence((string)$event['id'], (string)$fact['student_profile_id']);
+        $this->db->table('event_student_source_records')->where('id', $fact['id'])->update(['attendance_verified' => $attendanceVerified ? 1 : 0]);
+        $fact['attendance_verified'] = $attendanceVerified ? 1 : 0;
+
         $reasons=[];
         if (($event['status']??'')!=='completed') $reasons[]='EVENT_NOT_FINALIZED';
         if (($fact['account_type']??'')!=='student') $reasons[]='INVALID_STUDENT_RECIPIENT';
-        if (!(bool)$fact['attendance_verified']) $reasons[]='ATTENDANCE_NOT_VERIFIED';
+        if (!$attendanceVerified) $reasons[]='ATTENDANCE_NOT_VERIFIED';
         if (!(bool)$fact['facts_finalized']) $reasons[]='ROLE_NOT_FINALIZED';
         if (($fact['verification_status']??'')!=='verified') $reasons[]='SOURCE_RECORD_NOT_VERIFIED';
         $reasons=array_values(array_unique([...$reasons,...$this->mappers->validate($fact)]));

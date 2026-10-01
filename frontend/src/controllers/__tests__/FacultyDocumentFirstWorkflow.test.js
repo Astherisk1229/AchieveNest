@@ -3,18 +3,24 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import OcrScanController from '../OcrScanController'
-import { isTemporaryWorkflowError, mapOcrToForm, retryTemporaryOperation } from '../../pages/personnel/modals/FacultyAcademicSubmissionModal'
+import { detectDegreeMismatch, isTemporaryWorkflowError, mapOcrToForm, ocrCandidates, retryTemporaryOperation } from '../../pages/personnel/modals/FacultyAcademicSubmissionModal'
+import { facultyCategoryDisplayLabel, facultySubcategoryByCode } from '../../config/facultyAcademicAccomplishmentSchema'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
 describe('Faculty document-first accomplishment workflow', () => {
-  it('keeps classification and dynamic fields independent from document upload', () => {
+  it('orders the review cards document → classification → details (document drives classification)', () => {
     const source = fs.readFileSync(path.resolve(here, '../../pages/personnel/modals/FacultyAcademicSubmissionModal.jsx'), 'utf8')
-    expect(source.indexOf('Classification</h3>')).toBeLessThan(source.indexOf('Supporting Document</h3>'))
-    expect(source.indexOf('Supporting Document</h3>')).toBeLessThan(source.indexOf('Accomplishment Details</h3>'))
+    expect(source.indexOf('title="Supporting document"')).toBeLessThan(source.indexOf('title="Classification"'))
+    expect(source.indexOf('title="Classification"')).toBeLessThan(source.indexOf('title="Accomplishment details"'))
+    expect(source).toContain('Add Accomplishment')
+    expect(source).toContain('Submit Accomplishment')
+    expect(source).toContain('Re-scan')
+    expect(source).not.toContain('Replace Document')
+    expect(source).not.toContain('Log New Accomplishment')
     expect(source).toContain('beginEvidenceDraft')
     expect(source).toContain('extractPersisted')
-    expect(source).toContain('Use Suggested Classification')
+    expect(source).toContain('await runOcr(evidence.id) // scan starts automatically after upload')
     expect(source).toContain('processFile(selectedFile, { reuseLocalPreview: true })')
     expect(source).toContain('Try Again')
     expect(source).toContain('Save Draft')
@@ -36,12 +42,12 @@ describe('Faculty document-first accomplishment workflow', () => {
   it('shows persisted evidence inline and keeps faculty-facing extraction language friendly', () => {
     const modal = fs.readFileSync(path.resolve(here, '../../pages/personnel/modals/FacultyAcademicSubmissionModal.jsx'), 'utf8')
     const viewer = fs.readFileSync(path.resolve(here, '../../pages/personnel/modals/FacultyDocumentViewer.jsx'), 'utf8')
-    expect(modal).toContain('<FacultyDocumentViewer localFile={selectedFile}')
+    expect(modal).toContain('<FacultyDocumentViewer fill scanning={scanning}')
     expect(modal).toContain('URL.createObjectURL(file)')
     expect(modal).toContain('reuseLocalPreview: true')
     expect(modal).toContain('onPersistedReady={handlePersistedPreviewReady}')
     expect(modal).toContain('Reading document…')
-    expect(modal).toContain("We couldn't read the text automatically.")
+    expect(modal).toContain("We couldn't read this document. Fill in the details manually or try a clearer scan.")
     expect(modal).not.toContain('Retry OCR')
     expect(viewer).toContain('getEvidenceBlobUrl(evidence.id)')
     expect(viewer).toContain("mimeType === 'application/pdf'")
@@ -119,5 +125,55 @@ describe('Faculty document-first accomplishment workflow', () => {
     const result = OcrScanController.classifyCategory('Certificate of Recognition')
     expect(result.confidence).toBeLessThan(75)
     expect(result.alternatives.length).toBeGreaterThan(1)
+  })
+
+  describe('A.1 sample: 01_A1_Education_OCR_Sample.jpg', () => {
+    const text = [
+      'ST. GABRIEL METROPOLITAN UNIVERSITY',
+      'Certificate of Graduation',
+      'Name: Juan D. Santos',
+      'Course/Degree: Master of Information Technology',
+      'School/University: St. Gabriel Metropolitan University',
+      'Academic Period: 2022 - 2025',
+      'Date of Certification: June 20, 2025'
+    ].join('\n')
+    const lines = text.split('\n')
+    const classification = OcrScanController.classifyCategory(text)
+    const fields = OcrScanController.extractFieldsFromText(text, lines, classification.category)
+
+    it('classifies as A.1 and uses the dropdown label everywhere', () => {
+      expect(classification.category).toBe('A.1 Degree/s')
+      expect(facultyCategoryDisplayLabel('A.1')).toBe('A.1 — Degrees & Advanced Units')
+    })
+
+    it('maps all four labeled fields into the form', () => {
+      const empty = { details: {}, date: '', startDate: '', endDate: '' }
+      const result = mapOcrToForm(empty, 'A.1', 'A1_MA_HOLDER', fields)
+      expect(result.details.degree_title).toBe('Master of Information Technology')
+      expect(result.details.institution).toBe('St. Gabriel Metropolitan University')
+      expect(result.details.academic_period).toBe('2022–2025')
+      expect(result.date).toBe('2025-06-20')
+      expect(fields.degreeLevel).toBe("Master's Degree Holder")
+      expect(fields.fieldMetadata.date.inferred).toBe(true)
+      expect(fields.fieldMetadata.date.label).toBe('Date of Certification')
+    })
+
+    it('flags a Ph.D. selection as a mismatch and offers the Master\'s subcategory', () => {
+      const phd = facultySubcategoryByCode('A1_PHD_HOLDER')
+      const mismatch = detectDegreeMismatch(phd, 'Master of Information Technology')
+      expect(mismatch).toEqual({ documentLevel: 'masters', documentLabel: "Master's", fixCode: 'A1_MA_HOLDER' })
+      expect(detectDegreeMismatch(facultySubcategoryByCode('A1_MA_HOLDER'), 'Master of Information Technology')).toBeNull()
+    })
+
+    it('fills the same values into the Ph.D. subcategory before the fix (no silent loss)', () => {
+      expect(ocrCandidates(facultySubcategoryByCode('A1_PHD_HOLDER'), fields)['details.degree_title']).toBe('Master of Information Technology')
+    })
+
+    it('never overwrites edited fields unless Re-scan is used', () => {
+      const edited = { details: { degree_title: 'MIT (edited)' }, date: '', startDate: '', endDate: '' }
+      const touched = { 'details.degree_title': true }
+      expect(mapOcrToForm(edited, 'A.1', 'A1_MA_HOLDER', fields, touched).details.degree_title).toBe('MIT (edited)')
+      expect(mapOcrToForm(edited, 'A.1', 'A1_MA_HOLDER', fields, {}, { overwrite: true }).details.degree_title).toBe('Master of Information Technology')
+    })
   })
 })

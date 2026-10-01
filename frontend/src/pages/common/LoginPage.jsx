@@ -20,10 +20,16 @@ import campusBanner from '../../assets/ndmu_login_bg.jpg'
 import { AchieveNestLogo } from '../../components/brand'
 
 const demoAccounts = [
-  { label: 'HR Admin', description: 'HR Director Account', email: 'hr.admin01@ndmu.edu.ph' },
-  { label: 'OSAD Admin', description: 'OSAD Office Holder Account', email: 'osad.admin01@ndmu.edu.ph' },
-  { label: 'Student 01', description: 'Student Demo Account', email: 'achievenest.demo.student01@ndmu.edu.ph' },
-  { label: 'Personnel 01', description: 'Personnel Demo Account', email: 'achievenest.demo.personnel01@ndmu.edu.ph' },
+  { label: 'Student A', description: 'BSA / Accountancy', email: 'demo.student.a@ndmu.edu.ph' },
+  { label: 'Student B', description: 'BSBA-FM / Financial Mgmt', email: 'demo.student.b@ndmu.edu.ph' },
+  { label: 'Academic Personnel', description: 'CBA Faculty', email: 'demo.academic.personnel@ndmu.edu.ph' },
+  { label: 'Non-Academic Personnel', description: 'HR Unit Staff', email: 'demo.nonacademic.personnel@ndmu.edu.ph' },
+  { label: 'HR Administrator', description: 'HR Admin Portal', email: 'demo.hr.admin@ndmu.edu.ph' },
+  { label: 'OSAD Administrator', description: 'OSAD Admin Portal', email: 'demo.osad.admin@ndmu.edu.ph' },
+  { label: 'College Dean', description: 'CBA Dean Oversight', email: 'demo.dean@ndmu.edu.ph' },
+  { label: 'Program Coordinator A', description: 'BSA Coordinator Queue', email: 'demo.coordinator.a@ndmu.edu.ph' },
+  { label: 'Program Coordinator B', description: 'BSBA-FM Coordinator Queue', email: 'demo.coordinator.b@ndmu.edu.ph' },
+  { label: 'Organization Moderator', description: 'DEMO_JPIA Moderator', email: 'demo.moderator@ndmu.edu.ph' },
 ]
 
 export default function LoginPage() {

@@ -23,11 +23,13 @@ import CreateOrganizationModal from './modals/CreateOrganizationModal'
 import {
   fetchOrganizations as apiFetchOrganizations,
   createOrganization as apiCreateOrganization,
-  assignOrganizationModerator as apiAssignOrganizationModerator
+  assignOrganizationModerator as apiAssignOrganizationModerator,
+  fetchOrganizationModeratorCandidates
 } from '../../services/organizationAdminService'
 import {
   fetchColleges as apiFetchColleges,
   createCollege as apiCreateCollege,
+  updateCollegeStatus as apiUpdateCollegeStatus,
   fetchAcademicPrograms as apiFetchAcademicPrograms,
   createAcademicProgram as apiCreateAcademicProgram
 } from '../../services/collegeAdminService'
@@ -61,7 +63,6 @@ export default function OSADDashboardPage({ currentUser }) {
     getUsers,
     getPersonnelList,
     getStudentPortfolios,
-    createDegreeProgram,
     createOrganization,
     createClub,
     getStudentLeaderboards,
@@ -97,16 +98,15 @@ export default function OSADDashboardPage({ currentUser }) {
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
 
   // Persistent Student Organizations & Academic Structure State
-  const [persistentOrgs, setPersistentOrgs] = useState(organizations)
-  const [persistentColleges, setPersistentColleges] = useState(colleges)
-  const [persistentPrograms, setPersistentPrograms] = useState(degreePrograms)
+  const [persistentOrgs, setPersistentOrgs] = useState([])
+  const [moderatorCandidates, setModeratorCandidates] = useState([])
+  const [persistentColleges, setPersistentColleges] = useState([])
+  const [persistentPrograms, setPersistentPrograms] = useState([])
 
   const loadPersistentOrgs = React.useCallback(async () => {
     try {
       const data = await apiFetchOrganizations()
-      if (Array.isArray(data) && data.length > 0) {
-        setPersistentOrgs(data)
-      }
+      if (Array.isArray(data)) setPersistentOrgs(data)
     } catch (err) {
       console.warn('Failed to load persistent organizations:', err)
     }
@@ -115,9 +115,7 @@ export default function OSADDashboardPage({ currentUser }) {
   const loadPersistentColleges = React.useCallback(async () => {
     try {
       const data = await apiFetchColleges()
-      if (Array.isArray(data) && data.length > 0) {
-        setPersistentColleges(data)
-      }
+      if (Array.isArray(data)) setPersistentColleges(data)
     } catch (err) {
       console.warn('Failed to load persistent colleges:', err)
     }
@@ -126,9 +124,7 @@ export default function OSADDashboardPage({ currentUser }) {
   const loadPersistentPrograms = React.useCallback(async () => {
     try {
       const data = await apiFetchAcademicPrograms()
-      if (Array.isArray(data) && data.length > 0) {
-        setPersistentPrograms(data)
-      }
+      if (Array.isArray(data)) setPersistentPrograms(data)
     } catch (err) {
       console.warn('Failed to load persistent academic programs:', err)
     }
@@ -139,6 +135,27 @@ export default function OSADDashboardPage({ currentUser }) {
     loadPersistentColleges()
     loadPersistentPrograms()
   }, [loadPersistentOrgs, loadPersistentColleges, loadPersistentPrograms])
+
+  React.useEffect(() => {
+    const organizationId = personnelSelectorTarget?.roleType === 'moderator'
+      ? personnelSelectorTarget.organizationId
+      : null
+    if (!organizationId) {
+      setModeratorCandidates([])
+      return
+    }
+    let active = true
+    setModeratorCandidates([])
+    fetchOrganizationModeratorCandidates(organizationId)
+      .then((personnel) => { if (active) setModeratorCandidates(personnel) })
+      .catch((err) => {
+        if (active) {
+          setPersonnelSelectorTarget(null)
+          showToast(`Failed to load eligible moderators: ${err?.response?.data?.error?.message || err?.message || 'Server error'}`)
+        }
+      })
+    return () => { active = false }
+  }, [personnelSelectorTarget])
 
   // Toast Notification
   const [toastMessage, setToastMessage] = useState(null)
@@ -158,10 +175,8 @@ export default function OSADDashboardPage({ currentUser }) {
       showToast(`Created Academic College: [${code}] ${name}`)
       return created
     } catch (err) {
-      createCollege(payload)
-      const code = payload instanceof FormData ? payload.get('code') : payload.code
-      const name = payload instanceof FormData ? payload.get('name') : payload.name
-      showToast(`Created Academic College: [${code || 'SUCCESS'}] ${name || ''}`)
+      showToast(`Failed to create Academic College: ${err?.message || 'Server error'}`)
+      throw err
     }
   }
 
@@ -175,9 +190,16 @@ export default function OSADDashboardPage({ currentUser }) {
       showToast(`Created Academic Program: [${code}] ${name}`)
       return created
     } catch (err) {
-      createDegreeProgram(progData)
-      showToast(`Created Academic Program: [${progData.code}] ${progData.name}`)
+      showToast(`Failed to create Academic Program: ${err?.message || 'Server error'}`)
+      throw err
     }
+  }
+
+  const handleCollegeStatusChange = async (college, status) => {
+    const result = await apiUpdateCollegeStatus(college.id, status)
+    await loadPersistentColleges()
+    showToast(status === 'inactive' ? `Archived College: [${college.code}]` : `Reactivated College: [${college.code}]`)
+    return result
   }
 
   // Handle Create Organization (Persistent API Submission)
@@ -235,23 +257,26 @@ export default function OSADDashboardPage({ currentUser }) {
           getPasswordResetRequests={getPasswordResetRequests}
           approvePasswordResetRequest={approvePasswordResetRequest}
           showToast={showToast}
-          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
-          degreePrograms={persistentPrograms.length > 0 ? persistentPrograms : degreePrograms}
+          colleges={persistentColleges}
+          degreePrograms={persistentPrograms}
         />
       )}
 
       {activeTab === 'academic-programs' && (
         <OSADAcademicProgramsPage
-          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
-          academicPrograms={persistentPrograms.length > 0 ? persistentPrograms : degreePrograms}
+          colleges={persistentColleges}
+          academicPrograms={persistentPrograms}
           setIsAddCollegeOpen={setIsAddCollegeOpen}
           setIsAddProgramOpen={setIsAddProgramOpen}
+          onCollegeStatusChange={handleCollegeStatusChange}
+          onCollegeChanged={async (college) => { await loadPersistentColleges(); showToast(`Updated College: [${college?.code}]`) }}
+          onCollegeDeleted={async (college) => { await loadPersistentColleges(); await loadPersistentPrograms(); showToast(`Deleted College: [${college?.code}]`) }}
         />
       )}
 
       {activeTab === 'organizations' && (
         <OSADStudentOrganizationsPage
-          organizations={persistentOrgs.length > 0 ? persistentOrgs : organizations}
+          organizations={persistentOrgs}
           colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
           clubs={clubs}
           selectedOrganizationId={searchParams.get('orgId') || null}
@@ -272,7 +297,7 @@ export default function OSADDashboardPage({ currentUser }) {
       )}
 
       {(activeTab === 'candidate-review' || activeTab === 'awardees') && (
-        <Navigate to="/osad/awards" replace />
+        <Navigate to="/osad/candidates" replace />
       )}
 
       {activeTab === 'accreditation-reports' && (
@@ -301,7 +326,7 @@ export default function OSADDashboardPage({ currentUser }) {
           title={personnelSelectorTarget.title}
           targetName={personnelSelectorTarget.targetName}
           roleType={personnelSelectorTarget.roleType}
-          personnelList={getPersonnelList()}
+          personnelList={personnelSelectorTarget.roleType === 'moderator' ? moderatorCandidates : getPersonnelList()}
           onClose={() => setPersonnelSelectorTarget(null)}
           onSelect={async (personnel) => {
             if (personnelSelectorTarget.roleType === 'moderator') {
@@ -334,7 +359,7 @@ export default function OSADDashboardPage({ currentUser }) {
         isOpen={Boolean(isAddProgramOpen)}
         onClose={() => setIsAddProgramOpen(false)}
         onSubmit={handleCreateProgramSubmit}
-        colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
+        colleges={persistentColleges.filter((college) => college.status === 'active')}
         initialCollegeId={typeof isAddProgramOpen === 'string' ? isAddProgramOpen : (isAddProgramOpen?.collegeId || null)}
       />
 
@@ -343,7 +368,7 @@ export default function OSADDashboardPage({ currentUser }) {
         isOpen={isAddOrgOpen}
         onClose={() => setIsAddOrgOpen(false)}
         onSubmit={handleCreateOrganizationSubmit}
-        colleges={colleges}
+        colleges={(persistentColleges.length > 0 ? persistentColleges : colleges).filter((college) => !college.status || college.status === 'active')}
         degreePrograms={degreePrograms}
       />
 

@@ -46,8 +46,9 @@ class PersonnelEvaluationPeriodController extends Controller
             return $this->respond(['error'=>['code'=>'AUTH_RESOLUTION_FAILED','message'=>'Unable to verify the current session.']], 500);
         }
         if (! $actor) return $this->respond(['error'=>['code'=>'AUTH_TOKEN_INVALID','message'=>'Authentication is required. Please sign in again.']], 401);
-        $profile = db_connect()->table('personnel_profiles')->select('personnel_classification')->where('profile_id', $actor['profile']['id'])->get()->getRowArray();
-        $personnelGroup = ($profile['personnel_classification'] ?? '') === 'non_academic' ? 'NON_TEACHING_FACULTY' : 'FACULTY';
+        $profile = db_connect()->table('personnel_profiles')->select('personnel_group')->where('profile_id', $actor['profile']['id'])->get()->getRowArray();
+        $personnelGroup = strtoupper((string) ($profile['personnel_group'] ?? ''));
+        if (! in_array($personnelGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) return $this->respond(['error'=>['code'=>'PERSONNEL_GROUP_UNRESOLVED','message'=>'A valid personnel group is required to resolve the current ranking period.']], 422);
         return $this->execute(fn() => $this->respond(['data' => ['period' => $this->periods->current(
             $this->request->getGet('evaluation_type') ?: 'RANKING_PROMOTION',
             $personnelGroup

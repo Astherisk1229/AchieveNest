@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import EvaluationSummaryAwardSection from '../../../components/osad/EvaluationSummaryAwardSection'
 import EvaluationSummaryModel from '../../../models/EvaluationSummaryModel'
 import OSADAwardDetailPage from '../OSADAwardDetailPage'
+import { PortfolioEntry } from '../OSADEvaluationSummaryView'
 
 const read = (relative) => readFileSync(new URL(relative, import.meta.url), 'utf8')
 const visibleText = (markup) => markup.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
@@ -39,11 +40,52 @@ describe('Real Student Evaluation Summary', () => {
     expect(fields.Program).toBe('Not available')
     expect(fields['Award Cycle / Academic Year']).toBe('Award Cycle 2026 · 2025-2026')
     expect(fields['Generated On']).toBe('Sep 30, 2026')
+    const named = new EvaluationSummaryModel({ ...payload, cycle: { name: 'AY 2025-2026 Annual Student Honors & Awards', academic_year: '2025-2026' } })
+    expect(named.fields.find((field) => field.label === 'Award Cycle / Academic Year').value).toBe('AY 2025-2026 Annual Student Honors & Awards')
     expect(model.section.total).toBe('15 / 50')
     expect(model.section.portfolioPotentialScore).toBe('30%')
     expect(model.section.status).toBe('Below threshold')
     expect(model.section.rows[0].criterion).toBe('Leadership Involvement — Executive Officer')
     expect(model.criteria[1].earnedText).toBe('0')
+  })
+
+  it('keeps the award portfolio: counted with points, not counted with the server reason, real files', () => {
+    const model = new EvaluationSummaryModel({
+      ...payload,
+      portfolio: [
+        { record_id: 'rec-1', achievement_title: 'SSG President', category_name: 'Leadership', subcategory_name: 'SSG', activity_date: '2025-08-01', criteria: ['Leadership Involvement'], counted: true, points: 10, not_counted_reason: null, reason_code: null, evidence: [{ id: 'e1', original_filename: 'appointment-letter.pdf', file_kind: 'pdf', uploaded_at: '2025-08-03 10:00:00' }, { id: 'e2', original_filename: 'oath.jpg', file_kind: 'image' }] },
+        { record_id: 'rec-3', achievement_title: 'Class Mayor', category_name: 'Leadership', subcategory_name: null, activity_date: '2025-06-10', criteria: ['Leadership Involvement'], counted: false, points: 0, not_counted_reason: 'Only the highest qualifying achievement counts for this criterion; another achievement with an equal or higher value was used.', reason_code: 'HIGHEST_ONLY_NOT_SELECTED', evidence: [] }
+      ]
+    })
+    expect(model.portfolio).toHaveLength(2)
+    expect(model.countedCount).toBe(1)
+    expect(model.portfolio[0].categoryLabel).toBe('Leadership › SSG')
+    expect(model.portfolio[0].anchorId).toBe('portfolio-record-rec-1')
+    expect(model.portfolio[0].files.map((file) => file.kindLabel)).toEqual(['PDF document', 'Image'])
+    expect(model.portfolioIds.has('rec-1')).toBe(true)
+    expect(model.section.rows[0].recordId).toBe('rec-1')
+
+    const counted = visibleText(renderToStaticMarkup(<PortfolioEntry record={model.portfolio[0]} />))
+    expect(counted).toContain('Counted · 10 points')
+    expect(counted).toContain('File 1 of 2 · PDF document: appointment-letter.pdf')
+    expect(counted).toContain('uploaded Aug 3, 2025')
+    expect(counted).not.toMatch(/certificate/i)
+    const notCounted = visibleText(renderToStaticMarkup(<PortfolioEntry record={model.portfolio[1]} />))
+    expect(notCounted).toContain('Not counted · 0 points')
+    expect(notCounted).toContain('Only the highest qualifying achievement counts')
+    expect(notCounted).toContain('No supporting document is attached')
+  })
+
+  it('is one continuous workspace: summary then portfolio, linked by record id, printed together', () => {
+    const view = read('../OSADEvaluationSummaryView.jsx')
+    expect(view).not.toContain('role="tablist"')
+    expect(view.match(/print-area/g)).toHaveLength(1)
+    expect(view).toContain('STUDENT EVALUATION SUMMARY')
+    expect(view).toContain('AWARD PORTFOLIO')
+    expect(view).toContain('View evidence')
+    expect(view).toContain('portfolioIds.has(row.recordId)')
+    expect(view).toContain('automatically identified from verified achievements')
+    expect(view).not.toMatch(/Mark as Candidate|Approve Candidate|Add Candidate|Promote/i)
   })
 
   it('renders the approved table format with the real rows, and an explicit empty row', () => {

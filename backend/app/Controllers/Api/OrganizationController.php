@@ -194,6 +194,28 @@ class OrganizationController extends Controller
         }
     }
 
+    /** GET /api/v1/osad/organizations/{id}/moderator-candidates */
+    public function moderatorCandidates(string $id)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
+        }
+        if (! $this->checkOSADAuthorization($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may view eligible organization moderators.']], 403);
+        }
+
+        try {
+            return $this->respond([
+                'personnel' => $this->organizationService->listModeratorCandidates($id),
+            ], 200);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'VALIDATION_FAILED', 'message' => $e->getMessage()]], 422);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'FETCH_FAILED', 'message' => $e->getMessage()]], 500);
+        }
+    }
+
     /**
      * GET /api/v1/osad/organizations/{id}/logo
      * Serves the logo image file.

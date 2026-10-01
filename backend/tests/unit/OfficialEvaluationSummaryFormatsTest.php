@@ -22,17 +22,37 @@ final class OfficialEvaluationSummaryFormatsTest extends TestCase
     public function testNonTeachingUsesOfficialWeightedStructure():void
     {
         $dto=(new PersonnelEvaluationSummaryService())->build(['personnel_group_snapshot'=>'NON_TEACHING_FACULTY','personnel_profile_id'=>'p2'],[['category_area'=>'A','criterion_code'=>'A.1','item_description'=>'Performance','weight'=>50,'percentage'=>90,'ds'=>4.5,'awarded_points'=>45]],$this->criteria,$this->totals);
-        self::assertSame('NON_TEACHING_FACULTY_RANKING_SCALE',$dto['format_key']);
+        self::assertSame('NON_TEACHING_FACULTY_EVALUATION_RESULT',$dto['format_key']);
         self::assertSame(['indicator','weight','percentage','ds','points_earned'],$dto['performance_personal_indicators']['columns']);
         self::assertSame('Passed',$dto['result']);self::assertSame(50.0,$dto['performance_personal_indicators']['items'][0]['weight']);
-        self::assertNull($dto['recommended_rank']);self::assertNull($dto['effectivity']);
+        self::assertArrayNotHasKey('recommended_rank',$dto);self::assertArrayNotHasKey('effectivity',$dto);self::assertArrayNotHasKey('rank_applied_for',$dto);self::assertArrayNotHasKey('approvals',$dto);
     }
 
     public function testMissingOfficialValuesAreFlaggedNotGuessed():void
     {
         $dto=(new PersonnelEvaluationSummaryService())->build(['personnel_group_snapshot'=>'NON_TEACHING_FACULTY'],[['category_area'=>'A','criterion_code'=>'A.1']],$this->criteria,$this->totals);
         self::assertArrayHasKey('performance_indicators.A.1.weight',$dto['unresolved_fields']);
-        self::assertArrayHasKey('rank_applied_for',$dto['unresolved_fields']);
-        self::assertArrayHasKey('approvals',$dto['unresolved_fields']);
+        self::assertArrayNotHasKey('rank_applied_for',$dto['unresolved_fields']);
+        self::assertArrayNotHasKey('approvals',$dto['unresolved_fields']);
+    }
+
+    public function testNonTeachingAreaAUsesFrozenWorkbookSnapshots():void
+    {
+        $dto=(new PersonnelEvaluationSummaryService())->build(
+            ['personnel_group_snapshot'=>'NON_TEACHING_FACULTY','period_name_snapshot'=>'AY 2026-2027'],
+            [[
+                'category_area'=>'areaA','criterion_code'=>'A.1','criterion_title'=>'Job Performance','awarded_points'=>39.5,
+                'criterion_snapshot'=>json_encode(['code'=>'A.1','name'=>'Job Performance','max_points'=>50,'weight'=>0.5]),
+                'scoring_payload'=>json_encode(['ds'=>[78,80],'points'=>[39,40]]),
+            ]],
+            $this->criteria,
+            ['total_score'=>39.5]
+        );
+
+        $item=$dto['performance_personal_indicators']['items'][0];
+        self::assertSame(50.0,$item['weight']);
+        self::assertSame(0.5,$item['percentage']);
+        self::assertSame(79.0,$item['ds']);
+        self::assertSame(39.5,$item['points_earned']);
     }
 }

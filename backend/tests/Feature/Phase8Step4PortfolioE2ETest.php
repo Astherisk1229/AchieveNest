@@ -18,6 +18,7 @@ use PDO;
  * - Zero orphan evidence & permanent invariants check
  */
 #[\PHPUnit\Framework\Attributes\Group('legacy-postgres')]
+#[\PHPUnit\Framework\Attributes\Group('manual-proof')]
 final class Phase8Step4PortfolioE2ETest extends CIUnitTestCase
 {
     protected static ?PDO $pdo = null;
@@ -47,6 +48,7 @@ final class Phase8Step4PortfolioE2ETest extends CIUnitTestCase
 
     public static function setUpBeforeClass(): void
     {
+        \Tests\Support\ManualProofGate::requireOptIn(true);
         parent::setUpBeforeClass();
 
         $lines = file('c:/Users/Admin/Documents/AchieveNest/backend/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

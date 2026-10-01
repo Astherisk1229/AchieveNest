@@ -23,7 +23,10 @@ export default function OSADAcademicProgramsPage({
   setIsAddCollegeOpen,
   setIsAddProgramOpen,
   selectedCollegeId: externalSelectedCollegeId = null,
-  onSelectCollege: externalOnSelectCollege = null
+  onSelectCollege: externalOnSelectCollege = null,
+  onCollegeStatusChange = null,
+  onCollegeChanged = null,
+  onCollegeDeleted = null
 }) {
   const [internalSelectedCollegeId, setInternalSelectedCollegeId] = useState(null)
 
@@ -56,6 +59,9 @@ export default function OSADAcademicProgramsPage({
         fallbackCollege={fallback}
         onBack={handleBackToGrid}
         onAddProgram={(cId) => setIsAddProgramOpen(cId)}
+        onCollegeStatusChange={onCollegeStatusChange}
+        onCollegeChanged={onCollegeChanged}
+        onCollegeDeleted={onCollegeDeleted}
       />
     )
   }
@@ -119,6 +125,7 @@ export default function OSADAcademicProgramsPage({
             const logoUrl = college.has_logo || college.logo_storage_key ? getCollegeLogoUrl(college.id) : null
             const deanName = college.dean_name || college.deanName
             const isDeanAssigned = Boolean(deanName && deanName !== 'Unassigned')
+            const isArchived = college.status === 'inactive'
 
             return (
             <div
@@ -179,16 +186,18 @@ export default function OSADAcademicProgramsPage({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
+                    disabled={isArchived}
                     onClick={(e) => {
                       e.stopPropagation()
                       setIsAddProgramOpen(college.id)
                     }}
-                    className="px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[#16834a] dark:text-emerald-400 text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/40 flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 shadow-2xs transition-colors ${isArchived ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[#16834a] dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40 cursor-pointer'}`}
                     title={`Add Academic Program under ${college.code}`}
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Program</span>
                   </button>
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold capitalize ${isArchived ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>{isArchived ? 'Archived' : (college.status || 'active')}</span>
                   <span className="text-xs font-medium text-slate-500 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-slate-800">
                     {programs.length} {programs.length === 1 ? 'Program' : 'Programs'}
                   </span>

@@ -33,14 +33,14 @@ describe('Plan F — Phase F1: Server-Authoritative Scale Assignment & Dynamic P
     })
   })
 
-  describe('26.2 — Non-Teaching Faculty + Academic -> ADMINISTRATORS_RANKING_SCALE', () => {
-    it('assigns ADMINISTRATORS_RANKING_SCALE to Non-Teaching Faculty on the Academic side', () => {
+  describe('26.2 — Non-Teaching Faculty -> NON_TEACHING_PERSONNEL_RANKING_SCALE', () => {
+    it('assigns the NTF scale regardless of the legacy side', () => {
       const res = evaluationScaleAssignmentService.resolveScaleFromContextSync({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'academic',
       })
       expect(res.assignment_status).toBe('assigned')
-      expect(res.scale_code).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
+      expect(res.scale_code).toBe(EVALUATION_SCALE_CODES.NON_TEACHING)
     })
   })
 
@@ -55,15 +55,15 @@ describe('Plan F — Phase F1: Server-Authoritative Scale Assignment & Dynamic P
     })
   })
 
-  describe('26.4 — Unsupported Combination Rejection', () => {
-    it('strictly rejects unconfirmed Faculty + Non-Academic combination without defaulting', () => {
+  describe('26.4 — Faculty group authority', () => {
+    it('assigns the Faculty scale regardless of the legacy side', () => {
       const res = evaluationScaleAssignmentService.resolveScaleFromContextSync({
         personnel_group: 'faculty',
         organizational_side: 'non_academic',
       })
-      expect(res.assignment_status).toBe('rejected')
-      expect(res.reason_code).toBe('unsupported_personnel_combination')
-      expect(res.scale_code).toBeNull()
+      expect(res.assignment_status).toBe('assigned')
+      expect(res.reason_code).toBe('scale_assigned_successfully')
+      expect(res.scale_code).toBe(EVALUATION_SCALE_CODES.ADMINISTRATORS)
     })
   })
 

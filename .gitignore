@@ -7,6 +7,7 @@ archive/database/*.dump
 
 # Generated Dependencies and Build Caches
 backend/development/node_modules/
+/backend/.runtime/
 node_modules/.vite/
 frontend/node_modules/.vite/
 
@@ -44,3 +45,13 @@ frontend/vitest-results-*.json
 
 # Local pre-implementation migration snapshot
 /backend/app/Phase2/Database/Migrations/2026-09-21-000003_CreateStudentAchievementDetailTables.php.pre-implementation
+
+# Generated test / OCR audit output (regenerated on every run; OCR samples are certificate images)
+/backend/writable/ocr-audit/
+/backend/writable/*.junit.xml
+/backend/writable/step5-inspection.json
+
+# Machine-specific local config and working notes (not application code)
+/.phase3b-httpd-vhosts.conf
+/Claude outputs/
+/AchieveNest System Readiness Audit*/

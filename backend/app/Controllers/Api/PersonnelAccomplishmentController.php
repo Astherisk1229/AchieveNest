@@ -152,24 +152,14 @@ class PersonnelAccomplishmentController extends Controller
         return null;
     }
 
-    private function duplicateHash(string $categoryCode, string $occurrenceDate, array $metadata): ?string
+    private function duplicateHash(string $categoryCode, string $occurrenceDate, array $metadata, string $title = ''): ?string
     {
-        $subcategory = trim((string) ($metadata['subcategory_code'] ?? ''));
-        if ($subcategory === '') return null;
-        $normalize = static fn (mixed $value): string => preg_replace('/\s+/u', ' ', mb_strtolower(trim((string) $value)));
-        $details = is_array($metadata['details'] ?? null) ? $metadata['details'] : [];
-        ksort($details);
-        foreach ($details as $key => $value) $details[$key] = $normalize($value);
-        $identity = [
-            'category_code' => $categoryCode,
-            'subcategory_code' => $subcategory,
-            'date' => $occurrenceDate,
-            'start_date' => (string) ($metadata['start_date'] ?? ''),
-            'end_date' => (string) ($metadata['end_date'] ?? ''),
-            'ongoing' => ($metadata['ongoing'] ?? false) === true,
-            'details' => $details,
-        ];
-        return hash('sha256', json_encode($identity, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return \App\Services\PersonnelAccomplishmentDuplicateGuard::identityHash($categoryCode, $occurrenceDate, $metadata, $title);
+    }
+
+    private function duplicateOf(string $personnelProfileId, ?string $hash, ?string $excludeId = null): ?array
+    {
+        return (new \App\Services\PersonnelAccomplishmentDuplicateGuard(db_connect()))->findDuplicate($personnelProfileId, $hash, $excludeId);
     }
 
     private function hasLockedPortfolio(string $personnelProfileId): bool
@@ -387,8 +377,8 @@ class PersonnelAccomplishmentController extends Controller
         if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
         $ntfError = $this->validateNtfMetadata($categoryCode, $categoryMetadata);
         if ($ntfError !== null) return $this->respond(['error' => ['code' => 'INVALID_NTF_ACCOMPLISHMENT', 'message' => $ntfError]], 422);
-        $duplicateHash = $this->duplicateHash($categoryCode, $dateAchieved, $categoryMetadata);
-        if ($duplicateHash !== null && db_connect()->fieldExists('duplicate_hash', 'personnel_accomplishments') && db_connect()->table('personnel_accomplishments')->where('personnel_profile_id', $actor['profile']['id'])->where('duplicate_hash', $duplicateHash)->countAllResults() > 0) {
+        $duplicateHash = $this->duplicateHash($categoryCode, $dateAchieved, $categoryMetadata, $title);
+        if ($this->duplicateOf((string) $actor['profile']['id'], $duplicateHash) !== null) {
             return $this->respond(['error' => ['code' => 'DUPLICATE_ACCOMPLISHMENT', 'message' => 'This accomplishment already exists in your portfolio.']], 409);
         }
 
@@ -526,14 +516,10 @@ class PersonnelAccomplishmentController extends Controller
         $categoryCode = preg_match('/^([ABC]\.\d(?:\.\d)?)/', $category, $match) ? $match[1] : trim((string) ($json['category_code'] ?? ''));
         $metadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : [];
         $date = trim((string) ($json['date_achieved'] ?? $json['occurrence_date'] ?? ''));
-        $hash = $this->duplicateHash($categoryCode, $date, $metadata);
+        $hash = $this->duplicateHash($categoryCode, $date, $metadata, trim((string) ($json['title'] ?? '')));
         if ($hash === null) return $this->respond(['data' => ['exact_duplicate' => false]]);
-        $db = db_connect();
-        if (! $db->fieldExists('duplicate_hash', 'personnel_accomplishments')) return $this->respond(['data' => ['exact_duplicate' => false, 'database_guard_available' => false]]);
-        $builder = $db->table('personnel_accomplishments')->select('id, title, occurrence_date')->where('personnel_profile_id', $actor['profile']['id'])->where('duplicate_hash', $hash);
         $excludeId = trim((string) ($json['exclude_id'] ?? ''));
-        if ($excludeId !== '') $builder->where('id !=', $excludeId);
-        $existing = $builder->get()->getRowArray();
+        $existing = $this->duplicateOf((string) $actor['profile']['id'], $hash, $excludeId !== '' ? $excludeId : null);
         return $this->respond(['data' => ['exact_duplicate' => $existing !== null, 'existing' => $existing]]);
     }
 
@@ -600,8 +586,9 @@ class PersonnelAccomplishmentController extends Controller
             $facultyError = $this->validateFacultyMetadata($categoryCode, $categoryMetadata, $dateAchieved);
             if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
         }
-        $duplicateHash = $categoryMetadata !== null ? $this->duplicateHash($categoryCode, $dateAchieved, $categoryMetadata) : ($accomplishment['duplicate_hash'] ?? null);
-        if ($duplicateHash !== null && $db->fieldExists('duplicate_hash', 'personnel_accomplishments') && $db->table('personnel_accomplishments')->where('personnel_profile_id', $actor['profile']['id'])->where('duplicate_hash', $duplicateHash)->where('id !=', $id)->countAllResults() > 0) {
+        $storedMetadata = json_decode((string) ($accomplishment['category_metadata'] ?? ''), true);
+        $duplicateHash = $this->duplicateHash($categoryCode, (string) $dateAchieved, $categoryMetadata ?? (is_array($storedMetadata) ? $storedMetadata : []), $title);
+        if ($this->duplicateOf((string) $accomplishment['personnel_profile_id'], $duplicateHash, $id) !== null) {
             return $this->respond(['error' => ['code' => 'DUPLICATE_ACCOMPLISHMENT', 'message' => 'This accomplishment already exists in your portfolio.']], 409);
         }
 

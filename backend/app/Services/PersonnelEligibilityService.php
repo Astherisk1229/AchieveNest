@@ -22,7 +22,7 @@ class PersonnelEligibilityService
     public function __construct(protected ?BaseConnection $db = null, private ?EmploymentServiceDurationService $duration = null)
     {
         $this->db ??= db_connect();
-        $this->duration ??= new EmploymentServiceDurationService();
+        $this->duration ??= new EmploymentServiceDurationService($this->db);
     }
 
     public function evaluateEligibility(string $personnelProfileId, string $periodReference): array
@@ -47,12 +47,27 @@ class PersonnelEligibilityService
         $cutoff = $period ? substr((string)$period['evaluation_end_at'],0,10) : null;
         if ($startDate === '') $missing[] = ['field'=>'employment_start_date','label'=>'Employment start date','detail'=>'Not recorded in HR master data; years of service cannot be calculated.','source'=>$hrSource];
         if (trim((string)($person['employment_status'] ?? '')) === '') $missing[] = ['field'=>'employment_status','label'=>'Employment status (Permanent or Probationary)','detail'=>'Not recorded in HR master data.','source'=>$hrSource];
+        // Qualifying length of service (excludes part-time periods and breaks), as of the period end.
+        // HR service history is authoritative; without it the HR start date is used (unverified).
         if ($period) {
-            try { $service = $this->duration->calculate($person['employment_start_date'] ?? null, $cutoff); }
-            catch (\Throwable $e) {
+            $invalidStart = false;
+            try {
+                $service = $this->duration->calculateQualifyingService($personnelProfileId, $cutoff);
+                $legacy = ($service['basis'] ?? null) === EmploymentServiceDurationService::BASIS_LEGACY_START_DATE;
+                if ($legacy && $startDate > $cutoff) $invalidStart = true;
+                if (($service['basis'] ?? null) === EmploymentServiceDurationService::BASIS_UNAVAILABLE) $service = null;
+            } catch (\Throwable $e) {
+                $invalidStart = true;
+            }
+            if ($invalidStart) {
+                $service = null;
                 $reasons[] = 'Employment start date is invalid.';
                 $missing[] = ['field'=>'employment_start_date','label'=>'Employment start date','detail'=>'Recorded value ('.$startDate.') is invalid or later than the service cutoff ('.$cutoff.').','source'=>$hrSource];
             }
+        }
+        // A recorded service history replaces the start date as the service source.
+        if ($service !== null && ($service['basis'] ?? null) === EmploymentServiceDurationService::BASIS_SERVICE_HISTORY) {
+            $missing = array_values(array_filter($missing, fn ($m) => $m['field'] !== 'employment_start_date'));
         }
         $status = strtolower((string)($person['employment_status'] ?? ''));
         $serviceYears = $service ? round(((int)$service['total_months']) / 12, 2) : null;
@@ -72,6 +87,16 @@ class PersonnelEligibilityService
         $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
         $eligibility=$hardFailure?'not_eligible':(($serviceStatus==='passed'&&$annualStatus==='passed'&&$period)?'eligible':'pending');
         $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;
+        $result['service_completed_years'] = $service['completed_years'] ?? null;
+        $result['service_requirement'] += [
+            'completed_years' => $service['completed_years'] ?? null,
+            'display' => $service['display'] ?? null,
+            'basis' => $service['basis'] ?? EmploymentServiceDurationService::BASIS_UNAVAILABLE,
+            'verified' => (bool) ($service['verified'] ?? false),
+            'reference_date' => $cutoff,
+            'service_history_version_id' => $service['service_history_version_id'] ?? null,
+            'policy_rule_version_reference' => $service['policy_rule_version_reference'] ?? null,
+        ];
         // Reported only while the service requirement is unresolved; it does not change the decision above.
         $result['missing_hr_requirements']=$serviceStatus==='pending'?$missing:[];
         return$result;

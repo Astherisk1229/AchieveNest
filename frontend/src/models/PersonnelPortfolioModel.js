@@ -39,7 +39,7 @@ export default class PersonnelPortfolioModel {
     this.#program_affiliations = Array.isArray(data.program_affiliations) ? data.program_affiliations : ['BSCS']
     this.#academic_year = data.academic_year || 'AY 2025-2026'
     this.#status = data.status || 'DRAFT'
-    this.#years_of_service = Number(data.years_of_service) || 4
+    this.#years_of_service = Math.max(0, Number(data.years_of_service) || 0)
 
     this.#area_a_items = Array.isArray(data.area_a_items) ? data.area_a_items : []
     this.#area_b_items = Array.isArray(data.area_b_items) ? data.area_b_items : []

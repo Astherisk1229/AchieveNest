@@ -313,7 +313,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
 
   describe('23.11 Plan A and Plan B Regression Protection', () => {
     it('preserves claim point calculation and repository reflection models intact', () => {
-      const mockPortfolio = createMockPortfolio()
+      // 4 completed years of service = 2 pts in Area C (an explicit 0 used to be silently replaced by 4).
+      const mockPortfolio = createMockPortfolio({ years_of_service: 4 })
       const rawTotals = mockPortfolio.calculateRawTotals()
       const totals = mockPortfolio.calculateAcceptedCappedTotals()
 

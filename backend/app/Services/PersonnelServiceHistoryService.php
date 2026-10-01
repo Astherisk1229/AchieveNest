@@ -39,6 +39,8 @@ class PersonnelServiceHistoryService
 
     private const MAX_SEGMENTS = 50;
 
+    private ?bool $domainAvailable = null;
+
     public function __construct(private ?BaseConnection $db = null)
     {
         $this->db ??= db_connect();
@@ -317,7 +319,14 @@ class PersonnelServiceHistoryService
     private function segmentsForVersion(string $versionId): array
     {
         $rows = $this->db->table('personnel_service_segments')->where('service_history_version_id', $versionId)->get()->getResultArray();
-        $segments = array_map(fn (array $r) => [
+        $segments = array_map(fn (array $r) => $this->presentSegment($r), $rows);
+        usort($segments, fn ($a, $b) => strcmp((string) $a['start_date'], (string) $b['start_date']));
+        return $segments;
+    }
+
+    private function presentSegment(array $r): array
+    {
+        return [
             'id' => $r['id'],
             'start_date' => $this->ymd($r['period_start_year'], $r['period_start_month'], $r['period_start_day']),
             'end_date' => $this->ymd($r['period_end_year'], $r['period_end_month'], $r['period_end_day']),
@@ -327,9 +336,7 @@ class PersonnelServiceHistoryService
             'countability' => $r['countability_state'],
             'hr_reason' => $r['hr_reason'],
             'source_remarks' => $r['source_remarks'],
-        ], $rows);
-        usort($segments, fn ($a, $b) => strcmp((string) $a['start_date'], (string) $b['start_date']));
-        return $segments;
+        ];
     }
 
     private function presentVersion(array $v): array
@@ -349,8 +356,47 @@ class PersonnelServiceHistoryService
         return $out;
     }
 
+    /**
+     * Current segments for many people in three queries (directory lists). Keys are personnel ids;
+     * people without recorded history are absent. Each value: ['version' => presented version, 'segments' => [...]].
+     */
+    public function currentSegmentsForMany(array $personnelProfileIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('strval', $personnelProfileIds))));
+        if ($ids === [] || ! $this->domainAvailable()) return [];
+        $histories = $this->db->table('personnel_service_histories')
+            ->select('personnel_profile_id, current_version_id')
+            ->whereIn('personnel_profile_id', $ids)->where('stream_code', self::STREAM_NDMU_EMPLOYMENT)
+            ->where('current_version_id IS NOT NULL', null, false)
+            ->get()->getResultArray();
+        if ($histories === []) return [];
+        $versionIds = array_column($histories, 'current_version_id');
+        $versions = [];
+        foreach ($this->db->table('personnel_service_history_versions')->whereIn('id', $versionIds)->get()->getResultArray() as $v) $versions[$v['id']] = $v;
+        $segmentsByVersion = [];
+        foreach ($this->db->table('personnel_service_segments')->whereIn('service_history_version_id', $versionIds)->get()->getResultArray() as $r) {
+            $segmentsByVersion[$r['service_history_version_id']][] = $this->presentSegment($r);
+        }
+        $out = [];
+        foreach ($histories as $h) {
+            $v = $versions[$h['current_version_id']] ?? null;
+            if ($v === null) continue;
+            $segments = $segmentsByVersion[$v['id']] ?? [];
+            usort($segments, fn ($a, $b) => strcmp((string) $a['start_date'], (string) $b['start_date']));
+            $out[$h['personnel_profile_id']] = ['version' => $this->presentVersion($v), 'segments' => $segments];
+        }
+        return $out;
+    }
+
+    /** False when the service-history tables are not installed (e.g. reduced test schemas). */
+    private function domainAvailable(): bool
+    {
+        return $this->domainAvailable ??= $this->db->tableExists('personnel_service_histories');
+    }
+
     private function findHistory(string $personnelProfileId): ?array
     {
+        if (! $this->domainAvailable()) return null;
         return $this->db->table('personnel_service_histories')
             ->where('personnel_profile_id', $personnelProfileId)
             ->where('stream_code', self::STREAM_NDMU_EMPLOYMENT)

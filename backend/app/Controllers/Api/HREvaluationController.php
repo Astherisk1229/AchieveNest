@@ -342,7 +342,7 @@ class HREvaluationController extends Controller
                 'pp.personnel_group',
                 'pp.employment_start_date',
             ])
-            ->select('TIMESTAMPDIFF(YEAR, pp.employment_start_date, CURDATE()) AS tenure_years', false)
+            // tenure_years comes from pe.* — the server-derived value frozen at submission.
             ->select('NULL AS email', false)
             ->join('profiles p', 'p.id = pe.personnel_profile_id')
             ->join('personnel_profiles pp', 'pp.profile_id = pe.personnel_profile_id')

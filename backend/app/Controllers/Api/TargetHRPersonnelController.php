@@ -88,6 +88,16 @@ class TargetHRPersonnelController extends Controller
         ];
     }
 
+    /** Qualifying length of service for responses; falls back to the plain start-date duration if it cannot be computed. */
+    private function qualifyingServiceOrStartDate(string $profileId, ?string $startDate): ?array
+    {
+        try {
+            return (new \App\Services\EmploymentServiceDurationService())->calculateQualifyingService($profileId);
+        } catch (Throwable $e) {
+            return (new \App\Services\EmploymentServiceDurationService())->calculate($startDate);
+        }
+    }
+
     protected function requireHrAdmin(?array $actor): bool
     {
         return $actor !== null && $this->authz->hasRole($actor, 'hr_staff');
@@ -265,7 +275,16 @@ class TargetHRPersonnelController extends Controller
             }
         }
 
+        // Length of service for the whole page in a few queries (no per-row lookups).
+        $qualifyingByProfile = [];
+        try {
+            $qualifyingByProfile = (new \App\Services\EmploymentServiceDurationService($db))->calculateQualifyingServiceForMany($rows);
+        } catch (Throwable $e) {
+            log_message('error', 'Directory length-of-service batch failed: {msg}', ['msg' => $e->getMessage()]);
+        }
+
         foreach ($rows as &$row) {
+            if (isset($qualifyingByProfile[$row['id']])) $row['qualifying_service'] = $qualifyingByProfile[$row['id']];
             $lifecycle = AccountLifecycleResolver::resolve(
                 $row['status'] ?? 'active',
                 $row['credential_must_change_password'] ?? null,
@@ -451,6 +470,11 @@ class TargetHRPersonnelController extends Controller
             return $this->respond(['error' => ['code' => 'PERSONNEL_NOT_FOUND', 'message' => 'Personnel profile not found.']], 404);
         }
 
+        try {
+            $row['qualifying_service'] = (new \App\Services\EmploymentServiceDurationService($db))->calculateQualifyingService($profileId);
+        } catch (Throwable $e) {
+            log_message('error', 'Length of service unavailable for {id}: {msg}', ['id' => $profileId, 'msg' => $e->getMessage()]);
+        }
         $dto = $this->facultyStatusService->buildMasterDataDto($row);
         return $this->respond(['data' => $dto], 200);
     }
@@ -582,7 +606,7 @@ class TargetHRPersonnelController extends Controller
                 'employment_status'        => $validation['employment_status'],
                 'employment_status_label'  => $validation['employment_status_label'],
                 'employment_start_date'    => $validation['employment_start_date'],
-                'service_duration'         => (new \App\Services\EmploymentServiceDurationService())->calculate($validation['employment_start_date']),
+                'service_duration'         => $this->qualifyingServiceOrStartDate($profileId, $validation['employment_start_date']),
                 'position_title'           => $validation['position_title'],
                 'current_rank_title'       => $validation['current_rank_title'],
                 'qualification_summary'    => $validation['qualification_summary'],

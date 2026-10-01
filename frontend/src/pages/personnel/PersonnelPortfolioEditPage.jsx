@@ -76,6 +76,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     loading,
     error,
     reload,
+    updateYearsOfService,
     submitPortfolio,
     resubmitPortfolio,
     submitToDean,
@@ -87,7 +88,8 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     college_id: activeUser.college_id || activeUser.college_code,
     college_name: activeUser.college_name,
     program_affiliations: activeUser.program_affiliations,
-    years_of_service: activeUser.years_of_service || activeUser.year_level
+    // Server-derived from the HR service history (see eligibility below); never typed by personnel.
+    years_of_service: 0
   })
 
   // Dynamic Workspace Rubric Configuration State
@@ -95,6 +97,11 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const [evaluationPeriod, setEvaluationPeriod] = useState(null)
   const [configLoading, setConfigLoading] = useState(false)
   const [eligibility, setEligibility] = useState(null)
+  // Completed qualifying years (full-time only) as of the period end — the value C.3/B.3 Years of Service uses.
+  const serviceCompletedYears = eligibility?.service_requirement?.completed_years ?? eligibility?.service_completed_years ?? 0
+  useEffect(() => {
+    if (portfolio && portfolio.years_of_service !== serviceCompletedYears) updateYearsOfService(serviceCompletedYears)
+  }, [portfolio, serviceCompletedYears, updateYearsOfService])
 
   const isFacultyAcademic = usesFacultyAcademicPortfolio(activeUser)
 
@@ -307,12 +314,12 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
       if (isReturnedForRevision) {
         res = await resubmitPortfolio({
           evaluationPeriodId: evaluationPeriod?.id,
-          tenureYears: activeUser.years_of_service
+          tenureYears: serviceCompletedYears
         })
       } else {
         res = await submitPortfolio({
           evaluationPeriodId: evaluationPeriod?.id,
-          tenureYears: activeUser.years_of_service
+          tenureYears: serviceCompletedYears
         })
       }
 

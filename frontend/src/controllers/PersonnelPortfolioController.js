@@ -154,7 +154,7 @@ export default class PersonnelPortfolioController {
       college_name: profileContext.college_name || 'College of Engineering, Architecture, and Technology',
       program_affiliations: profileContext.program_affiliations || ['BSCS'],
       academic_year: profileContext.academic_year || 'AY 2025-2026',
-      years_of_service: Number(profileContext.years_of_service !== undefined ? profileContext.years_of_service : 6),
+      years_of_service: Number(profileContext.years_of_service !== undefined ? profileContext.years_of_service : 0),
       area_a_items,
       area_b_items,
       area_c_items
@@ -191,7 +191,7 @@ export default class PersonnelPortfolioController {
       college_name: defaultData.college_name || 'College of Engineering, Architecture, and Technology',
       program_affiliations: defaultData.program_affiliations || ['BSCS'],
       academic_year: defaultData.academic_year || 'AY 2025-2026',
-      years_of_service: Number(defaultData.years_of_service !== undefined ? defaultData.years_of_service : 6),
+      years_of_service: Number(defaultData.years_of_service !== undefined ? defaultData.years_of_service : 0),
       area_a_items: Array.isArray(defaultData.area_a_items) ? defaultData.area_a_items : [],
       area_b_items: Array.isArray(defaultData.area_b_items) ? defaultData.area_b_items : [],
       area_c_items: Array.isArray(defaultData.area_c_items) ? defaultData.area_c_items : []

@@ -890,7 +890,7 @@ class TargetProvisioningController extends Controller
             'organizational_side'      => $clsValidation['side'],
             'employment_status'        => $employmentStatus,
             'employment_start_date'    => $employmentStartDate,
-            'service_duration'         => (new EmploymentServiceDurationService())->calculate($employmentStartDate),
+            'service_duration'         => (new EmploymentServiceDurationService())->calculateQualifyingService($authUserId),
             'classification_code'      => $clsValidation['code'],
             'classification_label'     => $clsValidation['label'],
             'college_id'               => $collegeId,

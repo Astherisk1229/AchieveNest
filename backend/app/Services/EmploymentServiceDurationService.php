@@ -77,12 +77,40 @@ class EmploymentServiceDurationService
         if (! $person) throw new InvalidArgumentException('PERSONNEL_NOT_FOUND');
 
         $historyService = $this->history ??= new PersonnelServiceHistoryService($db);
-        $history = $historyService->getHistory($personnelProfileId);
-        $version = $history['current_version'];
+        $version = $historyService->getHistory($personnelProfileId)['current_version'];
+        $entry = $version === null ? null : ['version' => $version, 'segments' => $version['segments']];
+        return $this->qualifyingFromParts($person, $entry, $reference);
+    }
 
-        if ($version !== null) {
-            $result = $this->computeFromSegments($version['segments'], $reference);
-            return $result + [
+    /**
+     * Same result as calculateQualifyingService() for many people at once (no per-row queries).
+     * $people rows need profile_id (or id), faculty_engagement and employment_start_date.
+     * Returns [personnel id => result]. A person whose recorded start date is invalid gets basis "unavailable".
+     */
+    public function calculateQualifyingServiceForMany(array $people, ?string $referenceDate = null): array
+    {
+        $reference = $this->strictDate($referenceDate ?: date('Y-m-d'), 'Enter a valid reference date.')->format('Y-m-d');
+        $ids = array_values(array_filter(array_map(fn ($p) => (string) ($p['profile_id'] ?? $p['id'] ?? ''), $people)));
+        $historyService = $this->history ??= new PersonnelServiceHistoryService($this->db ??= db_connect());
+        $entries = $historyService->currentSegmentsForMany($ids);
+        $out = [];
+        foreach ($people as $person) {
+            $id = (string) ($person['profile_id'] ?? $person['id'] ?? '');
+            if ($id === '' || isset($out[$id])) continue;
+            try {
+                $out[$id] = $this->qualifyingFromParts($person, $entries[$id] ?? null, $reference);
+            } catch (InvalidArgumentException) {
+                $out[$id] = $this->unavailableResult($reference);
+            }
+        }
+        return $out;
+    }
+
+    private function qualifyingFromParts(array $person, ?array $historyEntry, string $reference): array
+    {
+        if ($historyEntry !== null) {
+            $version = $historyEntry['version'];
+            return $this->computeFromSegments($historyEntry['segments'], $reference) + [
                 'basis' => self::BASIS_SERVICE_HISTORY,
                 'verified' => true,
                 'service_history_version_id' => $version['id'],
@@ -91,16 +119,23 @@ class EmploymentServiceDurationService
             ];
         }
 
-        $meta = ['verified' => false, 'service_history_version_id' => null, 'service_history_version_number' => null, 'policy_rule_version_reference' => PersonnelServiceHistoryService::POLICY_RULE_VERSION];
         if (($person['faculty_engagement'] ?? null) === FacultyStatusService::ENGAGEMENT_PART_TIME) {
-            return $this->computeFromSegments([], $reference) + ['basis' => self::BASIS_PART_TIME_NO_HISTORY] + $meta;
+            return $this->computeFromSegments([], $reference) + ['basis' => self::BASIS_PART_TIME_NO_HISTORY] + $this->unverifiedMeta();
         }
         $start = trim((string) ($person['employment_start_date'] ?? ''));
-        if ($start === '') {
-            return ['basis' => self::BASIS_UNAVAILABLE, 'reference_date' => $reference, 'years' => null, 'months' => null, 'days' => null, 'total_months' => null, 'completed_years' => null, 'service_years_decimal' => null, 'qualifying_days' => null, 'display' => null, 'included_segments' => [], 'excluded_segments' => [], 'gaps' => [], 'part_time' => null] + $meta;
-        }
+        if ($start === '') return $this->unavailableResult($reference);
         $legacy = [['start_date' => $this->strictDate($start, 'Recorded employment start date is invalid.')->format('Y-m-d'), 'end_date' => null, 'is_ongoing' => true, 'classification' => PersonnelServiceHistoryService::CLASSIFICATION_FULL_TIME, 'countability' => PersonnelServiceHistoryService::COUNTABLE, 'hr_reason' => null]];
-        return $this->computeFromSegments($legacy, $reference) + ['basis' => self::BASIS_LEGACY_START_DATE] + $meta;
+        return $this->computeFromSegments($legacy, $reference) + ['basis' => self::BASIS_LEGACY_START_DATE] + $this->unverifiedMeta();
+    }
+
+    private function unverifiedMeta(): array
+    {
+        return ['verified' => false, 'service_history_version_id' => null, 'service_history_version_number' => null, 'policy_rule_version_reference' => PersonnelServiceHistoryService::POLICY_RULE_VERSION];
+    }
+
+    private function unavailableResult(string $reference): array
+    {
+        return ['basis' => self::BASIS_UNAVAILABLE, 'reference_date' => $reference, 'years' => null, 'months' => null, 'days' => null, 'total_months' => null, 'completed_years' => null, 'service_years_decimal' => null, 'qualifying_days' => null, 'display' => null, 'included_segments' => [], 'excluded_segments' => [], 'gaps' => [], 'part_time' => null] + $this->unverifiedMeta();
     }
 
     /**

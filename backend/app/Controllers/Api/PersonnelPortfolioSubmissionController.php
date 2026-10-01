@@ -538,7 +538,9 @@ class PersonnelPortfolioSubmissionController extends Controller
         $now = date('Y-m-d H:i:s');
         $rootId = $this->genUuid();
         $evaluationId = $this->genUuid();
-        $tenureYears = (int) ($actor['profile']['tenure_years'] ?? $json['tenure_years'] ?? 0);
+        // Years of Service (C.3 / B.3) is server-derived: completed qualifying years (full-time only, from the
+        // HR service history) as of the evaluation period end. Client-supplied tenure_years is ignored.
+        $tenureYears = (int) ($eligibility['service_completed_years'] ?? 0);
         $eligibilitySnapshot = $eligibility;
 
         // Resolve the authoritative reviewer before persistence so the recipient queue,

@@ -236,7 +236,9 @@ class FacultyStatusService
         $engagementLabel = $engagement ? (self::CANONICAL_ENGAGEMENTS[$engagement] ?? $engagement) : 'Unassigned';
         $statusLabel     = self::CANONICAL_EMPLOYMENT_STATUSES[$status] ?? ucfirst($status);
         $employmentStartDate = $row['employment_start_date'] ?? null;
-        $serviceDuration = (new EmploymentServiceDurationService())->calculate($employmentStartDate);
+        // Qualifying length of service (excludes part-time and breaks) when the caller supplies it
+        // (EmploymentServiceDurationService::calculateQualifyingService[ForMany]); otherwise the plain start-date duration.
+        $serviceDuration = $row['qualifying_service'] ?? (new EmploymentServiceDurationService())->calculate($employmentStartDate);
 
         $isActive   = (($row['status'] ?? 'active') === 'active');
         $isAcademic = ($side === 'academic');

@@ -171,8 +171,11 @@ export default function FacultyDossierDrawer({
                     <p className="mt-0.5 font-extrabold text-slate-900 dark:text-white">{formatEmploymentStartDate(personnel.employment_start_date)}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-extrabold text-slate-400">Service Rendered</p>
+                    <p className="text-[10px] uppercase font-extrabold text-slate-400">Length of Service</p>
                     <p className="mt-0.5 font-extrabold text-slate-900 dark:text-white">{personnel.service_duration?.display || 'Unavailable until recorded'}</p>
+                    {personnel.service_duration?.basis && personnel.service_duration.basis !== 'service_history' && (
+                      <p className="mt-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">Not yet verified by HR service history</p>
+                    )}
                   </div>
                 </div>
 
@@ -255,8 +258,8 @@ export default function FacultyDossierDrawer({
               <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 space-y-3 text-xs">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[10px] uppercase font-extrabold text-slate-400">Tenure</p>
-                    <p className="font-extrabold text-slate-900 dark:text-white mt-0.5">{personnel.tenure_years || 0} Years</p>
+                    <p className="text-[10px] uppercase font-extrabold text-slate-400">Years of Service (completed)</p>
+                    <p className="font-extrabold text-slate-900 dark:text-white mt-0.5">{personnel.service_duration?.completed_years ?? personnel.service_duration?.years ?? 0} Years</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-extrabold text-slate-400">Verified Proofs</p>

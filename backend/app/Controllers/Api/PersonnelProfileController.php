@@ -54,6 +54,13 @@ class PersonnelProfileController extends Controller
                 ->get()
                 ->getRowArray();
 
+            $service = null;
+            try {
+                $service = (new \App\Services\EmploymentServiceDurationService($db))->calculateQualifyingService($profileId);
+            } catch (\Throwable $e) {
+                log_message('error', 'Length of service unavailable for {id}: {msg}', ['id' => $profileId, 'msg' => $e->getMessage()]);
+            }
+
             $data = [
                 'id'              => $profileId,
                 'employee_id'     => $profile['employee_id'] ?? $userProfile['employee_id'] ?? $profile['institutional_id'] ?? '',
@@ -62,7 +69,10 @@ class PersonnelProfileController extends Controller
                 'avatar_url'      => $userProfile['avatar_url'] ?? $profile['avatar_url'] ?? null,
                 'designation'     => $userProfile['designation'] ?? $profile['designation'] ?? null,
                 'academic_rank'   => $userProfile['academic_rank'] ?? $profile['academic_rank'] ?? null,
-                'tenure_years'    => (int) ($userProfile['tenure_years'] ?? $profile['tenure_years'] ?? 0),
+                // Server-derived qualifying length of service (full-time only, HR service history), as of today.
+                'tenure_years'    => $service['completed_years'] ?? 0,
+                'years_of_service' => $service['completed_years'] ?? null,
+                'length_of_service' => $service,
                 'college_id'      => $userProfile['college_id'] ?? $profile['college_id'] ?? null,
                 'department_id'   => $userProfile['department_id'] ?? $profile['department_id'] ?? null,
                 'phone'           => $userProfile['phone'] ?? $profile['phone'] ?? null,

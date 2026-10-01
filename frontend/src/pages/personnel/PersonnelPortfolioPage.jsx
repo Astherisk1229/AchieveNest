@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ExportPortfolioPreviewModal from '../student/modals/ExportPortfolioPreviewModal'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
@@ -37,6 +37,7 @@ import {
   User
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
+import { fetchOwnLengthOfService, lengthOfServiceLabel } from '../../services/personnelProfileService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
@@ -78,6 +79,14 @@ export default function PersonnelPortfolioPage({ currentUser }) {
       setResultLoading(false)
     }
   }
+
+  // Years of Service (C3): server-computed from the HR service history, full-time only.
+  const [lengthOfService, setLengthOfService] = useState(null)
+  useEffect(() => {
+    let active = true
+    fetchOwnLengthOfService().then(service => { if (active) setLengthOfService(service) }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   // Personnel Profile State
   const [personnel, setPersonnel] = useState(activeUser || {
@@ -205,7 +214,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     </span>
                   </div>
 
-                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">Associate Professor • {formatPersonnelPlacement(personnel)}</p>
+                  <p className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400">{personnel.current_rank_title || personnel.academic_rank || personnel.position_title || personnel.designation || 'Personnel'} • {formatPersonnelPlacement(personnel)}</p>
 
                   {/* Compact Credential Chips Row */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px]">
@@ -217,6 +226,15 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
                       <CreditCard className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
                       ID: {personnel.employee_id || 'EMP-2021-0842'}
+                    </span>
+
+                    <span
+                      data-testid="years-of-service-chip"
+                      title={lengthOfService?.basis && lengthOfService.basis !== 'service_history' ? 'Based on your employment start date; not yet verified by HR service history.' : 'Full-time service recorded by HR. Part-time periods are not counted.'}
+                      className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1"
+                    >
+                      <Calendar className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
+                      {lengthOfServiceLabel(lengthOfService)}
                     </span>
                   </div>
                 </div>

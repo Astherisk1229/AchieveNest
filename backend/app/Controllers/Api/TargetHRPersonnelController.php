@@ -66,6 +66,28 @@ class TargetHRPersonnelController extends Controller
         );
     }
 
+    /**
+     * Builds an account_lifecycle_events row matching the table schema:
+     * the actor goes in actor_profile_id, and previous_status/new_status record the
+     * account status, which master-data and classification edits leave unchanged
+     * (new_status is NOT NULL). Edit details stay JSON-encoded in `reason`, as before.
+     */
+    private function lifecycleAuditRow(string $profileId, ?string $actorProfileId, string $eventType, ?string $accountStatus, array $details, string $now): array
+    {
+        $status = ($accountStatus !== null && trim($accountStatus) !== '') ? $accountStatus : 'active';
+
+        return [
+            'id'               => $this->genUuid(),
+            'profile_id'       => $profileId,
+            'actor_profile_id' => $actorProfileId,
+            'event_type'       => $eventType,
+            'previous_status'  => $status,
+            'new_status'       => $status,
+            'reason'           => json_encode($details),
+            'occurred_at'      => $now,
+        ];
+    }
+
     protected function requireHrAdmin(?array $actor): bool
     {
         return $actor !== null && $this->authz->hasRole($actor, 'hr_staff');
@@ -484,12 +506,12 @@ class TargetHRPersonnelController extends Controller
 
             // Audit Trail
             if ($db->tableExists('account_lifecycle_events')) {
-                $db->table('account_lifecycle_events')->insert([
-                    'id'           => $this->genUuid(),
-                    'profile_id'   => $profileId,
-                    'event_type'   => 'master_data_updated',
-                    'performed_by' => $actor['profile']['id'],
-                    'reason'       => json_encode([
+                $db->table('account_lifecycle_events')->insert($this->lifecycleAuditRow(
+                    $profileId,
+                    $actor['profile']['id'],
+                    'master_data_updated',
+                    $targetProfile['status'] ?? null,
+                    [
                         'prior_engagement' => $priorEngagement,
                         'new_engagement'   => $validation['faculty_engagement'],
                         'prior_status'     => $priorStatus,
@@ -503,9 +525,9 @@ class TargetHRPersonnelController extends Controller
                         'prior_rank'       => $priorRank,
                         'new_rank'         => $validation['current_rank_title'],
                         'justification'    => trim((string) ($json['reason'] ?? 'HR Admin updated faculty status and master data.')),
-                    ]),
-                    'occurred_at'  => $now,
-                ]);
+                    ],
+                    $now
+                ));
             }
 
             $db->transCommit();
@@ -599,21 +621,21 @@ class TargetHRPersonnelController extends Controller
 
             // Audit Trail
             if ($db->tableExists('account_lifecycle_events')) {
-                $db->table('account_lifecycle_events')->insert([
-                    'id'           => $this->genUuid(),
-                    'profile_id'   => $profileId,
-                    'event_type'   => 'classification_updated',
-                    'performed_by' => $actor['profile']['id'],
-                    'reason'       => json_encode([
+                $db->table('account_lifecycle_events')->insert($this->lifecycleAuditRow(
+                    $profileId,
+                    $actor['profile']['id'],
+                    'classification_updated',
+                    $targetProfile['status'] ?? null,
+                    [
                         'prior_group'         => $priorGroup,
                         'prior_side'          => $priorSide,
                         'new_group'           => $validation['group'],
                         'new_side'            => $validation['side'],
                         'classification_code' => $validation['code'],
                         'justification'       => $reason ?: 'HR Admin updated personnel classification.',
-                    ]),
-                    'occurred_at'  => $now,
-                ]);
+                    ],
+                    $now
+                ));
             }
 
             $db->transCommit();

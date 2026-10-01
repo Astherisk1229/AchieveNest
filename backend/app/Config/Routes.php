@@ -340,6 +340,11 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('hr/personnel/(:segment)/credentials', 'Api\PersonnelCredentialController::options');
     $routes->options('hr/personnel/(:segment)/credentials/(:segment)/verify', 'Api\PersonnelCredentialController::options');
 
+    // Length of service — HR-maintained employment service history (data owner).
+    $routes->get('hr/personnel/(:segment)/service-history', 'Api\PersonnelServiceHistoryController::show/$1');
+    $routes->post('hr/personnel/(:segment)/service-history', 'Api\PersonnelServiceHistoryController::save/$1');
+    $routes->options('hr/personnel/(:segment)/service-history', 'Api\PersonnelServiceHistoryController::options');
+
     // Phase L — credential-driven placement suggestion and confirmed placement lifecycle.
     $routes->post('hr/personnel/(:segment)/rank-placement/suggest', 'Api\PersonnelRankPlacementController::suggest/$1');
     $routes->post('hr/rank-placement-suggestions/(:segment)/confirm', 'Api\PersonnelRankPlacementController::confirm/$1');

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 
 import RankingCriteriaModel from '../../../models/RankingCriteriaModel.js'
+import { localToday } from '../../../utils/employmentDate'
 import SecurityController from '../../../controllers/SecurityController.js'
 import OcrScanController from '../../../controllers/OcrScanController.js'
 import PersonnelAchievementController from '../../../controllers/PersonnelAchievementController.js'
@@ -1107,6 +1108,7 @@ export default function PersonnelSubmissionModal({
               <input
                 type="date"
                 value={dateAchieved}
+                max={localToday()}
                 onChange={handleDateChange}
                 className="w-full px-3 py-2 rounded-2xl bg-white border border-slate-200 font-medium text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
               />

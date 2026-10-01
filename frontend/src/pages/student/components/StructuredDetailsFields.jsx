@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { getSubcategorySchema } from '../../../config/portfolioFormSchemaRegistry'
 import { AlertCircle, HelpCircle } from 'lucide-react'
+import { localToday } from '../../../utils/employmentDate'
 
 /**
  * StructuredDetailsFields.jsx
@@ -151,6 +152,7 @@ export default function StructuredDetailsFields({
                       name={field.key}
                       type="date"
                       value={value}
+                      max={field.key === 'tenure_end' ? undefined : localToday()}
                       disabled={disabled}
                       onChange={(e) => handleFieldChange(field.key, e.target.value)}
                       aria-required={field.required ? 'true' : 'false'}

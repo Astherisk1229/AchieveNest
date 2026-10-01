@@ -162,6 +162,22 @@ class PersonnelAccomplishmentController extends Controller
         return (new \App\Services\PersonnelAccomplishmentDuplicateGuard(db_connect()))->findDuplicate($personnelProfileId, $hash, $excludeId);
     }
 
+    /**
+     * Dates of a completed accomplishment (faculty and non-teaching): not in the future (pre-final defense G1),
+     * and an end date never before its start date.
+     */
+    private function validateCompletedDates(string $occurrenceDate, array $metadata): ?string
+    {
+        $start = trim((string) ($metadata['start_date'] ?? ''));
+        $end = trim((string) ($metadata['end_date'] ?? ''));
+        foreach ([$occurrenceDate, $start] as $date) {
+            if ($date !== '' && ValidationHelper::isFutureDate($date)) return 'Accomplishment dates cannot be in the future.';
+        }
+        if ($end !== '' && ($metadata['ongoing'] ?? false) !== true && ValidationHelper::isFutureDate($end)) return 'Accomplishment dates cannot be in the future.';
+        if ($start !== '' && $end !== '' && $end < $start) return 'The end date cannot be before the start date.';
+        return null;
+    }
+
     private function hasLockedPortfolio(string $personnelProfileId): bool
     {
         $db = db_connect();
@@ -377,6 +393,8 @@ class PersonnelAccomplishmentController extends Controller
         if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
         $ntfError = $this->validateNtfMetadata($categoryCode, $categoryMetadata);
         if ($ntfError !== null) return $this->respond(['error' => ['code' => 'INVALID_NTF_ACCOMPLISHMENT', 'message' => $ntfError]], 422);
+        $dateError = $this->validateCompletedDates($dateAchieved, $categoryMetadata);
+        if ($dateError !== null) return $this->respond(['error' => ['code' => 'INVALID_ACCOMPLISHMENT_DATE', 'message' => $dateError]], 422);
         $duplicateHash = $this->duplicateHash($categoryCode, $dateAchieved, $categoryMetadata, $title);
         if ($this->duplicateOf((string) $actor['profile']['id'], $duplicateHash) !== null) {
             return $this->respond(['error' => ['code' => 'DUPLICATE_ACCOMPLISHMENT', 'message' => 'This accomplishment already exists in your portfolio.']], 409);
@@ -587,6 +605,8 @@ class PersonnelAccomplishmentController extends Controller
             if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
         }
         $storedMetadata = json_decode((string) ($accomplishment['category_metadata'] ?? ''), true);
+        $dateError = $this->validateCompletedDates((string) $dateAchieved, $categoryMetadata ?? (is_array($storedMetadata) ? $storedMetadata : []));
+        if ($dateError !== null) return $this->respond(['error' => ['code' => 'INVALID_ACCOMPLISHMENT_DATE', 'message' => $dateError]], 422);
         $duplicateHash = $this->duplicateHash($categoryCode, (string) $dateAchieved, $categoryMetadata ?? (is_array($storedMetadata) ? $storedMetadata : []), $title);
         if ($this->duplicateOf((string) $accomplishment['personnel_profile_id'], $duplicateHash, $id) !== null) {
             return $this->respond(['error' => ['code' => 'DUPLICATE_ACCOMPLISHMENT', 'message' => 'This accomplishment already exists in your portfolio.']], 409);

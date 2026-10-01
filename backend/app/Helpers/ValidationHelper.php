@@ -136,6 +136,13 @@ class ValidationHelper
         return checkdate((int) $month, (int) $day, (int) $year);
     }
 
+    /** True when a valid Y-m-d date is after today (or after $today when given). Completed achievements cannot be in the future. */
+    public static function isFutureDate(string $date, ?string $today = null): bool
+    {
+        $date = trim($date);
+        return self::validateDateString($date) && $date > ($today ?? date('Y-m-d'));
+    }
+
     public static function validateNumericBounded(mixed $val, float $min, float $max): bool
     {
         if (! is_numeric($val)) {

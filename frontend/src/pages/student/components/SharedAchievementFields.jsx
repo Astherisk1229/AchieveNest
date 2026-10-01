@@ -1,5 +1,6 @@
 import React from 'react'
 import { Calendar, Building, FileText, AlertCircle } from 'lucide-react'
+import { localToday } from '../../../utils/employmentDate'
 
 /**
  * SharedAchievementFields.jsx
@@ -114,6 +115,7 @@ export default function SharedAchievementFields({
               name="start_date"
               type="date"
               value={start_date}
+              max={localToday()}
               disabled={disabled}
               onChange={(e) => handleFieldChange('start_date', e.target.value)}
               aria-required="true"
@@ -147,6 +149,7 @@ export default function SharedAchievementFields({
               value={end_date}
               disabled={disabled}
               min={start_date || undefined}
+              max={localToday()}
               onChange={(e) => handleFieldChange('end_date', e.target.value)}
               aria-invalid={Boolean(errors.end_date)}
               aria-describedby={errors.end_date ? 'end-date-error' : undefined}

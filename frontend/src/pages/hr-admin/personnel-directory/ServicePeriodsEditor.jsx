@@ -1,6 +1,7 @@
 import React from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { CLASSIFICATION_OPTIONS, classificationLabel, emptyPeriod } from '../../../utils/serviceHistory'
+import { localToday } from '../../../utils/employmentDate'
 
 const inputClass = 'mt-1 w-full rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950 disabled:opacity-60'
 const labelClass = 'block text-[11px] font-bold text-slate-600 dark:text-slate-300'
@@ -52,12 +53,12 @@ export default function ServicePeriodsEditor({ periods, onChange, rowErrors = {}
               <div className="grid gap-3 sm:grid-cols-4">
                 <label className={labelClass}>
                   Start date
-                  <input type="date" value={isFirstLocked ? onboarding.startDate : period.start_date} disabled={isFirstLocked} onChange={e => update(index, 'start_date', e.target.value)} className={inputClass} />
+                  <input type="date" max={localToday()} value={isFirstLocked ? onboarding.startDate : period.start_date} disabled={isFirstLocked} onChange={e => update(index, 'start_date', e.target.value)} className={inputClass} />
                   {isFirstLocked && <span className="mt-0.5 block text-[10px] font-medium text-slate-500">Same as Employment Start Date</span>}
                 </label>
                 <label className={labelClass}>
                   End date
-                  <input type="date" value={period.end_date} disabled={period.is_ongoing} onChange={e => update(index, 'end_date', e.target.value)} className={inputClass} />
+                  <input type="date" max={localToday()} min={period.start_date || undefined} value={period.end_date} disabled={period.is_ongoing} onChange={e => update(index, 'end_date', e.target.value)} className={inputClass} />
                 </label>
                 {isCurrent ? (
                   <p className="flex items-end pb-2 text-[11px] font-bold text-slate-600 dark:text-slate-300">Ongoing (current)</p>

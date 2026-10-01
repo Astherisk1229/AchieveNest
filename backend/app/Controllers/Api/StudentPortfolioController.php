@@ -1193,6 +1193,10 @@ class StudentPortfolioController extends Controller
             if (! empty($record['end_date']) && (string) $record['end_date'] < $startDate) {
                 return $this->respond(['error' => ['code' => 'INVALID_DATE_RANGE', 'message' => 'End date cannot be before start date.']], 422);
             }
+            // Only achievements that already happened can be submitted (pre-final defense G1).
+            if (\App\Helpers\ValidationHelper::isFutureDate($startDate) || (! empty($record['end_date']) && \App\Helpers\ValidationHelper::isFutureDate((string) $record['end_date']))) {
+                return $this->respond(['error' => ['code' => 'FUTURE_DATE', 'message' => 'Achievement dates cannot be in the future.']], 422);
+            }
 
             $evidenceCount = $db->table('student_portfolio_evidence')
                 ->where('portfolio_record_id', $id)

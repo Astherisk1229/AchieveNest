@@ -274,15 +274,18 @@ export function updateUserRoleContext(newRoleContext) {
  * Logs out the user by clearing storage and notifying the backend for server revocation.
  */
 export async function logoutUser() {
+  // End the session on this device first, so pressing Back right after logout can never reach a
+  // signed-in page, even while the server call below is still in flight (or the server is unreachable).
+  const token = getStoredToken()
+  clearStoredSession()
+  dispatchStorageEvent()
+
+  if (!token) return
   try {
-    await apiClient.post('/auth/logout')
+    await apiClient.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } })
   } catch {
     // Ignore network/server errors during logout
   }
-
-  clearStoredSession()
-
-  dispatchStorageEvent()
 }
 
 /**

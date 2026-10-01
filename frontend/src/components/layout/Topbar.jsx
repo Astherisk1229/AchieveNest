@@ -48,7 +48,8 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
 
   const handleLogout = () => {
     logoutUser()
-    navigate('/')
+    // Replace (not push) so Back does not return to the signed-in page just left.
+    navigate('/login', { replace: true })
   }
 
   const handleSelectRole = (roleId) => {

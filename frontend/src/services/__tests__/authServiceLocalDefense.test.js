@@ -221,6 +221,19 @@ describe('Phase 16 — AuthService Local-Defense Test Suite', () => {
     expect(localStorage.getItem('achievenest_access_token')).toBeNull()
   })
 
+  it('AUTH-FE-010b: Logout clears the local session before the server call finishes (Back cannot reopen a signed-in page)', async () => {
+    localStorage.setItem('achievenest_access_token', 'token')
+    localStorage.setItem('achievenest_current_user', JSON.stringify({ id: '1' }))
+    let release
+    apiClient.post.mockImplementationOnce(() => new Promise(resolve => { release = resolve }))
+
+    const pending = logoutUser()
+    expect(localStorage.getItem('achievenest_access_token')).toBeNull()
+    expect(localStorage.getItem('achievenest_current_user')).toBeNull()
+    release({ data: {} })
+    await pending
+  })
+
   it('AUTH-FE-010: Local logout sends POST /auth/logout, clears storage, and does not call Supabase', async () => {
     localStorage.setItem('achievenest_access_token', 'token')
     localStorage.setItem('achievenest_current_user', JSON.stringify({ id: '1' }))
@@ -230,7 +243,7 @@ describe('Phase 16 — AuthService Local-Defense Test Suite', () => {
 
     await logoutUser()
 
-    expect(apiClient.post).toHaveBeenCalledWith('/auth/logout')
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/logout', null, { headers: { Authorization: 'Bearer token' } })
     expect(localStorage.getItem('achievenest_access_token')).toBeNull()
     expect(localStorage.getItem('achievenest_current_user')).toBeNull()
     expect(sessionStorage.getItem('achievenest_access_token')).toBeNull()

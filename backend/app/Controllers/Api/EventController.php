@@ -274,6 +274,12 @@ class EventController extends Controller
         if ($title === '') {
             return $this->respond(['error' => ['code' => 'MISSING_TITLE', 'message' => 'Event title is required.']], 422);
         }
+        if (empty($json['start_time']) && empty($json['event_date'])) {
+            return $this->respond(['error' => ['code' => 'MISSING_EVENT_SCHEDULE', 'message' => 'Enter the event start and end date and time.']], 422);
+        }
+        if ($fieldError = $this->eventFieldError($title, $description, $eventType)) {
+            return $this->respond(['error' => $fieldError], 422);
+        }
 
         $startTimestamp = strtotime($startTime);
         $endTimestamp = strtotime($endTime);
@@ -323,6 +329,10 @@ class EventController extends Controller
             if (! empty($json['organization_id'])) {
                 $organizationId = (string) $json['organization_id'];
             }
+        }
+
+        if ($this->findDuplicateEvent($organizationId, (string) $actor['profile']['id'], $title, date('Y-m-d', $startTimestamp)) !== null) {
+            return $this->respond(['error' => ['code' => 'DUPLICATE_EVENT', 'message' => 'An event with this title already exists on that date. Edit the existing event instead.']], 409);
         }
 
         // Resolve venue against canonical event_venues registry
@@ -506,6 +516,10 @@ class EventController extends Controller
             ], 422);
         }
 
+        if ($fieldError = $this->eventFieldError((string) ($updates['title'] ?? $event['title'] ?? ''), (string) ($updates['description'] ?? ''), (string) ($updates['event_type'] ?? $event['event_type'] ?? ''))) {
+            return $this->respond(['error' => $fieldError], 422);
+        }
+
         $finalStart = (string) (
             $updates['start_time'] ?? $event['start_time']
         );
@@ -528,6 +542,11 @@ class EventController extends Controller
                     'message' => 'Event end time must be later than its start time.',
                 ],
             ], 422);
+        }
+
+        if ((array_key_exists('title', $updates) || array_key_exists('start_time', $updates))
+            && $this->findDuplicateEvent($event['organization_id'] ?? null, (string) ($event['organizer_profile_id'] ?? ''), (string) ($updates['title'] ?? $event['title']), date('Y-m-d', $startTimestamp), $eventId) !== null) {
+            return $this->respond(['error' => ['code' => 'DUPLICATE_EVENT', 'message' => 'An event with this title already exists on that date. Edit the existing event instead.']], 409);
         }
 
         if (
@@ -686,5 +705,35 @@ class EventController extends Controller
                 'results'            => $results,
             ],
         ]);
+    }
+
+    /** Event text fields fit the system's limits (pre-final defense OM-1). Null when valid. */
+    private function eventFieldError(string $title, string $description, string $eventType): ?array
+    {
+        $title = trim($title);
+        if (mb_strlen($title) < 3 || mb_strlen($title) > 150) return ['code' => 'INVALID_EVENT_TITLE', 'message' => 'Event title must be 3 to 150 characters.'];
+        if (preg_match('/[\x00-\x1F\x7F]/u', $title) === 1) return ['code' => 'INVALID_EVENT_TITLE', 'message' => 'Event title contains invalid characters.'];
+        if (mb_strlen(trim($description)) > 2000) return ['code' => 'INVALID_EVENT_DESCRIPTION', 'message' => 'Event description must not exceed 2,000 characters.'];
+        if (mb_strlen(trim($eventType)) > 50) return ['code' => 'INVALID_EVENT_TYPE', 'message' => 'Event type is too long.'];
+        return null;
+    }
+
+    /**
+     * Same event created twice: same organization (or the same organizer when there is none), same title
+     * ignoring case and spacing, same start date, not cancelled.
+     */
+    private function findDuplicateEvent(?string $organizationId, string $organizerProfileId, string $title, string $startDate, ?string $excludeId = null): ?array
+    {
+        $normalized = preg_replace('/\s+/u', ' ', mb_strtolower(trim($title)));
+        $builder = $this->getDb()->table('events')->select('id, title, start_time, status');
+        if ($organizationId !== null && $organizationId !== '') $builder->where('organization_id', $organizationId);
+        else $builder->where('organization_id', null)->where('organizer_profile_id', $organizerProfileId);
+        $builder->where('start_time >=', $startDate . ' 00:00:00')->where('start_time <=', $startDate . ' 23:59:59');
+        if ($excludeId !== null) $builder->where('id !=', $excludeId);
+        foreach ($builder->get()->getResultArray() as $row) {
+            if (strtolower((string) ($row['status'] ?? '')) === 'cancelled') continue;
+            if (preg_replace('/\s+/u', ' ', mb_strtolower(trim((string) $row['title']))) === $normalized) return $row;
+        }
+        return null;
     }
 }

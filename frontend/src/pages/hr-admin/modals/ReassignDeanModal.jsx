@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { localToday } from '../../../utils/employmentDate'
 import { X, Search, ShieldCheck, UserCheck, RefreshCw, Calendar, AlertTriangle, AlertCircle, ShieldAlert } from 'lucide-react'
 import { reassignCollegeDean } from '../../../services/hrAdminService'
 
@@ -246,6 +247,7 @@ export default function ReassignDeanModal({ isOpen, onClose, targetCollege = nul
                     <input
                       type="date"
                       value={effectiveDate}
+                      max={localToday()}
                       onChange={(e) => setEffectiveDate(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium focus:outline-none focus:border-emerald-600"
                     />

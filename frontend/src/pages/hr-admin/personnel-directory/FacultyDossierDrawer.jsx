@@ -8,6 +8,7 @@ import {
 } from '../../../utils/personnelPlacement'
 import { X, Building2, Award, ShieldCheck, KeyRound, Edit3, CheckCircle2, Briefcase } from 'lucide-react'
 import { formatEmploymentStartDate } from '../../../utils/employmentDate'
+import ServiceHistorySection from './ServiceHistorySection'
 
 export default function FacultyDossierDrawer({
   personnel,
@@ -218,6 +219,8 @@ export default function FacultyDossierDrawer({
               </div>
             </div>
           </div>
+
+          <ServiceHistorySection key={personnel.id} personnel={personnel} />
 
           <section aria-labelledby="account-access-title" className="space-y-3 border-t border-slate-200 pt-6 dark:border-slate-800">
             <h4 id="account-access-title" className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">

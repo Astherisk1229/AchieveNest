@@ -6,7 +6,16 @@ import OneTimeCredentialModal from '../../../components/credentials/OneTimeCrede
 import CredentialDeliveryFaultModal from '../../../components/credentials/CredentialDeliveryFaultModal'
 import { personnelMasterDataService } from '../../../services/personnelMasterDataService'
 import { personnelRankRecommendationService } from '../../../services/personnelRankRecommendationService'
-import { localToday, validateEmploymentStartDate } from '../../../utils/employmentDate'
+import { localToday, validateEmploymentStartDate, formatEmploymentStartDate } from '../../../utils/employmentDate'
+import ServicePeriodsEditor from './ServicePeriodsEditor'
+import {
+  classificationLabel,
+  initialOnboardingPeriods,
+  normalizeOnboardingPeriods,
+  onboardingCurrentType,
+  toPayloadSegments,
+  validateOnboardingPeriods,
+} from '../../../utils/serviceHistory'
 
 export default function OnboardPersonnelModal({
   isOpen,
@@ -35,6 +44,10 @@ export default function OnboardPersonnelModal({
     administrativeUnitId: ''
   })
   const [errors, setErrors] = useState({})
+  // Service history recorded with the account (default: one ongoing period from the start date).
+  const [hasEarlierService, setHasEarlierService] = useState(false)
+  const [servicePeriods, setServicePeriods] = useState([])
+  const [servicePeriodErrors, setServicePeriodErrors] = useState({ rows: {}, form: '' })
   const [submitting, setSubmitting] = useState(false)
 
   // Master Data Catalogs State
@@ -312,6 +325,13 @@ export default function OnboardPersonnelModal({
     Object.assign(nextErrors, masterDataValidation.errors)
     const employmentStartDateError = validateEmploymentStartDate(form.employmentStartDate, { required: true })
     if (employmentStartDateError) nextErrors.employmentStartDate = employmentStartDateError
+    if (hasEarlierService) {
+      const periodCheck = validateOnboardingPeriods(servicePeriods, form.employmentStartDate, form.facultyEngagement)
+      setServicePeriodErrors({ rows: periodCheck.rows, form: periodCheck.form })
+      if (!periodCheck.isValid) nextErrors.servicePeriods = periodCheck.form || 'Check the employment periods below.'
+    } else {
+      setServicePeriodErrors({ rows: {}, form: '' })
+    }
 
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
@@ -336,7 +356,10 @@ export default function OnboardPersonnelModal({
         personnel_classification: form.organizationalSide,
         college_id: form.organizationalSide === 'academic' ? form.collegeId : null,
         academic_program_ids: form.organizationalSide === 'academic' ? form.academicProgramIds : [],
-        department_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null
+        department_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null,
+        ...(hasEarlierService
+          ? { service_history_periods: toPayloadSegments(normalizeOnboardingPeriods(servicePeriods, form.employmentStartDate, form.facultyEngagement)) }
+          : {})
       })
 
       if (res && (res.data || res.temporary_password)) {
@@ -379,6 +402,15 @@ export default function OnboardPersonnelModal({
         if (apiError.fields.institutional_id) mappedErrors.institutionalId = apiError.fields.institutional_id
         if (apiError.fields.name) mappedErrors.firstName = apiError.fields.name
         if (apiError.fields.employment_start_date) mappedErrors.employmentStartDate = apiError.fields.employment_start_date
+        if (apiError.fields.service_history_periods) {
+          const index = apiError.fields.service_history_period_index
+          if (Number.isInteger(index)) {
+            setServicePeriodErrors({ rows: { [index]: apiError.fields.service_history_periods }, form: '' })
+            mappedErrors.servicePeriods = 'Check the employment periods below.'
+          } else {
+            mappedErrors.servicePeriods = apiError.fields.service_history_periods
+          }
+        }
       } else {
         mappedErrors.general = apiError.message || error?.message || 'Personnel account was not created. Please retry or contact the system administrator.'
       }
@@ -573,6 +605,46 @@ export default function OnboardPersonnelModal({
                 <span className="mt-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">Official date employment at NDMU began.</span>
                 {errors.employmentStartDate && <span className="mt-1 block text-xs font-bold text-rose-600">{errors.employmentStartDate}</span>}
               </label>
+
+              <fieldset className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:col-span-2">
+                <legend className="px-1 text-xs font-bold text-slate-700 dark:text-slate-300">Service History (Length of Service)</legend>
+                {!hasEarlierService && (
+                  <p className="text-[11px] leading-5 text-slate-600 dark:text-slate-300">
+                    Will be recorded as one ongoing <strong>{classificationLabel(onboardingCurrentType(form.facultyEngagement))}</strong> period from{' '}
+                    <strong>{form.employmentStartDate ? formatEmploymentStartDate(form.employmentStartDate) : 'the Employment Start Date'}</strong>.
+                    {onboardingCurrentType(form.facultyEngagement) === 'part_time' && ' Part-time service is not counted toward length of service.'}
+                  </p>
+                )}
+                <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={hasEarlierService}
+                    onChange={event => {
+                      const checked = event.target.checked
+                      setHasEarlierService(checked)
+                      setServicePeriodErrors({ rows: {}, form: '' })
+                      setErrors(prev => ({ ...prev, servicePeriods: null }))
+                      if (checked && servicePeriods.length === 0) setServicePeriods(initialOnboardingPeriods(form.employmentStartDate, form.facultyEngagement))
+                    }}
+                  />
+                  <span>This person had earlier periods at NDMU before the current appointment (e.g. part-time before becoming full-time, or a break in service).</span>
+                </label>
+                {hasEarlierService && (
+                  <>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">List periods from the first day at NDMU. The last one is the current appointment; only full-time periods are counted.</p>
+                    <ServicePeriodsEditor
+                      periods={normalizeOnboardingPeriods(servicePeriods, form.employmentStartDate, form.facultyEngagement)}
+                      onChange={setServicePeriods}
+                      rowErrors={servicePeriodErrors.rows}
+                      onboarding={{ startDate: form.employmentStartDate, currentType: onboardingCurrentType(form.facultyEngagement) }}
+                    />
+                  </>
+                )}
+                {(servicePeriodErrors.form || errors.servicePeriods) && (
+                  <p role="alert" className="text-xs font-bold text-rose-600">{servicePeriodErrors.form || errors.servicePeriods}</p>
+                )}
+              </fieldset>
             </div>
           </section>
 

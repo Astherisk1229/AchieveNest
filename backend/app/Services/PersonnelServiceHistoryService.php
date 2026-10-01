@@ -181,6 +181,78 @@ class PersonnelServiceHistoryService
         return $this->getHistory($personnelProfileId);
     }
 
+    /**
+     * Segments for a new account, recorded in the same transaction as the account.
+     *
+     * - No earlier periods given: one ongoing period from the employment start date, typed from the
+     *   current Faculty Engagement (non-teaching personnel and full-time faculty → full_time).
+     * - Earlier periods given: the first period must start on the employment start date (first day at NDMU),
+     *   and the last one is the current appointment: ongoing and of the current engagement type.
+     */
+    public function buildOnboardingSegments(string $employmentStartDate, ?string $facultyEngagement, mixed $periods, ?string $today = null): array
+    {
+        $today = $today ?? date('Y-m-d');
+        $currentType = $facultyEngagement === FacultyStatusService::ENGAGEMENT_PART_TIME ? self::CLASSIFICATION_PART_TIME : self::CLASSIFICATION_FULL_TIME;
+
+        if ($periods === null || $periods === []) {
+            return $this->validateSegments([[
+                'start_date' => $employmentStartDate, 'end_date' => null, 'is_ongoing' => true, 'classification' => $currentType,
+                'source_remarks' => 'Recorded at account onboarding',
+            ]], $today);
+        }
+
+        $segments = $this->validateSegments($periods, $today);
+        if ($segments[0]['start_date'] !== $employmentStartDate) throw new InvalidArgumentException('ONBOARDING_FIRST_PERIOD_START_MISMATCH');
+        $current = $segments[count($segments) - 1];
+        if (! $current['is_ongoing']) throw new InvalidArgumentException('ONBOARDING_CURRENT_PERIOD_MUST_BE_ONGOING');
+        if ($current['classification'] !== $currentType) throw new InvalidArgumentException('ONBOARDING_CURRENT_PERIOD_TYPE_MISMATCH');
+        return $segments;
+    }
+
+    /** Human-readable message for any service-history error code (shared by the API controllers). */
+    public static function messageFor(string $code): string
+    {
+        $fixed = [
+            'PERSONNEL_NOT_FOUND' => 'Personnel record was not found.',
+            'CHANGE_REASON_REQUIRED' => 'Enter the reason for this service-history change.',
+            'CHANGE_REASON_TOO_LONG' => 'The reason must not exceed 1,000 characters.',
+            'EXPECTED_VERSION_NUMBER_REQUIRED' => 'expected_version_number is required (0 when no history exists yet).',
+            'SEGMENTS_REQUIRED' => 'Add at least one employment period.',
+            'TOO_MANY_SEGMENTS' => 'Too many employment periods in one save.',
+            'ONLY_ONE_ONGOING_SEGMENT_ALLOWED' => 'Only one employment period can be ongoing.',
+            'ONGOING_SEGMENT_MUST_BE_LATEST' => 'The ongoing employment period must be the most recent one.',
+            'SEGMENTS_OVERLAP' => 'Employment periods must not overlap.',
+            'SERVICE_HISTORY_VERSION_CONFLICT' => 'Someone else saved this service history first. Reload and try again.',
+            'SERVICE_HISTORY_SAVE_FAILED' => 'Service history could not be saved.',
+            'ONBOARDING_FIRST_PERIOD_START_MISMATCH' => 'The earliest period must start on the Employment Start Date (first day at NDMU).',
+            'ONBOARDING_CURRENT_PERIOD_MUST_BE_ONGOING' => 'The last period is the current appointment and must be ongoing.',
+            'ONBOARDING_CURRENT_PERIOD_TYPE_MISMATCH' => 'The current appointment must match the selected Faculty Engagement.',
+        ];
+        if (isset($fixed[$code])) return $fixed[$code];
+        if (! preg_match('/^SEGMENT_(\d+)_(.+)$/', $code, $m)) return 'Service history request is invalid.';
+        $problem = [
+            'INVALID' => 'is invalid',
+            'INVALID_START_DATE' => 'needs a valid start date',
+            'START_IN_FUTURE' => 'starts in the future',
+            'ONGOING_WITH_END_DATE' => 'is marked ongoing but has an end date',
+            'END_DATE_REQUIRED' => 'needs an end date or must be marked ongoing',
+            'INVALID_END_DATE' => 'needs a valid end date',
+            'END_BEFORE_START' => 'ends before it starts',
+            'END_IN_FUTURE' => 'ends in the future; mark it ongoing instead',
+            'INVALID_CLASSIFICATION' => 'must be Full-time or Part-time',
+            'INVALID_COUNTABILITY' => 'has an invalid countability value',
+            'PART_TIME_NOT_COUNTABLE' => 'is part-time and cannot count toward length of service',
+            'EXCLUSION_REASON_REQUIRED' => 'is full-time but excluded; enter the HR reason',
+        ][$m[2]] ?? 'is invalid';
+        return "Employment period {$m[1]} {$problem}.";
+    }
+
+    /** Index (0-based) of the period an error code refers to, or null. */
+    public static function segmentIndexFor(string $code): ?int
+    {
+        return preg_match('/^SEGMENT_(\d+)_/', $code, $m) ? ((int) $m[1]) - 1 : null;
+    }
+
     /** Validates and normalizes segments; throws InvalidArgumentException with a code naming the first problem. */
     public function validateSegments(mixed $segments, string $today): array
     {

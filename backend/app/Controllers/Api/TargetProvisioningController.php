@@ -7,6 +7,7 @@ use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
 use App\Services\DepartmentSecretaryOccupancyService;
 use App\Services\EmploymentServiceDurationService;
+use App\Services\PersonnelServiceHistoryService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -529,12 +530,17 @@ class TargetProvisioningController extends Controller
             'position_title',
             'current_rank_title',
             'qualification_summary',
+            'service_history_periods',
         ];
         if (! is_array($json) || array_diff(array_keys($json), $allowedFields) !== []) {
             return $this->validationError(['request' => 'Request contains unsupported fields.']);
         }
         foreach ($json as $field => $value) {
-            if ($field === 'academic_program_ids') {
+            if ($field === 'service_history_periods') {
+                if ($value !== null && (! is_array($value) || array_filter($value, static fn ($item) => ! is_array($item)) !== [])) {
+                    return $this->validationError([$field => 'Field must be a list of employment periods or null.']);
+                }
+            } elseif ($field === 'academic_program_ids') {
                 if (! is_array($value) || array_filter($value, static fn ($item) => ! is_string($item)) !== []) {
                     return $this->validationError([$field => 'Field must be an array of scalar strings.']);
                 }
@@ -585,6 +591,18 @@ class TargetProvisioningController extends Controller
             $employmentStartDate = (new EmploymentServiceDurationService())->validateRequiredStartDate($json['employment_start_date'] ?? null);
         } catch (\InvalidArgumentException $error) {
             return $this->validationError(['employment_start_date' => $error->getMessage()]);
+        }
+
+        // Service history is recorded with the account: one ongoing period from the start date, or the
+        // earlier periods HR entered (part-time first, breaks in service). Validated before anything is written.
+        $serviceHistoryService = new PersonnelServiceHistoryService(db_connect());
+        try {
+            $serviceSegments = $serviceHistoryService->buildOnboardingSegments($employmentStartDate, $facultyEngagement, $json['service_history_periods'] ?? null);
+        } catch (\InvalidArgumentException $error) {
+            $index = PersonnelServiceHistoryService::segmentIndexFor($error->getMessage());
+            $fields = ['service_history_periods' => PersonnelServiceHistoryService::messageFor($error->getMessage())];
+            if ($index !== null) $fields['service_history_period_index'] = $index;
+            return $this->validationError($fields);
         }
 
         $positionTitle = ! empty($json['position_title']) ? trim((string) $json['position_title']) : (! empty($json['designation']) ? trim((string) $json['designation']) : 'Personnel');
@@ -762,6 +780,12 @@ class TargetProvisioningController extends Controller
             }
 
             $db->table('personnel_profiles')->insert($personnelProfileData);
+
+            $serviceHistoryService->saveVersion($authUserId, $actor['profile']['id'], [
+                'expected_version_number' => 0,
+                'change_reason' => 'Recorded at account onboarding',
+                'segments' => $serviceSegments,
+            ]);
 
             if ($classification === 'academic') {
                 $db->table('personnel_college_affiliations')->insert([

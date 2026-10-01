@@ -134,4 +134,46 @@ final class PersonnelServiceHistoryServiceTest extends CIUnitTestCase
         self::assertSame('excluded', $v['segments'][1]['countability']);
         self::assertSame('Leave without pay', $v['segments'][1]['hr_reason']);
     }
+    public function testOnboardingDefaultsToOneOngoingPeriodOfTheCurrentEngagement(): void
+    {
+        $full = $this->svc->buildOnboardingSegments('2024-06-01', 'full_time_faculty', null, self::TODAY);
+        self::assertCount(1, $full);
+        self::assertSame(['2024-06-01', true, 'full_time', 'countable'], [$full[0]['start_date'], $full[0]['is_ongoing'], $full[0]['classification'], $full[0]['countability']]);
+
+        $part = $this->svc->buildOnboardingSegments('2024-06-01', 'part_time_faculty', [], self::TODAY);
+        self::assertSame(['part_time', 'excluded'], [$part[0]['classification'], $part[0]['countability']]);
+
+        // Non-teaching personnel have no faculty engagement: counted as full-time.
+        self::assertSame('full_time', $this->svc->buildOnboardingSegments('2024-06-01', null, null, self::TODAY)[0]['classification']);
+    }
+
+    public function testOnboardingWithEarlierPeriods(): void
+    {
+        $segments = $this->svc->buildOnboardingSegments('2015-06-01', 'full_time_faculty', [
+            $this->seg('2015-06-01', '2019-05-31', 'part_time'),
+            $this->seg('2019-06-01', null),
+        ], self::TODAY);
+        self::assertSame(['part_time', 'full_time'], array_column($segments, 'classification'));
+
+        $this->assertRejected('ONBOARDING_FIRST_PERIOD_START_MISMATCH', fn () => $this->svc->buildOnboardingSegments('2014-01-01', 'full_time_faculty', [$this->seg('2015-06-01', '2019-05-31', 'part_time'), $this->seg('2019-06-01', null)], self::TODAY));
+        $this->assertRejected('ONBOARDING_CURRENT_PERIOD_MUST_BE_ONGOING', fn () => $this->svc->buildOnboardingSegments('2015-06-01', 'full_time_faculty', [$this->seg('2015-06-01', '2019-05-31')], self::TODAY));
+        $this->assertRejected('ONBOARDING_CURRENT_PERIOD_TYPE_MISMATCH', fn () => $this->svc->buildOnboardingSegments('2015-06-01', 'part_time_faculty', [$this->seg('2015-06-01', '2019-05-31', 'part_time'), $this->seg('2019-06-01', null)], self::TODAY));
+        $this->assertRejected('SEGMENTS_OVERLAP', fn () => $this->svc->buildOnboardingSegments('2015-06-01', 'full_time_faculty', [$this->seg('2015-06-01', '2019-06-01', 'part_time'), $this->seg('2019-06-01', null)], self::TODAY));
+    }
+
+    public function testOnboardingSegmentsSaveAsVersionOne(): void
+    {
+        $segments = $this->svc->buildOnboardingSegments('2024-06-01', 'full_time_faculty', null, self::TODAY);
+        $h = $this->svc->saveVersion('P1', 'HR1', ['expected_version_number' => 0, 'change_reason' => 'Recorded at account onboarding', 'segments' => $segments], self::TODAY);
+        self::assertSame(1, $h['current_version']['version_number']);
+        self::assertSame('Recorded at account onboarding', $h['current_version']['segments'][0]['source_remarks']);
+    }
+
+    public function testErrorMessagesAndIndexes(): void
+    {
+        self::assertSame('Employment period 2 ends before it starts.', S::messageFor('SEGMENT_2_END_BEFORE_START'));
+        self::assertSame(1, S::segmentIndexFor('SEGMENT_2_END_BEFORE_START'));
+        self::assertNull(S::segmentIndexFor('SEGMENTS_OVERLAP'));
+        self::assertStringContainsString('Faculty Engagement', S::messageFor('ONBOARDING_CURRENT_PERIOD_TYPE_MISMATCH'));
+    }
 }

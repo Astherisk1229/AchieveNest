@@ -208,8 +208,11 @@ final class ClassificationAwarePersonnelFinalizationService
     private function totals(array $items): array
     {
         $areas = ['A' => 0.0, 'B' => 0.0, 'C' => 0.0];
+        // Graduate units: summed per level, official table applied once (never per semester).
+        foreach (GraduateUnitScoringService::aggregate($items) as $level) $areas['A'] += $level['points'];
         foreach ($items as $item) {
             if (($item['verification_status'] ?? '') !== 'verified' || ($item['rating_status'] ?? '') !== 'rated') continue;
+            if (GraduateUnitScoringService::isUnitItem($item)) continue;
             $area = strtoupper((string) ($item['category_area'] ?? ''));
             $area = preg_replace('/^AREA_?/', '', $area);
             if (isset($areas[$area])) $areas[$area] += (float) ($item['awarded_points'] ?? 0);

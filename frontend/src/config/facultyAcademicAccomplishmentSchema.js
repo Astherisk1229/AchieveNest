@@ -13,6 +13,8 @@ export const FACULTY_ACADEMIC_AREAS = [
 // (`date`/`startDate` for the date inputs); values are OcrScanController field keys.
 const DEGREE_HOLDER_OCR_MAP = Object.freeze({ degree_title: 'title', institution: 'issuer', date: 'date', academic_period: 'academicPeriod' })
 const DEGREE_UNITS_OCR_MAP = Object.freeze({ program: 'title', institution: 'issuer', units_completed: 'unitsCompleted', startDate: 'date' })
+// Graduate units are recorded one semester per record; the units of eligible records are summed for scoring.
+const graduateUnitPeriodFields = [select('semester', 'Semester', ['First Semester', 'Second Semester', 'Summer']), text('academic_year', 'Academic Year', 9, 9, { placeholder: 'e.g., 2025-2026', academicYear: true })]
 const degreeHolderFields = [text('degree_title', 'Degree Title', 3), text('institution', 'Institution'), text('academic_period', 'Academic Period', 4, 60, { required: false, placeholder: 'e.g., 2022–2025' })]
 
 export const DEGREE_LEVEL_LABELS = Object.freeze({ phd: 'Ph.D.', masters: "Master's" })
@@ -22,9 +24,9 @@ const scope = select('scope', 'Level / Scope', ['In-House', 'City / Provincial',
 export const FACULTY_ACADEMIC_ENTRY_SCHEMA = [
   { code: 'A.1', area: 'A', label: 'Degrees & Advanced Units', subcategories: [
     subcategory('A1_PHD_HOLDER', 'Ph.D. Degree Holder', 'single', 'Date Conferred', 'Degree Details', degreeHolderFields, { degreeLevel: 'phd', ocrMap: DEGREE_HOLDER_OCR_MAP }),
-    subcategory('A1_PHD_UNITS', 'Ph.D. Units', 'range', 'Date / Period Completed', 'Advanced Units Details', [integer('units_completed', 'Units Completed'), text('program', 'Graduate Program', 3), text('institution', 'Institution / University')], { degreeLevel: 'phd', ocrMap: DEGREE_UNITS_OCR_MAP }),
+    subcategory('A1_PHD_UNITS', 'Ph.D. Units', 'range', 'Date / Period Completed', 'Advanced Units Details', [integer('units_completed', 'Units Completed'), text('program', 'Graduate Program', 3), text('institution', 'Institution / University'), ...graduateUnitPeriodFields], { degreeLevel: 'phd', ocrMap: DEGREE_UNITS_OCR_MAP }),
     subcategory('A1_MA_HOLDER', 'MA Degree Holder', 'single', 'Date Conferred', 'Degree Details', degreeHolderFields, { degreeLevel: 'masters', ocrMap: DEGREE_HOLDER_OCR_MAP }),
-    subcategory('A1_MA_UNITS', 'MA Units', 'range', 'Date / Period Completed', 'Advanced Units Details', [integer('units_completed', 'Units Completed'), text('program', 'Graduate Program', 3), text('institution', 'Institution / University')], { degreeLevel: 'masters', ocrMap: DEGREE_UNITS_OCR_MAP })
+    subcategory('A1_MA_UNITS', 'MA Units', 'range', 'Date / Period Completed', 'Advanced Units Details', [integer('units_completed', 'Units Completed'), text('program', 'Graduate Program', 3), text('institution', 'Institution / University'), ...graduateUnitPeriodFields], { degreeLevel: 'masters', ocrMap: DEGREE_UNITS_OCR_MAP })
   ] },
   { code: 'A.2', area: 'A', label: 'Active Membership to Professional Organizations', subcategories: [
     subcategory('A2_MEMBERSHIP', 'Professional Organization Membership', 'range_optional_end', 'Membership Period', 'Membership Details', [text('organization', 'Professional Organization'), select('membership_role', 'Membership Classification', ['Officer', 'Member']), text('position', 'Position / Office Held', 2, 255, { required: false, showWhen: { field: 'membership_role', equals: 'Officer' } })], { allowOngoing: true })

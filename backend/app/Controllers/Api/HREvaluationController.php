@@ -99,21 +99,25 @@ class HREvaluationController extends Controller
         $categoryAreas = [];
         $categoryCaps = [];
         $areaCaps = [];
+        // Graduate units: summed per level, official table applied once (never per semester).
+        $graduateUnits = \App\Services\GraduateUnitScoringService::aggregate($items);
         foreach ($items as $item) {
             if (($item['verification_status'] ?? '') !== 'verified' || ($item['rating_status'] ?? '') !== 'rated') continue;
             $snapshot = is_string($item['criterion_snapshot'] ?? null) ? json_decode($item['criterion_snapshot'], true) : ($item['criterion_snapshot'] ?? []);
+            $isUnitItem = \App\Services\GraduateUnitScoringService::isUnitItem($item);
             $category = $snapshot['category'] ?? [];
             $code = (string) ($category['category_code'] ?? $item['criterion_code'] ?? 'UNMAPPED');
             $area = strtoupper((string) ($category['area_code'] ?? substr($code, 0, 1)));
-            $categories[$code] = ($categories[$code] ?? 0.0) + (float) ($item['awarded_points'] ?? 0);
+            $categories[$code] = ($categories[$code] ?? 0.0) + ($isUnitItem ? 0.0 : (float) ($item['awarded_points'] ?? 0));
             $categoryAreas[$code] = $area;
             $categoryCaps[$code] = (float) ($snapshot['criterion_cap'] ?? $category['max_points'] ?? PHP_FLOAT_MAX);
             $areaCaps[$area] = (float) ($category['area_max_points'] ?? $areaCaps[$area] ?? PHP_FLOAT_MAX);
         }
+        foreach ($graduateUnits as $level) $categories[$level['category_code']] = ($categories[$level['category_code']] ?? 0.0) + $level['points'];
         $areas = ['A' => 0.0, 'B' => 0.0, 'C' => 0.0];
         foreach ($categories as $code => $points) $areas[$categoryAreas[$code]] = ($areas[$categoryAreas[$code]] ?? 0) + min($points, $categoryCaps[$code]);
         foreach ($areas as $area => $points) $areas[$area] = min($points, $areaCaps[$area] ?? PHP_FLOAT_MAX);
-        return ['areaA_score' => $areas['A'], 'areaB_score' => $areas['B'], 'areaC_score' => $areas['C'], 'total_score' => array_sum($areas), 'category_scores' => $categories];
+        return ['areaA_score' => $areas['A'], 'areaB_score' => $areas['B'], 'areaC_score' => $areas['C'], 'total_score' => array_sum($areas), 'category_scores' => $categories, 'graduate_units' => array_values($graduateUnits)];
     }
 
     private function createDeanSummary($db, array $evaluation, array $items, array $actor, array $totals, string $status): array
@@ -629,7 +633,9 @@ class HREvaluationController extends Controller
         }
 
         $awardedPoints = (float) ($item['configured_points_snapshot'] ?? 0);
-        if ($awardedPoints <= 0) return $this->respond(['error' => ['code' => 'CRITERION_POINTS_UNRESOLVED', 'message' => 'The submitted claim has no configured points in its locked criteria snapshot.']], 422);
+        // A semester's graduate units earn no points of their own; the level's summed units are scored once in the totals.
+        if (\App\Services\GraduateUnitScoringService::isUnitItem($item)) $awardedPoints = 0.0;
+        elseif ($awardedPoints <= 0) return $this->respond(['error' => ['code' => 'CRITERION_POINTS_UNRESOLVED', 'message' => 'The submitted claim has no configured points in its locked criteria snapshot.']], 422);
 
         $db->table('personnel_evaluation_items')->where('id', $itemId)->update([
             'rating_status'   => 'rated',

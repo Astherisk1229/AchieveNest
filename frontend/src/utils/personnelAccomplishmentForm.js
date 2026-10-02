@@ -74,6 +74,8 @@ export function validateAccomplishmentForm(form, config, today = new Date().toLo
       if (!field.options.includes(value)) errors[field.name] = `Select a valid ${field.label.toLowerCase()}.`
     } else {
       const clean = String(value || '').trim()
+      const years = field.academicYear ? /^(\d{4})-(\d{4})$/.exec(clean) : null
+      if (field.academicYear && (!years || Number(years[2]) !== Number(years[1]) + 1)) { errors[field.name] = `${field.label} must be two consecutive years, for example 2025-2026.`; continue }
       if (/\p{Cc}/u.test(clean) || clean.length < field.min || clean.length > field.max) errors[field.name] = `${field.label} must be ${field.min}–${field.max} valid characters.`
     }
   }

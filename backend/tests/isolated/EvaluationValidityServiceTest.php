@@ -81,9 +81,9 @@ final class EvaluationValidityServiceTest extends CIUnitTestCase
         self::assertSame(V::COMPUTED, V::validityTypeFor('FACULTY', 'C.3'));
         self::assertSame(V::PERIOD, V::validityTypeFor('NON_TEACHING_FACULTY', 'B.1.1'));
         self::assertSame(V::QUALIFICATION, V::validityTypeFor('FACULTY', 'A.1', 'A1_PHD_HOLDER'));
-        self::assertSame(V::UNRESOLVED, V::validityTypeFor('FACULTY', 'A.1', 'A1_MA_UNITS'));
+        self::assertSame(V::PERIOD, V::validityTypeFor('FACULTY', 'A.1', 'A1_MA_UNITS'), 'graduate units: one record per semester');
         self::assertFalse(V::evaluate(self::single('C.3', '2026-01-01'), self::COVERAGE, 'FACULTY')['eligible'], 'computed entries are not copied');
-        self::assertTrue(V::evaluate(self::single('A.1', '2010-01-01', ['subcategory_code' => 'A1_PHD_UNITS']), self::COVERAGE, 'FACULTY')['eligible'], 'units unchanged until confirmed');
+        self::assertSame(V::OUTSIDE_CYCLE, V::evaluate(self::single('A.1', '2010-01-01', ['subcategory_code' => 'A1_PHD_UNITS']), self::COVERAGE, 'FACULTY')['status'], 'units completed before the cycle do not count');
     }
 
     public function testExpectedPortfolioExample(): void

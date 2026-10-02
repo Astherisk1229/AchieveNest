@@ -5,7 +5,7 @@ import { isStrictIsoDate, mapAccomplishmentToForm, validateAccomplishmentForm } 
 describe('Faculty accomplishment form contract', () => {
   it('keeps degree-holder and units schemas distinct', () => {
     expect(facultySubcategoryByCode('A1_PHD_HOLDER').fields.map((field) => field.name)).toEqual(['degree_title', 'institution', 'academic_period'])
-    expect(facultySubcategoryByCode('A1_PHD_UNITS').fields.map((field) => field.name)).toEqual(['units_completed', 'program', 'institution'])
+    expect(facultySubcategoryByCode('A1_PHD_UNITS').fields.map((field) => field.name)).toEqual(['units_completed', 'program', 'institution', 'semester', 'academic_year'])
   })
 
   it('strictly rejects impossible calendar dates', () => {

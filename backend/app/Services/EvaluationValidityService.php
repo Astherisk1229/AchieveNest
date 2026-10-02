@@ -19,7 +19,10 @@ use CodeIgniter\Database\BaseConnection;
  *   QUALIFICATION remains valid once obtained: date <= coverage_end
  *   COMPUTED      not an ordinary record (Years of Service; NTF Area A from the annual review);
  *                 calculated elsewhere with the cycle cutoff, so portfolio entries are not copied
- *   UNRESOLVED    official meaning not confirmed (graduate units); kept exactly as before
+ *
+ * Graduate units (A.1.2 / A.1.4) are PERIOD records, one per semester, each judged on its own
+ * completion date: coverage_start <= completion_date <= coverage_end. Their units are summed
+ * only afterwards, by GraduateUnitScoringService.
  *
  * Statuses: ELIGIBLE, OUTSIDE_CYCLE, NEEDS_INFORMATION. Missing dates are never guessed.
  */
@@ -28,7 +31,6 @@ final class EvaluationValidityService
     public const PERIOD = 'PERIOD';
     public const QUALIFICATION = 'QUALIFICATION';
     public const COMPUTED = 'COMPUTED';
-    public const UNRESOLVED = 'UNRESOLVED';
 
     public const ELIGIBLE = 'ELIGIBLE';
     public const OUTSIDE_CYCLE = 'OUTSIDE_CYCLE';
@@ -45,9 +47,9 @@ final class EvaluationValidityService
     private const FACULTY_DEGREES = [
         'A1_PHD_HOLDER' => self::QUALIFICATION, 'A.1.1' => self::QUALIFICATION,
         'A1_MA_HOLDER' => self::QUALIFICATION, 'A.1.3' => self::QUALIFICATION,
-        // Graduate units: cumulative units held, or units earned in a period? Not confirmed.
-        'A1_PHD_UNITS' => self::UNRESOLVED, 'A.1.2' => self::UNRESOLVED,
-        'A1_MA_UNITS' => self::UNRESOLVED, 'A.1.4' => self::UNRESOLVED,
+        // Graduate units: one record per semester, judged on its completion date.
+        'A1_PHD_UNITS' => self::PERIOD, 'A.1.2' => self::PERIOD,
+        'A1_MA_UNITS' => self::PERIOD, 'A.1.4' => self::PERIOD,
     ];
     private const NON_TEACHING = [
         'A.1' => self::COMPUTED, 'A.2' => self::COMPUTED, 'A.3' => self::COMPUTED,
@@ -88,8 +90,12 @@ final class EvaluationValidityService
         if ($type === self::COMPUTED) {
             return self::result(self::OUTSIDE_CYCLE, $type, 'This value is calculated by the system for the cycle (for example Years of Service from the HR service history), so portfolio entries for it are not counted.');
         }
-        if ($type === self::UNRESOLVED) {
-            return self::result(self::ELIGIBLE, $type, 'Included as before: the cycle rule for graduate units is awaiting HR confirmation.');
+        if (GraduateUnitScoringService::levelOf($record) !== null) {
+            $date = self::completionDate($record, $metadata);
+            if ($date === null) return self::result(self::NEEDS_INFORMATION, $type, 'The completion date of this semester\'s graduate units is missing.');
+            return ($date >= $start && $date <= $end)
+                ? self::result(self::ELIGIBLE, $type, 'These graduate units were completed within the cycle coverage.', $date)
+                : self::result(self::OUTSIDE_CYCLE, $type, 'These graduate units were completed outside the ranking cycle coverage.', $date);
         }
 
         if ($type === self::QUALIFICATION) {
@@ -182,6 +188,17 @@ final class EvaluationValidityService
     private static function result(string $status, ?string $type, string $reason, ?string $dateUsed = null): array
     {
         return ['status' => $status, 'eligible' => $status === self::ELIGIBLE, 'validity_type' => $type, 'reason' => $reason, 'date_used' => $dateUsed];
+    }
+
+    /**
+     * Completion date of a graduate-units semester: the end of its period. A record without period
+     * fields uses its single occurrence date. A period without an end date has no completion date.
+     */
+    private static function completionDate(array $record, array $metadata): ?string
+    {
+        $hasPeriod = array_key_exists('start_date', $metadata) || array_key_exists('end_date', $metadata);
+        if ($hasPeriod) return self::date($metadata['end_date'] ?? null);
+        return self::date($record['occurrence_date'] ?? null);
     }
 
     /** Range when the record carries a start date (faculty range fields) or is marked ongoing. */

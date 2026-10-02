@@ -17,6 +17,10 @@ class FacultyEvaluationSummaryStrategy implements EvaluationSummaryStrategyInter
             $key = $areaMap[preg_replace('/^AREA_?/', '', $area)] ?? 'productivity_creative_work';
             $sections[$key]['items'][] = $this->item($item);
         }
+        // Each semester of graduate units stays its own row; its units are scored once per level in a total row.
+        foreach (GraduateUnitScoringService::aggregate($items) as $level) {
+            $sections['professional_development']['items'][] = ['document' => "{$level['label']} total ({$level['units']} units, " . count($level['item_ids']) . ' record' . (count($level['item_ids']) === 1 ? '' : 's') . ')', 'criterion_code' => $level['subcategory_code'], 'points_earned' => $level['points'], 'aggregate' => true, 'units' => $level['units'], 'item_ids' => $level['item_ids']];
+        }
         foreach ($sections as &$section) $section['points_earned'] = array_sum(array_column($section['items'], 'points_earned'));
 
         return [
@@ -37,7 +41,17 @@ class FacultyEvaluationSummaryStrategy implements EvaluationSummaryStrategyInter
         ];
     }
 
-    private function item(array $item): array { return ['document'=>$item['item_description'] ?? $item['achievement_title'] ?? $item['title'] ?? null, 'criterion_code'=>$item['criterion_code'] ?? null, 'points_earned'=>(float) ($item['awarded_points'] ?? $item['accepted_points'] ?? 0)]; }
+    private function item(array $item): array
+    {
+        $row = ['document'=>$item['item_description'] ?? $item['achievement_title'] ?? $item['title'] ?? null, 'criterion_code'=>$item['criterion_code'] ?? null, 'points_earned'=>(float) ($item['awarded_points'] ?? $item['accepted_points'] ?? 0)];
+        if (GraduateUnitScoringService::isUnitItem($item)) {
+            $level = GraduateUnitScoringService::levelOf($item);
+            $row['points_earned'] = 0.0;
+            $row['units'] = GraduateUnitScoringService::unitsOf($item);
+            $row['counted_in'] = $level === GraduateUnitScoringService::PHD ? 'Ph.D. Units total' : 'MA Units total';
+        }
+        return $row;
+    }
     private function personnel(array $e): array { return ['profile_id'=>$e['personnel_profile_id'] ?? null,'name'=>$e['faculty_name'] ?? $e['personnel_name'] ?? null,'personnel_id'=>$e['institutional_id'] ?? null,'position'=>$e['position_title_snapshot'] ?? $e['designation'] ?? null,'department'=>$e['department_name_snapshot'] ?? null,'college'=>$e['college_name_snapshot'] ?? null]; }
     private function documents(array $items): array { return array_values(array_map(fn(array $i): array => ['title'=>$i['item_description'] ?? $i['achievement_title'] ?? null,'file_name'=>$i['file_name'] ?? $i['proof_file_name'] ?? null,'evidence_id'=>$i['evidence_id'] ?? null], $items)); }
     private function passingScore(array $criteria): float { return (float) ($criteria['version']['passing_score'] ?? $criteria['sheet']['passing_score'] ?? $criteria['passing_score'] ?? 0); }

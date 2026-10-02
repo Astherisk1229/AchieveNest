@@ -12,6 +12,9 @@ use Throwable;
 
 class PersonnelAccomplishmentController extends Controller
 {
+    /** Academic periods a graduate-units record can belong to (one record per period). */
+    public const GRADUATE_UNIT_SEMESTERS = ['First Semester', 'Second Semester', 'Summer'];
+
     use ResponseTrait;
 
     private AuthorizationService $authz;
@@ -67,7 +70,7 @@ class PersonnelAccomplishmentController extends Controller
         $details = is_array($metadata['details'] ?? null) ? $metadata['details'] : [];
         $required = match ($subcategory) {
             'A1_PHD_HOLDER','A1_MA_HOLDER' => ['degree_title','institution'],
-            'A1_PHD_UNITS','A1_MA_UNITS' => ['units_completed','program','institution'],
+            'A1_PHD_UNITS','A1_MA_UNITS' => ['units_completed','program','institution','semester','academic_year'],
             'A2_MEMBERSHIP','A2_REGULAR_MEMBER' => ['organization','membership_role'],
             'A3_ATTENDANCE' => ['title','organizer','scope'],
             'B1_ACTIVITY' => ['role','activity_title','organizer','extent','scope','participants'],
@@ -87,6 +90,12 @@ class PersonnelAccomplishmentController extends Controller
         }
         if (in_array($subcategory, ['A1_PHD_UNITS','A1_MA_UNITS'], true) && preg_match('/^[1-9]\d*$/D', (string) ($details['units_completed'] ?? '')) !== 1) {
             return 'Units completed must be a whole number greater than zero.';
+        }
+        // Graduate units are recorded one semester per record.
+        if (in_array($subcategory, ['A1_PHD_UNITS','A1_MA_UNITS'], true)) {
+            if (! in_array((string) ($details['semester'] ?? ''), self::GRADUATE_UNIT_SEMESTERS, true)) return 'Select the semester these units were earned in.';
+            $year = (string) ($details['academic_year'] ?? '');
+            if (preg_match('/^(\d{4})-(\d{4})$/D', $year, $m) !== 1 || (int) $m[2] !== (int) $m[1] + 1) return 'Academic year must be two consecutive years, for example 2025-2026.';
         }
         if ($subcategory === 'B1_ACTIVITY' && preg_match('/^[1-9]\d*$/D', (string) ($details['participants'] ?? '')) !== 1) {
             return 'Number of participants must be a whole number greater than zero.';

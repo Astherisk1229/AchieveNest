@@ -51,9 +51,9 @@ export default function CoordinatorSubmissionReview({ item, loadRecordDetail }) 
   const missing = missingRequiredDetails(item.subcategory_id, item.structured_metadata)
   const activityDate = formatDateRange(item.start_date || item.occurrence_date, item.end_date)
 
-  return <div className="grid gap-5 xl:grid-cols-2">
+  return <div className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(22rem,1fr)]">
     <section aria-label="Submitted document" className="space-y-3">
-      <EvidenceThumbnail evidence={active} className="h-[60vh] min-h-80 rounded-2xl border border-slate-200" fit="object-contain"/>
+      <EvidenceThumbnail evidence={active} className="h-[50vh] min-h-80 rounded-2xl border border-slate-200 sm:h-[60vh] xl:h-[72vh]" fit="object-contain" interactive/>
       {active && (() => {
         const security = securityLabel(active)
         const Icon = security.icon
@@ -71,7 +71,7 @@ export default function CoordinatorSubmissionReview({ item, loadRecordDetail }) 
       {evidence.length > 1 && <div className="flex flex-wrap gap-2" aria-label="Documents">
         {evidence.map(entry => <button key={entry.id} type="button" onClick={() => setActiveId(entry.id)} className={`max-w-[12rem] truncate rounded-lg border px-2.5 py-1 text-xs ${entry.id === active?.id ? 'border-[#16834a] bg-emerald-50 font-bold text-emerald-900' : 'border-slate-300 text-slate-700'}`}>{entry.original_filename}</button>)}
       </div>}
-      {active && evidenceMime(active) === 'application/pdf' && <p className="text-[11px] text-slate-500">PDF previews show the first page. Use "Open full size" to read every page.</p>}
+      {active && evidenceMime(active) === 'application/pdf' && <p className="text-[11px] text-slate-500">Use the PDF controls to zoom or change pages, or open the document full size.</p>}
       {error && <p role="alert" className="text-xs font-medium text-rose-700">{error}</p>}
     </section>
 

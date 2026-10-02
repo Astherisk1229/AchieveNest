@@ -34,7 +34,7 @@ export function useEvidenceObjectUrl(evidence) {
  * Card/preview thumbnail of the real document. With no document it says so explicitly
  * instead of showing a generic icon, so placeholders can't be mistaken for proof.
  */
-export default function EvidenceThumbnail({ evidence, className = 'h-32', fit = 'object-cover' }) {
+export default function EvidenceThumbnail({ evidence, className = 'h-32', fit = 'object-cover', interactive = false }) {
   const { url, loading, failed } = useEvidenceObjectUrl(evidence)
   const base = `flex w-full items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-900 ${className}`
 
@@ -48,7 +48,7 @@ export default function EvidenceThumbnail({ evidence, className = 'h-32', fit = 
     return <div className={`${base} flex-col gap-1 px-3 text-center text-slate-500`}><FileWarning className="h-5 w-5" aria-hidden="true"/><span className="text-[11px] font-semibold">Preview unavailable</span><span className="max-w-full truncate text-[10px]">{evidence.original_filename}</span></div>
   }
   if (evidenceMime(evidence) === 'application/pdf') {
-    return <div className={base}><iframe title={`First page of ${evidence.original_filename}`} src={`${url}#page=1&view=FitH&toolbar=0`} className="pointer-events-none h-full w-full border-0" tabIndex={-1}/></div>
+    return <div className={base}><iframe title={`Preview of ${evidence.original_filename}`} src={`${url}#page=1&view=FitH&toolbar=${interactive ? 1 : 0}`} className={`${interactive ? '' : 'pointer-events-none'} h-full w-full border-0`} tabIndex={interactive ? 0 : -1}/></div>
   }
   return <div className={base}><img src={url} alt={`Document: ${evidence.original_filename}`} className={`h-full w-full ${fit}`}/></div>
 }

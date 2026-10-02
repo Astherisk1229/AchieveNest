@@ -170,7 +170,7 @@ export const NAVIGATION_CATALOG = [
   },
   {
     id: 'coordinator-student-roster',
-    label: 'Student Roster & Dossiers',
+    label: 'Students',
     icon: Users,
     path: '/personnel/dashboard?tab=students',
     tab: 'students',

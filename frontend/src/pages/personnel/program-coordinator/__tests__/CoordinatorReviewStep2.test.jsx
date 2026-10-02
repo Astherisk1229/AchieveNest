@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../../services/portfolioService', () => ({
   default: {
-    fetchCoordinatorQueue: vi.fn(async () => []), fetchRecord: vi.fn(), downloadEvidence: vi.fn(),
+    fetchCoordinatorQueue: vi.fn(async () => []), fetchCoordinatorStudents: vi.fn(async () => []), fetchRecord: vi.fn(), downloadEvidence: vi.fn(),
     verifyRecord: vi.fn(), requestRevision: vi.fn(), rejectRecord: vi.fn()
   }
 }))
@@ -59,7 +59,7 @@ describe('Step 2 coordinator review', () => {
 
   it('renders the dashboard without fake activity, people, file sizes or points', () => {
     const html = renderToStaticMarkup(<MemoryRouter><CoordinatorDashboardPage currentUser={{ full_name: 'Coordinator', program_scope: 'BS Test Program' }} /></MemoryRouter>)
-    for (const fake of ['Live Audit Stream', 'Maria Santos', 'John Doe', 'Juan Dela Cruz', 'Machine Learning Research Paper', '~345 KB', '~1.2 MB', 'Points: +', 'BS Computer Science verification CSV']) {
+    for (const fake of ['Live Audit Stream', 'Maria Santos', 'John Doe', 'Juan Dela Cruz', 'Machine Learning Research Paper', '~345 KB', '~1.2 MB', 'Points: +', 'BS Computer Science verification CSV', '+63 912 345 6789', 'Skills &amp; Competencies']) {
       expect(html).not.toContain(fake)
     }
     expect(html).toContain('BS Test Program')

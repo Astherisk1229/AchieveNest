@@ -549,6 +549,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // Program Coordinator Scoped Queue
     $routes->get('program-coordinator/verification-queue', 'Api\StudentPortfolioController::coordinatorQueue');
     $routes->options('program-coordinator/verification-queue', 'Api\StudentPortfolioController::options');
+    $routes->get('program-coordinator/students', 'Api\StudentPortfolioController::coordinatorStudents');
+    $routes->options('program-coordinator/students', 'Api\StudentPortfolioController::options');
 
     // OSAD Academic Structure — Colleges & Programs (Phase C)
     $routes->get('osad/colleges', 'Api\CollegeController::index');

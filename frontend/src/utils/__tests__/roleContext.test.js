@@ -202,7 +202,7 @@ describe('roleContext utility & navigation registry', () => {
       const nav = getAuthorizedNavigationForSession(coordinatorSession)
       const labels = nav.map(n => n.label)
       expect(labels).toContain('Verification Workspace')
-      expect(labels).toContain('Student Roster & Dossiers')
+      expect(labels).toContain('Students')
       expect(labels).not.toContain('Edit Portfolio')
     })
   })

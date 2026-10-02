@@ -1395,6 +1395,83 @@ class StudentPortfolioController extends Controller
     }
 
     /**
+     * GET /api/v1/program-coordinator/students
+     * Complete active roster for the coordinator's assigned programs, including
+     * students who have not submitted a portfolio record yet.
+     */
+    public function coordinatorStudents(): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        $programIds = $this->authz->getCoordinatorProgramIds($actor);
+        $isOsad = $this->authz->hasRole($actor, 'osad_staff');
+        if (empty($programIds) && ! $isOsad) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Program Coordinator or OSAD role required.']], 403);
+        }
+
+        $db = $this->getDb();
+        $builder = $db->table('student_program_enrollments spe')
+            ->select([
+                'p.id',
+                'p.institutional_id AS student_id',
+                'p.full_name',
+                'p.email',
+                'p.avatar_url',
+                'spe.academic_program_id',
+                'spe.year_level',
+                'ap.code AS academic_program_code',
+                'ap.name AS academic_program_name',
+                'c.id AS college_id',
+                'c.code AS college_code',
+                'c.name AS college_name',
+            ])
+            ->join('profiles p', 'p.id = spe.student_profile_id')
+            ->join('academic_programs ap', 'ap.id = spe.academic_program_id')
+            ->join('colleges c', 'c.id = ap.college_id', 'left')
+            ->where('spe.is_active', 1)
+            ->where('p.account_type', 'student')
+            ->where('p.status', 'active')
+            ->orderBy('p.full_name', 'ASC');
+
+        if (! empty($programIds)) {
+            $builder->whereIn('spe.academic_program_id', $programIds);
+        }
+
+        $students = $builder->get()->getResultArray();
+        $studentIds = array_values(array_filter(array_column($students, 'id')));
+        $counts = [];
+        if ($studentIds !== []) {
+            $records = $db->table('student_portfolio_records')
+                ->select(['student_profile_id', 'status'])
+                ->whereIn('student_profile_id', $studentIds)
+                ->whereNotIn('status', ['draft', 'archived'])
+                ->get()->getResultArray();
+
+            foreach ($records as $record) {
+                $studentId = (string) $record['student_profile_id'];
+                $counts[$studentId] ??= ['achievements_count' => 0, 'verified_count' => 0, 'pending_count' => 0];
+                $counts[$studentId]['achievements_count']++;
+                if ($record['status'] === 'verified') {
+                    $counts[$studentId]['verified_count']++;
+                }
+                if (in_array($record['status'], ['submitted', 'revision_requested'], true)) {
+                    $counts[$studentId]['pending_count']++;
+                }
+            }
+        }
+
+        foreach ($students as &$student) {
+            $student += $counts[$student['id']] ?? ['achievements_count' => 0, 'verified_count' => 0, 'pending_count' => 0];
+        }
+        unset($student);
+
+        return $this->respond(['data' => ['students' => $students, 'total' => count($students)]], 200);
+    }
+
+    /**
      * POST /api/v1/portfolio/{id}/verify
      */
     public function verifyRecord(string $id): mixed

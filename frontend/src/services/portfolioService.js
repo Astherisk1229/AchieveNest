@@ -110,6 +110,11 @@ export const portfolioService = {
     return res?.data?.queue || res?.queue || []
   },
 
+  async fetchCoordinatorStudents() {
+    const res = await apiClient.get('/program-coordinator/students')
+    return res?.data?.students || res?.students || []
+  },
+
   async verifyRecord(id, remarks = '') {
     const res = await apiClient.post(`/portfolio/${id}/verify`, { remarks })
     return res?.data || res

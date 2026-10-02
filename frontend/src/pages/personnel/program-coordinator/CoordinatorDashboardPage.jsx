@@ -15,9 +15,7 @@ import {
   Clock, 
   CheckCircle2, 
   RotateCcw, 
-  TrendingUp, 
   Filter, 
-  User, 
   FileText, 
   Check, 
   X, 
@@ -29,7 +27,6 @@ import {
   Award,
   Download,
   Eye,
-  Building2,
   GraduationCap,
   Calendar,
   ExternalLink,
@@ -40,9 +37,6 @@ import {
   Zap,
   ArrowLeft,
   Mail,
-  Phone,
-  MapPin,
-  Sparkles,
   Share2,
   CreditCard,
   BookOpen,
@@ -77,8 +71,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   }
 
 
-  const initialStudentsData = []
-
   // Custom MVC Bridge Hooks
   const {
     allSubmissions,
@@ -98,12 +90,16 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   } = useVerification()
 
   const {
+    studentRoster,
     filteredStudents,
     yearFilter,
     setYearFilter,
     courseFilter,
-    setCourseFilter
-  } = useStudentRoster(initialStudentsData)
+    setCourseFilter,
+    loading: rosterLoading,
+    error: rosterError,
+    reload: reloadRoster
+  } = useStudentRoster()
 
   const [selectedReviewItem, setSelectedReviewItem] = useState(null)
   const [selectedStudentDossier, setSelectedStudentDossier] = useState(null)
@@ -701,7 +697,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
           (() => {
             // Filter submissions for this specific student
             const studentSubmissions = allSubmissions.filter(s =>
-              s.student_name.toLowerCase().trim() === selectedStudentDossier.full_name.toLowerCase().trim() ||
+              s.student_name?.toLowerCase().trim() === selectedStudentDossier.full_name.toLowerCase().trim() ||
               s.student_id === selectedStudentDossier.student_id
             )
 
@@ -730,7 +726,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-extrabold text-xs hover:bg-slate-50 transition shadow-2xs flex items-center gap-2 cursor-pointer w-fit"
                   >
                     <ArrowLeft className="w-4 h-4 text-[#16834a]" />
-                    <span>Back to Students Roster</span>
+                    <span>Back to Students</span>
                   </button>
 
                   <div className="flex items-center gap-3">
@@ -812,18 +808,12 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                           {/* Student Details & Info Chips */}
                           <div className="space-y-1.5 pt-1 sm:pt-0">
-                            <div className="flex items-center gap-2">
-                              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
-                                {selectedStudentDossier.full_name}
-                              </h2>
-                              <span className="w-5 h-5 rounded-full bg-[#16834a] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
-                                ✓
-                              </span>
-                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
+                              {selectedStudentDossier.full_name}
+                            </h2>
 
                             <p className="text-xs font-extrabold text-[#16834a]">{selectedStudentDossier.program || '—'}</p>
-                            <p className="text-xs text-slate-600 font-semibold">{selectedStudentDossier.year_level || '3rd Year Student'} • Notre Dame of Marbel University</p>
-                            <p className="text-xs text-slate-500 font-medium">Koronadal City, South Cotabato</p>
+                            <p className="text-xs text-slate-600 font-semibold">{selectedStudentDossier.year_level || 'Year level not recorded'} • Notre Dame of Marbel University</p>
 
                             <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
                               <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
@@ -875,61 +865,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                     {/* LEFT COLUMN */}
                     <div className="lg:col-span-2 space-y-6">
-
-                      {/* About Me Card */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
-                            <User className="w-4 h-4" />
-                          </div>
-                          <h3 className="text-base font-extrabold text-slate-900">About Me</h3>
-                        </div>
-                        <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                          I am a dedicated and driven student enrolled in {selectedStudentDossier.program} at Notre Dame of Marbel University. With a strong passion for technology, community service, and academic excellence, I actively seek opportunities to grow both personally and professionally.
-                        </p>
-                      </div>
-
-                      {/* Experience & Involvement Card */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
-                            <Building2 className="w-4 h-4" />
-                          </div>
-                          <h3 className="text-base font-extrabold text-slate-900">Experience &amp; Involvement</h3>
-                        </div>
-
-                        <div className="space-y-3 text-xs">
-                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-slate-900 text-sm">President</p>
-                              <p className="text-slate-500 font-semibold">Computer Society NDMU</p>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                              Aug 2025 – Present
-                            </span>
-                          </div>
-
-                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-slate-900 text-sm">Dean's Lister</p>
-                              <p className="text-slate-500 font-semibold">CEAC – Notre Dame of Marbel University</p>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                              AY 2024–2025
-                            </span>
-                          </div>
-
-                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-slate-900 text-sm">Community Extension Volunteer</p>
-                              <p className="text-slate-500 font-semibold">Koronadal City Barangay Program</p>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                              Jan – Mar 2025
-                            </span>
-                          </div>
-                        </div>
-                      </div>
 
                       {/* Student Accomplishment Record Section */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
@@ -1139,46 +1074,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             </div>
                           </div>
 
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Phone</p>
-                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
-                              +63 912 345 6789
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Address</p>
-                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
-                              Koronadal City, South Cotabato
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
-                            <Sparkles className="w-4 h-4" />
-                          </div>
-                          <h3 className="text-base font-extrabold text-slate-900">Skills &amp; Competencies</h3>
-                        </div>
-
-                        <div className="space-y-2.5 text-xs">
-                          {[
-                            { name: 'Leadership', level: 'Expert' },
-                            { name: 'Communication', level: 'Expert' },
-                            { name: 'Technical Skills', level: 'Proficient' },
-                            { name: 'Teamwork', level: 'Expert' },
-                            { name: 'Problem Solving', level: 'Proficient' },
-                            { name: 'Time Management', level: 'Expert' }
-                          ].map((sk, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                              <span className="font-bold text-slate-800">{sk.name}</span>
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                                {sk.level}
-                              </span>
-                            </div>
-                          ))}
                         </div>
                       </div>
 
@@ -1248,11 +1143,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     onChange={(e) => setCourseFilter(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer appearance-none"
                   >
-                    <option value="All Courses">All Courses</option>
-                    <option value="BS Computer Science">BS Computer Science</option>
-                    <option value="BS Information Technology">BS Information Technology</option>
-                    <option value="BS Nursing">BS Nursing</option>
-                    <option value="BS Business Administration">BS Business Administration</option>
+                    <option value="All Courses">All Programs</option>
+                    {[...new Set(studentRoster.map(student => student.program).filter(Boolean))].map(program => <option key={program} value={program}>{program}</option>)}
                   </select>
                   <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
                     <ChevronRight className="w-4 h-4 rotate-90" />
@@ -1264,9 +1156,21 @@ export default function CoordinatorDashboardPage({ currentUser }) {
             </div>
 
             {/* Simplified High-Readability Student Data Table */}
-            {filteredStudents.length === 0 ? (
+            {rosterLoading ? (
+              <div role="status" className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-600 text-sm font-semibold">
+                Loading students…
+              </div>
+            ) : rosterError ? (
+              <div role="alert" className="p-8 text-center bg-white rounded-3xl border border-rose-200">
+                <p className="text-sm font-bold text-rose-800">Students could not be loaded.</p>
+                <p className="mt-1 text-xs text-slate-600">{rosterError}</p>
+                <button type="button" onClick={reloadRoster} className="mt-4 min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-xs font-extrabold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+                  Try Again
+                </button>
+              </div>
+            ) : filteredStudents.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 text-xs font-medium">
-                No students found matching your search or filter criteria.
+                {studentRoster.length === 0 ? 'No active students are assigned to your program.' : 'No students match your search or filters.'}
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1278,7 +1182,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         <th className="py-3 px-4">Program</th>
                         <th className="py-3 px-4">Year Level</th>
                         <th className="py-3 px-4 text-center">Achievements</th>
-                        <th className="py-3 px-4 text-center">Verified Points</th>
+                        <th className="py-3 px-4 text-center">Verified</th>
                         <th className="py-3 px-4 text-center">Action</th>
                       </tr>
                     </thead>
@@ -1291,11 +1195,11 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         >
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
-                              <img
+                              {std.avatar_url ? <img
                                 src={std.avatar_url}
-                                alt={std.full_name}
+                                alt=""
                                 className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0"
-                              />
+                              /> : <span aria-hidden="true" className="grid w-9 h-9 shrink-0 place-items-center rounded-full border border-emerald-200 bg-emerald-50 text-xs font-extrabold text-emerald-800">{std.full_name.split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span>}
                               <div className="min-w-0">
                                 <p className="font-extrabold text-slate-900 group-hover:text-[#16834a] transition text-xs leading-tight">
                                   {std.full_name}
@@ -1324,8 +1228,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                           <td className="py-3 px-4 text-center whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 text-[#064e2b] font-extrabold text-xs border border-emerald-200">
-                              <TrendingUp className="w-3.5 h-3.5 text-[#16834a]" />
-                              <span>{std.verified_points} Points</span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#16834a]" />
+                              <span>{std.verified_count} achievements</span>
                             </span>
                           </td>
 
@@ -1339,7 +1243,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                               className="px-3 py-1.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white text-xs font-extrabold transition shadow-2xs flex items-center gap-1.5 mx-auto cursor-pointer"
                             >
                               <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Inspect Dossier</span>
+                              <span>View Portfolio</span>
                             </button>
                           </td>
                         </tr>
@@ -1356,7 +1260,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
       {/* REVIEW & DECISION MODAL */}
       {selectedReviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+          <div className="relative w-full max-w-[96rem] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
             <button
               type="button"
               onClick={() => setSelectedReviewItem(null)}

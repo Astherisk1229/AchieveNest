@@ -118,7 +118,7 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual(['Dashboard Overview', 'Verification Workspace', 'Student Roster & Dossiers'])
+      expect(labels).toEqual(['Dashboard Overview', 'Verification Workspace', 'Students'])
       expect(labels).not.toContain('Edit Portfolio')
       expect(labels).not.toContain('Portfolio')
     })

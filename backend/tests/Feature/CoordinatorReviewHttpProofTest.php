@@ -67,6 +67,18 @@ final class CoordinatorReviewHttpProofTest extends CIUnitTestCase
         self::assertArrayNotHasKey('sha256', $item['evidence'][0]);
         self::assertArrayNotHasKey('storage_path', $item['evidence'][0]);
 
+        // The Students screen uses the complete assigned-program roster, not only queue submitters.
+        $roster = $this->json('GET', '/program-coordinator/students', null, $coordinatorToken);
+        self::assertSame(200, $roster['status'], $roster['raw']);
+        $rosterStudent = $this->find($roster['body']['data']['students'] ?? [], $student);
+        self::assertNotNull($rosterStudent, 'Assigned student missing from the coordinator roster.');
+        self::assertSame($programId, $rosterStudent['academic_program_id']);
+        self::assertGreaterThanOrEqual(1, $rosterStudent['achievements_count']);
+        self::assertArrayNotHasKey('credential_status', $rosterStudent);
+        $outsideRoster = $this->json('GET', '/program-coordinator/students', null, $outsiderToken);
+        self::assertSame(200, $outsideRoster['status'], $outsideRoster['raw']);
+        self::assertNull($this->find($outsideRoster['body']['data']['students'] ?? [], $student));
+
         // 2. The coordinator can open the real file; another program's coordinator cannot.
         $download = $this->raw('GET', '/evidence/student/' . $evidenceId . '/download', $coordinatorToken);
         self::assertSame(200, $download['status']);

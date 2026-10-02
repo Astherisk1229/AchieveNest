@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText } from 'lucide-react'
 import {
-  addRankingCycleCoverage, getRankingCycle, transitionPersonnelEvaluationPeriod, updateRankingCycleSchedule,
+  addRankingCycleCoverage, getRankingCycle, transitionPersonnelEvaluationPeriod, updateRankingCycleAchievementCoverage, updateRankingCycleSchedule,
 } from '../../../services/personnelEvaluationPeriodService'
 import RankingCycleDialog, { LockedBadge, buttonStyles, errorMessage, inputClass } from './RankingCycleDialog'
 import CriteriaPreviewDialog from './CriteriaPreviewDialog'
@@ -14,6 +14,7 @@ import {
 export const SETTINGS_SECTIONS = [
   ['general', 'General'],
   ['schedule', 'Schedule'],
+  ['achievement-coverage', 'Achievement Coverage'],
   ['coverage', 'Personnel Coverage'],
   ['criteria', 'Criteria'],
   ['lifecycle', 'Lifecycle'],
@@ -47,6 +48,34 @@ function General({ cycle }) {
     <Row label="Created">{formatDate(cycle.created_at)}{cycle.created_by_label ? ` · ${cycle.created_by_label}` : ''}</Row>
     {cycle.is_legacy && <Row label="Record origin">Migrated from an earlier ranking period</Row>}
   </dl>
+}
+
+// Which accomplishments belong to this cycle. Separate from the submission and evaluation windows.
+function AchievementCoverage({ cycle, onSaved }) {
+  const current = cycle.achievement_coverage
+  const editable = Boolean(cycle.coverage_editable)
+  const [form, setForm] = useState({ coverage_start: current?.start || '', coverage_end: current?.end || '' })
+  const [state, setState] = useState({ saving: false, error: '', saved: false })
+  const formError = !form.coverage_start || !form.coverage_end ? 'Enter both dates.' : form.coverage_start > form.coverage_end ? 'The coverage must end on or after its start.' : ''
+  const save = async () => {
+    setState({ saving: true, error: '', saved: false })
+    try { await updateRankingCycleAchievementCoverage(cycle.id, form); setState({ saving: false, error: '', saved: true }); onSaved() }
+    catch (failure) { setState({ saving: false, error: errorMessage(failure, 'The achievement coverage could not be saved.'), saved: false }) }
+  }
+  return <div className="space-y-4">
+    <dl className="divide-y divide-slate-200 dark:divide-slate-800">
+      <Row label="Achievement coverage">{current ? formatRange(current.start, current.end) : 'Not set'}<span className="block text-xs font-normal text-slate-500">Accomplishments dated in this range (or, for degrees, obtained by its end) are copied into submitted portfolios. Older records stay in each portfolio but are not scored in this cycle.</span></Row>
+    </dl>
+    {!current && <Notice tone="error">Set the achievement coverage before opening submissions.</Notice>}
+    {!editable && <Notice>{cycle.is_read_only ? 'This cycle is read-only.' : 'The achievement coverage is locked because portfolios have already been submitted for this cycle.'}</Notice>}
+    {editable && <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <DateRange idPrefix="settings-achievement-coverage" label="Achievement coverage" start={form.coverage_start} end={form.coverage_end} onStart={value => setForm({ ...form, coverage_start: value })} onEnd={value => setForm({ ...form, coverage_end: value })}/>
+      {form.coverage_start && form.coverage_end && formError && <Notice tone="error">{formError}</Notice>}
+      {state.error && <Notice tone="error">{state.error}</Notice>}
+      {state.saved && <Notice tone="success">Achievement coverage saved.</Notice>}
+      <div className="flex justify-end"><button type="button" onClick={save} disabled={Boolean(formError) || state.saving} className={buttonStyles.primary}>{state.saving ? 'Saving…' : 'Save Coverage'}</button></div>
+    </div>}
+  </div>
 }
 
 function Schedule({ cycle, onSaved }) {
@@ -178,6 +207,7 @@ export default function CycleSettingsDialog({ cycle: initial, cycles = [], secti
   const panels = {
     general: <General cycle={cycle}/>,
     schedule: <Schedule key={`schedule-${cycle.updated_at}-${cycle.tracks.map(t => t.version).join('.')}`} cycle={cycle} onSaved={refresh}/>,
+    'achievement-coverage': <AchievementCoverage key={`achievement-coverage-${cycle.updated_at}`} cycle={cycle} onSaved={refresh}/>,
     coverage: <Coverage key={`coverage-${cycle.track_count}`} cycle={cycle} cycles={cycles} onSaved={refresh}/>,
     criteria: <Criteria cycle={cycle}/>,
     lifecycle: <Lifecycle cycle={cycle} onSaved={refresh} onArchive={() => onArchive?.(cycle)}/>,

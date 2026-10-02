@@ -19,6 +19,7 @@ import personnelAccomplishmentService, { fetchCurrentEvaluationPeriod } from '..
 import portfolioConfigurationService from '../../services/portfolioConfigurationService'
 import { getCurrentEligibility } from '../../services/personnelPortfolioService'
 import AchievementReuseBadge from '../../components/common/AchievementReuseBadge'
+import CycleValidityBadge from '../../components/common/CycleValidityBadge'
 import { hasValidPersonnelEvidence, resolvePersonnelEvidence } from '../../utils/personnelEvidence'
 import campusBanner from '../../assets/ndmu_campus_banner.png'
 import {
@@ -979,6 +980,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
                         {/* Package D: 2-Year Reuse Eligibility Badge */}
                         <AchievementReuseBadge accomplishment={item} />
+                        <CycleValidityBadge validity={item.cycle_validity} />
                       </div>
 
                       <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug">

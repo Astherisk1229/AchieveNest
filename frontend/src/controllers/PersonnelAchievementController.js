@@ -70,7 +70,8 @@ export default class PersonnelAchievementController {
       category_area: newEntry.category_area || (newEntry.category?.startsWith('A.') ? 'areaA' : newEntry.category?.startsWith('B.') ? 'areaB' : 'areaC'),
       domain: newEntry.domain || (newEntry.category?.startsWith('A.') ? 'professional_development' : newEntry.category?.startsWith('B.') ? 'productivity_creative_work' : 'service_leadership'),
       organizer_or_publisher: newEntry.location || newEntry.issuer || newEntry.organizer_or_publisher || '',
-      occurrence_date: newEntry.date_achieved || newEntry.date || new Date().toISOString().split('T')[0],
+      // Never substitute today's date: a missing date makes the record NEEDS_INFORMATION for ranking cycles.
+      occurrence_date: newEntry.date_achieved || newEntry.date || null,
       description: newEntry.description || '',
       scope_level: newEntry.scope_level || '',
       academic_year: newEntry.academic_year || '',

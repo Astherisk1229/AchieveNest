@@ -151,6 +151,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->delete('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::delete/$1');
     $routes->post('hr/ranking-cycles/(:segment)/tracks', 'Api\RankingCycleController::addTracks/$1');
     $routes->patch('hr/ranking-cycles/(:segment)/schedule', 'Api\RankingCycleController::schedule/$1');
+    $routes->patch('hr/ranking-cycles/(:segment)/coverage', 'Api\RankingCycleController::coverage/$1');
+    $routes->options('hr/ranking-cycles/(:segment)/coverage', 'Api\RankingCycleController::options');
     $routes->post('hr/ranking-cycles/(:segment)/archive', 'Api\RankingCycleController::archive/$1');
     $routes->options('hr/ranking-cycles/(:segment)/(:segment)', 'Api\RankingCycleController::options');
     $routes->options('hr/ranking-cycles', 'Api\RankingCycleController::options');

@@ -68,6 +68,7 @@ export default class PersonnelPortfolioController {
       advisory_classification: acc.advisory_classification || null,
       ocr_metadata: acc.ocr_metadata || null,
       category_metadata: metadata,
+      cycle_validity: acc.cycle_validity || null,
       created_at: acc.created_at || null,
       updated_at: acc.updated_at || null
     }

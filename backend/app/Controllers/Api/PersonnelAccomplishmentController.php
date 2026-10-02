@@ -298,6 +298,8 @@ class PersonnelAccomplishmentController extends Controller
             }
         }
 
+        $validity = new \App\Services\EvaluationValidityService($db);
+        $openCycles = [];
         $currentYear = (int) date('Y');
         $currentAYStart = $currentYear; // e.g. 2026
 
@@ -336,6 +338,12 @@ class PersonnelAccomplishmentController extends Controller
                     'status_label'                => 'Eligible for Portfolio',
                 ];
             }
+
+            // Status of this record for the owner's open ranking cycle (same gate used at submission).
+            $owner = (string) ($r['personnel_profile_id'] ?? '');
+            if (! array_key_exists($owner, $openCycles)) $openCycles[$owner] = $owner !== '' ? $validity->openCycleFor($owner) : null;
+            $open = $openCycles[$owner];
+            $r['cycle_validity'] = $open ? \App\Services\EvaluationValidityService::evaluate($r, $open['coverage'], $open['personnel_group']) + ['coverage' => $open['coverage']] : null;
         }
 
         return $this->respond(['data' => ['accomplishments' => $rows, 'total' => count($rows)]]);

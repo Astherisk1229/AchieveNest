@@ -44,7 +44,8 @@ class PersonnelEligibilityService
         $missing = [];
         $hrSource = 'HR → Personnel Directory → Edit Master Data';
         $startDate = trim((string)($person['employment_start_date'] ?? ''));
-        $cutoff = $period ? substr((string)$period['evaluation_end_at'],0,10) : null;
+        // COMPUTED (Years of Service): measured up to the ranking cycle's achievement coverage end; legacy cycles without coverage keep the evaluation end.
+        $cutoff = (new EvaluationValidityService($this->db))->serviceCutoff($period);
         if ($startDate === '') $missing[] = ['field'=>'employment_start_date','label'=>'Employment start date','detail'=>'Not recorded in HR master data; years of service cannot be calculated.','source'=>$hrSource];
         if (trim((string)($person['employment_status'] ?? '')) === '') $missing[] = ['field'=>'employment_status','label'=>'Employment status (Permanent or Probationary)','detail'=>'Not recorded in HR master data.','source'=>$hrSource];
         // Qualifying length of service (excludes part-time periods and breaks), as of the period end.

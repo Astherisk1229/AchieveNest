@@ -50,6 +50,33 @@ class PersonnelEvaluationPeriodService
         return $rows[0] ?? null;
     }
 
+    /**
+     * The single HR-owned track currently driving an operational workflow.
+     * Consumers must name the personnel group so parallel Faculty and
+     * Non-Teaching Faculty tracks can never be selected by creation order.
+     */
+    public function currentWorkflowTrack(string $personnelGroup = 'FACULTY'): ?array
+    {
+        if (! in_array($personnelGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) {
+            throw new InvalidArgumentException('INVALID_PERSONNEL_GROUP: Select Faculty or Non-Teaching Faculty.');
+        }
+
+        $rows = $this->list(['evaluation_type' => 'RANKING_PROMOTION', 'personnel_group' => $personnelGroup]);
+        $operational = array_values(array_filter(
+            $rows,
+            static fn (array $row): bool => in_array($row['status'] ?? '', ['OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'], true)
+        ));
+        if (count($operational) > 1) {
+            throw new RuntimeException("PERIOD_CONFIGURATION_CONFLICT: More than one operational ranking track exists for {$personnelGroup}.");
+        }
+        if ($operational !== []) return $operational[0];
+
+        // Keep the latest completed HR cycle visible to the Dean until HR opens
+        // the next one. Archived cycles remain historical and are not selected.
+        foreach ($rows as $row) if (($row['status'] ?? '') === 'CLOSED') return $row;
+        return null;
+    }
+
     public function resolveForSubmission(string $id, string $evaluationType = 'RANKING_PROMOTION'): array
     {
         $period = $this->find($id);
@@ -132,6 +159,7 @@ class PersonnelEvaluationPeriodService
             if ($expectedVersion !== null && $expectedVersion !== (int) $row['version']) throw new RuntimeException('PERIOD_MODIFIED: This evaluation period was updated by another administrator.');
             if ($row['status'] !== $rule['from']) throw new RuntimeException('INVALID_STATUS_TRANSITION: The requested lifecycle transition is not allowed.');
             if ($action === 'open-submissions') $this->validateOperational($row, $id);
+            if ($action === 'open-submissions') $this->assertAchievementCoverage($row);
             if ($action === 'start-evaluation' && time() < strtotime($row['evaluation_start_at'])) throw new RuntimeException('EVALUATION_WINDOW_NOT_OPEN: Evaluation cannot start before its scheduled time.');
             if ($action === 'open-submissions' && time() > strtotime($row['submission_close_at'])) throw new RuntimeException('SUBMISSION_WINDOW_EXPIRED: An expired submission window cannot be opened.');
 
@@ -290,4 +318,11 @@ class PersonnelEvaluationPeriodService
     private function reserveRequest(string $actor, string $operation, string $key, string $hash, string $resource): void { $this->db->table('personnel_evaluation_idempotency')->insert(['id'=>$this->uuid(),'actor_profile_id'=>$actor,'operation'=>$operation,'idempotency_key'=>$key,'request_hash'=>$hash,'resource_id'=>$resource,'response_status'=>201,'created_at'=>date('Y-m-d H:i:s')]); }
     private function periodCode(array $data): string { return 'PEP-'.substr($data['evaluation_type'],0,4).'-'.str_replace('-','',$data['academic_year']).'-'.strtoupper(substr($data['semester'] ?: 'DR',0,2)).'-'.strtoupper(substr(bin2hex(random_bytes(3)),0,6)); }
     private function uuid(): string { $h=bin2hex(random_bytes(16)); return substr($h,0,8).'-'.substr($h,8,4).'-4'.substr($h,13,3).'-'.dechex((hexdec($h[16])&3)|8).substr($h,17,3).'-'.substr($h,20,12); }
+
+    /** A track may only accept portfolios once its ranking cycle defines which achievements belong to it. */
+    private function assertAchievementCoverage(array $period): void
+    {
+        if (! $this->db->fieldExists('coverage_start', 'ranking_cycles') || empty($period['ranking_cycle_id'])) return;
+        if ((new EvaluationValidityService($this->db))->coverageForPeriod($period) === null) throw new RuntimeException('ACHIEVEMENT_COVERAGE_REQUIRED: Set the ranking cycle\'s achievement coverage dates before opening submissions.');
+    }
 }

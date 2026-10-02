@@ -73,6 +73,7 @@ class RankingCycleService
         $groups = self::coverageGroups($input);
         $schedule = $this->schedule($input);
         $this->assertScheduleIsCurrent($schedule);
+        $coverage = $this->coverageInput($input, false);
         $criteria = $this->criteriaFor($groups);
         foreach ($groups as $group) $this->assertNoConflictingTrack($year, $group);
 
@@ -87,6 +88,7 @@ class RankingCycleService
                 'cycle_name' => self::generatedName($year, $groups),
                 'academic_year' => $year,
                 'created_by' => $actorId,
+            ] + ($coverage ?? []) + [
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -163,6 +165,23 @@ class RankingCycleService
             $this->db->transRollback();
             throw $error;
         }
+        return $this->find($id);
+    }
+
+    /**
+     * Sets the cycle's achievement coverage (which accomplishments belong to the cycle). Separate from the
+     * submission/evaluation schedule. Locked once any portfolio has been submitted, so submitted
+     * evaluations never change underneath reviewers.
+     */
+    public function updateCoverage(string $id, array $input, string $actorId): array
+    {
+        $cycle = $this->find($id);
+        if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
+        if ($cycle['is_read_only']) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed and archived cycles are read-only.');
+        if (! $cycle['coverage_editable']) throw new RuntimeException('COVERAGE_LOCKED: Achievement coverage cannot change after portfolios have been submitted for this cycle.');
+        $coverage = $this->coverageInput($input, true);
+        $this->db->table('ranking_cycles')->where('id', $id)->update($coverage + ['updated_by' => $actorId, 'updated_at' => date('Y-m-d H:i:s')]);
+        $this->audit($actorId, 'ranking_cycle_coverage_updated', $id, ['previous' => ['coverage_start' => $cycle['coverage_start'] ?? null, 'coverage_end' => $cycle['coverage_end'] ?? null], 'coverage' => $coverage]);
         return $this->find($id);
     }
 
@@ -252,6 +271,8 @@ class RankingCycleService
             'allowed_actions' => self::allowedActions($lifecycle['key'], count($tracks)),
             'tracks' => $tracks,
             'track_count' => count($tracks),
+            'achievement_coverage' => ($cycle['coverage_start'] ?? null) && ($cycle['coverage_end'] ?? null) ? ['start' => $cycle['coverage_start'], 'end' => $cycle['coverage_end']] : null,
+            'coverage_editable' => ! $readOnly && ! $this->hasSubmissions($tracks),
             // Compatibility fields consumed by earlier callers.
             'display_status' => $lifecycle['key'],
             'display_status_label' => $lifecycle['label'],
@@ -402,6 +423,28 @@ class RankingCycleService
         if ($schedule['evaluation_start_at'] < $schedule['submission_close_at']) throw new InvalidArgumentException('SCHEDULE_OVERLAP: The evaluation period must start after the submission period ends.');
         if ($schedule['evaluation_start_at'] >= $schedule['evaluation_end_at']) throw new InvalidArgumentException('INVALID_EVALUATION_PERIOD: The evaluation period must end after it starts.');
         return $schedule;
+    }
+
+    /** Achievement coverage dates: both or neither on create, both required on update; start <= end. */
+    private function coverageInput(array $input, bool $required): ?array
+    {
+        $start = trim((string) ($input['coverage_start'] ?? ''));
+        $end = trim((string) ($input['coverage_end'] ?? ''));
+        if ($start === '' && $end === '' && ! $required) return null;
+        if ($start === '' || $end === '') throw new InvalidArgumentException('INCOMPLETE_COVERAGE: Enter both the achievement coverage start and end dates.');
+        foreach ([$start, $end] as $date) {
+            $parts = explode('-', $date);
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || ! checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0])) throw new InvalidArgumentException('INVALID_COVERAGE_DATE: Enter valid achievement coverage dates.');
+        }
+        if ($start > $end) throw new InvalidArgumentException('INVALID_COVERAGE_PERIOD: The achievement coverage must end on or after its start.');
+        return ['coverage_start' => $start, 'coverage_end' => $end];
+    }
+
+    private function hasSubmissions(array $tracks): bool
+    {
+        $ids = array_values(array_filter(array_column($tracks, 'id')));
+        if ($ids === [] || ! $this->db->tableExists('personnel_evaluations')) return false;
+        return $this->db->table('personnel_evaluations')->whereIn('evaluation_period_id', $ids)->countAllResults() > 0;
     }
 
     /** A new schedule whose submission window has already ended could never be opened. */

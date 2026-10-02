@@ -535,6 +535,20 @@ class PersonnelPortfolioSubmissionController extends Controller
             ]], 422);
         }
 
+        // Ranking-cycle eligibility gate: only records valid for this cycle are copied into the snapshot.
+        // Excluded records stay in the permanent portfolio untouched.
+        $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partition($accomplishments, $period);
+        if ($cycleValidity['eligible'] === []) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
+                    'message' => 'None of your accomplishments are valid for this ranking cycle\'s achievement coverage. Your records remain in your portfolio.',
+                    'excluded_items' => $cycleValidity['excluded'],
+                ],
+            ], 422);
+        }
+        $accomplishments = $cycleValidity['eligible'];
+
         $now = date('Y-m-d H:i:s');
         $rootId = $this->genUuid();
         $evaluationId = $this->genUuid();
@@ -681,6 +695,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'scoring_payload'     => json_encode([
                         'scope_level'      => $acc['scope_level'] ?? 'Local',
                         'occurrence_date'  => $acc['occurrence_date'] ?? null,
+                        'cycle_validity'   => $cycleValidity['decisions'][(string) $acc['id']] ?? null,
                         'organizer'        => $acc['organizer_or_publisher'] ?? null,
                         'category_code'    => $acc['category_code'] ?? null,
                         'category_area'    => $acc['category_area'] ?? $categoryArea,
@@ -785,6 +800,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'academic_year'      => $academicYear,
                 'evaluation_cycle_id'=> $evaluationCycleId,
                 'total_items'        => count($accomplishments),
+                'cycle_validity'     => ['coverage' => $cycleValidity['coverage'], 'copied' => count($accomplishments), 'excluded' => $cycleValidity['excluded']],
             ],
         ]);
     }
@@ -947,6 +963,20 @@ class PersonnelPortfolioSubmissionController extends Controller
         $resolvedCycleId = $existingRoot['evaluation_cycle_id'] ?? $latestSubmission['evaluation_cycle_id'] ?? $academicYear;
         $resolvedPeriodId = $existingRoot['evaluation_period_id'] ?? $latestSubmission['evaluation_period_id'] ?? null;
         $periodSnapshot = $resolvedPeriodId ? $db->table('personnel_evaluation_periods')->where('id', $resolvedPeriodId)->get()->getRowArray() : null;
+        // Ranking-cycle eligibility gate: only records valid for this cycle are copied into the snapshot.
+        // Excluded records stay in the permanent portfolio untouched.
+        $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partition($accomplishments, $periodSnapshot);
+        if ($cycleValidity['eligible'] === []) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
+                    'message' => 'None of your accomplishments are valid for this ranking cycle\'s achievement coverage. Your records remain in your portfolio.',
+                    'excluded_items' => $cycleValidity['excluded'],
+                ],
+            ], 422);
+        }
+        $accomplishments = $cycleValidity['eligible'];
+
         $rootId = $existingRoot['id'] ?? $latestSubmission['evaluation_root_id'] ?? null;
         try {
             $reviewer = (new ReviewerResolverService())->resolve($personnelProfileId, $periodSnapshot);
@@ -1067,6 +1097,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'scoring_payload'     => json_encode([
                         'scope_level'      => $acc['scope_level'] ?? 'Local',
                         'occurrence_date'  => $acc['occurrence_date'] ?? null,
+                        'cycle_validity'   => $cycleValidity['decisions'][(string) $acc['id']] ?? null,
                         'organizer'        => $acc['organizer_or_publisher'] ?? null,
                         'category_code'    => $acc['category_code'] ?? null,
                         'category_area'    => $acc['category_area'] ?? $categoryArea,
@@ -1170,6 +1201,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'evaluation_cycle_id' => $resolvedCycleId,
                 'evaluation_period_id'=> $resolvedPeriodId,
                 'total_items'         => count($accomplishments),
+                'cycle_validity'      => ['coverage' => $cycleValidity['coverage'], 'copied' => count($accomplishments), 'excluded' => $cycleValidity['excluded']],
             ],
         ]);
     }

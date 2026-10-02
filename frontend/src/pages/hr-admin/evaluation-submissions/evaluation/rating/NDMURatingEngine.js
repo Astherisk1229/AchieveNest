@@ -130,8 +130,11 @@ export function calculateCriterionScore(criterionCode, scoringMode, payload = {}
     case 'C.1.1':
     case 'C.1.2':
     case 'C.1.3':
-    case 'C.1.4':
       return Math.min(20, Math.max(0, parseFloat(payload.manualPoints || payload.points || 0)))
+
+    // Rendered Service in School Activities is worth 10 in the official scale.
+    case 'C.1.4':
+      return Math.min(10, Math.max(0, parseFloat(payload.manualPoints || payload.points || 0)))
 
     case 'C.2':
     case 'C.2.1':

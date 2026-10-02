@@ -136,6 +136,7 @@ describe('NDMURatingEngine V2 (Rating Sheet for Ranking Alignment)', () => {
     it('C.1: Subcriteria capped at 20 each', () => {
       expect(calculateCriterionScore('C.1.1', SCORING_MODES.MANUAL_BOUNDED, { manualPoints: 18 })).toBe(18)
       expect(calculateCriterionScore('C.1.1', SCORING_MODES.MANUAL_BOUNDED, { manualPoints: 25 })).toBe(20) // capped at 20
+      expect(calculateCriterionScore('C.1.4', SCORING_MODES.MANUAL_BOUNDED, { manualPoints: 15 })).toBe(10) // rendered school service is 10
     })
 
     it('C.2: Subcriteria maxima (C.2.1 max 25, C.2.2 max 25, C.2.3 max 5)', () => {

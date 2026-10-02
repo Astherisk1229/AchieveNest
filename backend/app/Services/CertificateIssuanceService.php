@@ -64,7 +64,7 @@ final class CertificateIssuanceService
             }
 
             $ready=$this->readiness->evaluate($eligibility,$template,$data,$signatoryResolution['signatories'],false);
-            $ready['blocking_reasons']=array_values(array_unique([...$ready['blocking_reasons'],...$signatoryResolution['reason_codes']]));
+            $ready['blocking_reasons']=array_values(array_unique([...$ready['blocking_reasons'],...$signatoryResolution['reason_codes'],...(new EventSourceRecordBridgeService($this->db))->certificateAttendanceReasons($source)]));
             if($ready['blocking_reasons']!==[]) $ready['status']=$eligibility['eligibility_status']==='ELIGIBLE'?'ELIGIBLE_NOT_ISSUABLE':'NOT_ELIGIBLE';
             if($ready['status']!=='ISSUABLE'){
                 $response=['status'=>'BLOCKED','code'=>'READINESS_CHANGED','issued'=>false,'readiness'=>$ready];

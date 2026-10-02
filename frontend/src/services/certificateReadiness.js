@@ -10,6 +10,7 @@ export const CERTIFICATE_PURPOSE_LABELS = {
 export const CERTIFICATE_BLOCKING_REASON_MESSAGES = {
   SOURCE_RECORD_NOT_FOUND: 'The source record could not be found.',
   SOURCE_RECORD_NOT_VERIFIED: 'The source record has not been verified.',
+  ATTENDANCE_NOT_VERIFIED: 'The student has no recorded attendance in a closed attendance session for this event.',
   PURPOSE_INCOMPATIBLE: 'This record does not qualify for the requested certificate purpose.',
   STRUCTURED_STATE_INCOMPATIBLE: 'The verified record does not contain the required certificate-eligible state.',
   REQUIRED_SEMANTIC_DATA_MISSING: 'Required verified achievement information is incomplete.',

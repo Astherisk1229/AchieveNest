@@ -73,6 +73,18 @@ final class EventSourceRecordBridgeService
         }, $rows);
     }
 
+    /**
+     * ST-3: a certificate for an event-based record needs the student's attendance in a closed
+     * attendance session of that event. Records not created from an event are not affected.
+     */
+    public function certificateAttendanceReasons(array $source): array
+    {
+        $meta = json_decode((string)($source['structured_metadata'] ?? '{}'), true) ?: [];
+        $eventId = trim((string)($meta['origin_event_id'] ?? ''));
+        if ($eventId === '') return [];
+        return $this->hasCanonicalAttendanceEvidence($eventId, (string)($source['student_profile_id'] ?? '')) ? [] : ['ATTENDANCE_NOT_VERIFIED'];
+    }
+
     public function hasCanonicalAttendanceEvidence(string $eventId, string $studentProfileId): bool
     {
         if (!$this->db->tableExists('attendance_records') || !$this->db->tableExists('attendance_sessions')) {

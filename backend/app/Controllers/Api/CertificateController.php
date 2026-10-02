@@ -181,7 +181,7 @@ final class CertificateController extends Controller
         $current=$eligibility['eligible_purpose']&&$db->tableExists('certificate_issuances')?$db->table('certificate_issuances')->where(['student_id'=>$source['student_profile_id'],'source_record_id'=>$source['id'],'certificate_purpose'=>$eligibility['eligible_purpose'],'status'=>'ISSUED'])->get()->getRowArray():null;
         $resolved=$template?(new CertificateSignatoryResolverService())->resolve($db,$template,(array)($payload['signatories']??[])):['signatories'=>[],'reason_codes'=>[]];
         $readiness=(new CertificateIssuanceReadinessService())->evaluate($eligibility,$template,$data,$resolved['signatories'],(bool)$current);
-        $readiness['blocking_reasons']=array_values(array_unique([...$readiness['blocking_reasons'],...$resolved['reason_codes']]));
+        $readiness['blocking_reasons']=array_values(array_unique([...$readiness['blocking_reasons'],...$resolved['reason_codes'],...(new \App\Services\EventSourceRecordBridgeService($db))->certificateAttendanceReasons($source)]));
         if($readiness['blocking_reasons']!==[]&&$eligibility['eligibility_status']==='ELIGIBLE')$readiness['status']='ELIGIBLE_NOT_ISSUABLE';
         if($current)$readiness['existing_certificate']=['id'=>$current['id'],'certificate_number'=>$current['certificate_number'],'public_verification_id'=>$current['public_verification_id'],'verification_url'=>'/verify/certificate/'.$current['public_verification_id'],'issued_at'=>$current['issued_at'],'status'=>$current['status']];
         return ['readiness'=>$readiness];

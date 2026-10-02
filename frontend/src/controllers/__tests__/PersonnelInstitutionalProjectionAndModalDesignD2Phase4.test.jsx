@@ -16,10 +16,12 @@ import { facultyRankCatalogService } from '../../services/facultyRankCatalogServ
 import { partTimeFacultyTitleService } from '../../services/partTimeFacultyTitleService'
 import OnboardPersonnelModal from '../../pages/hr-admin/personnel-directory/OnboardPersonnelModal'
 import EditMasterDataModal from '../../pages/hr-admin/personnel-directory/EditMasterDataModal'
+import { clearRequestCache } from '../../utils/requestCache'
 
 describe('Personnel Evaluation Track — Plan D2 — Phase D2-4: Institutional Assignment Projection & Modal Design Enhancement Test Suite', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    clearRequestCache()
     personnelRankRecommendationService.resetSequence()
   })
 

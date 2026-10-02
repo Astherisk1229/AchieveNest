@@ -35,8 +35,8 @@ describe('Faculty document-first accomplishment workflow', () => {
     expect(modal).toContain('item.area === effectiveAreaCode')
     expect(modal).toContain('Area {effectiveAreaCode} · {effectiveAreaName}')
     expect(modal).not.toContain('Select area')
-    expect(editPage).toContain('areaCode={editingAccomplishment?.category_area?.replace')
-    expect(editPage).toContain('|| activeArea}')
+    expect(editPage).toContain("const submissionAreaCode = editingAccomplishment?.category_area?.replace('area', '') || activeArea")
+    expect(editPage).toContain('areaCode={submissionAreaCode}')
   })
 
   it('shows persisted evidence inline and keeps faculty-facing extraction language friendly', () => {

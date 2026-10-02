@@ -17,6 +17,7 @@ const VALIDATION_AWARDS = {
   SPORTS_AWARD_FEMALE: { maximum: 55, required: 44, types: ['PRESENCE', 'ADDITIVE', 'MATRIX', 'HUMAN_ONLY'] },
   ATHLETE_OF_THE_YEAR_MALE: { maximum: 55, required: 44, types: ['PRESENCE', 'ADDITIVE', 'MATRIX', 'HUMAN_ONLY'] }
 }
+const describeLive = process.env.ACHIEVENEST_RUN_LIVE_E2E === '1' ? describe : describe.skip
 
 function demoPassword() {
   if (process.env.ACHIEVENEST_DEMO_PASSWORD?.trim()) return process.env.ACHIEVENEST_DEMO_PASSWORD.trim()
@@ -30,7 +31,7 @@ function allCriteria(payload) {
   return payload.criteria.flatMap((criterion) => [criterion, ...(criterion.components || [])])
 }
 
-describe('Phase 3C-A live authenticated criteria integration', { timeout: 30000 }, () => {
+describeLive('Phase 3C-A live authenticated criteria integration', { timeout: 30000 }, () => {
   let token
   const payloads = new Map()
 

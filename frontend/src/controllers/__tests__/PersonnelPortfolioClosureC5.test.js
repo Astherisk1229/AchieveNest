@@ -29,7 +29,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
           category: 'A.1 Degree/s',
           claimed_points: 30.0,
           proof_file_name: 'phd_diploma.pdf',
-          evidence_id: 'EV-001'
+          evidence_id: 'EV-001',
+          primary_evidence: { id: 'EV-001', original_filename: 'phd_diploma.pdf', mime_type: 'application/pdf', status: 'active' }
         }
       ],
       area_b_items: [
@@ -39,7 +40,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
           category: 'B.1 Research Publication',
           claimed_points: 15.0,
           proof_file_name: 'scopus_paper.pdf',
-          evidence_id: 'EV-002'
+          evidence_id: 'EV-002',
+          primary_evidence: { id: 'EV-002', original_filename: 'scopus_paper.pdf', mime_type: 'application/pdf', status: 'active' }
         }
       ],
       area_c_items: [],
@@ -65,7 +67,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
       vi.spyOn(personnelPortfolioService, 'submitPortfolio').mockResolvedValue(mockSubmitResponse)
 
       const result = await PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, {
-        academicYear: '2025-2026',
+        evaluationPeriodId: 'PERIOD-2025-2026',
         tenureYears: 6
       })
 
@@ -94,7 +96,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
       const workingPortfolio = createWorkingPortfolio()
       await expect(
         PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, {
-          academicYear: '2025-2026',
+          evaluationPeriodId: 'PERIOD-2025-2026',
           tenureYears: 6
         })
       ).rejects.toThrow(/An active evaluation submission is already in progress/)
@@ -116,7 +118,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
 
       const workingPortfolio = createWorkingPortfolio()
       await expect(
-        PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio)
+        PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })
       ).rejects.toThrow(/already exists in returned_for_revision status/)
     })
 
@@ -136,7 +138,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
 
       const workingPortfolio = createWorkingPortfolio()
       await expect(
-        PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio)
+        PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })
       ).rejects.toThrow(/Evaluation for academic year is already completed/)
     })
   })
@@ -281,7 +283,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C5 Validation, Deletio
       vi.spyOn(personnelPortfolioService, 'submitPortfolio').mockResolvedValue(mockSubmitResponse)
 
       const result = await PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, {
-        academicYear: '2025-2026',
+        evaluationPeriodId: 'PERIOD-2025-2026',
         tenureYears: 6
       })
 

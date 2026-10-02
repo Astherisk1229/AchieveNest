@@ -8,7 +8,7 @@ describe('HR Dashboard operational home contract', () => {
   const backend = fs.readFileSync(path.resolve(__dirname, '../../../../../backend/app/Controllers/Api/HRPersonnelController.php'), 'utf8')
 
   it('contains only the approved operational dashboard sections', () => {
-    expect(dashboard).toContain('Evaluation Cycle')
+    expect(dashboard).toContain('Ranking Cycle')
     expect(dashboard).toContain('Needs Attention')
     expect(dashboard).toContain('At a Glance')
     expect(dashboard).toContain('Recent Activity')
@@ -24,7 +24,7 @@ describe('HR Dashboard operational home contract', () => {
   })
 
   it('uses confirmed dedicated module routes', () => {
-    for (const route of ['/hr/evaluation-submissions', '/hr/organizational-structure', '/hr/personnel-directory', '/hr/audit-trail', '/hr/personnel-evaluation-setup']) {
+    for (const route of ['/hr/ranking-cycles', '/hr/organizational-structure', '/hr/personnel-directory', '/hr/password-resets', '/hr/audit-trail']) {
       expect(dashboard).toContain(route)
     }
   })

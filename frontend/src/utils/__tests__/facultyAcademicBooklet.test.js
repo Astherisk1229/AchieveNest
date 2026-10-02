@@ -18,7 +18,7 @@ describe('Faculty Academic booklet integrity', () => {
 
   it('renders a genuinely empty source and rejects non-teaching format reuse', () => {
     expect(normalizeFacultyBookletItems({})).toEqual([])
-    expect(isFacultyAcademicFormat({ personnel_classification: 'faculty_academic' })).toBe(true)
+    expect(isFacultyAcademicFormat({ personnel_group: 'faculty' })).toBe(true)
     expect(isFacultyAcademicFormat({ personnel_group: 'non_teaching_faculty' })).toBe(false)
   })
 

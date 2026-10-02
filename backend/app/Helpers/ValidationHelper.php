@@ -78,7 +78,7 @@ class ValidationHelper
             return null;
         }
         $clean = trim($id);
-        return $clean !== '' && strlen($clean) <= $maximum ? $clean : null;
+        return preg_match('/^[0-9]{1,' . $maximum . '}$/D', $clean) === 1 ? $clean : null;
     }
 
     public static function validateStudentYearLevel(mixed $value, ?array $allowedYearLevels = null): bool

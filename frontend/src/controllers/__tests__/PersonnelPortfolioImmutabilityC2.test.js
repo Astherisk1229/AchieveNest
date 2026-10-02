@@ -29,7 +29,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C2 Immutability & Read
           category: 'A.1 Degree/s',
           claimed_points: 30.0,
           proof_file_name: 'phd_diploma.pdf',
-          evidence_id: 'EV-001'
+          evidence_id: 'EV-001',
+          primary_evidence: { id: 'EV-001', original_filename: 'phd_diploma.pdf', mime_type: 'application/pdf', status: 'active' }
         }
       ],
       area_b_items: [
@@ -39,7 +40,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C2 Immutability & Read
           category: 'B.1 Research Publication',
           claimed_points: 15.0,
           proof_file_name: 'scopus_paper.pdf',
-          evidence_id: 'EV-002'
+          evidence_id: 'EV-002',
+          primary_evidence: { id: 'EV-002', original_filename: 'scopus_paper.pdf', mime_type: 'application/pdf', status: 'active' }
         }
       ],
       area_c_items: [
@@ -49,7 +51,8 @@ describe('Personnel Evaluation Track — Plan C — Phase C2 Immutability & Read
           category: 'C.1 Institutional Service',
           claimed_points: 10.0,
           proof_file_name: 'appointment_letter.pdf',
-          evidence_id: 'EV-003'
+          evidence_id: 'EV-003',
+          primary_evidence: { id: 'EV-003', original_filename: 'appointment_letter.pdf', mime_type: 'application/pdf', status: 'active' }
         }
       ],
       ...overrides
@@ -148,7 +151,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C2 Immutability & Read
         message: 'An active evaluation submission is already in progress for academic year 2025-2026.'
       })
 
-      await expect(PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio)).rejects.toThrow(
+      await expect(PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })).rejects.toThrow(
         /An active evaluation submission is already in progress/
       )
     })
@@ -300,7 +303,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C2 Immutability & Read
 
       vi.spyOn(personnelPortfolioService, 'submitPortfolio').mockResolvedValue(mockBackendResponse)
 
-      const res = await PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio)
+      const res = await PersonnelPortfolioController.submitPortfolioAsync(workingPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })
       expect(res.status).toBe('submitted')
       expect(mockBackendResponse.data.items[0].awarded_points).toBe(0.00)
       expect(mockBackendResponse.data.items[0].rating_status).toBe('unrated')

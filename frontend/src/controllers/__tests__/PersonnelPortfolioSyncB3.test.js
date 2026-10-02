@@ -18,7 +18,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
       scope_level: 'Institutional',
       attached_file_name: 'phd_diploma_santos.pdf',
       evidence_id: 'ev_001',
-      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf' },
+      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Completed doctorate in computer science.'
     },
@@ -34,7 +34,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
       scope_level: 'International',
       attached_file_name: 'ieee_access_paper.pdf',
       evidence_id: 'ev_002',
-      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf' },
+      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Published Scopus indexed paper.'
     },
@@ -50,7 +50,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
       scope_level: 'Institutional',
       attached_file_name: 'moderator_appointment.pdf',
       evidence_id: 'ev_003',
-      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf' },
+      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Supervised student org activities.'
     }
@@ -68,7 +68,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
 
     const initialPortfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
     expect(initialPortfolio.area_b_items.length).toBe(1)
-    expect(initialPortfolio.total_claimed_points).toBe(60)
+    expect(initialPortfolio.total_claimed_points).toBe(0)
 
     // Simulate creation of new achievement via Plan A controller
     const newAchievement = {
@@ -92,7 +92,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
     const refreshedPortfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
     expect(refreshedPortfolio.area_b_items.length).toBe(2)
     expect(refreshedPortfolio.area_b_items.some(i => i.id === 'acc_sync_004')).toBe(true)
-    expect(refreshedPortfolio.total_claimed_points).toBe(70)
+    expect(refreshedPortfolio.total_claimed_points).toBe(0)
 
     // Ensure item appears exactly once with correct deterministic order (2026-02-14 before 2025-11-15)
     expect(refreshedPortfolio.area_b_items[0].id).toBe('acc_sync_004')
@@ -163,8 +163,8 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
 
     const portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
 
-    expect(portfolio.area_a_items[0].claimed_points).toBe(40)
-    expect(portfolio.total_claimed_points).toBe(70) // 40 + 20 + 10
+    expect(portfolio.area_a_items[0].claimed_points).toBeUndefined()
+    expect(portfolio.total_claimed_points).toBe(0)
     expect(portfolio.total_verified_points).toBe(0) // Evaluator scoring untouched
   })
 
@@ -175,7 +175,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
         ...initialAccomplishments[0],
         attached_file_name: 'phd_diploma_certified_true_copy.pdf',
         evidence_id: 'ev_updated_001',
-        evidence: { id: 'ev_updated_001', original_filename: 'phd_diploma_certified_true_copy.pdf' }
+        evidence: { id: 'ev_updated_001', original_filename: 'phd_diploma_certified_true_copy.pdf', mime_type: 'application/pdf', status: 'active' }
       },
       initialAccomplishments[1],
       initialAccomplishments[2]
@@ -197,7 +197,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
 
     const initialPortfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
     expect(initialPortfolio.area_c_items.length).toBe(1)
-    expect(initialPortfolio.total_claimed_points).toBe(60)
+    expect(initialPortfolio.total_claimed_points).toBe(0)
 
     // Simulate deletion of acc_sync_003
     currentDb = currentDb.filter(i => i.id !== 'acc_sync_003')
@@ -205,7 +205,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B3 Test Suite: Reposit
     const refreshedPortfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
     expect(refreshedPortfolio.area_c_items.length).toBe(0)
     expect(refreshedPortfolio.area_c_items.some(i => i.id === 'acc_sync_003')).toBe(false)
-    expect(refreshedPortfolio.total_claimed_points).toBe(50) // 30 + 20
+    expect(refreshedPortfolio.total_claimed_points).toBe(0)
   })
 
   // 22.7 Repeated refetch

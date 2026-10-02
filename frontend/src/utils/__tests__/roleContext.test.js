@@ -177,7 +177,7 @@ describe('roleContext utility & navigation registry', () => {
       }
       const nav = getAuthorizedNavigationForSession(personnelSession)
       const labels = nav.map(n => n.label)
-      expect(labels).toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Account'])
+      expect(labels).toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Rank & Placement', 'Account'])
       expect(labels).not.toContain('Verification Workspace')
       expect(labels).not.toContain('HR Dashboard')
     })

@@ -18,10 +18,12 @@ import {
 import apiClient from '../../services/apiClient.js';
 import hrAdminService from '../../services/hrAdminService.js';
 import provisioningService from '../../services/provisioningService.js';
+import { clearRequestCache } from '../../utils/requestCache.js';
 
 describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative Master-Data Dropdowns Test Suite', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    clearRequestCache();
     localStorage.clear();
   });
 

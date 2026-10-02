@@ -19,10 +19,10 @@ import { EVALUATION_SCALE_CODES, EVALUATION_RULE_VERSION } from './evaluationIns
 import PersonnelReviewerRoutingRegistry, {
   REVIEWER_ROLES
 } from './PersonnelReviewerRoutingRegistry.js'
-import PersonnelEvaluationResultService, {
+import {
   RESULT_VOCABULARY,
   RESULT_STATUSES
-} from './PersonnelEvaluationResultService.js'
+} from './PersonnelEvaluationResultPersistenceService.js'
 
 export const JUDGMENT_MAX_POINTS = Object.freeze({
   [EVALUATION_SCALE_CODES.ADMINISTRATORS]: {

@@ -14,7 +14,7 @@ const row = read('frontend/src/pages/hr-admin/evaluation-submissions/queue/Portf
 
 describe('evaluation authority routing and HR finalization', () => {
   it('assigns all new and versioned resubmissions through the central resolver and selected track', () => {
-    expect((submission.match(/ReviewerResolverService\(\)\)->resolve\(\$personnelProfileId, \$period\)/g) || []).length).toBe(2)
+    expect((submission.match(/ReviewerResolverService\(\)\)->resolve\(\$personnelProfileId, \$period(?:Snapshot)?\)/g) || []).length).toBe(2)
     expect(submission).toContain("'originating_evaluator_profile_id' => $reviewer['evaluator_profile_id']")
     expect(submission).toContain("'returned_for_revision', 'submitted'")
   })

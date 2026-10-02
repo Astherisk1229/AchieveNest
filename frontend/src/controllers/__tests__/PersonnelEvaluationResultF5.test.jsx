@@ -12,7 +12,7 @@ import evaluationInstrumentRegistry, {
   EVALUATION_RULE_VERSION
 } from '../../services/evaluationInstrumentRegistry.js'
 
-describe('Personnel Evaluation Track — Plan F — Phase F5: Result Determination, Integration & Closure Suite', () => {
+describe.skip('LEGACY: client-side Plan F result determination (superseded by the backend result API)', () => {
 
   // =========================================================================
   // 1. Scale Assignment & Personnel Classification Baseline (F1 Reconciliation)
@@ -407,5 +407,16 @@ describe('Personnel Evaluation Track — Plan F — Phase F5: Result Determinati
       expect(result.reviewer_route).toBeUndefined()
       expect(result.rank_progression_result).toBeUndefined()
     })
+  })
+})
+
+describe('Personnel Evaluation Result — server-authoritative boundary', () => {
+  it('builds the backend print endpoint', () => {
+    expect(PersonnelEvaluationResultService.printableUrl('eval-101')).toBe('/api/v1/personnel/evaluations/eval-101/result/print')
+  })
+
+  it('does not expose retired browser-side result calculation methods', () => {
+    expect(PersonnelEvaluationResultService.determineResult).toBeUndefined()
+    expect(PersonnelEvaluationResultService.canFinalizeResult).toBeUndefined()
   })
 })

@@ -7,6 +7,7 @@ use App\Models\AttendanceSessionModel;
 use App\Services\AttendanceService;
 use App\Services\AuthorizationService;
 use CodeIgniter\Test\CIUnitTestCase;
+use Config\Database;
 use RuntimeException;
 
 /**
@@ -178,7 +179,13 @@ final class AttendanceServiceTest extends CIUnitTestCase
                     }
                 };
 
-                parent::__construct(null, $authz, $sessionModel, $recordModel, $clock);
+                $testDb = Database::connect([
+                    'DBDriver' => 'SQLite3',
+                    'database' => ':memory:',
+                    'DBPrefix' => '',
+                ], false);
+
+                parent::__construct($testDb, $authz, $sessionModel, $recordModel, $clock);
             }
 
             protected function getAuthorizedEvent(string $eventId, array $actor): array

@@ -66,9 +66,8 @@ describe('PersonnelAchievementController — Phase A4 Structured Record Persiste
     expect(createdModel.title).toBe(newEntry.title)
     expect(createdModel.category).toBe(newEntry.category)
     expect(createdModel.evidence_id).toBe(mockEvidenceId)
-    expect(createdModel.claimed_points).toBe(40)
-    expect(createdModel.advisory_classification.criterion_code).toBe('A.1')
-    expect(createdModel.advisory_classification.is_advisory).toBe(true)
+    expect(createdModel.claimed_points).toBeUndefined()
+    expect(createdModel.advisory_classification).toBeUndefined()
     expect(createdModel.ocr_metadata.confidence_score).toBe(95)
   })
 
@@ -144,20 +143,20 @@ describe('PersonnelAchievementController — Phase A4 Structured Record Persiste
 
     expect(updateSpy).toHaveBeenCalledWith('acc_01', expect.objectContaining({
       title: 'Updated Regional Seminar Title',
-      claimed_points: 8,
       scope_level: 'National'
     }))
+    expect(updateSpy.mock.calls[0][1]).not.toHaveProperty('claimed_points')
 
     expect(updatedList).toHaveLength(1)
     expect(updatedList[0].title).toBe('Updated Regional Seminar Title')
-    expect(updatedList[0].claimed_points).toBe(8)
+    expect(updatedList[0].claimed_points).toBeUndefined()
     expect(updatedList[0].id).toBe('acc_01')
   })
 
   // =========================================================================
   // 18.6 & 18.8: Suggested vs Accepted Separation & No localStorage Dependency
   // =========================================================================
-  it('strictly preserves separation between claimed points and accepted points', async () => {
+  it('keeps all scoring fields out of the personnel-facing achievement model', async () => {
     const model = new AchievementModel({
       id: 'acc_test_pts',
       title: 'Workshop Attendance',
@@ -170,7 +169,7 @@ describe('PersonnelAchievementController — Phase A4 Structured Record Persiste
     })
 
     const json = model.toJSON()
-    expect(json.claimed_points).toBe(6)
+    expect(json.claimed_points).toBeUndefined()
     expect(json.accepted_points).toBeUndefined()
     expect(json.final_score).toBeUndefined()
     expect(json.evaluation_outcome).toBeUndefined()

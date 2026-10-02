@@ -30,6 +30,7 @@ function resolveDemoPassword() {
 }
 
 const DEMO_PASSWORD = resolveDemoPassword()
+const describeLive = process.env.ACHIEVENEST_RUN_LIVE_E2E === '1' ? describe : describe.skip
 
 const PERSONAS = [
   {
@@ -102,7 +103,7 @@ const PERSONAS = [
   },
 ]
 
-describe('Phase 16 — Live Backend E2E Integration Suite', { timeout: 30000 }, () => {
+describeLive('Phase 16 — Live Backend E2E Integration Suite', { timeout: 30000 }, () => {
   beforeAll(async () => {
     const healthRes = await fetch(`${BASE_URL}/health`)
     expect(healthRes.status).toBe(200)

@@ -81,7 +81,6 @@ class NotificationController extends Controller
                     'entity_type'          => $row['entity_type'] ?? $row['reference_type'] ?? null,
                     'reference_type'       => $row['reference_type'] ?? null,
                     'reference_id'         => $row['reference_id'] ?? null,
-                    'entity_id'            => $row['reference_id'] ?? null,
                     'academic_year'        => $row['academic_year'] ?? null,
                     'target_path'          => $row['route_path'] ?? $row['deep_link'] ?? null,
                     'is_read'              => ! empty($row['read_at']),

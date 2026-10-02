@@ -101,19 +101,19 @@ describe('Personnel Evaluation Track — Plan K — Phase K0: Final Acceptance M
     })
 
     it('8. Faculty + Academic routes to Dean', () => {
-      const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'FACULTY_ACADEMIC')
+      const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'FACULTY')
       expect(rule).toBeDefined()
       expect(rule.reviewer_role).toBe(REVIEWER_ROLES.DEAN)
     })
 
     it('9. NTF + Academic routes to HR in CHU-01 Phase 2', () => {
-      const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'NON_TEACHING_FACULTY_ACADEMIC')
+      const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'NON_TEACHING_FACULTY')
       expect(rule).toBeDefined()
       expect(rule.reviewer_role).toBe(REVIEWER_ROLES.HR)
     })
 
     it('10. NTF + Non-Academic routes to HR', () => {
-      const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'NON_TEACHING_FACULTY_NON_ACADEMIC')
+      const rule = CANONICAL_ROUTING_TABLE.find(r => r.context_key === 'NON_TEACHING_FACULTY')
       expect(rule).toBeDefined()
       expect(rule.reviewer_role).toBe(REVIEWER_ROLES.HR)
     })

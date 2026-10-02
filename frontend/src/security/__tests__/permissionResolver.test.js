@@ -92,7 +92,7 @@ describe('permissionResolver', () => {
       expect(labels).not.toContain('Edit Portfolio')
     })
 
-    it('returns strictly 4 Personnel items for personnel context', () => {
+    it('returns strictly 5 Personnel items for personnel context', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
@@ -102,7 +102,7 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Account'])
+      expect(labels).toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Rank & Placement', 'Account'])
       expect(labels).not.toContain('Verification Workspace')
       expect(labels).not.toContain('Events & Activities')
       expect(labels).not.toContain('Personnel Directory')

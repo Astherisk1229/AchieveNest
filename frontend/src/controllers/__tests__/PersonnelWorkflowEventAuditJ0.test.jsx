@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import PersonnelEvaluatorWorkspaceService, { JUDGMENT_STATUSES, EVIDENCE_STATUSES } from '../../services/PersonnelEvaluatorWorkspaceService.js';
 import { DECISION_VOCABULARY } from '../../services/PersonnelPromotionDecisionService.js';
-import { RESULT_VOCABULARY } from '../../services/PersonnelEvaluationResultService.js';
+import { RESULT_VOCABULARY } from '../../services/PersonnelEvaluationResultPersistenceService.js';
 import { EVALUATION_SCALE_CODES } from '../../services/evaluationInstrumentRegistry.js';
 
 describe('Phase J0: Personnel Evaluation Workflow Event & Status Audit', () => {

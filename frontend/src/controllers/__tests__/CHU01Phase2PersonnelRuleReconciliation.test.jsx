@@ -24,7 +24,7 @@ describe('CHU-01 Phase 2 — Personnel Rule Reconciliation Test Suite', () => {
   // Section 9: Authoritative Remediation Test Matrix T1 – T10
   // =========================================================================
   describe('Authoritative Remediation Matrix T1 – T10', () => {
-    it('T1: Faculty + Non-Academic + Permanent -> Valid classification, Route -> HR (CHU-01 Phase 2)', () => {
+    it('T1: Faculty + Non-Academic + Permanent -> Valid classification, Route -> Dean by personnel group', () => {
       // 1. Placement validation
       const placement = validatePersonnelPlacement({
         group: 'faculty',
@@ -43,16 +43,17 @@ describe('CHU-01 Phase 2 — Personnel Rule Reconciliation Test Suite', () => {
       // 3. Routing resolution
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'faculty',
-        organizational_side: 'non_academic'
+        organizational_side: 'non_academic',
+        college_id: 'COLLEGE-CBA'
       })
       expect(route.status).toBe('resolved')
-      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
-      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE)
-      expect(route.target_college_id).toBeNull()
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE)
+      expect(route.target_college_id).toBe('COLLEGE-CBA')
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
-    it('T2: Faculty + Non-Academic + Probationary -> Valid classification, Route -> HR (CHU-01 Phase 2)', () => {
+    it('T2: Faculty + Non-Academic + Probationary -> Valid classification, Route -> Dean by personnel group', () => {
       // 1. Placement validation
       const placement = validatePersonnelPlacement({
         group: 'faculty',
@@ -70,11 +71,13 @@ describe('CHU-01 Phase 2 — Personnel Rule Reconciliation Test Suite', () => {
       // 3. Routing resolution
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'faculty',
-        organizational_side: 'non_academic'
+        organizational_side: 'non_academic',
+        college_id: 'COLLEGE-CEAC'
       })
       expect(route.status).toBe('resolved')
-      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
-      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.UNIVERSITY_HR_SCOPE)
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE)
+      expect(route.target_college_id).toBe('COLLEGE-CEAC')
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
@@ -199,7 +202,7 @@ describe('CHU-01 Phase 2 — Personnel Rule Reconciliation Test Suite', () => {
       expect(route.reason_code).toBe(ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED)
     })
 
-    it('T8: Missing organizational side produces unresolved route without default to HR', () => {
+    it('T8: Missing organizational side does not alter the personnel-group reviewer route', () => {
       const placement = validatePersonnelPlacement({
         group: 'faculty',
         side: ''
@@ -209,11 +212,14 @@ describe('CHU-01 Phase 2 — Personnel Rule Reconciliation Test Suite', () => {
 
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({
         personnel_group: 'faculty',
-        organizational_side: ''
+        organizational_side: '',
+        college_id: 'COLLEGE-CEAC'
       })
-      expect(route.status).toBe('unresolved')
-      expect(route.authorized_reviewer_role).toBeNull()
-      expect(route.reason_code).toBe(ROUTING_REASON_CODES.REVIEWER_ROUTE_UNRESOLVED)
+      expect(route.status).toBe('resolved')
+      expect(route.authorized_reviewer_role).toBe(REVIEWER_ROLES.DEAN)
+      expect(route.scope_type).toBe(REVIEWER_SCOPE_TYPES.COLLEGE_ACADEMIC_SCOPE)
+      expect(route.target_college_id).toBe('COLLEGE-CEAC')
+      expect(route.reason_code).toBe(ROUTING_REASON_CODES.ROUTE_ASSIGNED)
     })
 
     it('T9: Unsupported personnel type produces validation error', () => {

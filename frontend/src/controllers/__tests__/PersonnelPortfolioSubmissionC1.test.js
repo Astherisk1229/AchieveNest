@@ -31,6 +31,12 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
           conferred_date: '2024-05-15',
           claimed_points: 30.0,
           proof_file_name: 'phd_diploma.pdf',
+          primary_evidence: {
+            id: 'DOC-001',
+            original_filename: 'phd_diploma.pdf',
+            mime_type: 'application/pdf',
+            status: 'active'
+          },
           proof_document: {
             id: 'DOC-001',
             file_name: 'phd_diploma.pdf',
@@ -47,6 +53,12 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
           conferred_date: '2024-11-20',
           claimed_points: 15.0,
           proof_file_name: 'ieee_paper.pdf',
+          primary_evidence: {
+            id: 'DOC-002',
+            original_filename: 'ieee_paper.pdf',
+            mime_type: 'application/pdf',
+            status: 'active'
+          },
           proof_document: {
             id: 'DOC-002',
             file_name: 'ieee_paper.pdf',
@@ -106,11 +118,11 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
 
       const submitSpy = vi.spyOn(personnelPortfolioService, 'submitPortfolio').mockResolvedValue(mockBackendResponse)
 
-      const result = await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)
+      const result = await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026', tenureYears: 4 })
 
       expect(submitSpy).toHaveBeenCalledTimes(1)
       expect(submitSpy).toHaveBeenCalledWith({
-        academic_year: '2025-2026',
+        evaluation_period_id: 'PERIOD-2025-2026',
         tenure_years: 4
       })
 
@@ -128,7 +140,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
         new Error('Personnel profile not found for authenticated user.')
       )
 
-      await expect(PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)).rejects.toThrow(
+      await expect(PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })).rejects.toThrow(
         /Personnel profile not found for authenticated user/
       )
     })
@@ -193,7 +205,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
 
       vi.spyOn(personnelPortfolioService, 'submitPortfolio').mockResolvedValue(mockResponse)
 
-      const result = await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)
+      const result = await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })
       expect(result.status).toBe('submitted')
       expect(mockResponse.data.items[0].awarded_points).toBe(0.0)
       expect(mockResponse.data.items[0].verification_status).toBe('pending')
@@ -222,7 +234,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
       }
 
       vi.spyOn(personnelPortfolioService, 'submitPortfolio').mockResolvedValue(mockResponse)
-      await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)
+      await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })
 
       expect(mockResponse.data.items[0].file_name).toBe('phd_diploma.pdf')
       expect(mockResponse.data.items[0].file_url).toContain('phd_diploma.pdf')
@@ -258,7 +270,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
         new Error('An active portfolio submission already exists for this academic cycle.')
       )
 
-      await expect(PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)).rejects.toThrow(
+      await expect(PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })).rejects.toThrow(
         /An active portfolio submission already exists for this academic cycle/
       )
     })
@@ -276,7 +288,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
         }
       })
 
-      const response = await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)
+      const response = await PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })
       expect(response.status).toBe('submitted')
       expect(response.submission_id).toBe('EVAL-2025-0001')
       expect(mockPortfolio.status).toBe('submitted')
@@ -292,7 +304,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
         new Error('Database transaction deadlock')
       )
 
-      await expect(PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio)).rejects.toThrow(
+      await expect(PersonnelPortfolioController.submitPortfolioAsync(mockPortfolio, { evaluationPeriodId: 'PERIOD-2025-2026' })).rejects.toThrow(
         /Database transaction deadlock/
       )
 

@@ -30,7 +30,8 @@ describe('ranking track lifecycle concurrency', () => {
 
   it('resolves zero or one current track for the caller classification', () => {
     expect(service).toContain("'personnel_group' => $personnelGroup")
-    expect(controller).toContain("=== 'non_academic' ? 'NON_TEACHING_FACULTY' : 'FACULTY'")
+    expect(controller).toContain("in_array($personnelGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)")
+    expect(controller).toContain('$personnelGroup')
     expect(service).toContain('return $rows[0] ?? null')
   })
 })

@@ -47,7 +47,7 @@ describe('Plan 08 Phase 4 — OSAD Student Form UX & Accessibility', () => {
 
   it('keeps Year Level blank until explicitly selected and controls suffix values', () => {
     expect(STUDENT_YEAR_LEVEL_SELECT_OPTIONS[0]).toEqual({ value: '', label: 'Select Year Level', disabled: true })
-    expect(STUDENT_SUFFIX_OPTIONS).toEqual(['', 'Jr.', 'Sr.', 'II', 'III', 'IV', 'V'])
+    expect(STUDENT_SUFFIX_OPTIONS).toEqual(['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'])
   })
 
   it('provides dynamic Academic Year values with 2025 lower bound', () => {

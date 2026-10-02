@@ -5,10 +5,7 @@ import PersonnelReviewerRoutingRegistry, {
   ROUTING_REASON_CODES
 } from '../../services/PersonnelReviewerRoutingRegistry.js'
 import PersonnelEvaluationScoringEngine from '../../services/PersonnelEvaluationScoringEngine.js'
-import PersonnelEvaluationResultService, {
-  RESULT_VOCABULARY,
-  RESULT_STATUSES
-} from '../../services/PersonnelEvaluationResultService.js'
+import PersonnelEvaluatorScoringService from '../../services/PersonnelEvaluatorScoringService.js'
 import { EVALUATION_SCALE_CODES, EVALUATION_RULE_VERSION } from '../../services/evaluationInstrumentRegistry.js'
 
 describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, Authority & Evaluation Workspace Audit Suite', () => {
@@ -255,18 +252,18 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
     })
 
     it('confirms Plan F Passed/Retained determination remains downstream of evaluator accepted points', () => {
-      const evaluationContext = {
-        scaleCode: EVALUATION_SCALE_CODES.ADMINISTRATORS,
-        itemsByArea: {
-          A: [{ accepted_points: 70.0 }],
-          B: [{ accepted_points: 30.0 }],
-          C: [{ accepted_points: 20.0 }]
+      const result = PersonnelEvaluatorScoringService.recalculateScoringState({
+        evaluationRecord: { evaluation_scale_code: EVALUATION_SCALE_CODES.ADMINISTRATORS },
+        snapshotData: {
+          items: [
+            { area: 'A', accepted_points: 70.0 },
+            { area: 'B', accepted_points: 30.0 },
+            { area: 'C', accepted_points: 20.0 }
+          ]
         }
-      }
-
-      const result = PersonnelEvaluationResultService.determineResult(evaluationContext)
-      expect(result.final_result).toBe(RESULT_VOCABULARY.PASSED)
-      expect(result.result_status).toBe(RESULT_STATUSES.FINALIZED)
+      })
+      expect(result.plan_f_final_result).toBe('Passed')
+      expect(result.plan_f_result_status).toBe('result_ready')
     })
   })
 })

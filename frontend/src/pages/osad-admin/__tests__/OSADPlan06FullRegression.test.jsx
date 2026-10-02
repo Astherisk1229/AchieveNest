@@ -84,7 +84,8 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
     expect(academicItem.tab).toBe('academic-structure')
 
     const candidateItem = nav.find(i => i.id === 'osad-award-candidate-review')
-    expect(candidateItem.tab).toBe('candidate-review')
+    expect(candidateItem.path).toBe('/osad/candidates')
+    expect(candidateItem.tab).toBeUndefined()
   })
 
   // Parent Test 3: No duplicate sidebar destinations

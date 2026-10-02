@@ -29,7 +29,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
       scope_level: 'Institutional',
       attached_file_name: 'phd_diploma_santos.pdf',
       evidence_id: 'ev_001',
-      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf' },
+      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Doctor of Philosophy in Computer Science'
     },
@@ -45,7 +45,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
       scope_level: 'International',
       attached_file_name: 'ieee_access_paper.pdf',
       evidence_id: 'ev_002',
-      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf' },
+      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Scopus indexed publication'
     },
@@ -61,7 +61,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
       scope_level: 'Institutional',
       attached_file_name: 'moderator_appointment.pdf',
       evidence_id: 'ev_003',
-      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf' },
+      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Faculty club adviser appointment'
     }
@@ -99,7 +99,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
     expect(portfolio.area_a_items.length).toBe(1)
     expect(portfolio.area_b_items.length).toBe(1)
     expect(portfolio.area_c_items.length).toBe(1)
-    expect(portfolio.total_claimed_points).toBe(60)
+    expect(portfolio.total_claimed_points).toBe(0)
     expect(portfolio.total_verified_points).toBe(0)
 
     // Step 2: Create new achievement via canonical Plan A controller
@@ -124,7 +124,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
     // Step 3: Portfolio synchronization reflection
     portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842', masterPersonnelProfile)
     expect(portfolio.area_b_items.length).toBe(2)
-    expect(portfolio.total_claimed_points).toBe(75) // 30 + (20+15) + 10
+    expect(portfolio.total_claimed_points).toBe(0)
 
     // Step 4: Edit achievement in place
     await personnelAccomplishmentService.updateAccomplishment('acc_b4_new', {
@@ -160,7 +160,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
     portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842', masterPersonnelProfile)
     expect(portfolio.area_a_items.length).toBe(1)
     expect(portfolio.area_a_items.some(i => i.id === 'acc_b4_new')).toBe(false)
-    expect(portfolio.total_claimed_points).toBe(60)
+    expect(portfolio.total_claimed_points).toBe(0)
   })
 
   // 2. Canonical Source-of-Truth & No Mock Fallbacks
@@ -191,7 +191,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
 
     const portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842', masterPersonnelProfile)
 
-    // Verify all reflected items have verified_points = 0 and is_proof_verified = false
+    // Verify personnel-facing items expose no score and cannot self-verify proof.
     const allItems = [
       ...portfolio.area_a_items,
       ...portfolio.area_b_items,
@@ -199,7 +199,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B4 End-to-End Validati
     ]
 
     for (const item of allItems) {
-      expect(item.verified_points).toBe(0)
+      expect(item.verified_points).toBeUndefined()
       expect(item.is_proof_verified).toBe(false)
       expect(item.advisory_status).toBe('Advisory Record')
     }

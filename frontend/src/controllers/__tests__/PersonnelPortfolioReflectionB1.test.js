@@ -17,7 +17,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B1 Test Suite', () => 
       scope_level: 'Institutional',
       attached_file_name: 'phd_diploma_santos.pdf',
       evidence_id: 'ev_001',
-      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf' },
+      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Completed doctorate in computer science.'
     },
@@ -33,7 +33,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B1 Test Suite', () => 
       scope_level: 'International',
       attached_file_name: 'ieee_access_paper.pdf',
       evidence_id: 'ev_002',
-      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf' },
+      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Published Scopus indexed paper.'
     },
@@ -49,7 +49,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B1 Test Suite', () => 
       scope_level: 'Institutional',
       attached_file_name: 'moderator_appointment.pdf',
       evidence_id: 'ev_003',
-      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf' },
+      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Supervised student org activities.'
     }
@@ -198,14 +198,14 @@ describe('Personnel Evaluation Track — Plan B — Phase B1 Test Suite', () => 
   })
 
   // 25.8 Advisory points
-  it('25.8 should treat claimed/suggested points strictly as advisory values and not self-verify scores', async () => {
+  it('25.8 should omit scoring values and never self-verify personnel records', async () => {
     vi.spyOn(personnelAccomplishmentService, 'fetchAccomplishments').mockResolvedValue(sampleAccomplishments)
 
     const portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
     const item = portfolio.area_a_items[0]
 
-    expect(item.claimed_points).toBe(30)
-    expect(item.verified_points).toBe(0) // Unverified in working personnel draft
+    expect(item.claimed_points).toBeUndefined()
+    expect(item.verified_points).toBeUndefined()
     expect(item.is_proof_verified).toBe(false) // Not self-verified
   })
 

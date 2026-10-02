@@ -11,6 +11,10 @@
     },
     "require": {
         "php": "^8.2",
+        "ext-gd": "*",
+        "ext-intl": "*",
+        "ext-mbstring": "*",
+        "ext-pgsql": "*",
         "codeigniter4/framework": "^4.7",
         "endroid/qr-code": "6.0",
         "firebase/php-jwt": "7.0",

@@ -30,6 +30,7 @@ class Database extends Config
         'username'     => 'achievenest_app',
         'password'     => '',
         'database'     => 'achievenest_local',
+        'schema'       => 'public',
         'DBDriver'     => 'MySQLi',
         'DBPrefix'     => '',
         'pConnect'     => false,
@@ -42,6 +43,8 @@ class Database extends Config
         'strictOn'     => false,
         'failover'     => [],
         'port'         => 3306,
+        'connect_timeout' => 10,
+        'sslmode'      => 'prefer',
         'numberNative' => false,
         'foundRows'    => false,
         'dateFormat'   => [

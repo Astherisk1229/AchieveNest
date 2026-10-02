@@ -57,9 +57,9 @@ describe('Phase A1: Evidence Persistence Foundation', () => {
         category: 'A.1 Degree/s',
         domain: 'professional_development',
         organizer_or_publisher: 'Notre Dame of Marbel University',
-        occurrence_date: '2025-09-15',
-        claimed_points: 40
+        occurrence_date: '2025-09-15'
       }))
+      expect(personnelAccomplishmentService.createAccomplishment.mock.calls[0][0]).not.toHaveProperty('claimed_points')
 
       expect(personnelAccomplishmentService.uploadEvidence).toHaveBeenCalledWith('acc-uuid-101', fakePdfFile)
 
@@ -219,7 +219,7 @@ describe('Phase A1: Evidence Persistence Foundation', () => {
       const success = await personnelAccomplishmentService.downloadEvidenceBlob('ev-uuid-201', 'proof.pdf')
       expect(success).toBe(true)
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/evidence/personnel/ev-uuid-201/download'),
+        expect.stringContaining('/evidence/personnel/ev-uuid-201/preview'),
         expect.any(Object)
       )
     })

@@ -18,7 +18,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
       scope_level: 'Institutional',
       attached_file_name: 'phd_diploma_santos.pdf',
       evidence_id: 'ev_001',
-      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf' },
+      evidence: { id: 'ev_001', original_filename: 'phd_diploma_santos.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Completed doctorate in computer science.'
     },
@@ -34,7 +34,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
       scope_level: 'International',
       attached_file_name: 'ieee_access_paper.pdf',
       evidence_id: 'ev_002',
-      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf' },
+      evidence: { id: 'ev_002', original_filename: 'ieee_access_paper.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Published Scopus indexed paper.'
     },
@@ -50,7 +50,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
       scope_level: 'Institutional',
       attached_file_name: 'moderator_appointment.pdf',
       evidence_id: 'ev_003',
-      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf' },
+      evidence: { id: 'ev_003', original_filename: 'moderator_appointment.pdf', mime_type: 'application/pdf', status: 'active' },
       status: 'Active',
       description: 'Supervised student org activities.'
     }
@@ -75,7 +75,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
     ]
 
     for (const item of allItems) {
-      expect(item.verified_points).toBe(0)
+      expect(item.verified_points).toBeUndefined()
       expect(item.is_proof_verified).toBe(false)
       // Status must not be evaluator-approved
       expect(item.status).not.toBe('Approved')
@@ -85,16 +85,16 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
   })
 
   // 23.2 Advisory points labeling
-  it('23.2 should expose claimed points strictly as advisory values without official accepted score', async () => {
+  it('23.2 should omit personnel-facing point values and official accepted scores', async () => {
     vi.spyOn(personnelAccomplishmentService, 'fetchAccomplishments').mockResolvedValue(sampleAccomplishments)
 
     const portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
     
-    expect(portfolio.total_claimed_points).toBe(60) // 30 + 20 + 10
+    expect(portfolio.total_claimed_points).toBe(0)
     expect(portfolio.total_verified_points).toBe(0) // No evaluator score in working assembly
 
     const itemA = portfolio.area_a_items[0]
-    expect(itemA.claimed_points).toBe(30)
+    expect(itemA.claimed_points).toBeUndefined()
     expect(itemA.advisory_status).toBe('Advisory Record')
   })
 
@@ -184,7 +184,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
         claimed_points: 0,
         attached_file_name: 'cert_unclass.pdf',
         evidence_id: 'ev_unclass_001',
-        evidence: { id: 'ev_unclass_001', original_filename: 'cert_unclass.pdf' },
+      evidence: { id: 'ev_unclass_001', original_filename: 'cert_unclass.pdf', mime_type: 'application/pdf', status: 'active' },
         status: 'Active'
       }
     ]
@@ -232,7 +232,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
     const portfolio = await PersonnelPortfolioController.loadPortfolioAsync('EMP-2021-0842')
 
     // Advisory claimed points sum
-    expect(portfolio.total_claimed_points).toBe(60)
+    expect(portfolio.total_claimed_points).toBe(0)
     // No evaluator scoring
     expect(portfolio.total_verified_points).toBe(0)
 
@@ -266,7 +266,7 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
     expect(updatedPortfolio.area_a_items.length).toBe(1)
     expect(updatedPortfolio.area_a_items[0].id).toBe('acc_001')
     expect(updatedPortfolio.area_a_items[0].title).toBe('Ph.D. in Computer Science (Summa Cum Laude)')
-    expect(updatedPortfolio.area_a_items[0].claimed_points).toBe(35)
+    expect(updatedPortfolio.area_a_items[0].claimed_points).toBeUndefined()
   })
 
   // 23.10 Empty state

@@ -34,7 +34,7 @@ describe('ranking legacy cleanup and compatibility', () => {
     const organizationPage = read('frontend/src/pages/hr-admin/HROrganizationalStructurePage.jsx')
     expect(organizationPage).not.toContain("'Non-Teaching Personnel'")
     expect(organizationPage).toContain("'Non-Teaching Faculty'")
-    expect(read('backend/app/Controllers/Api/DeanWorkspaceController.php')).toContain("default => 'Non-Teaching Faculty'")
+    expect(read('backend/app/Controllers/Api/DeanWorkspaceController.php')).toContain("? 'Faculty' : 'Non-Teaching Faculty'")
     expect(read('backend/app/Services/EvaluationInstrumentRegistry.php')).toContain('Non-Teaching Personnel Rating Sheet for Ranking (Appendix N)')
   })
 

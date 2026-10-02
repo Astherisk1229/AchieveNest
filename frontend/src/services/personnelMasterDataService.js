@@ -43,7 +43,7 @@ export const personnelMasterDataService = {
           status: c.status || 'active'
         }))
       }
-    } catch {
+    } catch (err) {
       console.warn('Direct college admin fetch failed, attempting /colleges fallback:', err?.message)
     }
 

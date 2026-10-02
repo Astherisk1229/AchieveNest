@@ -7,13 +7,12 @@
  * and unresolved routing protection.
  *
  * Authoritative Provenance:
- * 1. Faculty + Academic -> Dean [Plan G (G0/G1) & Plan K5 Final Routing Matrix; COLLEGE_ACADEMIC_SCOPE].
- * 2. Faculty + Non-Academic -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
- * 3. Non-Teaching Faculty + Academic -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
- * 4. Non-Teaching Faculty + Non-Academic -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
- * 5. Dean / VP -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
- * 6. Department Secretary strictly excluded; Self-evaluation strictly prohibited [Plan G0].
- * 7. Unresolved inputs strictly return status='unresolved' with zero silent fallback [CHU-01 Phase 2 & Plan G0].
+ * 1. Faculty -> Dean [Plan G (G0/G1) & Plan K5 Final Routing Matrix; COLLEGE_ACADEMIC_SCOPE].
+ * 2. Non-Teaching Faculty -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
+ * 3. Organizational side remains placement metadata and does not alter reviewer authority.
+ * 4. Dean / VP -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
+ * 5. Department Secretary strictly excluded; Self-evaluation strictly prohibited [Plan G0].
+ * 6. Unknown personnel groups strictly return status='unresolved' with zero silent fallback.
  */
 
 export const REVIEWER_ROLES = Object.freeze({

@@ -36,6 +36,29 @@ describe('NTF portfolio document', () => {
     expect(html).toContain('Invited lecturer')
   })
 
+  it('ends with a capped score summary', () => {
+    const items = [
+      { id: 'a1', categoryArea: 'areaA', criterionCode: 'A.1', awardedPoints: 45 },
+      { id: 'a2', categoryArea: 'areaA', criterionCode: 'A.2', awardedPoints: 9 },
+      { id: 'a3', categoryArea: 'areaA', criterionCode: 'A.3', awardedPoints: 27 },
+      { id: 'm1', categoryArea: 'areaB', criterionCode: 'B.1.1', title: 'Club moderator', verificationStatus: 'verified', ratingStatus: 'rated', awardedPoints: 30 },
+      { id: 'm2', categoryArea: 'areaB', criterionCode: 'B.1.2', title: 'Coach', verificationStatus: 'verified', ratingStatus: 'rated', awardedPoints: 20 },
+      { id: 'l1', categoryArea: 'areaB', criterionCode: 'B.4', title: 'Lecturer', verificationStatus: 'verified', ratingStatus: 'rated', awardedPoints: 30 },
+      { id: 'p1', categoryArea: 'areaB', criterionCode: 'B.5', title: 'Unverified award', verificationStatus: 'pending', ratingStatus: 'rated', awardedPoints: 30 },
+    ]
+    const html = render({ personnel_group: 'non_teaching_faculty', faculty_name: 'Demo Staff', tenure_years: 9 }, items)
+    expect(html).toContain('SCORE SUMMARY')
+    expect(html).toContain('81.00')
+    expect(html).toContain('60.00')
+    expect(html).toContain('141.00')
+    expect(html).toContain('Club moderator')
+  })
+
+  it('summary waits for Area A instead of showing a partial total', () => {
+    const html = render({ personnel_group: 'non_teaching_faculty', faculty_name: 'Demo Staff', tenure_years: 4 })
+    expect(html).toContain('Pending Area A')
+  })
+
   it('keeps missing Area A pending and does not coerce it to zero', () => {
     const scores = calculateNTFScores([], 6)
     expect(scores.areaA.total).toBeNull()

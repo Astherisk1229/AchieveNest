@@ -1,5 +1,6 @@
 import React from 'react'
 import { LockKeyhole } from 'lucide-react'
+import { calculateNTFScores } from '../../evaluation/rating/NTFRatingEngine'
 
 const A_ROWS = [
   ['A.1', 'Job Performance', 50],
@@ -50,6 +51,9 @@ const itemCode = item => String(item.subcategory_code || item.criterionCode || i
 const matches = (item, code) => {
   const actual = itemCode(item)
   if (actual === code.toUpperCase()) return true
+  // The criteria catalogue numbers subcategories (B.1.1); the printed form letters them (B.1.a).
+  const numbered = code.replace(/\.([a-z])$/i, (_, letter) => '.' + (letter.toLowerCase().charCodeAt(0) - 96))
+  if (actual === numbered.toUpperCase()) return true
   const subtype = String(item.subcategory || item.subcategory_code || item.criterionKey || '').toLowerCase()
   const aliases = {
     'B.1.A': ['moderator', 'officer'], 'B.1.B': ['trainer', 'coach'], 'B.1.C': ['committee'], 'B.1.D': ['rendered_service', 'school activit'],
@@ -63,6 +67,7 @@ export default function NtfPortfolioDocument({ submission, evidenceItems, select
   const areaB = evidenceItems.filter(item => String(item.categoryArea || '').toLowerCase() === 'areab')
   const tenureYears = Math.max(0, Number(submission.tenure_years) || 0)
   const servicePoints = Math.min(10, Math.floor(tenureYears / 2))
+  const scores = calculateNTFScores(evidenceItems, tenureYears)
 
   return <div className="flex-1 overflow-y-auto bg-white p-6 font-serif text-slate-950 dark:bg-slate-950 dark:text-slate-100">
     <header className="mb-6 text-center">
@@ -103,7 +108,29 @@ export default function NtfPortfolioDocument({ submission, evidenceItems, select
       </div>
       {B_SECTIONS.slice(7).map(section => <EvidenceSection key={section.code} section={section} items={areaB.filter(item => matches(item, section.code))} selectedEvidence={selectedEvidence} onSelectEvidence={onSelectEvidence}/>)}
     </section>
+
+    <ScoreSummary scores={scores}/>
   </div>
+}
+
+const B_CAPS = [['B.1', 'School Involvement', 30], ['B.2', 'Community Involvement', 30], ['B.3', 'No. of Years at NDMU', 10], ['B.4', 'Judge / Lecturer / Resource Person', 30], ['B.5', 'Recognition / Meritorious Award', 30]]
+const fmt = value => value === null || value === undefined ? '—' : Number(value).toFixed(2)
+
+// Final score summary: verified, rated Area B entries only; category caps, then the Area B cap of 60.
+function ScoreSummary({ scores }) {
+  const b = scores.areaB.categoryTotals || {}
+  return <section aria-label="Score summary" className="mt-6 border-2 border-slate-900 text-xs dark:border-slate-500">
+    <SectionTitle>SCORE SUMMARY <span className="float-right">Maximum: 150</span></SectionTitle>
+    <table className="w-full border-collapse">
+      <thead><tr className="border-b border-slate-900 bg-slate-100 dark:border-slate-500 dark:bg-slate-800"><Th>Area / category</Th><Th>Points</Th><Th>Maximum</Th></tr></thead>
+      <tbody>
+        <tr className="border-b border-slate-300 font-bold dark:border-slate-700"><Td>A. Performance and Personal Indicators</Td><Td>{scores.areaA.complete ? fmt(scores.areaA.total) : 'Pending annual review'}</Td><Td>90</Td></tr>
+        {B_CAPS.map(([code, title, cap]) => <tr key={code} className="border-b border-slate-300 dark:border-slate-700"><Td>{code} {title}</Td><Td>{fmt(Math.min(b[code] || 0, cap))}</Td><Td>{cap}</Td></tr>)}
+        <tr className="border-b border-slate-300 font-bold dark:border-slate-700"><Td>B. Service and Leadership (capped)</Td><Td>{fmt(scores.areaB.total)}</Td><Td>60</Td></tr>
+        <tr className="bg-slate-100 font-bold dark:bg-slate-800"><Td>TOTAL</Td><Td>{scores.grandTotalAwarded === null ? 'Pending Area A' : fmt(scores.grandTotalAwarded)}</Td><Td>150</Td></tr>
+      </tbody>
+    </table>
+  </section>
 }
 
 function EvidenceSection({ section, items, selectedEvidence, onSelectEvidence }) {

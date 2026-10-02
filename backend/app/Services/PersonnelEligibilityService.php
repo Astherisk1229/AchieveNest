@@ -77,6 +77,8 @@ class PersonnelEligibilityService
         elseif($status==='probationary'&&$serviceYears>=3.0)$serviceStatus='passed';
         elseif($status==='probationary'){$serviceStatus='not_passed';$reasons[]='Probationary personnel require at least 3.00 years of service.';}
         else{$serviceStatus='not_passed';$reasons[]='Employment status must be Permanent or Probationary.';}
+        // Part-time faculty hold part-time titles and are not ranked, so they cannot enter a ranking cycle.
+        if(strtoupper((string)($person['personnel_group']??''))==='FACULTY'&&($person['faculty_engagement']??null)===FacultyStatusService::ENGAGEMENT_PART_TIME){$serviceStatus='not_passed';$reasons[]='Part-time faculty hold a part-time title and are not ranked; only full-time faculty can apply for a rank.';}
 
         $import=null;
         if($period&&$this->db->tableExists('personnel_annual_review_imports'))$import=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personnelProfileId,'evaluation_period_id'=>$period['id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();

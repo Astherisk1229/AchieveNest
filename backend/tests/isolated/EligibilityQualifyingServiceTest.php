@@ -84,6 +84,21 @@ final class EligibilityQualifyingServiceTest extends CIUnitTestCase
         self::assertSame(6, $r['service_completed_years']);
     }
 
+    public function testCurrentPartTimeFacultyIsNotEligibleForRanking(): void
+    {
+        $this->person('P1', ['personnel_group' => 'FACULTY', 'employment_start_date' => '2015-06-01', 'faculty_engagement' => 'part_time_faculty']);
+        $r = $this->evaluate('P1');
+        self::assertSame('not_eligible', $r['eligibility_status']);
+        self::assertStringContainsString('Part-time faculty', implode(' ', $r['eligibility_reasons']));
+    }
+
+    public function testFormerPartTimeNowFullTimeIsJudgedOnFullTimeYearsOnly(): void
+    {
+        $this->person('P1', ['personnel_group' => 'FACULTY', 'employment_status' => 'permanent', 'employment_start_date' => '2015-06-01']);
+        $this->history('P1', [$this->seg('2015-06-01', '2024-05-31', 'part_time'), $this->seg('2024-06-01', null)]);
+        self::assertSame('eligible', $this->evaluate('P1')['eligibility_status']);
+    }
+
     public function testRecordedHistoryReplacesMissingStartDate(): void
     {
         $this->person('P1', ['employment_start_date' => null]);

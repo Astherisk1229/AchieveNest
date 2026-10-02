@@ -42,6 +42,7 @@ export default function OSADCollegeDetailsView({
   onCollegeStatusChange,
   onCollegeChanged,
   onCollegeDeleted,
+  onViewStudents = null,
   fallbackCollege = null
 }) {
   const [collegeData, setCollegeData] = useState(fallbackCollege)
@@ -243,6 +244,16 @@ export default function OSADCollegeDetailsView({
               <ShieldCheck className="w-4 h-4" />
               <span>Manage Program Coordinators</span>
             </button>
+            {onViewStudents && (
+              <button
+                type="button"
+                onClick={() => onViewStudents(college)}
+                className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-[#16834a] dark:text-emerald-400 text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/40 flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+              >
+                <Users className="w-4 h-4" />
+                <span>View Students</span>
+              </button>
+            )}
           </>
         }
         primaryAction={

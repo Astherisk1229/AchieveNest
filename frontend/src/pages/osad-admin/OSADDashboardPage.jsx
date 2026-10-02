@@ -271,6 +271,11 @@ export default function OSADDashboardPage({ currentUser }) {
           onCollegeStatusChange={handleCollegeStatusChange}
           onCollegeChanged={async (college) => { await loadPersistentColleges(); showToast(`Updated College: [${college?.code}]`) }}
           onCollegeDeleted={async (college) => { await loadPersistentColleges(); await loadPersistentPrograms(); showToast(`Deleted College: [${college?.code}]`) }}
+          onViewCollegeStudents={(college) => {
+            // OS-4: one click from a college to its students, filtered by the college.
+            setSelectedCollege(college?.code || 'all')
+            setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('tab', 'accounts'); return next })
+          }}
         />
       )}
 

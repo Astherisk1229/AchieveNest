@@ -26,7 +26,8 @@ export default function OSADAcademicProgramsPage({
   onSelectCollege: externalOnSelectCollege = null,
   onCollegeStatusChange = null,
   onCollegeChanged = null,
-  onCollegeDeleted = null
+  onCollegeDeleted = null,
+  onViewCollegeStudents = null
 }) {
   const [internalSelectedCollegeId, setInternalSelectedCollegeId] = useState(null)
 
@@ -62,6 +63,7 @@ export default function OSADAcademicProgramsPage({
         onCollegeStatusChange={onCollegeStatusChange}
         onCollegeChanged={onCollegeChanged}
         onCollegeDeleted={onCollegeDeleted}
+        onViewStudents={onViewCollegeStudents}
       />
     )
   }

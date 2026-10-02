@@ -53,6 +53,17 @@ import {
   Lock
 } from 'lucide-react'
 
+// D1: sort a portfolio area's accomplishments. Undated entries go last in date sorts.
+export function compareAccomplishments(a, b, order = 'newest') {
+  const time = item => { const t = Date.parse(item?.date || item?.occurrence_date || ''); return Number.isFinite(t) ? t : null }
+  const text = value => String(value || '').toLocaleLowerCase()
+  if (order === 'title') return text(a.title).localeCompare(text(b.title))
+  if (order === 'category') return text(a.category).localeCompare(text(b.category)) || text(a.title).localeCompare(text(b.title))
+  const ta = time(a), tb = time(b)
+  if (ta === null || tb === null) return ta === null ? (tb === null ? 0 : 1) : -1
+  return order === 'oldest' ? ta - tb : tb - ta
+}
+
 export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const navigate = useNavigate()
   const { user: authUser } = useAuth()
@@ -136,6 +147,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   // Filter States
   const [categoryFilter, setCategoryFilter] = useState('ALL')
   const [scopeFilter, setScopeFilter] = useState('ALL')
+  const [sortOrder, setSortOrder] = useState('newest')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Modals State
@@ -354,7 +366,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     const matchesScope = scopeFilter === 'ALL' || item.scope_level === scopeFilter
     const matchesSearch = !searchQuery || item.title?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCat && matchesScope && matchesSearch
-  })
+  }).sort((a, b) => compareAccomplishments(a, b, sortOrder))
 
   const allPortfolioItems = [...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])]
   const persistedEvidenceCount = allPortfolioItems.filter(hasValidPersonnelEvidence).length
@@ -863,6 +875,18 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           <option value="Regional">Regional</option>
                           <option value="National">National</option>
                           <option value="International">International</option>
+                        </select>
+
+                        <select
+                          aria-label="Sort accomplishments"
+                          value={sortOrder}
+                          onChange={(e) => setSortOrder(e.target.value)}
+                          className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
+                        >
+                          <option value="newest">Newest first</option>
+                          <option value="oldest">Oldest first</option>
+                          <option value="category">By category</option>
+                          <option value="title">Title A–Z</option>
                         </select>
                       </div>
 

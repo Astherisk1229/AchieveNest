@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   X, 
   FileText, 
@@ -147,6 +148,174 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
     generatePortfolioPdf(`NDMU_Portfolio_${student?.student_id || ''}`)
   }
 
+  // One renderer for the on-screen preview and the printed copy, so both always match.
+  const renderPageBody = (page) => (
+    <>
+                {/* 1. COVER PAGE VIEW */}
+                {page.type === 'cover' && (
+                  <div className="h-full flex flex-col justify-between border-4 border-[#A9C6B1] p-6 rounded-xl relative overflow-hidden bg-gradient-to-b from-emerald-50/50 via-white to-white">
+                    
+                    {/* Header Seal */}
+                    <div className="text-center space-y-2 pt-2">
+                      <div className="w-14 h-14 mx-auto rounded-2xl bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-2xl shadow-md border-2 border-amber-400">
+                        <ShieldCheck className="w-8 h-8" />
+                      </div>
+                      <h2 className="text-xs font-black text-[#064e2b] tracking-wider uppercase">Notre Dame of Marbel University</h2>
+                      <p className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest">Koronadal City, South Cotabato • Philippines</p>
+                    </div>
+
+                    {/* Title & Metadata */}
+                    <div className="text-center space-y-3 my-auto">
+                      <div className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-[#064e2b] text-[9px] font-extrabold uppercase tracking-widest">
+                        Official Academic Record
+                      </div>
+                      <h1 className="text-xl font-black text-slate-900 leading-tight tracking-tight uppercase">
+                        STUDENT ACCOMPLISHMENT PORTFOLIO DOSSIER
+                      </h1>
+                      <div className="w-20 h-1 bg-[#16834a] mx-auto rounded-full"></div>
+                    </div>
+
+                    {/* Student Info Footer Card */}
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center space-y-1">
+                      <p className="text-xs font-extrabold text-slate-900">{student?.full_name || ''}</p>
+                      <p className="text-[11px] text-slate-600 font-semibold">{student?.student_id || ''} • {student?.program || ''}</p>
+                      <p className="text-[10px] text-slate-400 font-medium pt-0.5">Academic Year 2025–2026 • Verified via AchieveNest</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. TABLE OF CONTENTS VIEW */}
+                {page.type === 'toc' && (
+                  <div className="h-full flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between border-b-2 border-[#A9C6B1] pb-2 mb-3">
+                        <div>
+                          <h2 className="text-sm font-black text-[#064e2b] uppercase">Table of Contents & Executive Summary</h2>
+                          <p className="text-[10px] text-slate-500 font-medium">Dynamically calculated from selected portfolio items</p>
+                        </div>
+                        <FileText className="w-5 h-5 text-[#16834a]" />
+                      </div>
+
+                      {/* Recalculated Executive Metrics Box */}
+                      <div className="grid grid-cols-2 gap-2 bg-[#eef7f0] p-2.5 rounded-xl border border-[#cbe6d2] mb-3 text-center">
+                        <div>
+                          <p className="text-sm font-black text-[#064e2b]">{dynamicTotal}</p>
+                          <p className="text-[8px] font-bold text-slate-500 uppercase">Selected Items</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-[#064e2b]">{dynamicVerified}</p>
+                          <p className="text-[8px] font-bold text-slate-500 uppercase">Verified Records</p>
+                        </div>
+                      </div>
+
+                      {/* TOC Items Index List */}
+                      <div className="space-y-1.5 text-[11px]">
+                        {pagesList.filter(p => p.type === 'achievement').map((itemPage, idx) => (
+                          <div key={idx} className="flex items-center justify-between border-b border-dashed border-slate-200 pb-1">
+                            <span className="font-bold text-slate-800 truncate max-w-[300px]">{idx + 1}. {itemPage.item.title}</span>
+                            <span className="text-[10px] font-extrabold text-[#16834a] shrink-0">Page {itemPage.pageNum}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="text-[9px] text-slate-400 text-center border-t pt-1.5 font-medium">
+                      Page 2 • AchieveNest Official Portfolio
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. CATEGORY SEPARATOR SLIDE VIEW */}
+                {page.type === 'separator' && (
+                  <div className="h-full bg-[#DCEBDD] text-white p-6 rounded-xl flex flex-col justify-between relative overflow-hidden border-4 border-amber-400/80">
+                    <div className="text-amber-400 font-black text-[10px] uppercase tracking-widest">Section Divider</div>
+
+                    <div className="space-y-3 my-auto">
+                      <div className="w-12 h-12 rounded-2xl bg-[#16834a] text-white flex items-center justify-center font-black text-xl shadow-lg border border-emerald-400/40">
+                        <Award className="w-6 h-6" />
+                      </div>
+                      <h2 className="text-lg font-black tracking-tight uppercase leading-tight text-white">
+                        SECTION {page.index}: {page.category?.toUpperCase()} ACHIEVEMENTS
+                      </h2>
+                      <p className="text-xs text-emerald-200/90 font-medium">
+                        Official verified entries under {page.category} category
+                      </p>
+                    </div>
+
+                    <div className="text-[9px] text-emerald-300/80 font-bold uppercase tracking-wider border-t border-emerald-800 pt-2">
+                      Notre Dame of Marbel University • AchieveNest System
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. DEDICATED SELF-CONTAINED 1-PAGE PER ACHIEVEMENT VIEW */}
+                {page.type === 'achievement' && page.item && (
+                  <div className="h-full flex flex-col justify-between space-y-2.5">
+                    
+                    {/* TOP STRIP */}
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-md bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-[10px]">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[9px] font-black text-slate-800 uppercase tracking-wide">NDMU ACHIEVENEST VERIFIED DOSSIER</span>
+                      </div>
+                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-[#064e2b] border border-emerald-200">
+                        {page.item.category}
+                      </span>
+                    </div>
+
+                    {/* TOP 35-40% METADATA CONTAINER */}
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
+                      
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-xs font-black text-slate-900 leading-tight">{page.item.title}</h3>
+                          <p className="text-[10px] text-slate-600 font-bold mt-0.5">{page.item.event_name}</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-[#eef7f0] text-[#064e2b] text-[9px] font-extrabold border border-[#cbe6d2] shrink-0">
+                          {page.item.status} ✓
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5 text-[9.5px] text-slate-600 pt-1 border-t border-slate-200/80 font-medium">
+                        <div><strong>Issuer:</strong> {page.item.issuer || '—'}</div>
+                        <div><strong>Date:</strong> {page.item.date || '—'}</div>
+                        {page.item.academic_year && <div><strong>Academic year:</strong> {page.item.academic_year}</div>}
+                        <div><strong>Status:</strong> Verified by the Program Coordinator</div>
+                      </div>
+
+                      <p className="text-[9px] text-slate-500 font-normal italic pt-1 border-t border-slate-200/60 truncate">
+                        "{page.item.description}"
+                      </p>
+                    </div>
+
+                    {/* BOTTOM 60-65% ATTACHED CERTIFICATE SCAN CONTAINER */}
+                    <div className="flex-1 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 p-2 flex flex-col items-center justify-center relative overflow-hidden min-h-[220px]">
+                      <div className="space-y-1 text-center text-[10px] text-slate-600">
+                        <FileText className="mx-auto h-6 w-6 text-[#16834a]" />
+                        <p className="font-bold">Supporting evidence on file</p>
+                        {page.item.evidence.length === 0
+                          ? <p>No evidence file listed.</p>
+                          : page.item.evidence.map(file => <p key={file.id} className="truncate">{file.original_filename}</p>)}
+                      </div>
+                      <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-slate-900/80 backdrop-blur-md text-white text-[8px] font-bold flex items-center gap-1">
+                        <QrCode className="w-3 h-3 text-amber-400" />
+                        <span>Verified Digital Proof</span>
+                      </div>
+                    </div>
+
+                    {/* FOOTER */}
+                    <div className="flex items-center justify-between text-[8.5px] text-slate-400 font-semibold border-t pt-1">
+                      <span>NDMU AchieveNest Official Dossier</span>
+                      <span>Page {page.pageNum} of {totalPagesCount}</span>
+                    </div>
+
+                  </div>
+                )}
+    </>
+  )
+
   if (!isOpen) return null
 
   return (
@@ -160,8 +329,8 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-extrabold text-white tracking-tight">Canva-Style Portfolio PDF Export Studio</h3>
-              <p className="text-xs text-slate-400 font-medium">Interactive Multi-Page PDF Portfolio Generator & Print Dossier</p>
+              <h3 className="text-lg font-extrabold text-white tracking-tight">Portfolio PDF Export</h3>
+              <p className="text-xs text-slate-400 font-medium">Preview your verified achievements, then save as PDF from the print dialog</p>
             </div>
           </div>
 
@@ -229,168 +398,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 className="w-full max-w-[540px] h-[570px] bg-white text-slate-900 shadow-2xl rounded-2xl p-6 sm:p-7 flex flex-col justify-between relative overflow-hidden font-sans border border-slate-200 shrink-0"
               >
                 
-                {/* 1. COVER PAGE VIEW */}
-                {activePage.type === 'cover' && (
-                  <div className="h-full flex flex-col justify-between border-4 border-[#A9C6B1] p-6 rounded-xl relative overflow-hidden bg-gradient-to-b from-emerald-50/50 via-white to-white">
-                    
-                    {/* Header Seal */}
-                    <div className="text-center space-y-2 pt-2">
-                      <div className="w-14 h-14 mx-auto rounded-2xl bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-2xl shadow-md border-2 border-amber-400">
-                        <ShieldCheck className="w-8 h-8" />
-                      </div>
-                      <h2 className="text-xs font-black text-[#064e2b] tracking-wider uppercase">Notre Dame of Marbel University</h2>
-                      <p className="text-[9px] text-slate-500 font-extrabold uppercase tracking-widest">Koronadal City, South Cotabato • Philippines</p>
-                    </div>
-
-                    {/* Title & Metadata */}
-                    <div className="text-center space-y-3 my-auto">
-                      <div className="inline-block px-3 py-1 rounded-full bg-emerald-100 text-[#064e2b] text-[9px] font-extrabold uppercase tracking-widest">
-                        Official Academic Record
-                      </div>
-                      <h1 className="text-xl font-black text-slate-900 leading-tight tracking-tight uppercase">
-                        STUDENT ACCOMPLISHMENT PORTFOLIO DOSSIER
-                      </h1>
-                      <div className="w-20 h-1 bg-[#16834a] mx-auto rounded-full"></div>
-                    </div>
-
-                    {/* Student Info Footer Card */}
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center space-y-1">
-                      <p className="text-xs font-extrabold text-slate-900">{student?.full_name || ''}</p>
-                      <p className="text-[11px] text-slate-600 font-semibold">{student?.student_id || ''} • {student?.program || ''}</p>
-                      <p className="text-[10px] text-slate-400 font-medium pt-0.5">Academic Year 2025–2026 • Verified via AchieveNest</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* 2. TABLE OF CONTENTS VIEW */}
-                {activePage.type === 'toc' && (
-                  <div className="h-full flex flex-col justify-between space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between border-b-2 border-[#A9C6B1] pb-2 mb-3">
-                        <div>
-                          <h2 className="text-sm font-black text-[#064e2b] uppercase">Table of Contents & Executive Summary</h2>
-                          <p className="text-[10px] text-slate-500 font-medium">Dynamically calculated from selected portfolio items</p>
-                        </div>
-                        <FileText className="w-5 h-5 text-[#16834a]" />
-                      </div>
-
-                      {/* Recalculated Executive Metrics Box */}
-                      <div className="grid grid-cols-2 gap-2 bg-[#eef7f0] p-2.5 rounded-xl border border-[#cbe6d2] mb-3 text-center">
-                        <div>
-                          <p className="text-sm font-black text-[#064e2b]">{dynamicTotal}</p>
-                          <p className="text-[8px] font-bold text-slate-500 uppercase">Selected Items</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-black text-[#064e2b]">{dynamicVerified}</p>
-                          <p className="text-[8px] font-bold text-slate-500 uppercase">Verified Records</p>
-                        </div>
-                      </div>
-
-                      {/* TOC Items Index List */}
-                      <div className="space-y-1.5 text-[11px]">
-                        {pagesList.filter(p => p.type === 'achievement').map((itemPage, idx) => (
-                          <div key={idx} className="flex items-center justify-between border-b border-dashed border-slate-200 pb-1">
-                            <span className="font-bold text-slate-800 truncate max-w-[300px]">{idx + 1}. {itemPage.item.title}</span>
-                            <span className="text-[10px] font-extrabold text-[#16834a] shrink-0">Page {itemPage.pageNum}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="text-[9px] text-slate-400 text-center border-t pt-1.5 font-medium">
-                      Page 2 • AchieveNest Official Portfolio
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. CATEGORY SEPARATOR SLIDE VIEW */}
-                {activePage.type === 'separator' && (
-                  <div className="h-full bg-[#DCEBDD] text-white p-6 rounded-xl flex flex-col justify-between relative overflow-hidden border-4 border-amber-400/80">
-                    <div className="text-amber-400 font-black text-[10px] uppercase tracking-widest">Section Divider</div>
-
-                    <div className="space-y-3 my-auto">
-                      <div className="w-12 h-12 rounded-2xl bg-[#16834a] text-white flex items-center justify-center font-black text-xl shadow-lg border border-emerald-400/40">
-                        <Award className="w-6 h-6" />
-                      </div>
-                      <h2 className="text-lg font-black tracking-tight uppercase leading-tight text-white">
-                        SECTION {activePage.index}: {activePage.category?.toUpperCase()} ACHIEVEMENTS
-                      </h2>
-                      <p className="text-xs text-emerald-200/90 font-medium">
-                        Official verified entries under {activePage.category} category
-                      </p>
-                    </div>
-
-                    <div className="text-[9px] text-emerald-300/80 font-bold uppercase tracking-wider border-t border-emerald-800 pt-2">
-                      Notre Dame of Marbel University • AchieveNest System
-                    </div>
-                  </div>
-                )}
-
-                {/* 4. DEDICATED SELF-CONTAINED 1-PAGE PER ACHIEVEMENT VIEW */}
-                {activePage.type === 'achievement' && activePage.item && (
-                  <div className="h-full flex flex-col justify-between space-y-2.5">
-                    
-                    {/* TOP STRIP */}
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 rounded-md bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-[10px]">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="text-[9px] font-black text-slate-800 uppercase tracking-wide">NDMU ACHIEVENEST VERIFIED DOSSIER</span>
-                      </div>
-                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-[#064e2b] border border-emerald-200">
-                        {activePage.item.category}
-                      </span>
-                    </div>
-
-                    {/* TOP 35-40% METADATA CONTAINER */}
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 text-[11px]">
-                      
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className="text-xs font-black text-slate-900 leading-tight">{activePage.item.title}</h3>
-                          <p className="text-[10px] text-slate-600 font-bold mt-0.5">{activePage.item.event_name}</p>
-                        </div>
-                        <span className="px-2 py-0.5 rounded-full bg-[#eef7f0] text-[#064e2b] text-[9px] font-extrabold border border-[#cbe6d2] shrink-0">
-                          {activePage.item.status} ✓
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5 text-[9.5px] text-slate-600 pt-1 border-t border-slate-200/80 font-medium">
-                        <div><strong>Issuer:</strong> {activePage.item.issuer || '—'}</div>
-                        <div><strong>Date:</strong> {activePage.item.date || '—'}</div>
-                        {activePage.item.academic_year && <div><strong>Academic year:</strong> {activePage.item.academic_year}</div>}
-                        <div><strong>Status:</strong> Verified by the Program Coordinator</div>
-                      </div>
-
-                      <p className="text-[9px] text-slate-500 font-normal italic pt-1 border-t border-slate-200/60 truncate">
-                        "{activePage.item.description}"
-                      </p>
-                    </div>
-
-                    {/* BOTTOM 60-65% ATTACHED CERTIFICATE SCAN CONTAINER */}
-                    <div className="flex-1 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 p-2 flex flex-col items-center justify-center relative overflow-hidden min-h-[220px]">
-                      <div className="space-y-1 text-center text-[10px] text-slate-600">
-                        <FileText className="mx-auto h-6 w-6 text-[#16834a]" />
-                        <p className="font-bold">Supporting evidence on file</p>
-                        {activePage.item.evidence.length === 0
-                          ? <p>No evidence file listed.</p>
-                          : activePage.item.evidence.map(file => <p key={file.id} className="truncate">{file.original_filename}</p>)}
-                      </div>
-                      <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-slate-900/80 backdrop-blur-md text-white text-[8px] font-bold flex items-center gap-1">
-                        <QrCode className="w-3 h-3 text-amber-400" />
-                        <span>Verified Digital Proof</span>
-                      </div>
-                    </div>
-
-                    {/* FOOTER */}
-                    <div className="flex items-center justify-between text-[8.5px] text-slate-400 font-semibold border-t pt-1">
-                      <span>NDMU AchieveNest Official Dossier</span>
-                      <span>Page {activePage.pageNum} of {totalPagesCount}</span>
-                    </div>
-
-                  </div>
-                )}
+                {renderPageBody(activePage)}
 
               </div>
 
@@ -536,6 +544,17 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
         </div>
 
       </div>
+      {typeof document !== 'undefined' && createPortal(
+        <div className="print-area print-show student-portfolio-print" style={{ display: 'none' }} aria-hidden="true">
+          <style>{`@media print { @page { size: A4; margin: 12mm; } .student-portfolio-print-page { break-after: page; page-break-after: always; min-height: 260mm; display: flex; flex-direction: column; justify-content: space-between; } .student-portfolio-print-page:last-child { break-after: auto; page-break-after: auto; } }`}</style>
+          {pagesList.map((page, idx) => (
+            <div key={`${page.type}-${idx}`} className="student-portfolio-print-page bg-white text-slate-900 font-sans">
+              {renderPageBody(page)}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

@@ -15,8 +15,16 @@ separate, observable steps.
 - Healthcheck path: `/api/v1/health`.
 - Healthcheck timeout: 300 seconds.
 - Restart policy: `ON_FAILURE`, with a finite retry count during rollout.
-- Do not add a custom start command unless Railpack detection fails. Railpack's
-  PHP provider supplies FrankenPHP and expands Railway variables at runtime.
+- Because the `/app/writable` volume replaces the repository's directory tree,
+  configure this start command so CodeIgniter's runtime directories and ClamAV
+  signatures exist before Railpack starts FrankenPHP:
+
+  ```sh
+  mkdir -p /app/writable/cache /app/writable/logs /app/writable/session /app/writable/uploads/evidence /app/writable/debugbar /app/writable/backups /app/writable/restore_test /app/writable/demo-credentials && freshclam --quiet || true; exec /start-container.sh
+  ```
+
+  Do not replace `/start-container.sh`; it is supplied by Railpack's PHP
+  provider and starts FrankenPHP with Railway's runtime variables.
 
 Railway's legacy `railway.toml`/`railway.json` configuration format is being
 retired on 2026-12-01, so this repository does not add a new legacy config file.

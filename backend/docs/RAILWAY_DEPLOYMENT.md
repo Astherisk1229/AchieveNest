@@ -10,6 +10,8 @@ separate, observable steps.
 - Root directory: `/backend`.
 - Builder: Railpack (automatic PHP detection from `composer.json`).
 - Public directory variable: `RAILPACK_PHP_ROOT_DIR=/app/public`.
+- Production autodeploy: disabled until staging acceptance is complete. Use
+  Railway's **Deploy Latest Commit** action for controlled deployments.
 - Healthcheck path: `/api/v1/health`.
 - Healthcheck timeout: 300 seconds.
 - Restart policy: `ON_FAILURE`, with a finite retry count during rollout.
@@ -19,7 +21,7 @@ separate, observable steps.
 Railway's legacy `railway.toml`/`railway.json` configuration format is being
 retired on 2026-12-01, so this repository does not add a new legacy config file.
 
-## 2. Production variables
+## 2. Railway variables
 
 Use `.env.railway.example` as the exact variable-name checklist. Enter values
 in Railway; never upload a real `.env` file or commit secrets.
@@ -29,10 +31,23 @@ Important details:
 - `CI_ENVIRONMENT` and `ACHIEVENEST_ENV` must both be `production`. Otherwise
   the app can select a local/development database group.
 - The current authentication path signs local JWTs, so
-  `LOCAL_AUTH_JWT_SECRET` is mandatory even when PostgreSQL is hosted by
-  Supabase. Generate at least 32 cryptographically random bytes.
-- Use the Supabase direct/session connection (normally port 5432), not the
-  transaction-mode pooler, for this persistent CodeIgniter service.
+  `LOCAL_AUTH_JWT_SECRET` is mandatory. Generate at least 32
+  cryptographically random bytes and use different values in staging and
+  production.
+- Provision Railway MySQL in the same project and environment as the backend.
+  Add database settings to the backend as Railway reference variables rather
+  than copying credential values. The default references are:
+
+  | CodeIgniter setting | Railway reference |
+  | --- | --- |
+  | `database.default.hostname` | `${{MySQL.MYSQLHOST}}` |
+  | `database.default.port` | `${{MySQL.MYSQLPORT}}` |
+  | `database.default.username` | `${{MySQL.MYSQLUSER}}` |
+  | `database.default.password` | `${{MySQL.MYSQLPASSWORD}}` |
+  | `database.default.database` | `${{MySQL.MYSQLDATABASE}}` |
+
+  Replace `MySQL` in the reference namespace if the Railway database service
+  has a different name. Keep `database.default.DBDriver=MySQLi`.
 - Configure each deployed frontend origin through
   `cors.default.allowedOrigins.N`. Do not use `*` for a production origin.
 - Set `app.baseURL` only after a domain exists and retain its trailing slash.
@@ -43,7 +58,7 @@ Important details:
 ## 3. Required PHP and operating-system dependencies
 
 `composer.json` declares the PHP extensions Railpack must install, including
-`ext-pgsql` for the production PostgreSQL connection. The application also has
+`ext-mysqli` for the Railway MySQL connection. The application also has
 deployment-owned malware scanning and OCR boundaries:
 
 - ClamAV: `/usr/bin/clamscan` with current signatures in `/var/lib/clamav`.
@@ -57,7 +72,7 @@ deployment-owned malware scanning and OCR boundaries:
 Railpack can install runtime packages with:
 
 ```text
-RAILPACK_DEPLOY_APT_PACKAGES="... clamav clamav-freshclam tesseract-ocr poppler-utils"
+RAILPACK_DEPLOY_APT_PACKAGES="default-mysql-client clamav clamav-freshclam tesseract-ocr poppler-utils"
 ```
 
 Do not enable evidence submission in production until `freshclam` has populated
@@ -87,14 +102,17 @@ php spark migrate --all
 php spark migrate:status
 ```
 
-Run this first against a separate staging Supabase project. Do not seed demo or
-local-defense data in staging or production.
+Run this first against a separate, disposable Railway staging MySQL service.
+Repeat the fresh migration replay and confirm the resulting schema and
+reference-data fingerprints are identical before production promotion. Do not
+seed demo or local-defense data in staging or production.
 
 ## 6. Deployment verification
 
 1. Deploy the reviewed branch and wait for the healthcheck to pass.
 2. Confirm `GET /api/v1/health` returns HTTP 200 and reports the database as
-   connected. A 503 is a real database/configuration failure.
+   connected with `driver: MySQLi`. A 503 is a real database/configuration
+   failure.
 3. Inspect startup/runtime logs for configuration, database, and writable-path
    errors; production responses should not expose stack traces.
 4. Exercise login, one authenticated read, one authorized write, and logout.

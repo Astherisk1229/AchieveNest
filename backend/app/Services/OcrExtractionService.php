@@ -12,9 +12,9 @@ final class OcrExtractionService
 
     public function __construct(?string $tesseract = null, ?string $pdfToText = null, ?string $pdfToPpm = null)
     {
-        $this->tesseract = $tesseract ?? (string) env('ocr.tesseractPath', 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe');
-        $this->pdfToText = $pdfToText ?? (string) env('ocr.pdfToTextPath', 'C:\\Tools\\poppler-26.07.0\\poppler-26.07.0\\Library\\bin\\pdftotext.exe');
-        $this->pdfToPpm = $pdfToPpm ?? (string) env('ocr.pdfToPpmPath', 'C:\\Tools\\poppler-26.07.0\\poppler-26.07.0\\Library\\bin\\pdftoppm.exe');
+        $this->tesseract = $tesseract ?? (string) (env('OCR_TESSERACT_PATH') ?: env('ocr.tesseractPath', 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'));
+        $this->pdfToText = $pdfToText ?? (string) (env('OCR_PDF_TO_TEXT_PATH') ?: env('ocr.pdfToTextPath', 'C:\\Tools\\poppler-26.07.0\\poppler-26.07.0\\Library\\bin\\pdftotext.exe'));
+        $this->pdfToPpm = $pdfToPpm ?? (string) (env('OCR_PDF_TO_PPM_PATH') ?: env('ocr.pdfToPpmPath', 'C:\\Tools\\poppler-26.07.0\\poppler-26.07.0\\Library\\bin\\pdftoppm.exe'));
     }
 
     public function extract(string $sourcePath, string $mime): array

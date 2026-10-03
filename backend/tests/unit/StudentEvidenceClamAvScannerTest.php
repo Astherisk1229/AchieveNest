@@ -7,6 +7,23 @@ use CodeIgniter\Test\CIUnitTestCase;
 
 final class StudentEvidenceClamAvScannerTest extends CIUnitTestCase
 {
+    public function testRailwaySafeEnvironmentNamesOverrideRuntimePaths(): void
+    {
+        putenv('CLAMAV_CLAMSCAN_PATH=/railway/bin/clamscan');
+        putenv('CLAMAV_DATABASE_DIRECTORY=/railway/var/lib/clamav');
+
+        try {
+            $scanner = new StudentEvidenceClamAvScanner();
+            $reflection = new \ReflectionClass($scanner);
+
+            self::assertSame('/railway/bin/clamscan', $reflection->getProperty('binary')->getValue($scanner));
+            self::assertSame('/railway/var/lib/clamav', $reflection->getProperty('databaseDirectory')->getValue($scanner));
+        } finally {
+            putenv('CLAMAV_CLAMSCAN_PATH');
+            putenv('CLAMAV_DATABASE_DIRECTORY');
+        }
+    }
+
     public function testDeploymentOwnedClamAvRuntimeIsHealthy(): void
     {
         $scanner = $this->requireDeploymentRuntime();

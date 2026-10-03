@@ -16,14 +16,14 @@ class StudentEvidenceClamAvScanner
     {
         $backend = dirname(__DIR__, 2);
         $runtime = $backend . DIRECTORY_SEPARATOR . '.runtime' . DIRECTORY_SEPARATOR . 'clamav';
-        $this->binary = $binary ?: (string) env(
+        $this->binary = $binary ?: (string) (env('CLAMAV_CLAMSCAN_PATH') ?: env(
             'clamav.clamscanPath',
             $runtime . DIRECTORY_SEPARATOR . 'clamav-1.5.4.win.x64' . DIRECTORY_SEPARATOR . 'clamscan.exe'
-        );
-        $this->databaseDirectory = $databaseDirectory ?: (string) env(
+        ));
+        $this->databaseDirectory = $databaseDirectory ?: (string) (env('CLAMAV_DATABASE_DIRECTORY') ?: env(
             'clamav.databaseDirectory',
             $runtime . DIRECTORY_SEPARATOR . 'database'
-        );
+        ));
     }
 
     /** @return array{status: 'clean'|'infected'|'unavailable', code: string} */

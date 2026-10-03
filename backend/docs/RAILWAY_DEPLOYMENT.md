@@ -15,8 +15,16 @@ separate, observable steps.
 - Healthcheck path: `/api/v1/health`.
 - Healthcheck timeout: 300 seconds.
 - Restart policy: `ON_FAILURE`, with a finite retry count during rollout.
-- Do not add a custom start command unless Railpack detection fails. Railpack's
-  PHP provider supplies FrankenPHP and expands Railway variables at runtime.
+- Because the `/app/writable` volume replaces the repository's directory tree,
+  configure this start command so CodeIgniter's runtime directories and ClamAV
+  signatures exist before Railpack starts FrankenPHP:
+
+  ```sh
+  mkdir -p /app/writable/cache /app/writable/logs /app/writable/session /app/writable/uploads/evidence /app/writable/debugbar /app/writable/backups /app/writable/restore_test /app/writable/demo-credentials && freshclam --quiet || true; exec /start-container.sh
+  ```
+
+  Do not replace `/start-container.sh`; it is supplied by Railpack's PHP
+  provider and starts FrankenPHP with Railway's runtime variables.
 
 Railway's legacy `railway.toml`/`railway.json` configuration format is being
 retired on 2026-12-01, so this repository does not add a new legacy config file.
@@ -40,17 +48,19 @@ Important details:
 
   | CodeIgniter setting | Railway reference |
   | --- | --- |
-  | `database.default.hostname` | `${{MySQL.MYSQLHOST}}` |
-  | `database.default.port` | `${{MySQL.MYSQLPORT}}` |
-  | `database.default.username` | `${{MySQL.MYSQLUSER}}` |
-  | `database.default.password` | `${{MySQL.MYSQLPASSWORD}}` |
-  | `database.default.database` | `${{MySQL.MYSQLDATABASE}}` |
+  | `database_default_hostname` | `${{MySQL.MYSQLHOST}}` |
+  | `database_default_port` | `${{MySQL.MYSQLPORT}}` |
+  | `database_default_username` | `${{MySQL.MYSQLUSER}}` |
+  | `database_default_password` | `${{MySQL.MYSQLPASSWORD}}` |
+  | `database_default_database` | `${{MySQL.MYSQLDATABASE}}` |
 
   Replace `MySQL` in the reference namespace if the Railway database service
-  has a different name. Keep `database.default.DBDriver=MySQLi`.
+  has a different name. Keep `database_default_DBDriver=MySQLi`. Railway's
+  Railpack builder interprets dotted variable names as build-secret namespaces,
+  so use CodeIgniter's supported underscore aliases for config overrides.
 - Configure each deployed frontend origin through
-  `cors.default.allowedOrigins.N`. Do not use `*` for a production origin.
-- Set `app.baseURL` only after a domain exists and retain its trailing slash.
+  `cors_default_allowedOrigins_N`. Do not use `*` for a production origin.
+- Set `app_baseURL` only after a domain exists and retain its trailing slash.
 - Railway terminates TLS before the application. Keep
   `app.forceGlobalSecureRequests=false` until CodeIgniter is configured to
   trust Railway's proxy; enabling it prematurely can create a redirect loop.
@@ -72,7 +82,7 @@ deployment-owned malware scanning and OCR boundaries:
 Railpack can install runtime packages with:
 
 ```text
-RAILPACK_DEPLOY_APT_PACKAGES="default-mysql-client clamav clamav-freshclam tesseract-ocr poppler-utils"
+RAILPACK_DEPLOY_APT_PACKAGES="... default-mysql-client clamav clamav-freshclam tesseract-ocr poppler-utils"
 ```
 
 Do not enable evidence submission in production until `freshclam` has populated
@@ -119,7 +129,7 @@ seed demo or local-defense data in staging or production.
 5. Upload, scan, preview, and delete a disposable evidence file; verify it
    survives a redeploy before allowing real uploads.
 6. Generate the Railway domain only after the service is healthy, set
-   `app.baseURL`, redeploy, and repeat the health check over the public domain.
+   `app_baseURL`, redeploy, and repeat the health check over the public domain.
 7. Merge the reviewed branch into `main` only after staging acceptance, then
    switch Railway to `main` for the production promotion.
 

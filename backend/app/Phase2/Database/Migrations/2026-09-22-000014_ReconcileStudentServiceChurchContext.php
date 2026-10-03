@@ -9,7 +9,7 @@ final class ReconcileStudentServiceChurchContext extends Migration
 {
     public function up()
     {
-        if (! $this->db->tableExists('student_service_details')) {
+        if (! $this->db->tableExists('student_service_details', false)) {
             throw new RuntimeException(
                 'student_service_details table is required before migration 000014.'
             );
@@ -39,7 +39,7 @@ final class ReconcileStudentServiceChurchContext extends Migration
 
     public function down()
     {
-        if (! $this->db->tableExists('student_service_details')) {
+        if (! $this->db->tableExists('student_service_details', false)) {
             return;
         }
 

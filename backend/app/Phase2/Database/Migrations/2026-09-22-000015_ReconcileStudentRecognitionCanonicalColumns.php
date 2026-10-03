@@ -11,7 +11,7 @@ final class ReconcileStudentRecognitionCanonicalColumns extends Migration
     {
         $table = 'student_recognition_details';
 
-        if (! $this->db->tableExists($table)) {
+        if (! $this->db->tableExists($table, false)) {
             throw new RuntimeException(
                 'student_recognition_details table is required before migration 000015.'
             );
@@ -101,7 +101,7 @@ final class ReconcileStudentRecognitionCanonicalColumns extends Migration
     {
         $table = 'student_recognition_details';
 
-        if (! $this->db->tableExists($table)) {
+        if (! $this->db->tableExists($table, false)) {
             return;
         }
 

@@ -63,4 +63,5 @@ frontend/vitest-results-*.json
 /Claude outputs/
 /AchieveNest System Readiness Audit*/
 /.vercel/
+/frontend/.vercel/
 /.env.local

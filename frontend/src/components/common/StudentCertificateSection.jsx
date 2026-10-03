@@ -22,12 +22,12 @@ export default function StudentCertificateSection({
   onRefetch,
   className = ''
 }) {
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState(null)
+
   if (!certificate || !certificate.status) {
     return null
   }
-
-  const [isDownloading, setIsDownloading] = useState(false)
-  const [downloadError, setDownloadError] = useState(null)
 
   const status = certificate.status.toUpperCase()
   const isIssued = status === 'ISSUED'

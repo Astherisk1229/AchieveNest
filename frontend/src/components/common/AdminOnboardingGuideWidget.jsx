@@ -34,6 +34,8 @@ export default function AdminOnboardingGuideWidget({ currentUser, activeRoleCont
   const { metrics, steps } = guide
   const { completedCount, totalApplicable, progressPercent } = metrics
 
+  if (totalApplicable > 0 && completedCount >= totalApplicable) return null
+
   // Title matching Codex reference
   const guideTitle = 'Getting started'
 

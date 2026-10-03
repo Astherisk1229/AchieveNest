@@ -1,6 +1,7 @@
 import React from 'react'
 import { X, Award, Download, CheckCircle2, ShieldCheck, QrCode } from 'lucide-react'
 import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
+import { alertDialog } from '../../../components/ui/DialogProvider'
 
 
 
@@ -8,7 +9,7 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
   if (!isOpen) return null
 
   const handleExportPDF = () => {
-    alert(`Exporting official digital certificates for: ${activeEvent?.title || 'Computer Society Tech Summit 2026'}`)
+    alertDialog({ title: 'Exporting certificates', message: `Exporting official digital certificates for: ${activeEvent?.title || 'this event'}`, tone: 'info' })
   }
 
   return (

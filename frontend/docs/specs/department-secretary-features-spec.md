@@ -20,7 +20,7 @@ This document provides an exhaustive, highly detailed specification of all syste
 > - **Separation of Contexts (Personal Achievements & Portfolio Management)**: The Department Secretary workspace is strictly focused on department faculty score evaluation and proof verification. Personal portfolio management (`My Personal Portfolio`) and personal achievement entries (`My Achievements`) are completely excluded from the Secretary sidebar menu. To log personal accomplishments or manage their own portfolio, the Department Secretary must switch role context to their **Personnel Portal** account (`active_role_context: 'personnel'`).
 
 ### B. Architectural Compliance (OOP & MVC)
-In compliance with project architectural rules ([`AGENTS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md) and [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)):
+In compliance with project architectural rules ([`AGENTS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md) and [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)):
 
 - **Domain Model (`src/models/PersonnelPortfolioModel.js`)**:
   - Encapsulates faculty portfolio entity schemas, academic rank metadata, department mapping (`matchesDepartment(deptId)`), line-item items array for Area A, B, and C, claimed points vs verified points, proof verification flags (`is_proof_verified`), point ceiling calculations (Area A: 70 max, Area B: 50 max, Area C: 40 max, Capped Total: 160 max), and immutable audit history state transitions (`transitionStatus`).
@@ -135,11 +135,11 @@ The **Personnel Roster** section presents all faculty members under the departme
 
 ## 6. Summary of Key Files & Architectural Modules
 
-- **Specification File**: [`docs/specs/DEPARTMENT_SECRETARY_FEATURES_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/docs/specs/DEPARTMENT_SECRETARY_FEATURES_SPEC.md)
-- **Domain Model**: [`src/models/PersonnelPortfolioModel.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/models/PersonnelPortfolioModel.js)
-- **MVC Controller**: [`src/controllers/DepSecVerificationController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/DepSecVerificationController.js)
-- **Bridge Hook**: [`src/hooks/useDepSecVerification.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/hooks/useDepSecVerification.js)
-- **Dashboard Container**: [`src/components/depsec/DepSecDashboardView.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/depsec/DepSecDashboardView.jsx)
-- **Roster View**: [`src/components/depsec/DepSecPortfolioRoster.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/depsec/DepSecPortfolioRoster.jsx)
-- **Evaluator Workbench View**: [`src/components/depsec/DepSecEvaluatorWorkbench.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/depsec/DepSecEvaluatorWorkbench.jsx)
-- **Main Page Host**: [`src/pages/PersonnelDashboard.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)
+- **Specification File**: [`docs/specs/DEPARTMENT_SECRETARY_FEATURES_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/docs/specs/DEPARTMENT_SECRETARY_FEATURES_SPEC.md)
+- **Domain Model**: [`src/models/PersonnelPortfolioModel.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/models/PersonnelPortfolioModel.js)
+- **MVC Controller**: [`src/controllers/DepSecVerificationController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/DepSecVerificationController.js)
+- **Bridge Hook**: [`src/hooks/useDepSecVerification.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/hooks/useDepSecVerification.js)
+- **Dashboard Container**: [`src/components/depsec/DepSecDashboardView.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/depsec/DepSecDashboardView.jsx)
+- **Roster View**: [`src/components/depsec/DepSecPortfolioRoster.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/depsec/DepSecPortfolioRoster.jsx)
+- **Evaluator Workbench View**: [`src/components/depsec/DepSecEvaluatorWorkbench.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/depsec/DepSecEvaluatorWorkbench.jsx)
+- **Main Page Host**: [`src/pages/PersonnelDashboard.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)

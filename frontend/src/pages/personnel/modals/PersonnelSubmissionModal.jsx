@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   X,
   Award,
@@ -7,41 +7,40 @@ import {
   AlertCircle,
   FileText,
   Check,
-  Building,
-  Globe,
-  Calendar,
   Sparkles,
-  Paperclip,
-  GraduationCap,
-  Users,
-  BookOpen,
-  Heart,
-  ShieldCheck,
-  Scan,
   RefreshCw,
-  FileSearch,
-  Wand2
+  ArrowLeft
 } from 'lucide-react'
 
 import RankingCriteriaModel from '../../../models/RankingCriteriaModel.js'
+import { localToday } from '../../../utils/employmentDate'
 import SecurityController from '../../../controllers/SecurityController.js'
 import OcrScanController from '../../../controllers/OcrScanController.js'
+import PersonnelAchievementController from '../../../controllers/PersonnelAchievementController.js'
+import { confirmDialog } from '../../../components/ui/DialogProvider'
+import { CardHeading, StepProgress } from './AccomplishmentModalParts'
+import { NTP_ENTRY_CRITERIA, ntpCategoryLabel, ntpContractCode, ntpCriterionByCode, ntpDetailText, resolveNtpCriterion } from '../../../config/nonTeachingPortfolioSchema'
 
 // Helper component for required field labels (Clean Auto-filled badge when OCR populated)
-const ReqLabel = ({ label, value, isOcrAutoFilled }) => {
+const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfidence = null }) => {
   const isFilled = value !== undefined && value !== null && String(value).trim() !== ''
   return (
     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
       <span className="flex items-center gap-1.5">
         <span>{label}</span>
-        {isOcrAutoFilled && (
+        {isOcrAutoFilled && !isManuallyEdited && (
           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200" title="Auto-filled from certificate text via AchieveNest OCR Engine">
-            Auto-filled
+            Auto-filled{ocrConfidence !== null ? ` • ${ocrConfidence}%` : ''}
+          </span>
+        )}
+        {isManuallyEdited && isFilled && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200" title="Manually edited by Personnel">
+            Manual
           </span>
         )}
       </span>
       {isFilled ? (
-        <span className="text-[#16834a] text-[11px] font-bold flex items-center gap-0.5" title="Field Requirement Completed">
+        <span className="text-[#16834a] text-[11px] font-bold flex items-center gap-0.5" title="Field Completed">
           <Check className="w-3.5 h-3.5 text-[#16834a] stroke-[3]" />
         </span>
       ) : (
@@ -51,11 +50,54 @@ const ReqLabel = ({ label, value, isOcrAutoFilled }) => {
   )
 }
 
-export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, initialCategory = '' }) {
+// Official Non-Teaching Personnel criteria (Appendix N). Area A is rated by HR; B.3 comes from the employment record.
+const AREA_CATEGORY_OPTIONS = Object.freeze({
+  B: NTP_ENTRY_CRITERIA.map((criterion) => [ntpCategoryLabel(criterion), ntpCategoryLabel(criterion)])
+})
+
+const normalizeEntryArea = () => 'B'
+
+const categoryBelongsToArea = (category) => AREA_CATEGORY_OPTIONS.B.some(([value]) => value === category)
+
+/** Any stored or suggested category (including older labels) mapped onto an Appendix N option. */
+const categoryForArea = (candidate) => {
+  if (categoryBelongsToArea(candidate)) return candidate
+  const criterion = ntpCriterionByCode(resolveNtpCriterion({ category: candidate }))
+  return criterion ? ntpCategoryLabel(criterion) : AREA_CATEGORY_OPTIONS.B[0][0]
+}
+
+const criterionForCategory = (category) => ntpCriterionByCode(String(category || '').split(' ')[0])
+
+const evidenceListOf = (item) => {
+  const data = typeof item?.toJSON === 'function' ? item.toJSON() : (item || {})
+  return [...(Array.isArray(data.evidence) ? data.evidence : []), data.primary_evidence].filter(Boolean)
+}
+
+/** The accomplishment (other than excludeId) whose evidence has this SHA-256, if any. */
+export function findAccomplishmentWithDocument(achievements = [], sha256, excludeId = null) {
+  if (!sha256) return null
+  return achievements.find(item => item && item.id !== excludeId
+    && evidenceListOf(item).some(evidence => String(evidence.sha256 || evidence.checksum || '').toLowerCase() === sha256)) || null
+}
+
+export default function PersonnelSubmissionModal({
+  isOpen,
+  onClose,
+  onSubmitAccomplishment,
+  initialCategory = '',
+  editingItem = null,
+  existingAchievements = [],
+  areaCode = 'B',
+  areaName = '',
+  presentation = 'modal'
+}) {
+  const lockedAreaCode = normalizeEntryArea(areaCode)
+  const isPage = presentation === 'page'
   // Helper for Academic Year Infer
   const inferAcademicYear = (dateStr) => {
-    if (!dateStr) return 'AY 2025-2026'
+    if (!dateStr || String(dateStr).trim() === '') return ''
     const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return ''
     const year = d.getFullYear()
     const month = d.getMonth() + 1 // 1..12
     const startYear = month >= 6 ? year : year - 1
@@ -63,64 +105,24 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   }
 
   // Active Category State
-  const [category, setCategory] = useState(initialCategory || 'A.1 Degree/s')
-  const [dateAchieved, setDateAchieved] = useState(new Date().toISOString().split('T')[0])
-  const [academicYear, setAcademicYear] = useState(() => inferAcademicYear(new Date().toISOString().split('T')[0]))
+  const [category, setCategory] = useState(() => categoryForArea(initialCategory, lockedAreaCode))
+  const [dateAchieved, setDateAchieved] = useState('')
+  const [academicYear, setAcademicYear] = useState('')
 
-  // Tailored Category Fields
-  // A.1 Degree/s
-  const [degreeLevel, setDegreeLevel] = useState('Ph.D. Degree Holder')
-  const [degreeTitle, setDegreeTitle] = useState('')
-  const [institution, setInstitution] = useState('')
-  const [unitsCompleted, setUnitsCompleted] = useState('18')
+  // Appendix N details for the selected criterion (keys come from nonTeachingPortfolioSchema)
+  const [details, setDetails] = useState({})
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [ongoing, setOngoing] = useState(false)
+  const [scopeLevel, setScopeLevel] = useState('')
+  const activeCriterion = criterionForCategory(category)
+  const setDetail = (name, value) => { setDetails((current) => ({ ...current, [name]: value })); markFieldEdited(name) }
 
-  // A.2 Membership
-  const [orgName, setOrgName] = useState('')
-  const [orgPosition, setOrgPosition] = useState('Member')
-  const [officeHeld, setOfficeHeld] = useState('')
-
-  // A.3 Seminar
-  const [seminarTitle, setSeminarTitle] = useState('')
-  const [organizerVenue, setOrganizerVenue] = useState('')
-  const [scopeLevel, setScopeLevel] = useState('National')
-
-  // B.1 Speaker / Consultancy
-  const [eventTitle, setEventTitle] = useState('')
-  const [speakerRole, setSpeakerRole] = useState('Keynote Speaker')
-  const [sponsoringAgency, setSponsoringAgency] = useState('')
-
-  // B.2 Publication
-  const [pubTitle, setPubTitle] = useState('')
-  const [pubType, setPubType] = useState('Scholarly Paper')
-  const [publisherIssn, setPublisherIssn] = useState('')
-
-  // B.3 Conduct of Research
-  const [researchTitle, setResearchTitle] = useState('')
-  const [researchRole, setResearchRole] = useState('Lead Researcher')
-  const [fundingStatus, setFundingStatus] = useState('Completed Institutional Research')
-
-  // B.4 Recognition or Awards
-  const [awardTitle, setAwardTitle] = useState('')
-  const [conferringBody, setConferringBody] = useState('')
-  const [awardType, setAwardType] = useState('Awardee')
-
-  // B.5 Instructional Materials
-  const [materialTitle, setMaterialTitle] = useState('')
-  const [matType, setMatType] = useState('Workbooks / Exercises / Lecture Notes (Bound)')
-  const [courseUsedIn, setCourseUsedIn] = useState('')
-
-  // B.6 Creative Work
-  const [creativeTitle, setCreativeTitle] = useState('')
-  const [exhibitionVenue, setExhibitionVenue] = useState('')
-
-  // C.1 / C.2 Service & Community
-  const [serviceTitle, setServiceTitle] = useState('')
-  const [sponsoringOrg, setSponsoringOrg] = useState('')
-  const [subType, setSubType] = useState('C.1.1 Moderator of Clubs / Organizations')
-
-  // Proof Attachment & Remarks
   const [description, setDescription] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
+
+  // Tracking Manual Modifications (Manual overrides OCR and is never silently overwritten)
+  const [manuallyEdited, setManuallyEdited] = useState({})
 
   // System States & Security
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -131,19 +133,70 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
   const [ocrResult, setOcrResult] = useState(null)
   const [ocrBadges, setOcrBadges] = useState({})
   const [isScanModeActive, setIsScanModeActive] = useState(true)
+  const fileInputRef = useRef(null)
+  const [dragActive, setDragActive] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+
+  // Local preview of the chosen proof (left pane), same as the Faculty modal.
+  useEffect(() => {
+    if (!attachedFile || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') { setPreviewUrl(''); return undefined }
+    const url = URL.createObjectURL(attachedFile)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [attachedFile])
+
+  // Same document already backing another accomplishment? Checked as soon as a file is chosen
+  // (the server enforces the same rule on upload).
+  const [fileHash, setFileHash] = useState('')
+  useEffect(() => {
+    let active = true
+    setFileHash('')
+    if (!attachedFile || typeof crypto === 'undefined' || !crypto.subtle || typeof attachedFile.arrayBuffer !== 'function') return undefined
+    attachedFile.arrayBuffer()
+      .then(buffer => crypto.subtle.digest('SHA-256', buffer))
+      .then(digest => { if (active) setFileHash(Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('')) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [attachedFile])
+  const documentDuplicate = findAccomplishmentWithDocument(existingAchievements, fileHash, editingItem?.id)
 
   useEffect(() => {
-    if (initialCategory) {
-      setCategory(initialCategory)
+    if (editingItem) {
+      setCategory(categoryForArea(editingItem.category, lockedAreaCode))
+      setDateAchieved(editingItem.date_achieved || '')
+      setAcademicYear(editingItem.academic_year || inferAcademicYear(editingItem.date_achieved))
+      setDescription(editingItem.description || '')
+      setScopeLevel(editingItem.scope_level || '')
+      const meta = editingItem.category_metadata || {}
+      setDetails(meta.details && typeof meta.details === 'object' ? meta.details : {})
+      setStartDate(meta.start_date || '')
+      setEndDate(meta.end_date || '')
+      setOngoing(meta.ongoing === true)
+    } else if (initialCategory) {
+      setCategory(categoryForArea(initialCategory, lockedAreaCode))
+    } else {
+      setCategory(categoryForArea('', lockedAreaCode))
     }
-  }, [initialCategory])
+  }, [initialCategory, editingItem, lockedAreaCode])
+
+  // Helper to mark a field as manually edited
+  const markFieldEdited = (fieldName) => {
+    setManuallyEdited(prev => ({ ...prev, [fieldName]: true }))
+    setOcrBadges(prev => ({ ...prev, [fieldName]: false }))
+  }
 
   // Sync Academic Year automatically on Date Achieved change
   const handleDateChange = (e) => {
     const d = e.target.value
     setDateAchieved(d)
     setAcademicYear(inferAcademicYear(d))
-    setOcrBadges(prev => ({ ...prev, dateAchieved: false }))
+    markFieldEdited('dateAchieved')
+  }
+
+  const handleCategoryChange = (nextCategory) => {
+    if (!categoryBelongsToArea(nextCategory)) return
+    setCategory(nextCategory)
+    markFieldEdited('category')
   }
 
   // Perform Intelligent Document Scan & Auto-Fill
@@ -159,59 +212,33 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
         setOcrResult(res)
         const fields = res.extractedFields
 
-        // Auto-select detected NDMU category
-        if (res.detectedCategory) {
-          setCategory(res.detectedCategory)
-        }
+        // 1. Suggested category, mapped onto Appendix N (only if the user hasn't chosen one)
+        const suggestedCriterion = ntpCriterionByCode(resolveNtpCriterion({ category: res.detectedCategory || '' }))
+        const suggestedCategory = suggestedCriterion ? ntpCategoryLabel(suggestedCriterion) : null
+        if (suggestedCategory && !manuallyEdited.category) setCategory(suggestedCategory)
 
-        // Set Date & Academic Year
+        const newBadges = { category: !manuallyEdited.category && Boolean(suggestedCategory) }
+        const criterionToFill = (!manuallyEdited.category && suggestedCriterion) || criterionForCategory(category)
+
+        // 2. Date (start date for period criteria)
         if (fields.date) {
-          setDateAchieved(fields.date)
-          setAcademicYear(fields.academicYear)
+          if (criterionToFill?.dateMode === 'period' && !manuallyEdited.startDate) { setStartDate(fields.date); newBadges.startDate = true }
+          if (!manuallyEdited.dateAchieved) { setDateAchieved(fields.date); setAcademicYear(fields.academicYear); newBadges.dateAchieved = true }
         }
 
-        // Map Category Specific Fields & Track Badges
-        const newBadges = { category: true, dateAchieved: true }
-
-        if (res.detectedCategory.startsWith('A.1')) {
-          if (fields.title) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
-          if (fields.issuer) { setInstitution(fields.issuer); newBadges.institution = true }
-          if (fields.degreeLevel) { setDegreeLevel(fields.degreeLevel); newBadges.degreeLevel = true }
-        } else if (res.detectedCategory.startsWith('A.2')) {
-          if (fields.title) { setOrgName(fields.title); newBadges.orgName = true }
-          if (fields.issuer) { setOfficeHeld(fields.issuer); newBadges.officeHeld = true }
-        } else if (res.detectedCategory.startsWith('A.3')) {
-          if (fields.title) { setSeminarTitle(fields.title); newBadges.seminarTitle = true }
-          if (fields.issuer) { setOrganizerVenue(fields.issuer); newBadges.organizerVenue = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.1')) {
-          if (fields.title) { setEventTitle(fields.title); newBadges.eventTitle = true }
-          if (fields.issuer) { setSponsoringAgency(fields.issuer); newBadges.sponsoringAgency = true }
-          if (fields.specificRole) { setSpeakerRole(fields.specificRole); newBadges.speakerRole = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.2')) {
-          if (fields.title) { setPubTitle(fields.title); newBadges.pubTitle = true }
-          if (fields.issuer) { setPublisherIssn(fields.issuer); newBadges.publisherIssn = true }
-          if (fields.pubType) { setPubType(fields.pubType); newBadges.pubType = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.3')) {
-          if (fields.title) { setResearchTitle(fields.title); newBadges.researchTitle = true }
-          if (fields.fundingStatus) { setFundingStatus(fields.fundingStatus); newBadges.fundingStatus = true }
-        } else if (res.detectedCategory.startsWith('B.4')) {
-          if (fields.title) { setAwardTitle(fields.title); newBadges.awardTitle = true }
-          if (fields.issuer) { setConferringBody(fields.issuer); newBadges.conferringBody = true }
-          if (fields.awardType) { setAwardType(fields.awardType); newBadges.awardType = true }
-          if (fields.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (res.detectedCategory.startsWith('B.5')) {
-          if (fields.title) { setMaterialTitle(fields.title); newBadges.materialTitle = true }
-          if (fields.matType) { setMatType(fields.matType); newBadges.matType = true }
-        } else if (res.detectedCategory.startsWith('B.6')) {
-          if (fields.title) { setCreativeTitle(fields.title); newBadges.creativeTitle = true }
-          if (fields.issuer) { setExhibitionVenue(fields.issuer); newBadges.exhibitionVenue = true }
-        } else {
-          if (fields.title) { setServiceTitle(fields.title); newBadges.serviceTitle = true }
-          if (fields.issuer) { setSponsoringOrg(fields.issuer); newBadges.sponsoringOrg = true }
-          if (fields.subType) { setSubType(fields.subType); newBadges.subType = true }
+        // 3. Main detail ← document title; organizer / issuer ← issuing body; role ← detected role
+        if (criterionToFill) {
+          const fill = {}
+          const free = criterionToFill.fields.filter((definition) => definition.type !== 'select')
+          const primary = criterionToFill.primary
+          const organizerField = free.find((definition) => definition.name !== primary)
+          if (fields.title && !manuallyEdited[primary]) { fill[primary] = fields.title; newBadges[primary] = true }
+          if (fields.issuer && organizerField && !manuallyEdited[organizerField.name]) { fill[organizerField.name] = fields.issuer; newBadges[organizerField.name] = true }
+          const roleField = criterionToFill.fields.find((definition) => definition.type === 'select')
+          const detectedRole = String(fields.specificRole || '').toUpperCase().replace(/[\s-]+/g, '_')
+          const roleOption = roleField?.options.find(([value, label]) => detectedRole.includes(value) || detectedRole.includes(label.toUpperCase()))
+          if (roleOption && !manuallyEdited[roleField.name]) { fill[roleField.name] = roleOption[0]; newBadges[roleField.name] = true }
+          if (Object.keys(fill).length) setDetails((current) => ({ ...current, ...fill }))
         }
 
         setOcrBadges(newBadges)
@@ -226,54 +253,14 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
   if (!isOpen) return null
 
-  // Live Points Calculation
-  const calculateEstimatedPoints = () => {
-    if (category.startsWith('A.1')) {
-      if (degreeLevel.includes('Ph.D. Degree Holder')) return 40
-      if (degreeLevel.includes('Ph.D. Units')) return Math.min(10, Math.floor(Number(unitsCompleted || 0) / 3) * 2)
-      if (degreeLevel.includes('Master') && degreeLevel.includes('Holder')) return 20
-      return Math.min(10, Math.floor(Number(unitsCompleted || 0) / 3) * 1)
-    }
-    if (category.startsWith('A.2')) return orgPosition === 'Officer' ? 10 : 5
-    if (category.startsWith('A.3')) {
-      if (scopeLevel.includes('In-House')) return 3
-      if (scopeLevel.includes('City')) return 4
-      if (scopeLevel.includes('Regional')) return 6
-      if (scopeLevel.includes('National')) return 8
-      return 10
-    }
-    if (category.startsWith('B.1')) {
-      if (speakerRole.includes('Keynote')) return 10
-      if (speakerRole.includes('Resource')) return 8
-      if (speakerRole.includes('Facilitator')) return 6
-      if (speakerRole.includes('Judge')) return 5
-      return 3
-    }
-    if (category.startsWith('B.2')) {
-      if (pubType.includes('Book')) return 5
-      if (pubType.includes('Article')) return 4
-      return 5
-    }
-    if (category.startsWith('B.3')) {
-      if (fundingStatus.includes('Externally')) return 20
-      if (fundingStatus.includes('Institutional')) return 15
-      return 10
-    }
-    if (category.startsWith('B.4')) {
-      if (awardType === 'Awardee') {
-        return scopeLevel.includes('National') || scopeLevel.includes('International') ? 40 : scopeLevel.includes('Regional') ? 30 : 10
-      }
-      return scopeLevel.includes('National') ? 20 : scopeLevel.includes('Regional') ? 15 : 5
-    }
-    if (category.startsWith('B.5')) return matType.includes('Workbook') ? 20 : 10
-    if (category.startsWith('B.6')) return 20
-    if (category.startsWith('C.1')) return 20
-    if (category.startsWith('C.2')) return subType.includes('Church') || subType.includes('Community') ? 25 : 5
-    return 5
-  }
-
-  const estimatedPts = calculateEstimatedPoints()
-  const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, degreeLevel || subType || pubType)
+  const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, '')
+  const ocrFieldSummary = Object.values(ocrResult?.fields || {}).reduce((summary, field) => {
+    const confidence = Number(field?.confidence || 0)
+    if (field?.value && confidence >= 85) summary.autoFilled += 1
+    else if (field?.value && confidence >= 60) summary.needsReview += 1
+    else summary.manual += 1
+    return summary
+  }, { autoFilled: 0, needsReview: 0, manual: 0 })
 
   // Enhanced Security File Upload & Automatic OCR Trigger
   const handleFileChange = async (e) => {
@@ -300,114 +287,196 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
 
   // Extract Normalized Title & Issuer based on Category
   const getNormalizedTitleAndIssuer = () => {
-    if (category.startsWith('A.1')) return { title: degreeTitle || degreeLevel, issuer: institution || 'Grad School' }
-    if (category.startsWith('A.2')) return { title: orgName || 'Professional Org', issuer: officeHeld || orgPosition }
-    if (category.startsWith('A.3')) return { title: seminarTitle || 'Seminar/Training', issuer: organizerVenue || 'NDMU' }
-    if (category.startsWith('B.1')) return { title: eventTitle || 'Talk/Consultancy', issuer: sponsoringAgency || 'Sponsoring Agency' }
-    if (category.startsWith('B.2')) return { title: pubTitle || 'Publication Work', issuer: publisherIssn || 'Publisher' }
-    if (category.startsWith('B.3')) return { title: researchTitle || 'Research Project', issuer: fundingStatus }
-    if (category.startsWith('B.4')) return { title: awardTitle || 'Recognition/Award', issuer: conferringBody || 'Conferring Org' }
-    if (category.startsWith('B.5')) return { title: materialTitle || 'Instructional Material', issuer: courseUsedIn || 'Department' }
-    if (category.startsWith('B.6')) return { title: creativeTitle || 'Creative Output', issuer: exhibitionVenue || 'Exhibition Venue' }
-    return { title: serviceTitle || 'Service Project', issuer: sponsoringOrg || 'LGU/Parish' }
+    if (!activeCriterion) return { title: '', issuer: '' }
+    return {
+      title: ntpDetailText(activeCriterion, details, activeCriterion.primary),
+      issuer: activeCriterion.secondary.map((name) => ntpDetailText(activeCriterion, details, name)).filter(Boolean).join(' · ')
+    }
   }
 
   // Form Submission Handler
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (documentDuplicate) {
+      setError(`This document is already used for "${documentDuplicate.title || 'another accomplishment'}". Choose a different file.`)
+      return
+    }
 
     const { title: resolvedTitle, issuer: resolvedIssuer } = getNormalizedTitleAndIssuer()
 
-    if (!resolvedTitle.trim() || resolvedTitle.trim().length < 3) {
-      setError('Please complete the primary title field for this category.')
+    const missing = (activeCriterion?.fields || []).filter((definition) => definition.required !== false && !String(details[definition.name] || '').trim())
+    if (!activeCriterion || missing.length) {
+      setError(`Please complete: ${missing.map((definition) => definition.label).join(', ') || 'the category details'}.`)
       return
     }
-    if (!attachedFile) {
+    if (!resolvedTitle.trim() || resolvedTitle.trim().length < 3) {
+      setError(`${activeCriterion.fields.find((definition) => definition.name === activeCriterion.primary)?.label || 'The main detail'} must be at least 3 characters.`)
+      return
+    }
+    const isPeriod = activeCriterion.dateMode === 'period'
+    const effectiveDate = isPeriod ? startDate : dateAchieved
+    if (!effectiveDate) { setError(isPeriod ? 'Enter the start date.' : 'Enter the date of the accomplishment.'); return }
+    if (isPeriod && !ongoing && !endDate) { setError('Enter the end date, or mark it as ongoing.'); return }
+    if (isPeriod && endDate && endDate < startDate) { setError('The end date cannot be before the start date.'); return }
+    if (!attachedFile && !editingItem) {
       setError('Supporting Proof Document attachment (PDF/JPG/PNG) is required.')
       return
     }
 
     try {
       setIsSubmitting(true)
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      const formattedDate = new Date(dateAchieved).toLocaleDateString('en-US', {
+      const formattedDate = effectiveDate ? new Date(effectiveDate).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
-      })
+      }) : ''
 
       const newEntry = {
-        id: Date.now(),
         title: resolvedTitle.trim(),
         issuer: resolvedIssuer.trim(),
-        date: formattedDate,
-        academic_year: academicYear,
+        location: resolvedIssuer.trim(),
+        date: formattedDate || effectiveDate,
+        date_achieved: effectiveDate,
+        academic_year: inferAcademicYear(effectiveDate),
         category: category,
         scope_level: scopeLevel,
-        claimed_points: estimatedPts,
+        // Official Appendix N contract: the server validates it and maps it to the locked criteria.
+        category_metadata: {
+          portfolio_format: 'non_teaching_faculty',
+          contract_code: ntpContractCode(activeCriterion.code),
+          criterion_code: activeCriterion.code,
+          subcategory_code: activeCriterion.code,
+          date_mode: isPeriod ? 'period' : 'single',
+          start_date: isPeriod ? startDate : effectiveDate,
+          end_date: isPeriod ? (ongoing ? '' : endDate) : effectiveDate,
+          ongoing: isPeriod && activeCriterion.allowOngoing ? ongoing : false,
+          details: Object.fromEntries(activeCriterion.fields.map((definition) => [definition.name, String(details[definition.name] || '').trim()]).filter(([, value]) => value))
+        },
         status: 'Pending Review',
         description: description.trim(),
-        attached_file_name: attachedFile ? attachedFile.name : 'proof_document.pdf'
+        ocr_metadata: ocrResult ? {
+          extracted_category: ocrResult.detectedCategory,
+          confidence_score: ocrResult.confidenceScore,
+          matched_keywords: ocrResult.matchedKeywords,
+          fields: ocrResult.fields,
+          warnings: ocrResult.extractionWarnings
+        } : null
       }
 
       if (onSubmitAccomplishment) {
-        onSubmitAccomplishment(newEntry)
+        await onSubmitAccomplishment(newEntry, attachedFile)
       }
 
       setIsSubmitting(false)
       onClose()
     } catch (err) {
       setIsSubmitting(false)
-      setError('Failed to submit accomplishment. Please try again.')
+      console.error('Submission error:', err)
+      setError(err?.message || err?.error?.message || 'Failed to submit accomplishment. Please try again.')
     }
   }
 
+  const pickFile = (file) => { if (file) handleFileChange({ target: { files: [file], value: '' } }) }
+  const requestClose = async () => {
+    if (isSubmitting) return
+    if (attachedFile && !editingItem && !(await confirmDialog({ title: 'Discard this accomplishment?', message: 'You have unsaved changes. If you close now, the uploaded document and details you entered will be lost.', confirmLabel: 'Discard', cancelLabel: 'Keep editing', tone: 'destructive' }))) return
+    onClose()
+  }
+  const titleDuplicate = editingItem ? null : (() => {
+    const { title: curTitle, issuer: curIssuer } = getNormalizedTitleAndIssuer()
+    const dup = PersonnelAchievementController.checkDuplicateWarning({ title: curTitle, date_achieved: dateAchieved, issuer: curIssuer }, existingAchievements)
+    return dup.isDuplicate ? dup.warningMessage : null
+  })()
+  const submitBlocker = documentDuplicate
+    ? `This document is already used for "${documentDuplicate.title || 'another accomplishment'}". Each document can support only one accomplishment — choose a different file.`
+    : titleDuplicate ? `${titleDuplicate} Open the existing record instead of adding it again.` : null
+  const hasDocument = Boolean(attachedFile || editingItem)
+  const step = !hasDocument ? 1 : !dateAchieved ? 2 : 3
+  const chipState = (n) => n === step ? 'active' : n < step ? 'done' : 'todo'
+  const footerStatus = isSubmitting ? { tone: 'bg-amber-500', text: 'Saving accomplishment…' }
+    : submitBlocker ? { tone: 'bg-rose-500', text: 'Duplicate — cannot be added' }
+    : isScanning ? { tone: 'bg-amber-500', text: 'Reading your document…' }
+      : !hasDocument ? { tone: 'bg-slate-400', text: 'Upload a document to begin' }
+        : !dateAchieved ? { tone: 'bg-amber-500', text: 'Add the date achieved to continue' }
+          : { tone: 'bg-emerald-600', text: 'Ready to add' }
+  const isImagePreview = Boolean(previewUrl && attachedFile?.type?.startsWith('image/'))
+  const isPdfPreview = Boolean(previewUrl && attachedFile?.type === 'application/pdf')
+  const fileExtension = String(attachedFile?.name || editingItem?.attached_file_name || 'file').split('.').pop().slice(0, 4)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+    <div className={isPage
+      ? 'mx-auto w-full max-w-6xl font-sans'
+      : 'fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-0 font-sans min-[820px]:p-6'}>
+      <section
+        role={isPage ? undefined : 'dialog'}
+        aria-modal={isPage ? undefined : 'true'}
+        aria-labelledby="ntp-entry-title"
+        onKeyDown={(event) => { if (!isPage && event.key === 'Escape') { event.stopPropagation(); requestClose() } }}
+        className={isPage
+          ? 'flex min-h-[calc(100vh-8rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[#fbfcf8] shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)]'
+          : 'flex h-full w-full flex-col overflow-hidden bg-[#fbfcf8] shadow-[0_24px_70px_-24px_rgba(15,23,42,.55)] min-[820px]:h-[min(760px,calc(100vh-48px))] min-[820px]:w-[1100px] min-[820px]:max-w-full min-[820px]:rounded-2xl'}>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-
-        {/* ================= MODAL HEADER WITH LIVE ESTIMATED POINTS BADGE ================= */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#16834a] text-white flex items-center justify-center shadow-md">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Log New Accomplishment</h2>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#EFF7F0] text-amber-300 text-[11px] font-extrabold shadow-2xs border border-emerald-700/50">
-                  NDMU Ranking Record
-                </span>
+        {/* ================= HEADER (matches the Faculty accomplishment modal) ================= */}
+        <header className="shrink-0 bg-emerald-950 px-5 py-3.5 text-white">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              {isPage
+                ? <button type="button" onClick={requestClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Back to portfolio"><ArrowLeft className="h-5 w-5" aria-hidden="true" /></button>
+                : <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><Award className="h-5 w-5" aria-hidden="true" /></span>}
+              <div className="min-w-0">
+                <h2 id="ntp-entry-title" className="text-lg font-extrabold tracking-[-0.02em]">{editingItem ? 'Edit Accomplishment' : 'New Accomplishment'}</h2>
+                <p className="truncate text-sm text-emerald-50/90">{/^area\b/i.test(areaName || '') ? areaName : `Area ${lockedAreaCode} · ${areaName || 'Service & Leadership'}`}</p>
               </div>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Category-Tailored Fields • Auto Academic Year ({academicYear})
-              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <StepProgress chipState={chipState} />
+              {!isPage && <button type="button" onClick={requestClose} className="rounded-lg p-2 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close accomplishment form"><X className="h-5 w-5" /></button>}
             </div>
           </div>
+        </header>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col text-xs">
+          <div className="min-h-0 flex-1 overflow-y-auto min-[820px]:grid min-[820px]:grid-cols-[46fr_54fr] min-[820px]:overflow-hidden">
 
+            {/* LEFT: the document */}
+            <div className="flex h-[22rem] min-h-0 flex-col border-b border-slate-200 bg-slate-100 min-[820px]:h-auto min-[820px]:border-b-0 min-[820px]:border-r">
+              {isImagePreview
+                ? <div className="flex min-h-0 flex-1 items-center justify-center p-4"><img src={previewUrl} alt={`Preview of ${attachedFile.name}`} className="max-h-full max-w-full rounded-lg object-contain shadow-sm" /></div>
+                : isPdfPreview
+                  ? <iframe src={previewUrl} title={`Preview of ${attachedFile.name}`} className="min-h-0 w-full flex-1 bg-white" />
+                  : hasDocument
+                    ? <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center"><FileText className="h-10 w-10 text-emerald-800" aria-hidden="true" /><p className="text-sm font-bold text-slate-900">{attachedFile?.name || editingItem?.attached_file_name || 'Saved proof document'}</p><p className="text-xs text-slate-600">{attachedFile ? 'Preview is not available for this file type.' : 'The saved proof stays attached unless you replace it.'}</p></div>
+                    : <div className="flex flex-1 p-4 min-[820px]:p-5"><button type="button" onClick={() => fileInputRef.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragActive(true) }} onDragLeave={() => setDragActive(false)} onDrop={(event) => { event.preventDefault(); setDragActive(false); pickFile(event.dataTransfer.files?.[0]) }} className={`flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${dragActive ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300 bg-white hover:border-emerald-600 hover:bg-emerald-50/40'}`}>
+                      <UploadCloud className="h-10 w-10 text-emerald-800" aria-hidden="true" />
+                      <span className="mt-3 text-base font-extrabold text-slate-950">Drop your certificate here</span>
+                      <span className="mt-1 text-sm text-slate-700">or <span className="font-bold text-emerald-800 underline underline-offset-2">browse files</span></span>
+                      <span className="mt-4 text-xs text-slate-600">PDF, JPG, PNG · max 10 MB<br />We&apos;ll read it and suggest the category for you</span>
+                    </button></div>}
+              <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; pickFile(file) }} />
+            </div>
+
+            {/* RIGHT: review */}
+            <div className="min-h-0 space-y-3 p-4 min-[820px]:overflow-y-auto min-[820px]:p-5">
         {/* Error Alert Message */}
         {error && (
-          <div className="mx-5 mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
+        {/* Duplicate accomplishment / document (blocking) */}
+        {submitBlocker && (
+          <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-sm flex items-start gap-2.5 shrink-0">
+            <AlertCircle className="mt-0.5 w-4 h-4 shrink-0 text-rose-600" />
+            <span><strong>Duplicate accomplishment.</strong> {submitBlocker}</span>
+          </div>
+        )}
+
         {/* ================= OCR SCAN CONFIDENCE & STATUS BANNER ================= */}
         {isScanning && (
-          <div className="mx-5 mt-4 p-4 rounded-2xl bg-[#E7F3E9] border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
+          <div className="p-4 rounded-2xl bg-[#E7F3E9] border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
             <div className="w-8 h-8 rounded-xl bg-[#16834a] text-white flex items-center justify-center animate-spin shrink-0">
               <RefreshCw className="w-4 h-4" />
             </div>
@@ -417,28 +486,40 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
                 <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-amber-300 text-[10px] font-extrabold">AI Processing</span>
               </div>
               <p className="text-[11px] text-emerald-800 font-medium mt-0.5">
-                Extracting text → Matching NDMU Category → Auto-filling fields...
+                Extracting text → Suggesting NDMU Category → Auto-filling fields without fabrication...
               </p>
             </div>
           </div>
         )}
 
         {ocrResult && !isScanning && (
-          <div className="mx-5 mt-4 p-3.5 rounded-2xl bg-emerald-50/90 border border-emerald-300 text-[#064e2b] text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150">
+          <div className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150 ${ocrResult.documentQuality?.label === 'failed' ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-emerald-50/90 border-emerald-300 text-[#064e2b]'}`}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-700 text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
                 <Sparkles className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-slate-900">OCR Scan Completed</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-[#064e2b] text-[10px] font-extrabold border border-emerald-400/60">
-                    {ocrResult.confidenceScore}% Confidence Match
+                  <span className="font-extrabold text-slate-900">{ocrResult.documentQuality?.label === 'failed' ? 'Manual entry required' : 'OCR scan completed'}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${ocrResult.documentQuality?.label === 'failed' ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-200 text-[#064e2b] border-emerald-400/60'}`}>
+                    Document quality: {ocrResult.documentQuality?.label || 'review'}
                   </span>
                 </div>
                 <p className="text-[11px] text-emerald-800 mt-0.5">
-                  Detected Category: <strong className="text-emerald-950">{ocrResult.detectedCategory}</strong> • Pre-filled form fields below. You can freely edit any value.
+                  {ocrResult.documentQuality?.label === 'failed'
+                    ? 'OCR could not reliably read this document. Upload a clearer file or continue manually.'
+                    : <>Suggested Category: <strong className="text-emerald-950">{ocrResult.detectedCategory || 'Manual Selection Required'}</strong> • Category confidence: {ocrResult.confidenceScore}%</>}
                 </p>
+                {ocrResult.documentQuality?.label !== 'failed' && (
+                  <p className="text-[10px] text-emerald-900 mt-1 tabular-nums">
+                    Auto-filled: {ocrFieldSummary.autoFilled} • Needs review: {ocrFieldSummary.needsReview} • Manual: {ocrFieldSummary.manual}
+                  </p>
+                )}
+                {ocrResult.extractionWarnings?.length > 0 && (
+                  <p className="text-[10px] text-amber-800 mt-1 italic">
+                    ℹ {ocrResult.extractionWarnings[0]}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -454,825 +535,120 @@ export default function PersonnelSubmissionModal({ isOpen, onClose, onSubmitAcco
             )}
           </div>
         )}
-        {/* ================= CATEGORY-TAILORED ADAPTIVE FORM SCROLLABLE BODY ================= */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
 
-          {/* ================= STEP 1: UPLOAD & OCR SCAN CERTIFICATE (VERY TOP STEP) ================= */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-emerald-200/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-lg bg-[#16834a] text-white flex items-center justify-center text-xs font-black shadow-2xs">1</span>
-                <div>
-                  <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <span>Upload & Scan Certificate Document</span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-[#064e2b] text-[10px] font-extrabold border border-emerald-300/60 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-500 fill-amber-300" />
-                      <span>OCR Auto-Fill Active</span>
-                    </span>
-                  </h4>
-                  <p className="text-[11px] text-slate-500 font-medium">Attach your certificate first — system will auto-detect category & populate details.</p>
-                </div>
-              </div>
-              <span className="text-[11px] font-extrabold text-emerald-800 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">PDF / PNG / JPG</span>
-            </div>
-
-            {/* Proof Hint Banner */}
-            <div className="p-2.5 rounded-xl bg-emerald-100/60 border border-emerald-200 text-[#064e2b] text-[11px] font-semibold flex items-center gap-2">
-              <Paperclip className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
-              <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
-            </div>
-
-            {/* Drag and Drop Zone */}
-            <div className="relative border-2 border-dashed border-emerald-300 hover:border-[#16834a] rounded-2xl p-4 text-center transition bg-white hover:bg-[#E7F3E9]/40 cursor-pointer group shadow-2xs">
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <div className="flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#16834a] group-hover:scale-110 transition shadow-2xs">
-                  <UploadCloud className="w-5 h-5" />
-                </div>
-                {attachedFile ? (
-                  <div className="text-xs font-bold text-emerald-800 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Attached: <strong>{attachedFile.name}</strong> ({(attachedFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+              <section aria-labelledby="ntp-document-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+                <CardHeading id="ntp-document-heading" number={1} title="Supporting document" />
+                {!hasDocument && <p className="mt-2 text-sm text-slate-600">No document yet. Upload one on the left to get started.</p>}
+                {hasDocument && <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-emerald-900 text-[10px] font-extrabold uppercase text-white">{fileExtension}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-950">{attachedFile?.name || editingItem?.attached_file_name || 'Saved proof document'}</p>
+                    <p className="text-xs text-slate-600">{attachedFile ? `${(attachedFile.size / (1024 * 1024)).toFixed(2)} MB` : 'Already on file'}{isScanning && <span role="status" className="ml-1.5 font-semibold text-amber-800">Reading document…</span>}</p>
                   </div>
-                ) : (
-                  <div>
-                    <p className="text-xs font-extrabold text-slate-900 flex items-center justify-center gap-1.5">
-                      <span>Click to upload certificate or drag & drop file here</span>
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Scans document instantly using AchieveNest OCR Engine</p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {attachedFile && !isScanning && <button type="button" onClick={() => performOcrScan(attachedFile)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />{ocrResult ? 'Re-scan' : 'Scan'}</button>}
+                    <button type="button" disabled={isScanning} onClick={() => fileInputRef.current?.click()} className="rounded-md px-2 py-1.5 text-xs font-bold text-slate-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-50">Replace</button>
                   </div>
-                )}
-              </div>
-            </div>
+                </div>}
+                {requiredProofHint && <p className="mt-2 text-xs text-slate-600">Suggested proof: {requiredProofHint}</p>}
+              </section>
 
-            {/* Live OCR Scanning Spinner Status */}
-            {isScanning && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 animate-in fade-in">
-                <RefreshCw className="w-4 h-4 text-[#16834a] animate-spin shrink-0" />
-                <span>Scanning document text & detecting NDMU category...</span>
-              </div>
-            )}
+              <section aria-labelledby="ntp-classification-heading" className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                <CardHeading id="ntp-classification-heading" number={2} title="Classification" />
+            <ReqLabel 
+              label="Category" 
+              value={category} 
+              isOcrAutoFilled={ocrBadges.category}
+              isManuallyEdited={manuallyEdited.category}
+            />
+            <select
+              value={category}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-900 text-sm focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
+            >
+              {AREA_CATEGORY_OPTIONS[lockedAreaCode].map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </section>
 
-            {/* OCR Success Confidence Card */}
-            {ocrResult && !isScanning && (
-              <div className="p-3 rounded-xl bg-white border border-emerald-300 text-[#064e2b] text-xs font-semibold flex items-center justify-between gap-3 animate-in fade-in shadow-2xs">
-                <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-300 shrink-0" />
-                  <div>
-                    <p className="font-extrabold text-slate-900">
-                      OCR Scan Complete • <span className="text-[#16834a]">{ocrResult.confidenceScore}% Match</span>
-                    </p>
-                    <p className="text-[11px] text-slate-600">
-                      Detected: <strong>{ocrResult.detectedCategory}</strong>
-                    </p>
+              <section aria-labelledby="ntp-details-heading" className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                <CardHeading id="ntp-details-heading" number={3} title="Accomplishment details" />
+          {/* ================= Appendix N details for the selected criterion ================= */}
+          {activeCriterion && (
+            <div className="space-y-3.5">
+              <p className="text-xs font-semibold text-slate-600">{activeCriterion.groupTitle} · {activeCriterion.title} (maximum {activeCriterion.max} points)</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {activeCriterion.fields.map((definition) => (
+                  <div key={`${activeCriterion.code}-${definition.name}`} className={definition.name === activeCriterion.primary ? 'sm:col-span-2' : ''}>
+                    <ReqLabel label={definition.required === false ? `${definition.label} (optional)` : definition.label} value={details[definition.name]} isOcrAutoFilled={ocrBadges[definition.name]} isManuallyEdited={manuallyEdited[definition.name]} />
+                    {definition.type === 'select'
+                      ? <select value={details[definition.name] || ''} onChange={(event) => setDetail(definition.name, event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20"><option value="">Select {definition.label.toLowerCase()}</option>{definition.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+                      : <input type="text" maxLength={255} value={details[definition.name] || ''} placeholder={definition.placeholder || ''} onChange={(event) => setDetail(definition.name, event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20" />}
                   </div>
-                </div>
-
-                {attachedFile && (
-                  <button
-                    type="button"
-                    onClick={() => performOcrScan(attachedFile)}
-                    className="px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#064e2b] text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3 text-[#16834a]" />
-                    <span>Re-scan</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ================= STEP 2: REVIEW & EDIT EXTRACTED DETAILS ================= */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-              <span className="w-6 h-6 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-black">2</span>
-              <h4 className="font-extrabold text-slate-900 text-xs">Review & Edit Accomplishment Details</h4>
-            </div>
-
-            {/* CATEGORY SELECTOR */}
-            <div>
-              <ReqLabel label="Category (NDMU Rating Sheet)" value={category} isOcrAutoFilled={ocrBadges.category} />
-              <select
-                value={category}
-                onChange={(e) => {
-                  setCategory(e.target.value)
-                  setOcrBadges(prev => ({ ...prev, category: false }))
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-emerald-50/40 text-xs font-bold text-[#064e2b] focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none transition"
-              >
-                <option value="A.1 Degree/s">Area A: A.1 Educational Qualifications / Degrees</option>
-                <option value="A.2 Active Membership to Prof Orgs">Area A: A.2 Active Membership in Professional Orgs</option>
-                <option value="A.3 Attendance to Seminars/Trainings">Area A: A.3 Attendance to Seminars / Trainings</option>
-                <option value="B.1 Guest Lecturer / Consultant / Judge">Area B: B.1 Guest Lecturer / Resource Person / Consultant</option>
-                <option value="B.2 Publication">Area B: B.2 Publication (Papers, Books, Articles)</option>
-                <option value="B.3 Conduct of Research">Area B: B.3 Conduct of Research</option>
-                <option value="B.4 Professional Recognition or Awards">Area B: B.4 Recognition or Awards</option>
-                <option value="B.5 Production of Instructional Materials">Area B: B.5 Instructional Materials</option>
-                <option value="B.6 Creative Work">Area B: B.6 Creative Work</option>
-                <option value="C.1 Extra-Curricular Activities">Area C: C.1 School Involvement (Extracurricular/Orgs)</option>
-                <option value="C.2 Community Involvement">Area C: C.2 Community & Civic Involvement</option>
-              </select>
-            </div>
-
-            {/* ================= 100% CATEGORY-TAILORED DYNAMIC INPUTS ================= */}
-
-            {/* A.1 DEGREE TAILORED INPUTS */}
-            {category.startsWith('A.1') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Degree Level" value={degreeLevel} isOcrAutoFilled={ocrBadges.degreeLevel} />
-                    <select
-                      value={degreeLevel}
-                      onChange={(e) => {
-                        setDegreeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, degreeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:border-[#16834a]"
-                    >
-                      <option value="Ph.D. Degree Holder">Ph.D. Degree Holder</option>
-                      <option value="Ph.D. Units">Ph.D. Units Earned</option>
-                      <option value="Master's Degree Holder">Master's Degree Holder</option>
-                      <option value="Master's Units">Master's Units Earned</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Degree Program / Specialization" value={degreeTitle} isOcrAutoFilled={ocrBadges.degreeTitle} />
-                    <input
-                      type="text"
-                      value={degreeTitle}
-                      onChange={(e) => {
-                        setDegreeTitle(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, degreeTitle: false }))
-                      }}
-                      placeholder="e.g. Ph.D. in Computer Science / MA in Education"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className={degreeLevel.includes('Units') ? '' : 'sm:col-span-2'}>
-                    <ReqLabel label="University / Conferring Institution" value={institution} isOcrAutoFilled={ocrBadges.institution} />
-                    <input
-                      type="text"
-                      value={institution}
-                      onChange={(e) => {
-                        setInstitution(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, institution: false }))
-                      }}
-                      placeholder="e.g. Ateneo de Manila University"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  {degreeLevel.includes('Units') && (
-                    <div>
-                      <ReqLabel label="Units Completed" value={unitsCompleted} />
-                      <input
-                        type="number"
-                        value={unitsCompleted}
-                        onChange={(e) => setUnitsCompleted(e.target.value)}
-                        placeholder="e.g. 18"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* A.2 MEMBERSHIP TAILORED INPUTS */}
-            {category.startsWith('A.2') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Organization Name" value={orgName} isOcrAutoFilled={ocrBadges.orgName} />
-                    <input
-                      type="text"
-                      value={orgName}
-                      onChange={(e) => {
-                        setOrgName(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, orgName: false }))
-                      }}
-                      placeholder="e.g. Philippine Computer Society (PCS) / PSITE"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Membership Position" value={orgPosition} />
-                    <select
-                      value={orgPosition}
-                      onChange={(e) => setOrgPosition(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Member">Regular Member</option>
-                      <option value="Officer">Officer / Board Member</option>
-                    </select>
-                  </div>
-                </div>
-
-                {orgPosition === 'Officer' && (
-                  <div>
-                    <ReqLabel label="Specific Office Held" value={officeHeld} isOcrAutoFilled={ocrBadges.officeHeld} />
-                    <input
-                      type="text"
-                      value={officeHeld}
-                      onChange={(e) => {
-                        setOfficeHeld(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, officeHeld: false }))
-                      }}
-                      placeholder="e.g. Vice President for External Affairs"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* A.3 SEMINARS TAILORED INPUTS */}
-            {category.startsWith('A.3') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Seminar / Training Title" value={seminarTitle} isOcrAutoFilled={ocrBadges.seminarTitle} />
-                  <input
-                    type="text"
-                    value={seminarTitle}
-                    onChange={(e) => {
-                      setSeminarTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, seminarTitle: false }))
-                    }}
-                    placeholder="e.g. National AI & Cloud Computing Faculty Development Workshop"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <ReqLabel label="Organizer / Issuing Entity & Venue" value={organizerVenue} isOcrAutoFilled={ocrBadges.organizerVenue} />
-                    <input
-                      type="text"
-                      value={organizerVenue}
-                      onChange={(e) => {
-                        setOrganizerVenue(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, organizerVenue: false }))
-                      }}
-                      placeholder="e.g. CHED Region XII / NDMU Campus"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Geographic Scope" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="In-House">In-House (NDMU)</option>
-                      <option value="Local">City / Provincial</option>
-                      <option value="Regional">Regional</option>
-                      <option value="National">National</option>
-                      <option value="International">International</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.1 SPEAKER / CONSULTANCY TAILORED INPUTS */}
-            {category.startsWith('B.1') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Event / Activity Title" value={eventTitle} isOcrAutoFilled={ocrBadges.eventTitle} />
-                  <input
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => {
-                      setEventTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, eventTitle: false }))
-                    }}
-                    placeholder="e.g. Keynote Address on Machine Learning in Higher Ed Analytics"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <ReqLabel label="Role Played" value={speakerRole} isOcrAutoFilled={ocrBadges.speakerRole} />
-                    <select
-                      value={speakerRole}
-                      onChange={(e) => {
-                        setSpeakerRole(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, speakerRole: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Keynote Speaker">Keynote Speaker</option>
-                      <option value="Resource Person">Resource Person / Consultant</option>
-                      <option value="Facilitator">Facilitator / Organizer</option>
-                      <option value="Judge">Judge / Evaluator</option>
-                      <option value="Reactor">Reactor / Panelist</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Sponsoring Agency / Venue" value={sponsoringAgency} isOcrAutoFilled={ocrBadges.sponsoringAgency} />
-                    <input
-                      type="text"
-                      value={sponsoringAgency}
-                      onChange={(e) => {
-                        setSponsoringAgency(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, sponsoringAgency: false }))
-                      }}
-                      placeholder="e.g. DOST Region XII / Ateneo"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Scope Level" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Local">Local</option>
-                      <option value="Regional">Regional</option>
-                      <option value="National">National</option>
-                      <option value="International">International</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.2 PUBLICATION TAILORED INPUTS */}
-            {category.startsWith('B.2') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Title of Published Work / Book" value={pubTitle} isOcrAutoFilled={ocrBadges.pubTitle} />
-                  <input
-                    type="text"
-                    value={pubTitle}
-                    onChange={(e) => {
-                      setPubTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, pubTitle: false }))
-                    }}
-                    placeholder="e.g. Predictive Student Performance Modeling Using Deep Learning"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <ReqLabel label="Type of Publication" value={pubType} isOcrAutoFilled={ocrBadges.pubType} />
-                    <select
-                      value={pubType}
-                      onChange={(e) => {
-                        setPubType(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, pubType: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Book">Book (5 pts max)</option>
-                      <option value="Scholarly Paper">Scholarly Paper (5 pts max)</option>
-                      <option value="Research Output">Research Output (5 pts max)</option>
-                      <option value="Journal Article">Journal Article (4 pts max)</option>
-                      <option value="Monograph">Monograph (4 pts max)</option>
-                      <option value="Compilation">Compilation (5 pts max)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Publisher & ISSN/ISBN" value={publisherIssn} isOcrAutoFilled={ocrBadges.publisherIssn} />
-                    <input
-                      type="text"
-                      value={publisherIssn}
-                      onChange={(e) => {
-                        setPublisherIssn(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, publisherIssn: false }))
-                      }}
-                      placeholder="e.g. IEEE Access / ISSN: 2169-3536"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Publication Reach" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Local">Local</option>
-                      <option value="Regional">Regional</option>
-                      <option value="National">National</option>
-                      <option value="International">International / Scopus</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.3 CONDUCT OF RESEARCH TAILORED INPUTS */}
-            {category.startsWith('B.3') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Research Project Title" value={researchTitle} isOcrAutoFilled={ocrBadges.researchTitle} />
-                  <input
-                    type="text"
-                    value={researchTitle}
-                    onChange={(e) => {
-                      setResearchTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, researchTitle: false }))
-                    }}
-                    placeholder="e.g. AI-Driven Student Retention & Early Warning Analytics Framework"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Research Role" value={researchRole} />
-                    <select
-                      value={researchRole}
-                      onChange={(e) => setResearchRole(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Lead Researcher">Lead Researcher / Principal Investigator</option>
-                      <option value="Co-Researcher">Co-Researcher / Project Member</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Funding Status" value={fundingStatus} isOcrAutoFilled={ocrBadges.fundingStatus} />
-                    <select
-                      value={fundingStatus}
-                      onChange={(e) => {
-                        setFundingStatus(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, fundingStatus: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Completed Institutional Research">Completed Institutional Research (15 pts)</option>
-                      <option value="Externally Funded Research Project">Externally Funded Project (20 pts)</option>
-                      <option value="Ongoing Commissioned Research">Ongoing Commissioned Research (10 pts)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.4 RECOGNITION OR AWARDS TAILORED INPUTS */}
-            {category.startsWith('B.4') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Award Title / Honor Received" value={awardTitle} isOcrAutoFilled={ocrBadges.awardTitle} />
-                  <input
-                    type="text"
-                    value={awardTitle}
-                    onChange={(e) => {
-                      setAwardTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, awardTitle: false }))
-                    }}
-                    placeholder="e.g. NDMU Outstanding Research Faculty of the Year"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <ReqLabel label="Conferring Body / Institution" value={conferringBody} isOcrAutoFilled={ocrBadges.conferringBody} />
-                    <input
-                      type="text"
-                      value={conferringBody}
-                      onChange={(e) => {
-                        setConferringBody(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, conferringBody: false }))
-                      }}
-                      placeholder="e.g. Notre Dame of Marbel University"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Recognition Type" value={awardType} isOcrAutoFilled={ocrBadges.awardType} />
-                    <select
-                      value={awardType}
-                      onChange={(e) => {
-                        setAwardType(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, awardType: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Awardee">Awardee / Recipient</option>
-                      <option value="Nominee">Nominee</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Award Scope" value={scopeLevel} isOcrAutoFilled={ocrBadges.scopeLevel} />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => {
-                        setScopeLevel(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, scopeLevel: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Local">Local (10 pts)</option>
-                      <option value="Regional">Provincial / Regional (30 pts)</option>
-                      <option value="National">National / International (40 pts)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.5 INSTRUCTIONAL MATERIALS TAILORED INPUTS */}
-            {category.startsWith('B.5') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Title of Material" value={materialTitle} isOcrAutoFilled={ocrBadges.materialTitle} />
-                  <input
-                    type="text"
-                    value={materialTitle}
-                    onChange={(e) => {
-                      setMaterialTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, materialTitle: false }))
-                    }}
-                    placeholder="e.g. Bound Laboratory Exercises Manual for Artificial Intelligence"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Material Type" value={matType} isOcrAutoFilled={ocrBadges.matType} />
-                    <select
-                      value={matType}
-                      onChange={(e) => {
-                        setMatType(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, matType: false }))
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                    >
-                      <option value="Workbooks / Exercises / Lecture Notes (Bound)">Workbooks / Exercises / Notes (Bound - 20 pts)</option>
-                      <option value="Modules (Bound)">Modules (Bound - 10 pts)</option>
-                      <option value="Reviewers (Bound)">Reviewers (Bound - 10 pts)</option>
-                      <option value="Audio-Visual Aids">Audio-Visual Aids / Software (10 pts)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Subject / Course Code Used In" value={courseUsedIn} />
-                    <input
-                      type="text"
-                      value={courseUsedIn}
-                      onChange={(e) => setCourseUsedIn(e.target.value)}
-                      placeholder="e.g. ITE 311 - Machine Learning"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.6 CREATIVE WORK TAILORED INPUTS */}
-            {category.startsWith('B.6') && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Description / Title of Creative Output" value={creativeTitle} isOcrAutoFilled={ocrBadges.creativeTitle} />
-                  <input
-                    type="text"
-                    value={creativeTitle}
-                    onChange={(e) => {
-                      setCreativeTitle(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, creativeTitle: false }))
-                    }}
-                    placeholder="e.g. University Digital Archiving Software / Artistic Performance"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <ReqLabel label="Venue / Exhibition / Medium" value={exhibitionVenue} isOcrAutoFilled={ocrBadges.exhibitionVenue} />
-                  <input
-                    type="text"
-                    value={exhibitionVenue}
-                    onChange={(e) => {
-                      setExhibitionVenue(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, exhibitionVenue: false }))
-                    }}
-                    placeholder="e.g. NDMU CITE Gallery / GitHub Open Source Repository"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* C.1 / C.2 SERVICE TAILORED INPUTS */}
-            {(category.startsWith('C.1') || category.startsWith('C.2')) && (
-              <div className="space-y-3 animate-in fade-in">
-                <div>
-                  <ReqLabel label="Service Sub-Type" value={subType} isOcrAutoFilled={ocrBadges.subType} />
-                  <select
-                    value={subType}
-                    onChange={(e) => {
-                      setSubType(e.target.value)
-                      setOcrBadges(prev => ({ ...prev, subType: false }))
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800"
-                  >
-                    <option value="C.1.1 Moderator of Clubs / Organizations">C.1.1 Moderator of Clubs / Organizations (20 pts max)</option>
-                    <option value="C.1.2 Coach / Trainer">C.1.2 Coach / Trainer (20 pts max)</option>
-                    <option value="C.1.3 Membership in Working Committees">C.1.3 Membership in Working Committees (20 pts max)</option>
-                    <option value="C.2.1 Active Church Involvement">C.2.1 Active Church Involvement (25 pts max)</option>
-                    <option value="C.2.2 Community / Civic Involvement">C.2.2 Community / Civic Involvement (25 pts max)</option>
-                    <option value="C.2.3 Support to Charity / Projects">C.2.3 Support to Charity / Projects (5 pts max)</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel label="Name of Club / Service Project" value={serviceTitle} isOcrAutoFilled={ocrBadges.serviceTitle} />
-                    <input
-                      type="text"
-                      value={serviceTitle}
-                      onChange={(e) => {
-                        setServiceTitle(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, serviceTitle: false }))
-                      }}
-                      placeholder="e.g. Computer Science Student Society / Barangay Smart Literacy Outreach"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:border-[#16834a]"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <ReqLabel label="Sponsoring LGU / NGO / Institution" value={sponsoringOrg} isOcrAutoFilled={ocrBadges.sponsoringOrg} />
-                    <input
-                      type="text"
-                      value={sponsoringOrg}
-                      onChange={(e) => {
-                        setSponsoringOrg(e.target.value)
-                        setOcrBadges(prev => ({ ...prev, sponsoringOrg: false }))
-                      }}
-                      placeholder="e.g. Koronadal City LGU / Marist Parish"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SINGLE COMMON DATE FIELD */}
-            <div>
-              <ReqLabel label={`Date Achieved / Conferred (Auto AY: ${academicYear})`} value={dateAchieved} isOcrAutoFilled={ocrBadges.dateAchieved} />
-              <input
-                type="date"
-                value={dateAchieved}
-                onChange={handleDateChange}
-                required
-              />
-            </div>
-          </div>
-
-          {/* INLINE PROOF ATTACHMENT BOX WITH OCR SCAN TOGGLE */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <ReqLabel label="Supporting Proof Attachment" value={attachedFile} />
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-emerald-700">PDF / JPG / PNG (Max 10MB)</span>
-                <label className="flex items-center gap-1 cursor-pointer bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 text-[11px] font-extrabold text-[#064e2b]" title="Automatically run OCR scan on attached certificate">
-                  <input
-                    type="checkbox"
-                    checked={isScanModeActive}
-                    onChange={(e) => setIsScanModeActive(e.target.checked)}
-                    className="rounded text-[#16834a] focus:ring-0 cursor-pointer"
-                  />
-                  <Scan className="w-3 h-3 text-[#16834a]" />
-                  <span>OCR Auto-Scan</span>
-                </label>
+                ))}
               </div>
             </div>
+          )}
 
-            {/* Proof Hint Banner */}
-            <div className="mb-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[#064e2b] text-[11px] font-semibold flex items-center gap-2">
-              <Paperclip className="w-3.5 h-3.5 text-[#16834a] shrink-0" />
-              <span><strong>Required Evidence:</strong> {requiredProofHint}</span>
-            </div>
-
-            <div className="relative border-2 border-dashed border-slate-200 hover:border-[#16834a] rounded-2xl p-4 text-center transition bg-slate-50/50 hover:bg-[#E7F3E9]/30 cursor-pointer group">
-              <input
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              />
-              <div className="flex flex-col items-center gap-1.5">
-                <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-[#16834a] group-hover:scale-110 transition shadow-2xs">
-                  <UploadCloud className="w-5 h-5" />
-                </div>
-                {attachedFile ? (
-                  <div className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Attached: {attachedFile.name} ({(attachedFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-xs font-bold text-slate-800 flex items-center justify-center gap-1.5">
-                      <span>Drag & drop certificate here or click to browse</span>
-                      <span className="px-2 py-0.5 bg-emerald-100 text-[#064e2b] rounded-md text-[10px] font-extrabold flex items-center gap-1 border border-emerald-300/60">
-                        <Sparkles className="w-3 h-3 text-amber-500 fill-amber-300" />
-                        <span>OCR Scanner Ready</span>
-                      </span>
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">PDF, PNG, JPG up to 10MB • Automatic Category & Field Auto-Fill</p>
-                  </div>
-                )}
+          {/* ================= DATE(S) ================= */}
+          {activeCriterion?.dateMode === 'period' ? (
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div>
+                <ReqLabel label="Start date" value={startDate} isOcrAutoFilled={ocrBadges.startDate} isManuallyEdited={manuallyEdited.startDate} />
+                <input type="date" value={startDate} max={localToday()} onChange={(event) => { setStartDate(event.target.value); markFieldEdited('startDate') }} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20" />
+              </div>
+              <div>
+                <ReqLabel label={ongoing ? 'End date (ongoing)' : 'End date'} value={ongoing ? 'ongoing' : endDate} />
+                <input type="date" value={endDate} min={startDate || undefined} max={localToday()} disabled={ongoing} onChange={(event) => setEndDate(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 disabled:bg-slate-100" />
+                {activeCriterion.allowOngoing && <label className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-800"><input type="checkbox" checked={ongoing} onChange={(event) => { setOngoing(event.target.checked); if (event.target.checked) setEndDate('') }} className="h-4 w-4 accent-emerald-800" />Ongoing</label>}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div>
+                <ReqLabel label="Date" value={dateAchieved} isOcrAutoFilled={ocrBadges.dateAchieved} isManuallyEdited={manuallyEdited.dateAchieved} />
+                <input type="date" value={dateAchieved} max={localToday()} onChange={handleDateChange} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Academic year</label>
+                <div className="flex min-h-[38px] items-center rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800">{academicYear || <span className="font-normal italic text-slate-400">Derived from the date</span>}</div>
+              </div>
+            </div>
+          )}
 
-          {/* OPTIONAL REMARKS */}
+          {/* ================= STEP 5: OPTIONAL NARRATIVE DESCRIPTION ================= */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Remarks / Executive Summary (Optional)
+              Remarks (optional)
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Provide additional details or publication DOI links if applicable..."
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 outline-none transition focus:border-[#16834a]"
+              placeholder="Provide context regarding outcomes, participants, or scope..."
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-medium text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden resize-none"
             />
           </div>
-
-          {/* ACTION BUTTONS FOOTER */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white text-xs font-bold flex items-center gap-2 transition shadow-md disabled:opacity-50 cursor-pointer"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Save Accomplishment</span>
-                </>
-              )}
-            </button>
+              </section>
+            </div>
           </div>
 
+          <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3">
+            <div className="flex flex-col-reverse gap-3 min-[820px]:flex-row min-[820px]:items-center min-[820px]:justify-between">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-800" aria-live="polite"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${footerStatus.tone}`} aria-hidden="true" />{footerStatus.text}</p>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={requestClose} className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Cancel</button>
+                <button type="submit" disabled={isSubmitting || (!attachedFile && !editingItem) || Boolean(submitBlocker)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45">
+                  {isSubmitting
+                    ? <><RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />Adding…</>
+                    : <><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{editingItem ? 'Save Changes' : 'Add Accomplishment'}</>}
+                </button>
+              </div>
+            </div>
+          </footer>
         </form>
-      </div>
+      </section>
     </div>
   )
 }

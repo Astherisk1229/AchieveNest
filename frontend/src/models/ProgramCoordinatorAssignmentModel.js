@@ -1,7 +1,7 @@
 export default class ProgramCoordinatorAssignmentModel {
   constructor(data = {}) {
     this.id = data.id || `pca-${Date.now()}`
-    this.departmentId = data.departmentId || ''
+    this.academicProgramId = data.academicProgramId || data.academic_program_id || ''
     this.personnelId = data.personnelId || ''
     this.personnelName = data.personnelName || ''
     this.status = data.status || 'active' // active | ended
@@ -12,15 +12,16 @@ export default class ProgramCoordinatorAssignmentModel {
     this.endReason = data.endReason || null
   }
 
-  static validate(data = {}, departments = [], eligiblePersonnel = []) {
+  static validate(data = {}, academicPrograms = [], eligiblePersonnel = []) {
     const errors = []
-    const { departmentId, personnelId } = data
+    const academicProgramId = data.academicProgramId || data.academic_program_id
+    const { personnelId } = data
 
-    if (!departmentId) {
-      errors.push('Department ID is required for Program Coordinator assignment.')
+    if (!academicProgramId) {
+      errors.push('Academic Program ID is required for Program Coordinator assignment.')
     } else {
-      const dept = departments.find(d => d.id === departmentId && d.status === 'active')
-      if (!dept) errors.push('Selected Department is invalid or archived.')
+      const program = academicPrograms.find(p => p.id === academicProgramId && p.status === 'active')
+      if (!program) errors.push('Selected Academic Program is invalid or archived.')
     }
 
     if (!personnelId) {

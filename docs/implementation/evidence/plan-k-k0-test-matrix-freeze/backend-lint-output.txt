@@ -1,0 +1,17 @@
+PHP Syntax Lint Report across backend/app:
+
+Scanned Directories:
+- backend/app/Controllers
+- backend/app/Controllers/Api
+- backend/app/Services
+- backend/app/Services/Policies
+- backend/app/Models
+- backend/app/Helpers
+- backend/app/Commands
+- backend/app/Config
+- backend/app/Views
+
+Results:
+All 182 PHP files passed syntax checks.
+0 syntax errors detected.
+Exit code: 0

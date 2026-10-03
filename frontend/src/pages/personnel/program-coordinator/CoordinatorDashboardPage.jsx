@@ -1,19 +1,21 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import campusBanner from '../../../assets/ndmu_campus_banner.png'
 import { useVerification } from '../../../hooks/useVerification'
 import { useStudentRoster } from '../../../hooks/useStudentRoster'
 import CoordinatorMetricsSidebar from './CoordinatorMetricsSidebar'
 import { calculateAverageReviewTime } from '../../../utils/verificationMetrics'
+import { AchieveNestLogo } from '../../../components/brand'
+import { CoordinatorDecisionActions } from './CoordinatorReviewParts'
+import CoordinatorSubmissionReview from './CoordinatorSubmissionReview'
+import { formatDateRange } from '../../../utils/achievementDates'
 import { 
   Shield, 
   ShieldCheck,
   Clock, 
   CheckCircle2, 
   RotateCcw, 
-  TrendingUp, 
   Filter, 
-  User, 
   FileText, 
   Check, 
   X, 
@@ -25,9 +27,7 @@ import {
   Award,
   Download,
   Eye,
-  Building2,
   GraduationCap,
-  Calendar,
   ExternalLink,
   Activity,
   ChevronRight,
@@ -36,9 +36,6 @@ import {
   Zap,
   ArrowLeft,
   Mail,
-  Phone,
-  MapPin,
-  Sparkles,
   Share2,
   CreditCard,
   BookOpen,
@@ -51,11 +48,8 @@ import {
 
 export default function CoordinatorDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const user = currentUser || {
-    full_name: 'Dr. Ana Reyes',
-    program_scope: 'BS Computer Science',
-    department: 'Department of Computer Studies'
-  }
+  const user = currentUser || {}
+  const programScope = user.program_scope || user.academic_program_name || 'your assigned program'
 
   // Active Workspace Tab driven by URL query parameter: 'overview' | 'workspace' | 'students'
   let activeTabParam = null
@@ -75,179 +69,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
     }
   }
 
-  // Master Initial Submissions Data
-  const [initialSubmissionsData] = useState([
-    {
-      id: 101,
-      title: 'Community Outreach Volunteer',
-      student_name: 'Maria Santos',
-      student_id: '2024-01234',
-      program: 'BS Computer Science',
-      event_name: 'Barangay Digital Literacy Program 2026',
-      issuer: 'Barangay Poblacion City Government',
-      category: 'Community',
-      scope_level: 'Local / City Level',
-      rank_conferred: 'Participant / Special Award',
-      academic_year: 'AY 2025-2026',
-      semester: '2nd Semester',
-      date: '3/20/2026',
-      docs_count: 2,
-      attached_file_name: 'community_outreach_proof.pdf',
-      participation_photo_name: 'event_outreach_photo.jpg',
-      description: 'Participated in a 3-day barangay digital literacy workshop for local officials.',
-      status: 'Pending'
-    },
-    {
-      id: 102,
-      title: 'Regional Coding Hackathon Champion',
-      student_name: 'Angela Castro',
-      student_id: '2024-05678',
-      program: 'BS Computer Science',
-      event_name: '12th SOCCSKSARGEN IT Summit Hackathon',
-      issuer: 'DICT Region XII / NDMU CITE',
-      category: 'Academic',
-      scope_level: 'Regional (Region XII)',
-      rank_conferred: 'Champion / 1st Place',
-      academic_year: 'AY 2025-2026',
-      semester: '2nd Semester',
-      date: '3/18/2026',
-      docs_count: 2,
-      attached_file_name: 'dict_hackathon_certificate.pdf',
-      participation_photo_name: 'hackathon_awarding_photo.jpg',
-      description: 'Awarded 1st Place overall in the Region XII IT Summit Software Development Hackathon.',
-      status: 'Pending'
-    },
-    {
-      id: 103,
-      title: "Dean's Lister - First Semester AY 2025-2026",
-      student_name: 'Maria Santos',
-      student_id: '2024-01234',
-      program: 'BS Computer Science',
-      event_name: 'NDMU First Semester AY 2025-2026 Academic Recognition',
-      issuer: 'Notre Dame of Marbel University Registrar',
-      category: 'Academic',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: "Dean's Lister",
-      academic_year: 'AY 2025-2026',
-      semester: '1st Semester',
-      date: '2/10/2026',
-      docs_count: 2,
-      attached_file_name: 'deans_lister_cert_ay2526.pdf',
-      participation_photo_name: 'deans_list_awarding_photo.jpg',
-      description: 'Achieved GPA of 3.85 for 1st Semester AY 2025-2026.',
-      status: 'Verified'
-    },
-    {
-      id: 104,
-      title: 'Computer Society President',
-      student_name: 'Juan Dela Cruz',
-      student_id: '2023-0142',
-      program: 'BS Computer Science',
-      event_name: 'NDMU Computer Society Officer Election AY 2025-2026',
-      issuer: 'NDMU Computer Society / CEAC Dean\'s Office',
-      category: 'Leadership',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Leadership Officer / Lead',
-      academic_year: 'AY 2025-2026',
-      semester: '1st Semester',
-      date: '1/15/2026',
-      docs_count: 2,
-      attached_file_name: 'org_president_appointment.pdf',
-      participation_photo_name: 'officer_induction_photo.jpg',
-      description: 'Elected President of the NDMU Computer Society for AY 2025-2026.',
-      status: 'Verified'
-    },
-    {
-      id: 105,
-      title: 'University Sports Fest Volleyball Finalist',
-      student_name: 'Mark Bautista',
-      student_id: '2023-0988',
-      program: 'BS Computer Science',
-      event_name: 'NDMU Intramurals 2025 Men\'s Volleyball Tournament',
-      issuer: 'NDMU Athletics Office',
-      category: 'Athletics',
-      scope_level: 'Institutional / Campus-Wide',
-      rank_conferred: 'Finalist / Runner-Up',
-      academic_year: 'AY 2025-2026',
-      semester: '1st Semester',
-      date: '12/05/2025',
-      docs_count: 2,
-      attached_file_name: 'intramurals_volleyball_runnerup.pdf',
-      participation_photo_name: 'volleyball_match_photo.jpg',
-      description: '2nd Place finish in NDMU Intramurals Men\'s Volleyball Tournament.',
-      status: 'Returned',
-      return_remarks: 'Please attach an official signed certification from the Athletics Office. Scanned photo is unreadable.'
-    }
-  ])
-
-  // Initial Student Roster Data
-  const [initialStudentsData] = useState([
-    {
-      id: 'usr_std_001',
-      student_id: '2021-00123',
-      full_name: 'Maria Santos',
-      email: 'maria.santos@ndmu.edu.ph',
-      program: 'BS Computer Science (CEAC)',
-      year_level: '4th Year',
-      verified_points: 450,
-      achievements_count: 12,
-      verified_count: 10,
-      pending_count: 2,
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-    },
-    {
-      id: 'usr_std_002',
-      student_id: '2021-00456',
-      full_name: 'John Reyes',
-      email: 'john.reyes@ndmu.edu.ph',
-      program: 'BS Information Technology (CEAC)',
-      year_level: '4th Year',
-      verified_points: 320,
-      achievements_count: 8,
-      verified_count: 7,
-      pending_count: 1,
-      avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150'
-    },
-    {
-      id: 'usr_std_003',
-      student_id: '2022-00789',
-      full_name: 'Ana Cruz',
-      email: 'ana.cruz@ndmu.edu.ph',
-      program: 'BS Computer Science (CEAC)',
-      year_level: '3rd Year',
-      verified_points: 580,
-      achievements_count: 15,
-      verified_count: 13,
-      pending_count: 2,
-      avatar_url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150'
-    },
-    {
-      id: 'usr_std_004',
-      student_id: '2022-00234',
-      full_name: 'Carlos Mendoza',
-      email: 'carlos.mendoza@ndmu.edu.ph',
-      program: 'BS Nursing (CHS)',
-      year_level: '3rd Year',
-      verified_points: 240,
-      achievements_count: 6,
-      verified_count: 5,
-      pending_count: 1,
-      avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150'
-    },
-    {
-      id: 'usr_std_005',
-      student_id: '2023-00567',
-      full_name: 'Elena Torres',
-      email: 'elena.torres@ndmu.edu.ph',
-      program: 'BS Business Administration (CBGA)',
-      year_level: '2nd Year',
-      verified_points: 150,
-      achievements_count: 4,
-      verified_count: 3,
-      pending_count: 1,
-      avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
-    }
-  ])
 
   // Custom MVC Bridge Hooks
   const {
@@ -262,16 +83,22 @@ export default function CoordinatorDashboardPage({ currentUser }) {
     setStatusFilter,
     handleApprove: handleApproveHook,
     handleReturn: handleReturnHook,
+    handleReject: handleRejectHook,
+    loadRecordDetail,
     handleExportCSVReport: handleExportCSVReportHook
-  } = useVerification(initialSubmissionsData)
+  } = useVerification()
 
   const {
+    studentRoster,
     filteredStudents,
     yearFilter,
     setYearFilter,
     courseFilter,
-    setCourseFilter
-  } = useStudentRoster(initialStudentsData)
+    setCourseFilter,
+    loading: rosterLoading,
+    error: rosterError,
+    reload: reloadRoster
+  } = useStudentRoster()
 
   const [selectedReviewItem, setSelectedReviewItem] = useState(null)
   const [selectedStudentDossier, setSelectedStudentDossier] = useState(null)
@@ -279,55 +106,81 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   const [dossierCategoryFilter, setDossierCategoryFilter] = useState('All')
 
   const [selectedWorkspaceItem, setSelectedWorkspaceItem] = useState(null)
-  const [workspaceRemarks, setWorkspaceRemarks] = useState('')
-  const [returnRemarks, setReturnRemarks] = useState('')
   const [toastMessage, setToastMessage] = useState('')
 
-  // Verification Workspace Filter States (Default: Current AY 2025-2026)
+  // Verification Workspace Filter States
   const [categoryFilter, setCategoryFilter] = useState('All Categories')
-  const [scopeFilter, setScopeFilter] = useState('All Scopes')
-  const [ayFilter, setAyFilter] = useState('AY 2025-2026')
   const [sortBy, setSortBy] = useState('Newest')
 
 
+
+  // Notification deep link: /personnel/dashboard?tab=workspace&record=<id> selects that submission.
+  const linkedRecordId = searchParams ? searchParams.get('record') : null
+  useEffect(() => {
+    if (!linkedRecordId) return
+    const linked = (allSubmissions || []).find(item => item.id === linkedRecordId)
+    if (linked) {
+      setStatusFilter('All')
+      setSelectedWorkspaceItem(linked)
+      // Consume the link so a later refresh or decision does not re-select it.
+      setSearchParams({ tab: 'workspace' }, { replace: true })
+    }
+  }, [linkedRecordId, allSubmissions, setStatusFilter, setSearchParams])
 
   const triggerToast = (msg) => {
     setToastMessage(msg)
     setTimeout(() => setToastMessage(''), 3000)
   }
 
-  // Wrapper handlers using Hook + Toast
-  const handleApprove = (itemId) => {
-    handleApproveHook(itemId)
-    triggerToast('Achievement approved & verified successfully!')
-    setSelectedReviewItem(null)
-  }
-
-  const handleReturn = (itemId) => {
-    if (!returnRemarks.trim()) {
-      alert('Please provide remarks explaining why the achievement is being returned.')
-      return
+  // Decisions go through CoordinatorDecisionActions; this only reports the outcome.
+  const handleDecisionDone = (action) => {
+    const messages = {
+      approve: 'Achievement approved and verified.',
+      return: 'Submission returned to the student with your remarks.',
+      reject: 'Submission rejected with your remarks.'
     }
-    handleReturnHook(itemId, returnRemarks.trim())
-    triggerToast('Achievement returned to student with remarks.')
+    triggerToast(messages[action] || 'Decision recorded.')
     setSelectedReviewItem(null)
-    setReturnRemarks('')
+    setSelectedWorkspaceItem(null)
   }
 
   const handleExportCSVReport = () => {
-    handleExportCSVReportHook(user.program_scope || 'BS Computer Science')
-    triggerToast('BS Computer Science verification CSV report downloaded!')
+    handleExportCSVReportHook(programScope)
+    triggerToast('Verification CSV report downloaded.')
   }
 
   const averageReviewTime = calculateAverageReviewTime(allSubmissions)
 
   const handleMetricStatusSelect = (status) => {
-    const validStatus = ['Pending', 'Verified', 'Returned'].includes(status) ? status : 'All'
+    const validStatus = ['Pending', 'Verified', 'Returned', 'Rejected'].includes(status) ? status : 'All'
     setStatusFilter(validStatus)
     setSelectedWorkspaceItem(null)
     setSearchParams({ tab: 'workspace', status: validStatus })
   }
 
+
+  // Recent activity is derived from the real, program-scoped queue (status=all), newest first.
+  const activityStyles = {
+    Pending: { title: 'Awaiting review', icon: Clock, badgeColor: 'bg-blue-50 text-blue-700 border-blue-200' },
+    Returned: { title: 'Returned for revision', icon: RotateCcw, badgeColor: 'bg-amber-50 text-amber-800 border-amber-200' },
+    Verified: { title: 'Verified', icon: CheckCircle2, badgeColor: 'bg-emerald-50 text-[#064e2b] border-emerald-200' },
+    Rejected: { title: 'Rejected', icon: X, badgeColor: 'bg-rose-50 text-rose-800 border-rose-200' }
+  }
+  const recentActivity = [...(allSubmissions || [])]
+    .sort((a, b) => new Date(b.updated_at || b.submitted_at || 0) - new Date(a.updated_at || a.submitted_at || 0))
+    .slice(0, 6)
+    .map(item => {
+      const style = activityStyles[item.status] || activityStyles.Pending
+      return {
+        id: item.id,
+        title: style.title,
+        label: item.status,
+        icon: style.icon,
+        badgeColor: style.badgeColor,
+        detail: `"${item.title || 'Untitled'}" by ${item.student_name || 'Unknown student'}`,
+        timestamp: item.updated_at || item.submitted_at || ''
+      }
+    })
 
   return (
     <div className="space-y-6 font-sans animate-in fade-in duration-200">
@@ -359,7 +212,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                 <div>
                   <h1 className="text-xl sm:text-2xl font-extrabold text-[#17663B] dark:text-[#EFF6F1] tracking-tight">Program Coordinator Dashboard</h1>
                   <p className="text-xs text-[#356148] dark:text-[#BCD0C1] font-medium mt-0.5">
-                    Achievement Verification &amp; Management • {user.program_scope || 'BS Computer Science'}
+                    Achievement Verification &amp; Management • {programScope}
                   </p>
                 </div>
               </div>
@@ -380,7 +233,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               </div>
               <div>
                 <h3 className="text-xs font-bold text-[#145C39] dark:text-[#E6EFE9]">
-                  Program Scope: {user.program_scope || 'BS Computer Science (BSCS)'}
+                  Program Scope: {programScope}
                 </h3>
                 <p className="text-[11px] text-[#356148] dark:text-[#B1C0B6] font-medium">
                   Viewing and verifying achievement entries for students enrolled under your assigned degree program.
@@ -407,53 +260,16 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     </div>
                     <div>
                       <h2 className="text-base font-extrabold text-slate-900">Recent Verification Activity Log</h2>
-                      <p className="text-xs text-slate-500 mt-0.5">Real-time audit stream for {user.program_scope || 'BS Computer Science'}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Latest submission status in {programScope}</p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-[#064e2b] border border-emerald-200 text-[11px] font-bold">
-                    Live Audit Stream
-                  </span>
                 </div>
 
                 <div className="space-y-3">
-                  {[
-                    {
-                      id: 'act-1',
-                      title: 'Verified Achievement Entry',
-                      detail: 'Approved "Machine Learning Research Paper" submitted by Maria Santos',
-                      timestamp: '25 mins ago',
-                      type: 'verified',
-                      icon: CheckCircle2,
-                      badgeColor: 'bg-emerald-50 text-[#064e2b] border-emerald-200'
-                    },
-                    {
-                      id: 'act-2',
-                      title: 'Returned for Revision',
-                      detail: 'Returned "Community Volunteer Cert" to John Doe with required remarks',
-                      timestamp: '1 hour ago',
-                      type: 'returned',
-                      icon: RotateCcw,
-                      badgeColor: 'bg-amber-50 text-amber-800 border-amber-200'
-                    },
-                    {
-                      id: 'act-3',
-                      title: 'New Student Submission Received',
-                      detail: 'Maria Santos submitted "Community Outreach Volunteer" for verification',
-                      timestamp: '3 hours ago',
-                      type: 'pending',
-                      icon: Clock,
-                      badgeColor: 'bg-blue-50 text-blue-700 border-blue-200'
-                    },
-                    {
-                      id: 'act-4',
-                      title: 'Program Activity Synchronized',
-                      detail: 'Verification records updated across 4 BS Computer Science student dossiers.',
-                      timestamp: 'Yesterday at 4:15 PM',
-                      type: 'system',
-                      icon: TrendingUp,
-                      badgeColor: 'bg-slate-100 text-slate-700 border-slate-200'
-                    }
-                  ].map(act => {
+                  {recentActivity.length === 0 && (
+                    <p className="text-xs text-slate-500">No submissions from your program yet.</p>
+                  )}
+                  {recentActivity.map(act => {
                     const ActIcon = act.icon
                     return (
                       <div
@@ -468,7 +284,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-extrabold text-slate-900">{act.title}</span>
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${act.badgeColor}`}>
-                                {act.type.toUpperCase()}
+                                {act.label}
                               </span>
                             </div>
                             <p className="text-xs text-slate-600 font-medium leading-relaxed">{act.detail}</p>
@@ -559,14 +375,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
       {/* ================= TAB 2: VERIFICATION WORKSPACE (Master-Detail) ================= */}
       {activeTab === 'workspace' && (() => {
-        // Multi-Criteria Filtering & Sorting Algorithm (Strictly Active AY 2025-2026)
+        // Category options come from the queue itself so every option matches real submissions.
+        const categoryOptions = [...new Set((allSubmissions || []).map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b))
         const finalSubmissions = (filteredSubmissions || []).filter(item => {
-          // Strictly exclude past academic years from active verification queue
-          const itemAY = item.academic_year || 'AY 2025-2026'
-          if (itemAY !== 'AY 2025-2026') return false
-
           if (categoryFilter !== 'All Categories' && item.category !== categoryFilter) return false
-          if (scopeFilter !== 'All Scopes' && item.scope_level !== scopeFilter) return false
           return true
         }).sort((a, b) => {
           if (sortBy === 'Newest') return new Date(b.date || 0) - new Date(a.date || 0)
@@ -581,12 +393,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
         // Active Filter Counter & Reset Handler
         const activeFiltersCount =
           (categoryFilter !== 'All Categories' ? 1 : 0) +
-          (scopeFilter !== 'All Scopes' ? 1 : 0) +
           (sortBy !== 'Newest' ? 1 : 0)
 
         const resetWorkspaceFilters = () => {
           setCategoryFilter('All Categories')
-          setScopeFilter('All Scopes')
           setSortBy('Newest')
         }
 
@@ -601,7 +411,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               <div className="bg-white rounded-2xl px-5 py-3 border border-slate-200/90 shadow-2xs">
                 <h2 className="text-base font-extrabold text-slate-900">Verification Workspace</h2>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Review and verify active <strong className="text-[#16834a]">AY 2025-2026</strong> student achievement submissions
+                  Review and verify student achievement submissions from your programs
                 </p>
               </div>
 
@@ -628,16 +438,18 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                   {/* Status Pills */}
                   <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto pb-1 md:pb-0">
                     {[
-                      ['All', finalSubmissions.length],
-                      ['Pending', finalSubmissions.filter(s => s.status === 'Pending').length],
-                      ['Returned', finalSubmissions.filter(s => s.status === 'Returned').length],
-                      ['Verified', finalSubmissions.filter(s => s.status === 'Verified').length]
+                      ['All', allSubmissions.length],
+                      ['Pending', allSubmissions.filter(s => s.status === 'Pending').length],
+                      ['Returned', allSubmissions.filter(s => s.status === 'Returned').length],
+                      ['Verified', allSubmissions.filter(s => s.status === 'Verified').length],
+                      ['Rejected', allSubmissions.filter(s => s.status === 'Rejected').length]
                     ].map(([label, count]) => {
                       const isSelected = statusFilter === label
                       let activeClass = 'bg-[#176B43] text-white border-[#176B43]'
                       if (label === 'Pending') activeClass = 'bg-blue-600 text-white border-blue-600'
                       if (label === 'Returned') activeClass = 'bg-amber-600 text-white border-amber-600'
                       if (label === 'Verified') activeClass = 'bg-emerald-700 text-white border-emerald-700'
+                      if (label === 'Rejected') activeClass = 'bg-rose-700 text-white border-rose-700'
 
                       return (
                         <button
@@ -658,7 +470,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                 </div>
 
                 {/* Row 2: Integrated Filter Controls */}
-                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
                   
                   {/* Category Dropdown */}
                   <select
@@ -667,33 +479,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
                   >
                     <option value="All Categories">All Categories</option>
-                    <option value="Academic">Academic</option>
-                    <option value="Leadership">Leadership</option>
-                    <option value="Community">Community</option>
-                    <option value="Athletics">Athletics</option>
-                    <option value="Culture & Arts">Culture &amp; Arts</option>
-                    <option value="Research & Innovation">Research</option>
+                    {categoryOptions.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
                   </select>
-
-                  {/* Scope Level Dropdown */}
-                  <select
-                    value={scopeFilter}
-                    onChange={(e) => setScopeFilter(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
-                  >
-                    <option value="All Scopes">All Scope Levels</option>
-                    <option value="Institutional / Campus-Wide">Institutional</option>
-                    <option value="Local / City Level">Local / City</option>
-                    <option value="Regional Level">Regional</option>
-                    <option value="National Level">National</option>
-                    <option value="International Level">International</option>
-                  </select>
-
-                  {/* Static Active Academic Year Indicator */}
-                  <div className="w-full px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-extrabold text-[#064e2b] flex items-center justify-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-[#16834a]" />
-                    <span>AY 2025-2026 (Active)</span>
-                  </div>
 
                   {/* Sort Order Dropdown */}
                   <select
@@ -772,6 +561,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
                                   item.status === 'Verified' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                   : item.status === 'Returned' ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : item.status === 'Rejected' ? 'bg-rose-50 text-rose-800 border-rose-200'
                                   : 'bg-blue-50 text-blue-700 border-blue-200'
                                 }`}>
                                   {item.status}
@@ -839,6 +629,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                       <span className={`px-3 py-1 rounded-lg text-[10px] font-extrabold tracking-wide uppercase border shrink-0 ${
                         workspaceItem.status === 'Verified' ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                         : workspaceItem.status === 'Returned' ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : workspaceItem.status === 'Rejected' ? 'bg-rose-50 text-rose-800 border-rose-200'
                         : 'bg-blue-50 text-blue-700 border-blue-200'
                       }`}>
                         {workspaceItem.status}
@@ -848,232 +639,16 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     {/* Student Detail Content Body (SCROLLS INSIDE RIGHT CARD) */}
                     <div className="p-6 space-y-6 flex-1 overflow-y-auto min-h-0">
 
-                      {/* Achievement Title Box */}
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Achievement Title</p>
-                        <h3 className="text-lg font-extrabold text-slate-900 leading-snug">{workspaceItem.title}</h3>
-                      </div>
-
-                      {/* Structured Metadata Grid */}
-                      <div className="bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4.5 space-y-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-4">
-                          
-                          {/* Category */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Category</p>
-                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80">
-                              {workspaceItem.category}
-                            </span>
-                          </div>
-
-                          {/* Scope Level */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Scope Level</p>
-                            <p className="text-xs font-bold text-slate-900">{workspaceItem.scope_level}</p>
-                          </div>
-
-                          {/* Rank / Position */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Rank / Position</p>
-                            <span className="inline-block px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-800 text-xs font-bold border border-blue-200/80">
-                              {workspaceItem.rank_conferred || 'Participant'}
-                            </span>
-                          </div>
-
-                          {/* Date Conferred */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Date Conferred</p>
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                              <Calendar className="w-3.5 h-3.5 text-[#16834a]" />
-                              <span>{workspaceItem.date}</span>
-                            </div>
-                          </div>
-
-                          {/* Academic Year */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Academic Year</p>
-                            <p className="text-xs font-bold text-slate-900">{workspaceItem.academic_year || 'AY 2025-2026'}</p>
-                          </div>
-
-                          {/* Semester */}
-                          <div>
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Term / Semester</p>
-                            <p className="text-xs font-bold text-slate-900">{workspaceItem.semester || '1st Semester'}</p>
-                          </div>
-
-                        </div>
-                      </div>
-
-                      {/* Event Name & Issuing Body Cards */}
-                      {(workspaceItem.event_name || workspaceItem.issuer) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {workspaceItem.event_name && (
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
-                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Event / Competition Name</p>
-                              <p className="text-xs font-bold text-slate-900 leading-snug">{workspaceItem.event_name}</p>
-                            </div>
-                          )}
-                          {workspaceItem.issuer && (
-                            <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-1">
-                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Issuing Body / Organization</p>
-                              <p className="text-xs font-bold text-slate-900 leading-snug">{workspaceItem.issuer}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Narrative Description */}
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Narrative Description</p>
-                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
-                          <p className="text-xs text-slate-800 font-medium leading-relaxed">{workspaceItem.description}</p>
-                        </div>
-                      </div>
-
-                      {/* Supporting Documents & Proofs (Prominent & Always Accessible) */}
-                      <div className="space-y-3 pt-2 border-t border-slate-100">
-                        <p className="text-xs font-extrabold text-slate-900">Supporting Documents &amp; Evidence ({workspaceItem.docs_count || 1})</p>
-                        
-                        {/* Certificate Document Card */}
-                        <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#16834a] flex items-center justify-center shrink-0 border border-emerald-100">
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-900 truncate">{workspaceItem.attached_file_name}</p>
-                              <p className="text-[11px] text-slate-500 font-mono">Validated PDF • ~345 KB</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedReviewItem(workspaceItem)}
-                              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>Download</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Photo Evidence Card */}
-                        {workspaceItem.participation_photo_name && (
-                          <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                                <FileText className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold text-slate-900 truncate">{workspaceItem.participation_photo_name}</p>
-                                <p className="text-[11px] text-slate-500 font-mono">Photo Evidence • ~1.2 MB</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedReviewItem(workspaceItem)}
-                                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>View Photo</span>
-                              </button>
-                              <button
-                                type="button"
-                                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border border-slate-200"
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                                <span>Download</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Previous Returned Remarks Display */}
-                      {workspaceItem.return_remarks && (
-                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/80 space-y-1">
-                          <p className="text-[11px] text-amber-800 font-bold uppercase tracking-wide">Previous Return Remarks</p>
-                          <p className="text-xs text-amber-900 font-medium leading-relaxed">{workspaceItem.return_remarks}</p>
-                        </div>
-                      )}
-
-                      {/* Comments / Feedback Textarea (Prominent & Always Accessible) */}
-                      <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-slate-500" />
-                          <label className="text-xs font-bold text-slate-800">Comments / Feedback</label>
-                        </div>
-                        <textarea
-                          value={workspaceRemarks}
-                          onChange={(e) => setWorkspaceRemarks(e.target.value)}
-                          rows={3}
-                          placeholder="Provide feedback or specify what needs to be revised..."
-                          className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-[#16834a] focus:bg-white transition resize-none"
-                        />
-                      </div>
-
+                      <CoordinatorSubmissionReview item={workspaceItem} loadRecordDetail={loadRecordDetail} />
                     </div>
-
-                    {/* Fixed Bottom Decision Dock (Stays Fixed at Bottom of Right Card) */}
-                    {workspaceItem.status !== 'Verified' ? (
-                      <div className="shrink-0 bg-white px-6 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-md z-10">
-                        <span className="text-[11px] text-slate-500 font-medium">
-                          Select a decision action to update submission status
-                        </span>
-                        <div className="flex items-center justify-end gap-3">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!workspaceRemarks.trim()) {
-                                alert('Please provide feedback remarks in the textarea before returning this submission.')
-                                return
-                              }
-                              setAllSubmissions(prev => prev.map(s =>
-                                s.id === workspaceItem.id ? { ...s, status: 'Returned', return_remarks: workspaceRemarks.trim() } : s
-                              ))
-                              setSelectedWorkspaceItem(prev => prev ? { ...prev, status: 'Returned', return_remarks: workspaceRemarks.trim() } : prev)
-                              setWorkspaceRemarks('')
-                              triggerToast('Submission returned to student with your remarks.')
-                            }}
-                            className="px-5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-300 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
-                            <span>Return for Revision</span>
-                          </button>
-
-                          {workspaceItem.status === 'Pending' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAllSubmissions(prev => prev.map(s =>
-                                  s.id === workspaceItem.id ? { ...s, status: 'Verified', return_remarks: '' } : s
-                                ))
-                                setSelectedWorkspaceItem(prev => prev ? { ...prev, status: 'Verified' } : prev)
-                                setWorkspaceRemarks('')
-                                triggerToast('Achievement approved & verified successfully!')
-                              }}
-                              className="px-6 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#16834a] text-white font-extrabold text-xs shadow-2xs transition cursor-pointer flex items-center justify-center gap-2"
-                            >
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                              <span>Approve &amp; Verify</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="shrink-0 px-6 py-3 bg-emerald-50 border-t border-emerald-200 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <p className="text-xs font-bold text-emerald-700">This submission has been verified and approved successfully.</p>
-                      </div>
-                    )}
+                    {/* Decision Dock: Approve / Return / Reject (remarks required to return or reject) */}
+                    <CoordinatorDecisionActions
+                      item={workspaceItem}
+                      onApprove={handleApproveHook}
+                      onReturn={handleReturnHook}
+                      onReject={handleRejectHook}
+                      onDone={handleDecisionDone}
+                    />
 
                   </div>
                 )}
@@ -1090,7 +665,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
           (() => {
             // Filter submissions for this specific student
             const studentSubmissions = allSubmissions.filter(s =>
-              s.student_name.toLowerCase().trim() === selectedStudentDossier.full_name.toLowerCase().trim() ||
+              s.student_name?.toLowerCase().trim() === selectedStudentDossier.full_name.toLowerCase().trim() ||
               s.student_id === selectedStudentDossier.student_id
             )
 
@@ -1119,7 +694,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     className="px-4 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-700 font-extrabold text-xs hover:bg-slate-50 transition shadow-2xs flex items-center gap-2 cursor-pointer w-fit"
                   >
                     <ArrowLeft className="w-4 h-4 text-[#16834a]" />
-                    <span>Back to Students Roster</span>
+                    <span>Back to Students</span>
                   </button>
 
                   <div className="flex items-center gap-3">
@@ -1169,15 +744,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                     {/* Banner Header Body */}
                     <div className="relative z-10 px-6 pt-5 sm:px-8 sm:pt-6 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-emerald-950/90 border border-amber-300/50 flex items-center justify-center text-amber-300 text-sm shadow-md shrink-0">
-                          🔰
-                        </div>
-                        <div className="leading-tight">
-                          <span className="text-sm font-black tracking-tight text-white block">AchieveNest</span>
-                          <span className="text-[9px] font-bold text-[#245F42] tracking-widest uppercase block">NDMU</span>
-                        </div>
-                      </div>
+                      <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
 
                       <div className="text-xs font-semibold text-slate-400 tracking-wide font-serif italic hidden sm:block">
                         Veritas • Caritas • Excellentia
@@ -1209,18 +776,12 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                           {/* Student Details & Info Chips */}
                           <div className="space-y-1.5 pt-1 sm:pt-0">
-                            <div className="flex items-center gap-2">
-                              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
-                                {selectedStudentDossier.full_name}
-                              </h2>
-                              <span className="w-5 h-5 rounded-full bg-[#16834a] text-white inline-flex items-center justify-center text-xs shadow-xs font-bold" title="Verified Account">
-                                ✓
-                              </span>
-                            </div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none">
+                              {selectedStudentDossier.full_name}
+                            </h2>
 
-                            <p className="text-xs font-extrabold text-[#16834a]">{selectedStudentDossier.program || 'BS Computer Science'}</p>
-                            <p className="text-xs text-slate-600 font-semibold">{selectedStudentDossier.year_level || '3rd Year Student'} • Notre Dame of Marbel University</p>
-                            <p className="text-xs text-slate-500 font-medium">Koronadal City, South Cotabato</p>
+                            <p className="text-xs font-extrabold text-[#16834a]">{selectedStudentDossier.program || '—'}</p>
+                            <p className="text-xs text-slate-600 font-semibold">{selectedStudentDossier.year_level || 'Year level not recorded'} • Notre Dame of Marbel University</p>
 
                             <div className="flex flex-wrap items-center gap-2 pt-2 text-[11px]">
                               <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50/90 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs">
@@ -1272,61 +833,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                     {/* LEFT COLUMN */}
                     <div className="lg:col-span-2 space-y-6">
-
-                      {/* About Me Card */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
-                            <User className="w-4 h-4" />
-                          </div>
-                          <h3 className="text-base font-extrabold text-slate-900">About Me</h3>
-                        </div>
-                        <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                          I am a dedicated and driven student enrolled in {selectedStudentDossier.program} at Notre Dame of Marbel University. With a strong passion for technology, community service, and academic excellence, I actively seek opportunities to grow both personally and professionally.
-                        </p>
-                      </div>
-
-                      {/* Experience & Involvement Card */}
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
-                            <Building2 className="w-4 h-4" />
-                          </div>
-                          <h3 className="text-base font-extrabold text-slate-900">Experience &amp; Involvement</h3>
-                        </div>
-
-                        <div className="space-y-3 text-xs">
-                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-slate-900 text-sm">President</p>
-                              <p className="text-slate-500 font-semibold">Computer Society NDMU</p>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                              Aug 2025 – Present
-                            </span>
-                          </div>
-
-                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-slate-900 text-sm">Dean's Lister</p>
-                              <p className="text-slate-500 font-semibold">CEAC – Notre Dame of Marbel University</p>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                              AY 2024–2025
-                            </span>
-                          </div>
-
-                          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-start justify-between gap-3">
-                            <div>
-                              <p className="font-extrabold text-slate-900 text-sm">Community Extension Volunteer</p>
-                              <p className="text-slate-500 font-semibold">Koronadal City Barangay Program</p>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                              Jan – Mar 2025
-                            </span>
-                          </div>
-                        </div>
-                      </div>
 
                       {/* Student Accomplishment Record Section */}
                       <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
@@ -1436,34 +942,14 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                   </span>
                                 </div>
 
-                                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                   <div>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Category</p>
-                                    <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                      {item.category}
-                                    </span>
+                                    <p className="font-bold text-slate-800">{[item.category, item.subcategory_name].filter(Boolean).join(' › ')}</p>
                                   </div>
                                   <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Scope Level</p>
-                                    <p className="font-bold text-slate-800">{item.scope_level}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Rank / Position</p>
-                                    <span className="inline-block px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-100">
-                                      {item.rank_conferred || 'Participant'}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Date Conferred</p>
-                                    <p className="font-bold text-slate-800">{item.date}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Academic Year</p>
-                                    <p className="font-bold text-slate-800">{item.academic_year || 'AY 2025-2026'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Semester</p>
-                                    <p className="font-bold text-slate-800">{item.semester || '1st Semester'}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Activity date</p>
+                                    <p className="font-bold text-slate-800">{formatDateRange(item.start_date || item.occurrence_date, item.end_date) || 'Not provided'}</p>
                                   </div>
                                 </div>
 
@@ -1521,17 +1007,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                                   <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                                     <button
                                       type="button"
-                                      onClick={() => handleReturn(item.id)}
-                                      className="px-4 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-extrabold text-xs border border-amber-200 transition cursor-pointer"
-                                    >
-                                      Return for Revision
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleApprove(item.id)}
+                                      onClick={() => setSelectedReviewItem(item)}
                                       className="px-4 py-1.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
                                     >
-                                      Approve &amp; Verify ✓
+                                      Review &amp; Decide
                                     </button>
                                   </div>
                                 )}
@@ -1563,46 +1042,6 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                             </div>
                           </div>
 
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Phone</p>
-                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
-                              +63 912 345 6789
-                            </div>
-                          </div>
-
-                          <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Address</p>
-                            <div className="p-3 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] font-semibold text-slate-800">
-                              Koronadal City, South Cotabato
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-                        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#16834a] flex items-center justify-center">
-                            <Sparkles className="w-4 h-4" />
-                          </div>
-                          <h3 className="text-base font-extrabold text-slate-900">Skills &amp; Competencies</h3>
-                        </div>
-
-                        <div className="space-y-2.5 text-xs">
-                          {[
-                            { name: 'Leadership', level: 'Expert' },
-                            { name: 'Communication', level: 'Expert' },
-                            { name: 'Technical Skills', level: 'Proficient' },
-                            { name: 'Teamwork', level: 'Expert' },
-                            { name: 'Problem Solving', level: 'Proficient' },
-                            { name: 'Time Management', level: 'Expert' }
-                          ].map((sk, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
-                              <span className="font-bold text-slate-800">{sk.name}</span>
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                                {sk.level}
-                              </span>
-                            </div>
-                          ))}
                         </div>
                       </div>
 
@@ -1672,11 +1111,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     onChange={(e) => setCourseFilter(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-2xl bg-[#E7F3E9]/70 border border-[#cbe6d2] text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer appearance-none"
                   >
-                    <option value="All Courses">All Courses</option>
-                    <option value="BS Computer Science">BS Computer Science</option>
-                    <option value="BS Information Technology">BS Information Technology</option>
-                    <option value="BS Nursing">BS Nursing</option>
-                    <option value="BS Business Administration">BS Business Administration</option>
+                    <option value="All Courses">All Programs</option>
+                    {[...new Set(studentRoster.map(student => student.program).filter(Boolean))].map(program => <option key={program} value={program}>{program}</option>)}
                   </select>
                   <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-500">
                     <ChevronRight className="w-4 h-4 rotate-90" />
@@ -1688,9 +1124,21 @@ export default function CoordinatorDashboardPage({ currentUser }) {
             </div>
 
             {/* Simplified High-Readability Student Data Table */}
-            {filteredStudents.length === 0 ? (
+            {rosterLoading ? (
+              <div role="status" className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-600 text-sm font-semibold">
+                Loading students…
+              </div>
+            ) : rosterError ? (
+              <div role="alert" className="p-8 text-center bg-white rounded-3xl border border-rose-200">
+                <p className="text-sm font-bold text-rose-800">Students could not be loaded.</p>
+                <p className="mt-1 text-xs text-slate-600">{rosterError}</p>
+                <button type="button" onClick={reloadRoster} className="mt-4 min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-xs font-extrabold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+                  Try Again
+                </button>
+              </div>
+            ) : filteredStudents.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-500 text-xs font-medium">
-                No students found matching your search or filter criteria.
+                {studentRoster.length === 0 ? 'No active students are assigned to your program.' : 'No students match your search or filters.'}
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1702,7 +1150,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         <th className="py-3 px-4">Program</th>
                         <th className="py-3 px-4">Year Level</th>
                         <th className="py-3 px-4 text-center">Achievements</th>
-                        <th className="py-3 px-4 text-center">Verified Points</th>
+                        <th className="py-3 px-4 text-center">Verified</th>
                         <th className="py-3 px-4 text-center">Action</th>
                       </tr>
                     </thead>
@@ -1715,11 +1163,11 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                         >
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
-                              <img
+                              {std.avatar_url ? <img
                                 src={std.avatar_url}
-                                alt={std.full_name}
+                                alt=""
                                 className="w-9 h-9 rounded-full border border-slate-200 object-cover shrink-0"
-                              />
+                              /> : <span aria-hidden="true" className="grid w-9 h-9 shrink-0 place-items-center rounded-full border border-emerald-200 bg-emerald-50 text-xs font-extrabold text-emerald-800">{std.full_name.split(/\s+/).map(part => part[0]).slice(0, 2).join('')}</span>}
                               <div className="min-w-0">
                                 <p className="font-extrabold text-slate-900 group-hover:text-[#16834a] transition text-xs leading-tight">
                                   {std.full_name}
@@ -1748,8 +1196,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
                           <td className="py-3 px-4 text-center whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100/90 text-[#064e2b] font-extrabold text-xs border border-emerald-200">
-                              <TrendingUp className="w-3.5 h-3.5 text-[#16834a]" />
-                              <span>{std.verified_points} Points</span>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#16834a]" />
+                              <span>{std.verified_count} achievements</span>
                             </span>
                           </td>
 
@@ -1763,7 +1211,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                               className="px-3 py-1.5 rounded-xl bg-[#EFF7F0] hover:bg-[#143326] text-white text-xs font-extrabold transition shadow-2xs flex items-center gap-1.5 mx-auto cursor-pointer"
                             >
                               <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Inspect Dossier</span>
+                              <span>View Portfolio</span>
                             </button>
                           </td>
                         </tr>
@@ -1777,89 +1225,40 @@ export default function CoordinatorDashboardPage({ currentUser }) {
         )
       )}
 
-      {/* REVIEW & APPROVAL PROOF MODAL */}
+      {/* REVIEW & DECISION MODAL */}
       {selectedReviewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="relative w-full max-w-[96rem] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
             <button
+              type="button"
               onClick={() => setSelectedReviewItem(null)}
+              aria-label="Close review"
               className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-4 shrink-0">
+            <div className="flex items-center gap-3 p-6 pb-4 shrink-0">
               <div className="p-3 rounded-2xl bg-[#E7F3E9] text-[#16834a] border border-[#cbe6d2]">
                 <Shield className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-xl font-extrabold text-slate-900">Review Student Submission</h3>
-                <p className="text-xs text-slate-500">{user.program_scope || 'BS Computer Science'} Verification</p>
+                <p className="text-xs text-slate-500">{programScope} verification</p>
               </div>
             </div>
 
-            <div className="space-y-4 text-xs overflow-y-auto pr-1">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 text-sm">{selectedReviewItem.title}</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                    {selectedReviewItem.category}
-                  </span>
-                </div>
-                <p className="text-slate-600 font-medium">Submitted by: <strong className="text-slate-900">{selectedReviewItem.student_name}</strong> ({selectedReviewItem.student_id})</p>
-                <p className="text-slate-500 leading-relaxed">{selectedReviewItem.description}</p>
-                
-                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                  <span className="font-bold text-slate-700">Scope: {selectedReviewItem.scope_level}</span>
-                  <span className="font-bold text-[#16834a]">Points: +{selectedReviewItem.points}</span>
-                </div>
-              </div>
-
-              {/* Document Proof Box */}
-              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2">
-                <p className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-[#16834a]" />
-                  <span>Attached Supporting Proof Document</span>
-                </p>
-                <div className="p-3 bg-white rounded-xl border border-emerald-200 flex items-center justify-between">
-                  <span className="font-mono font-bold text-slate-800 text-xs">{selectedReviewItem.attached_file_name}</span>
-                  <span className="text-[10px] font-bold text-[#16834a] px-2 py-0.5 bg-emerald-50 rounded-md">Validated PDF</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Return Remarks (Required if returning entry to student)
-                </label>
-                <textarea
-                  value={returnRemarks}
-                  onChange={(e) => setReturnRemarks(e.target.value)}
-                  rows={2}
-                  placeholder="Specify missing document details or correction required..."
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-[#16834a] focus:ring-2 focus:ring-[#16834a]/20 outline-none text-xs text-slate-800 transition resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => handleReturn(selectedReviewItem.id)}
-                  className="px-4 py-2.5 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Return with Remarks</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleApprove(selectedReviewItem.id)}
-                  className="px-5 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold flex items-center gap-1.5 transition shadow-md cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Approve & Verify</span>
-                </button>
-              </div>
+            <div className="space-y-4 text-xs overflow-y-auto px-6 pb-4 min-h-0 flex-1">
+              <CoordinatorSubmissionReview item={selectedReviewItem} loadRecordDetail={loadRecordDetail} />
             </div>
+
+            <CoordinatorDecisionActions
+              item={selectedReviewItem}
+              onApprove={handleApproveHook}
+              onReturn={handleReturnHook}
+              onReject={handleRejectHook}
+              onDone={handleDecisionDone}
+            />
           </div>
         </div>
       )}

@@ -19,7 +19,7 @@ export default function EventCardOptionsMenu({
   onEditEvent,
   onPreviewCertificates,
   onExportCSV,
-  onArchiveEvent
+  onCancelEvent
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isHiddenByScroll, setIsHiddenByScroll] = useState(false)
@@ -206,17 +206,17 @@ export default function EventCardOptionsMenu({
 
           <div className="my-1 border-t border-slate-100"></div>
 
-          {/* Option 7: Archive Event */}
+          {/* Option 7: Cancel Event */}
           <button
             type="button"
             onClick={() => {
               setIsOpen(false)
-              if (onArchiveEvent) onArchiveEvent(event?.id)
+              if (onCancelEvent) onCancelEvent(event?.id)
             }}
             className="w-full px-3.5 py-2 text-left text-rose-600 hover:bg-rose-50 font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
             <Trash2 className="w-4 h-4 text-rose-500 shrink-0" />
-            <span>Archive Event</span>
+            <span>Cancel Event</span>
           </button>
 
         </div>,

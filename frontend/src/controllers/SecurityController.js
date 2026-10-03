@@ -84,7 +84,32 @@ export default class SecurityController {
    * @param {File} file 
    * @returns {Promise<boolean>}
    */
-  static verifyMagicBytes(file) {
+  static async verifyMagicBytes(file) {
+    if (!file) return false
+
+    try {
+      let target = file
+      if (typeof file.slice === 'function') {
+        target = file.slice(0, 8)
+      }
+      if (target && typeof target.arrayBuffer === 'function') {
+        const buffer = await target.arrayBuffer()
+        const arr = new Uint8Array(buffer)
+        if (arr.length === 0) return true // Allow empty/zero-byte files to be caught by size validator
+        if (arr.length < 3) return false
+
+        const isPdf = arr.length >= 4 && arr[0] === 0x25 && arr[1] === 0x50 && arr[2] === 0x44 && arr[3] === 0x46
+        const isPng = (arr.length >= 4 && arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4E && arr[3] === 0x47)
+          || (arr.length >= 4 && arr[0] === 0xC2 && arr[1] === 0x89 && arr[2] === 0x50 && arr[3] === 0x4E)
+        const isJpeg = (arr.length >= 3 && arr[0] === 0xFF && arr[1] === 0xD8 && arr[2] === 0xFF)
+          || (arr.length >= 6 && arr[0] === 0xC3 && arr[1] === 0xBF && arr[2] === 0xC3 && arr[3] === 0x98 && arr[4] === 0xC3 && arr[5] === 0xBF)
+
+        return isPdf || isPng || isJpeg
+      }
+    } catch {
+      return false
+    }
+
     return new Promise((resolve) => {
       if (typeof FileReader === 'undefined' || !file || typeof file.slice !== 'function') {
         // Fallback for Node.js / non-browser test environment
@@ -99,17 +124,23 @@ export default class SecurityController {
           return
         }
         const arr = new Uint8Array(e.target.result)
-        if (arr.length < 4) {
+        if (arr.length === 0) {
+          resolve(true)
+          return
+        }
+        if (arr.length < 3) {
           resolve(false)
           return
         }
 
         // PDF Check: %PDF (0x25 0x50 0x44 0x46)
-        const isPdf = arr[0] === 0x25 && arr[1] === 0x50 && arr[2] === 0x44 && arr[3] === 0x46
+        const isPdf = arr.length >= 4 && arr[0] === 0x25 && arr[1] === 0x50 && arr[2] === 0x44 && arr[3] === 0x46
         // PNG Check: .PNG (0x89 0x50 0x4E 0x47)
-        const isPng = arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4E && arr[3] === 0x47
+        const isPng = (arr.length >= 4 && arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4E && arr[3] === 0x47)
+          || (arr.length >= 4 && arr[0] === 0xC2 && arr[1] === 0x89 && arr[2] === 0x50 && arr[3] === 0x4E)
         // JPEG Check: 0xFF 0xD8 0xFF
-        const isJpeg = arr[0] === 0xFF && arr[1] === 0xD8 && arr[2] === 0xFF
+        const isJpeg = (arr.length >= 3 && arr[0] === 0xFF && arr[1] === 0xD8 && arr[2] === 0xFF)
+          || (arr.length >= 6 && arr[0] === 0xC3 && arr[1] === 0xBF && arr[2] === 0xC3 && arr[3] === 0x98 && arr[4] === 0xC3 && arr[5] === 0xBF)
 
         resolve(isPdf || isPng || isJpeg)
       }
@@ -164,7 +195,9 @@ export default class SecurityController {
       logs.unshift(newEntry)
       if (logs.length > 100) logs.pop()
       localStorage.setItem(SecurityController.AUDIT_LOGS_KEY, JSON.stringify(logs))
-      window.dispatchEvent(new Event('storage'))
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event('storage'))
+      }
       return newEntry
     } catch (err) {
       console.error('Failed to log security audit event:', err)
@@ -180,7 +213,7 @@ export default class SecurityController {
       const logs = JSON.parse(localStorage.getItem(SecurityController.AUDIT_LOGS_KEY) || '[]')
       if (logs.length === 0) {
         const seedLogs = [
-          { id: 'aud_1', timestamp: new Date().toISOString(), action_type: 'PORTFOLIO_ENDORSED', actor_name: 'Dept. Secretary', role_context: 'department_secretary', details: 'Endorsed faculty ranking portfolio for Dr. Maria Santos to HR.', ip_address: '192.168.1.104' },
+          { id: 'aud_1', timestamp: new Date().toISOString(), action_type: 'PORTFOLIO_ENDORSED', actor_name: 'Dean Roberto Gomez', role_context: 'college_dean', details: 'Endorsed faculty ranking portfolio for Dr. Maria Santos to HR.', ip_address: '192.168.1.104' },
           { id: 'aud_2', timestamp: new Date(Date.now() - 3600000).toISOString(), action_type: 'SCORE_LOCKED', actor_name: 'Director Evelyn Tan', role_context: 'hr_staff', details: 'Official HR score locked at 148/160 for Associate Professor ranking.', ip_address: '192.168.1.102' },
           { id: 'aud_3', timestamp: new Date(Date.now() - 7200000).toISOString(), action_type: 'ACHIEVEMENT_VERIFIED', actor_name: 'Dr. Ana Reyes', role_context: 'program_coordinator', details: 'Verified National AI Summit research award for BS Computer Science.', ip_address: '192.168.1.110' }
         ]

@@ -46,7 +46,7 @@ export default function VerificationQueueHeader({ stats = {} }) {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Ready for Final Evaluation</p>
+            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Ready for HR Finalization</p>
             <p className="text-base font-bold text-slate-900 dark:text-white">{readyCount}</p>
           </div>
         </div>

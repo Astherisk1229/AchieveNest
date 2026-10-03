@@ -1,0 +1,15 @@
+RewriteEngine On
+
+# Preserve real build artifacts and directories.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Dispatch dynamic API requests through the junction's front controller.
+RewriteRule ^api/(?!index\.php(?:/|$))([\s\S]*)$ /api/index.php/api/$1 [END,NC,QSA]
+
+# Never let unresolved API paths fall through to React.
+RewriteRule ^api(?:/|$) - [END]
+
+# Let React Router handle all remaining application routes.
+RewriteRule ^ index.html [L]

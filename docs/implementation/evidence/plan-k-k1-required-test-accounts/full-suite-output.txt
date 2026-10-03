@@ -1,0 +1,6 @@
+Test Files  160 passed (160)
+Tests       1923 passed (1923)
+Failures    0
+Start at    19:03:20
+Duration    71.43s
+Exit code   0

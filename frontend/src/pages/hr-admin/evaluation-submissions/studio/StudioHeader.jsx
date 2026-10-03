@@ -1,5 +1,7 @@
 import React from 'react'
 import { ArrowLeft, Save, X, Columns, Edit3, Eye } from 'lucide-react'
+import { formatPersonnelPlacement } from '../../../../utils/personnelPlacement'
+import { usesFacultyAcademicPortfolio } from '../../../../utils/personnelPortfolioFormat'
 
 export default function StudioHeader({
   submission,
@@ -13,11 +15,14 @@ export default function StudioHeader({
 }) {
   if (!submission) return null
 
-  const areaA = Number(scores.areaA?.total ?? scores.areaA_score ?? 0).toFixed(1)
+  const isFaculty = usesFacultyAcademicPortfolio(submission)
+  const areaAValue = scores.areaA?.total ?? scores.areaA_score
+  const areaA = areaAValue === null || areaAValue === undefined ? '—' : Number(areaAValue).toFixed(1)
   const areaBAwarded = Number(scores.areaB?.awardedTotal ?? scores.areaB?.total ?? scores.areaB_score ?? 0).toFixed(1)
   const areaBRaw = Number(scores.areaB?.rawTotal ?? areaBAwarded).toFixed(1)
   const areaC = Number(scores.areaC?.total ?? scores.areaC_score ?? 0).toFixed(1)
-  const grandTotal = Number(scores.grandTotalAwarded ?? scores.total_score ?? scores.totalScore ?? 0).toFixed(1)
+  const totalValue = scores.grandTotalAwarded ?? scores.total_score ?? scores.totalScore
+  const grandTotal = totalValue === null || totalValue === undefined ? 'Pending' : Number(totalValue).toFixed(1)
 
   return (
     <div className="h-14 px-4 bg-[#131e2e] border-b border-slate-800 flex items-center justify-between gap-3 text-white shrink-0 font-sans overflow-hidden">
@@ -46,7 +51,7 @@ export default function StudioHeader({
               </span>
             </div>
             <p className="text-[10px] text-slate-400 truncate">
-              {submission.college || 'College'} · {submission.department || 'Department'}
+              {formatPersonnelPlacement(submission)}
             </p>
           </div>
         </div>
@@ -55,23 +60,22 @@ export default function StudioHeader({
       {/* Center: Inline Score Summary */}
       <div className="flex items-center gap-2.5 shrink-0">
         <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/70 border border-slate-700/50 text-[11px] font-medium text-slate-300">
-          <span>A: <strong className="text-white font-bold">{areaA}</strong>/70</span>
+          <span>A: <strong className="text-white font-bold">{areaA}</strong>/{isFaculty ? 70 : 90}</span>
           <span className="text-slate-600">|</span>
           <span className="flex items-center gap-0.5">
-            B: <strong className="text-white font-bold">{areaBAwarded}</strong>/50
+            B: <strong className="text-white font-bold">{areaBAwarded}</strong>/{isFaculty ? 50 : 60}
             {Number(areaBRaw) > Number(areaBAwarded) && (
               <span className="text-[9px] text-amber-400 font-semibold ml-0.5">
                 (Capped)
               </span>
             )}
           </span>
-          <span className="text-slate-600">|</span>
-          <span>C: <strong className="text-white font-bold">{areaC}</strong>/40</span>
+          {isFaculty && <><span className="text-slate-600">|</span><span>C: <strong className="text-white font-bold">{areaC}</strong>/40</span></>}
         </div>
 
         <div className="px-3 py-1 rounded-lg bg-[#176B43] text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs shrink-0">
           <span className="text-[9px] text-emerald-200 uppercase tracking-wider font-extrabold">TOTAL</span>
-          <span className="text-xs font-extrabold text-white">{grandTotal} / 160.0</span>
+          <span className="text-xs font-extrabold text-white">{grandTotal} / {isFaculty ? '160.0' : '150.0'}</span>
         </div>
       </div>
 

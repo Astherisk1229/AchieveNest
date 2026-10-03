@@ -70,8 +70,10 @@ describe('authService - Password Reset & Mandatory Password Change', () => {
 
     const res = await submitPasswordChange('NewSecurePass123!', 'NewSecurePass123!')
     expect(apiClient.post).toHaveBeenCalledWith('/auth/change-password', {
+      current_password: '',
       new_password: 'NewSecurePass123!',
-      confirm_password: 'NewSecurePass123!'
+      confirm_password: 'NewSecurePass123!',
+      new_password_confirmation: 'NewSecurePass123!'
     }, {
       headers: { Authorization: 'Bearer mock-access-token' }
     })

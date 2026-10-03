@@ -134,6 +134,22 @@ export default function CriterionEvaluation({
     }
   }
 
+  // Area A items of Non-Teaching Faculty come from the confirmed NTF annual-review workbook and are read-only.
+  const lockedPayload = (() => { const raw = selectedEvidence.scoring_payload ?? selectedEvidence.scoringPayload; if (!raw) return {}; if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return {} } } return raw })()
+  if (selectedEvidence.domain === 'ntf_annual_review' || (lockedPayload.locked === true && lockedPayload.source === 'ntf_annual_review_workbook')) {
+    const years = lockedPayload.school_years || []
+    const points = Number(selectedEvidence.accepted_points ?? selectedEvidence.awarded_points ?? selectedEvidence.awardedPoints ?? 0)
+    return (
+      <section aria-label="Locked annual review score" className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-black text-slate-950 dark:text-white">{selectedEvidence.criterion_code || selectedEvidence.criterionCode} {selectedEvidence.criterion_title || selectedEvidence.criterionTitle}</h2><span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-inset ring-amber-200">Locked</span></div>
+        <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">This Area A score comes from the confirmed NTF annual-review workbook: the average of DS × weight over the two required school years. It cannot be changed in the evaluation. To correct it, HR re-imports the workbook before the portfolio is submitted.</p>
+        <dl className="grid gap-3 rounded-xl border border-slate-200 p-4 text-sm sm:grid-cols-3 dark:border-slate-800">
+          {[0, 1].map(i => <div key={i}><dt className="text-slate-500">SY {years[i] || '—'}</dt><dd className="mt-1 font-bold tabular-nums">DS {lockedPayload.ds?.[i] ?? '—'} → {lockedPayload.points?.[i] ?? '—'} pts</dd></div>)}
+          <div><dt className="text-slate-500">Locked Area A points</dt><dd className="mt-1 text-lg font-black tabular-nums text-emerald-800 dark:text-emerald-300">{points.toFixed(2)}</dd></div>
+        </dl>
+      </section>
+    )
+  }
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
       {/* Criterion Header & Source-of-Truth Confidence Badge */}

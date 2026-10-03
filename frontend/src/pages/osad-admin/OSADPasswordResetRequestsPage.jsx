@@ -19,6 +19,16 @@ import {
   executePasswordReset,
   rejectPasswordReset
 } from '../../services/passwordResetAdminService'
+import { Button } from '../../components/ui/button'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { useConfirmableClose } from '../../hooks/useConfirmableClose'
+import OSADPageHeader from '../../components/osad/OSADPageHeader'
+import {
+  OSADLoadingState,
+  OSADEmptyState,
+  OSADSearchEmptyState,
+  OSADErrorState
+} from '../../components/osad/OSADStateBlock'
 
 export default function OSADPasswordResetRequestsPage() {
   const [requests, setRequests] = useState([])
@@ -36,6 +46,34 @@ export default function OSADPasswordResetRequestsPage() {
   const [rejectReason, setRejectReason] = useState('')
   const [isRejecting, setIsRejecting] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  const rejectConfirmClose = useConfirmableClose({
+    isOpen: Boolean(selectedRequestForReject),
+    isDirty: () => Boolean(rejectReason.trim()),
+    onClose: () => {
+      setSelectedRequestForReject(null)
+      setRejectReason('')
+    },
+    onDiscard: () => {
+      setRejectReason('')
+    }
+  })
+
+  // Escape key handler for Reset Modal
+  useEffect(() => {
+    if (!selectedRequestForReset || isResetting) return
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setSelectedRequestForReset(null)
+        setResetResult(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedRequestForReset, isResetting])
 
   const loadRequests = async () => {
     setIsLoading(true)
@@ -109,37 +147,24 @@ export default function OSADPasswordResetRequestsPage() {
   return (
     <div className="space-y-6 font-sans animate-in fade-in duration-200">
       
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex items-center justify-center shrink-0">
-            <KeyRound className="w-5.5 h-5.5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                Student Password Reset Requests
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-[#16834a] dark:text-emerald-400 text-[10px] font-black uppercase">
-                OSAD Authority
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              Review institutional password reset requests submitted by enrolled students.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={loadRequests}
-          disabled={isLoading}
-          className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 self-start md:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
-      </div>
+      {/* Standardized Page Header */}
+      <OSADPageHeader
+        title="Student Password Reset Requests"
+        description="Review institutional password reset requests submitted by enrolled students."
+        icon={KeyRound}
+        badge="OSAD Authority"
+        secondaryActions={
+          <button
+            type="button"
+            onClick={loadRequests}
+            disabled={isLoading}
+            className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 self-start md:self-auto"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        }
+      />
 
       {errorMsg && (
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
@@ -231,13 +256,36 @@ export default function OSADPasswordResetRequestsPage() {
 
         <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
           {isLoading ? (
-            <div className="p-8 text-center text-slate-400 text-xs font-medium flex items-center justify-center gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin text-[#16834a]" />
-              <span>Loading password reset requests...</span>
+            <div className="p-6">
+              <OSADLoadingState message="Loading password reset requests..." />
+            </div>
+          ) : errorMsg ? (
+            <div className="p-6">
+              <OSADErrorState
+                title="Unable to Load Reset Requests"
+                message={errorMsg}
+                onRetry={loadRequests}
+              />
+            </div>
+          ) : requests.length === 0 ? (
+            <div className="p-6">
+              <OSADEmptyState
+                icon={KeyRound}
+                title="No Password Reset Requests"
+                description="There are currently no active or historical student password reset requests in the queue."
+              />
             </div>
           ) : filteredRequests.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs font-medium">
-              No password reset requests match the selected filter.
+            <div className="p-6">
+              <OSADSearchEmptyState
+                title="No Matching Requests"
+                description="No password reset requests match your current search query or status filter."
+                onReset={() => {
+                  setSearchTerm('')
+                  setStatusFilter('all')
+                }}
+                resetLabel="Reset Status & Search"
+              />
             </div>
           ) : (
             filteredRequests.map((req) => {
@@ -340,8 +388,19 @@ export default function OSADPasswordResetRequestsPage() {
 
       {/* Execute Reset Modal */}
       {selectedRequestForReset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isResetting) {
+              setSelectedRequestForReset(null)
+              setResetResult(null)
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white"
+          >
             
             {/* Header */}
             <div className="px-6 py-4 bg-[#064e2b] text-white flex items-center justify-between">
@@ -352,8 +411,10 @@ export default function OSADPasswordResetRequestsPage() {
               {!resetResult && (
                 <button
                   type="button"
+                  aria-label="Close dialog"
+                  disabled={isResetting}
                   onClick={() => setSelectedRequestForReset(null)}
-                  className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                  className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer disabled:opacity-50"
                 >
                   <XCircle className="w-5 h-5" />
                 </button>
@@ -407,16 +468,16 @@ export default function OSADPasswordResetRequestsPage() {
                     </p>
                   </div>
 
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setSelectedRequestForReset(null)
                       setResetResult(null)
                     }}
-                    className="w-full py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white font-extrabold text-xs shadow-xs transition cursor-pointer"
+                    className="w-full shadow-xs"
                   >
                     Done & Close
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -437,19 +498,19 @@ export default function OSADPasswordResetRequestsPage() {
                       type="button"
                       onClick={() => setSelectedRequestForReset(null)}
                       disabled={isResetting}
-                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer hover:bg-slate-200"
+                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer hover:bg-slate-200 disabled:opacity-50"
                     >
                       Cancel
                     </button>
-                    <button
+                    <Button
                       type="button"
                       onClick={handleExecuteReset}
                       disabled={isResetting}
-                      className="px-4 py-2 rounded-xl bg-[#064e2b] hover:bg-[#16834a] text-white font-extrabold text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                      className="gap-1.5 shadow-xs"
                     >
                       {isResetting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                       <span>{isResetting ? 'Generating...' : 'Confirm & Reset Password'}</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -461,8 +522,14 @@ export default function OSADPasswordResetRequestsPage() {
 
       {/* Reject Request Modal */}
       {selectedRequestForReject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white">
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) rejectConfirmClose.requestClose() }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-slate-900 dark:text-white"
+          >
             <div className="px-6 py-4 bg-rose-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <XCircle className="w-5 h-5 text-rose-200" />
@@ -470,7 +537,8 @@ export default function OSADPasswordResetRequestsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedRequestForReject(null)}
+                aria-label="Close dialog"
+                onClick={rejectConfirmClose.requestClose}
                 className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
@@ -499,26 +567,38 @@ export default function OSADPasswordResetRequestsPage() {
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedRequestForReject(null)}
+                  onClick={rejectConfirmClose.requestClose}
                   disabled={isRejecting}
                   className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
                   onClick={handleExecuteReject}
                   disabled={isRejecting}
-                  className="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-extrabold text-xs transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                  className="gap-1.5 shadow-xs"
                 >
                   {isRejecting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                   <span>{isRejecting ? 'Rejecting...' : 'Confirm Rejection'}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Rejection Discard Confirmation Dialog */}
+      <ConfirmDialog
+        open={rejectConfirmClose.isConfirmOpen}
+        title="Discard Rejection Reason?"
+        message="Are you sure you want to close? The entered rejection reason will be discarded."
+        confirmLabel="Discard Changes"
+        cancelLabel="Continue Editing"
+        onConfirm={rejectConfirmClose.confirmDiscard}
+        onCancel={rejectConfirmClose.cancelDiscard}
+      />
 
     </div>
   )

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
   QrCode, 
@@ -10,72 +10,141 @@ import {
   UserCheck, 
   Building2, 
   AlertCircle, 
+  AlertTriangle,
   ChevronLeft,
-  Sparkles,
-  Volume2,
   Users,
-  Search
+  Camera,
+  Loader2
 } from 'lucide-react'
+import { Html5Qrcode } from 'html5-qrcode'
 
-import OrganizationController from '../../../controllers/OrganizationController'
-import AttendanceController from '../../../controllers/AttendanceController'
+import attendanceService, { parseScannedIdentifier, normalizeAttendanceError } from '../../../services/attendanceService'
+import eventService from '../../../services/eventService'
+import { AchieveNestLogo } from '../../../components/brand'
+
+/**
+ * Deterministically sort attendance records by checked_in_at descending (newest first).
+ */
+export function sortRecordsDesc(recordList) {
+  if (!Array.isArray(recordList)) return []
+  return [...recordList].sort((a, b) => {
+    const timeA = new Date(String(a.checked_in_at || a.verified_at || a.created_at || 0).replace(' ', 'T')).getTime()
+    const timeB = new Date(String(b.checked_in_at || b.verified_at || b.created_at || 0).replace(' ', 'T')).getTime()
+    return timeB - timeA
+  })
+}
+
+/**
+ * Format timestamp to 12-hour wall-clock time string with seconds (e.g., "11:58:04 PM", "12:14:27 AM").
+ */
+export function formatCheckInTime(dateStr) {
+  if (!dateStr) return 'Just now'
+  try {
+    const d = new Date(String(dateStr).replace(' ', 'T'))
+    if (isNaN(d.getTime())) return dateStr
+    return d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    })
+  } catch {
+    return dateStr
+  }
+}
+
+/**
+ * Format relative elapsed time (e.g., "Just now", "2 mins ago", "1 hr ago", "Yesterday").
+ */
+export function formatRelativeTime(dateStr, nowTimestamp = Date.now()) {
+  if (!dateStr) return 'Just now'
+  try {
+    const normalized = String(dateStr).trim().replace(' ', 'T')
+    const institutionalTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)
+      ? `${normalized}+08:00`
+      : normalized
+    const d = new Date(institutionalTimestamp)
+    if (isNaN(d.getTime())) return 'Just now'
+    const diffSecs = Math.floor((nowTimestamp - d.getTime()) / 1000)
+    if (diffSecs < 60) return 'Just now'
+    const mins = Math.floor(diffSecs / 60)
+    if (mins < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours} hr${hours > 1 ? 's' : ''} ago`
+    if (hours < 48) return 'Yesterday'
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  } catch {
+    return 'Just now'
+  }
+}
+
+/**
+ * Format human-readable event / session schedule range (e.g., "Sep 24, 2026 · 11:54 PM – 12:42 AM").
+ */
+export function formatHumanSchedule(startStr, endStr) {
+  if (!startStr) return 'Schedule'
+  try {
+    const dStart = new Date(String(startStr).replace(' ', 'T'))
+    if (isNaN(dStart.getTime())) return startStr
+    const startFormat = dStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    const startDate = dStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+    if (!endStr) return `${startDate} · ${startFormat}`
+
+    const dEnd = new Date(String(endStr).replace(' ', 'T'))
+    if (isNaN(dEnd.getTime())) return `${startDate} · ${startFormat}`
+    const endFormat = dEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    const endDate = dEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
+    if (startDate === endDate) {
+      return `${startDate} · ${startFormat} – ${endFormat}`
+    }
+    return `${startDate} ${startFormat} – ${endDate} ${endFormat}`
+  } catch {
+    return `${startStr} – ${endStr}`
+  }
+}
 
 export default function OfficerScannerPage() {
   const { eventId } = useParams()
-  const activeEventId = eventId || 'evt-1'
+  const activeEventId = eventId || ''
 
-  // Fetch event details & session
-  const [eventData, setEventData] = useState(() => {
-    const allEvts = OrganizationController.getEvents()
-    return allEvts.find(e => e.id === activeEventId) || allEvts[0]
-  })
+  // Canonical state
+  const [eventData, setEventData] = useState(null)
+  const [sessions, setSessions] = useState([])
+  const [activeSession, setActiveSession] = useState(null)
+  const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const [session, setSession] = useState(() => AttendanceController.getSession(activeEventId))
-
-  // Countdown timer state (seconds remaining until start time)
-  const [countdown, setCountdown] = useState(872) // 14 mins 32 secs mock
-  const [scannedStudent, setScannedStudent] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  // Scanner & Form state
   const [manualBarcode, setManualBarcode] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
+  const [feedback, setFeedback] = useState(null) // { type: 'success' | 'duplicate' | 'error', message?: string, studentName?: string, method?: string, time?: string, record?: object, persistent?: boolean }
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [cameraActive, setCameraActive] = useState(false)
+  const [cameraError, setCameraError] = useState(null)
+  const [highlightedRecordId, setHighlightedRecordId] = useState(null)
 
-  // Sync session state on updates
+  const isSubmittingRef = useRef(false)
+  const html5QrCodeRef = useRef(null)
+  const feedbackTimeoutRef = useRef(null)
+  const highlightTimeoutRef = useRef(null)
+  const lastSuccessfulIdentifierRef = useRef(null)
+  const lastSuccessfulAtRef = useRef(0)
+  const refreshSequenceRef = useRef(0)
+  const scannerContainerId = 'officer-qr-reader'
+
+  // Lightweight page-level presentation timer for live relative-time recalculation (30s interval)
+  const [, setRelativeTimeTick] = useState(() => Date.now())
+
   useEffect(() => {
-    const handleUpdate = (e) => {
-      if (e.detail && (e.detail.eventId === activeEventId || !e.detail.eventId)) {
-        setSession({ ...AttendanceController.getSession(activeEventId) })
-      }
-    }
-    window.addEventListener('achievenest_attendance_update', handleUpdate)
-    return () => window.removeEventListener('achievenest_attendance_update', handleUpdate)
-  }, [activeEventId])
+    const timer = setInterval(() => {
+      setRelativeTimeTick(Date.now())
+    }, 30000)
 
-  // Digital countdown ticker
-  useEffect(() => {
-    if (session.session_status === 'Locked' && countdown > 0) {
-      const timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            AttendanceController.updateSessionStatus(activeEventId, 'Active')
-            playUnlockChime()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-      return () => clearInterval(timer)
-    }
-  }, [session.session_status, countdown, activeEventId])
+    return () => clearInterval(timer)
+  }, [])
 
-  // Format countdown seconds into HH:MM:SS
-  const formatCountdown = (totalSecs) => {
-    const hrs = Math.floor(totalSecs / 3600).toString().padStart(2, '0')
-    const mins = Math.floor((totalSecs % 3600) / 60).toString().padStart(2, '0')
-    const secs = (totalSecs % 60).toString().padStart(2, '0')
-    return `${hrs}:${mins}:${secs}`
-  }
-
-  // Synthesize success chime sound using Web Audio API (Zero asset dependencies!)
+  // Synthesize success chime sound using Web Audio API
   const playSuccessChime = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -90,70 +159,303 @@ export default function OfficerScannerPage() {
       gain.connect(ctx.destination)
       osc.start()
       osc.stop(ctx.currentTime + 0.3)
-    } catch (e) {
+    } catch {
       // AudioContext fallback ignored
     }
   }
 
-  const playUnlockChime = () => {
+  // Load event details, attendance sessions, and initial records
+  const loadEventAndSessions = useCallback(async () => {
+    if (!activeEventId) return
+    setLoading(true)
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'triangle'
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime) // C5
-      osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15) // E5
-      osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.3) // G5
-      gain.gain.setValueAtTime(0.2, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start()
-      osc.stop(ctx.currentTime + 0.5)
-    } catch (e) {}
-  }
+      const [allEvents, sessionList] = await Promise.all([
+        eventService.list().catch(() => []),
+        attendanceService.listEventAttendanceSessions(activeEventId).catch(() => [])
+      ])
 
-  // Student Officer Authentication Lock state
-  const [activeOfficer, setActiveOfficer] = useState(null)
-  const [officerBarcode, setOfficerBarcode] = useState('')
-  const [officerError, setOfficerError] = useState('')
+      const evt = allEvents.find(e => String(e.id) === String(activeEventId)) || {
+        id: activeEventId,
+        title: 'Organization Event',
+        event_type: 'General',
+        venue: 'NDMU Campus'
+      }
+      setEventData(evt)
+      setSessions(sessionList)
 
-  const handleAuthenticateOfficer = (barcodeToUse) => {
-    const code = barcodeToUse || officerBarcode
-    setOfficerError('')
+      // Select active open session or the first session
+      const openSess = sessionList.find(s => s.status === 'open') || sessionList[0] || null
+      setActiveSession(openSess)
 
-    try {
-      const officer = AttendanceController.verifyOfficerBarcode(code)
-      setActiveOfficer(officer)
-      setOfficerBarcode('')
-    } catch (err) {
-      setOfficerError(err.message || 'Invalid Officer Barcode ID')
+      if (openSess?.id) {
+        const recs = await attendanceService.listAttendanceSessionRecords(openSess.id).catch(() => [])
+        setRecords(sortRecordsDesc(recs))
+      } else {
+        setRecords([])
+      }
+    } catch {
+      // Network failure fallback
+    } finally {
+      setLoading(false)
+    }
+  }, [activeEventId])
+
+  useEffect(() => {
+    loadEventAndSessions()
+  }, [loadEventAndSessions])
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current)
+    }
+  }, [])
+
+  // Select a specific session
+  const handleSelectSession = async (sess) => {
+    setActiveSession(sess)
+    setFeedback(null)
+    if (sess?.id) {
+      try {
+        const recs = await attendanceService.listAttendanceSessionRecords(sess.id)
+        setRecords(sortRecordsDesc(recs))
+      } catch {
+        setRecords([])
+      }
     }
   }
 
-  // Handle student check-in barcode scan
-  const handleScanSubmit = (codeToScan) => {
-    setErrorMessage('')
-    const targetCode = codeToScan || manualBarcode
-    if (!targetCode) return
+  // High-throughput continuous check-in submission handler
+  const handleCheckIn = useCallback(async (rawCode, method = 'qr_scan') => {
+    if (!activeSession?.id) {
+      setFeedback({ type: 'error', message: 'No attendance session available.' })
+      return
+    }
+
+    if (activeSession.status !== 'open') {
+      setFeedback({ type: 'error', message: `Attendance session is "${activeSession.status}". Only "open" sessions allow check-in.` })
+      return
+    }
+
+    const identifier = parseScannedIdentifier(rawCode)
+    if (!identifier) {
+      setFeedback({ type: 'error', message: 'Please enter a valid student identifier.' })
+      return
+    }
+
+    // Independent same-identifier suppression (~2000ms for ONLY that identifier)
+    const now = Date.now()
+    if (rawCode === lastSuccessfulIdentifierRef.current && (now - lastSuccessfulAtRef.current) < 2000) {
+      return
+    }
+
+    // Global concurrency request lock (only while POST is actually pending)
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
+    setIsSubmitting(true)
 
     try {
-      const officerLabel = activeOfficer ? `${activeOfficer.full_name} (${activeOfficer.position.split(' ')[0]})` : 'Officer Alex (Gate 1)'
-      const record = AttendanceController.recordScan(activeEventId, targetCode, officerLabel)
-      setScannedStudent(record)
-      setIsModalOpen(true)
+      const record = await attendanceService.checkInAttendance(activeSession.id, {
+        identifier,
+        verification_method: method
+      })
+
+      // Update same-identifier suppression guard
+      lastSuccessfulIdentifierRef.current = rawCode
+      lastSuccessfulAtRef.current = Date.now()
+
       playSuccessChime()
+
+      const studentDisplayName = record?.full_name || record?.student_name || 'NDMU Student'
+      const methodLabel = method === 'qr_scan' ? 'QR Scan' : 'Manual'
+
+      // Transient non-blocking success notification (updates cleanly if new student scans)
+      setFeedback({
+        type: 'success',
+        studentName: studentDisplayName,
+        method: methodLabel,
+        time: 'Just now',
+        record
+      })
+
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setFeedback(prev => (prev?.type === 'success' ? null : prev))
+      }, 1400)
+
       setManualBarcode('')
-    } catch (err) {
-      setErrorMessage(err.message)
+
+      // Immediately insert returned canonical record at top of Recent Check-ins
+      if (record?.id) {
+        setRecords(prev => {
+          const filtered = prev.filter(r => r.id !== record.id)
+          return sortRecordsDesc([record, ...filtered])
+        })
+
+        setHighlightedRecordId(record.id)
+        if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current)
+        highlightTimeoutRef.current = setTimeout(() => {
+          setHighlightedRecordId(null)
+        }, 1500)
+      }
+
+      // Fast global unlock: scanner is immediately ready for next student (0ms delay)
+      isSubmittingRef.current = false
+      setIsSubmitting(false)
+
+      // Concurrent background canonical records refresh with stale-race protection
+      const currentRefreshSeq = ++refreshSequenceRef.current
+      attendanceService.listAttendanceSessionRecords(activeSession.id)
+        .then(updatedRecords => {
+          if (currentRefreshSeq === refreshSequenceRef.current && Array.isArray(updatedRecords)) {
+            setRecords(prev => {
+              // Merge server records with any locally present un-refreshed items
+              const serverIds = new Set(updatedRecords.map(r => r.id))
+              const localUnsynced = prev.filter(r => !serverIds.has(r.id))
+              return sortRecordsDesc([...updatedRecords, ...localUnsynced])
+            })
+          }
+        })
+        .catch(() => {})
+
+    } catch (error) {
+      const code = error?.error?.code || error?.code || error?.response?.data?.error?.code
+      const status = error?.response?.status || error?.status || (code === 'ATTENDEE_ALREADY_CHECKED_IN' ? 409 : null)
+      const isDuplicate = status === 409 || code === 'ATTENDEE_ALREADY_CHECKED_IN' || code === 'DUPLICATE_CHECK_IN'
+
+      if (isDuplicate) {
+        setFeedback({
+          type: 'duplicate',
+          message: 'Student is already checked in.'
+        })
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+        feedbackTimeoutRef.current = setTimeout(() => {
+          setFeedback(prev => (prev?.type === 'duplicate' ? null : prev))
+        }, 2000)
+      } else {
+        const msg = normalizeAttendanceError(error)
+        setFeedback({
+          type: 'error',
+          message: msg,
+          persistent: Boolean(status && status >= 500)
+        })
+
+        if (!status || status < 500) {
+          if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+          feedbackTimeoutRef.current = setTimeout(() => {
+            setFeedback(prev => (prev?.type === 'error' && !prev?.persistent ? null : prev))
+          }, 2500)
+        }
+      }
+
+      // Fast release on error
+      isSubmittingRef.current = false
+      setIsSubmitting(false)
     }
+  }, [activeSession])
+
+  const handleCheckInRef = useRef(handleCheckIn)
+  useEffect(() => {
+    handleCheckInRef.current = handleCheckIn
+  }, [handleCheckIn])
+
+  // Camera scanner lifecycle
+  useEffect(() => {
+    const isSessionOpen = activeSession?.status === 'open'
+    if (!isSessionOpen) {
+      setCameraActive(false)
+      return
+    }
+
+    let isMounted = true
+    setCameraError(null)
+
+    const timer = setTimeout(() => {
+      const element = document.getElementById(scannerContainerId)
+      if (!element || !isMounted) return
+
+      try {
+        const scanner = new Html5Qrcode(scannerContainerId)
+        html5QrCodeRef.current = scanner
+
+        scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 220, height: 220 }
+          },
+          (decodedText) => {
+            if (isMounted && !isSubmittingRef.current) {
+              handleCheckInRef.current(decodedText, 'qr_scan')
+            }
+          },
+          () => {
+            // Frame parsing errors are ignored while waiting for valid QR
+          }
+        ).then(() => {
+          if (isMounted) {
+            setCameraActive(true)
+          } else {
+            try {
+              if (scanner.isScanning) {
+                scanner.stop().then(() => {
+                  try { scanner.clear() } catch {}
+                }).catch(() => {
+                  try { scanner.clear() } catch {}
+                })
+              } else {
+                try { scanner.clear() } catch {}
+              }
+            } catch {}
+          }
+        }).catch((err) => {
+          if (isMounted) {
+            setCameraError(err?.message || 'Camera offline or permission denied.')
+            setCameraActive(false)
+          }
+        })
+      } catch (err) {
+        if (isMounted) {
+          setCameraError(err?.message || 'Unable to start camera scanner.')
+          setCameraActive(false)
+        }
+      }
+    }, 150)
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+      setCameraActive(false)
+
+      const scanner = html5QrCodeRef.current
+      html5QrCodeRef.current = null
+
+      if (scanner) {
+        try {
+          if (scanner.isScanning) {
+            scanner.stop().then(() => {
+              try { scanner.clear() } catch {}
+            }).catch(() => {
+              try { scanner.clear() } catch {}
+            })
+          } else {
+            try { scanner.clear() } catch {}
+          }
+        } catch {
+          try { scanner.clear() } catch {}
+        }
+      }
+    }
+  }, [activeSession?.id, activeSession?.status])
+
+  const handleManualSubmit = (e) => {
+    e.preventDefault()
+    if (!manualBarcode.trim() || isSubmitting) return
+    handleCheckIn(manualBarcode.trim(), 'manual')
   }
 
-  const handleForceUnlockDemo = () => {
-    AttendanceController.updateSessionStatus(activeEventId, 'Active')
-    playUnlockChime()
-  }
-
+  const isSessionOpen = activeSession?.status === 'open'
 
   return (
     <div className="min-h-screen bg-slate-900 text-white font-sans selection:bg-[#16834a] selection:text-white pb-12">
@@ -162,374 +464,307 @@ export default function OfficerScannerPage() {
       <div className="bg-[#EFF7F0] border-b border-[#69A97C] p-4 sticky top-0 z-40 shadow-xl">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <path d="M50 5 L90 25 L90 75 L50 95 L10 75 L10 25 Z" fill="#0f4625" stroke="#f59e0b" strokeWidth="4"/>
-                <circle cx="50" cy="50" r="28" fill="#ffffff" />
-                <path d="M50 28 L57 42 L72 42 L60 52 L65 67 L50 57 L35 67 L40 52 L28 42 L43 42 Z" fill="#f59e0b" />
-              </svg>
-            </div>
+            <Link to="/personnel/organization-moderator" className="p-1.5 rounded-lg bg-white text-[#17663B] hover:bg-[#EAF4EC] transition">
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+            <div className="rounded-lg bg-white px-2 py-1"><AchieveNestLogo variant="horizontal" size="compact" /></div>
             <div>
-              <h1 className="font-extrabold text-sm text-white tracking-tight leading-tight">AchieveNest Gateway</h1>
-              <p className="text-[10px] text-[#245F42] font-bold uppercase tracking-wider">NDMU Student Officer Scanner</p>
+              <h1 className="font-extrabold text-sm text-[#17663B] tracking-tight leading-tight">Attendance Gateway</h1>
+              <p className="text-[10px] text-[#356148] font-bold uppercase tracking-wider">NDMU Official Scanner</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold shadow-xs ${
-              session.session_status === 'Active' 
+              isSessionOpen
                 ? 'bg-emerald-500 text-slate-950 animate-pulse' 
-                : session.session_status === 'Closed'
+                : activeSession?.status === 'closed'
                 ? 'bg-slate-700 text-slate-300'
                 : 'bg-amber-400 text-slate-950 font-bold'
             }`}>
-              {session.session_status === 'Active' ? '● LIVE SCANNER' : session.session_status === 'Closed' ? 'CLOSED' : '🔒 PRE-START LOCKED'}
+              {isSessionOpen ? '● LIVE SCANNER' : activeSession?.status === 'closed' ? 'CLOSED' : '🔒 SCHEDULED'}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto p-4 space-y-6">
+      <div className="max-w-md mx-auto p-4 space-y-5">
         
         {/* Event Meta Card */}
         <div className="bg-slate-800/90 rounded-3xl p-5 border border-slate-700/80 shadow-xl space-y-2">
           <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
-            <span>{eventData.category || 'Organization Event'}</span>
-            <span className="text-slate-400 font-medium">Gate 1 Access Point</span>
+            <span>{eventData?.event_type || eventData?.category || 'Organization Event'}</span>
+            <span className="text-slate-400 font-medium">Canonical Hub</span>
           </div>
-          <h2 className="text-lg font-extrabold text-white leading-snug">{eventData.title}</h2>
+          <h2 className="text-lg font-extrabold text-white leading-snug">{eventData?.title || 'Loading event...'}</h2>
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300 font-medium pt-1">
             <span className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              {session.attendance_start_time || '08:30'} - {session.attendance_end_time || '09:30'}
+              {activeSession ? formatHumanSchedule(activeSession.check_in_start, activeSession.check_in_end) : 'Schedule'}
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-              {eventData.venue}
+              {eventData?.venue || 'NDMU Venue'}
             </span>
           </div>
+
+          {/* Session Switcher if multiple sessions exist */}
+          {sessions.length > 1 && (
+            <div className="pt-3 border-t border-slate-700/60 flex items-center gap-1.5 overflow-x-auto">
+              <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">Sessions:</span>
+              {sessions.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => handleSelectSession(s)}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
+                    activeSession?.id === s.id
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {s.session_name} ({s.status})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ========================================================================= */}
-        {/* STATE A: PRE-START COUNTDOWN LOCK                                         */}
+        {/* SCANNER WORKSPACE                                                         */}
         {/* ========================================================================= */}
-        {session.session_status === 'Locked' ? (
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-3xl p-6 border border-amber-500/30 text-center space-y-6 shadow-2xl relative overflow-hidden">
-            
-            <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
-              <Lock className="w-8 h-8 animate-bounce" />
-            </div>
+        <div className="space-y-4 animate-in fade-in duration-200">
 
-            <div className="space-y-1">
-              <span className="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-[10px] font-extrabold uppercase tracking-widest">
-                PRE-START LOCKED
+          {/* Active Session Info Bar */}
+          {activeSession && (
+            <div className="p-3.5 bg-emerald-950/80 rounded-2xl border border-emerald-800 text-white flex items-center justify-between text-xs shadow-lg">
+              <div>
+                <span className="font-extrabold text-white text-xs">{activeSession.session_name}</span>
+                <p className="text-[10px] text-emerald-300/80 font-medium capitalize">
+                  Type: {activeSession.session_type} • Status: {activeSession.status}
+                </p>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                isSessionOpen
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+              }`}>
+                {activeSession.status?.toUpperCase()}
               </span>
-              <h3 className="text-xl font-extrabold text-white pt-2">Attendance Has Not Started</h3>
-              <p className="text-xs text-slate-400 leading-relaxed px-4">
-                Barcode scanning is locked until the scheduled start time ({session.attendance_start_time || '8:30 AM'}).
-              </p>
             </div>
+          )}
 
-            {/* Countdown Box */}
-            <div className="bg-slate-950/80 rounded-2xl p-5 border border-slate-800 space-y-2">
-              <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Attendance Opens In</p>
-              <div className="text-3xl sm:text-4xl font-black tracking-widest font-mono text-emerald-400">
-                {formatCountdown(countdown)}
-              </div>
-            </div>
-
-            {/* Simulating unlock button for instant testing/demoing */}
-            <div className="pt-2 border-t border-slate-800">
-              <button
-                onClick={handleForceUnlockDemo}
-                className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Unlock className="w-4 h-4" />
-                <span>Simulate Start Time Reached (Unlock Scanner)</span>
-              </button>
-            </div>
-
-          </div>
-        ) : session.session_status === 'Closed' ? (
-
-          /* ========================================================================= */
-          /* STATE C: POST-SESSION LOCK                                                */
-          /* ========================================================================= */
-          <div className="bg-slate-800 rounded-3xl p-8 border border-slate-700 text-center space-y-4 shadow-xl">
-            <div className="w-16 h-16 rounded-3xl bg-slate-700 flex items-center justify-center text-slate-300 mx-auto">
-              <Lock className="w-8 h-8" />
-            </div>
-            <h3 className="text-xl font-extrabold text-white">Attendance Session Closed</h3>
-            <p className="text-xs text-slate-400">Total Scanned: {session.scanned_list.length} student participants</p>
-          </div>
-
-        ) : !activeOfficer ? (
-
-          /* ========================================================================= */
-          /* STATE B: OFFICER BARCODE AUTHENTICATION LOCK REQUIRED                     */
-          /* ========================================================================= */
-          <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-3xl p-8 border border-amber-500/30 text-center space-y-6 shadow-2xl relative overflow-hidden">
-            <div className="w-16 h-16 rounded-3xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400 mx-auto shadow-xl">
-              <Lock className="w-8 h-8" />
-            </div>
-
-            <div className="space-y-2 max-w-sm mx-auto">
-              <h3 className="text-xl font-extrabold text-white">Student Officer Authentication Required</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Assigned Gate Officers must scan or enter their official <strong className="text-emerald-400">NDMU Officer Barcode ID</strong> to unlock the scanner terminal.
-              </p>
-            </div>
-
-            {/* Officer Barcode Input Form */}
-            <form 
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleAuthenticateOfficer()
-              }} 
-              className="w-full max-w-sm mx-auto space-y-3"
+          {/* Transient Success Notification Toast (Non-blocking, updates on consecutive scans) */}
+          {feedback && feedback.type === 'success' && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="p-3.5 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 text-emerald-100 flex items-center gap-3 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
             >
-              <input
-                type="text"
-                placeholder="Scan Officer Barcode (e.g., OFFICER-2024-001)..."
-                value={officerBarcode}
-                onChange={(e) => setOfficerBarcode(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-700 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 shadow-inner"
-                autoFocus
-              />
-
-              {officerError && (
-                <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
-                  <span>{officerError}</span>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="w-full py-3.5 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Unlock className="w-4 h-4" />
-                <span>Authenticate Officer & Unlock Terminal</span>
-              </button>
-            </form>
-
-            {/* Quick Test Officer Presets */}
-            <div className="pt-2 border-t border-slate-800 w-full max-w-sm mx-auto text-center space-y-2">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quick Officer Barcode Presets:</p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleAuthenticateOfficer('OFFICER-2024-001')}
-                  className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-950 text-emerald-400 border border-slate-700 hover:border-emerald-500 text-[11px] font-mono font-bold transition cursor-pointer"
-                >
-                  OFFICER-2024-001 (Juan - VP)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAuthenticateOfficer('OFFICER-2024-002')}
-                  className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-950 text-emerald-400 border border-slate-700 hover:border-emerald-500 text-[11px] font-mono font-bold transition cursor-pointer"
-                >
-                  OFFICER-2024-002 (Maria - Sec)
-                </button>
+              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  ✓ CHECK-IN VERIFIED
+                </span>
+                <p className="font-extrabold text-sm text-white truncate">
+                  {feedback.studentName || 'NDMU Student'}
+                </p>
+                <p className="text-[10px] text-emerald-300/80 font-medium">
+                  {feedback.method || 'QR Scan'} • {feedback.time || 'Just now'}
+                </p>
               </div>
             </div>
-          </div>
-        ) : (
+          )}
 
-          /* ========================================================================= */
-          /* STATE C: ACTIVE SCANNER WORKSPACE (UNLOCKED OFFICER SHIFT)                */
-          /* ========================================================================= */
-          <div className="space-y-6 animate-in fade-in duration-200">
-
-            {/* Active Duty Officer Badge Bar */}
-            <div className="p-4 bg-emerald-950/80 rounded-2xl border border-emerald-800 text-white flex items-center justify-between text-xs shadow-lg">
-              <div className="flex items-center gap-3">
-                <img 
-                  src={activeOfficer.avatar} 
-                  alt={activeOfficer.full_name}
-                  className="w-9 h-9 rounded-full border border-emerald-400 object-cover" 
-                />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-extrabold text-white text-xs">{activeOfficer.full_name}</span>
-                    <span className="px-2 py-0.2 rounded-full bg-emerald-500/20 text-[#245F42] text-[9px] font-extrabold border border-emerald-400/30">
-                      ON DUTY
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-[#245F42]/80 font-medium">{activeOfficer.position}</p>
-                </div>
+          {/* Duplicate or Error Feedback Toast */}
+          {feedback && feedback.type !== 'success' && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`p-3.5 rounded-2xl text-xs font-bold flex items-center justify-between border shadow-xl animate-in fade-in duration-200 ${
+                feedback.type === 'duplicate'
+                  ? 'bg-amber-950/90 border-amber-500/80 text-amber-200'
+                  : 'bg-rose-950/90 border-rose-500/80 text-rose-200'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {feedback.type === 'duplicate' && <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />}
+                {feedback.type === 'error' && <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />}
+                <span>{feedback.message}</span>
               </div>
-
               <button
-                type="button"
-                onClick={() => setActiveOfficer(null)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-rose-300 hover:text-rose-200 border border-slate-700 hover:border-rose-500 text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                title="Lock Terminal & Transfer Duty"
+                onClick={() => setFeedback(null)}
+                className="text-[10px] text-slate-400 hover:text-white underline cursor-pointer ml-2"
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Switch Officer</span>
+                Dismiss
               </button>
             </div>
+          )}
 
-            
-            {/* Camera Scanner Container */}
-            <div className="bg-slate-950 rounded-3xl border-2 border-emerald-500/50 p-6 text-center space-y-4 shadow-2xl relative overflow-hidden">
-              
-              {/* Corner Targets */}
-              <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-emerald-400"></div>
-              <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-emerald-400"></div>
-              <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-emerald-400"></div>
-              <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-emerald-400"></div>
+          {/* Camera Scanner Container */}
+          <div className="bg-slate-950 rounded-3xl border-2 border-emerald-500/50 p-5 text-center space-y-4 shadow-2xl relative overflow-hidden">
+            {/* Corner Targets */}
+            <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-emerald-400 pointer-events-none"></div>
+            <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-emerald-400 pointer-events-none"></div>
+            <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-emerald-400 pointer-events-none"></div>
+            <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-emerald-400 pointer-events-none"></div>
 
-              {/* Viewfinder Graphic */}
-              <div className="w-40 h-40 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex flex-col items-center justify-center text-emerald-400 mx-auto relative group">
-                <QrCode className="w-16 h-16 animate-pulse text-emerald-400" />
-                <span className="text-[10px] font-bold text-[#245F42]/80 uppercase tracking-widest mt-2">WebCam Active</span>
-                
-                {/* Laser scan line animation */}
-                <div className="absolute inset-x-0 h-0.5 bg-emerald-400 shadow-[0_0_12px_#34d399] animate-bounce top-1/2"></div>
-              </div>
-
-              {/* Manual Barcode Input Form */}
-              <div className="pt-2 space-y-2">
-                <p className="text-xs font-bold text-slate-300">Scan or Enter NDMU Student Barcode:</p>
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleScanSubmit() }}
-                  className="flex gap-2"
-                >
-                  <input
-                    type="text"
-                    value={manualBarcode}
-                    onChange={(e) => setManualBarcode(e.target.value)}
-                    placeholder="e.g., 2022-01452"
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            {/* Viewfinder Graphic / Camera Element */}
+            {isSessionOpen ? (
+              <>
+                <div className="w-56 h-48 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 mx-auto relative overflow-hidden flex items-center justify-center">
+                  {/* Empty QR Reader element owned by Html5Qrcode */}
+                  <div
+                    id={scannerContainerId}
+                    className="w-full h-full"
                   />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shrink-0 cursor-pointer"
-                  >
-                    Scan ID
-                  </button>
-                </form>
 
-                {errorMessage && (
-                  <p className="text-xs text-rose-400 font-bold bg-rose-950/50 p-2 rounded-xl border border-rose-800/50 flex items-center justify-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {errorMessage}
-                  </p>
-                )}
-              </div>
+                  {/* React-owned Overlay (sibling to reader, never inside reader) */}
+                  {!cameraActive && (
+                    <div className="absolute inset-0 bg-emerald-950/90 flex flex-col items-center justify-center p-3 text-center gap-1.5 pointer-events-none z-10">
+                      <Camera className="w-8 h-8 text-emerald-400 mx-auto" />
+                      <span className="text-[10px] font-bold text-emerald-300 block">
+                        {cameraError ? 'Camera Unavailable' : 'Initializing Camera...'}
+                      </span>
+                      {cameraError && (
+                        <p className="text-[9px] text-amber-300 max-w-xs">{cameraError}</p>
+                      )}
+                    </div>
+                  )}
 
-              {/* Quick Demo Test Presets */}
-              <div className="pt-2 border-t border-slate-900">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Quick Test Barcode Presets:</p>
-                <div className="flex flex-wrap gap-1.5 justify-center">
-                  <button
-                    type="button"
-                    onClick={() => handleScanSubmit('2022-01452')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-[#245F42] transition cursor-pointer"
-                  >
-                    2022-01452 (Juan)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleScanSubmit('2021-00123')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-[#245F42] transition cursor-pointer"
-                  >
-                    2021-00123 (Maria)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleScanSubmit('2023-08812')}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-emerald-950 border border-slate-700 text-[11px] font-mono text-[#245F42] transition cursor-pointer"
-                  >
-                    2023-08812 (Marcus)
-                  </button>
+                  {/* Processing indicator ONLY while network POST is genuinely pending */}
+                  {isSubmitting && (
+                    <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-xs flex items-center justify-center z-20 pointer-events-none">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-900/90 border border-emerald-400/60 text-emerald-200 text-xs font-bold">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                        <span>VERIFYING...</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              </>
+            ) : (
+              <div className="p-8 space-y-3">
+                <Lock className="w-10 h-10 text-amber-400 mx-auto" />
+                <h3 className="font-extrabold text-sm text-white">Scanner Locked</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  {activeSession
+                    ? `This session is currently "${activeSession.status}". Please open the session from the dashboard to start scanning.`
+                    : 'No attendance session configured for this event.'}
+                </p>
               </div>
+            )}
 
+            {/* Manual Barcode Input Form */}
+            <div className="pt-2 space-y-2 text-left">
+              <label htmlFor="officer-manual-barcode" className="text-xs font-bold text-slate-300 block">
+                Scan or Enter NDMU Student ID:
+              </label>
+              <form onSubmit={handleManualSubmit} className="flex gap-2">
+                <input
+                  id="officer-manual-barcode"
+                  type="text"
+                  disabled={!isSessionOpen || isSubmitting}
+                  value={manualBarcode}
+                  onChange={(e) => setManualBarcode(e.target.value)}
+                  placeholder="e.g. 2022-01452 or Profile UUID"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 disabled:bg-slate-900/50 disabled:text-slate-600"
+                />
+                <button
+                  type="submit"
+                  disabled={!isSessionOpen || !manualBarcode.trim() || isSubmitting}
+                  className="px-4 py-2.5 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-bold text-xs transition shrink-0 disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Check In</span>
+                  )}
+                </button>
+              </form>
             </div>
 
-            {/* Recent Officers Scan Log */}
-            <div className="bg-slate-800 rounded-3xl p-5 border border-slate-700 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  Recent Scans ({session.scanned_list.length})
-                </h3>
-              </div>
+          </div>
 
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {session.scanned_list.length === 0 ? (
-                  <p className="text-center py-6 text-xs text-slate-500 font-medium">No barcodes scanned yet.</p>
-                ) : (
-                  session.scanned_list.map((scan) => (
-                    <div key={scan.id} className="p-3 rounded-2xl bg-slate-900/80 border border-slate-700/60 flex items-center justify-between gap-3 text-xs">
+          {/* ========================================================================= */}
+          {/* RECENT CHECK-INS SECTION (Canonical Attendance Feed)                     */}
+          {/* ========================================================================= */}
+          <div className="bg-slate-800 rounded-3xl p-5 border border-slate-700 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-400" />
+                Recent Check-ins · {records.length}
+              </h3>
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {loading && records.length === 0 ? (
+                <div className="flex items-center justify-center py-6 gap-2 text-xs text-slate-400">
+                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                  <span>Loading recent check-ins...</span>
+                </div>
+              ) : records.length === 0 ? (
+                <p className="text-center py-6 text-xs text-slate-400 font-medium">
+                  No students have checked in yet.
+                </p>
+              ) : (
+                records.map((rec) => {
+                  const isHighlighted = highlightedRecordId === rec.id
+                  const displayName = rec.full_name || rec.student_name || 'NDMU Student'
+                  const methodText = (rec.verification_method || 'qr_scan') === 'manual' ? 'Manual' : 'QR Scan'
+                  const displayTime = formatCheckInTime(rec.checked_in_at || rec.verified_at)
+                  const relativeTime = formatRelativeTime(rec.checked_in_at || rec.verified_at)
+
+                  return (
+                    <div
+                      key={rec.id || `${rec.attendee_profile_id}-${rec.checked_in_at}`}
+                      className={`p-3 rounded-2xl border transition-all duration-500 flex items-center justify-between gap-3 text-xs ${
+                        isHighlighted
+                          ? 'bg-emerald-950/80 border-emerald-400 shadow-lg shadow-emerald-500/20 scale-[1.01]'
+                          : 'bg-slate-900/80 border-slate-700/60 hover:border-slate-600'
+                      }`}
+                    >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-[#245F42] font-bold text-xs shrink-0">
-                          {scan.full_name[0]}
+                        <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs shrink-0 transition-colors ${
+                          isHighlighted
+                            ? 'bg-emerald-500/30 border-emerald-400 text-emerald-300'
+                            : 'bg-emerald-500/20 border-emerald-400/30 text-emerald-400 font-bold'
+                        }`}>
+                          <UserCheck className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-extrabold text-white truncate">{scan.full_name}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">{scan.student_id} • {scan.program}</p>
+                          <p className="font-extrabold text-white truncate text-xs">
+                            {displayName}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {methodText}
+                          </p>
                         </div>
                       </div>
 
-                      <span className="text-[10px] font-bold text-emerald-400 shrink-0">{scan.scanned_at}</span>
+                      <div className="text-right shrink-0">
+                        <span className="text-[11px] font-bold text-white block">
+                          {displayTime}
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-medium">
+                          {relativeTime}
+                        </span>
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  )
+                })
+              )}
             </div>
-
           </div>
-        )}
+
+        </div>
 
       </div>
-
-      {/* ================= SCANNED STUDENT PROFILE MODAL ================= */}
-      {isModalOpen && scannedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-slate-900 rounded-3xl border-2 border-emerald-400 p-6 text-center space-y-5 shadow-2xl relative overflow-hidden">
-            
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-400 mx-auto shadow-lg">
-              <CheckCircle2 className="w-10 h-10" />
-            </div>
-
-            <div className="space-y-1">
-              <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-[#245F42] text-[10px] font-extrabold uppercase tracking-wider border border-emerald-500/30">
-                CHECK-IN VERIFIED
-              </span>
-              <h3 className="text-xl font-black text-white pt-2">{scannedStudent.full_name}</h3>
-              <p className="text-xs font-mono font-bold text-emerald-400">{scannedStudent.student_id}</p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-left text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Program:</span>
-                <span className="font-bold text-white">{scannedStudent.program}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Year Level:</span>
-                <span className="font-bold text-white">{scannedStudent.year_level || '3rd Year'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Timestamp:</span>
-                <span className="font-bold text-emerald-400">{scannedStudent.scanned_at}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="w-full py-3 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs transition shadow-md cursor-pointer"
-            >
-              Continue Scanning next Student
-            </button>
-
-          </div>
-        </div>
-      )}
 
     </div>
   )

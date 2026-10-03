@@ -1,0 +1,4 @@
+# AchieveNest student OCR runtime (CPU only).
+# PaddlePaddle is installed from its official CPU index by setup-paddleocr.ps1.
+paddlepaddle==3.3.0
+paddleocr==3.7.0

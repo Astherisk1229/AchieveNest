@@ -45,7 +45,7 @@ Use this document as the working checklist for developing the AchieveNest backen
 php -m | Select-String -Pattern 'intl|pgsql|pdo_pgsql|sqlite3|pdo_sqlite'
 ```
 
-> **Pending administrator action:** Windows denied write access to `C:\Program Files\php\php.ini`. Open PowerShell as Administrator and run `cd C:\Users\Admin\Documents\AchieveNest\backend`, followed by `.\scripts\enable-php-extensions.ps1`. Restart the IDE terminal afterward and run the confirmation command above. The project wrappers already load all five extensions, including child processes started by `spark serve`, so local backend development remains operational. Keep the global `php.ini` items unchecked until the administrator script succeeds.
+> **Pending administrator action:** Windows denied write access to `C:\Program Files\php\php.ini`. Open PowerShell as Administrator and run `cd <REPO_ROOT>\backend`, followed by `.\scripts\enable-php-extensions.ps1`. Restart the IDE terminal afterward and run the confirmation command above. The project wrappers already load all five extensions, including child processes started by `spark serve`, so local backend development remains operational. Keep the global `php.ini` items unchecked until the administrator script succeeds.
 
 - [x] Until the extensions are enabled globally, use `scripts/php.ps1` and `scripts/spark.ps1`
 - [x] Confirm CodeIgniter starts:

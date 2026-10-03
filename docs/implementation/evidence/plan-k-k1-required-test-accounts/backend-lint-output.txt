@@ -1,0 +1,2 @@
+Scanned 182 files in backend/app
+0 syntax errors detected. All files passed PHP lint cleanly.

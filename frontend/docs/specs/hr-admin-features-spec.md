@@ -3,7 +3,7 @@
 **Document Version:** 2.0.0 (Comprehensive HR Portal & Faculty Evaluation & Ranking Architecture)  
 **System:** AchieveNest Student & Personnel Achievement Management Platform  
 **Target Role**: Human Resources Administrator / HR Staff (`role_context: 'hr_staff'`, e.g., *Director Evelyn Tan — Director, Human Resources Development Office*)  
-**Reference Specifications:** NDMU Rating Sheet for Ranking, [`OSAD_ADMIN_FEATURES_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/OSAD_ADMIN_FEATURES_SPEC.md), [`PERSONNEL_FEATURES_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PERSONNEL_FEATURES_SPEC.md)
+**Reference Specifications:** NDMU Rating Sheet for Ranking, [`OSAD_ADMIN_FEATURES_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/OSAD_ADMIN_FEATURES_SPEC.md), [`PERSONNEL_FEATURES_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PERSONNEL_FEATURES_SPEC.md)
 
 ---
 
@@ -181,11 +181,11 @@ The **Audit Trail** provides complete system accountability and security by logg
 
 | Layer | Component Name | Primary Responsibility |
 | :--- | :--- | :--- |
-| **Model** | [`HRModel.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/models/HRModel.js) | Defines HR data schemas, academic ranks, employment statuses, and point ceiling caps. |
+| **Model** | [`HRModel.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/models/HRModel.js) | Defines HR data schemas, academic ranks, employment statuses, and point ceiling caps. |
 | **Controller** | `HRController.js` | Manages personnel directory state, ranking algorithms, finalization logic, and audit log generation. |
-| **Hook** | [`useHR.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/hooks/useHR.js) | React custom hook providing HR data and action methods to views. |
-| **View (Dashboard)** | [`HRDashboardPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRDashboardPage.jsx) | Renders main HR portal shell, header banner, overview cards, and tab routing. |
-| **View (Directory)** | [`HRPersonnelGovernancePage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRPersonnelGovernancePage.jsx) | Renders Personnel Directory, roster table, filters, and Record Rank Change trigger. |
-| **View (Submissions)** | [`HRVerificationQueuePage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRVerificationQueuePage.jsx) | Renders Evaluation Submissions queue and connects to split-screen Evaluation Studio. |
-| **View (Masterboard)** | [`HRRankingMasterboardPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRRankingMasterboardPage.jsx) | Renders Faculty Evaluation & Ranking table, Area A/B/C breakdown badges, and contextual buttons. |
-| **View (Audit Trail)** | [`HRAccreditationAndAuditLogsPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRAccreditationAndAuditLogsPage.jsx) | Renders Audit Trail table, human-readable action labels, and CSV export tools. |
+| **Hook** | [`useHR.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/hooks/useHR.js) | React custom hook providing HR data and action methods to views. |
+| **View (Dashboard)** | [`HRDashboardPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRDashboardPage.jsx) | Renders main HR portal shell, header banner, overview cards, and tab routing. |
+| **View (Directory)** | [`HRPersonnelGovernancePage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRPersonnelGovernancePage.jsx) | Renders Personnel Directory, roster table, filters, and Record Rank Change trigger. |
+| **View (Submissions)** | [`HRVerificationQueuePage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRVerificationQueuePage.jsx) | Renders Evaluation Submissions queue and connects to split-screen Evaluation Studio. |
+| **View (Masterboard)** | [`HRRankingMasterboardPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRRankingMasterboardPage.jsx) | Renders Faculty Evaluation & Ranking table, Area A/B/C breakdown badges, and contextual buttons. |
+| **View (Audit Trail)** | [`HRAccreditationAndAuditLogsPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/pages/hr-admin/HRAccreditationAndAuditLogsPage.jsx) | Renders Audit Trail table, human-readable action labels, and CSV export tools. |

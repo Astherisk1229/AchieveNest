@@ -3,7 +3,7 @@
 **Document Version:** 1.0.0  
 **System:** AchieveNest Student & Personnel Achievement Management Platform  
 **Target Architecture:** Document Auto-Parsing, Identity Matching, Tamper Risk Scoring, & Evaluator Workbench  
-**Reference Specifications:** NDMU Rating Sheet for Ranking, [`PERSONNEL_FEATURES_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PERSONNEL_FEATURES_SPEC.md), [`PORTFOLIO_BOOKLET_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PORTFOLIO_BOOKLET_SPEC.md)
+**Reference Specifications:** NDMU Rating Sheet for Ranking, [`PERSONNEL_FEATURES_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PERSONNEL_FEATURES_SPEC.md), [`PORTFOLIO_BOOKLET_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/PORTFOLIO_BOOKLET_SPEC.md)
 
 ---
 
@@ -188,7 +188,7 @@ export const AchievementSchema = {
 
 | Layer | Component Name | Primary OCR Responsibility |
 | :--- | :--- | :--- |
-| **Model** | [AchievementModel.js](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/src/models/AchievementModel.js) | Defines `ocr_metadata` schema, confidence thresholds, and bounding box formats. |
+| **Model** | [AchievementModel.js](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/src/models/AchievementModel.js) | Defines `ocr_metadata` schema, confidence thresholds, and bounding box formats. |
 | **Controller** | `OcrExtractionController.js` | Coordinates image preprocessing, regex extraction, NER parsing, and NDMU category weighting algorithms. |
 | **Controller** | `SecurityController.js` | Performs identity match validation and flags tamper/mismatch risk scores. |
 | **Hook** | `useOcrScanner.js` | Custom React hook providing loading states, progress percentages, and parsed field output. |

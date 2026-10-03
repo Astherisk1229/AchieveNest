@@ -8,6 +8,7 @@ import React from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShieldCheck, QrCode, AlertTriangle, CheckCircle2, Home, ExternalLink } from 'lucide-react'
 import CertificateIssuanceController from '../../controllers/CertificateIssuanceController'
+import { AchieveNestLogo } from '../../components/brand'
 
 export default function PublicCertificateVerificationPage() {
   const { publicId } = useParams()
@@ -18,13 +19,10 @@ export default function PublicCertificateVerificationPage() {
       
       {/* Header Bar */}
       <header className="max-w-4xl w-full mx-auto flex items-center justify-between py-4">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#EFF7F0] dark:bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
-            AN
-          </div>
+        <Link to="/" className="flex items-center gap-2.5 rounded-lg bg-white px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
           <div>
-            <span className="font-black text-sm text-slate-900 dark:text-white tracking-tight block">AchieveNest</span>
-            <span className="text-[10px] font-extrabold text-[#16834a] dark:text-emerald-400 uppercase tracking-wider block">Public Verification Portal</span>
+            <AchieveNestLogo variant="horizontal" size="compact" />
+            <span className="text-[10px] font-extrabold text-[#16834a] uppercase tracking-wider block">Public Verification Portal</span>
           </div>
         </Link>
 

@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import AchievementSubmissionModal from './modals/AchievementSubmissionModal'
+import { useLocation, useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getCurrentUser } from '../../services/authService'
+import AchievementSubmissionModal from './modals/PortfolioAchievementSubmissionModal'
 import StudentAchievementPopoverMenu from './StudentAchievementPopoverMenu'
 import StudentAchievementPreviewModal from './modals/StudentAchievementPreviewModal'
 import useStudentAchievements from '../../hooks/useStudentAchievements'
+import portfolioService from '../../services/portfolioService'
+import StudentCertificateBadge from '../../components/common/StudentCertificateBadge'
+import EvidenceThumbnail from '../../components/common/EvidenceThumbnail'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -34,7 +39,10 @@ import {
 } from 'lucide-react'
 
 export default function StudentAchievementsPage({ currentUser }) {
-  const user = currentUser || { full_name: 'Maria Santos', student_id: 'STU-2024-01234', program: 'BS Information Technology' }
+  const outletCtx = useOutletContext()
+  const { user: authUser } = useAuth()
+  const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
+  const user = activeUser || { full_name: 'Maria Santos', student_id: 'STU-2024-01234', program: 'BS Information Technology' }
   const location = useLocation()
 
   // Use custom Student Achievements MVC bridge hook
@@ -57,12 +65,8 @@ export default function StudentAchievementsPage({ currentUser }) {
     handleClosePopover,
     previewItem,
     setPreviewItem,
-    addAchievement,
-    updateAchievement,
-    resubmitAchievement,
-    deleteAchievement,
-    toggleFavorite,
-    toggleAttachPortfolio
+    refreshData,
+    taxonomy
   } = useStudentAchievements()
 
   // Modal State Controls
@@ -88,40 +92,27 @@ export default function StudentAchievementsPage({ currentUser }) {
   }, [location.state, setSelectedCategory, setSelectedStatus, achievements, setPreviewItem])
 
   // Category definitions & icons mapping
-  const categoryDefs = [
-    { name: 'Academic', icon: GraduationCap },
-    { name: 'Leadership', icon: Users },
-    { name: 'Community', icon: Heart },
-    { name: 'Sports', icon: Award },
-    { name: 'Recognition', icon: Star },
-    { name: 'Professional Development', icon: Briefcase }
-  ]
+  const categoryDefs = taxonomy.map(category => {
+    const name = category.name || ''
+    const icon = /leadership|organization/i.test(name) ? Users
+      : /community|church|ministry/i.test(name) ? Heart
+        : /sport/i.test(name) ? Award
+          : /recognition|citation/i.test(name) ? Star
+            : /seminar|training/i.test(name) ? Briefcase
+              : /journal|academic/i.test(name) ? GraduationCap
+                : Trophy
+    return { ...category, name, icon }
+  })
 
   const getCategoryIcon = (catName) => {
     const found = categoryDefs.find(c => c.name === catName)
     return found ? found.icon : Trophy
   }
 
-  // Submission / Edit / Resubmit Handler
-  const handleSubmitAchievement = (formData) => {
-    if (editingItem) {
-      if (editingItem.status === 'Returned') {
-        resubmitAchievement(editingItem.id, formData)
-      } else {
-        updateAchievement(editingItem.id, formData)
-      }
-      setEditingItem(null)
-    } else {
-      addAchievement(formData)
-    }
-    setIsSubmitOpen(false)
-  }
-
-  // Simulated Proof File Download Helper
-  const handleDownloadProof = (item) => {
-    const filename = item.attached_file_name || 'student_achievement_proof.pdf'
-    const content = `NDMU Student Achievement Proof Record\n------------------------------------\nStudent: ${user.full_name} (${user.student_id})\nTitle: ${item.title}\nCategory: ${item.category}\nDate: ${item.date}\nIssuer/Location: ${item.location}\nVerification Status: ${item.status}\nReference ID: REF-${String(item.id).toUpperCase()}`
-    const blob = new Blob([content], { type: 'application/pdf' })
+  const handleDownloadProof = async (item) => {
+    if (!item.evidence_id) throw new Error('No persisted evidence is attached to this record.')
+    const filename = item.attached_file_name || 'student_achievement_evidence'
+    const blob = await portfolioService.downloadEvidence(item.evidence_id)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -136,13 +127,13 @@ export default function StudentAchievementsPage({ currentUser }) {
   const handleExportCSV = () => {
     const headers = ['ID', 'Title', 'Category', 'Date', 'Status', 'Location', 'Description', 'Favorited', 'In Portfolio']
     const rows = filteredAchievements.map(a => [
-      `"REF-${String(a.id).toUpperCase()}"`,
-      `"${a.title.replace(/"/g, '""')}"`,
-      `"${a.category}"`,
-      `"${a.date}"`,
-      `"${a.status}"`,
-      `"${a.location}"`,
-      `"${(a.description || '').replace(/"/g, '""')}"`,
+      `"REF-${String(a.id || '').toUpperCase()}"`,
+      `"${String(a.title || '').replace(/"/g, '""')}"`,
+      `"${String(a.category || '')}"`,
+      `"${String(a.date || '')}"`,
+      `"${String(a.status || '')}"`,
+      `"${String(a.location || '')}"`,
+      `"${String(a.description || '').replace(/"/g, '""')}"`,
       `"${a.is_favorited ? 'Yes' : 'No'}"`,
       `"${a.portfolio_id ? 'Yes' : 'No'}"`
     ])
@@ -323,22 +314,11 @@ export default function StudentAchievementsPage({ currentUser }) {
                       className="bg-white dark:bg-[#1D2A23] border border-[#DCE6DF] dark:border-[#374B3F] hover:border-[#9FC9AA] overflow-hidden flex flex-col justify-between group cursor-pointer relative shadow-xs hover:shadow-md transition-all duration-200"
                     >
                       {/* Green Certificate Banner Top Graphic */}
-                      <div className="bg-[#EAF4EC] dark:bg-[#26382E] h-32 p-4 flex flex-col items-center justify-center text-white relative border-b border-[#C6DDCC] dark:border-[#374B3F]">
+                      <div className="h-32 relative border-b border-[#C6DDCC] dark:border-[#374B3F]">
+                        <EvidenceThumbnail evidence={item.evidence?.[0]} className="h-32" />
                         
                         {/* Hover Action Buttons Top Right (Favorite Star & 3-Dot Menu) */}
                         <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition z-10">
-                          {/* Favorite Toggle Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id) }}
-                            className={`p-1.5 rounded-full border transition cursor-pointer ${
-                              item.is_favorited ? 'bg-[#FFF4CC] text-[#8A6100] border-[#FFE3B3] shadow-xs' : 'bg-white/90 hover:bg-white text-[#52677A] border-[#DCE6DF]'
-                            }`}
-                            title={item.is_favorited ? 'Unfavorite' : 'Favorite'}
-                          >
-                            <Star className={`w-3.5 h-3.5 ${item.is_favorited ? 'fill-[#8A6100]' : ''}`} />
-                          </button>
-
                           {/* 3-Dot Options Button */}
                           <button
                             type="button"
@@ -350,10 +330,7 @@ export default function StudentAchievementsPage({ currentUser }) {
                           </button>
                         </div>
                         
-                        <div className="w-10 h-10 rounded-2xl bg-white dark:bg-[#1D2A23] border border-[#C6DDCC] dark:border-[#374B3F] flex items-center justify-center text-[#16834A] dark:text-[#59AD7C] mb-1 shadow-xs">
-                          <CategoryIcon className="w-5 h-5 text-[#16834A] dark:text-[#59AD7C]" />
-                        </div>
-                        <span className="text-[10px] font-extrabold tracking-widest uppercase text-[#356148] dark:text-[#BCD0C1]">CERTIFICATE PROOF</span>
+
                       </div>
 
                       {/* Card Content Body */}
@@ -380,14 +357,20 @@ export default function StudentAchievementsPage({ currentUser }) {
                           </div>
                           
                           <h3 className="text-sm font-extrabold text-[#102A43] dark:text-[#E6EFE9] group-hover:text-[#16834A] dark:group-hover:text-emerald-400 transition leading-snug">
-                            {item.title}
+                            {item.display_title}
                           </h3>
                           <p className="text-xs text-[#64748B] dark:text-[#B1C0B6] font-medium mt-1">{item.location}</p>
+                          {item.saved_label && <p className="text-[11px] text-[#718096] dark:text-[#87978D] mt-1">{item.saved_label}</p>}
+                          {item.certificate && (
+                            <div className="pt-2">
+                              <StudentCertificateBadge certificate={item.certificate} />
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Bottom Row: Date & Status Pill */}
                         <div className="flex items-center justify-between pt-3 border-t border-[#DDE6DF] dark:border-[#374B3F] text-xs">
-                          <span className="text-[#718096] dark:text-[#87978D] text-[11px] font-medium">{item.date}</span>
+                          <span className="text-[#718096] dark:text-[#87978D] text-[11px] font-medium">{item.display_date}</span>
                           
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                             item.status === 'Verified'
@@ -427,8 +410,8 @@ export default function StudentAchievementsPage({ currentUser }) {
                           <CategoryIcon className="w-5 h-5 text-[#16834A]" />
                         </div>
                         <div className="truncate">
-                          <h3 className="text-sm font-bold text-[#102A43] dark:text-[#E6EFE9] group-hover:text-[#16834A] dark:group-hover:text-emerald-400 transition truncate">{item.title}</h3>
-                          <p className="text-xs text-[#64748B] dark:text-[#B1C0B6]">{item.location} • {item.date}</p>
+                          <h3 className="text-sm font-bold text-[#102A43] dark:text-[#E6EFE9] group-hover:text-[#16834A] dark:group-hover:text-emerald-400 transition truncate">{item.display_title}</h3>
+                          <p className="text-xs text-[#64748B] dark:text-[#B1C0B6]">{[item.location, item.display_date].filter(Boolean).join(' • ')}</p>
                         </div>
                       </div>
 
@@ -461,6 +444,10 @@ export default function StudentAchievementsPage({ currentUser }) {
                           {item.status === 'Returned' && <RotateCcw className="w-3 h-3 text-[#B54747]" />}
                           <span>{item.status}</span>
                         </span>
+
+                        {item.certificate && (
+                          <StudentCertificateBadge certificate={item.certificate} showNumber={false} />
+                        )}
 
                         <button
                           type="button"
@@ -577,9 +564,6 @@ export default function StudentAchievementsPage({ currentUser }) {
         onEdit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
         onDownload={handleDownloadProof}
         onResubmit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
-        onAttachPortfolio={toggleAttachPortfolio}
-        onDelete={deleteAchievement}
-        onToggleFavorite={toggleFavorite}
       />
 
       {/* Student Achievement Full Preview Modal */}
@@ -590,15 +574,15 @@ export default function StudentAchievementsPage({ currentUser }) {
         onEdit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
         onDownload={handleDownloadProof}
         onResubmit={(item) => { setEditingItem(item); setIsSubmitOpen(true) }}
-        onAttachPortfolio={toggleAttachPortfolio}
       />
 
       {/* Achievement Submission & Edit Modal */}
       <AchievementSubmissionModal
         isOpen={isSubmitOpen}
+        editingRecordId={editingItem?.id || null}
+        taxonomy={taxonomy}
+        onSaved={refreshData}
         onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
-        onSubmitAchievement={handleSubmitAchievement}
-        initialData={editingItem}
       />
     </>
   )

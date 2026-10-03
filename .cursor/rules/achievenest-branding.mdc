@@ -1,0 +1,16 @@
+---
+description: Preserve the official AchieveNest identity and prevent duplicated or role-specific branding
+globs: frontend/**/*.{js,jsx,ts,tsx,html,css,svg}
+alwaysApply: false
+---
+
+# AchieveNest Branding
+
+- Formal product identity must render through `AchieveNestLogo`.
+- Shared shell brand areas must render through `BrandLockup` or `AchieveNestLogo`.
+- Do not manually reconstruct the AchieveNest wordmark with text beside a mark.
+- Do not create workspace- or role-specific AchieveNest logos.
+- Do not recolor, distort, filter, shadow, crop, or alter the official artwork.
+- Keep workspace labels and institutional identity separate from product branding.
+- Do not import raw brand SVGs into ordinary UI pages; use the shared components. Document/export infrastructure may import an approved asset when component rendering is impossible.
+- Keep sentence-level references such as “Welcome to AchieveNest” as text.

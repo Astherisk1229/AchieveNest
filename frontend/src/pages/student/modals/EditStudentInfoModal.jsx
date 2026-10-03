@@ -229,12 +229,12 @@ export default function EditStudentInfoModal({
                     <span>{student?.student_id || '2024-01234'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Department</span>
-                    <span>{student?.department || 'Dept. of Computer Studies'}</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">College</span>
+                    <span>{student?.college_name || student?.college || 'College placement'}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Degree Program</span>
-                    <span>{student?.program || 'BS Computer Science'}</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Academic Program</span>
+                    <span>{student?.academic_program_name || student?.program || 'BS Computer Science'}</span>
                   </div>
                 </div>
               </div>

@@ -1,0 +1,11 @@
+# Phase 15 Hosted vs. Local Test Mapping
+
+This document maps all historical PostgreSQL/Supabase tests to their verified WAMP-local defense equivalents on MySQL 8.4.7 (`achievenest_local`).
+
+| Preserved Hosted Test File | Hosted Assumptions | Local Replacement Command / Suite | Reason for Preservation & Scope of Local Replacement |
+| :--- | :--- | :--- | :--- |
+| `backend/tests/Feature/Phase8Step2AuthE2ETest.php` | Direct Supabase Auth API, hosted JWT claims verification | `php spark test:phase7-auth`<br>`php spark test:phase8-authz` | Preserved for hosted PostgreSQL/Supabase auth reference. Local suite validates local password hashing (Argon2id/Bcrypt), local JWT tokens, session revocation, and role claims. |
+| `backend/tests/Feature/Phase8Step3GovernanceE2ETest.php` | Direct PostgreSQL PDO connection (`pgsql:host=...;port=54322`), `public.*` schema, `gen_random_uuid()` | `php spark test:phase8-authz`<br>`php spark test:phase14-workflows` | Preserved for hosted schema & role governance verification. Local suite validates institutional assignments (Dean, Coordinator, Moderator), scope checks, and governance boundaries on MySQL. |
+| `backend/tests/Feature/Phase8Step4PortfolioE2ETest.php` | Direct PostgreSQL PDO, `public.student_portfolio_records`, PostgreSQL RLS policies, Supabase Storage | `php spark test:phase13-step4` | Preserved for hosted Step 4 portfolio validation. Local replacement reproduces all 40 behavioral checks (Draft -> Submit -> Resubmit -> Verify -> Reject) against MySQL with protected filesystem storage. |
+| `backend/tests/Feature/PasswordResetRequestTest.php` | Mocked `SupabaseAdminAuthService`, reflection on deprecated controller helper | `php spark test:phase7-auth`<br>`php spark test:phase14-workflows` | Preserved historical unit mock test. Local suite verifies password reset request queue, institutional routing (Student -> OSAD, Personnel -> HR), and local credential updates. |
+| `backend/tests/Feature/AwardThresholdActorBindingTest.php` | Reflection on deprecated prototype methods `thresholdMutationArguments` and `isAuthorizedThresholdActor` | `php spark test:phase14-awards` | Preserved prototype test. Local suite (`test:phase14-awards`) verifies OSAD dual authorization, candidate threshold updates (0..100%), and input sanitization via active endpoints. |

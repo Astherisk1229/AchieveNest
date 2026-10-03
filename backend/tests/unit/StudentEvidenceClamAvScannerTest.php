@@ -9,7 +9,8 @@ final class StudentEvidenceClamAvScannerTest extends CIUnitTestCase
 {
     public function testDeploymentOwnedClamAvRuntimeIsHealthy(): void
     {
-        $health = (new StudentEvidenceClamAvScanner())->health();
+        $scanner = $this->requireDeploymentRuntime();
+        $health = $scanner->health();
         self::assertTrue($health['available']);
         self::assertStringContainsString('ClamAV', (string) $health['engine']);
     }
@@ -21,10 +22,39 @@ final class StudentEvidenceClamAvScannerTest extends CIUnitTestCase
         self::assertSame('EVIDENCE_FILE_MISSING', $result['code']);
     }
 
+    public function testUnavailableRuntimeNeverProducesCleanResult(): void
+    {
+        $missingRuntime = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'achievenest-clamav-not-installed';
+        $scanner = new StudentEvidenceClamAvScanner(
+            $missingRuntime . DIRECTORY_SEPARATOR . 'clamscan',
+            $missingRuntime . DIRECTORY_SEPARATOR . 'database'
+        );
+
+        self::assertSame([
+            'available' => false,
+            'engine' => null,
+            'code' => 'CLAMAV_RUNTIME_UNAVAILABLE',
+        ], $scanner->health());
+        self::assertSame([
+            'status' => 'unavailable',
+            'code' => 'CLAMAV_RUNTIME_UNAVAILABLE',
+        ], $scanner->scan(__FILE__));
+    }
+
     public function testRealDeploymentScannerAcceptsHarmlessPersistedFile(): void
     {
-        $result = (new StudentEvidenceClamAvScanner())->scan(__FILE__);
+        $result = $this->requireDeploymentRuntime()->scan(__FILE__);
         self::assertSame('clean', $result['status']);
         self::assertSame('CLAMAV_CLEAN', $result['code']);
+    }
+
+    private function requireDeploymentRuntime(): StudentEvidenceClamAvScanner
+    {
+        $scanner = new StudentEvidenceClamAvScanner();
+        if (! $scanner->health()['available']) {
+            self::markTestSkipped('Deployment-owned ClamAV runtime is not installed in this test environment.');
+        }
+
+        return $scanner;
     }
 }

@@ -12,6 +12,8 @@ final class ExampleDatabaseTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
+    protected $DBGroup = 'tests';
+
     protected $seed = ExampleSeeder::class;
 
     public function testModelFindAll(): void

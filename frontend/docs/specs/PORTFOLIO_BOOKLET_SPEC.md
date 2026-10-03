@@ -1,7 +1,7 @@
 # NDMU FACULTY PORTFOLIO BOOKLET & CATEGORY SPECIFICATION (`PORTFOLIO_BOOKLET_SPEC.md`)
 
 ## Executive Summary
-The **NDMU Faculty Portfolio Presentation Booklet** ([`PersonnelPortfolioCanvaView.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelPortfolioCanvaView.jsx)) is a 16-slide interactive, Canva-style presentation deck generated directly from a personnel member's verified portfolio draft. 
+The **NDMU Faculty Portfolio Presentation Booklet** ([`PersonnelPortfolioCanvaView.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelPortfolioCanvaView.jsx)) is a 16-slide interactive, Canva-style presentation deck generated directly from a personnel member's verified portfolio draft.
 
 This document specifies the exact slide deck structure of the portfolio booklet, along with the full hierarchy of evaluation categories, subcategories, point calculation formulas, and required documentary proof attachments.
 

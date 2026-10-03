@@ -3,7 +3,7 @@
 **Document Version:** 3.0.0 (Comprehensive Personnel Features & Canva Booklet Presenter Architecture)  
 **System:** AchieveNest Student & Personnel Achievement Management Platform  
 **Target Roles:** Personnel (Faculty & Staff), Department Secretary (`department_secretary`), Human Resources (`hr_staff`), OSAD Admin (`osad_staff`)  
-**Reference Specification:** NDMU Rating Sheet for Ranking (Notre Dame of Marbel University) & [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)
+**Reference Specification:** NDMU Rating Sheet for Ranking (Notre Dame of Marbel University) & [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)
 
 ---
 
@@ -22,7 +22,7 @@
 ---
 
 ### B. Architectural Compliance (OOP & MVC Standard)
-In strict compliance with project architectural guidelines ([`AGENTS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md) and [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)):
+In strict compliance with project architectural guidelines ([`AGENTS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md) and [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)):
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -50,16 +50,16 @@ In strict compliance with project architectural guidelines ([`AGENTS.md`](file:/
 ```
 
 1. **Domain Models (`src/models/`)**:
-   - [`PersonnelPortfolioModel.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/models/PersonnelPortfolioModel.js): Encapsulates portfolio schemas, academic year tagging, status state machine transitions, line-item item mappings, and point ceiling enforcement (Area A: 70 max, Area B: 50 max, Area C: 40 max, Overall Total: 160 max).
-   - [`AchievementModel.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/models/AchievementModel.js): Encapsulates individual accomplishment schemas, category codes (`A.1` to `C.2`), proof document URL attachments, verification state flags (`Verified`, `Endorsed`, `Pending`), and tailored NDMU rating field metadata.
+   - [`PersonnelPortfolioModel.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/models/PersonnelPortfolioModel.js): Encapsulates portfolio schemas, academic year tagging, status state machine transitions, line-item item mappings, and point ceiling enforcement (Area A: 70 max, Area B: 50 max, Area C: 40 max, Overall Total: 160 max).
+   - [`AchievementModel.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/models/AchievementModel.js): Encapsulates individual accomplishment schemas, category codes (`A.1` to `C.2`), proof document URL attachments, verification state flags (`Verified`, `Endorsed`, `Pending`), and tailored NDMU rating field metadata.
 
 2. **Controllers (`src/controllers/`)**:
-   - [`PersonnelPortfolioController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelPortfolioController.js): Handles portfolio compilation, auto-population from achievement vault, evaluation status checks, and submission triggers to Department Secretary / HR.
-   - [`PersonnelAchievementController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelAchievementController.js): Implements CRUD operations, real-time search indexing, category filter algorithms, and portfolio attachment toggles.
+   - [`PersonnelPortfolioController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelPortfolioController.js): Handles portfolio compilation, auto-population from achievement vault, evaluation status checks, and submission triggers to Department Secretary / HR.
+   - [`PersonnelAchievementController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelAchievementController.js): Implements CRUD operations, real-time search indexing, category filter algorithms, and portfolio attachment toggles.
 
 3. **Bridge Hooks (`src/hooks/`)**:
-   - [`usePersonnelPortfolio.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/hooks/usePersonnelPortfolio.js): Connects View components to `PersonnelPortfolioController`, managing active portfolio data, score updates, and Canva booklet state.
-   - [`usePersonnelAchievements.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/hooks/usePersonnelAchievements.js): Connects View components to `PersonnelAchievementController`, managing filter states, live search suggestions, category groupings, popovers, and modal popups.
+   - [`usePersonnelPortfolio.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/hooks/usePersonnelPortfolio.js): Connects View components to `PersonnelPortfolioController`, managing active portfolio data, score updates, and Canva booklet state.
+   - [`usePersonnelAchievements.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/hooks/usePersonnelAchievements.js): Connects View components to `PersonnelAchievementController`, managing filter states, live search suggestions, category groupings, popovers, and modal popups.
 
 4. **Lightweight Views (`src/pages/`, `src/components/personnel/`)**:
    - Pure UI rendering components adhering strictly to design guidelines (high-contrast dark emerald aesthetics, responsive layouts, micro-animations, and zero raw state mutations).
@@ -68,7 +68,7 @@ In strict compliance with project architectural guidelines ([`AGENTS.md`](file:/
 
 ## 2. Complete Sidebar Navigation Structure
 
-The **Personnel Portal** sidebar ([`Sidebar.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)) provides a clean, two-group navigation hierarchy:
+The **Personnel Portal** sidebar ([`Sidebar.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx)) provides a clean, two-group navigation hierarchy:
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -98,7 +98,7 @@ The **Personnel Portal** sidebar ([`Sidebar.jsx`](file:///c:/Users/Admin/.gemini
 
 ### SECTION 1: HOMEPAGE (`/personnel/dashboard`)
 
-The **Homepage** ([`PersonnelDashboard.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)) serves as the primary executive command center for personnel, displaying real-time metrics, quick action triggers, digital credentials, and recent accomplishment timelines.
+The **Homepage** ([`PersonnelDashboard.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelDashboard.jsx)) serves as the primary executive command center for personnel, displaying real-time metrics, quick action triggers, digital credentials, and recent accomplishment timelines.
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -123,7 +123,7 @@ The **Homepage** ([`PersonnelDashboard.jsx`](file:///c:/Users/Admin/.gemini/anti
 - **Container Styling**: High-impact dark emerald background (`#1b4332`) with gold accent elements and rounded corners (`rounded-3xl`).
 - **Context Pill**: `CONTEXT: PERSONNEL` emerald badge.
 - **User Bio Line**: `Dr. Maria Santos • EMP-2021-0842 • College of Information Technology`.
-- **Digital ID Barcode Trigger**: Top-right action button rendering an interactive NDMU Faculty Barcode ID Modal ([`DigitalBarcodeIDCard.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/student/DigitalBarcodeIDCard.jsx)) displaying employee QR code, barcode, and designation.
+- **Digital ID Barcode Trigger**: Top-right action button rendering an interactive NDMU Faculty Barcode ID Modal ([`DigitalBarcodeIDCard.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/student/DigitalBarcodeIDCard.jsx)) displaying employee QR code, barcode, and designation.
 - **5 Interactive Summary Metric Cards**:
   1. **`Total Achievements` Card**: Displays overall logged accomplishment count (e.g., `5 Records`) highlighted with an active gold/yellow border.
   2. **`Verified Records` Card**: Displays count of HR-verified achievements (e.g., `3 Items`).
@@ -138,9 +138,9 @@ The **Homepage** ([`PersonnelDashboard.jsx`](file:///c:/Users/Admin/.gemini/anti
   - `+ Log Speaker`: Launches accomplishment submission modal pre-set to *Lectures & Publications (Guest Speaker)*.
   - `+ Log Org/Service`: Launches accomplishment submission modal pre-set to *Service & Community*.
 - **3 Primary Interactive Action Cards**:
-  1. **`Add Achievement`**: Icon container with green circle badge; opens [`PersonnelSubmissionModal.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelSubmissionModal.jsx).
+  1. **`Add Achievement`**: Icon container with green circle badge; opens [`PersonnelSubmissionModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelSubmissionModal.jsx).
   2. **`Manage Portfolio`**: Icon container with document badge; navigates to `/personnel/portfolio/edit`.
-  3. **`Edit Basic Information`**: Icon container with edit badge; opens [`EditBasicInfoModal.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/EditBasicInfoModal.jsx) to update academic rank, designation, educational attainment, contact details, and years of service.
+  3. **`Edit Basic Information`**: Icon container with edit badge; opens [`EditBasicInfoModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/EditBasicInfoModal.jsx) to update academic rank, designation, educational attainment, contact details, and years of service.
 
 #### C. Accomplishments Timeline
 - **Filter Navigation Chips**:
@@ -154,16 +154,16 @@ The **Homepage** ([`PersonnelDashboard.jsx`](file:///c:/Users/Admin/.gemini/anti
 - **Accomplishment Record Item Cards**:
   - Displays record title, date, issuer, academic year tag, and status pill (`HR Verified`, `Dept Endorsed`, `Pending Review`).
   - Attached document pill (`.pdf` filename) with immediate download trigger.
-  - Interactive click handler opening the detailed preview modal ([`AchievementPreviewModal.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/AchievementPreviewModal.jsx)).
+  - Interactive click handler opening the detailed preview modal ([`AchievementPreviewModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/AchievementPreviewModal.jsx)).
 
 ---
 
 ### SECTION 2: EDIT PORTFOLIO WORKSPACE (`/personnel/portfolio/edit`)
 
 > [!NOTE]
-> For the complete, dedicated deep-dive architectural specification and comparison between the output Portfolio view and the Edit Portfolio workspace, see [`EDIT_PORTFOLIO_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/docs/specs/EDIT_PORTFOLIO_SPEC.md).
+> For the complete, dedicated deep-dive architectural specification and comparison between the output Portfolio view and the Edit Portfolio workspace, see [`EDIT_PORTFOLIO_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/docs/specs/EDIT_PORTFOLIO_SPEC.md).
 
-The **Edit Portfolio** workspace ([`PersonnelPortfolioEditPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelPortfolioEditPage.jsx)) is designed as an **Interactive Live Portfolio Showcase & Inline Editor** with an uncluttered **Option A Header Hierarchy**. It renders the complete visual faculty portfolio layout — including the hero profile banner, experience timeline, key skills, and the NDMU Ranking Matrix (Area A, B, C) — with embedded inline editing controls and a dedicated section data-import toolbar.
+The **Edit Portfolio** workspace ([`PersonnelPortfolioEditPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelPortfolioEditPage.jsx)) is designed as an **Interactive Live Portfolio Showcase & Inline Editor** with an uncluttered **Option A Header Hierarchy**. It renders the complete visual faculty portfolio layout — including the hero profile banner, experience timeline, key skills, and the NDMU Ranking Matrix (Area A, B, C) — with embedded inline editing controls and a dedicated section data-import toolbar.
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -220,7 +220,7 @@ Personnel can manage line-items directly within the live portfolio showcase:
 
 ### SECTION 3: PORTFOLIO & CANVA BOOKLET VIEW (`/personnel/portfolio`)
 
-The **Portfolio** section ([`PersonnelPortfolioPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelPortfolioPage.jsx)) serves as the formal output view and booklet presentation hub where personnel view their final compiled ranking breakdown, launch the **Canva Booklet View Presenter**, export official PDFs, and submit their portfolio for department/HR endorsement.
+The **Portfolio** section ([`PersonnelPortfolioPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelPortfolioPage.jsx)) serves as the formal output view and booklet presentation hub where personnel view their final compiled ranking breakdown, launch the **Canva Booklet View Presenter**, export official PDFs, and submit their portfolio for department/HR endorsement.
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -253,9 +253,9 @@ The **Portfolio** section ([`PersonnelPortfolioPage.jsx`](file:///c:/Users/Admin
 ```
 
 #### A. Portfolio Action Controls & Public Sharing
-- **`Canva Booklet View` Button**: High-visibility primary action button with document icon; launches the full-screen interactive dossier presenter ([`PersonnelPortfolioCanvaView.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelPortfolioCanvaView.jsx)).
+- **`Canva Booklet View` Button**: High-visibility primary action button with document icon; launches the full-screen interactive dossier presenter ([`PersonnelPortfolioCanvaView.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelPortfolioCanvaView.jsx)).
 - **`Edit Basic Info` Button**: Launches modal to modify personal profile metadata.
-- **`Export PDF` Button**: Launches preview modal ([`ExportPortfolioPreviewModal.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/student/ExportPortfolioPreviewModal.jsx)) configured for printable faculty dossier output.
+- **`Export PDF` Button**: Launches preview modal ([`ExportPortfolioPreviewModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/student/ExportPortfolioPreviewModal.jsx)) configured for printable faculty dossier output.
 - **`Submit Portfolio` Button**: Initiates verification workflow submission.
 - **`Share Public Link` Button**: Copies custom shareable URL (`achievenest.ndmu.edu/p/dr-maria-santos`) to clipboard with animated toast notification.
 
@@ -281,7 +281,7 @@ The matrix enforces the strict point ceiling logic defined in `PersonnelPortfoli
 The **Canva Booklet View Presenter** provides an elite presentation experience modeled after Canva digital booklets.
 
 #### 1. Zero Internal Page Scrollbars Architecture
-- **Strict Page Sizing**: Every slide page in [`PersonnelPortfolioCanvaView.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelPortfolioCanvaView.jsx) is strictly dimensioned at `w-[750px] h-[980px]` with `overflow-hidden`.
+- **Strict Page Sizing**: Every slide page in [`PersonnelPortfolioCanvaView.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelPortfolioCanvaView.jsx) is strictly dimensioned at `w-[750px] h-[980px]` with `overflow-hidden`.
 - **Proof Image Sizing**: Embedded proof certificate preview images are capped at `h-[240px]`.
 - **Zero Scroll Guarantee**: The layout fits inside `h-[980px]` with **zero vertical or horizontal scrollbars**.
 
@@ -327,7 +327,7 @@ The **Canva Booklet View Presenter** provides an elite presentation experience m
 
 ### SECTION 4: ACCOUNT (`/personnel/account`)
 
-The **Account** section ([`AccountPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx)) handles personal user details, security settings, avatar image customization, and self-service password updates.
+The **Account** section ([`AccountPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx)) handles personal user details, security settings, avatar image customization, and self-service password updates.
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -352,7 +352,7 @@ The **Account** section ([`AccountPage.jsx`](file:///c:/Users/Admin/.gemini/anti
 - Toggleable inline edit mode allowing personnel to update phone numbers and personal email with instant toast confirmation.
 
 #### B. Avatar Customization Modal
-- Camera icon overlay on profile image opening an interactive avatar modal ([`setIsAvatarModalOpen`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx#L55)) to enter custom image URLs or select default academic avatars.
+- Camera icon overlay on profile image opening an interactive avatar modal ([`setIsAvatarModalOpen`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx#L55)) to enter custom image URLs or select default academic avatars.
 
 #### C. Self-Service Password Change Wizard (`isSelfServiceModalOpen`)
 A 3-step security modal for credential updates:
@@ -379,7 +379,7 @@ The **Notifications** section handles real-time alerts and system audit updates 
 
 ### SECTION 6: SETTINGS (`/personnel/settings`)
 
-The **Settings** section ([`SettingsPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/SettingsPage.jsx)) provides global system preferences, theme toggles, portfolio privacy controls, and PDF formatting choices.
+The **Settings** section ([`SettingsPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/SettingsPage.jsx)) provides global system preferences, theme toggles, portfolio privacy controls, and PDF formatting choices.
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -404,7 +404,7 @@ The **Settings** section ([`SettingsPage.jsx`](file:///c:/Users/Admin/.gemini/an
 ```
 
 #### A. Theme & Appearance
-- Toggle switch between Light Mode and Dark Mode, utilizing the project's custom [`useTheme.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/hooks/useTheme.js) hook with persistent `localStorage` sync.
+- Toggle switch between Light Mode and Dark Mode, utilizing the project's custom [`useTheme.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/hooks/useTheme.js) hook with persistent `localStorage` sync.
 
 #### B. Notification Preferences
 - Granular toggles for email notifications, push alerts, verification status changes, and digest emails.
@@ -423,8 +423,8 @@ The **Settings** section ([`SettingsPage.jsx`](file:///c:/Users/Admin/.gemini/an
 
 ### SECTION 7: LOGOUT
 
-The **Logout** action ([`Sidebar.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx#L32)) handles session cleanup:
-- Triggers [`logoutUser()`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/services/authService.js).
+The **Logout** action ([`Sidebar.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/Sidebar.jsx#L32)) handles session cleanup:
+- Triggers [`logoutUser()`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/services/authService.js).
 - Clears local storage auth tokens and active role context state.
 - Navigates the user back to the Root Login Page (`/`).
 

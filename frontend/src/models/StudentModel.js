@@ -39,7 +39,7 @@ export default class StudentModel {
     this.#achievements_count = Number(data.achievements_count || data.total_submissions) || 0
     this.#verified_count = Number(data.verified_count) || 0
     this.#pending_count = Number(data.pending_count) || 0
-    this.#avatar_url = data.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
+    this.#avatar_url = data.avatar_url || null
   }
 
   // Encapsulated Getters
@@ -65,7 +65,7 @@ export default class StudentModel {
   get avatar_url() { return this.#avatar_url }
 
   // Business Logic Methods
-  matchesFilter(searchQuery = '', yearFilter = 'All Years', courseFilter = 'All Courses') {
+  matchesFilter(searchQuery = '', yearFilter = 'All Years', courseFilter = 'All Programs') {
     const q = searchQuery.toLowerCase().trim()
     const cleanId = this.#student_id.replace(/-/g, '')
     const matchesSearch = !q || 
@@ -74,7 +74,7 @@ export default class StudentModel {
       this.#email.toLowerCase().includes(q)
 
     const matchesYear = yearFilter === 'All Years' || this.#year_level === yearFilter
-    const matchesCourse = courseFilter === 'All Courses' || 
+    const matchesCourse = courseFilter === 'All Programs' || courseFilter === 'All Courses' ||
       this.#academic_program_code.toLowerCase().includes(courseFilter.toLowerCase()) ||
       this.#academic_program_name.toLowerCase().includes(courseFilter.toLowerCase())
 

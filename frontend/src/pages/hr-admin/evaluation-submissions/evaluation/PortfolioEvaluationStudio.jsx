@@ -4,25 +4,34 @@ import StudioDecisionBar from '../studio/StudioDecisionBar'
 import PortfolioNavigator from '../studio/portfolio/PortfolioNavigator'
 import CriterionEvaluation from '../studio/evaluation/CriterionEvaluation'
 import { calculateNDMUScores } from './rating/NDMURatingEngine'
+import { calculateNTFScores } from './rating/NTFRatingEngine'
+import { usesFacultyAcademicPortfolio } from '../../../../utils/personnelPortfolioFormat'
+import hrEvaluationService from '../../../../services/hrEvaluationService'
+import { promptDialog } from '../../../../components/ui/DialogProvider'
+
+// Server rows are snake_case; keep their recorded decisions (including locked NTF Area A items) visible to the progress count.
+const toStudioItem = item => ({
+  ...item,
+  categoryArea: item.categoryArea ?? item.category_area,
+  criterionCode: item.criterionCode ?? item.criterion_code,
+  criterionKey: item.criterionKey ?? item.criterion_key,
+  title: item.title ?? item.item_description ?? item.achievement ?? item.criterion_code,
+  evidenceTitle: item.evidenceTitle ?? item.evidence_title,
+  fileName: item.fileName ?? item.file_name,
+  verificationStatus: item.verificationStatus ?? item.verification_status,
+  ratingStatus: item.ratingStatus ?? item.rating_status,
+  awardedPoints: item.awardedPoints ?? (item.awarded_points === null || item.awarded_points === undefined ? undefined : Number(item.awarded_points)),
+})
 
 const WORKSPACE_MODE_KEY = 'achievenest_hr_evaluation_workspace_mode_v1'
-
-const DEFAULT_STUDIO_EVIDENCE = Object.freeze([
-  { id: 'ev-1', categoryArea: 'areaA', criterionCode: 'A.1', criterionKey: 'degrees', evidenceTitle: 'Ph.D. Computer Science Diploma', title: 'Ph.D. Computer Science Diploma', criterionTitle: 'A.1 Educational Degrees', awardedPoints: 40, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { type: 'degree', degree: 'phd' }, fileName: 'PhD_Diploma_Ana_Reyes.pdf', submittedDate: 'Aug 10, 2026' },
-  { id: 'ev-2', categoryArea: 'areaA', criterionCode: 'A.2', criterionKey: 'memberships', evidenceTitle: 'IEEE Senior Professional Member', title: 'IEEE Senior Professional Member', criterionTitle: 'A.2 Professional Organization Memberships', awardedPoints: 5, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { role: 'member' }, fileName: 'IEEE_Membership_Cert.pdf', submittedDate: 'Aug 11, 2026' },
-  { id: 'ev-3', categoryArea: 'areaA', criterionCode: 'A.3', criterionKey: 'seminars', evidenceTitle: 'International Conference on AI & Higher Education', title: 'International Conference on AI & Higher Education', criterionTitle: 'A.3 Seminars & Trainings', awardedPoints: 10, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { level: 'international' }, fileName: 'AI_Conference_Cert.pdf', submittedDate: 'Aug 12, 2026' },
-  { id: 'ev-b1', categoryArea: 'areaB', criterionCode: 'B.1', criterionKey: 'lectures', evidenceTitle: 'National Computing Symposium Keynote Speaker', title: 'National Computing Symposium Keynote Speaker', criterionTitle: 'B.1 Guest Lecturer / Consultant / Judge / Resource Person', activityTitle: '2026 National Computing Symposium on AI Innovations', conductedBy: 'PSITE National Chapter', awardedPoints: 13, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { sponsoringOrg: 'external', extentOfTalk: '1_day', participantsScope: 'national', role: 'speaker' }, fileName: 'National_Symposium_Speaker_Certificate.pdf', submittedDate: 'Jul 28, 2026', evaluatorRemarks: 'Verified certificate of appreciation for 1-day national keynote address.' },
-  { id: 'ev-4', categoryArea: 'areaB', criterionCode: 'B.2', criterionKey: 'publications', evidenceTitle: 'IEEE Transactions Scholarly Paper on Deep Learning', title: 'IEEE Transactions Scholarly Paper on Deep Learning', criterionTitle: 'B.2 Publications (Papers, Articles, Books)', awardedPoints: 18, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { scope: 'international', publicationScope: 'international', publicationType: 'book' }, fileName: 'IEEE_Transactions_Paper.pdf', submittedDate: 'Aug 13, 2026' },
-  { id: 'ev-5', categoryArea: 'areaB', criterionCode: 'B.3', criterionKey: 'research', evidenceTitle: 'CHED Institutional Research Grant Final Report', title: 'CHED Institutional Research Grant Final Report', criterionTitle: 'B.3 Conduct of Research', awardedPoints: 10, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { manualPoints: 10, justification: 'Comprehensive institutional research output accepted by CHED.' }, fileName: 'CHED_Research_Report.pdf', submittedDate: 'Aug 13, 2026' },
-  { id: 'ev-6', categoryArea: 'areaC', criterionCode: 'C.1.1', criterionKey: 'c1_moderator', evidenceTitle: 'Computer Society Club Moderator Appointment', title: 'Computer Society Club Moderator Appointment', criterionTitle: 'C.1.1 Moderator of Clubs / Organizations', awardedPoints: 20, verificationStatus: 'verified', ratingStatus: 'rated', scoringPayload: { manualPoints: 20, justification: 'Full academic year service as official moderator of the junior computing organization.' }, fileName: 'Moderator_Appointment.pdf', submittedDate: 'Aug 14, 2026' },
-])
 
 export default function PortfolioEvaluationStudio({
   submission,
   onClose,
   onSaveProgress,
   onOpenReturnModal,
-  onOpenFinalizeModal
+  onOpenFinalizeModal,
+  finalizeLabel
 }) {
   const tenureYears = submission?.tenure_years || 0
 
@@ -33,7 +42,7 @@ export default function PortfolioEvaluationStudio({
       if (saved && ['split', 'scoring', 'preview'].includes(saved)) {
         return saved
       }
-    } catch (e) {
+    } catch {
       // Fallback
     }
     return typeof window !== 'undefined' && window.innerWidth < 768 ? 'scoring' : 'split'
@@ -42,17 +51,19 @@ export default function PortfolioEvaluationStudio({
   // Evidence items for the current evaluation
   const [evidenceItems, setEvidenceItems] = useState(() => {
     if (submission?.items && Array.isArray(submission.items) && submission.items.length > 0) {
-      return submission.items
+      return submission.items.map(toStudioItem)
     }
-    return [...DEFAULT_STUDIO_EVIDENCE]
+    return []
   })
 
   const [selectedEvidence, setSelectedEvidence] = useState(() => evidenceItems[0] || null)
 
   // Live calculation of authoritative scores
   const scores = useMemo(() => {
-    return calculateNDMUScores(evidenceItems, tenureYears)
-  }, [evidenceItems, tenureYears])
+    return usesFacultyAcademicPortfolio(submission)
+      ? calculateNDMUScores(evidenceItems, tenureYears)
+      : calculateNTFScores(evidenceItems, tenureYears)
+  }, [evidenceItems, submission, tenureYears])
 
   const completedDecisionsCount = evidenceItems.filter(
     (i) => (i.verificationStatus === 'verified' && i.ratingStatus === 'rated') ||
@@ -67,7 +78,7 @@ export default function PortfolioEvaluationStudio({
       setWorkspaceMode(mode)
       try {
         sessionStorage.setItem(WORKSPACE_MODE_KEY, mode)
-      } catch (e) {
+      } catch {
         // Storage fail fallback
       }
     }
@@ -126,6 +137,29 @@ export default function PortfolioEvaluationStudio({
     )
   }
 
+  // Non-Teaching Area A: HR types the DS; the server recalculates Points Earned (DS × weight).
+  const canEditAreaADs = !usesFacultyAcademicPortfolio(submission) && submission?.status === 'in_evaluation' && Boolean(submission?.id)
+  const handleUpdateAreaADs = async (code, ds) => {
+    const current = evidenceItems.find(item => item.categoryArea === 'areaA' && String(item.criterionCode || '').toUpperCase() === code)
+    let reason = ''
+    if (current) {
+      reason = await promptDialog({
+        title: `Change DS for ${code}?`,
+        message: 'This replaces the DS from the annual review. The original value stays in the evaluation history.',
+        inputLabel: 'Reason for the change',
+        placeholder: 'e.g. Corrected per HR records',
+        required: true,
+        confirmLabel: 'Save DS',
+      })
+      if (reason === null) return false
+    }
+    const saved = await hrEvaluationService.setAreaADs(submission.id, code, ds, reason)
+    if (!saved) throw new Error('The DS could not be saved.')
+    const next = toStudioItem(saved)
+    setEvidenceItems(prev => prev.some(item => item.id === next.id) ? prev.map(item => item.id === next.id ? next : item) : [...prev, next])
+    return true
+  }
+
   const handleSaveDraft = () => {
     if (onSaveProgress) {
       onSaveProgress(evidenceItems, scores)
@@ -171,6 +205,7 @@ export default function PortfolioEvaluationStudio({
               onSelectEvidence={setSelectedEvidence}
               workspaceMode={workspaceMode}
               onWorkspaceModeChange={handleWorkspaceModeChange}
+              onUpdateAreaADs={canEditAreaADs ? handleUpdateAreaADs : undefined}
             />
           </div>
 
@@ -208,7 +243,8 @@ export default function PortfolioEvaluationStudio({
         totalCount={totalCount}
         isReadyForFinalize={isReadyForFinalize}
         onOpenReturnModal={onOpenReturnModal}
-        onOpenFinalizeModal={handleFinalizeClicked}
+        onOpenFinalizeModal={onOpenFinalizeModal ? handleFinalizeClicked : undefined}
+        finalizeLabel={finalizeLabel}
       />
     </div>
   )

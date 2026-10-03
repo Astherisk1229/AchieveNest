@@ -16,7 +16,7 @@ The **AchieveNest Student Portal** is a web-based platform designed to enable st
 
 The Student Portal strictly adheres to the **OOP (Object-Oriented Programming)** and **MVC (Model-View-Controller)** paradigm:
 
-- **Domain Models (`src/models/`)**: Encapsulate student entity schemas, achievement validation rules, and status state logic ([UserModel.js](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/models/UserModel.js), `StudentModel`, `AchievementModel`).
+- **Domain Models (`src/models/`)**: Encapsulate student entity schemas, achievement validation rules, and status state logic ([UserModel.js](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/models/UserModel.js), `StudentModel`, `AchievementModel`).
 - **Controllers (`src/controllers/`)**: Business logic for achievement submissions, portfolio compilations, CSV exports, and verification workflow processing.
 - **Bridge Hooks (`src/hooks/`)**: Connect View components to Controllers via reactive React hooks.
 - **Views & Pages (`src/pages/`, `src/components/student/`)**: High-aesthetic, responsive user interface designed with modern tailwind aesthetics, smooth micro-animations, green certificate themes, and accessible layouts.

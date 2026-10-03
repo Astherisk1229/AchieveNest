@@ -1,0 +1,8 @@
+Focused backend documentation check
+migrations: 64
+seeders: 5
+services: 66
+controllers: 27
+rawSql: 72
+writableSql: 7
+PASS: counts, paths, tables, routes, duplicates, and hierarchy checks passed.

@@ -6,16 +6,18 @@
 
 export const ALLOWLISTED_PLACEHOLDERS = [
   'recipient_name',
-  'certificate_title',
-  'award_or_event_title',
-  'award_category',
-  'event_title',
-  'event_date',
-  'academic_year',
-  'organization_name',
-  'college_name',
-  'degree_program',
-  'rank_or_distinction',
+  'activity_title',
+  'activity_type',
+  'activity_date',
+  'date_range',
+  'organizer_name',
+  'student_role',
+  'contribution_role',
+  'recognition_title',
+  'placement',
+  'scope',
+  'granting_body',
+  'issuer_name',
   'certificate_number',
   'issued_date',
   'verification_url'
@@ -42,7 +44,7 @@ export class CertificateTemplateVersionModel {
     this.#contentSchema = {
       heading: data.contentSchema?.heading || 'OFFICIAL CERTIFICATE OF ATTAINMENT',
       recipientLeadIn: data.contentSchema?.recipientLeadIn || 'This is proudly presented to',
-      body: data.contentSchema?.body || 'For outstanding active participation and exemplary contribution to {{event_title}} hosted by {{organization_name}} on {{event_date}}.',
+      body: data.contentSchema?.body || 'For verified participation in {{activity_title}} organized by {{organizer_name}} on {{activity_date}}.',
       footerNote: data.contentSchema?.footerNote || 'Notre Dame of Marbel University • Office of Student Affairs & Services'
     }
 
@@ -55,8 +57,7 @@ export class CertificateTemplateVersionModel {
     }
 
     this.#signatorySlots = Array.isArray(data.signatorySlots) ? data.signatorySlots : [
-      { slotId: 'sig-1', label: 'OSAD Director', required: true, title: 'OSAD Director', name: 'Director Marcus Vance' },
-      { slotId: 'sig-2', label: 'Organization Moderator', required: true, title: 'Faculty Moderator', name: 'Prof. Grace Tan' }
+      { role_code: 'OSAD_DIRECTOR', display_label: 'OSAD Director', requirement_type: 'OPTIONAL', signature_required: false, display_order: 1 }
     ]
 
     this.#changeSummary = data.changeSummary || 'Initial version configuration'

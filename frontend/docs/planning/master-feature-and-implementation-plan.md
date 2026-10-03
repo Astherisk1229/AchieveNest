@@ -10,7 +10,7 @@ AchieveNest is Notre Dame of Marbel University's institutional portal for:
 - Student Organization event management, QR attendance tracking, and certificate generation;
 - Academic Structure governance (Colleges, Departments, Programs, Personnel assignments).
 
-Current project status is tracked authoritatively in [project-progress-roadmap.md](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/frontend/docs/planning/project-progress-roadmap.md).
+Current project status is tracked authoritatively in [project-progress-roadmap.md](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/planning/project-progress-roadmap.md).
 
 ## 2. Core Functional Modules & Role Ownership
 

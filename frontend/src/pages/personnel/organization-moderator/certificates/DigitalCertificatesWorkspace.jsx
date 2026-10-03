@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { Sparkles, ShieldCheck, QrCode, Award, Search, Filter, Plus, CheckCircle2, AlertTriangle, Eye, RotateCcw, Lock } from 'lucide-react'
+import { Sparkles, ShieldCheck, Search, CheckCircle2 } from 'lucide-react'
 import CertificateIssuanceController from '../../../../controllers/CertificateIssuanceController'
 import IssueCertificatesModal from './modals/IssueCertificatesModal'
 
@@ -12,17 +12,11 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
   const [history, setHistory] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedBatchDetails, setSelectedBatchDetails] = useState(null)
 
   useEffect(() => {
     const data = CertificateIssuanceController.getIssuanceHistory()
     setHistory(data)
   }, [])
-
-  const handleIssuanceComplete = (newBatch) => {
-    const updated = CertificateIssuanceController.getIssuanceHistory()
-    setHistory(updated)
-  }
 
   const filteredHistory = history.filter(b => {
     if (!searchTerm.trim()) return true
@@ -50,7 +44,7 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
                 Official OSAD Accredited Event Credentials
               </p>
               <p className="text-xs text-[#245F42] font-medium pt-0.5">
-                Bulk Issue & Transmit Verifiable Digital Certificates to Event Attendees
+                Review backend-authoritative certificate eligibility and readiness
               </p>
             </div>
           </div>
@@ -61,7 +55,7 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
             className="px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 border border-emerald-300 text-[#064e2b] font-extrabold text-xs transition flex items-center gap-2 cursor-pointer shadow-lg shrink-0"
           >
             <Sparkles className="w-4 h-4 text-[#16834a]" />
-            <span>Issue Certificates</span>
+            <span>Review Certificate Readiness</span>
           </button>
         </div>
       </div>
@@ -77,7 +71,7 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
           <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">{history.length}</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-1">
-          <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">Ready for Issuance</span>
+          <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">Event Contexts</span>
           <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400">{events.length} Events</p>
         </div>
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-md space-y-1">
@@ -170,7 +164,6 @@ export default function DigitalCertificatesWorkspace({ events = [] }) {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         events={events}
-        onIssuanceComplete={handleIssuanceComplete}
       />
 
     </div>

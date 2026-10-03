@@ -1,0 +1,22 @@
+# Phase H0 Evidence Package Checksum Manifest
+
+**Generated**: September 9, 2026
+**Algorithm**: SHA-256
+
+```
+57bd96f7a09d9756b2e83f5a81beba92e371d678e43b08402fecde2e3c486ff4  authorization-boundary.md
+7c6efd48dd1615a61f0292cf177ec247b6731e1548d90d6f8f94a2312f0a9911  environment.md
+9c3c2296699a7ec8990ef1fde986993f51e9e11917d5112ccafacf1bb808aaf7  evaluation-cycle-validation.md
+ff581ed92d2a55dfb0127b0cbb50c08ce963a8d9701ba4eeb12a11269df12b77  finalization-readiness-matrix.md
+868d70664cd9cb3f2f31feac766848ef85b473f44c72d7cf52bf7531088b28e3  focused-test-output.txt
+f2b72dcf03b25cfcf1f77e5a8c63b65e68fb2983b86a7969278825b5c38f43fb  full-suite-output.txt
+ab7c09d5467d941226c87983da48d41306ee3aaad275a25aaf1b9c13939f4297  full-suite-result.json
+a6d980814498c3680c7066b4d792c2e9362ef46830cd6e1d073f73622f780cf5  historical-rule-version.md
+30ced33f73b023e5a8fac0eaa7728b2134c66bc93de1b96296e1954192480205  no-promotion-mutation.md
+b5a135ce7091ade2b7522674e2d36cc8531dd06a2677ad31f133a6a87d50271e  plan-f-recomputation.md
+611dcf528275fd1a1147043ddd154ea43b545e46472e56bf49aa707ba5dc1d65  reviewer-validation.md
+3b4d07c0327478f00b4680834ece2f69dc8e6152e891a6434840cde12972f1af  revision-guard.md
+69e29c41f4fb45f5637587cacb864b38590c954d7ff865f1a43144ae9eaed864  score-integrity-validation.md
+6f67a3e2e9df83a19bd29abd645b4da9ed16809e903a9b270187e01a9bc983d3  scoring-completeness.md
+fa406bcd10d4e5d7b9ef236a7d581fbf61511bf797e4710830f1cc4b54fd760b  snapshot-integrity.md
+```

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Lock,
@@ -8,21 +8,54 @@ import {
   AlertTriangle,
   ShieldCheck,
   ArrowRight,
-  LogOut
+  LogOut,
+  KeyRound
 } from 'lucide-react'
 import { submitPasswordChange, logoutUser, getCurrentUser } from '../../services/authService'
+import RouteAccessController from '../../controllers/RouteAccessController'
+import { AchieveNestLogo } from '../../components/brand'
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate()
   const user = getCurrentUser()
 
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login', { replace: true })
+    }
+  }, [user, navigate])
+
+  // Policy validation checks
+  const hasMinLength = newPassword.length >= 8
+  const hasUppercase = /[A-Z]/.test(newPassword)
+  const hasLowercase = /[a-z]/.test(newPassword)
+  const hasDigit = /[0-9]/.test(newPassword)
+  const hasSpecial = /[^A-Za-z0-9]/.test(newPassword)
+  const isMatching = newPassword && newPassword === confirmPassword
+  const isDifferentFromCurrent = !currentPassword || newPassword !== currentPassword
+
+  const isFormValid = (
+    currentPassword.trim().length > 0 &&
+    hasMinLength &&
+    hasUppercase &&
+    hasLowercase &&
+    hasDigit &&
+    hasSpecial &&
+    isMatching &&
+    isDifferentFromCurrent
+  )
 
   const handleLogout = async () => {
     await logoutUser()
@@ -33,8 +66,23 @@ export default function ChangePasswordPage() {
     e.preventDefault()
     setError('')
 
-    if (newPassword.length < 8) {
+    if (!currentPassword) {
+      setError('Please enter your current temporary password.')
+      return
+    }
+
+    if (!hasMinLength) {
       setError('Password must be at least 8 characters long.')
+      return
+    }
+
+    if (!hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+      setError('Password must contain uppercase, lowercase, numbers, and special characters.')
+      return
+    }
+
+    if (newPassword === currentPassword) {
+      setError('New password cannot be the same as your temporary password.')
       return
     }
 
@@ -45,22 +93,21 @@ export default function ChangePasswordPage() {
 
     setIsSubmitting(true)
     try {
-      await submitPasswordChange(newPassword, confirmPassword)
+      await submitPasswordChange(newPassword, confirmPassword, currentPassword)
       setIsSuccess(true)
       setTimeout(() => {
-        const accountType = user?.account_type || 'student'
-        if (accountType === 'student') {
-          navigate('/student/dashboard')
-        } else if (accountType === 'osad_admin') {
-          navigate('/osad/dashboard')
-        } else if (accountType === 'hr_admin') {
-          navigate('/hr/dashboard')
-        } else {
-          navigate('/personnel/dashboard')
-        }
+        const freshUser = getCurrentUser()
+        const targetRoute = RouteAccessController.resolveRedirect(freshUser)
+        navigate(targetRoute)
       }, 1500)
     } catch (err) {
-      setError(err.message || 'Failed to update password. Please try again.')
+      const msg = err?.error?.message || err?.message || 'Failed to update password. Please check your inputs and try again.'
+      setError(msg)
+      if (err?.error?.code === 'MISSING_BEARER_TOKEN' || err?.error?.code === 'INVALID_ACCESS_TOKEN' || String(msg).toLowerCase().includes('expired')) {
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -69,6 +116,7 @@ export default function ChangePasswordPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#064e2b] to-slate-950 flex items-center justify-center p-4 font-sans text-slate-900">
       <div className="w-full max-w-md bg-white dark:bg-[#131e2e] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-center bg-white px-6 py-4"><AchieveNestLogo variant="horizontal" size="document" /></div>
         
         {/* Header Strip */}
         <div className="p-6 bg-[#064e2b] text-white border-b border-emerald-900/60 flex items-center justify-between">
@@ -81,7 +129,7 @@ export default function ChangePasswordPage() {
                 Change Your Password
               </h2>
               <p className="text-xs text-emerald-200/90 font-medium">
-                Mandatory Security Setup
+                Mandatory First-Login Setup
               </p>
             </div>
           </div>
@@ -116,7 +164,7 @@ export default function ChangePasswordPage() {
               <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-300">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span className="font-medium leading-relaxed">
-                  You logged in with a temporary password issued by your administrator. You must create a permanent password before accessing your account.
+                  You logged in with a temporary password. You must create a new secure permanent password before accessing portal features.
                 </span>
               </div>
 
@@ -128,26 +176,54 @@ export default function ChangePasswordPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* New Password */}
+                {/* Current Temporary Password */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                    New Password <span className="text-rose-500">*</span>
+                    Current Temporary Password <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
                       required
-                      placeholder="At least 8 characters..."
+                      autoComplete="current-password"
+                      placeholder="Enter the password from your slip..."
                       className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(p => !p)}
+                      onClick={() => setShowCurrentPassword(p => !p)}
+                      aria-label={showCurrentPassword ? "Hide current password" : "Reveal current password"}
                       className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    New Personal Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      autoComplete="new-password"
+                      placeholder="Create a strong password..."
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(p => !p)}
+                      aria-label={showNewPassword ? "Hide new password" : "Reveal new password"}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -163,12 +239,14 @@ export default function ChangePasswordPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
+                      autoComplete="new-password"
                       placeholder="Re-enter your new password..."
                       className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a] transition"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(p => !p)}
+                      aria-label={showConfirmPassword ? "Hide confirm password" : "Reveal confirm password"}
                       className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                     >
                       {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -178,11 +256,23 @@ export default function ChangePasswordPage() {
 
                 {/* Password Policy checklist */}
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] space-y-1">
-                  <div className={`flex items-center gap-1.5 font-bold ${newPassword.length >= 8 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  <div className={`flex items-center gap-1.5 font-bold ${hasMinLength ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Minimum 8 characters</span>
                   </div>
-                  <div className={`flex items-center gap-1.5 font-bold ${newPassword && newPassword === confirmPassword ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  <div className={`flex items-center gap-1.5 font-bold ${hasUppercase && hasLowercase ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Uppercase and lowercase letters</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 font-bold ${hasDigit ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>At least one number</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 font-bold ${hasSpecial ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>At least one special character (!@#$%*?-_)</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 font-bold ${isMatching ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Passwords match</span>
                   </div>
@@ -199,7 +289,7 @@ export default function ChangePasswordPage() {
 
                   <button
                     type="submit"
-                    disabled={isSubmitting || newPassword.length < 8 || newPassword !== confirmPassword}
+                    disabled={isSubmitting || !isFormValid}
                     className="px-5 py-2.5 rounded-xl bg-[#064e2b] hover:bg-[#16834a] disabled:opacity-40 text-white font-extrabold text-xs shadow-xs transition cursor-pointer flex items-center gap-1.5"
                   >
                     <span>{isSubmitting ? 'Updating...' : 'Set New Password'}</span>

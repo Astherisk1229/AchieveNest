@@ -1,0 +1,47 @@
+# Phase 15 Full Local Backend Regression Result
+
+- Branch: defense/wamp-local
+- Starting commit: cb5cc2699bc6f4d6088bc46314b2165f2d72105d
+- Final commit: 0f57d919b7bc87194dfd8a68a1b04f2d89682f05
+- Runtime database: achievenest_local
+- Runtime DB version: 8.4.7
+- Local PHPUnit config: `backend/phpunit.local-defense.xml`
+- Local PHPUnit tests: 39
+- Local PHPUnit assertions: 97
+- Local PHPUnit failures: 0
+- Local PHPUnit errors: 0
+- Local PHPUnit skipped: 0
+- Hosted preserved PHPUnit tests: 3 (`Phase8Step2AuthE2ETest.php`, `Phase8Step3GovernanceE2ETest.php`, `Phase8Step4PortfolioE2ETest.php`)
+- Hosted tests excluded from local gate: 5 (`Phase8Step2AuthE2ETest`, `Phase8Step3GovernanceE2ETest`, `Phase8Step4PortfolioE2ETest`, `PasswordResetRequestTest`, `AwardThresholdActorBindingTest`)
+- Exclusion reasons: Hosted PostgreSQL/Supabase assumptions and obsolete internal unit reflection mapped to dedicated local verification suites.
+- Phase 7: 27 / 27 PASSED (`php spark test:phase7-auth`)
+- Phase 8: 36 / 36 PASSED (`php spark test:phase8-authz`)
+- Phase 9: 28 / 28 PASSED (`php spark test:phase9-storage`)
+- Phase 11: 24 / 24 PASSED (`php spark test:phase11-reference`)
+- Phase 12: 36 / 36 PASSED (`php spark test:phase12-demo`)
+- Phase 13: 40 / 40 PASSED (`php spark test:phase13-step4`)
+- Phase 14 awards: 46 / 46 PASSED (`php spark test:phase14-awards`)
+- Phase 14 workflows: 30 / 30 PASSED (`php spark test:phase14-workflows`)
+- Master Backend Aggregator: 8 / 8 Suites PASSED (`php spark test:phase15-backend`)
+- Health: HTTP 200 OK (`achievenest_local` connected offline)
+- Routes: 0 errors (`php spark routes`)
+- PHP syntax: 0 errors across all app/ directories
+- Schema inventory: 35 base tables, 52 foreign keys, 125 constraints, 91 indexes, 0 triggers, 0 views, 0 routines
+- Reference fingerprint: `a7cb00863ab7baa83fae56da96cae71a0f4efde2dbcf5647304f5d088d23642f` (100% UNCHANGED)
+- Reference counts: 7 roles, 5 colleges, 14 programs, 19 admin units, 9 categories, 57 subcategories, 15 awards, 75 criteria, 150 scoring rules, 57 mappings
+- Department table: NONE (0 references in active local schema)
+- Department Secretary role: NONE (0 references in active local schema)
+- Graduate School: NONE (0 references in active local schema)
+- DB evidence orphans: 0
+- Filesystem evidence orphans: 0
+- File-safety posture: `security_status = 'pending'`, `malware_scanner = 'none_deferred'` (Phase 10 posture preserved)
+- Active local PostgreSQL dependencies: NONE (0 in active local paths)
+- Active local Supabase dependencies: NONE (0 in active local paths)
+- Real secrets committed: NONE (0 secrets committed; environment variables resolved via `.env`)
+- Audit secret scan: PASS (Zero password/token/key leaks in audit logs)
+- Demo reset: PASS (100% deterministic & idempotent)
+- Offline backend regression: PASS (100% offline operational against local WAMP MySQL)
+- Total local regression failures: 0
+- Total local regression errors: 0
+- Phase 15: PASSED
+- Blocking issues: None

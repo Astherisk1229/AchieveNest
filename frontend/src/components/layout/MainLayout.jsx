@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
@@ -6,15 +6,47 @@ import Footer from './Footer'
 import { getCurrentUser, updateUserRoleContext } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { ArrowUp } from 'lucide-react'
+import {
+  getWorkspaceLandingRoute,
+  isWorkspaceAvailable,
+  normalizeRoleContext,
+  resolveRouteOwnership,
+  ROUTE_OWNERSHIP_TYPES
+} from '../../utils/roleContext'
 
 export default function MainLayout({ children, onRoleChange: externalRoleChange }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, setUser, switchRoleContext } = useAuth()
+  const { user: authUser, setUser, switchRoleContext, activeRoleContext } = useAuth()
   const currentUser = authUser || getCurrentUser()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [pendingWorkspaceTransition, setPendingWorkspaceTransition] = useState(null)
+  const transitionSequenceRef = useRef(0)
+  const completedTransitionRef = useRef(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(() => window.innerWidth < 768)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const stored = window.localStorage.getItem('achievenest.sidebar.collapsed')
+    if (stored !== null) return stored === 'true'
+    return window.innerWidth >= 768 && window.innerWidth < 1024
+  })
   const [showScrollTop, setShowScrollTop] = useState(false)
   const mainRef = useRef(null)
+  const isHrDashboard = location.pathname === '/hr/dashboard'
+  const isCollegePersonnelRoster = location.pathname === '/dean/college-personnel'
+  const normalizedActiveWorkspace = normalizeRoleContext(activeRoleContext || currentUser?.active_role_context)
+  const routeOwnership = resolveRouteOwnership(
+    location.pathname,
+    location.state?.workspaceContext || normalizedActiveWorkspace
+  )
+  const routeWorkspaceNeedsReconciliation = routeOwnership.type === ROUTE_OWNERSHIP_TYPES.WORKSPACE &&
+    routeOwnership.workspace !== normalizedActiveWorkspace &&
+    isWorkspaceAvailable(currentUser, routeOwnership.workspace)
+
+  useLayoutEffect(() => {
+    if (!routeWorkspaceNeedsReconciliation) return
+    if (switchRoleContext) switchRoleContext(routeOwnership.workspace)
+    else updateUserRoleContext(routeOwnership.workspace)
+  }, [routeOwnership.workspace, routeWorkspaceNeedsReconciliation, switchRoleContext])
 
   useEffect(() => {
     const syncUser = () => {
@@ -67,44 +99,115 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   }
 
   const handleRoleChange = (newRoleContext) => {
-    let updated
-    if (switchRoleContext) {
-      updated = switchRoleContext(newRoleContext)
-    } else {
-      updated = updateUserRoleContext(newRoleContext)
-    }
-    
-    // Auto-navigate to personnel dashboard if role switches to personnel/dean/coordinator mode from another page
-    if (['program_coordinator', 'personnel', 'organization_moderator', 'dean'].includes(newRoleContext)) {
-      if (location.pathname !== '/personnel/dashboard') {
-        navigate('/personnel/dashboard')
-      }
+    const requestedWorkspace = normalizeRoleContext(newRoleContext)
+    if (!isWorkspaceAvailable(currentUser, requestedWorkspace)) {
+      if (externalRoleChange) externalRoleChange(requestedWorkspace, null)
+      return
     }
 
-    if (externalRoleChange) {
-      externalRoleChange(newRoleContext, updated)
+    let updated
+    if (switchRoleContext) {
+      updated = switchRoleContext(requestedWorkspace)
+    } else {
+      updated = updateUserRoleContext(requestedWorkspace)
     }
+
+    const destination = getWorkspaceLandingRoute(requestedWorkspace)
+    const transitionId = ++transitionSequenceRef.current
+    completedTransitionRef.current = null
+    setPendingWorkspaceTransition({ id: transitionId, workspace: requestedWorkspace, destination })
+
+    if (externalRoleChange) {
+      externalRoleChange(requestedWorkspace, updated)
+    }
+  }
+
+  useEffect(() => {
+    const pending = pendingWorkspaceTransition
+    if (!pending || normalizedActiveWorkspace !== pending.workspace || completedTransitionRef.current === pending.id) return
+    completedTransitionRef.current = pending.id
+    if (pending.destination && `${location.pathname}${location.search}` !== pending.destination) {
+      navigate(pending.destination, { state: { workspaceContext: pending.workspace } })
+    }
+    setPendingWorkspaceTransition(null)
+  }, [location.pathname, location.search, navigate, normalizedActiveWorkspace, pendingWorkspaceTransition])
+
+  // Keyboard Escape listener to dismiss mobile drawer in overlay mode (< lg)
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const updateViewport = event => setIsMobileViewport(event.matches)
+    media.addEventListener('change', updateViewport)
+    return () => media.removeEventListener('change', updateViewport)
+  }, [])
+
+  const closeMobileNavigation = (restoreFocus = false) => {
+    setMobileOpen(false)
+    if (restoreFocus) requestAnimationFrame(() => document.querySelector('button[aria-controls="main-sidebar"]')?.focus())
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && mobileOpen) {
+        closeMobileNavigation(true)
+      } else if (e.key === 'Tab' && mobileOpen && isMobileViewport) {
+        const sidebar = document.getElementById('main-sidebar')
+        const focusable = [...(sidebar?.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])') || [])]
+          .filter(element => element.getClientRects().length > 0 && window.getComputedStyle(element).visibility !== 'hidden')
+        if (!focusable.length) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mobileOpen, isMobileViewport])
+
+  useEffect(() => {
+    window.localStorage.setItem('achievenest.sidebar.collapsed', String(sidebarCollapsed))
+  }, [sidebarCollapsed])
+
+  useEffect(() => {
+    if (!mobileOpen || window.innerWidth >= 768) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    requestAnimationFrame(() => document.querySelector('#main-sidebar button[aria-label="Close navigation drawer"]')?.focus())
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [mobileOpen])
+
+  const handleNavigationToggle = () => {
+    if (window.innerWidth >= 768) setSidebarCollapsed(value => !value)
+    else setMobileOpen(value => !value)
   }
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-[#F8FAF7] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#16834a] selection:text-white relative transition-colors duration-200">
       
       {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
-      {isSidebarOpen && (
+      {mobileOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 md:hidden"
+          onClick={() => closeMobileNavigation(true)}
           aria-hidden="true"
         />
       )}
 
-      {/* Sidebar Component (Off-canvas drawer on mobile < 1024px, permanent sidebar on >= 1024px) */}
-      <div className={`fixed inset-y-0 left-0 z-50 lg:static lg:z-auto transition-transform duration-300 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:hidden'
-      }`}>
+      {/* Sidebar Component (Off-canvas drawer on mobile < 1024px, persistent sidebar on >= 1024px) */}
+      <div 
+        id="main-sidebar"
+        aria-hidden={isMobileViewport && !mobileOpen ? true : undefined}
+        inert={isMobileViewport && !mobileOpen}
+        className={`fixed inset-y-0 left-0 z-50 md:static md:z-auto transition-transform duration-300 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
         <Sidebar
           currentUser={currentUser}
           onRoleChange={handleRoleChange}
+          onCloseMobile={() => closeMobileNavigation(false)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed(value => !value)}
         />
       </div>
 
@@ -114,22 +217,23 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         {/* Stationary Fixed Header Bar / Topbar */}
         <Topbar
           currentUser={currentUser}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          isSidebarOpen={isMobileViewport ? mobileOpen : !sidebarCollapsed}
+          onToggleSidebar={handleNavigationToggle}
           onRoleChange={handleRoleChange}
         />
 
         {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#F8FAF7] dark:bg-[#0b1320] transition-colors duration-200 relative flex flex-col justify-between">
           <div className="container-responsive space-y-6">
-            {children}
+            {routeWorkspaceNeedsReconciliation ? <div className="py-16 text-center text-sm font-semibold text-slate-500">Restoring workspace…</div> : children}
           </div>
-          <Footer />
+          {!isHrDashboard && <Footer />}
         </main>
         
       </div>
 
       {/* Floating Scroll To Top Button (High-Contrast Soft Minimalist) */}
-      {showScrollTop && (
+      {showScrollTop && !isHrDashboard && !isCollegePersonnelRoster && (
         <button
           type="button"
           onClick={scrollToTop}

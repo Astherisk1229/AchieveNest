@@ -19,16 +19,16 @@ This document provides an exhaustive, step-by-step specification of all system f
   - **Searchable Personnel Selector Utility**: Integrates a searchable modal (`PersonnelSelectorModal.jsx`) when assigning Deans, Program Coordinators, or Organization Moderators, allowing instant search by name or dashless Employee ID (`EMP7491`) to eliminate scrolling.
 
 ### B. OOP & MVC Architectural Compliance
-Strictly following the project guidelines in [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md) and [`AGENTS.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md):
-- **Domain Controller ([`src/controllers/OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js))**:
+Strictly following the project guidelines in [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md) and [`AGENTS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/.agents/AGENTS.md):
+- **Domain Controller ([`src/controllers/OSADController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js))**:
   - Encapsulates private fields (`#users`, `#departments`, `#organizations`, `#clubs`, `#awardCategories`, `#awardees`, `#auditLogs`, `#accreditationReports`) inside an ES6 singleton class.
   - Controls business logic for 3-tier entity management, role assignments (`assignCollegeDean`, `assignProgramCoordinator`, `assignOrganizationModerator`), category CRUD, candidate ranking algorithms, report compilation, and transaction logging.
-- **Bridge Hook ([`src/hooks/useOSAD.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/hooks/useOSAD.js))**:
-  - Custom React hook connecting View components to [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js), providing state synchronization, filter state management, and toast notifications.
-- **Lightweight View ([`src/components/osad/OSADDashboardView.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/osad/OSADDashboardView.jsx))**:
+- **Bridge Hook ([`src/hooks/useOSAD.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/hooks/useOSAD.js))**:
+  - Custom React hook connecting View components to [`OSADController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js), providing state synchronization, filter state management, and toast notifications.
+- **Lightweight View ([`src/components/osad/OSADDashboardView.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/osad/OSADDashboardView.jsx))**:
   - Decoupled React component handling rendering, layout structure, responsive grids, Tailwind CSS glassmorphic aesthetics, and interactive modal dialogs.
-- **Page Container ([`src/pages/OSADDashboard.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/OSADDashboard.jsx))**:
-  - Top-level page wrapper embedding [`OSADDashboardView`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/osad/OSADDashboardView.jsx).
+- **Page Container ([`src/pages/OSADDashboard.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/OSADDashboard.jsx))**:
+  - Top-level page wrapper embedding [`OSADDashboardView`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/osad/OSADDashboardView.jsx).
 
 ### C. Sidebar Navigation & URL Routing Structure
 The OSAD Admin Portal utilizes URL search parameters (`/osad/dashboard?tab=<tab_name>`) for direct, linkable tab routing:
@@ -126,7 +126,7 @@ The **Departments & Programs Governance Module** allows OSAD Admin to manage aca
 - **Searchable Personnel Selection Utility**:
   - When assigning a Program Coordinator, the modal presents a searchable Personnel dropdown/input.
   - Allows OSAD Admin to quickly search by faculty name or Employee ID (e.g., `EMP-7491`) to select candidates effortlessly without scrolling through long faculty lists.
-- **Data Action**: Invokes `assignProgramCoordinator(personnelId, programId)` in [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js).
+- **Data Action**: Invokes `assignProgramCoordinator(personnelId, programId)` in [`OSADController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js).
 
 ---
 
@@ -172,7 +172,7 @@ Clicking **"Create Award Category"** opens a modal containing:
   - `OSAD-TPL-04`: Excellence & Special Distinction Award
   - `OSAD-TPL-05`: NDMU Sports & Athletics Accreditation Certificate
 - **Description & Criteria Notes**: Detailed text area for award eligibility guidelines.
-- **Save Action**: Updates [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js), logs `AWARD_CATEGORY_CREATED` event, and refreshes the view.
+- **Save Action**: Updates [`OSADController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js), logs `AWARD_CATEGORY_CREATED` event, and refreshes the view.
 
 ---
 
@@ -217,7 +217,7 @@ $$\text{Weighted Score} = \text{Math.round}(\text{total\_points} \times \text{we
 ### C. Candidate Confirmation Workflow
 In the evaluated candidates table (`generatedCandidates`):
 - Click **"Confirm Awardee"** on any candidate row:
-  - Invokes `confirmAwardee(candidate)` in [`OSADController.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js).
+  - Invokes `confirmAwardee(candidate)` in [`OSADController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/OSADController.js).
   - Appends record to `#awardees` array with status `Confirmed` and current ISO timestamp.
   - Increments `confirmed_awardees` count on the respective award category.
   - Generates `AWARDEE_CONFIRMATION` log entry (`SUCCESS` severity).
@@ -278,16 +278,16 @@ The **System Security Logs Module** provides an immutable, real-time audit trail
 ## 8. Auxiliary OSAD Features & Cross-System Integrations
 
 ### A. OSAD Password Reset Helpdesk Ticket System
-- **Integration**: Located in [`AccountPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx#L710-L745).
+- **Integration**: Located in [`AccountPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/AccountPage.jsx#L710-L745).
 - **Workflow**: Allows students or personnel who forget their credentials to submit a fallback helpdesk ticket directly to OSAD.
 - **Ticket Format**: Generates ticket numbers like `#OSAD-2026-8912` marked as `Pending OSAD Staff Verification`.
 
 ### B. Signature Vault Integration
-- **Integration**: [`signatureVault.js`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/utils/signatureVault.js#L58).
+- **Integration**: [`signatureVault.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/utils/signatureVault.js#L58).
 - **Purpose**: Stores official digital signatures for OSAD signatories (*Prof. Juan Dela Cruz — OSAD Director*) attached to digital barcodes, certificates, and event accreditation cards.
 
 ### C. Digital Barcode ID Verification
-- **Integration**: [`DigitalBarcodeIDCard.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/student/DigitalBarcodeIDCard.jsx#L88) & [`ExportPortfolioPreviewModal.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/components/student/ExportPortfolioPreviewModal.jsx#L59).
+- **Integration**: [`DigitalBarcodeIDCard.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/student/DigitalBarcodeIDCard.jsx#L88) & [`ExportPortfolioPreviewModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/student/ExportPortfolioPreviewModal.jsx#L59).
 - **Purpose**: Binds student digital achievement barcode cards to OSAD Event Scanners and certifies student portfolio exports with OSAD verification badges.
 
 ---

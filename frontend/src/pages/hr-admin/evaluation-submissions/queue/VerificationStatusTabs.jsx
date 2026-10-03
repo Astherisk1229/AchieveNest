@@ -5,7 +5,7 @@ export default function VerificationStatusTabs({ activeTab, setActiveTab, counts
   const tabs = [
     { id: 'submitted', label: 'Awaiting HR Evaluation', icon: Clock, count: counts.submitted ?? counts.pending ?? 0 },
     { id: 'in_evaluation', label: 'In Evaluation', icon: FileCheck, count: counts.in_evaluation ?? counts.inReview ?? 0 },
-    { id: 'ready_for_finalization', label: 'Ready for Final Evaluation', icon: CheckCircle2, count: counts.ready_for_finalization ?? counts.ready_finalization ?? 0 },
+    { id: 'ready_for_finalization', label: 'Ready for HR Finalization', icon: CheckCircle2, count: counts.ready_for_finalization ?? counts.ready_finalization ?? 0 },
     { id: 'returned_for_revision', label: 'Returned for Revision', icon: RotateCcw, count: counts.returned_for_revision ?? counts.returned ?? 0 },
     { id: 'completed', label: 'Completed', icon: ShieldCheck, count: counts.completed ?? 0 },
   ]

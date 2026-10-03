@@ -1,0 +1,6 @@
+Test Files  155 passed (155)
+      Tests  1697 passed (1697)
+   Duration  55.87s
+
+All 155 test suites passed across all active modules (Plans A through J, OSAD Admin, HR Admin, Personnel, Student, Auth, Ratings, Print Services).
+Zero failures, zero unhandled errors.

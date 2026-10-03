@@ -1,10 +1,10 @@
 # EDIT PORTFOLIO WORKSPACE SPECIFICATION (`EDIT_PORTFOLIO_SPEC.md`)
 
 ## Executive Summary & Architectural Verdict
-The **Edit Portfolio Workspace** ([`PersonnelPortfolioEditPage.jsx`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelPortfolioEditPage.jsx)) is designed as an **Active Compliance, Auditing & Point Calculation Workbench** tailored strictly to official Notre Dame of Marbel University (NDMU) faculty evaluation rules.
+The **Edit Portfolio Workspace** ([`PersonnelPortfolioEditPage.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/pages/PersonnelPortfolioEditPage.jsx)) is designed as an **Active Compliance, Auditing & Point Calculation Workbench** tailored strictly to official Notre Dame of Marbel University (NDMU) faculty evaluation rules.
 
 > [!NOTE]
-> For the complete 5-page official NDMU Rating Sheet for Ranking criteria schedule breakdown, see [`NDMU_RATING_SHEET_FOR_RANKING_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/docs/specs/NDMU_RATING_SHEET_FOR_RANKING_SPEC.md). For the 16-slide presentation deck structure and complete category/subcategory breakdown, see [`PORTFOLIO_BOOKLET_SPEC.md`](file:///c:/Users/Admin/.gemini/antigravity/scratch/achievenest/docs/specs/PORTFOLIO_BOOKLET_SPEC.md).
+> For the complete 5-page official NDMU Rating Sheet for Ranking criteria schedule breakdown, see [`NDMU_RATING_SHEET_FOR_RANKING_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/docs/specs/NDMU_RATING_SHEET_FOR_RANKING_SPEC.md). For the 16-slide presentation deck structure and complete category/subcategory breakdown, see [`PORTFOLIO_BOOKLET_SPEC.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/docs/specs/PORTFOLIO_BOOKLET_SPEC.md).
 
 ### Core Architectural Separation Principle
 - **Portfolio Showcase View (`/personnel/portfolio`)**: Optimized for visual presentation, personal branding, and reading ease (resume-style overview with the 16-slide Canva booklet presenter).

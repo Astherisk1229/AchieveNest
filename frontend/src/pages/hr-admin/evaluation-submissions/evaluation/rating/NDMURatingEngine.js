@@ -1,3 +1,4 @@
+import { aggregateGraduateUnits, graduateUnitLevel } from '../../../../../utils/graduateUnitScoring'
 /**
  * NDMURatingEngine.js
  * Authoritative scoring calculation engine for NDMU Personnel Ranking Evaluations (V2).
@@ -130,8 +131,11 @@ export function calculateCriterionScore(criterionCode, scoringMode, payload = {}
     case 'C.1.1':
     case 'C.1.2':
     case 'C.1.3':
-    case 'C.1.4':
       return Math.min(20, Math.max(0, parseFloat(payload.manualPoints || payload.points || 0)))
+
+    // Rendered Service in School Activities is worth 10 in the official scale.
+    case 'C.1.4':
+      return Math.min(10, Math.max(0, parseFloat(payload.manualPoints || payload.points || 0)))
 
     case 'C.2':
     case 'C.2.1':
@@ -168,11 +172,14 @@ export function calculateNDMUScores(evaluatedItems = [], tenureYears = 0) {
   }
 
   const itemsList = Array.isArray(evaluatedItems) ? evaluatedItems : []
+  // Graduate units: summed per level, official table applied once (never per semester).
+  const graduateUnits = aggregateGraduateUnits(itemsList)
 
   itemsList.forEach((item) => {
     const isVerified = item.verificationStatus === 'verified' || item.verification_status === 'verified'
     const isRated = item.ratingStatus === 'rated' || item.rating_status === 'rated'
     if (!isVerified || !isRated) return
+    if (graduateUnitLevel(item)) return
 
     const pts = parseFloat(item.awardedPoints ?? item.awarded_points ?? 0)
     if (isNaN(pts) || pts <= 0) return
@@ -201,6 +208,8 @@ export function calculateNDMUScores(evaluatedItems = [], tenureYears = 0) {
       }
     }
   })
+
+  for (const row of Object.values(graduateUnits)) areaA.degrees += row.points
 
   // Apply Subcriterion Caps for Area A
   areaA.degrees = Math.min(40, areaA.degrees)
@@ -231,6 +240,7 @@ export function calculateNDMUScores(evaluatedItems = [], tenureYears = 0) {
   const grandTotalAwarded = Math.min(NDMU_PERSONNEL_RATING_RULES.totalMax, areaA.total + areaBAwarded + areaCRaw.total)
 
   return {
+    graduateUnits,
     areaA,
     areaB: {
       ...areaBRaw,

@@ -1,4 +1,6 @@
 import docx
+import sys
+from pathlib import Path
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
@@ -222,5 +224,5 @@ def create_hr_clarification_doc(file_path):
         print(f"File open in another program. Saved to alternative path: {alt_path}")
 
 if __name__ == '__main__':
-    target = r"C:\Users\Admin\Downloads\AchieveNest  Docs\HR Follow up Questions for Clarification.docx"
-    create_hr_clarification_doc(target)
+    target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd() / 'HR Follow up Questions for Clarification.docx'
+    create_hr_clarification_doc(str(target))

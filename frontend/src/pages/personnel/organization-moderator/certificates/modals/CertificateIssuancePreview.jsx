@@ -1,93 +1,51 @@
-/**
- * CertificateIssuancePreview.jsx
- * Step 5 of Certificate Issuance Modal.
- * High-fidelity rendered certificate preview with student name, template styling, QR verification barcode, and signatory blocks.
- */
-
 import React from 'react'
-import { QrCode, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Eye, ExternalLink, ShieldCheck } from 'lucide-react'
+import { CERTIFICATE_PURPOSE_LABELS } from '../../../../../services/certificateReadiness'
 
-export default function CertificateIssuancePreview({ template, selectedEvent, sampleRecipient, resolvedSignatories = {} }) {
-  const sampleStudentName = sampleRecipient?.name || 'Alex Rivera'
-  const sampleStudentId = sampleRecipient?.studentId || '2022-0142'
-  const sampleSerial = `NDMU-CS-2026-${Math.floor(10000 + Math.random() * 90000)}`
+export default function CertificateIssuancePreview({ recipient, selectedEvent, issuedCertificate = null }) {
+  const purpose = CERTIFICATE_PURPOSE_LABELS[recipient?.certificatePurpose] || 'Certificate Preview'
+
+  if (issuedCertificate) {
+    return (
+      <section className="space-y-4" aria-labelledby="certificate-issued-heading" aria-live="polite">
+        <div className="flex items-start gap-3 rounded-2xl bg-emerald-50 p-5 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-100">
+          <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0" aria-hidden="true" />
+          <div className="min-w-0">
+            <h3 id="certificate-issued-heading" className="font-extrabold">{issuedCertificate.alreadyIssued ? 'Certificate already issued' : 'Certificate issued'}</h3>
+            <p className="mt-1 text-sm leading-relaxed">The official certificate identity was generated and persisted by the backend.</p>
+          </div>
+        </div>
+        <dl className="grid gap-4 rounded-2xl bg-slate-50 p-5 dark:bg-slate-950 sm:grid-cols-2">
+          <div className="min-w-0"><dt className="text-xs font-bold text-slate-500 dark:text-slate-400">Certificate No.</dt><dd className="mt-1 break-words text-base font-extrabold tabular-nums text-slate-900 dark:text-white">{issuedCertificate.certificateNumber}</dd></div>
+          <div className="min-w-0"><dt className="text-xs font-bold text-slate-500 dark:text-slate-400">Purpose</dt><dd className="mt-1 break-words text-base font-extrabold text-slate-900 dark:text-white">{CERTIFICATE_PURPOSE_LABELS[issuedCertificate.certificatePurpose] || purpose}</dd></div>
+          <div className="min-w-0"><dt className="text-xs font-bold text-slate-500 dark:text-slate-400">Recipient</dt><dd className="mt-1 break-words text-sm font-bold text-slate-900 dark:text-white">{recipient?.studentName}</dd></div>
+          <div className="min-w-0"><dt className="text-xs font-bold text-slate-500 dark:text-slate-400">Issued</dt><dd className="mt-1 break-words text-sm font-bold text-slate-900 dark:text-white">{issuedCertificate.issuedAt ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(issuedCertificate.issuedAt.replace(' ', 'T'))) : 'Recorded by the backend'}</dd></div>
+        </dl>
+        {issuedCertificate.verificationUrl && <a href={issuedCertificate.verificationUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-emerald-700 px-4 py-2 text-sm font-extrabold text-emerald-800 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 dark:text-emerald-300 dark:hover:bg-emerald-950/40">Open public verification <ExternalLink className="h-4 w-4" aria-hidden="true" /></a>}
+      </section>
+    )
+  }
 
   return (
-    <div className="space-y-4 font-sans">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-500">
-          Previewing sample certificate for recipient: <strong className="text-slate-900 dark:text-white">{sampleStudentName} ({sampleStudentId})</strong>
-        </span>
-        <span className="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-[#245F42] text-[10px] font-extrabold flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          High-Fidelity Document Rendering
-        </span>
+    <section className="space-y-4" aria-labelledby="certificate-preview-heading">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 id="certificate-preview-heading" className="text-sm font-extrabold text-slate-900 dark:text-white">Unofficial certificate preview</h3>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">Presentation only. No issuance record, certificate number, public ID, or QR code is generated.</p>
+        </div>
+        <span className="inline-flex self-start items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-900 dark:bg-amber-950 dark:text-amber-200"><Eye className="h-4 w-4" aria-hidden="true" /> PREVIEW</span>
       </div>
 
-      {/* Rendered Certificate Sheet */}
-      <div className="p-8 bg-amber-50/40 text-center space-y-6 relative overflow-hidden border-4 border-double border-amber-800/30 rounded-3xl shadow-lg dark:bg-slate-900 dark:border-amber-700/40">
-        
-        {/* Background Watermark Seal */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
-          <div className="w-64 h-64 rounded-full border-8 border-slate-900 flex items-center justify-center">
-            <span className="text-4xl font-extrabold font-serif">NDMU</span>
-          </div>
-        </div>
-
-        {/* Certificate Header */}
-        <div className="space-y-1 relative z-10">
-          <p className="text-[11px] font-extrabold tracking-widest uppercase text-amber-900 dark:text-amber-400">NOTRE DAME OF MARBEL UNIVERSITY</p>
-          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Office of Student Affairs & Services (OSAD)</p>
-          <h2 className="text-xl font-serif font-extrabold text-slate-900 dark:text-white pt-2 tracking-wide">
-            {template?.title || 'CERTIFICATE OF WORKSHOP COMPLETION'}
-          </h2>
-          <p className="text-[10px] font-extrabold text-amber-800/80 uppercase tracking-widest pt-0.5">
-            {template?.code || 'OSAD-TPL-03'} • OFFICIAL VERIFIED CREDENTIAL
-          </p>
-        </div>
-
-        {/* Recipient Lead-In & Name */}
-        <div className="space-y-2 relative z-10 py-2">
-          <p className="text-xs italic text-slate-600 dark:text-slate-400">This certificate is proudly awarded to</p>
-          <h3 className="text-2xl font-serif font-black text-emerald-950 dark:text-[#245F42] underline decoration-amber-500/50 underline-offset-8">
-            {sampleStudentName}
-          </h3>
-          <p className="text-xs text-slate-600 dark:text-slate-400 max-w-lg mx-auto pt-2 leading-relaxed">
-            In recognition of active participation, attendance, and successful completion of the official student organization activity titled <strong className="text-slate-900 dark:text-white">{selectedEvent?.title || 'Computer Society Tech Summit 2026'}</strong> hosted at Notre Dame of Marbel University.
-          </p>
-        </div>
-
-        {/* Footer: Signatories & Verification QR Barcode */}
-        <div className="pt-6 border-t border-amber-800/20 flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-          
-          {/* Signatories List */}
-          <div className="flex items-center gap-6 justify-center sm:justify-start">
-            {Object.values(resolvedSignatories).map((sig, idx) => (
-              <div key={idx} className="text-center space-y-1">
-                <div className="w-16 h-8 mx-auto overflow-hidden">
-                  <img src={sig.assetUrl} alt={sig.name} className="w-full h-full object-contain" />
-                </div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white border-t border-slate-400 pt-0.5">{sig.name}</p>
-                <p className="text-[9px] text-slate-500">{sig.title}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* QR Code & Serial Verification Block */}
-          <div className="flex items-center gap-3 bg-white dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 text-left shrink-0 shadow-xs">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center text-emerald-700 shrink-0">
-              <QrCode className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block">Serial Verification</span>
-              <span className="text-[10px] font-extrabold text-slate-900 dark:text-white block font-mono">{sampleSerial}</span>
-              <span className="text-[8px] text-emerald-600 font-bold block">Verified by AchieveNest</span>
-            </div>
-          </div>
-
-        </div>
-
+      <div className="relative overflow-hidden rounded-2xl border-2 border-amber-700/30 bg-amber-50 px-5 py-10 text-center text-slate-900 shadow-lg dark:border-amber-500/30 dark:bg-slate-950 dark:text-white sm:px-10">
+        <div className="absolute inset-x-0 top-0 bg-amber-700 py-1 text-[10px] font-black tracking-[0.22em] text-white">UNOFFICIAL PREVIEW</div>
+        <p className="mt-3 text-xs font-extrabold uppercase tracking-wider text-emerald-900 dark:text-emerald-300">Notre Dame of Marbel University</p>
+        <h4 className="mt-5 break-words font-serif text-2xl font-black sm:text-3xl">{purpose}</h4>
+        <p className="mt-5 text-sm text-slate-600 dark:text-slate-300">Presented to</p>
+        <p className="mx-auto mt-2 max-w-2xl break-words font-serif text-2xl font-bold text-emerald-950 dark:text-emerald-200">{recipient?.studentName}</p>
+        <p className="mx-auto mt-5 max-w-2xl break-words text-sm leading-relaxed text-slate-700 dark:text-slate-300">For the verified source record <strong>{recipient?.sourceRecord?.title}</strong>{selectedEvent?.title ? ` within ${selectedEvent.title}` : ''}.</p>
+        <p className="mx-auto mt-3 max-w-2xl break-words text-xs text-slate-600 dark:text-slate-300">Template: <strong>{recipient?.template?.name || 'No compatible template selected'}</strong></p>
+        <div className="mx-auto mt-8 flex max-w-md items-center justify-center gap-2 rounded-xl bg-white/80 p-3 text-xs font-bold text-slate-700 dark:bg-slate-900 dark:text-slate-200"><ShieldCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" /> Backend readiness: {recipient?.readinessStatus === 'ISSUABLE' ? 'Ready' : recipient?.readinessStatus === 'NOT_ELIGIBLE' ? 'No Certificate Applicable' : 'Eligible — Not Ready'}</div>
       </div>
-    </div>
+    </section>
   )
 }

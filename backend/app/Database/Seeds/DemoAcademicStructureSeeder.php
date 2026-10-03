@@ -5,10 +5,19 @@ namespace App\Database\Seeds;
 use CodeIgniter\Database\Seeder;
 use RuntimeException;
 
+/**
+ * LEGACY — DO NOT RUN IN defense/wamp-local FINAL SCHEMA.
+ * This seeder is retained for hosted-track historical reference only.
+ * The authoritative reference data for local-defense is in migration 000010.
+ */
 class DemoAcademicStructureSeeder extends Seeder
 {
     public function run()
     {
+        if (env('ACHIEVENEST_ENV') === 'local-defense' || env('AUTH_MODE') === 'local-defense') {
+            throw new RuntimeException('DemoAcademicStructureSeeder is deprecated and cannot be run in local-defense mode. Use DefenseDemoSeeder instead.');
+        }
+
         $this->db->transStart();
 
         $colleges = [

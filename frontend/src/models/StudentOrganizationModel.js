@@ -4,10 +4,9 @@ export default class StudentOrganizationModel {
     this.code = (data.code || '').trim().toUpperCase()
     this.name = (data.name || '').trim()
     this.organizationType = data.organizationType || 'academic' // academic | cultural | sports | religious | special_interest
-    this.scopeType = data.scopeType || 'university' // university | college | department | degree_program
+    this.scopeType = data.scopeType || 'university' // university | college
     this.collegeId = data.collegeId || null
-    this.departmentId = data.departmentId || null
-    this.degreeProgramId = data.degreeProgramId || null
+    this.academicProgramIds = data.academicProgramIds || data.academic_program_ids || []
     this.recognitionStatus = data.recognitionStatus || 'recognized' // draft | pending_recognition | recognized | suspended | archived
     this.status = data.status || 'active'
     this.createdBy = data.createdBy || 'OSAD Staff'
@@ -15,17 +14,18 @@ export default class StudentOrganizationModel {
     this.updatedAt = data.updatedAt || new Date().toISOString()
   }
 
-  static validateScope(data = {}, colleges = [], departments = [], programs = []) {
+  static validateScope(data = {}, colleges = [], programs = []) {
     const errors = []
-    const { scopeType, collegeId, departmentId, degreeProgramId } = data
+    const { scopeType, collegeId } = data
+    const academicProgramIds = data.academicProgramIds || data.academic_program_ids || []
 
-    if (!['university', 'college', 'department', 'degree_program'].includes(scopeType)) {
+    if (!['university', 'college'].includes(scopeType)) {
       errors.push('Invalid Student Organization scope selected.')
       return { isValid: false, errors }
     }
 
     if (scopeType === 'university') {
-      if (collegeId || departmentId || degreeProgramId) {
+      if (collegeId || academicProgramIds.length) {
         errors.push('University-wide organizations must not specify academic parents.')
       }
     }
@@ -36,32 +36,10 @@ export default class StudentOrganizationModel {
         const c = colleges.find(item => item.id === collegeId && item.status === 'active')
         if (!c) errors.push('Selected parent College is invalid or archived.')
       }
-      if (departmentId || degreeProgramId) {
-        errors.push('College-based organization must not specify Department or Program.')
-      }
-    }
-
-    if (scopeType === 'department') {
-      if (!collegeId) errors.push('Department-based organization requires a College.')
-      if (!departmentId) errors.push('Department-based organization requires a Department.')
-      else {
-        const d = departments.find(item => item.id === departmentId && item.status === 'active')
-        if (!d) errors.push('Selected parent Department is invalid or archived.')
-        else if (d.collegeId !== collegeId) errors.push('Selected Department does not belong to the selected College.')
-      }
-      if (degreeProgramId) {
-        errors.push('Department-based organization must not specify a Degree Program.')
-      }
-    }
-
-    if (scopeType === 'degree_program') {
-      if (!collegeId) errors.push('Program-based organization requires a College.')
-      if (!departmentId) errors.push('Program-based organization requires a Department.')
-      if (!degreeProgramId) errors.push('Program-based organization requires a Degree Program.')
-      else {
-        const p = programs.find(item => item.id === degreeProgramId && item.status === 'active')
-        if (!p) errors.push('Selected parent Degree Program is invalid or archived.')
-        else if (p.departmentId !== departmentId) errors.push('Selected Degree Program does not belong to the selected Department.')
+      for (const programId of academicProgramIds) {
+        const program = programs.find(item => item.id === programId && item.status === 'active')
+        if (!program) errors.push('Selected Academic Program coverage is invalid or archived.')
+        else if (program.collegeId !== collegeId) errors.push('Academic Program coverage must belong to the selected College.')
       }
     }
 
@@ -71,7 +49,7 @@ export default class StudentOrganizationModel {
     }
   }
 
-  static validate(data = {}, colleges = [], departments = [], programs = [], existingOrgs = []) {
+  static validate(data = {}, colleges = [], programs = [], existingOrgs = []) {
     const name = (data.name || '').trim()
     const code = (data.code || '').trim().toUpperCase()
 
@@ -84,7 +62,7 @@ export default class StudentOrganizationModel {
     )
     if (duplicateCode) errors.push(`Organization code "${code}" already exists.`)
 
-    const scopeValidation = this.validateScope(data, colleges, departments, programs)
+    const scopeValidation = this.validateScope(data, colleges, programs)
     errors.push(...scopeValidation.errors)
 
     return {

@@ -207,20 +207,20 @@ export default function StudentAchievementPopoverMenu({
           </DropdownMenuItem>
 
           {/* Action 3: Add/View in Student Portfolio */}
-          <DropdownMenuItem
+          {onAttachPortfolio && <DropdownMenuItem
             onClick={(e) => { e.stopPropagation(); onAttachPortfolio(achievement.id); onClose() }}
           >
             <PlusCircle className={`w-4 h-4 ${isInPortfolio ? 'text-emerald-600 fill-emerald-100' : 'text-slate-400'}`} />
             <span>{isInPortfolio ? 'Remove from Student Portfolio' : 'Attach to Student Portfolio'}</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
 
           {/* Action 4: Toggle Favorite Highlights */}
-          <DropdownMenuItem
+          {onToggleFavorite && <DropdownMenuItem
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(achievement.id); onClose() }}
           >
             <Star className={`w-4 h-4 ${achievement.is_favorited ? 'text-amber-500 fill-amber-400' : 'text-slate-400'}`} />
             <span>{achievement.is_favorited ? 'Remove from Highlights' : 'Add to Highlights'}</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
 
           {/* Action 5: Edit Accomplishment */}
           {isEditable && (
@@ -258,7 +258,7 @@ export default function StudentAchievementPopoverMenu({
           </DropdownMenuItem>
 
           {/* Action 9: Delete Submission */}
-          {isDeletable && (
+          {isDeletable && onDelete && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem

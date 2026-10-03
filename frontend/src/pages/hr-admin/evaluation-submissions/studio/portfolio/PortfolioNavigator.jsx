@@ -1,5 +1,9 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { FileSpreadsheet, Images, LayoutList, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { usesFacultyAcademicPortfolio } from '../../../../../utils/personnelPortfolioFormat'
+import { DsInput } from './NtfPortfolioDocument'
+import PortfolioBookletDocument from '../../../../../components/portfolio-booklet/PortfolioBookletDocument'
+import { FACULTY_BOOKLET_FORMAT, NON_TEACHING_BOOKLET_FORMAT } from '../../../../../components/portfolio-booklet/bookletFormats'
 
 export default function PortfolioNavigator({
   submission = {},
@@ -7,10 +11,27 @@ export default function PortfolioNavigator({
   selectedEvidence,
   onSelectEvidence,
   workspaceMode = 'split',
-  onWorkspaceModeChange
+  onWorkspaceModeChange,
+  onUpdateAreaADs
 }) {
   // Tab view: 'hr_form' (Default: Formal HR Word Document template) | 'attached_proofs' (Reverse chronological certificates) | 'list' (Compact list)
   const [tab, setTab] = useState('hr_form')
+  const isFaculty = usesFacultyAcademicPortfolio(submission)
+  // The reviewer sees the personnel's own booklet, built from the submitted snapshot.
+  const bookletUser = useMemo(() => ({
+    full_name: submission.faculty_name || submission.full_name || '',
+    personnel_group: submission.personnel_group,
+    designation_title: submission.designation || submission.position_title || submission.designation_title || '',
+    department_name: submission.college || submission.department || submission.administrative_unit_name || '',
+    faculty_engagement: submission.faculty_engagement,
+    employment_status: submission.employment_status,
+    current_rank_title: submission.current_rank_title || submission.present_rank || ''
+  }), [submission])
+  const bookletPortfolio = useMemo(() => ({
+    items: evidenceItems,
+    academic_year: submission.academic_year || submission.period_academic_year || '',
+    tenure_years: submission.tenure_years
+  }), [evidenceItems, submission])
 
   const areaAItems = evidenceItems.filter(i => i.categoryArea === 'areaA')
   const areaBItems = evidenceItems.filter(i => i.categoryArea === 'areaB')
@@ -38,7 +59,7 @@ export default function PortfolioNavigator({
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Formal HR Form</span>
+            <span>Portfolio Booklet</span>
           </button>
 
           <button
@@ -79,272 +100,17 @@ export default function PortfolioNavigator({
         )}
       </div>
 
-      {/* TAB 1: FORMAL HR DOCUMENT FORM VIEW (Exact Match to Word Template) */}
+      {/* TAB 1: PORTFOLIO BOOKLET — the exact pages the personnel see and print */}
       {tab === 'hr_form' && (
-        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-serif">
-          {/* Formal Header */}
-          <div className="text-center space-y-1 mb-6">
-            <h2 className="text-xl font-bold tracking-wide uppercase font-serif text-slate-900 dark:text-white">
-              FACULTY DEVELOPMENT PROGRAM
-            </h2>
-            <p className="text-sm font-medium font-serif italic text-slate-700 dark:text-slate-300">
-              Portfolio
-            </p>
-
-            <div className="pt-4 grid grid-cols-2 text-left text-xs font-serif text-slate-800 dark:text-slate-200 border-t border-slate-200 dark:border-slate-800">
-              <div>
-                <p><span className="font-semibold">Name:</span> {submission.faculty_name}</p>
-                <p><span className="font-semibold">School Year:</span> 2023-2024</p>
-              </div>
-              <div>
-                <p><span className="font-semibold">Status:</span> Full-Time - Permanent</p>
-                <p><span className="font-semibold">Rank:</span> {submission.academic_rank || 'Associate Professor I'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Main Formal HR Table */}
-          <div className="border-2 border-slate-900 dark:border-slate-600 text-xs font-serif overflow-hidden shadow-xs">
-            {/* SECTION A */}
-            <div className="bg-[#0f2537] text-white font-bold p-2 text-sm uppercase tracking-wider border-b border-slate-900">
-              A. PROFESSIONAL DEVELOPMENT
-            </div>
-
-            {/* A.1 Education */}
-            <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-              1. EDUCATION
-            </div>
-            <table className="w-full border-collapse border-b border-slate-900 text-slate-900 dark:text-slate-100">
-              <thead>
-                <tr className="bg-[#e3f2fd] dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-serif italic border-b border-slate-900">
-                  <th className="p-2 border-r border-slate-900 w-1/5">Date(s)</th>
-                  <th className="p-2 border-r border-slate-900 w-2/5">Course/Degree</th>
-                  <th className="p-2 border-r border-slate-900 w-1/4">School/University</th>
-                  <th className="p-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaAItems.filter(i => i.criterionKey === 'degrees').map(item => {
-                  const isSelected = selectedEvidence?.id === item.id
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => onSelectEvidence(item)}
-                      className={`cursor-pointer transition ${
-                        isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                    >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 10, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
-                      <td className="p-2 border-r border-slate-900">NDMU / Accredited Institution</td>
-                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-
-            {/* A.2 Professional Organizations */}
-            <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-              2. ACTIVE MEMBERSHIP TO PROFESSIONAL ORGANIZATIONS
-            </div>
-            <table className="w-full border-collapse border-b border-slate-900 text-slate-900 dark:text-slate-100">
-              <thead>
-                <tr className="bg-[#e3f2fd] dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-serif italic border-b border-slate-900">
-                  <th className="p-2 border-r border-slate-900 w-1/5">Date(s)</th>
-                  <th className="p-2 border-r border-slate-900 w-2/5">Organization</th>
-                  <th className="p-2 border-r border-slate-900 w-1/4">Conducted or Organized by</th>
-                  <th className="p-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaAItems.filter(i => i.criterionKey === 'memberships').map(item => {
-                  const isSelected = selectedEvidence?.id === item.id
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => onSelectEvidence(item)}
-                      className={`cursor-pointer transition ${
-                        isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                    >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 11, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
-                      <td className="p-2 border-r border-slate-900">International Chapter</td>
-                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-
-            {/* A.3 Seminars & Trainings */}
-            <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-              3. ATTENDANCE TO SEMINAR-WORKSHOP/TRAININGS
-            </div>
-            <table className="w-full border-collapse border-b border-slate-900 text-slate-900 dark:text-slate-100">
-              <thead>
-                <tr className="bg-[#e3f2fd] dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-serif italic border-b border-slate-900">
-                  <th className="p-2 border-r border-slate-900 w-1/5">Date(s)</th>
-                  <th className="p-2 border-r border-slate-900 w-2/5">Title</th>
-                  <th className="p-2 border-r border-slate-900 w-1/4">Conducted or Organized by</th>
-                  <th className="p-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaAItems.filter(i => i.criterionKey === 'seminars').map(item => {
-                  const isSelected = selectedEvidence?.id === item.id
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => onSelectEvidence(item)}
-                      className={`cursor-pointer transition ${
-                        isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                    >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 12, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
-                      <td className="p-2 border-r border-slate-900">CHED / DLSU</td>
-                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-
-            {/* SECTION B */}
-            <div className="bg-[#0f2537] text-white font-bold p-2 text-sm uppercase tracking-wider border-b border-slate-900">
-              B. PRODUCTIVITY AND CREATIVE WORK
-            </div>
-
-            {/* B.1 Guest Lecturer */}
-            <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-              1. INVITED AS GUEST LECTURER/CONSULTANT/JUDGE/RESOURCE PERSON
-            </div>
-            <table className="w-full border-collapse border-b border-slate-900 text-slate-900 dark:text-slate-100">
-              <thead>
-                <tr className="bg-[#e3f2fd] dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-serif italic border-b border-slate-900">
-                  <th className="p-2 border-r border-slate-900 w-1/5">Date(s)</th>
-                  <th className="p-2 border-r border-slate-900 w-2/5">Activity</th>
-                  <th className="p-2 border-r border-slate-900 w-1/4">Conducted or Organized by</th>
-                  <th className="p-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaBItems.filter(i => i.criterionKey === 'lectures' || i.criterionCode === 'B.1').map(item => {
-                  const isSelected = selectedEvidence?.id === item.id
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => onSelectEvidence(item)}
-                      className={`cursor-pointer transition ${
-                        isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#176B43]'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                    >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Jul 28, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-bold">{item.activityTitle || item.title}</td>
-                      <td className="p-2 border-r border-slate-900">{item.conductedBy || 'PSITE National Chapter'}</td>
-                      <td className="p-2 font-bold text-[#176B43] dark:text-emerald-400">{item.awardedPoints ?? item.eligiblePoints ?? 13} pts</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-
-            {/* B.2 Publications */}
-            <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-              2. PUBLICATION (scholarly paper/article/research output/book)
-            </div>
-            <table className="w-full border-collapse border-b border-slate-900 text-slate-900 dark:text-slate-100">
-              <thead>
-                <tr className="bg-[#e3f2fd] dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-serif italic border-b border-slate-900">
-                  <th className="p-2 border-r border-slate-900 w-1/5">Date(s)</th>
-                  <th className="p-2 border-r border-slate-900 w-2/5">Publications</th>
-                  <th className="p-2 border-r border-slate-900 w-1/4">Granted by</th>
-                  <th className="p-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaBItems.filter(i => i.criterionKey === 'publications').map(item => {
-                  const isSelected = selectedEvidence?.id === item.id
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => onSelectEvidence(item)}
-                      className={`cursor-pointer transition ${
-                        isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                    >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 13, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
-                      <td className="p-2 border-r border-slate-900">IEEE Society</td>
-                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-
-            {/* SECTION C */}
-            <div className="bg-[#0f2537] text-white font-bold p-2 text-sm uppercase tracking-wider border-b border-slate-900">
-              C. SERVICE AND LEADERSHIP
-            </div>
-
-            {/* C.1 Extra-Curricular */}
-            <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-              1. INVOLVEMENT IN EXTRA-CURRICULAR ACTIVITIES/RECOGNIZED SCHOOL ORGS.
-            </div>
-            <table className="w-full border-collapse text-slate-900 dark:text-slate-100">
-              <thead>
-                <tr className="bg-[#e3f2fd] dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-serif italic border-b border-slate-900">
-                  <th className="p-2 border-r border-slate-900 w-1/5">Date(s)</th>
-                  <th className="p-2 border-r border-slate-900 w-2/5">Activity / Club</th>
-                  <th className="p-2 border-r border-slate-900 w-1/4">Organized by</th>
-                  <th className="p-2">Remarks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-300 dark:divide-slate-800 font-sans text-xs">
-                {areaCItems.map(item => {
-                  const isSelected = selectedEvidence?.id === item.id
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => onSelectEvidence(item)}
-                      className={`cursor-pointer transition ${
-                        isSelected
-                          ? 'bg-[#EFF7F0]/15 dark:bg-emerald-950/60 font-bold border-l-4 border-[#69A97C]'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-900'
-                      }`}
-                    >
-                      <td className="p-2 border-r border-slate-900 font-mono text-[11px]">{item.submittedDate || 'Aug 14, 2026'}</td>
-                      <td className="p-2 border-r border-slate-900 font-extrabold">{item.title}</td>
-                      <td className="p-2 border-r border-slate-900">NDMU OSAD</td>
-                      <td className="p-2 font-bold text-[#064e2b] dark:text-emerald-400">{item.awardedPoints || item.eligiblePoints} pts</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Signature Line Block */}
-          <div className="pt-8 flex justify-end">
-            <div className="text-center space-y-1 font-serif">
-              <p className="border-b-2 border-slate-800 px-8 pb-1 font-bold text-sm">{submission.faculty_name}</p>
-              <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Signature over Printed Name</p>
-            </div>
-          </div>
-        </div>
+        <PortfolioBookletDocument
+          format={isFaculty ? FACULTY_BOOKLET_FORMAT : NON_TEACHING_BOOKLET_FORMAT}
+          user={bookletUser}
+          portfolio={bookletPortfolio}
+          selectedSourceId={selectedEvidence?.id}
+          onSelectRow={(row) => onSelectEvidence?.(row.source)}
+          onOpenProof={(row) => onSelectEvidence?.(row.source)}
+          renderAreaADs={onUpdateAreaADs ? (row) => <DsInput code={row.code} title={row.title} value={row.ds} onCommit={onUpdateAreaADs} /> : undefined}
+        />
       )}
 
       {/* TAB 2: ATTACHED PROOF CERTIFICATES (Pages 3+) */}
@@ -365,7 +131,7 @@ export default function PortfolioNavigator({
                 onClick={() => onSelectEvidence(item)}
                 className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-start justify-between gap-3 ${
                   isSelected
-                    ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 shadow-sm border-l-4'
+                    ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 shadow-sm ring-1 ring-inset ring-[#69A97C]/30'
                     : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
                 }`}
               >
@@ -407,25 +173,25 @@ export default function PortfolioNavigator({
       {tab === 'list' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area A: Professional Development</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">{isFaculty ? 'Area A: Professional Development' : 'Area A: Performance and Personal Indicators'}</h4>
             {areaAItems.map(item => (
               <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
             ))}
           </div>
 
           <div className="space-y-2">
-            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area B: Productivity &amp; Creative Work</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">{isFaculty ? 'Area B: Productivity & Creative Work' : 'Area B: Service and Leadership'}</h4>
             {areaBItems.map(item => (
               <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
             ))}
           </div>
 
-          <div className="space-y-2">
+          {isFaculty && <div className="space-y-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area C: Service &amp; Leadership</h4>
             {areaCItems.map(item => (
               <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
             ))}
-          </div>
+          </div>}
         </div>
       )}
     </div>
@@ -441,7 +207,7 @@ function EvidenceListRow({ item, isSelected, onSelect }) {
       onClick={onSelect}
       className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between gap-2 text-xs ${
         isSelected
-          ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 font-extrabold border-l-4'
+          ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 font-extrabold ring-1 ring-inset ring-[#69A97C]/30'
           : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
       }`}
     >

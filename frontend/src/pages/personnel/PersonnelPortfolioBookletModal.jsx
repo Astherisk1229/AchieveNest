@@ -1,1174 +1,381 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react'
-import useTheme from '../../hooks/useTheme'
-import { 
-  X, 
-  ChevronLeft, 
-  ChevronRight, 
-  Maximize2, 
-  Minimize2,
-  ZoomIn, 
-  ZoomOut, 
-  Award, 
-  Printer,
-  Paperclip,
-  CheckCircle2,
-  FileSpreadsheet,
-  Images,
-  ShieldCheck,
-  Search,
-  Layers,
-  ExternalLink
-} from 'lucide-react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, MoveHorizontal, PanelLeftClose, PanelLeftOpen, Printer, Search, X, ZoomIn, ZoomOut } from 'lucide-react'
+import BookletEvidenceDrawer from './booklet/BookletEvidenceDrawer'
+import BookletPage, { areaAnchor, buildBookletPages, criterionAnchor, proofAnchor, rowAnchor } from '../../components/portfolio-booklet/BookletPage'
+import { BookletPrintPortal, useBookletPrint } from '../../components/portfolio-booklet/BookletPrint'
+import { resolveBookletFormat } from '../../components/portfolio-booklet/bookletFormats'
+import { nonTeachingAreaARows } from '../../utils/nonTeachingBooklet'
 
-export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfolio, user = {} }) {
-  const { isDark } = useTheme()
+// A4 at 96dpi — the existing booklet page width.
+const PAGE_WIDTH = 794
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 2
+const ZOOM_STEP = 0.1
+const MAX_FIT_ZOOM = 1.2
+
+const clampZoom = (value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(value * 100) / 100))
+
+const isDesktop = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches
+
+export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfolio = {}, user = {} }) {
   const [currentPage, setCurrentPage] = useState(1)
-  const [zoomLevel, setZoomLevel] = useState(100)
+  const [activeSection, setActiveSection] = useState(areaAnchor('A'))
+  const [query, setQuery] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [sidebarQuery, setSidebarQuery] = useState('')
-  const canvasRef = useRef(null)
-  const scrollContainerRef = useRef(null)
-  const pageRefs = useRef({})
-  const isScrollSyncing = useRef(false)
+  const [outlineCollapsed, setOutlineCollapsed] = useState(false)
+  const [mobileOutlineOpen, setMobileOutlineOpen] = useState(false)
+  const [activeProof, setActiveProof] = useState(null)
+  const [highlightedId, setHighlightedId] = useState(null)
+  const [zoomMode, setZoomMode] = useState('fit')
+  const [manualZoom, setManualZoom] = useState(1)
+  const [fitZoom, setFitZoom] = useState(1)
 
-  // User Profile & Metadata
-  const facultyName = user.full_name || user.name || portfolio?.personnel_name || 'Dr. Maria Santos'
-  const employeeId = user.employee_id || portfolio?.personnel_id || 'EMP-2021-0842'
-  const department = user.department_name || user.department || portfolio?.department_name || 'College of Information Technology'
-  const academicRank = user.rank || user.academic_rank || portfolio?.academic_rank || 'Associate Professor II'
-  const academicYear = portfolio?.academic_year || 'AY 2025-2026'
-  const status = portfolio?.status || 'HR APPROVED'
-  const yearsOfService = portfolio?.years_of_service || 10
+  const scrollRef = useRef(null)
+  const outlineRef = useRef(null)
+  const mobileOutlineRef = useRef(null)
+  const proofTriggerRef = useRef(null)
+  const previousZoomRef = useRef(1)
+  const highlightTimerRef = useRef(null)
+  const restoreOutlineRef = useRef(false)
 
-  // Combine items from props or standard fallback list
-  const rawItems = useMemo(() => {
-    if (portfolio?.items && portfolio.items.length > 0) return portfolio.items
+  // Faculty and Non-Teaching share this booklet; the format picks the title, areas and criteria.
+  const format = useMemo(() => resolveBookletFormat(user, portfolio), [user, portfolio])
+  const items = useMemo(() => format.normalize(portfolio), [format, portfolio])
+  const proofItems = useMemo(() => items.filter((item) => item.evidence), [items])
+  const areaARows = useMemo(() => (format.id === 'non_teaching' ? nonTeachingAreaARows(portfolio) : []), [format.id, portfolio])
+  const criterionLabelByKey = useMemo(() => Object.fromEntries(format.criteria.map((criterion) => [criterion.key, criterion.label])), [format])
+  const print = useBookletPrint(proofItems.length)
 
-    const combined = []
-    if (portfolio?.area_a_items && portfolio.area_a_items.length > 0) {
-      portfolio.area_a_items.forEach(i => combined.push({ ...i, area_key: 'A' }))
-    }
-    if (portfolio?.area_b_items && portfolio.area_b_items.length > 0) {
-      portfolio.area_b_items.forEach(i => combined.push({ ...i, area_key: 'B' }))
-    }
-    if (portfolio?.area_c_items && portfolio.area_c_items.length > 0) {
-      portfolio.area_c_items.forEach(i => combined.push({ ...i, area_key: 'C' }))
-    }
+  // Page order is unchanged from the previous paginated viewer and the print output:
+  // Area A, Area B, Area C, then one Supporting Evidence page per attached proof.
+  const pages = useMemo(() => buildBookletPages(format, items), [format, items])
 
-    if (combined.length > 0) return combined
+  const outline = useMemo(() => format.areas.map((area) => ({
+    id: areaAnchor(area.key),
+    label: area.title,
+    children: format.criteria.filter((criterion) => criterion.area === area.key && (!criterion.hideWhenEmpty || items.some((item) => item.criterionKey === criterion.key))).map((criterion) => ({
+      id: criterionAnchor(criterion.key),
+      label: criterion.label,
+      count: items.filter((item) => item.criterionKey === criterion.key).length
+    }))
+  })), [format, items])
 
-    // Default Comprehensive Fallback Items adhering strictly to NDMU Spec
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return []
+    const matches = (...values) => values.filter(Boolean).join(' ').toLowerCase().includes(q)
     return [
-      { 
-        id: 1, area_key: 'A', category_code: 'A.1',
-        category_name: 'A.1 Educational Qualifications / Degrees',
-        title: 'Ph.D. in Computer Science', issuer: 'Ateneo de Manila University', 
-        date: '2024-05-20', date_display: 'May 20, 2024', status: 'Verified', points: 30,
-        tailored_fields: [
-          { label: 'Degree Level', value: 'Ph.D. Degree Holder' },
-          { label: 'Specialization / Field', value: 'Artificial Intelligence & Educational Data Mining' },
-          { label: 'Conferring University', value: 'Ateneo de Manila University' },
-          { label: 'Date Conferred', value: 'May 20, 2024' }
-        ],
-        description: 'Doctor of Philosophy degree completed with distinction. Dissertation focused on predictive AI models for student learning analytics.',
-        proof_file: 'phd_diploma_ateneo_santos.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 2, area_key: 'A', category_code: 'A.2',
-        category_name: 'A.2 Active Membership in Professional Orgs',
-        title: 'Philippine Computer Society (PCS)', issuer: 'PCS National Executive Board', 
-        date: '2025-08-15', date_display: 'AY 2025-2026', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Organization Name', value: 'Philippine Computer Society (PCS)' },
-          { label: 'Position / Role Held', value: 'Vice President for External Affairs' },
-          { label: 'Scope', value: 'National Organization' },
-          { label: 'Period Covered', value: 'AY 2025-2026' }
-        ],
-        description: 'Active national officer coordinating IT industry linkage and regional computer science symposiums.',
-        proof_file: 'pcs_officer_appointment_letter.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 3, area_key: 'A', category_code: 'A.3',
-        category_name: 'A.3 Attendance to Seminars & Workshops',
-        title: 'CHED Regional Training on AI Curriculum Integration', issuer: 'CHED Region XII / NDMU Campus', 
-        date: '2026-03-20', date_display: 'Mar 20, 2026', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Seminar / Workshop Title', value: 'CHED Regional Training on AI Curriculum Integration' },
-          { label: 'Organizer & Venue', value: 'CHED Region XII / NDMU CITE Lab' },
-          { label: 'Geographic Scope', value: 'Regional (Region XII)' },
-          { label: 'Date Conducted', value: 'Mar 20, 2026 (40 Hours Training)' }
-        ],
-        description: 'Completed 40-hour intensive faculty development workshop on integrating generative AI tools into IT outcome-based syllabi.',
-        proof_file: 'ched_ai_workshop_certificate.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 4, area_key: 'B', category_code: 'B.1',
-        category_name: 'B.1 Guest Lecturer / Resource Person / Consultant',
-        title: 'Keynote Speaker: Regional AI in Education Summit', issuer: 'DOST Region XII & Mindanao State University', 
-        date: '2026-02-28', date_display: 'Feb 28, 2026', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Event / Activity Title', value: 'Keynote Address on Machine Learning in Higher Ed' },
-          { label: 'Role Played', value: 'Keynote Speaker' },
-          { label: 'Sponsoring Agency / Venue', value: 'DOST Region XII / MSU General Santos' },
-          { label: 'Scope / Level', value: 'Regional' }
-        ],
-        description: 'Delivered keynote lecture to over 300 faculty delegates on ethical AI deployment in university assessments.',
-        proof_file: 'dost_keynote_certificate_invitation.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 5, area_key: 'B', category_code: 'B.2',
-        category_name: 'B.2 Publication (Scholarly Papers, Books, Articles)',
-        title: 'Machine Learning Frameworks in Higher Education Analytics', issuer: 'IEEE Access Journal (Scopus Indexed)', 
-        date: '2026-04-15', date_display: 'Apr 15, 2026', status: 'Verified', points: 20,
-        tailored_fields: [
-          { label: 'Title of Published Work', value: 'Machine Learning Frameworks in Higher Education Analytics' },
-          { label: 'Publication Type', value: 'Scholarly Paper / Journal Article' },
-          { label: 'Publisher & ISSN', value: 'IEEE Access Journal / ISSN 2169-3536' },
-          { label: 'Reach / Scope', value: 'International / Scopus Indexed' }
-        ],
-        description: 'Peer-reviewed research publication investigating predictive analytics frameworks for student retention and early academic warning systems.',
-        proof_file: 'ieee_access_publication_santos.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 6, area_key: 'B', category_code: 'B.3',
-        category_name: 'B.3 Conduct of Research Projects',
-        title: 'AI-Driven Student Retention Framework for NDMU', issuer: 'NDMU University Research Office', 
-        date: '2025-12-15', date_display: 'Dec 15, 2025', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Research Project Title', value: 'AI-Driven Student Retention Framework for NDMU' },
-          { label: 'Research Role', value: 'Lead Researcher' },
-          { label: 'Funding Status / Source', value: 'Completed Institutional Grant (NDMU URO)' },
-          { label: 'Completion Date', value: 'Dec 15, 2025' }
-        ],
-        description: 'Completed 1-year institutional research project developing automated intervention alerts for at-risk students.',
-        proof_file: 'ndmu_research_completion_report.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 7, area_key: 'B', category_code: 'B.4',
-        category_name: 'B.4 Professional Recognition or Awards',
-        title: 'NDMU Outstanding Research Faculty of the Year', issuer: 'Notre Dame of Marbel University', 
-        date: '2026-01-10', date_display: 'Jan 10, 2026', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Award Title / Honor Received', value: 'NDMU Outstanding Research Faculty of the Year' },
-          { label: 'Conferring Institution', value: 'Notre Dame of Marbel University' },
-          { label: 'Recognition Type', value: 'Awardee' },
-          { label: 'Award Scope', value: 'Institutional Award' }
-        ],
-        description: 'Conferred during NDMU University Foundation Day in recognition of highest Scopus publication output and research citations.',
-        proof_file: 'outstanding_faculty_award_2026.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 8, area_key: 'B', category_code: 'B.5',
-        category_name: 'B.5 Production of Instructional Materials',
-        title: 'Laboratory Workbook for Applied Data Structures', issuer: 'NDMU CITE Department', 
-        date: '2025-07-10', date_display: 'Jul 10, 2025', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Title of Material', value: 'Laboratory Workbook for Applied Data Structures & Algorithms' },
-          { label: 'Material Type', value: 'Workbooks / Exercises (Bound)' },
-          { label: 'Subject / Course Code', value: 'ITE 311 - Data Structures' },
-          { label: 'Implementation Date', value: 'First Semester AY 2025-2026' }
-        ],
-        description: 'Bound 120-page laboratory manual complete with hands-on coding exercises and rubric scoring guides.',
-        proof_file: 'data_structures_workbook_isbn.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 9, area_key: 'C', category_code: 'C.1',
-        category_name: 'C.1 School Involvement & Leadership',
-        title: 'Faculty Adviser: NDMU Computer Society', issuer: 'Student Affairs Office (SAO)', 
-        date: '2025-09-01', date_display: 'AY 2025-2026', status: 'Verified', points: 10,
-        tailored_fields: [
-          { label: 'Service Sub-Type', value: 'C.1.1 Moderator of Clubs / Organizations' },
-          { label: 'Name of Organization', value: 'NDMU Computer Society (CS Student Org)' },
-          { label: 'Period Covered', value: 'AY 2025-2026' },
-          { label: 'Role', value: 'Official Faculty Moderator' }
-        ],
-        description: 'Supervised student org activities, hackathons, and community IT outreach initiatives throughout the school year.',
-        proof_file: 'club_moderator_appointment_sao.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop&q=80'
-      },
-      { 
-        id: 10, area_key: 'C', category_code: 'C.2',
-        category_name: 'C.2 Community & Civic Involvement',
-        title: 'Koronadal City LGU Digital Governance Project', issuer: 'City Government of Koronadal', 
-        date: '2026-02-14', date_display: 'Feb 14, 2026', status: 'Verified', points: 15,
-        tailored_fields: [
-          { label: 'Service Sub-Type', value: 'C.2.2 Community / Civic Extension Project' },
-          { label: 'Project Description', value: 'Barangay Smart Digital Literacy Program' },
-          { label: 'Sponsoring LGU / NGO', value: 'City Government of Koronadal' },
-          { label: 'Period Covered', value: 'Jan – Mar 2026' }
-        ],
-        description: 'Project Lead for community IT extension program training local barangay secretaries on digital document management.',
-        proof_file: 'lgu_extension_project_mou.pdf',
-        proof_preview_url: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80'
-      }
+      ...format.areas.filter((area) => matches(area.title)).map((area) => ({ id: areaAnchor(area.key), kind: 'Section', label: area.title })),
+      ...format.criteria.filter((criterion) => matches(criterion.label)).map((criterion) => ({ id: criterionAnchor(criterion.key), kind: 'Subsection', label: criterion.label })),
+      ...items.filter((item) => matches(item.reference, item.accomplishment_display, item.organization_display, item.remarks_classification_display, item.date_or_period_display))
+        .map((item) => ({ id: rowAnchor(item.accomplishmentId), kind: 'Accomplishment', label: `${item.reference} · ${item.accomplishment_display || '—'}` })),
+      ...proofItems.filter((item) => matches(item.reference, item.accomplishment_display, item.evidence.original_filename, item.evidence.id))
+        .map((item) => ({ id: proofAnchor(item.accomplishmentId), kind: 'Evidence', label: `${item.reference} · ${item.evidence.original_filename || 'Persisted evidence'}` }))
     ]
-  }, [portfolio])
+  }, [query, items, proofItems, format])
 
-  // REVERSE CHRONOLOGICAL SORTING FOR ATTACHED PROOF CERTIFICATES (Pages 3+)
-  const proofItemsSortedReverseChrono = useMemo(() => {
-    return [...rawItems].sort((a, b) => {
-      const dateA = new Date(a.date || a.submittedDate || '2025-01-01')
-      const dateB = new Date(b.date || b.submittedDate || '2025-01-01')
-      return dateB - dateA
-    })
-  }, [rawItems])
+  const zoom = zoomMode === 'fit' ? fitZoom : manualZoom
 
-  // BUILD OFFICIAL NDMU FORMAL HR BOOKLET SEQUENCE
-  // Page 1: Formal HR Form (Header, Metadata, Sections A & B.1)
-  // Page 2: Formal HR Form (Sections B.2-B.5, C.1-C.3, Signature Block)
-  // Pages 3+: Attached Certificate Proof Documents in Reverse Chronological Order
-  const slides = useMemo(() => {
-    const deck = []
+  // Fit Width: scale the A4 page to the available canvas width (capped for readability).
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const element = scrollRef.current
+    if (!element) return undefined
+    const measure = () => {
+      const width = element.clientWidth
+      if (!width) return
+      const gutter = width >= 640 ? 48 : 16
+      setFitZoom(Math.min(MAX_FIT_ZOOM, Math.max(0.3, (width - gutter) / PAGE_WIDTH)))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [isOpen])
 
-    // Slide 1: Formal HR Page 1
-    deck.push({
-      id: 'hr_page_1',
-      type: 'HR_PAGE_1',
-      label: 'Formal HR Form - Page 1',
-      subtitle: 'Sections A-B (Education & Seminars)',
-      badge: 'HR 1',
-      pageNum: 1
-    })
+  // Keep the reader at the same place in the document when the scale changes
+  // (zoom controls, fit-width recalculation, opening/closing the evidence drawer).
+  useLayoutEffect(() => {
+    const element = scrollRef.current
+    const previous = previousZoomRef.current
+    previousZoomRef.current = zoom
+    if (!element || !previous || previous === zoom) return
+    // Scale around the middle of the viewport so the passage being read stays in place.
+    const padding = parseFloat(window.getComputedStyle(element).paddingTop) || 0
+    const middle = element.clientHeight / 2
+    element.scrollTop = (element.scrollTop + middle - padding) * (zoom / previous) + padding - middle
+  }, [zoom])
 
-    // Slide 2: Formal HR Page 2
-    deck.push({
-      id: 'hr_page_2',
-      type: 'HR_PAGE_2',
-      label: 'Formal HR Form - Page 2',
-      subtitle: 'Sections B-C & Signature Sign-Off',
-      badge: 'HR 2',
-      pageNum: 2
-    })
-
-    // Slides 3+: Attached Proof Documents
-    proofItemsSortedReverseChrono.forEach((item, idx) => {
-      const categoryCode = item.category_code || item.category || `P.${idx + 3}`
-      deck.push({
-        id: `proof_${item.id || idx}`,
-        type: 'ATTACHED_PROOF',
-        item,
-        label: item.title,
-        subtitle: item.category_name || item.category || 'Attached Proof Certificate',
-        badge: categoryCode,
-        pageNum: idx + 3
+  // Page counter: the page with the most visible height inside the viewer wins.
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const root = scrollRef.current
+    if (!root || typeof IntersectionObserver === 'undefined') return undefined
+    const visibleHeights = new Map()
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => visibleHeights.set(Number(entry.target.dataset.pageIndex), entry.isIntersecting ? entry.intersectionRect.height : 0))
+      let best = null
+      let bestHeight = 0
+      visibleHeights.forEach((height, index) => {
+        if (height > bestHeight || (height === bestHeight && best !== null && index < best)) {
+          best = index
+          bestHeight = height
+        }
       })
+      if (best !== null && bestHeight > 0) setCurrentPage(best + 1)
+    }, { root, threshold: [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] })
+    root.querySelectorAll('[data-page-index]').forEach((element) => observer.observe(element))
+    return () => observer.disconnect()
+  }, [isOpen, pages])
+
+  // Active outline item: the last section heading that has reached the top quarter of the viewer.
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const root = scrollRef.current
+    if (!root || typeof IntersectionObserver === 'undefined') return undefined
+    const targets = Array.from(root.querySelectorAll('[data-section-id]'))
+    const pickActive = () => {
+      const rootTop = root.getBoundingClientRect().top
+      const line = rootTop + root.clientHeight * 0.25
+      let current = targets[0]?.dataset.sectionId
+      targets.forEach((element) => {
+        if (element.getBoundingClientRect().top <= line) current = element.dataset.sectionId
+      })
+      if (current) setActiveSection(current)
+    }
+    const observer = new IntersectionObserver(pickActive, { root, rootMargin: '0px 0px -75% 0px', threshold: 0 })
+    targets.forEach((element) => observer.observe(element))
+    return () => observer.disconnect()
+  }, [isOpen, pages, zoom])
+
+  // Keep the highlighted outline entry visible inside the sidebar.
+  useEffect(() => {
+    [outlineRef.current, mobileOutlineRef.current].forEach((nav) => {
+      const button = nav?.querySelector(`[data-outline-id="${activeSection}"]`)
+      if (button && typeof button.scrollIntoView === 'function') button.scrollIntoView({ block: 'nearest' })
     })
+  }, [activeSection, mobileOutlineOpen, outlineCollapsed])
 
-    return deck
-  }, [proofItemsSortedReverseChrono])
-
-  const totalPages = slides.length
-
-  // Filter slides dynamically for left sidebar search
-  const filteredSlides = useMemo(() => {
-    if (!sidebarQuery.trim()) return slides
-    const q = sidebarQuery.toLowerCase()
-    return slides.filter(s => 
-      s.label.toLowerCase().includes(q) ||
-      s.badge.toLowerCase().includes(q) ||
-      (s.subtitle && s.subtitle.toLowerCase().includes(q)) ||
-      (s.item && (
-        (s.item.title && s.item.title.toLowerCase().includes(q)) ||
-        (s.item.issuer && s.item.issuer.toLowerCase().includes(q)) ||
-        (s.item.proof_file && s.item.proof_file.toLowerCase().includes(q))
-      ))
-    )
-  }, [slides, sidebarQuery])
-
-  // Partition slides into HR Dossier & Attached Proofs for structured sidebar sections
-  const hrSlides = useMemo(() => filteredSlides.filter(s => s.type === 'HR_PAGE_1' || s.type === 'HR_PAGE_2'), [filteredSlides])
-  const proofSlides = useMemo(() => filteredSlides.filter(s => s.type === 'ATTACHED_PROOF'), [filteredSlides])
-
-  // Scroll handler for updating current page indicator based on maximum visible page area
-  const handleScroll = useCallback(() => {
-    if (isScrollSyncing.current) return
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    const viewTop = container.scrollTop
-    const viewBottom = viewTop + container.clientHeight
-
-    let activePage = 1
-    let maxVisibleHeight = -1
-
-    slides.forEach((_, idx) => {
-      const el = pageRefs.current[idx]
-      if (!el) return
-
-      const elTop = el.offsetTop - container.offsetTop
-      const elBottom = elTop + el.offsetHeight
-
-      const visibleTop = Math.max(elTop, viewTop)
-      const visibleBottom = Math.min(elBottom, viewBottom)
-      const visibleHeight = Math.max(0, visibleBottom - visibleTop)
-
-      if (visibleHeight > maxVisibleHeight) {
-        maxVisibleHeight = visibleHeight
-        activePage = idx + 1
-      }
-    })
-
-    setCurrentPage(activePage)
-  }, [slides])
-
-  // Scroll to targeted page when clicking sidebar item
-  const scrollToPage = useCallback((pageNum) => {
-    const el = pageRefs.current[pageNum - 1]
-    if (!el || !scrollContainerRef.current) return
-
-    isScrollSyncing.current = true
-    setCurrentPage(pageNum)
-
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-
-    setTimeout(() => { isScrollSyncing.current = false }, 800)
+  const closeProof = useCallback(() => {
+    setActiveProof(null)
+    if (restoreOutlineRef.current) {
+      restoreOutlineRef.current = false
+      setOutlineCollapsed(false)
+    }
+    const trigger = proofTriggerRef.current
+    proofTriggerRef.current = null
+    if (trigger && typeof trigger.focus === 'function') trigger.focus({ preventScroll: true })
   }, [])
 
-  // Jump directly to the proof attachment page for a matrix achievement item
-  const scrollToProofForItem = useCallback((item) => {
-    if (!item) return
-    const matchedSlide = slides.find(s => 
-      s.type === 'ATTACHED_PROOF' && (
-        (item.id && s.item?.id === item.id) ||
-        (item.title && s.item?.title?.trim().toLowerCase() === item.title.trim().toLowerCase())
-      )
-    )
-    if (matchedSlide) {
-      scrollToPage(matchedSlide.pageNum)
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return
+      if (activeProof) { event.stopPropagation(); closeProof() } else if (mobileOutlineOpen) setMobileOutlineOpen(false)
     }
-  }, [slides, scrollToPage])
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, activeProof, mobileOutlineOpen, closeProof])
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      canvasRef.current?.requestFullscreen().catch(() => {})
-      setIsFullscreen(true)
-    } else {
-      document.exitFullscreen().catch(() => {})
-      setIsFullscreen(false)
+  useEffect(() => () => clearTimeout(highlightTimerRef.current), [])
+
+  const scrollToId = useCallback((id, { highlight = false } = {}) => {
+    const target = document.getElementById(id)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (id.startsWith('booklet-area-') || id.startsWith('booklet-criterion-') || id.startsWith('booklet-proof-')) setActiveSection(id)
+    if (highlight) {
+      setHighlightedId(id)
+      clearTimeout(highlightTimerRef.current)
+      highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 2200)
     }
+    if (!isDesktop()) setMobileOutlineOpen(false)
+  }, [])
+
+  const scrollToPage = (pageNumber) => {
+    const target = scrollRef.current?.querySelector(`[data-page-index="${pageNumber - 1}"]`)
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // Sort items within each section in reverse chronological order (most recent first)
-  const sortItemsReverseChrono = useCallback((items) => {
-    return [...items].sort((a, b) => {
-      const parseYearOrDate = (item) => {
-        if (!item) return 0
-        const d = String(item.date || item.date_display || item.date_achieved || '')
-        const yearMatches = d.match(/\b(20\d\d|19\d\d)\b/g)
-        if (yearMatches && yearMatches.length > 0) {
-          return Math.max(...yearMatches.map(Number))
-        }
-        const ts = Date.parse(d)
-        return isNaN(ts) ? 0 : ts
-      }
-      return parseYearOrDate(b) - parseYearOrDate(a)
-    })
-  }, [])
+  const openProof = (item, event) => {
+    proofTriggerRef.current = event?.currentTarget || null
+    // On narrower desktops, give the paper room by tucking the outline away while evidence is open.
+    if (!activeProof && !outlineCollapsed && isDesktop() && window.innerWidth < 1680) {
+      restoreOutlineRef.current = true
+      setOutlineCollapsed(true)
+    }
+    setActiveProof(item)
+  }
 
-  // Filter & sort items for matrix tables (Strict Reverse Chronological Order)
-  const areaAItems = useMemo(() => sortItemsReverseChrono(rawItems.filter(i => (i.area_key || i.category_code?.charAt(0)) === 'A')), [rawItems, sortItemsReverseChrono])
-  const areaBItems = useMemo(() => sortItemsReverseChrono(rawItems.filter(i => (i.area_key || i.category_code?.charAt(0)) === 'B')), [rawItems, sortItemsReverseChrono])
-  const areaCItems = useMemo(() => sortItemsReverseChrono(rawItems.filter(i => (i.area_key || i.category_code?.charAt(0)) === 'C')), [rawItems, sortItemsReverseChrono])
+  const toggleOutline = () => {
+    restoreOutlineRef.current = false
+    if (isDesktop()) setOutlineCollapsed((value) => !value)
+    else setMobileOutlineOpen((value) => !value)
+  }
+
+  const zoomBy = (delta) => {
+    setManualZoom(clampZoom(zoom + delta))
+    setZoomMode('manual')
+  }
 
   if (!isOpen) return null
 
-  // ==================== RENDER FORMAL SLIDES ACCORDING TO NDMU SPEC ====================
-  const renderSlide = (slide, pageNum) => {
-    switch (slide.type) {
+  // ---- Document pages (the same component renders the on-screen viewer, the review views and the PDF) ----
 
-      // ================= PAGE 1: FORMAL HR HEADER & SECTIONS A-B =================
-      case 'HR_PAGE_1':
-        return (
-          <div className="w-[780px] min-h-[1010px] bg-white text-slate-900 p-8 sm:p-10 rounded border border-slate-200 font-sans flex flex-col justify-between shadow-lg">
-            
-            <div className="space-y-6">
-              {/* Formal Centered HR Header */}
-              <div className="text-center space-y-1 pb-4 border-b border-slate-300">
-                <h1 className="text-xl font-extrabold tracking-wide uppercase font-sans text-slate-900">
-                  FACULTY DEVELOPMENT PROGRAM
-                </h1>
-                <p className="text-sm font-semibold font-sans italic text-slate-700">
-                  Portfolio
-                </p>
+  const pageProps = { format, rows: items, user, portfolio, areaARows, criterionLabelByKey }
+  const renderPage = (page, interactive) => (
+    <BookletPage {...pageProps} page={page} interactive={interactive} highlightedId={highlightedId} onOpenProof={interactive ? openProof : undefined} />
+  )
 
-                <div className="pt-4 grid grid-cols-2 text-left text-xs font-sans text-slate-800 leading-relaxed">
-                  <div>
-                    <p><span className="font-bold">Name:</span> {facultyName}</p>
-                    <p><span className="font-bold">School Year:</span> {academicYear}</p>
-                  </div>
-                  <div>
-                    <p><span className="font-bold">Status:</span> Full-Time - Permanent</p>
-                    <p><span className="font-bold">Rank:</span> {academicRank}</p>
-                  </div>
-                </div>
-              </div>
+  // ---- Outline / search sidebar ----
 
-              {/* Main Formal HR Rating Matrix Table */}
-              <div className="border-2 border-slate-900 text-xs font-sans overflow-hidden">
-                
-                {/* SECTION A */}
-                <div className="bg-[#0f2537] text-white font-bold p-2 text-xs sm:text-sm uppercase tracking-wider border-b border-slate-900">
-                  A. PROFESSIONAL DEVELOPMENT
-                </div>
-
-                {/* A.1 Education */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  1. EDUCATION
-                </div>
-                <table className="w-full border-collapse border-b border-slate-900 text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Course/Degree</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">School/University</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaAItems.filter(i => (i.category_code === 'A.1' || i.category?.includes('A.1'))).map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || '2024'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'Ateneo de Manila University'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Conferred / Verified Attachment</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                    {areaAItems.filter(i => (i.category_code === 'A.1' || i.category?.includes('A.1'))).length === 0 && (
-                      <tr 
-                        onClick={() => scrollToProofForItem({ title: 'Ph.D. in Computer Science' })}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">2020-2024</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">Ph.D. in Computer Science</td>
-                        <td className="p-2 border-r border-slate-900">Ateneo de Manila University</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Conferred / Verified Attachment</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-
-                {/* A.2 Active Membership in Professional Orgs */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  2. ACTIVE MEMBERSHIP TO PROFESSIONAL ORGANIZATIONS
-                </div>
-                <table className="w-full border-collapse border-b border-slate-900 text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Organization</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Conducted or Organized by</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaAItems.filter(i => (i.category_code === 'A.2' || i.category?.includes('A.2'))).map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || '2025'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'PCS Executive Board'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Active Officer / Member</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* A.3 Attendance to Seminars & Workshops */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  3. ATTENDANCE TO SEMINAR-WORKSHOP/TRAININGS
-                </div>
-                <table className="w-full border-collapse border-b border-slate-900 text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Title</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Conducted or Organized by</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaAItems.filter(i => (i.category_code === 'A.3' || i.category?.includes('A.3'))).map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || '2026'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'CHED Region XII'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Completed (40 Hours)</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* SECTION B (PART 1) */}
-                <div className="bg-[#0f2537] text-white font-bold p-2 text-xs sm:text-sm uppercase tracking-wider border-b border-slate-900">
-                  B. PRODUCTIVITY AND CREATIVE WORK
-                </div>
-
-                {/* B.1 Guest Lecturer */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  1. INVITED AS GUEST LECTURER/CONSULTANT/JUDGE/RESOURCE PERSON
-                </div>
-                <table className="w-full border-collapse text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Activity</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Conducted or Organized by</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaBItems.filter(i => (i.category_code === 'B.1' || i.category?.includes('B.1'))).map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'Feb 2026'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'DOST Region XII'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Keynote Speaker / Served</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-              </div>
-            </div>
-
-            {/* Document Footer */}
-            <div className="border-t border-slate-300 pt-3 flex items-center justify-between text-xs text-slate-500 font-sans font-medium">
-              <span>Notre Dame of Marbel University • Formal Faculty Portfolio</span>
-              <span>Page {pageNum} of {totalPages}</span>
-            </div>
-
-          </div>
-        )
-
-      // ================= PAGE 2: FORMAL HR SECTIONS B-C & SIGNATURE BLOCK =================
-      case 'HR_PAGE_2':
-        return (
-          <div className="w-[780px] min-h-[1010px] bg-white text-slate-900 p-8 sm:p-10 rounded border border-slate-200 font-sans flex flex-col justify-between shadow-lg">
-            
-            <div className="space-y-6">
-              
-              {/* Continuing Sub-Header Bar */}
-              <div className="border-b border-slate-300 pb-2 flex items-center justify-between text-xs font-sans text-slate-700">
-                <span className="font-bold uppercase tracking-wide">NDMU Faculty Development Portfolio • {facultyName}</span>
-                <span className="italic">{academicYear}</span>
-              </div>
-
-              {/* Main Table Continued */}
-              <div className="border-2 border-slate-900 text-xs font-sans overflow-hidden">
-                
-                {/* SECTION B (CONTINUED) */}
-                <div className="bg-[#0f2537] text-white font-bold p-2 text-xs sm:text-sm uppercase tracking-wider border-b border-slate-900">
-                  B. PRODUCTIVITY AND CREATIVE WORK (Cont.)
-                </div>
-
-                {/* B.2 Publications */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  2. PUBLICATION (scholarly paper/article/research output/book)
-                </div>
-                <table className="w-full border-collapse border-b border-slate-900 text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Publications</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Granted by</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaBItems.filter(i => (i.category_code === 'B.2' || i.category?.includes('B.2'))).map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'Apr 2026'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'IEEE Access Journal'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Scopus Published / Peer-Reviewed</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* B.3 Conduct of Research */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  3. CONDUCT OF RESEARCH PROJECTS
-                </div>
-                <table className="w-full border-collapse border-b border-slate-900 text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Research Project Title</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Funding Source / Agency</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaBItems.filter(i => (i.category_code === 'B.3' || i.category?.includes('B.3'))).map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'Dec 2025'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'NDMU University Research Office'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Completed Institutional Grant</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* SECTION C */}
-                <div className="bg-[#0f2537] text-white font-bold p-2 text-xs sm:text-sm uppercase tracking-wider border-b border-slate-900">
-                  C. SERVICE AND LEADERSHIP
-                </div>
-
-                {/* C.1 Extra-Curricular / School Orgs */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  1. INVOLVEMENT IN EXTRA-CURRICULAR ACTIVITIES/RECOGNIZED SCHOOL ORGS.
-                </div>
-                <table className="w-full border-collapse border-b border-slate-900 text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Date(s)</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Activity / Club</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Organized by</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-300 font-sans text-xs">
-                    {areaCItems.map(item => (
-                      <tr 
-                        key={item.id} 
-                        onClick={() => scrollToProofForItem(item)}
-                        title="Click row to jump to attached proof certificate document"
-                        className="hover:bg-emerald-50/90 transition-colors cursor-pointer group"
-                      >
-                        <td className="p-2 border-r border-slate-900 font-sans text-[11px]">{item.date_display || item.date || 'SY 2025-2026'}</td>
-                        <td className="p-2 border-r border-slate-900 font-bold group-hover:text-emerald-900">{item.title}</td>
-                        <td className="p-2 border-r border-slate-900">{item.issuer || 'NDMU OSAD / LGU'}</td>
-                        <td className="p-2 font-bold text-[#064e2b] group-hover:text-emerald-700 flex items-center justify-between gap-1">
-                          <span>Official Faculty Moderator</span>
-                          <ExternalLink className="w-3 h-3 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* C.3 Years of Service at NDMU */}
-                <div className="bg-[#183a54] text-white font-bold p-1.5 pl-3 text-xs border-b border-slate-900">
-                  2. YEARS OF SERVICE AT NDMU
-                </div>
-                <table className="w-full border-collapse text-slate-900">
-                  <thead>
-                    <tr className="bg-[#e6f2ff] text-slate-900 font-sans italic font-bold border-b border-slate-900 text-[11px]">
-                      <th className="p-2 border-r border-slate-900 w-1/5 text-left">Service Period</th>
-                      <th className="p-2 border-r border-slate-900 w-2/5 text-left">Institution</th>
-                      <th className="p-2 border-r border-slate-900 w-1/4 text-left">Total Years</th>
-                      <th className="p-2 text-left">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="font-sans text-xs">
-                    <tr>
-                      <td className="p-2 border-r border-slate-900 font-sans text-[11px]">2016 – Present</td>
-                      <td className="p-2 border-r border-slate-900 font-bold">Notre Dame of Marbel University</td>
-                      <td className="p-2 border-r border-slate-900 font-bold">{yearsOfService} Years Full-Time Service</td>
-                      <td className="p-2 font-bold text-[#064e2b]">Active Permanent Faculty</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-              </div>
-
-              {/* Official Signature Line Block */}
-              <div className="pt-8 flex justify-end">
-                <div className="text-center space-y-1 font-sans">
-                  <div className="w-72 border-b-2 border-slate-900 pb-1">
-                    <span className="font-bold text-sm text-slate-900">{facultyName}</span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-700">Signature over Printed Name</p>
-                  <p className="text-[10px] text-slate-500 font-sans font-medium">{academicRank} • {department}</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Document Footer */}
-            <div className="border-t border-slate-300 pt-3 flex items-center justify-between text-xs text-slate-500 font-sans font-medium">
-              <span>Notre Dame of Marbel University • Formal Faculty Portfolio Sign-Off</span>
-              <span>Page {pageNum} of {totalPages}</span>
-            </div>
-
-          </div>
-        )
-
-      // ================= PAGES 3+: ATTACHED CERTIFICATE PROOF DOCUMENTS (REVERSE CHRONO) =================
-      case 'ATTACHED_PROOF': {
-        const item = slide.item
-        if (!item) return null
-
-        return (
-          <div className="w-[780px] min-h-[1010px] bg-white text-slate-900 p-6 sm:p-8 rounded border border-slate-200 font-sans flex flex-col justify-between shadow-lg">
-            
-            {/* Minimal Header Strip */}
-            <div className="border-b border-slate-300 pb-2 flex items-center justify-between text-xs text-slate-700 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-[#0f2537] text-white text-[10px] font-bold">
-                  {item.category_code || 'ATTACHMENT'}
-                </span>
-                <span className="font-bold text-slate-900 truncate max-w-[480px]">
-                  {item.title}
-                </span>
-              </div>
-              <span className="italic text-slate-500 text-[11px]">
-                {item.issuer || 'Official Proof Attachment'}
-              </span>
-            </div>
-
-            {/* Full-Page Document / Certificate Container (No Extra Text Blocks) */}
-            <div className="my-auto flex-1 py-3 flex items-center justify-center">
-              <div className="w-full h-full min-h-[870px] bg-slate-50 rounded-lg border border-slate-300 overflow-hidden flex items-center justify-center shadow-inner">
-                <img 
-                  src={item.proof_preview_url || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&auto=format&fit=crop&q=80'} 
-                  alt={`Attached Proof: ${item.title}`} 
-                  className="w-full h-full object-contain p-2" 
-                />
-              </div>
-            </div>
-
-            {/* Page Footer */}
-            <div className="border-t border-slate-300 pt-3 flex items-center justify-between text-xs text-slate-500 font-medium shrink-0">
-              <span>NDMU Faculty Development Portfolio • Attached Certificate Proof</span>
-              <span>Page {pageNum} of {totalPages}</span>
-            </div>
-          </div>
-        )
-      }
-
-      default:
-        return null
-    }
+  const outlineButtonClass = (id, level) => {
+    const active = activeSection === id
+    const base = 'w-full rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 '
+    if (level === 0) return base + `px-2.5 py-2 text-[11px] font-extrabold tracking-wide ${active ? 'bg-emerald-900 text-white' : 'text-slate-800 hover:bg-slate-100'}`
+    return base + `flex items-start justify-between gap-2 px-2.5 py-1.5 text-xs ${active ? 'bg-emerald-50 font-bold text-emerald-900 ring-1 ring-emerald-700/30' : 'text-slate-600 hover:bg-slate-100'}`
   }
 
-  return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 backdrop-blur-md animate-in fade-in duration-200 font-sans ${
-      isDark ? 'bg-black/85 text-slate-100' : 'bg-slate-900/60 text-slate-900'
-    }`}>
-      
-      <div ref={canvasRef} className={`w-full max-w-6xl max-h-[96vh] rounded-3xl border flex flex-col overflow-hidden shadow-2xl transition-colors duration-200 ${
-        isDark ? 'bg-slate-900 text-slate-100 border-slate-800' : 'bg-white text-slate-900 border-slate-200'
-      }`}>
-        
-        {/* ================= TOP TOOLBAR ================= */}
-        <div className={`px-4 py-2.5 border-b backdrop-blur-md flex items-center justify-between gap-3 shrink-0 font-sans transition-colors duration-200 ${
-          isDark ? 'bg-slate-950/95 border-slate-800/90 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-900 shadow-xs'
-        }`}>
-          
-          {/* Left Section: Institutional Branding Anchor */}
-          <div className="flex items-center gap-2">
-            <Award className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
-            <span className={`text-xs font-bold ${isDark ? 'text-slate-300' : 'text-slate-800'}`}>NDMU Portfolio Booklet</span>
-          </div>
-
-          {/* Center Section: Centered Document Navigation & Viewing Controls */}
-          <div className="flex items-center gap-2">
-            {/* Unified Page Stepper */}
-            <div className={`flex items-center border rounded-xl p-1 shadow-xs ${
-              isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'
-            }`}>
-              <button 
-                type="button" 
-                disabled={currentPage === 1} 
-                onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
-                className={`p-1 rounded-lg disabled:opacity-30 transition cursor-pointer ${
-                  isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-200 text-slate-700'
-                }`} 
-                title="Previous Page"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <span className={`text-xs font-bold font-mono px-2.5 py-0.5 ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                Page {currentPage} <span className={isDark ? 'text-slate-500 font-normal' : 'text-slate-400 font-normal'}>/ {totalPages}</span>
-              </span>
-
-              <button 
-                type="button" 
-                disabled={currentPage === totalPages} 
-                onClick={() => scrollToPage(Math.min(totalPages, currentPage + 1))}
-                className={`p-1 rounded-lg disabled:opacity-30 transition cursor-pointer ${
-                  isDark ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-200 text-slate-700'
-                }`} 
-                title="Next Page"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Zoom Control Bar */}
-            <div className={`flex items-center border rounded-xl px-1.5 py-1 font-mono text-xs ${
-              isDark ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-100 border-slate-300 text-slate-800'
-            }`}>
-              <button 
-                type="button" 
-                onClick={() => setZoomLevel(prev => Math.max(75, prev - 25))} 
-                className={`p-1 transition cursor-pointer ${isDark ? 'hover:text-emerald-400 text-slate-400' : 'hover:text-emerald-700 text-slate-500'}`} 
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              
-              <span className={`text-[11px] font-bold w-11 text-center font-mono ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{zoomLevel}%</span>
-              
-              <button 
-                type="button" 
-                onClick={() => setZoomLevel(prev => Math.min(125, prev + 25))} 
-                className={`p-1 transition cursor-pointer ${isDark ? 'hover:text-emerald-400 text-slate-400' : 'hover:text-emerald-700 text-slate-500'}`} 
-                title="Zoom In"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Fullscreen Toggle */}
-            <button 
-              type="button" 
-              onClick={toggleFullscreen} 
-              className={`p-2 rounded-xl border transition cursor-pointer ${
-                isDark ? 'bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-300' : 'bg-slate-100 border-slate-300 hover:bg-slate-200 text-slate-700'
-              }`} 
-              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            >
-              {isFullscreen ? <Minimize2 className={`w-4 h-4 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-          </div>
-
-          {/* Right Section: Primary Export PDF Action & Far-Right Close Button */}
-          <div className="flex items-center gap-2">
-            {/* Primary Action: Export PDF */}
-            <button 
-              type="button" 
-              onClick={() => window.print()} 
-              className="px-4 py-2 rounded-xl bg-[#EFF7F0] hover:bg-[#122e22] text-white text-xs font-bold flex items-center gap-2 transition border border-emerald-600/60 shadow-sm cursor-pointer"
-            >
-              <Printer className="w-4 h-4 text-emerald-400" />
-              <span>Export PDF</span>
-            </button>
-
-            <div className={`h-4 w-px mx-1 ${isDark ? 'bg-slate-800' : 'bg-slate-300'}`}></div>
-
-            {/* Far-Right Close Button */}
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className={`p-2 rounded-xl border transition cursor-pointer shadow-xs ${
-                isDark ? 'bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-300 hover:bg-slate-200 text-slate-600 hover:text-slate-950'
-              }`} 
-              title="Close Booklet Modal"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+  const renderSidebar = (navRef) => (
+    <>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-xs focus:border-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-700/20" placeholder="Search sections, records or proofs" aria-label="Search the portfolio" />
+      </div>
+      {query.trim() ? (
+        <div className="mt-4" role="region" aria-label="Search results">
+          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500" aria-live="polite">{searchResults.length} result{searchResults.length === 1 ? '' : 's'}</p>
+          {searchResults.length === 0 && <p className="px-1 text-xs text-slate-500">No matching sections, records or proofs.</p>}
+          <ul className="space-y-1">
+            {searchResults.map((result) => (
+              <li key={`${result.kind}-${result.id}`}>
+                <button type="button" onClick={() => scrollToId(result.id, { highlight: result.kind === 'Accomplishment' })} className="w-full rounded-md px-2.5 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">
+                  <span className="block text-[9px] font-extrabold uppercase tracking-wider text-emerald-800">{result.kind}</span>
+                  <span className="line-clamp-2">{result.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
-
-        {/* ================= MAIN WORKSPACE: SIDEBAR + SCROLLABLE CANVAS ================= */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
-          
-          {/* LEFT SIDEBAR: Compact Document Navigator */}
-          <div className={`lg:col-span-3 border-r flex flex-col h-full max-h-[84vh] overflow-hidden font-sans transition-colors duration-200 ${
-            isDark ? 'bg-slate-950 border-slate-800/90 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-900'
-          }`}>
-            
-            {/* Sticky Top Header & Search Input */}
-            <div className={`p-3 border-b shrink-0 space-y-2.5 ${
-              isDark ? 'border-slate-800/90 bg-slate-950' : 'border-slate-200 bg-slate-50'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Layers className={`w-3.5 h-3.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
-                  <h3 className={`text-[11px] font-extrabold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    Document Navigator
-                  </h3>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono ${
-                  isDark ? 'bg-slate-900 border-slate-800 text-emerald-400' : 'bg-emerald-100 border-emerald-300 text-[#064e2b]'
-                }`}>
-                  {totalPages} Pages
-                </span>
-              </div>
-
-              {/* Search Input Bar */}
-              <div className="relative">
-                <Search className={`w-3.5 h-3.5 absolute left-2.5 top-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                <input
-                  type="text"
-                  value={sidebarQuery}
-                  onChange={(e) => setSidebarQuery(e.target.value)}
-                  placeholder="Search pages or proof title..."
-                  className={`w-full pl-8 pr-7 py-1.5 border rounded-lg text-xs font-medium transition focus:outline-none ${
-                    isDark 
-                      ? 'bg-slate-900 border-slate-800 text-slate-200 placeholder-slate-500 focus:border-emerald-500/60' 
-                      : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600'
-                  }`}
-                />
-                {sidebarQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSidebarQuery('')}
-                    className={`absolute right-2 top-2 transition cursor-pointer ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-800'}`}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Scrollable Navigator List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-4 no-scrollbar">
-              
-              {/* Section 1: Institutional HR Dossier */}
-              {hrSlides.length > 0 && (
-                <div>
-                  <div className={`flex items-center justify-between px-2 py-1 mb-1 text-[10px] font-bold uppercase tracking-wider ${
-                    isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                    <span className="flex items-center gap-1.5">
-                      <FileSpreadsheet className={`w-3 h-3 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
-                      <span>Institutional Dossier</span>
-                    </span>
-                    <span className={`text-[9px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>2 HR Pages</span>
-                  </div>
-                  <div className="space-y-1">
-                    {hrSlides.map((slide) => {
-                      const pageNum = slide.pageNum
-                      const isSelected = currentPage === pageNum
-                      return (
-                        <button
-                          key={slide.id}
-                          type="button"
-                          onClick={() => scrollToPage(pageNum)}
-                          className={`w-full text-left px-2.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-2.5 group relative ${
-                            isSelected
-                              ? isDark
-                                ? 'bg-[#122e22]/90 border border-emerald-500/50 text-white font-bold shadow-xs'
-                                : 'bg-emerald-100/90 border border-emerald-600/60 text-[#064e2b] font-bold shadow-xs'
-                              : isDark
-                                ? 'bg-slate-900/40 hover:bg-slate-900 border border-transparent text-slate-300'
-                                : 'bg-white hover:bg-slate-200/60 border border-slate-200/80 text-slate-800'
-                          }`}
-                        >
-                          {/* Active Left Accent Bar */}
-                          {isSelected && (
-                            <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full shadow-xs ${isDark ? 'bg-emerald-400' : 'bg-emerald-600'}`} />
-                          )}
-
-                          {/* Page Number Tag */}
-                          <span className={`text-[10px] font-extrabold font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                            isSelected
-                              ? isDark
-                                ? 'bg-emerald-500/20 text-[#245F42] border border-emerald-500/30'
-                                : 'bg-emerald-200 text-[#064e2b] border border-emerald-400'
-                              : isDark
-                                ? 'bg-slate-800 text-slate-400 border border-slate-700/60'
-                                : 'bg-slate-200 text-slate-700 border border-slate-300'
-                          }`}>
-                            P.{pageNum}
-                          </span>
-
-                          {/* Label & Subtitle */}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold truncate leading-tight">
-                              {slide.label}
-                            </p>
-                            <p className={`text-[10px] truncate mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
-                              {slide.subtitle}
-                            </p>
-                          </div>
+      ) : (
+        <nav ref={navRef} className="mt-4" aria-label="Portfolio outline">
+          <p className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Portfolio Outline</p>
+          <ul className="space-y-3">
+            {outline.map((area) => {
+              const areaActive = activeSection === area.id || area.children.some((child) => child.id === activeSection)
+              return (
+                <li key={area.id}>
+                  <button type="button" data-outline-id={area.id} aria-current={areaActive ? 'location' : undefined} onClick={() => scrollToId(area.id)} className={outlineButtonClass(area.id, 0) + (areaActive && activeSection !== area.id ? ' bg-emerald-50 text-emerald-900' : '')}>{area.label}</button>
+                  <ul className="mt-1 space-y-0.5 border-l border-slate-200 pl-2 ml-2">
+                    {area.children.map((child) => (
+                      <li key={child.id}>
+                        <button type="button" data-outline-id={child.id} aria-current={activeSection === child.id ? 'location' : undefined} onClick={() => scrollToId(child.id)} className={outlineButtonClass(child.id, 1)}>
+                          <span>{child.label}</span>
+                          {child.count > 0 && <span className="shrink-0 rounded-full bg-slate-100 px-1.5 text-[10px] font-bold tabular-nums text-slate-600">{child.count}</span>}
                         </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="mb-2 mt-6 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Supporting Evidence</p>
+          {proofItems.length === 0 ? <p className="px-2.5 text-xs text-slate-500">No attached proofs.</p> : (
+            <ul className="space-y-0.5">
+              {proofItems.map((item) => {
+                const id = proofAnchor(item.accomplishmentId)
+                return (
+                  <li key={id}>
+                    <button type="button" data-outline-id={id} aria-current={activeSection === id ? 'location' : undefined} onClick={() => scrollToId(id)} className={outlineButtonClass(id, 1)}>
+                      <span><span className="mr-1 font-bold text-emerald-900">{item.reference}</span>{item.accomplishment_display || item.evidence.original_filename}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </nav>
+      )}
+    </>
+  )
 
-              {/* Section 2: Attached Proof Documents */}
-              {proofSlides.length > 0 && (
-                <div>
-                  <div className={`flex items-center justify-between px-2 py-1 mb-1 text-[10px] font-bold uppercase tracking-wider ${
-                    isDark ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheck className={`w-3 h-3 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`} />
-                      <span>Attached Proofs</span>
-                    </span>
-                    <span className={`text-[9px] font-mono ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{proofSlides.length} Files</span>
-                  </div>
-                  <div className="space-y-1">
-                    {proofSlides.map((slide) => {
-                      const pageNum = slide.pageNum
-                      const isSelected = currentPage === pageNum
-                      return (
-                        <button
-                          key={slide.id}
-                          type="button"
-                          onClick={() => scrollToPage(pageNum)}
-                          className={`w-full text-left px-2.5 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-2.5 group relative ${
-                            isSelected
-                              ? isDark
-                                ? 'bg-[#122e22]/90 border border-emerald-500/50 text-white font-bold shadow-xs'
-                                : 'bg-emerald-100/90 border border-emerald-600/60 text-[#064e2b] font-bold shadow-xs'
-                              : isDark
-                                ? 'bg-slate-900/40 hover:bg-slate-900 border border-transparent text-slate-300'
-                                : 'bg-white hover:bg-slate-200/60 border border-slate-200/80 text-slate-800'
-                          }`}
-                        >
-                          {/* Active Left Accent Bar */}
-                          {isSelected && (
-                            <span className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full shadow-xs ${isDark ? 'bg-emerald-400' : 'bg-emerald-600'}`} />
-                          )}
+  const toolButton = 'rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:opacity-30'
+  const outlineExpanded = isDesktop() ? !outlineCollapsed : mobileOutlineOpen
 
-                          {/* Page Number Tag */}
-                          <span className={`text-[10px] font-extrabold font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                            isSelected
-                              ? isDark
-                                ? 'bg-emerald-500/20 text-[#245F42] border border-emerald-500/30'
-                                : 'bg-emerald-200 text-[#064e2b] border border-emerald-400'
-                              : isDark
-                                ? 'bg-slate-800 text-slate-400 border border-slate-700/60'
-                                : 'bg-slate-200 text-slate-700 border border-slate-300'
-                          }`}>
-                            P.{pageNum}
-                          </span>
-
-                          {/* Micro Category Tag */}
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border max-w-[65px] truncate shrink-0 ${
-                            isDark ? 'bg-slate-800/80 border-slate-700/60 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                          }`}>
-                            {slide.badge}
-                          </span>
-
-                          {/* Proof Title */}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold truncate leading-tight" title={slide.item?.title || slide.label}>
-                              {slide.item?.title || slide.label}
-                            </p>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Empty State when search returns no results */}
-              {filteredSlides.length === 0 && (
-                <div className={`text-center py-8 px-4 border border-dashed rounded-xl ${
-                  isDark ? 'border-slate-800' : 'border-slate-300'
-                }`}>
-                  <Search className={`w-6 h-6 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-                  <p className={`text-xs font-semibold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>No pages matched</p>
-                  <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Try searching with another keyword</p>
-                  <button
-                    type="button"
-                    onClick={() => setSidebarQuery('')}
-                    className={`mt-2 text-[10px] font-bold hover:underline cursor-pointer ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}
-                  >
-                    Clear filter
-                  </button>
-                </div>
-              )}
-
+  return (
+    <div className="booklet-viewer-root fixed inset-0 z-50 bg-slate-950/85 p-0 sm:p-4" role="dialog" aria-modal="true" aria-label={`${format.viewerTitle} booklet`}>
+      <div className={`booklet-print-shell mx-auto flex h-full flex-col overflow-hidden bg-slate-100 shadow-2xl ${isFullscreen ? 'max-w-none sm:rounded-none' : 'max-w-[1600px] sm:rounded-2xl'}`}>
+        <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-2 border-b border-slate-300 bg-white px-2 sm:px-4 print:hidden">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+            <button type="button" onClick={toggleOutline} className={toolButton} aria-label={outlineExpanded ? 'Hide portfolio outline' : 'Show portfolio outline'} aria-expanded={outlineExpanded} aria-controls={isDesktop() ? 'booklet-outline' : 'booklet-outline-mobile'}>
+              {outlineExpanded ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+            </button>
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-extrabold text-slate-900">{format.viewerTitle}</h2>
+              <p className="hidden truncate text-xs text-slate-500 sm:block">{items.length} canonical accomplishments · {proofItems.length} attached proofs</p>
             </div>
-
-            {/* Compact Footer Status */}
-            <div className={`px-3 py-2 border-t shrink-0 flex items-center justify-between text-[10px] font-medium ${
-              isDark ? 'border-slate-800/90 bg-slate-950 text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-500'
-            }`}>
-              <span>NDMU Faculty Portfolio</span>
-              <span className={`font-bold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>Reverse Chrono</span>
-            </div>
-
           </div>
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            <button type="button" onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className={toolButton} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="min-w-[3.5rem] text-center text-xs font-bold tabular-nums" aria-live="polite" aria-label={`Page ${currentPage} of ${pages.length}`}>{currentPage} / {pages.length}</span>
+            <button type="button" onClick={() => scrollToPage(Math.min(pages.length, currentPage + 1))} disabled={currentPage === pages.length} className={toolButton} aria-label="Next page"><ChevronRight className="h-4 w-4" /></button>
+            <span className="mx-1 hidden h-5 w-px bg-slate-200 md:block" aria-hidden="true" />
+            <button type="button" onClick={() => zoomBy(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} className={`${toolButton} hidden md:inline-flex`} aria-label="Zoom out"><ZoomOut className="h-4 w-4" /></button>
+            <span className="hidden min-w-[3rem] text-center text-xs font-bold tabular-nums text-slate-700 md:inline" aria-live="polite" aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
+            <button type="button" onClick={() => zoomBy(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} className={`${toolButton} hidden md:inline-flex`} aria-label="Zoom in"><ZoomIn className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setZoomMode('fit')} aria-pressed={zoomMode === 'fit'} className={`${toolButton} hidden md:inline-flex ${zoomMode === 'fit' ? 'bg-emerald-50 text-emerald-900' : ''}`} aria-label="Fit page to width"><MoveHorizontal className="h-4 w-4" /></button>
+            <span className="mx-1 hidden h-5 w-px bg-slate-200 md:block" aria-hidden="true" />
+            <button type="button" onClick={print.startPrint} className={toolButton} aria-label="Print or save as PDF"><Printer className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setIsFullscreen((value) => !value)} className={`${toolButton} hidden sm:inline-flex`} aria-label={isFullscreen ? 'Exit expanded view' : 'Expand viewer'} aria-pressed={isFullscreen}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
+            <button type="button" onClick={onClose} className={toolButton} aria-label="Close booklet"><X className="h-5 w-5" /></button>
+          </div>
+        </header>
 
-          {/* RIGHT COLUMN: SCROLLABLE CANVAS VIEWPORT */}
-          <div 
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className={`lg:col-span-9 overflow-y-auto px-4 py-6 transition-colors duration-200 ${
-              isDark ? 'bg-slate-950' : 'bg-[#e7f0e6]'
-            }`}
-          >
-            <div 
-              style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
-              className="transition-transform duration-200 ease-out flex flex-col items-center gap-8 pb-8"
-            >
-              {slides.map((slide, sIdx) => (
-                <div
-                  key={slide.id}
-                  ref={el => { pageRefs.current[sIdx] = el }}
-                  className="shadow-2xl"
-                >
-                  {renderSlide(slide, sIdx + 1)}
+        <div className="relative flex min-h-0 flex-1 print:hidden">
+          {/* Desktop outline (collapsible to a slim rail) */}
+          {outlineCollapsed ? (
+            <div className="hidden w-12 shrink-0 flex-col items-center border-r border-slate-300 bg-white py-3 lg:flex">
+              <button type="button" onClick={() => { restoreOutlineRef.current = false; setOutlineCollapsed(false) }} className={toolButton} aria-label="Show portfolio outline" aria-expanded="false" aria-controls="booklet-outline"><PanelLeftOpen className="h-4 w-4" /></button>
+            </div>
+          ) : (
+            <aside id="booklet-outline" className="hidden w-[300px] shrink-0 overflow-y-auto border-r border-slate-300 bg-white p-4 lg:block">{renderSidebar(outlineRef)}</aside>
+          )}
+
+          {/* Mobile / tablet outline drawer */}
+          {mobileOutlineOpen && (
+            <div className="absolute inset-0 z-20 flex lg:hidden">
+              <aside id="booklet-outline-mobile" aria-label="Portfolio outline" className="h-full w-[86%] max-w-[320px] overflow-y-auto bg-white p-4 shadow-2xl">{renderSidebar(mobileOutlineRef)}</aside>
+              <button type="button" className="flex-1 bg-slate-950/40" aria-label="Close portfolio outline" onClick={() => setMobileOutlineOpen(false)} />
+            </div>
+          )}
+
+          {/* Continuous document canvas */}
+          <main ref={scrollRef} tabIndex={0} aria-label="Portfolio document" className="min-w-0 flex-1 overflow-auto bg-slate-200 px-2 py-4 focus:outline-none sm:px-6 sm:py-6">
+            <div className="mx-auto w-fit space-y-6" style={{ zoom }}>
+              {pages.map((page, index) => (
+                <div key={page.key} data-page-index={index} aria-label={`Page ${index + 1} of ${pages.length}`} role="group">
+                  {renderPage(page, true)}
                 </div>
               ))}
             </div>
-          </div>
+          </main>
 
+          <BookletEvidenceDrawer
+            item={activeProof}
+            criterionLabel={activeProof ? criterionLabelByKey[activeProof.criterionKey] : ''}
+            onClose={closeProof}
+            onLocate={activeProof ? () => scrollToId(rowAnchor(activeProof.accomplishmentId), { highlight: true }) : undefined}
+          />
         </div>
+
       </div>
+      <BookletPrintPortal printing={print.printing} prepared={print.prepared} total={proofItems.length} pages={pages} label={format.viewerTitle}
+        renderPage={(page) => <BookletPage {...pageProps} page={page} eagerEvidence onEvidenceSettled={print.onEvidenceSettled} />} />
     </div>
   )
 }

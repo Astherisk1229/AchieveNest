@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, KeyRound, Award } from 'lucide-react'
+import { Eye, Edit3, KeyRound, Award, ClipboardList } from 'lucide-react'
 
 export default function PersonnelActionsMenu({
   isOpen,
@@ -8,18 +8,29 @@ export default function PersonnelActionsMenu({
   triggerRef,
   personnel,
   handleSelect,
+  onViewDossier,
+  onEditMasterData,
   onEditAssignment,
   onPromoteRank,
-  onResetPassword
+  onResetPassword,
+  onAssignDean,
+  onRevokeDean
 }) {
   const menuRef = useRef(null)
   const [menuStyle, setMenuStyle] = useState({ top: 0, left: 0, visibility: 'hidden' })
 
+  const viewDossierHandler = onViewDossier || handleSelect
+
+  const isDean = (personnel?.assigned_roles || []).some(r => {
+    const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
+    return key === 'dean'
+  })
+
   const updatePosition = () => {
     if (!triggerRef?.current) return
     const rect = triggerRef.current.getBoundingClientRect()
-    const menuWidth = 208 // w-52 in px
-    const menuHeight = 180 // Approximate menu height in px
+    const menuWidth = 224 // w-56 in px
+    const menuHeight = 220 // Approximate menu height in px
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
 
@@ -103,25 +114,43 @@ export default function PersonnelActionsMenu({
         visibility: menuStyle.visibility,
         zIndex: 9999
       }}
-      className="w-52 rounded-2xl bg-white dark:bg-[#182638] border border-slate-200 dark:border-slate-700 shadow-xl py-1 text-left divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in zoom-in-95 duration-150 font-sans text-xs select-none"
+      className="w-56 rounded-2xl bg-white dark:bg-[#182638] border border-slate-200 dark:border-slate-700 shadow-2xl py-1 text-left divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in zoom-in-95 duration-150 font-sans text-xs select-none"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="py-1">
-        {typeof handleSelect === 'function' && (
+        {typeof viewDossierHandler === 'function' && (
           <button
             type="button"
             role="menuitem"
             onClick={() => {
               onClose()
-              handleSelect(personnel)
+              viewDossierHandler(personnel)
             }}
             className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
           >
             <Eye className="w-4 h-4 text-[#064e2b] dark:text-emerald-400 shrink-0" />
-            <span>View personnel profile</span>
+            <span>View Personnel</span>
           </button>
         )}
 
+        {(typeof onEditMasterData === 'function' || typeof onEditAssignment === 'function') && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose()
+              if (onEditMasterData) onEditMasterData(personnel)
+              else onEditAssignment(personnel)
+            }}
+            className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
+          >
+            <Edit3 className="w-4 h-4 text-[#064e2b] dark:text-emerald-400 shrink-0" />
+            <span>Edit Personnel Information</span>
+          </button>
+        )}
+      </div>
+
+      <div className="py-1">
         {typeof onEditAssignment === 'function' && (
           <button
             type="button"
@@ -132,13 +161,11 @@ export default function PersonnelActionsMenu({
             }}
             className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
           >
-            <Edit3 className="w-4 h-4 text-slate-600 dark:text-slate-300 shrink-0" />
-            <span>Edit assignment</span>
+            <ClipboardList className="w-4 h-4 text-[#064e2b] dark:text-emerald-400 shrink-0" />
+            <span>View Assignments</span>
           </button>
         )}
-      </div>
 
-      <div className="py-1">
         {typeof onPromoteRank === 'function' && (
           <button
             type="button"
@@ -150,7 +177,7 @@ export default function PersonnelActionsMenu({
             className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
           >
             <Award className="w-4 h-4 text-slate-600 dark:text-slate-300 shrink-0" />
-            <span>Record rank change</span>
+            <span>Record Rank Change</span>
           </button>
         )}
 
@@ -165,7 +192,7 @@ export default function PersonnelActionsMenu({
             className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer"
           >
             <KeyRound className="w-4 h-4 text-slate-600 dark:text-slate-300 shrink-0" />
-            <span>Reset password</span>
+            <span>Reset Password</span>
           </button>
         )}
       </div>

@@ -5,8 +5,8 @@ export const ThemeContext = createContext()
 export function ThemeProvider({ children }) {
   const [theme, setThemeState] = useState(() => {
     const saved = localStorage.getItem('achievenest_theme')
-    if (saved) return saved
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    if (saved === 'light' || saved === 'dark') return saved
+    return 'light' // Default to Light Mode on first experience as required by CHU-03
   })
 
   useEffect(() => {

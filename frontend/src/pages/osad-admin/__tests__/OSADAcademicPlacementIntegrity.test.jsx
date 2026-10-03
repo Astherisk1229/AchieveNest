@@ -37,6 +37,14 @@ describe('OSAD academic placement integrity', () => {
     expect(modal).toContain("collegeId, academicProgramId: ''")
   })
 
+  it('uses the existing searchable selector without allowing custom program values', () => {
+    const modal = source('../modals/AddStudentAccountModalV2.jsx')
+    expect(modal).toContain('<SearchableSelect')
+    expect(modal).toContain('options={filteredPrograms}')
+    expect(modal).toContain('getOptionLabel={getProgramLabel}')
+    expect(modal).toContain('getOptionValue={program => program.id}')
+  })
+
   it('does not substitute demo academic master records or report failed writes as success', () => {
     const dashboard = source('../OSADDashboardPage.jsx')
     expect(dashboard).toContain('useState([])')

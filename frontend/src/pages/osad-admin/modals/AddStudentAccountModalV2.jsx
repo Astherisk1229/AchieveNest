@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, Calendar, GraduationCap, Hash, Lock, Mail, ShieldCheck, User, UserPlus, X } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog'
+import { SearchableSelect } from '../../../components/ui/SearchableSelect'
 import { useConfirmableClose } from '../../../hooks/useConfirmableClose'
 import { useProvisioningCredential } from '../../../hooks/useProvisioningCredential'
 import OneTimeCredentialModal from '../../../components/credentials/OneTimeCredentialModal'
 import CredentialDeliveryFaultModal from '../../../components/credentials/CredentialDeliveryFaultModal'
 import { fetchAcademicPrograms, fetchColleges } from '../../../services/collegeAdminService'
 import provisioningService from '../../../services/provisioningService'
+import { getProgramLabel } from '../../../utils/studentRegistrationValidation'
 import {
   STUDENT_SEX_OPTIONS,
   STUDENT_SEX_SELECT_OPTIONS,
@@ -390,7 +392,7 @@ export default function AddStudentAccountModalV2({
                 <div className="flex items-center gap-2 pb-2 border-b font-bold"><GraduationCap className="w-4 h-4 text-[#16834a]" />2. Academic Placement & Enrollment</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="block text-[11px] font-bold mb-1">Academic College *</label><select ref={refs.collegeId} value={formData.collegeId} onChange={e => handleCollegeChange(e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, collegeId: validateSingleField('collegeId') }))} disabled={isLoadingReferences} className={fieldClass('collegeId')}><option value="" disabled>Select Academic College</option>{loadedColleges.map(c => <option key={c.id} value={c.id}>[{c.code}] {c.name}</option>)}</select><ErrorText field="collegeId" /></div>
-                  <div><label className="block text-[11px] font-bold mb-1">Academic Degree Program *</label><select ref={refs.academicProgramId} value={formData.academicProgramId} onChange={e => handleInputChange('academicProgramId', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, academicProgramId: validateSingleField('academicProgramId') }))} disabled={!formData.collegeId || isLoadingReferences} className={fieldClass('academicProgramId')}><option value="" disabled>{formData.collegeId ? 'Select Degree Program' : 'Select a college first'}</option>{filteredPrograms.map(p => <option key={p.id} value={p.id}>[{p.code}] {p.name}</option>)}</select><ErrorText field="academicProgramId" /></div>
+                  <div><label htmlFor="academic-program" className="block text-[11px] font-bold mb-1">Academic Degree Program *</label><SearchableSelect id="academic-program" ref={refs.academicProgramId} value={formData.academicProgramId} options={filteredPrograms} onChange={value => handleInputChange('academicProgramId', value)} onBlur={() => setFieldErrors(prev => ({ ...prev, academicProgramId: validateSingleField('academicProgramId') }))} disabled={!formData.collegeId || isLoadingReferences} invalid={Boolean(fieldErrors.academicProgramId)} describedBy={fieldErrors.academicProgramId ? 'academicProgramId-error' : undefined} placeholder={isLoadingReferences ? 'Loading programs…' : formData.collegeId ? 'Search or select a program' : 'Select a college first'} searchPlaceholder="Search by program code or name" getOptionLabel={getProgramLabel} getOptionValue={program => program.id} emptyMessage="No matching active programs" /><ErrorText field="academicProgramId" /></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="block text-[11px] font-bold mb-1">Current Year Level *</label><select ref={refs.yearLevel} value={formData.yearLevel} onChange={e => handleInputChange('yearLevel', e.target.value)} onBlur={() => setFieldErrors(prev => ({ ...prev, yearLevel: validateSingleField('yearLevel') }))} className={fieldClass('yearLevel')}><option value="" disabled>Select Year Level</option>{YEAR_LEVEL_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}</select><ErrorText field="yearLevel" /></div>

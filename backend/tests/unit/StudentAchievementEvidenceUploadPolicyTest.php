@@ -32,15 +32,23 @@ final class StudentAchievementEvidenceUploadPolicyTest extends CIUnitTestCase
 
     public function testAcceptsRepresentativeJpegPngAndOneOrTwoPagePdf(): void
     {
-        $dataset = dirname(__DIR__, 2) . '/writable/ocr-audit/dataset/';
+        $jpeg = $this->temporaryDirectory . '/evidence.jpg';
+        $png = $this->temporaryDirectory . '/evidence.png';
+        $onePagePdf = $this->temporaryDirectory . '/one-page.pdf';
+        $twoPagePdf = $this->temporaryDirectory . '/two-page.pdf';
+        $this->createImageFixture($jpeg, 'jpeg');
+        $this->createImageFixture($png, 'png');
+        $this->createPdfFixture($onePagePdf, 1);
+        $this->createPdfFixture($twoPagePdf, 2);
+
         foreach ([
-            ['P01_clean_academic_certificate.jpg', 'evidence.jpg'],
-            ['P04_campus_journalism_certificate.png', 'evidence.png'],
-            ['P06_seminar_training_certificate.pdf', 'one-page.pdf'],
-            ['P13_multipage_achievement_evidence.pdf', 'two-page.pdf'],
+            [$jpeg, 'evidence.jpg'],
+            [$png, 'evidence.png'],
+            [$onePagePdf, 'one-page.pdf'],
+            [$twoPagePdf, 'two-page.pdf'],
         ] as [$source, $name]) {
-            $result = $this->policy->validate($dataset . $source, $name);
-            self::assertTrue($result['success'] ?? false, $source . ': ' . ($result['error_code'] ?? 'unknown'));
+            $result = $this->policy->validate($source, $name);
+            self::assertTrue($result['success'] ?? false, $name . ': ' . ($result['error_code'] ?? 'unknown'));
         }
     }
 
@@ -51,12 +59,33 @@ final class StudentAchievementEvidenceUploadPolicyTest extends CIUnitTestCase
         self::assertSame('UNSUPPORTED_FILE_TYPE', $this->policy->validate($unsupported, 'unsupported.txt')['error_code'] ?? null);
 
         $oversize = $this->temporaryDirectory . '/oversize.jpg';
-        $jpeg = file_get_contents(dirname(__DIR__, 2) . '/writable/ocr-audit/dataset/P01_clean_academic_certificate.jpg');
-        file_put_contents($oversize, $jpeg . str_repeat("\0", LocalEvidenceStorageService::DEFAULT_MAX_BYTES));
+        file_put_contents($oversize, str_repeat("\0", LocalEvidenceStorageService::DEFAULT_MAX_BYTES + 1));
         self::assertSame('FILE_TOO_LARGE', $this->policy->validate($oversize, 'oversize.jpg')['error_code'] ?? null);
 
         $threePage = $this->temporaryDirectory . '/three-pages.pdf';
         file_put_contents($threePage, "%PDF-1.4\n1 0 obj<</Type/Page>>endobj\n2 0 obj<</Type/Page>>endobj\n3 0 obj<</Type/Page>>endobj\n%%EOF");
         self::assertSame('STUDENT_EVIDENCE_PDF_PAGE_LIMIT_EXCEEDED', $this->policy->validate($threePage, 'three-pages.pdf')['error_code'] ?? null);
+    }
+
+    private function createImageFixture(string $path, string $format): void
+    {
+        $image = imagecreatetruecolor(2, 2);
+        self::assertNotFalse($image);
+
+        try {
+            $created = $format === 'jpeg' ? imagejpeg($image, $path) : imagepng($image, $path);
+            self::assertTrue($created);
+        } finally {
+            imagedestroy($image);
+        }
+    }
+
+    private function createPdfFixture(string $path, int $pageCount): void
+    {
+        $pages = '';
+        for ($page = 1; $page <= $pageCount; $page++) {
+            $pages .= sprintf("%d 0 obj<</Type/Page>>endobj\n", $page);
+        }
+        file_put_contents($path, "%PDF-1.4\n{$pages}%%EOF");
     }
 }

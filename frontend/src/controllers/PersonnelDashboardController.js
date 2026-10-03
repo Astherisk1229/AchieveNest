@@ -1,3 +1,4 @@
+import { filterTimelineEntries } from '../config/personnelTimelineFilters.js'
 import PersonnelAchievementController from './PersonnelAchievementController.js'
 
 export default class PersonnelDashboardController {
@@ -58,13 +59,18 @@ export default class PersonnelDashboardController {
       date: item.date,
       status,
       statusLabel,
-      category: item.category || 'Unclassified',
+      category: item.category || '',
+      // Authoritative classification inputs for the timeline filters and badges.
+      category_code: item.category_code ?? null,
+      category_metadata: item.category_metadata || {},
+      raw_status: item.status || '',
       academic_year: item.academic_year || '',
       issuer: item.issuer || item.location || '',
       description: item.description || '',
       icon: 'Award',
       attached_file_name: item.attached_file_name || '',
-      evidence_id: item.evidence_id || null
+      evidence_id: item.evidence_id || null,
+      evidence_mime_type: (Array.isArray(item.evidence) ? (item.evidence.find((file) => file?.id === item.evidence_id) || item.evidence[0]) : null)?.mime_type || ''
     }
   }
 
@@ -83,16 +89,11 @@ export default class PersonnelDashboardController {
     return PersonnelAchievementController.addAchievement(newEntry, file)
   }
 
-  static filterAccomplishments(entries, activeFilter) {
-    return entries.filter(item => {
-      if (activeFilter === 'All') return true
-      if (activeFilter === 'Degrees & Orgs') return (item.category || '').includes('Degree') || (item.category || '').includes('Membership') || (item.category || '').includes('A.1') || (item.category || '').includes('A.2')
-      if (activeFilter === 'Seminars & Trainings') return (item.category || '').includes('Seminar') || (item.category || '').includes('Training') || (item.category || '').includes('A.3')
-      if (activeFilter === 'Lectures & Publications') return (item.category || '').includes('Lecturer') || (item.category || '').includes('Publication') || (item.category || '').includes('B.1') || (item.category || '').includes('B.2')
-      if (activeFilter === 'Research & Awards') return (item.category || '').includes('Research') || (item.category || '').includes('Award') || (item.category || '').includes('Recognition') || (item.category || '').includes('B.3') || (item.category || '').includes('B.4')
-      if (activeFilter === 'Instructional Materials') return (item.category || '').includes('Instructional') || (item.category || '').includes('Material') || (item.category || '').includes('B.5')
-      if (activeFilter === 'Service & Community') return (item.category || '').includes('Service') || (item.category || '').includes('Community') || (item.category || '').includes('Involvement') || (item.category || '').includes('C.1') || (item.category || '').includes('C.2')
-      return item.category === activeFilter
-    })
+  /**
+   * Role-aware timeline filter: explicit code sets from the Faculty or Non-Teaching schemas.
+   * `format` comes from resolvePersonnelPortfolioFormat(currentUser).
+   */
+  static filterAccomplishments(entries, filterKey, format) {
+    return filterTimelineEntries(entries, filterKey, format)
   }
 }

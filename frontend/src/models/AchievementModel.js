@@ -31,6 +31,7 @@ export default class AchievementModel {
   #evidence
   #ocr_metadata
   #category_metadata
+  #category_code
 
   constructor(data = {}) {
     this.#id = data.id || `ach_${Math.random().toString(36).substr(2, 9)}`
@@ -42,6 +43,8 @@ export default class AchievementModel {
     this.#issuer = data.issuer || data.organizer_or_publisher || ''
     this.#location = data.location || data.organizer_or_publisher || data.issuer || ''
     this.#category = data.category || data.category_code || 'Unclassified'
+    // Stored category code (personnel_accomplishments.category_code), kept separately from the display category.
+    this.#category_code = data.category_code ?? null
     this.#scope_level = data.scope_level || 'Institutional / Campus-Wide'
     this.#rank_conferred = data.rank_conferred || 'Participant / Special Award'
     this.#academic_year = data.academic_year || 'AY 2025-2026'
@@ -71,6 +74,7 @@ export default class AchievementModel {
   get evidence() { return this.#evidence }
   get ocr_metadata() { return this.#ocr_metadata }
   get category_metadata() { return this.#category_metadata }
+  get category_code() { return this.#category_code }
   get student_id() { return this.#student_id }
   get student_name() { return this.#student_name }
   get program() { return this.#program }
@@ -195,7 +199,8 @@ export default class AchievementModel {
       evidence_id: this.#evidence_id,
       evidence: this.#evidence,
       ocr_metadata: this.#ocr_metadata,
-      category_metadata: this.#category_metadata
+      category_metadata: this.#category_metadata,
+      category_code: this.#category_code
     }
   }
 

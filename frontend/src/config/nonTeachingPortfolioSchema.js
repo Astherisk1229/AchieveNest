@@ -116,14 +116,18 @@ const metadataOf = (item) => {
  * Resolves any personnel item (accomplishment or evaluation item) to an Appendix N entry code, or null.
  * Records saved with the official form carry portfolio_format = non_teaching_faculty; older records
  * used a different B/C list (where B.4 meant awards), so for those the category text decides.
+ * With { strict: true } only stored codes are used (numbered, lettered or exact Appendix N codes).
  */
-export function resolveNtpCriterion(item = {}) {
+export function resolveNtpCriterion(item = {}, { strict = false } = {}) {
   const metadata = metadataOf(item)
   if (metadata.portfolio_format === 'non_teaching_faculty' && ntpCriterionByCode(metadata.criterion_code)) return metadata.criterion_code
-  const codes = [item.criterion_key, item.criterionKey, item.subcategory_code, metadata.subcategory_code, item.criterion_code, item.criterionCode, item.category_code]
+  const codes = [item.criterion_key, item.criterionKey, item.subcategory_code, metadata.subcategory_code, item.criterion_code, item.criterionCode, item.category_code, ...(strict ? [metadata.criterion_code] : [])]
     .map((value) => String(value || '').trim()).filter(Boolean)
   for (const value of codes) if (NUMBERED[value]) return NUMBERED[value]
   for (const value of codes) if (/^B\.\d\.[a-d]$/.test(value) && ntpCriterionByCode(value)) return value
+  // strict: callers that already know the person is Non-Teaching Faculty (e.g. the dashboard
+  // timeline) accept an exact Appendix N code and never guess from category text.
+  if (strict) return codes.find((value) => ntpCriterionByCode(value)) || null
   const category = String(item.category || item.criterion_title || '').trim()
   const leading = category.match(/^(B\.\d(?:\.[a-d])?)\s+(.*)$/)
   if (leading) {

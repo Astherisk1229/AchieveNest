@@ -59,7 +59,11 @@ export function formatCheckInTime(dateStr) {
 export function formatRelativeTime(dateStr, nowTimestamp = Date.now()) {
   if (!dateStr) return 'Just now'
   try {
-    const d = new Date(String(dateStr).replace(' ', 'T'))
+    const normalized = String(dateStr).trim().replace(' ', 'T')
+    const institutionalTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(normalized)
+      ? `${normalized}+08:00`
+      : normalized
+    const d = new Date(institutionalTimestamp)
     if (isNaN(d.getTime())) return 'Just now'
     const diffSecs = Math.floor((nowTimestamp - d.getTime()) / 1000)
     if (diffSecs < 60) return 'Just now'

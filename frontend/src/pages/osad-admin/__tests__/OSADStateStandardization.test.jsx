@@ -85,7 +85,7 @@ describe('Plan 06 Phase 8 — OSAD State Standardization Suite', () => {
     expect(permissionState.props.role).toBe('alert')
   })
 
-  it('instantiates Academic Structure with empty colleges dataset', () => {
+  it('instantiates College and Programs with empty colleges dataset', () => {
     const page = <OSADAcademicProgramsPage colleges={[]} academicPrograms={[]} />
     expect(page.type).toBe(OSADAcademicProgramsPage)
     expect(page.props.colleges).toHaveLength(0)

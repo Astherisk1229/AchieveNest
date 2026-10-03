@@ -277,6 +277,7 @@ export const NAVIGATION_CATALOG = [
     label: 'College Personnel Roster',
     icon: Users,
     path: DEAN_ROUTES.COLLEGE_PERSONNEL,
+    activePathPrefixes: ['/dean/personnel/'],
     portal: 'dean',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEAN],
@@ -302,6 +303,7 @@ export const NAVIGATION_CATALOG = [
     label: 'Personnel Directory',
     icon: Users,
     path: '/hr/personnel-directory',
+    activePathPrefixes: ['/hr/personnel/'],
     portal: 'hr',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
@@ -319,7 +321,7 @@ export const NAVIGATION_CATALOG = [
   },
   {
     id: 'hr-ranking-cycles',
-    label: 'Ranking Cycles',
+    label: 'Ranking Periods',
     icon: Calendar,
     path: '/hr/ranking-cycles',
     portal: 'hr',
@@ -368,7 +370,7 @@ export const NAVIGATION_CATALOG = [
   // Group 2: Student & Institutional Setup
   {
     id: 'osad-academic-structure',
-    label: 'Academic Structure',
+    label: 'College and Programs',
     icon: Building2,
     path: '/osad/dashboard?tab=academic-structure',
     tab: 'academic-structure',
@@ -429,7 +431,7 @@ export const NAVIGATION_CATALOG = [
   },
   {
     id: 'osad-award-candidate-review',
-    label: 'Award Candidate Review',
+    label: 'Award Candidates',
     icon: Trophy,
     path: '/osad/candidates',
     portal: 'osad',

@@ -97,7 +97,7 @@ class PersonnelEvaluationPeriodService
         $hash = hash('sha256', json_encode($data, JSON_UNESCAPED_UNICODE));
         if ($existing = $this->idempotentResource($actorId, 'create', $requestId, $hash)) return $this->find($existing);
         $duplicate = $this->canonicalDuplicate($data);
-        if ($duplicate) throw new RuntimeException('TRACK_DUPLICATE: This ranking cycle already has a track for this personnel group.');
+        if ($duplicate) throw new RuntimeException('TRACK_DUPLICATE: This ranking period already has a track for this personnel group.');
 
         $now = date('Y-m-d H:i:s');
         $data += ['id'=>$this->uuid(),'period_code'=>$this->periodCode($data),'status'=>'DRAFT','version'=>1,'created_by'=>$actorId,'created_at'=>$now,'updated_at'=>$now];
@@ -109,7 +109,7 @@ class PersonnelEvaluationPeriodService
             $this->db->transCommit();
         } catch (Throwable $e) {
             $this->db->transRollback();
-            if ((int) $e->getCode() === 1062) throw new RuntimeException('TRACK_DUPLICATE: This ranking cycle already has a track for this personnel group.');
+            if ((int) $e->getCode() === 1062) throw new RuntimeException('TRACK_DUPLICATE: This ranking period already has a track for this personnel group.');
             throw $e;
         }
         return $this->find($data['id']);
@@ -133,7 +133,7 @@ class PersonnelEvaluationPeriodService
         if ($existing['status'] !== 'DRAFT' && $sensitive && mb_strlen($reason) < 10) throw new InvalidArgumentException('CHANGE_REASON_REQUIRED: Explain this schedule change in 10–500 characters.');
 
         $data = $this->validateDraft(array_merge($existing, array_intersect_key($input, array_flip(self::WRITABLE))));
-        if ($duplicate = $this->canonicalDuplicate($data, $id)) throw new RuntimeException('TRACK_DUPLICATE: This ranking cycle already has a track for this personnel group.');
+        if ($duplicate = $this->canonicalDuplicate($data, $id)) throw new RuntimeException('TRACK_DUPLICATE: This ranking period already has a track for this personnel group.');
         $data['updated_by'] = $actorId; $data['updated_at'] = date('Y-m-d H:i:s'); $data['version'] = (int) $existing['version'] + 1;
         $requestId = $this->requestId($requestId);
         $this->db->transBegin();
@@ -192,10 +192,10 @@ class PersonnelEvaluationPeriodService
         if (mb_strlen($name) < 5) throw new InvalidArgumentException('INVALID_PERIOD_NAME: Period name must be 5–100 characters.');
 
         $cycleId = trim((string)($input['ranking_cycle_id'] ?? ''));
-        if ($cycleId === '') throw new InvalidArgumentException('RANKING_CYCLE_REQUIRED: Select a ranking cycle for this track.');
+        if ($cycleId === '') throw new InvalidArgumentException('RANKING_CYCLE_REQUIRED: Select a ranking period for this track.');
         $cycle = $this->db->table('ranking_cycles')->where('id', $cycleId)->get()->getRowArray();
-        if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: The selected ranking cycle does not exist.');
-        if ($cycle['academic_year'] !== $year) throw new InvalidArgumentException('RANKING_CYCLE_YEAR_MISMATCH: Track and ranking cycle must use the same academic year.');
+        if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: The selected ranking period does not exist.');
+        if ($cycle['academic_year'] !== $year) throw new InvalidArgumentException('RANKING_CYCLE_YEAR_MISMATCH: Track and ranking period must use the same academic year.');
         $data = ['ranking_cycle_id'=>$cycleId,'period_name'=>$name,'evaluation_type'=>$type,'personnel_group'=>$personnelGroup,'academic_year'=>$year,'semester'=>$semester,'coverage_label'=>$coverage ?: null];
         foreach (['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'] as $field) $data[$field] = $this->mysqlDate($input[$field] ?? null);
         $data['evaluation_scale_version_id'] = trim((string) ($input['evaluation_scale_version_id'] ?? '')) ?: null;
@@ -319,10 +319,10 @@ class PersonnelEvaluationPeriodService
     private function periodCode(array $data): string { return 'PEP-'.substr($data['evaluation_type'],0,4).'-'.str_replace('-','',$data['academic_year']).'-'.strtoupper(substr($data['semester'] ?: 'DR',0,2)).'-'.strtoupper(substr(bin2hex(random_bytes(3)),0,6)); }
     private function uuid(): string { $h=bin2hex(random_bytes(16)); return substr($h,0,8).'-'.substr($h,8,4).'-4'.substr($h,13,3).'-'.dechex((hexdec($h[16])&3)|8).substr($h,17,3).'-'.substr($h,20,12); }
 
-    /** A track may only accept portfolios once its ranking cycle defines which achievements belong to it. */
+    /** A track may only accept portfolios once its ranking period defines which achievements belong to it. */
     private function assertAchievementCoverage(array $period): void
     {
         if (! $this->db->fieldExists('coverage_start', 'ranking_cycles') || empty($period['ranking_cycle_id'])) return;
-        if ((new EvaluationValidityService($this->db))->coverageForPeriod($period) === null) throw new RuntimeException('ACHIEVEMENT_COVERAGE_REQUIRED: Set the ranking cycle\'s achievement coverage dates before opening submissions.');
+        if ((new EvaluationValidityService($this->db))->coverageForPeriod($period) === null) throw new RuntimeException('ACHIEVEMENT_COVERAGE_REQUIRED: Set the ranking period\'s achievement coverage dates before opening submissions.');
     }
 }

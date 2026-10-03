@@ -542,7 +542,7 @@ class PersonnelPortfolioSubmissionController extends Controller
             return $this->respond([
                 'error' => [
                     'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
-                    'message' => 'None of your accomplishments are valid for this ranking cycle\'s achievement coverage. Your records remain in your portfolio.',
+                    'message' => 'None of your accomplishments are valid for this ranking period\'s achievement coverage. Your records remain in your portfolio.',
                     'excluded_items' => $cycleValidity['excluded'],
                 ],
             ], 422);
@@ -683,6 +683,8 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'criterion_version_id'=> $period['evaluation_scale_version_id'],
                     'criterion_snapshot'  => json_encode($criterionSnapshot, JSON_UNESCAPED_UNICODE),
                     'configured_points_snapshot' => $criterionSnapshot['configured_points'],
+                    'evaluator_judgment_required' => ! empty($criterionSnapshot['evaluator_judgment_required']) ? 1 : 0,
+                    'max_allowed_points' => $criterionSnapshot['criterion_cap'] ?? $criterionSnapshot['configured_points'],
                     'portfolio_section'   => $domain,
                     'submission_order'    => $submissionOrder,
                     'evidence_snapshot'   => json_encode(array_values($itemEvidence), JSON_UNESCAPED_UNICODE),
@@ -970,7 +972,7 @@ class PersonnelPortfolioSubmissionController extends Controller
             return $this->respond([
                 'error' => [
                     'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
-                    'message' => 'None of your accomplishments are valid for this ranking cycle\'s achievement coverage. Your records remain in your portfolio.',
+                    'message' => 'None of your accomplishments are valid for this ranking period\'s achievement coverage. Your records remain in your portfolio.',
                     'excluded_items' => $cycleValidity['excluded'],
                 ],
             ], 422);
@@ -1085,6 +1087,8 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'criterion_version_id'=> $headerData['evaluation_scale_version_id'],
                     'criterion_snapshot'  => json_encode($criterionSnapshot, JSON_UNESCAPED_UNICODE),
                     'configured_points_snapshot' => $criterionSnapshot['configured_points'],
+                    'evaluator_judgment_required' => ! empty($criterionSnapshot['evaluator_judgment_required']) ? 1 : 0,
+                    'max_allowed_points' => $criterionSnapshot['criterion_cap'] ?? $criterionSnapshot['configured_points'],
                     'portfolio_section'   => $domain,
                     'submission_order'    => $submissionOrder,
                     'evidence_snapshot'   => json_encode(array_values($itemEvidence), JSON_UNESCAPED_UNICODE),

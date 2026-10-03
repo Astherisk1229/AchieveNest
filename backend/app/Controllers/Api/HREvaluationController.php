@@ -59,7 +59,7 @@ class HREvaluationController extends Controller
         if ($periodId === '') return null;
         $status = db_connect()->table('personnel_evaluation_periods')->select('status')->where('id', $periodId)->get()->getRowArray()['status'] ?? null;
         if ($status !== 'ARCHIVED') return null;
-        return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_ARCHIVED', 'message' => 'This ranking cycle is archived and read-only.']], 409);
+        return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_ARCHIVED', 'message' => 'This ranking period is archived and read-only.']], 409);
     }
 
     public function options(): mixed
@@ -581,6 +581,52 @@ class HREvaluationController extends Controller
     }
 
     // =========================================================================
+    // PATCH /api/v1/hr/evaluations/{id}/area-a/{code}
+    // HR enters or corrects the DS of a Non-Teaching Area A criterion (A.1–A.3).
+    // Body: { "ds": 0-100, "reason": "required when changing an existing DS" }
+    // =========================================================================
+    public function updateAreaADs(string $id, string $code): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+
+        $db = db_connect();
+        $evaluation = $db->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
+        if ($evaluation === null) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
+        }
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
+        if ($evaluation['status'] !== 'in_evaluation') {
+            return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'DS can be changed only while the evaluation is in progress.']], 409);
+        }
+        if (! $this->authorityMayEvaluate($actor, $evaluation)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator may enter DS ratings.']], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        if (! isset($json['ds']) || ! is_numeric($json['ds'])) {
+            return $this->respond(['error' => ['code' => 'DS_REQUIRED', 'message' => 'Enter a DS from 0 to 100.']], 422);
+        }
+
+        try {
+            $item = (new \App\Services\NtfAnnualReviewAreaAService($db))
+                ->setDirectScore($evaluation, urldecode($code), (float) $json['ds'], (string) $actor['profile']['id'], (string) ($json['reason'] ?? ''));
+        } catch (\InvalidArgumentException $e) {
+            [$errorCode, $message] = array_pad(explode(': ', $e->getMessage(), 2), 2, null);
+            return $this->respond(['error' => ['code' => $errorCode, 'message' => $message ?? $e->getMessage()]], 422);
+        } catch (Throwable $e) {
+            log_message('error', '[HREvaluationController::updateAreaADs] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'DS_SAVE_FAILED', 'message' => 'The DS could not be saved. Please try again.']], 500);
+        }
+
+        $this->recordEvaluationEvent($db, $id, (string) $actor['profile']['id'], 'area_a_ds_updated', $evaluation['status'], $evaluation['status'], trim((string) ($json['reason'] ?? '')) ?: null, ['criterion_code' => strtoupper(urldecode($code)), 'ds' => (float) $json['ds']]);
+
+        return $this->respond(['data' => ['item' => $item]], 200);
+    }
+
+    // =========================================================================
     // PATCH /api/v1/hr/evaluations/{id}/items/{itemId}/rate
     // Score an item — must be verified first
     // =========================================================================
@@ -633,8 +679,17 @@ class HREvaluationController extends Controller
         }
 
         $awardedPoints = (float) ($item['configured_points_snapshot'] ?? 0);
+        // Criteria without an official point breakdown (e.g. NTP B.5): the evaluator enters the points, up to the cap.
+        if (! empty($item['evaluator_judgment_required'])) {
+            $cap = (float) ($item['max_allowed_points'] ?? $item['configured_points_snapshot'] ?? 0);
+            $entered = $json['awarded_points'] ?? null;
+            if (! is_numeric($entered) || (float) $entered <= 0 || (float) $entered > $cap) {
+                return $this->respond(['error' => ['code' => 'JUDGMENT_POINTS_REQUIRED', 'message' => "Enter the points to award (more than 0, up to {$cap})."]], 422);
+            }
+            $awardedPoints = round((float) $entered, 2);
+        }
         // A semester's graduate units earn no points of their own; the level's summed units are scored once in the totals.
-        if (\App\Services\GraduateUnitScoringService::isUnitItem($item)) $awardedPoints = 0.0;
+        elseif (\App\Services\GraduateUnitScoringService::isUnitItem($item)) $awardedPoints = 0.0;
         elseif ($awardedPoints <= 0) return $this->respond(['error' => ['code' => 'CRITERION_POINTS_UNRESOLVED', 'message' => 'The submitted claim has no configured points in its locked criteria snapshot.']], 422);
 
         $db->table('personnel_evaluation_items')->where('id', $itemId)->update([

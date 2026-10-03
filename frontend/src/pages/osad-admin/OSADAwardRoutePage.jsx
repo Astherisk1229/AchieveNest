@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { fetchAwards } from '../../services/awardAdminService'
 import { OSADErrorState, OSADLoadingState } from '../../components/osad/OSADStateBlock'
 import OSADAwardsAndCriteriaPage from './OSADAwardsAndCriteriaPage'
 import OSADAwardDetailPage from './OSADAwardDetailPage'
-import OSADPotentialCandidatesView from './OSADPotentialCandidatesView'
 import OSADEvaluationSummaryView from './OSADEvaluationSummaryView'
 
 export default function OSADAwardRoutePage({ view = 'catalog' }) {
@@ -15,7 +14,7 @@ export default function OSADAwardRoutePage({ view = 'catalog' }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (view === 'catalog') return
+    if (view === 'catalog' || view === 'candidates') return
 
     let active = true
     setLoading(true)
@@ -34,6 +33,11 @@ export default function OSADAwardRoutePage({ view = 'catalog' }) {
     return () => { active = false }
   }, [awardId, view])
 
+  // Potential candidates now live in the Award Candidates module, filtered to this award.
+  if (view === 'candidates') {
+    return <Navigate to={`/osad/candidates?award=${encodeURIComponent(awardId || '')}`} replace />
+  }
+
   if (view === 'catalog') {
     return (
       <OSADAwardsAndCriteriaPage onSelectAward={(item) => navigate(`/osad/awards/${item.id}`)} />
@@ -47,14 +51,10 @@ export default function OSADAwardRoutePage({ view = 'catalog' }) {
 
   const catalog = () => navigate('/osad/awards')
   const detail = () => navigate(`/osad/awards/${award.id}`)
-  const candidates = () => navigate(`/osad/awards/${award.id}/candidates`)
+  const candidates = () => navigate(`/osad/candidates?award=${encodeURIComponent(award.id)}`)
 
   if (view === 'detail') {
     return <OSADAwardDetailPage award={award} onCatalog={catalog} onOpenCandidates={candidates} />
-  }
-
-  if (view === 'candidates') {
-    return <OSADPotentialCandidatesView award={award} onBack={detail} onCatalog={catalog} onSelectStudent={(student) => navigate(`/osad/awards/${award.id}/candidates/${student.id || student.student_id || student.student_profile_id}/review`)} />
   }
 
   // View-only Student Evaluation Summary for this award (no manual scoring or decisions).

@@ -31,7 +31,7 @@ export default function OSADAwardDetailPage({ award, onCatalog, onOpenCandidates
             title={model.authorityPending ? 'Candidate generation is pending authority approval.' : undefined}
             className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:disabled:bg-slate-700 dark:disabled:text-slate-300"
           >
-            Potential candidates
+            View candidates
           </button>
         </div>
       }

@@ -109,7 +109,7 @@ describe('Personnel Evaluation Track — Plan D1 — Dean Annual Review & Portfo
       })
     })
 
-    it('rejects recording when an effective review already exists for the cycle (409 ANNUAL_REVIEW_ALREADY_RECORDED)', async () => {
+    it('rejects recording when an effective review already exists for the period (409 ANNUAL_REVIEW_ALREADY_RECORDED)', async () => {
       const payload = {
         personnel_profile_id: '10000000-0000-0000-0000-000000000003',
         evaluation_cycle_id: '2025-2026',

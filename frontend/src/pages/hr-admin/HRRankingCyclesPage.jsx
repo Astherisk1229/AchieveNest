@@ -36,10 +36,10 @@ function RowMenu({ cycle, onSelect }) {
   }, [open])
   const actions = cycle.allowed_actions || []
   const items = [
-    actions.includes('complete_setup') ? null : ['settings', 'Cycle Settings'],
+    actions.includes('complete_setup') ? null : ['settings', 'Period Settings'],
     cycle.tracks?.length ? ['criteria', 'View Criteria'] : null,
-    actions.includes('archive') ? ['archive', 'Archive Cycle'] : null,
-    actions.includes('delete') ? ['delete', 'Delete Empty Cycle'] : null,
+    actions.includes('archive') ? ['archive', 'Archive Period'] : null,
+    actions.includes('delete') ? ['delete', 'Delete Empty Period'] : null,
   ].filter(Boolean)
   return <div ref={ref} className="relative">
     <button type="button" aria-label={`More actions for ${cycle.display_name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-white"><MoreVertical className="h-4 w-4"/></button>
@@ -65,20 +65,20 @@ function CyclesList({ cycles, error, onCreate, onAction }) {
 
   return <section className="space-y-5">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div><h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">Ranking Cycles</h1><p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Choose the ranking cycle you want to work on.</p></div>
-      <button type="button" onClick={onCreate} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"><Plus className="h-4 w-4"/>New Ranking Cycle</button>
+      <div><h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">Ranking Periods</h1><p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Choose the ranking period you want to work on.</p></div>
+      <button type="button" onClick={onCreate} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"><Plus className="h-4 w-4"/>New Ranking Period</button>
     </header>
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <div className="grid gap-3 border-b border-slate-200 p-4 md:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))] md:items-end dark:border-slate-800">
-        <label className="relative min-w-0"><span className="sr-only">Search ranking cycles</span><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400"/><input type="search" value={filters.search} onChange={event => set({ search: event.target.value })} placeholder="Search ranking cycles…" className={`${selectClass} pl-9`}/></label>
+        <label className="relative min-w-0"><span className="sr-only">Search ranking periods</span><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400"/><input type="search" value={filters.search} onChange={event => set({ search: event.target.value })} placeholder="Search ranking periods…" className={`${selectClass} pl-9`}/></label>
         <FilterSelect label="Academic Year" value={filters.academicYear} onChange={academicYear => set({ academicYear })} options={[{ value: 'all', label: 'All Years' }, ...years.map(year => ({ value: year, label: year.replace('-', '–') }))]}/>
         <FilterSelect label="Coverage" value={filters.coverage} onChange={coverage => set({ coverage })} options={[{ value: 'all', label: 'All' }, ...COVERAGE_OPTIONS]}/>
         <FilterSelect label="Status" value={filters.status} onChange={status => set({ status })} options={[{ value: 'all', label: 'All' }, ...LIFECYCLE_OPTIONS]}/>
         <FilterSelect label="Sort by" value={filters.sort} onChange={sort => set({ sort })} options={[{ value: 'newest', label: 'Newest First' }, { value: 'oldest', label: 'Oldest First' }, { value: 'name', label: 'Name (A–Z)' }]}/>
       </div>
       <div className="overflow-x-auto"><table className="w-full min-w-[900px] table-fixed text-left text-sm">
-        <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:bg-slate-900"><tr><th scope="col" className="w-[22%] px-5 py-3">Ranking Cycle</th><th scope="col" className="w-[15%] px-3 py-3">Coverage</th><th scope="col" className="w-[18%] px-3 py-3">Schedule</th><th scope="col" className="w-[12%] px-3 py-3">Current Stage</th><th scope="col" className="w-[13%] px-3 py-3">Status</th><th scope="col" className="w-[20%] px-5 py-3 text-right">Action</th></tr></thead>
+        <thead className="bg-slate-50 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:bg-slate-900"><tr><th scope="col" className="w-[22%] px-5 py-3">Ranking Period</th><th scope="col" className="w-[15%] px-3 py-3">Coverage</th><th scope="col" className="w-[18%] px-3 py-3">Schedule</th><th scope="col" className="w-[12%] px-3 py-3">Current Stage</th><th scope="col" className="w-[13%] px-3 py-3">Status</th><th scope="col" className="w-[20%] px-5 py-3 text-right">Action</th></tr></thead>
         <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
           {rows.map(cycle => {
             const action = primaryAction(cycle)
@@ -92,12 +92,12 @@ function CyclesList({ cycles, error, onCreate, onAction }) {
               <td className="px-5 py-4"><div className="flex items-center justify-end gap-2">
                 {action.kind === 'complete_setup'
                   ? <button type="button" onClick={() => onAction('complete_setup', cycle)} className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg border border-amber-300 px-3 font-bold text-amber-900 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950/30">Complete Setup</button>
-                  : <Link to={workspacePath(cycle)} className={`inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${action.kind === 'open' ? 'bg-emerald-800 text-white hover:bg-emerald-900' : 'border border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900'}`}>{action.kind === 'open' ? 'Open Cycle' : 'View Cycle'}<ArrowRight className="h-4 w-4"/></Link>}
+                  : <Link to={workspacePath(cycle)} className={`inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${action.kind === 'open' ? 'bg-emerald-800 text-white hover:bg-emerald-900' : 'border border-slate-300 text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900'}`}>{action.kind === 'open' ? 'Open Period' : 'View Period'}<ArrowRight className="h-4 w-4"/></Link>}
                 <RowMenu cycle={cycle} onSelect={onAction}/>
               </div></td>
             </tr>
           })}
-          {!rows.length && <tr><td colSpan="6" className="px-5 py-12 text-center text-slate-500"><CalendarDays className="mx-auto h-6 w-6"/><p className="mt-2 font-bold text-slate-700 dark:text-slate-200">{filtered ? 'No ranking cycles match these filters' : 'No ranking cycles yet'}</p><p className="mt-1 text-xs">{filtered ? 'Clear a filter or search to see more cycles.' : 'Create a ranking cycle to get started.'}</p></td></tr>}
+          {!rows.length && <tr><td colSpan="6" className="px-5 py-12 text-center text-slate-500"><CalendarDays className="mx-auto h-6 w-6"/><p className="mt-2 font-bold text-slate-700 dark:text-slate-200">{filtered ? 'No ranking periods match these filters' : 'No ranking periods yet'}</p><p className="mt-1 text-xs">{filtered ? 'Clear a filter or search to see more periods.' : 'Create a ranking period to get started.'}</p></td></tr>}
         </tbody>
       </table></div>
     </div>
@@ -121,7 +121,7 @@ export default function HRRankingCyclesPage() {
       setPhase('ready')
       return data?.cycles || []
     } catch (failure) {
-      setError(errorMessage(failure, 'Ranking cycles could not be loaded.'))
+      setError(errorMessage(failure, 'Ranking periods could not be loaded.'))
       setPhase(current => current === 'ready' ? 'ready' : 'error')
       return []
     }
@@ -153,12 +153,12 @@ export default function HRRankingCyclesPage() {
 
   if (!cycleId) return <><CyclesList cycles={cycles} error={error} onCreate={() => setDialog({ kind: 'create' })} onAction={onAction}/>{dialogs}</>
 
-  if (!cycle) return <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">Ranking cycle was not found. <Link className="font-bold underline underline-offset-4" to="/hr/ranking-cycles">Return to cycles</Link></p>
+  if (!cycle) return <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">Ranking period was not found. <Link className="font-bold underline underline-offset-4" to="/hr/ranking-cycles">Return to periods</Link></p>
 
   const openSettings = section => setDialog({ kind: 'settings', cycle, section: typeof section === 'string' ? section : 'general' })
   const viewCriteria = versionId => setDialog({ kind: 'criteria', versionId, cycle })
 
-  if (!cycle.track_count) return <><RankingCycleContext cycle={cycle} onOpenSettings={openSettings}/><div className="mx-auto mt-8 max-w-xl border-y border-slate-200 py-10 text-center dark:border-slate-800"><CalendarDays className="mx-auto h-7 w-7 text-slate-400"/><h2 className="mt-3 text-lg font-black">Incomplete Configuration</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">This cycle has no personnel coverage or schedule yet. Complete its setup to open Annual Reviews, Submissions, Evaluation, and Results.</p><button type="button" onClick={() => openSettings('coverage')} className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">Complete Setup</button></div>{dialogs}</>
+  if (!cycle.track_count) return <><RankingCycleContext cycle={cycle} onOpenSettings={openSettings}/><div className="mx-auto mt-8 max-w-xl border-y border-slate-200 py-10 text-center dark:border-slate-800"><CalendarDays className="mx-auto h-7 w-7 text-slate-400"/><h2 className="mt-3 text-lg font-black">Incomplete Configuration</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-300">This period has no personnel coverage or schedule yet. Complete its setup to open Annual Reviews, Submissions, Evaluation, and Results.</p><button type="button" onClick={() => openSettings('coverage')} className="mt-5 inline-flex min-h-10 items-center rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">Complete Setup</button></div>{dialogs}</>
 
   if (!trackKey || !GROUP_BY_TRACK_KEY[trackKey] || !track) return <Navigate replace to={workspacePath(cycle)}/>
   if (legacyStages[stage]) return <Navigate replace to={`/hr/ranking-cycles/${encodeURIComponent(cycle.id)}/${trackKey}/${legacyStages[stage]}`}/>

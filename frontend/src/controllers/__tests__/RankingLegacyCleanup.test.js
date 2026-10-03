@@ -12,7 +12,7 @@ describe('ranking legacy cleanup and compatibility', () => {
     expect(app).toContain('path="/hr/rank-assignment-logs" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />')
   })
 
-  it('resolves legacy ranking work links into the cycle workspace', () => {
+  it('resolves legacy ranking work links into the period workspace', () => {
     const app = read('frontend/src/App.jsx')
     for (const route of ['/hr/evaluation-submissions', '/hr/faculty-evaluation-and-ranking', '/hr/verification-queue', '/hr/faculty-ranking-and-matrix']) {
       expect(app).toContain(`path="${route}"`)

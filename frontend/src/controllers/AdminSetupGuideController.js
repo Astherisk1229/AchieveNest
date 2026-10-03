@@ -49,7 +49,7 @@ export class AdminSetupGuideController {
         if (osadPrograms.length === 0) {
           status = SETUP_STEP_STATUS.BLOCKED
           explanation = 'Prerequisite missing.'
-          blockingReason = 'Create Academic Structure before assigning Student accounts.'
+          blockingReason = 'Create College and Programs before assigning Student accounts.'
         } else if (osadUsers.length > 0) {
           status = SETUP_STEP_STATUS.COMPLETE
           explanation = `${osadUsers.length} Students enrolled with program placement.`

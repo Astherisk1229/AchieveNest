@@ -5,7 +5,7 @@ import path from 'node:path'
 describe('Personnel completed evaluation result release UI', () => {
   const gallery = fs.readFileSync(path.resolve(__dirname, '../PersonnelPortfolioGallery.jsx'), 'utf8')
   const modal = fs.readFileSync(path.resolve(__dirname, '../PersonnelEvaluationResultModal.jsx'), 'utf8')
-  const service = fs.readFileSync(path.resolve(__dirname, '../../../services/personnelEvaluationResultService.js'), 'utf8')
+  const service = fs.readFileSync(path.resolve(__dirname, '../../../services/PersonnelEvaluationResultService.js'), 'utf8')
 
   it('shows the result action only inside the finalized branch', () => {
     expect(gallery).toMatch(/BookOpen,\s*Award\s*}\s*from 'lucide-react'/)

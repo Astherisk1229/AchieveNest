@@ -95,7 +95,7 @@ export default function OSADCoordinatorManagerView({
         onBack={onBack}
         backLabel="Back to College Details"
         breadcrumbs={[
-          { label: 'Academic Structure', onClick: onBack },
+          { label: 'College and Programs', onClick: onBack },
           { label: college.code || 'College', onClick: onBack },
           { label: 'Program Coordinators' }
         ]}

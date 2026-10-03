@@ -58,7 +58,7 @@ class Filters extends BaseFilters
         'after' => [
             'pagecache',   // Web Page Caching
             'performance', // Performance Metrics
-            'toolbar',     // Debug Toolbar
+            // Debug Toolbar is applied through $globals below so the JSON API can skip it.
         ],
     ];
 
@@ -80,6 +80,9 @@ class Filters extends BaseFilters
         ],
         'after' => [
             'secureheaders',
+            // The React app never displays the toolbar for API calls, but collecting and
+            // writing its snapshot on every JSON request slowed each call by seconds.
+            'toolbar' => ['except' => ['api/*']],
         ],
     ];
 

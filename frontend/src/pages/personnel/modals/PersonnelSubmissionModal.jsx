@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   X,
   Award,
@@ -7,20 +7,8 @@ import {
   AlertCircle,
   FileText,
   Check,
-  Building,
-  Globe,
-  Calendar,
   Sparkles,
-  Paperclip,
-  GraduationCap,
-  Users,
-  BookOpen,
-  Heart,
-  ShieldCheck,
-  Scan,
   RefreshCw,
-  FileSearch,
-  Wand2,
   ArrowLeft
 } from 'lucide-react'
 
@@ -29,6 +17,9 @@ import { localToday } from '../../../utils/employmentDate'
 import SecurityController from '../../../controllers/SecurityController.js'
 import OcrScanController from '../../../controllers/OcrScanController.js'
 import PersonnelAchievementController from '../../../controllers/PersonnelAchievementController.js'
+import { confirmDialog } from '../../../components/ui/DialogProvider'
+import { CardHeading, StepProgress } from './AccomplishmentModalParts'
+import { NTP_ENTRY_CRITERIA, ntpCategoryLabel, ntpContractCode, ntpCriterionByCode, ntpDetailText, resolveNtpCriterion } from '../../../config/nonTeachingPortfolioSchema'
 
 // Helper component for required field labels (Clean Auto-filled badge when OCR populated)
 const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfidence = null }) => {
@@ -59,31 +50,34 @@ const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfiden
   )
 }
 
+// Official Non-Teaching Personnel criteria (Appendix N). Area A is rated by HR; B.3 comes from the employment record.
 const AREA_CATEGORY_OPTIONS = Object.freeze({
-  B: [
-    ['B.1 Guest Lecturer / Consultant / Judge', 'B.1 Lectures, Speakerships & Consultancy'],
-    ['B.2 Publication', 'B.2 Scholarly Publications'],
-    ['B.3 Conduct of Research', 'B.3 Research Projects'],
-    ['B.4 Professional Recognition or Awards', 'B.4 Professional Recognitions & Awards'],
-    ['B.5 Production of Instructional Materials', 'B.5 Instructional Materials'],
-    ['B.6 Creative Work', 'B.6 Creative Work & Exhibitions']
-  ],
-  C: [
-    ['C.1 Extra-Curricular Activities', 'C.1 Institutional Service & Committees'],
-    ['C.2 Community Involvement', 'C.2 Community & Extension Involvement']
-  ]
+  B: NTP_ENTRY_CRITERIA.map((criterion) => [ntpCategoryLabel(criterion), ntpCategoryLabel(criterion)])
 })
 
-const normalizeEntryArea = (areaCode) => ['B', 'C'].includes(String(areaCode || '').toUpperCase())
-  ? String(areaCode).toUpperCase()
-  : 'B'
+const normalizeEntryArea = () => 'B'
 
-const categoryBelongsToArea = (category, areaCode) => String(category || '').startsWith(`${areaCode}.`)
+const categoryBelongsToArea = (category) => AREA_CATEGORY_OPTIONS.B.some(([value]) => value === category)
 
-const categoryForArea = (candidate, areaCode) => {
-  const normalizedArea = normalizeEntryArea(areaCode)
-  if (categoryBelongsToArea(candidate, normalizedArea)) return candidate
-  return AREA_CATEGORY_OPTIONS[normalizedArea][0][0]
+/** Any stored or suggested category (including older labels) mapped onto an Appendix N option. */
+const categoryForArea = (candidate) => {
+  if (categoryBelongsToArea(candidate)) return candidate
+  const criterion = ntpCriterionByCode(resolveNtpCriterion({ category: candidate }))
+  return criterion ? ntpCategoryLabel(criterion) : AREA_CATEGORY_OPTIONS.B[0][0]
+}
+
+const criterionForCategory = (category) => ntpCriterionByCode(String(category || '').split(' ')[0])
+
+const evidenceListOf = (item) => {
+  const data = typeof item?.toJSON === 'function' ? item.toJSON() : (item || {})
+  return [...(Array.isArray(data.evidence) ? data.evidence : []), data.primary_evidence].filter(Boolean)
+}
+
+/** The accomplishment (other than excludeId) whose evidence has this SHA-256, if any. */
+export function findAccomplishmentWithDocument(achievements = [], sha256, excludeId = null) {
+  if (!sha256) return null
+  return achievements.find(item => item && item.id !== excludeId
+    && evidenceListOf(item).some(evidence => String(evidence.sha256 || evidence.checksum || '').toLowerCase() === sha256)) || null
 }
 
 export default function PersonnelSubmissionModal({
@@ -115,58 +109,15 @@ export default function PersonnelSubmissionModal({
   const [dateAchieved, setDateAchieved] = useState('')
   const [academicYear, setAcademicYear] = useState('')
 
-  // Tailored Category Fields (Strict Zero-Fabrication initial state)
-  // A.1 Degree/s
-  const [degreeLevel, setDegreeLevel] = useState('')
-  const [degreeTitle, setDegreeTitle] = useState('')
-  const [institution, setInstitution] = useState('')
-  const [unitsCompleted, setUnitsCompleted] = useState('')
-
-  // A.2 Membership
-  const [orgName, setOrgName] = useState('')
-  const [orgPosition, setOrgPosition] = useState('')
-  const [officeHeld, setOfficeHeld] = useState('')
-
-  // A.3 Seminar
-  const [seminarTitle, setSeminarTitle] = useState('')
-  const [organizerVenue, setOrganizerVenue] = useState('')
+  // Appendix N details for the selected criterion (keys come from nonTeachingPortfolioSchema)
+  const [details, setDetails] = useState({})
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [ongoing, setOngoing] = useState(false)
   const [scopeLevel, setScopeLevel] = useState('')
+  const activeCriterion = criterionForCategory(category)
+  const setDetail = (name, value) => { setDetails((current) => ({ ...current, [name]: value })); markFieldEdited(name) }
 
-  // B.1 Speaker / Consultancy
-  const [eventTitle, setEventTitle] = useState('')
-  const [speakerRole, setSpeakerRole] = useState('')
-  const [sponsoringAgency, setSponsoringAgency] = useState('')
-
-  // B.2 Publication
-  const [pubTitle, setPubTitle] = useState('')
-  const [pubType, setPubType] = useState('')
-  const [publisherIssn, setPublisherIssn] = useState('')
-
-  // B.3 Conduct of Research
-  const [researchTitle, setResearchTitle] = useState('')
-  const [researchRole, setResearchRole] = useState('')
-  const [fundingStatus, setFundingStatus] = useState('')
-
-  // B.4 Recognition or Awards
-  const [awardTitle, setAwardTitle] = useState('')
-  const [conferringBody, setConferringBody] = useState('')
-  const [awardType, setAwardType] = useState('')
-
-  // B.5 Instructional Materials
-  const [materialTitle, setMaterialTitle] = useState('')
-  const [matType, setMatType] = useState('')
-  const [courseUsedIn, setCourseUsedIn] = useState('')
-
-  // B.6 Creative Work
-  const [creativeTitle, setCreativeTitle] = useState('')
-  const [exhibitionVenue, setExhibitionVenue] = useState('')
-
-  // C.1 / C.2 Service & Community
-  const [serviceTitle, setServiceTitle] = useState('')
-  const [sponsoringOrg, setSponsoringOrg] = useState('')
-  const [subType, setSubType] = useState('')
-
-  // Proof Attachment & Remarks
   const [description, setDescription] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
 
@@ -182,6 +133,32 @@ export default function PersonnelSubmissionModal({
   const [ocrResult, setOcrResult] = useState(null)
   const [ocrBadges, setOcrBadges] = useState({})
   const [isScanModeActive, setIsScanModeActive] = useState(true)
+  const fileInputRef = useRef(null)
+  const [dragActive, setDragActive] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState('')
+
+  // Local preview of the chosen proof (left pane), same as the Faculty modal.
+  useEffect(() => {
+    if (!attachedFile || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') { setPreviewUrl(''); return undefined }
+    const url = URL.createObjectURL(attachedFile)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [attachedFile])
+
+  // Same document already backing another accomplishment? Checked as soon as a file is chosen
+  // (the server enforces the same rule on upload).
+  const [fileHash, setFileHash] = useState('')
+  useEffect(() => {
+    let active = true
+    setFileHash('')
+    if (!attachedFile || typeof crypto === 'undefined' || !crypto.subtle || typeof attachedFile.arrayBuffer !== 'function') return undefined
+    attachedFile.arrayBuffer()
+      .then(buffer => crypto.subtle.digest('SHA-256', buffer))
+      .then(digest => { if (active) setFileHash(Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('')) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [attachedFile])
+  const documentDuplicate = findAccomplishmentWithDocument(existingAchievements, fileHash, editingItem?.id)
 
   useEffect(() => {
     if (editingItem) {
@@ -190,6 +167,11 @@ export default function PersonnelSubmissionModal({
       setAcademicYear(editingItem.academic_year || inferAcademicYear(editingItem.date_achieved))
       setDescription(editingItem.description || '')
       setScopeLevel(editingItem.scope_level || '')
+      const meta = editingItem.category_metadata || {}
+      setDetails(meta.details && typeof meta.details === 'object' ? meta.details : {})
+      setStartDate(meta.start_date || '')
+      setEndDate(meta.end_date || '')
+      setOngoing(meta.ongoing === true)
     } else if (initialCategory) {
       setCategory(categoryForArea(initialCategory, lockedAreaCode))
     } else {
@@ -212,23 +194,9 @@ export default function PersonnelSubmissionModal({
   }
 
   const handleCategoryChange = (nextCategory) => {
-    if (!categoryBelongsToArea(nextCategory, lockedAreaCode)) return
+    if (!categoryBelongsToArea(nextCategory)) return
     setCategory(nextCategory)
     markFieldEdited('category')
-    if (!ocrResult?.rawText || !nextCategory.startsWith('A.1')) return
-    const remapped = OcrScanController.extractFieldsFromText(ocrResult.rawText, ocrResult.rawLines, nextCategory)
-    const metadata = remapped.fieldMetadata || {}
-    if (!manuallyEdited.degreeTitle && (metadata.title?.confidence || 0) >= 85) setDegreeTitle(remapped.title)
-    if (!manuallyEdited.institution && (metadata.issuer?.confidence || 0) >= 85) setInstitution(remapped.issuer)
-    if (!manuallyEdited.degreeLevel && (metadata.degreeLevel?.confidence || 0) >= 85) setDegreeLevel(remapped.degreeLevel)
-    if (!manuallyEdited.unitsCompleted && remapped.unitsCompleted) setUnitsCompleted(remapped.unitsCompleted)
-    setOcrBadges(prev => ({
-      ...prev,
-      degreeTitle: !manuallyEdited.degreeTitle && (metadata.title?.confidence || 0) >= 85,
-      institution: !manuallyEdited.institution && (metadata.issuer?.confidence || 0) >= 85,
-      degreeLevel: !manuallyEdited.degreeLevel && (metadata.degreeLevel?.confidence || 0) >= 85,
-      unitsCompleted: !manuallyEdited.unitsCompleted && Boolean(remapped.unitsCompleted)
-    }))
   }
 
   // Perform Intelligent Document Scan & Auto-Fill
@@ -244,70 +212,33 @@ export default function PersonnelSubmissionModal({
         setOcrResult(res)
         const fields = res.extractedFields
 
-        // 1. Auto-select suggested NDMU category only if user hasn't manually chosen one
-        const areaMatchedCategory = categoryBelongsToArea(res.detectedCategory, lockedAreaCode)
-          ? res.detectedCategory
-          : null
-        if (areaMatchedCategory && !manuallyEdited.category) {
-          setCategory(areaMatchedCategory)
+        // 1. Suggested category, mapped onto Appendix N (only if the user hasn't chosen one)
+        const suggestedCriterion = ntpCriterionByCode(resolveNtpCriterion({ category: res.detectedCategory || '' }))
+        const suggestedCategory = suggestedCriterion ? ntpCategoryLabel(suggestedCriterion) : null
+        if (suggestedCategory && !manuallyEdited.category) setCategory(suggestedCategory)
+
+        const newBadges = { category: !manuallyEdited.category && Boolean(suggestedCategory) }
+        const criterionToFill = (!manuallyEdited.category && suggestedCriterion) || criterionForCategory(category)
+
+        // 2. Date (start date for period criteria)
+        if (fields.date) {
+          if (criterionToFill?.dateMode === 'period' && !manuallyEdited.startDate) { setStartDate(fields.date); newBadges.startDate = true }
+          if (!manuallyEdited.dateAchieved) { setDateAchieved(fields.date); setAcademicYear(fields.academicYear); newBadges.dateAchieved = true }
         }
 
-        // 2. Set Date & Academic Year if detected and not manually edited
-        if (fields.date && !manuallyEdited.dateAchieved) {
-          setDateAchieved(fields.date)
-          setAcademicYear(fields.academicYear)
-        }
-
-        // 3. Map Category Specific Fields & Track Badges without overwriting manual user inputs
-        const newBadges = {
-          category: !manuallyEdited.category && !!areaMatchedCategory,
-          dateAchieved: !manuallyEdited.dateAchieved && !!fields.date
-        }
-
-        const catToApply = (!manuallyEdited.category && areaMatchedCategory) ? areaMatchedCategory : category
-
-        if (catToApply.startsWith('A.1')) {
-          if (fields.title && (res.fields.title.confidence || 0) >= 85 && !manuallyEdited.degreeTitle) { setDegreeTitle(fields.title); newBadges.degreeTitle = true }
-          if (fields.issuer && (res.fields.issuer.confidence || 0) >= 85 && !manuallyEdited.institution) { setInstitution(fields.issuer); newBadges.institution = true }
-          if (fields.degreeLevel && (res.fields.degreeLevel.confidence || 0) >= 85 && !manuallyEdited.degreeLevel) { setDegreeLevel(fields.degreeLevel); newBadges.degreeLevel = true }
-          if (fields.unitsCompleted && (res.fields.unitsCompleted.confidence || 0) >= 85 && !manuallyEdited.unitsCompleted) { setUnitsCompleted(fields.unitsCompleted); newBadges.unitsCompleted = true }
-        } else if (catToApply.startsWith('A.2')) {
-          if (fields.title && !manuallyEdited.orgName) { setOrgName(fields.title); newBadges.orgName = true }
-          if (fields.issuer && !manuallyEdited.officeHeld) { setOfficeHeld(fields.issuer); newBadges.officeHeld = true }
-          if (fields.specificRole && !manuallyEdited.orgPosition) { setOrgPosition(fields.specificRole); newBadges.orgPosition = true }
-        } else if (catToApply.startsWith('A.3')) {
-          if (fields.title && !manuallyEdited.seminarTitle) { setSeminarTitle(fields.title); newBadges.seminarTitle = true }
-          if (fields.issuer && !manuallyEdited.organizerVenue) { setOrganizerVenue(fields.issuer); newBadges.organizerVenue = true }
-          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (catToApply.startsWith('B.1')) {
-          if (fields.title && !manuallyEdited.eventTitle) { setEventTitle(fields.title); newBadges.eventTitle = true }
-          if (fields.issuer && !manuallyEdited.sponsoringAgency) { setSponsoringAgency(fields.issuer); newBadges.sponsoringAgency = true }
-          if (fields.specificRole && !manuallyEdited.speakerRole) { setSpeakerRole(fields.specificRole); newBadges.speakerRole = true }
-          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (catToApply.startsWith('B.2')) {
-          if (fields.title && !manuallyEdited.pubTitle) { setPubTitle(fields.title); newBadges.pubTitle = true }
-          if (fields.issuer && !manuallyEdited.publisherIssn) { setPublisherIssn(fields.issuer); newBadges.publisherIssn = true }
-          if (fields.pubType && !manuallyEdited.pubType) { setPubType(fields.pubType); newBadges.pubType = true }
-          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (catToApply.startsWith('B.3')) {
-          if (fields.title && !manuallyEdited.researchTitle) { setResearchTitle(fields.title); newBadges.researchTitle = true }
-          if (fields.fundingStatus && !manuallyEdited.fundingStatus) { setFundingStatus(fields.fundingStatus); newBadges.fundingStatus = true }
-          if (fields.specificRole && !manuallyEdited.researchRole) { setResearchRole(fields.specificRole); newBadges.researchRole = true }
-        } else if (catToApply.startsWith('B.4')) {
-          if (fields.title && !manuallyEdited.awardTitle) { setAwardTitle(fields.title); newBadges.awardTitle = true }
-          if (fields.issuer && !manuallyEdited.conferringBody) { setConferringBody(fields.issuer); newBadges.conferringBody = true }
-          if (fields.awardType && !manuallyEdited.awardType) { setAwardType(fields.awardType); newBadges.awardType = true }
-          if (fields.scopeLevel && !manuallyEdited.scopeLevel) { setScopeLevel(fields.scopeLevel); newBadges.scopeLevel = true }
-        } else if (catToApply.startsWith('B.5')) {
-          if (fields.title && !manuallyEdited.materialTitle) { setMaterialTitle(fields.title); newBadges.materialTitle = true }
-          if (fields.matType && !manuallyEdited.matType) { setMatType(fields.matType); newBadges.matType = true }
-        } else if (catToApply.startsWith('B.6')) {
-          if (fields.title && !manuallyEdited.creativeTitle) { setCreativeTitle(fields.title); newBadges.creativeTitle = true }
-          if (fields.issuer && !manuallyEdited.exhibitionVenue) { setExhibitionVenue(fields.issuer); newBadges.exhibitionVenue = true }
-        } else {
-          if (fields.title && !manuallyEdited.serviceTitle) { setServiceTitle(fields.title); newBadges.serviceTitle = true }
-          if (fields.issuer && !manuallyEdited.sponsoringOrg) { setSponsoringOrg(fields.issuer); newBadges.sponsoringOrg = true }
-          if (fields.subType && !manuallyEdited.subType) { setSubType(fields.subType); newBadges.subType = true }
+        // 3. Main detail ← document title; organizer / issuer ← issuing body; role ← detected role
+        if (criterionToFill) {
+          const fill = {}
+          const free = criterionToFill.fields.filter((definition) => definition.type !== 'select')
+          const primary = criterionToFill.primary
+          const organizerField = free.find((definition) => definition.name !== primary)
+          if (fields.title && !manuallyEdited[primary]) { fill[primary] = fields.title; newBadges[primary] = true }
+          if (fields.issuer && organizerField && !manuallyEdited[organizerField.name]) { fill[organizerField.name] = fields.issuer; newBadges[organizerField.name] = true }
+          const roleField = criterionToFill.fields.find((definition) => definition.type === 'select')
+          const detectedRole = String(fields.specificRole || '').toUpperCase().replace(/[\s-]+/g, '_')
+          const roleOption = roleField?.options.find(([value, label]) => detectedRole.includes(value) || detectedRole.includes(label.toUpperCase()))
+          if (roleOption && !manuallyEdited[roleField.name]) { fill[roleField.name] = roleOption[0]; newBadges[roleField.name] = true }
+          if (Object.keys(fill).length) setDetails((current) => ({ ...current, ...fill }))
         }
 
         setOcrBadges(newBadges)
@@ -322,7 +253,7 @@ export default function PersonnelSubmissionModal({
 
   if (!isOpen) return null
 
-  const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, degreeLevel || subType || pubType)
+  const requiredProofHint = RankingCriteriaModel.getRequiredProofType('B', category, '')
   const ocrFieldSummary = Object.values(ocrResult?.fields || {}).reduce((summary, field) => {
     const confidence = Number(field?.confidence || 0)
     if (field?.value && confidence >= 85) summary.autoFilled += 1
@@ -356,29 +287,38 @@ export default function PersonnelSubmissionModal({
 
   // Extract Normalized Title & Issuer based on Category
   const getNormalizedTitleAndIssuer = () => {
-    if (category.startsWith('A.1')) return { title: degreeTitle || degreeLevel, issuer: institution || 'Grad School' }
-    if (category.startsWith('A.2')) return { title: orgName || 'Professional Org', issuer: officeHeld || orgPosition }
-    if (category.startsWith('A.3')) return { title: seminarTitle || 'Seminar/Training', issuer: organizerVenue || 'NDMU' }
-    if (category.startsWith('B.1')) return { title: eventTitle || 'Talk/Consultancy', issuer: sponsoringAgency || 'Sponsoring Agency' }
-    if (category.startsWith('B.2')) return { title: pubTitle || 'Publication Work', issuer: publisherIssn || 'Publisher' }
-    if (category.startsWith('B.3')) return { title: researchTitle || 'Research Project', issuer: fundingStatus }
-    if (category.startsWith('B.4')) return { title: awardTitle || 'Recognition/Award', issuer: conferringBody || 'Conferring Org' }
-    if (category.startsWith('B.5')) return { title: materialTitle || 'Instructional Material', issuer: courseUsedIn || 'Academic Program' }
-    if (category.startsWith('B.6')) return { title: creativeTitle || 'Creative Output', issuer: exhibitionVenue || 'Exhibition Venue' }
-    return { title: serviceTitle || 'Service Project', issuer: sponsoringOrg || 'LGU/Parish' }
+    if (!activeCriterion) return { title: '', issuer: '' }
+    return {
+      title: ntpDetailText(activeCriterion, details, activeCriterion.primary),
+      issuer: activeCriterion.secondary.map((name) => ntpDetailText(activeCriterion, details, name)).filter(Boolean).join(' · ')
+    }
   }
 
   // Form Submission Handler
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (documentDuplicate) {
+      setError(`This document is already used for "${documentDuplicate.title || 'another accomplishment'}". Choose a different file.`)
+      return
+    }
 
     const { title: resolvedTitle, issuer: resolvedIssuer } = getNormalizedTitleAndIssuer()
 
-    if (!resolvedTitle.trim() || resolvedTitle.trim().length < 3) {
-      setError('Please complete the primary title field for this category.')
+    const missing = (activeCriterion?.fields || []).filter((definition) => definition.required !== false && !String(details[definition.name] || '').trim())
+    if (!activeCriterion || missing.length) {
+      setError(`Please complete: ${missing.map((definition) => definition.label).join(', ') || 'the category details'}.`)
       return
     }
+    if (!resolvedTitle.trim() || resolvedTitle.trim().length < 3) {
+      setError(`${activeCriterion.fields.find((definition) => definition.name === activeCriterion.primary)?.label || 'The main detail'} must be at least 3 characters.`)
+      return
+    }
+    const isPeriod = activeCriterion.dateMode === 'period'
+    const effectiveDate = isPeriod ? startDate : dateAchieved
+    if (!effectiveDate) { setError(isPeriod ? 'Enter the start date.' : 'Enter the date of the accomplishment.'); return }
+    if (isPeriod && !ongoing && !endDate) { setError('Enter the end date, or mark it as ongoing.'); return }
+    if (isPeriod && endDate && endDate < startDate) { setError('The end date cannot be before the start date.'); return }
     if (!attachedFile && !editingItem) {
       setError('Supporting Proof Document attachment (PDF/JPG/PNG) is required.')
       return
@@ -386,7 +326,7 @@ export default function PersonnelSubmissionModal({
 
     try {
       setIsSubmitting(true)
-      const formattedDate = dateAchieved ? new Date(dateAchieved).toLocaleDateString('en-US', {
+      const formattedDate = effectiveDate ? new Date(effectiveDate).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
@@ -396,22 +336,22 @@ export default function PersonnelSubmissionModal({
         title: resolvedTitle.trim(),
         issuer: resolvedIssuer.trim(),
         location: resolvedIssuer.trim(),
-        date: formattedDate || dateAchieved,
-        date_achieved: dateAchieved,
-        academic_year: academicYear || inferAcademicYear(dateAchieved),
+        date: formattedDate || effectiveDate,
+        date_achieved: effectiveDate,
+        academic_year: inferAcademicYear(effectiveDate),
         category: category,
         scope_level: scopeLevel,
+        // Official Appendix N contract: the server validates it and maps it to the locked criteria.
         category_metadata: {
-          degree_level: degreeLevel || null,
-          units_completed: unitsCompleted || null,
-          organization_position: orgPosition || null,
-          speaker_role: speakerRole || null,
-          publication_type: pubType || null,
-          research_role: researchRole || null,
-          funding_status: fundingStatus || null,
-          award_type: awardType || null,
-          material_type: matType || null,
-          service_subtype: subType || null
+          portfolio_format: 'non_teaching_faculty',
+          contract_code: ntpContractCode(activeCriterion.code),
+          criterion_code: activeCriterion.code,
+          subcategory_code: activeCriterion.code,
+          date_mode: isPeriod ? 'period' : 'single',
+          start_date: isPeriod ? startDate : effectiveDate,
+          end_date: isPeriod ? (ongoing ? '' : endDate) : effectiveDate,
+          ongoing: isPeriod && activeCriterion.allowOngoing ? ongoing : false,
+          details: Object.fromEntries(activeCriterion.fields.map((definition) => [definition.name, String(details[definition.name] || '').trim()]).filter(([, value]) => value))
         },
         status: 'Pending Review',
         description: description.trim(),
@@ -437,80 +377,106 @@ export default function PersonnelSubmissionModal({
     }
   }
 
+  const pickFile = (file) => { if (file) handleFileChange({ target: { files: [file], value: '' } }) }
+  const requestClose = async () => {
+    if (isSubmitting) return
+    if (attachedFile && !editingItem && !(await confirmDialog({ title: 'Discard this accomplishment?', message: 'You have unsaved changes. If you close now, the uploaded document and details you entered will be lost.', confirmLabel: 'Discard', cancelLabel: 'Keep editing', tone: 'destructive' }))) return
+    onClose()
+  }
+  const titleDuplicate = editingItem ? null : (() => {
+    const { title: curTitle, issuer: curIssuer } = getNormalizedTitleAndIssuer()
+    const dup = PersonnelAchievementController.checkDuplicateWarning({ title: curTitle, date_achieved: dateAchieved, issuer: curIssuer }, existingAchievements)
+    return dup.isDuplicate ? dup.warningMessage : null
+  })()
+  const submitBlocker = documentDuplicate
+    ? `This document is already used for "${documentDuplicate.title || 'another accomplishment'}". Each document can support only one accomplishment — choose a different file.`
+    : titleDuplicate ? `${titleDuplicate} Open the existing record instead of adding it again.` : null
+  const hasDocument = Boolean(attachedFile || editingItem)
+  const step = !hasDocument ? 1 : !dateAchieved ? 2 : 3
+  const chipState = (n) => n === step ? 'active' : n < step ? 'done' : 'todo'
+  const footerStatus = isSubmitting ? { tone: 'bg-amber-500', text: 'Saving accomplishment…' }
+    : submitBlocker ? { tone: 'bg-rose-500', text: 'Duplicate — cannot be added' }
+    : isScanning ? { tone: 'bg-amber-500', text: 'Reading your document…' }
+      : !hasDocument ? { tone: 'bg-slate-400', text: 'Upload a document to begin' }
+        : !dateAchieved ? { tone: 'bg-amber-500', text: 'Add the date achieved to continue' }
+          : { tone: 'bg-emerald-600', text: 'Ready to add' }
+  const isImagePreview = Boolean(previewUrl && attachedFile?.type?.startsWith('image/'))
+  const isPdfPreview = Boolean(previewUrl && attachedFile?.type === 'application/pdf')
+  const fileExtension = String(attachedFile?.name || editingItem?.attached_file_name || 'file').split('.').pop().slice(0, 4)
+
   return (
     <div className={isPage
       ? 'mx-auto w-full max-w-6xl font-sans'
-      : 'fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 font-sans backdrop-blur-sm sm:p-4'}>
-      <div className={isPage
-        ? 'flex min-h-[calc(100vh-8rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)]'
-        : 'flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_-28px_rgba(15,23,42,0.65)]'}>
+      : 'fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-0 font-sans min-[820px]:p-6'}>
+      <section
+        role={isPage ? undefined : 'dialog'}
+        aria-modal={isPage ? undefined : 'true'}
+        aria-labelledby="ntp-entry-title"
+        onKeyDown={(event) => { if (!isPage && event.key === 'Escape') { event.stopPropagation(); requestClose() } }}
+        className={isPage
+          ? 'flex min-h-[calc(100vh-8rem)] w-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-[#fbfcf8] shadow-[0_18px_50px_-32px_rgba(15,23,42,0.45)]'
+          : 'flex h-full w-full flex-col overflow-hidden bg-[#fbfcf8] shadow-[0_24px_70px_-24px_rgba(15,23,42,.55)] min-[820px]:h-[min(760px,calc(100vh-48px))] min-[820px]:w-[1100px] min-[820px]:max-w-full min-[820px]:rounded-2xl'}>
 
-        {/* ================= MODAL HEADER WITH LIVE ESTIMATED POINTS BADGE ================= */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white p-5 sm:px-7">
-          <div className="flex items-center gap-3">
-            {isPage ? (
-              <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-emerald-200 text-emerald-800 transition hover:border-emerald-700 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700" aria-label="Back to portfolio">
-                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-              </button>
-            ) : (
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#16834a] text-white shadow-[0_8px_20px_-12px_rgba(22,131,74,0.8)]">
-                <Award className="h-5 w-5" aria-hidden="true" />
+        {/* ================= HEADER (matches the Faculty accomplishment modal) ================= */}
+        <header className="shrink-0 bg-emerald-950 px-5 py-3.5 text-white">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              {isPage
+                ? <button type="button" onClick={requestClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10 hover:bg-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Back to portfolio"><ArrowLeft className="h-5 w-5" aria-hidden="true" /></button>
+                : <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><Award className="h-5 w-5" aria-hidden="true" /></span>}
+              <div className="min-w-0">
+                <h2 id="ntp-entry-title" className="text-lg font-extrabold tracking-[-0.02em]">{editingItem ? 'Edit Accomplishment' : 'New Accomplishment'}</h2>
+                <p className="truncate text-sm text-emerald-50/90">{/^area\b/i.test(areaName || '') ? areaName : `Area ${lockedAreaCode} · ${areaName || 'Service & Leadership'}`}</p>
               </div>
-            )}
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                  {editingItem ? 'Edit accomplishment' : 'Add accomplishment'}
-                </h2>
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                  Area {lockedAreaCode}
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs font-medium text-slate-600">
-                {areaName || 'Non-teaching portfolio evidence'} · Upload proof, review the category, then complete the required details.
-              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <StepProgress chipState={chipState} />
+              {!isPage && <button type="button" onClick={requestClose} className="rounded-lg p-2 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close accomplishment form"><X className="h-5 w-5" /></button>}
             </div>
           </div>
+        </header>
 
-          {!isPage && <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"
-            aria-label="Close accomplishment form"
-          >
-            <X className="w-4 h-4" />
-          </button>}
-        </div>
+        <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col text-xs">
+          <div className="min-h-0 flex-1 overflow-y-auto min-[820px]:grid min-[820px]:grid-cols-[46fr_54fr] min-[820px]:overflow-hidden">
 
+            {/* LEFT: the document */}
+            <div className="flex h-[22rem] min-h-0 flex-col border-b border-slate-200 bg-slate-100 min-[820px]:h-auto min-[820px]:border-b-0 min-[820px]:border-r">
+              {isImagePreview
+                ? <div className="flex min-h-0 flex-1 items-center justify-center p-4"><img src={previewUrl} alt={`Preview of ${attachedFile.name}`} className="max-h-full max-w-full rounded-lg object-contain shadow-sm" /></div>
+                : isPdfPreview
+                  ? <iframe src={previewUrl} title={`Preview of ${attachedFile.name}`} className="min-h-0 w-full flex-1 bg-white" />
+                  : hasDocument
+                    ? <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center"><FileText className="h-10 w-10 text-emerald-800" aria-hidden="true" /><p className="text-sm font-bold text-slate-900">{attachedFile?.name || editingItem?.attached_file_name || 'Saved proof document'}</p><p className="text-xs text-slate-600">{attachedFile ? 'Preview is not available for this file type.' : 'The saved proof stays attached unless you replace it.'}</p></div>
+                    : <div className="flex flex-1 p-4 min-[820px]:p-5"><button type="button" onClick={() => fileInputRef.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragActive(true) }} onDragLeave={() => setDragActive(false)} onDrop={(event) => { event.preventDefault(); setDragActive(false); pickFile(event.dataTransfer.files?.[0]) }} className={`flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${dragActive ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300 bg-white hover:border-emerald-600 hover:bg-emerald-50/40'}`}>
+                      <UploadCloud className="h-10 w-10 text-emerald-800" aria-hidden="true" />
+                      <span className="mt-3 text-base font-extrabold text-slate-950">Drop your certificate here</span>
+                      <span className="mt-1 text-sm text-slate-700">or <span className="font-bold text-emerald-800 underline underline-offset-2">browse files</span></span>
+                      <span className="mt-4 text-xs text-slate-600">PDF, JPG, PNG · max 10 MB<br />We&apos;ll read it and suggest the category for you</span>
+                    </button></div>}
+              <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; pickFile(file) }} />
+            </div>
+
+            {/* RIGHT: review */}
+            <div className="min-h-0 space-y-3 p-4 min-[820px]:overflow-y-auto min-[820px]:p-5">
         {/* Error Alert Message */}
         {error && (
-          <div className="mx-5 mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 shrink-0 animate-in fade-in duration-150">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Duplicate Warning Banner (Non-blocking) */}
-        {(() => {
-          const { title: curTitle, issuer: curIssuer } = getNormalizedTitleAndIssuer()
-          const dup = PersonnelAchievementController.checkDuplicateWarning(
-            { title: curTitle, date_achieved: dateAchieved, issuer: curIssuer },
-            existingAchievements
-          )
-          if (dup.isDuplicate && !editingItem) {
-            return (
-              <div className="mx-5 mt-4 p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-medium flex items-center gap-2.5 shrink-0 animate-in fade-in duration-150">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
-                <span><strong>Possible duplicate:</strong> {dup.warningMessage}</span>
-              </div>
-            )
-          }
-          return null
-        })()}
+        {/* Duplicate accomplishment / document (blocking) */}
+        {submitBlocker && (
+          <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-300 text-rose-900 text-sm flex items-start gap-2.5 shrink-0">
+            <AlertCircle className="mt-0.5 w-4 h-4 shrink-0 text-rose-600" />
+            <span><strong>Duplicate accomplishment.</strong> {submitBlocker}</span>
+          </div>
+        )}
 
         {/* ================= OCR SCAN CONFIDENCE & STATUS BANNER ================= */}
         {isScanning && (
-          <div className="mx-5 mt-4 p-4 rounded-2xl bg-[#E7F3E9] border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
+          <div className="p-4 rounded-2xl bg-[#E7F3E9] border border-emerald-300 text-[#064e2b] text-xs font-bold flex items-center gap-3 shrink-0 animate-in fade-in duration-150">
             <div className="w-8 h-8 rounded-xl bg-[#16834a] text-white flex items-center justify-center animate-spin shrink-0">
               <RefreshCw className="w-4 h-4" />
             </div>
@@ -527,7 +493,7 @@ export default function PersonnelSubmissionModal({
         )}
 
         {ocrResult && !isScanning && (
-          <div className={`mx-5 mt-4 p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150 ${ocrResult.documentQuality?.label === 'failed' ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-emerald-50/90 border-emerald-300 text-[#064e2b]'}`}>
+          <div className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between gap-3 shrink-0 animate-in fade-in duration-150 ${ocrResult.documentQuality?.label === 'failed' ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-emerald-50/90 border-emerald-300 text-[#064e2b]'}`}>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-700 text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
                 <Sparkles className="w-4 h-4" />
@@ -570,64 +536,27 @@ export default function PersonnelSubmissionModal({
           </div>
         )}
 
-        {/* ================= CATEGORY-TAILORED ADAPTIVE FORM SCROLLABLE BODY ================= */}
-        <form onSubmit={handleSubmit} className={`flex-1 space-y-5 text-xs ${isPage ? 'mx-auto w-full max-w-4xl overflow-visible p-5 sm:p-7' : 'overflow-y-auto p-5'}`}>
-
-          {/* ================= STEP 1: UPLOAD & OCR SCAN CERTIFICATE ================= */}
-          <div className="p-4 rounded-3xl bg-slate-50 border border-slate-200/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#16834a] text-white flex items-center justify-center font-extrabold text-[11px]">
-                  1
-                </div>
-                <span className="font-extrabold text-slate-800 text-xs">Supporting Proof Document</span>
-              </div>
-              <span className="text-[11px] font-bold text-slate-400">PDF, JPG, PNG (Max 10MB)</span>
-            </div>
-
-            <label className={`border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition ${
-              attachedFile ? 'border-emerald-400 bg-emerald-50/50' : 'border-slate-300 hover:border-[#16834a] bg-white'
-            }`}>
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              {attachedFile ? (
-                <div className="flex items-center gap-3 text-left w-full">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
+              <section aria-labelledby="ntp-document-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+                <CardHeading id="ntp-document-heading" number={1} title="Supporting document" />
+                {!hasDocument && <p className="mt-2 text-sm text-slate-600">No document yet. Upload one on the left to get started.</p>}
+                {hasDocument && <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-emerald-900 text-[10px] font-extrabold uppercase text-white">{fileExtension}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-950">{attachedFile?.name || editingItem?.attached_file_name || 'Saved proof document'}</p>
+                    <p className="text-xs text-slate-600">{attachedFile ? `${(attachedFile.size / (1024 * 1024)).toFixed(2)} MB` : 'Already on file'}{isScanning && <span role="status" className="ml-1.5 font-semibold text-amber-800">Reading document…</span>}</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-900 truncate">{attachedFile.name}</p>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {(attachedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for secure backend persistence
-                    </p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {attachedFile && !isScanning && <button type="button" onClick={() => performOcrScan(attachedFile)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />{ocrResult ? 'Re-scan' : 'Scan'}</button>}
+                    <button type="button" disabled={isScanning} onClick={() => fileInputRef.current?.click()} className="rounded-md px-2 py-1.5 text-xs font-bold text-slate-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-50">Replace</button>
                   </div>
-                  <span className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-[11px] shrink-0">
-                    Attached
-                  </span>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <UploadCloud className="w-8 h-8 text-slate-400 mx-auto stroke-[1.5]" />
-                  <p className="font-bold text-slate-700">Click to upload official certificate or evidence</p>
-                  <p className="text-[11px] text-slate-400 font-medium">Automatic OCR will inspect text & suggest category</p>
-                </div>
-              )}
-            </label>
-            {requiredProofHint && (
-              <p className="text-[11px] text-slate-500 italic">
-                * Suggested proof: {requiredProofHint}
-              </p>
-            )}
-          </div>
+                </div>}
+                {requiredProofHint && <p className="mt-2 text-xs text-slate-600">Suggested proof: {requiredProofHint}</p>}
+              </section>
 
-          {/* ================= STEP 2: CATEGORY SELECTION ================= */}
-          <div className="space-y-2">
+              <section aria-labelledby="ntp-classification-heading" className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                <CardHeading id="ntp-classification-heading" number={2} title="Classification" />
             <ReqLabel 
-              label="2. Select Evaluation Category" 
+              label="Category" 
               value={category} 
               isOcrAutoFilled={ocrBadges.category}
               isManuallyEdited={manuallyEdited.category}
@@ -635,498 +564,63 @@ export default function PersonnelSubmissionModal({
             <select
               value={category}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-900 text-sm focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
             >
               {AREA_CATEGORY_OPTIONS[lockedAreaCode].map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-          </div>
+          </section>
 
-          {/* ================= STEP 3: CATEGORY-SPECIFIC ADAPTIVE FIELDS ================= */}
-          <div className="p-4 rounded-3xl bg-slate-50/70 border border-slate-200/80 space-y-3.5">
-            <div className="font-extrabold text-slate-800 text-xs flex items-center justify-between">
-              <span>3. Fill Required Details ({category})</span>
-            </div>
-
-            {/* A.1 Degrees */}
-            {category.startsWith('A.1') && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Degree Level" 
-                      value={degreeLevel} 
-                      isOcrAutoFilled={ocrBadges.degreeLevel}
-                      isManuallyEdited={manuallyEdited.degreeLevel}
-                      ocrConfidence={ocrResult?.fields?.degreeLevel?.confidence}
-                    />
-                    <select
-                      value={degreeLevel}
-                      onChange={(e) => { setDegreeLevel(e.target.value); markFieldEdited('degreeLevel') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Degree Level --</option>
-                      <option value="Ph.D. Degree Holder">Ph.D. / Doctoral Degree Holder</option>
-                      <option value="Ph.D. Units">Ph.D. Completed Units</option>
-                      <option value="Master's Degree Holder">Master's Degree Holder</option>
-                      <option value="Master's Units">Master's Completed Units</option>
-                    </select>
+              <section aria-labelledby="ntp-details-heading" className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                <CardHeading id="ntp-details-heading" number={3} title="Accomplishment details" />
+          {/* ================= Appendix N details for the selected criterion ================= */}
+          {activeCriterion && (
+            <div className="space-y-3.5">
+              <p className="text-xs font-semibold text-slate-600">{activeCriterion.groupTitle} · {activeCriterion.title} (maximum {activeCriterion.max} points)</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {activeCriterion.fields.map((definition) => (
+                  <div key={`${activeCriterion.code}-${definition.name}`} className={definition.name === activeCriterion.primary ? 'sm:col-span-2' : ''}>
+                    <ReqLabel label={definition.required === false ? `${definition.label} (optional)` : definition.label} value={details[definition.name]} isOcrAutoFilled={ocrBadges[definition.name]} isManuallyEdited={manuallyEdited[definition.name]} />
+                    {definition.type === 'select'
+                      ? <select value={details[definition.name] || ''} onChange={(event) => setDetail(definition.name, event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20"><option value="">Select {definition.label.toLowerCase()}</option>{definition.options.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+                      : <input type="text" maxLength={255} value={details[definition.name] || ''} placeholder={definition.placeholder || ''} onChange={(event) => setDetail(definition.name, event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20" />}
                   </div>
-                  <div>
-                    <ReqLabel 
-                      label="Units Completed" 
-                      value={unitsCompleted} 
-                      isOcrAutoFilled={ocrBadges.unitsCompleted}
-                      isManuallyEdited={manuallyEdited.unitsCompleted}
-                      ocrConfidence={ocrResult?.fields?.unitsCompleted?.confidence}
-                    />
-                    <input
-                      type="number"
-                      value={unitsCompleted}
-                      onChange={(e) => { setUnitsCompleted(e.target.value); markFieldEdited('unitsCompleted') }}
-                      placeholder="e.g. 18"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <ReqLabel 
-                    label="Official Degree Title" 
-                    value={degreeTitle} 
-                    isOcrAutoFilled={ocrBadges.degreeTitle}
-                    isManuallyEdited={manuallyEdited.degreeTitle}
-                    ocrConfidence={ocrResult?.fields?.title?.confidence}
-                  />
-                  <input
-                    type="text"
-                    value={degreeTitle}
-                    onChange={(e) => { setDegreeTitle(e.target.value); markFieldEdited('degreeTitle') }}
-                    placeholder="e.g. Doctor of Philosophy in Computer Science"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <ReqLabel 
-                    label="Conferring University / Institution" 
-                    value={institution} 
-                    isOcrAutoFilled={ocrBadges.institution}
-                    isManuallyEdited={manuallyEdited.institution}
-                    ocrConfidence={ocrResult?.fields?.issuer?.confidence}
-                  />
-                  <input
-                    type="text"
-                    value={institution}
-                    onChange={(e) => { setInstitution(e.target.value); markFieldEdited('institution') }}
-                    placeholder="e.g. Notre Dame of Marbel University"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* A.2 Membership */}
-            {category.startsWith('A.2') && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Organization Name" 
-                      value={orgName} 
-                      isOcrAutoFilled={ocrBadges.orgName}
-                      isManuallyEdited={manuallyEdited.orgName}
-                    />
-                    <input
-                      type="text"
-                      value={orgName}
-                      onChange={(e) => { setOrgName(e.target.value); markFieldEdited('orgName') }}
-                      placeholder="e.g. Philippine Computer Society (PCS)"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <ReqLabel 
-                      label="Position / Role" 
-                      value={orgPosition} 
-                      isOcrAutoFilled={ocrBadges.orgPosition}
-                      isManuallyEdited={manuallyEdited.orgPosition}
-                    />
-                    <select
-                      value={orgPosition}
-                      onChange={(e) => { setOrgPosition(e.target.value); markFieldEdited('orgPosition') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Role --</option>
-                      <option value="Officer">Officer / Board Member</option>
-                      <option value="Member">Regular Active Member</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* A.3 Seminars */}
-            {category.startsWith('A.3') && (
-              <div className="space-y-3">
-                <div>
-                  <ReqLabel 
-                    label="Seminar / Training Title" 
-                    value={seminarTitle} 
-                    isOcrAutoFilled={ocrBadges.seminarTitle}
-                    isManuallyEdited={manuallyEdited.seminarTitle}
-                  />
-                  <input
-                    type="text"
-                    value={seminarTitle}
-                    onChange={(e) => { setSeminarTitle(e.target.value); markFieldEdited('seminarTitle') }}
-                    placeholder="e.g. Regional Training on AI Curriculum Integration"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Organizer / Venue" 
-                      value={organizerVenue} 
-                      isOcrAutoFilled={ocrBadges.organizerVenue}
-                      isManuallyEdited={manuallyEdited.organizerVenue}
-                    />
-                    <input
-                      type="text"
-                      value={organizerVenue}
-                      onChange={(e) => { setOrganizerVenue(e.target.value); markFieldEdited('organizerVenue') }}
-                      placeholder="e.g. CHED / NDMU CITE"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <ReqLabel 
-                      label="Scope Level" 
-                      value={scopeLevel} 
-                      isOcrAutoFilled={ocrBadges.scopeLevel}
-                      isManuallyEdited={manuallyEdited.scopeLevel}
-                    />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => { setScopeLevel(e.target.value); markFieldEdited('scopeLevel') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Scope --</option>
-                      <option value="International">International</option>
-                      <option value="National">National</option>
-                      <option value="Regional">Regional</option>
-                      <option value="City / Local">City / Local</option>
-                      <option value="In-House">In-House / Institutional</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.1 Speaker / Talk */}
-            {category.startsWith('B.1') && (
-              <div className="space-y-3">
-                <div>
-                  <ReqLabel 
-                    label="Event / Lecture Title" 
-                    value={eventTitle} 
-                    isOcrAutoFilled={ocrBadges.eventTitle}
-                    isManuallyEdited={manuallyEdited.eventTitle}
-                  />
-                  <input
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => { setEventTitle(e.target.value); markFieldEdited('eventTitle') }}
-                    placeholder="e.g. Keynote on Predictive Student Analytics"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Speaker / Engagement Role" 
-                      value={speakerRole} 
-                      isOcrAutoFilled={ocrBadges.speakerRole}
-                      isManuallyEdited={manuallyEdited.speakerRole}
-                    />
-                    <select
-                      value={speakerRole}
-                      onChange={(e) => { setSpeakerRole(e.target.value); markFieldEdited('speakerRole') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Role --</option>
-                      <option value="Keynote Speaker">Keynote Speaker</option>
-                      <option value="Resource Person">Resource Person / Lecturer</option>
-                      <option value="Facilitator">Facilitator / Trainer</option>
-                      <option value="Judge">Judge / Panelist</option>
-                    </select>
-                  </div>
-                  <div>
-                    <ReqLabel 
-                      label="Sponsoring Agency" 
-                      value={sponsoringAgency} 
-                      isOcrAutoFilled={ocrBadges.sponsoringAgency}
-                      isManuallyEdited={manuallyEdited.sponsoringAgency}
-                    />
-                    <input
-                      type="text"
-                      value={sponsoringAgency}
-                      onChange={(e) => { setSponsoringAgency(e.target.value); markFieldEdited('sponsoringAgency') }}
-                      placeholder="e.g. DOST / CHED"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.2 Publication */}
-            {category.startsWith('B.2') && (
-              <div className="space-y-3">
-                <div>
-                  <ReqLabel 
-                    label="Publication / Paper Title" 
-                    value={pubTitle} 
-                    isOcrAutoFilled={ocrBadges.pubTitle}
-                    isManuallyEdited={manuallyEdited.pubTitle}
-                  />
-                  <input
-                    type="text"
-                    value={pubTitle}
-                    onChange={(e) => { setPubTitle(e.target.value); markFieldEdited('pubTitle') }}
-                    placeholder="e.g. Machine Learning Frameworks in Higher Education Analytics"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Publisher / Journal / ISSN" 
-                      value={publisherIssn} 
-                      isOcrAutoFilled={ocrBadges.publisherIssn}
-                      isManuallyEdited={manuallyEdited.publisherIssn}
-                    />
-                    <input
-                      type="text"
-                      value={publisherIssn}
-                      onChange={(e) => { setPublisherIssn(e.target.value); markFieldEdited('publisherIssn') }}
-                      placeholder="e.g. IEEE Access Journal (Scopus)"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <ReqLabel 
-                      label="Publication Type" 
-                      value={pubType} 
-                      isOcrAutoFilled={ocrBadges.pubType}
-                      isManuallyEdited={manuallyEdited.pubType}
-                    />
-                    <select
-                      value={pubType}
-                      onChange={(e) => { setPubType(e.target.value); markFieldEdited('pubType') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Type --</option>
-                      <option value="Scholarly Paper">Scholarly Paper / Journal Article</option>
-                      <option value="Book">Published Book / Monograph</option>
-                      <option value="Article">Professional / Trade Article</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.3 Research */}
-            {category.startsWith('B.3') && (
-              <div className="space-y-3">
-                <div>
-                  <ReqLabel 
-                    label="Research Project Title" 
-                    value={researchTitle} 
-                    isOcrAutoFilled={ocrBadges.researchTitle}
-                    isManuallyEdited={manuallyEdited.researchTitle}
-                  />
-                  <input
-                    type="text"
-                    value={researchTitle}
-                    onChange={(e) => { setResearchTitle(e.target.value); markFieldEdited('researchTitle') }}
-                    placeholder="e.g. Predictive Retention Modeling for Marist Scholars"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Funding / Completion Status" 
-                      value={fundingStatus} 
-                      isOcrAutoFilled={ocrBadges.fundingStatus}
-                      isManuallyEdited={manuallyEdited.fundingStatus}
-                    />
-                    <select
-                      value={fundingStatus}
-                      onChange={(e) => { setFundingStatus(e.target.value); markFieldEdited('fundingStatus') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Status --</option>
-                      <option value="Externally Funded Research Project">Externally Funded Project</option>
-                      <option value="Completed Institutional Research">Completed Institutional Research</option>
-                      <option value="Departmental Research">Departmental Research</option>
-                    </select>
-                  </div>
-                  <div>
-                    <ReqLabel 
-                      label="Research Role" 
-                      value={researchRole} 
-                      isManuallyEdited={manuallyEdited.researchRole}
-                    />
-                    <select
-                      value={researchRole}
-                      onChange={(e) => { setResearchRole(e.target.value); markFieldEdited('researchRole') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Role --</option>
-                      <option value="Lead Researcher">Lead Researcher / Principal Investigator</option>
-                      <option value="Co-Researcher">Co-Researcher</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* B.4 Awards */}
-            {category.startsWith('B.4') && (
-              <div className="space-y-3">
-                <div>
-                  <ReqLabel 
-                    label="Award / Recognition Title" 
-                    value={awardTitle} 
-                    isOcrAutoFilled={ocrBadges.awardTitle}
-                    isManuallyEdited={manuallyEdited.awardTitle}
-                  />
-                  <input
-                    type="text"
-                    value={awardTitle}
-                    onChange={(e) => { setAwardTitle(e.target.value); markFieldEdited('awardTitle') }}
-                    placeholder="e.g. Outstanding Research Faculty of the Year"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <ReqLabel 
-                      label="Conferring Body" 
-                      value={conferringBody} 
-                      isOcrAutoFilled={ocrBadges.conferringBody}
-                      isManuallyEdited={manuallyEdited.conferringBody}
-                    />
-                    <input
-                      type="text"
-                      value={conferringBody}
-                      onChange={(e) => { setConferringBody(e.target.value); markFieldEdited('conferringBody') }}
-                      placeholder="e.g. Notre Dame of Marbel University"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <ReqLabel 
-                      label="Scope Level" 
-                      value={scopeLevel} 
-                      isOcrAutoFilled={ocrBadges.scopeLevel}
-                      isManuallyEdited={manuallyEdited.scopeLevel}
-                    />
-                    <select
-                      value={scopeLevel}
-                      onChange={(e) => { setScopeLevel(e.target.value); markFieldEdited('scopeLevel') }}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                    >
-                      <option value="">-- Select Scope --</option>
-                      <option value="National">National / International</option>
-                      <option value="Regional">Regional</option>
-                      <option value="Institutional">Institutional</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Fallback Categories B.5, B.6, C.1, C.2 */}
-            {(category.startsWith('B.5') || category.startsWith('B.6') || category.startsWith('C.')) && (
-              <div className="space-y-3">
-                <div>
-                  <ReqLabel 
-                    label="Activity / Output Title" 
-                    value={serviceTitle || materialTitle || creativeTitle} 
-                    isManuallyEdited={manuallyEdited.serviceTitle || manuallyEdited.materialTitle || manuallyEdited.creativeTitle}
-                  />
-                  <input
-                    type="text"
-                    value={serviceTitle || materialTitle || creativeTitle}
-                    onChange={(e) => {
-                      setServiceTitle(e.target.value)
-                      setMaterialTitle(e.target.value)
-                      setCreativeTitle(e.target.value)
-                      markFieldEdited('serviceTitle')
-                    }}
-                    placeholder="e.g. Koronadal City LGU Digital Governance Extension Project"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-                <div>
-                  <ReqLabel 
-                    label="Sponsoring / Beneficiary Entity" 
-                    value={sponsoringOrg || courseUsedIn || exhibitionVenue} 
-                    isManuallyEdited={manuallyEdited.sponsoringOrg}
-                  />
-                  <input
-                    type="text"
-                    value={sponsoringOrg || courseUsedIn || exhibitionVenue}
-                    onChange={(e) => {
-                      setSponsoringOrg(e.target.value)
-                      setCourseUsedIn(e.target.value)
-                      setExhibitionVenue(e.target.value)
-                      markFieldEdited('sponsoringOrg')
-                    }}
-                    placeholder="e.g. City Government of Koronadal"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 font-medium text-slate-800 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ================= STEP 4: DATE ACHIEVED & ACADEMIC YEAR ================= */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <ReqLabel 
-                label="4. Date Achieved / Conferred" 
-                value={dateAchieved} 
-                isOcrAutoFilled={ocrBadges.dateAchieved}
-                isManuallyEdited={manuallyEdited.dateAchieved}
-              />
-              <input
-                type="date"
-                value={dateAchieved}
-                max={localToday()}
-                onChange={handleDateChange}
-                className="w-full px-3 py-2 rounded-2xl bg-white border border-slate-200 font-medium text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Derived Academic Year
-              </label>
-              <div className="px-3.5 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 font-bold text-slate-800 text-xs min-h-[38px] flex items-center">
-                {academicYear || <span className="text-slate-400 font-normal italic">Derived after date entry</span>}
+                ))}
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ================= DATE(S) ================= */}
+          {activeCriterion?.dateMode === 'period' ? (
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div>
+                <ReqLabel label="Start date" value={startDate} isOcrAutoFilled={ocrBadges.startDate} isManuallyEdited={manuallyEdited.startDate} />
+                <input type="date" value={startDate} max={localToday()} onChange={(event) => { setStartDate(event.target.value); markFieldEdited('startDate') }} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20" />
+              </div>
+              <div>
+                <ReqLabel label={ongoing ? 'End date (ongoing)' : 'End date'} value={ongoing ? 'ongoing' : endDate} />
+                <input type="date" value={endDate} min={startDate || undefined} max={localToday()} disabled={ongoing} onChange={(event) => setEndDate(event.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 disabled:bg-slate-100" />
+                {activeCriterion.allowOngoing && <label className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-800"><input type="checkbox" checked={ongoing} onChange={(event) => { setOngoing(event.target.checked); if (event.target.checked) setEndDate('') }} className="h-4 w-4 accent-emerald-800" />Ongoing</label>}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <div>
+                <ReqLabel label="Date" value={dateAchieved} isOcrAutoFilled={ocrBadges.dateAchieved} isManuallyEdited={manuallyEdited.dateAchieved} />
+                <input type="date" value={dateAchieved} max={localToday()} onChange={handleDateChange} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Academic year</label>
+                <div className="flex min-h-[38px] items-center rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm font-bold text-slate-800">{academicYear || <span className="font-normal italic text-slate-400">Derived from the date</span>}</div>
+              </div>
+            </div>
+          )}
 
           {/* ================= STEP 5: OPTIONAL NARRATIVE DESCRIPTION ================= */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              5. Brief Narrative / Impact Description (Optional)
+              Remarks (optional)
             </label>
             <textarea
               rows={2}
@@ -1136,41 +630,25 @@ export default function PersonnelSubmissionModal({
               className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-slate-200 font-medium text-slate-800 text-xs focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden resize-none"
             />
           </div>
-
-          {/* ================= MODAL FOOTER ================= */}
-          <div className={`flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white pt-4 ${isPage ? 'sticky bottom-0 -mx-5 px-5 pb-1 sm:-mx-7 sm:px-7' : ''}`}>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition cursor-pointer"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={isSubmitting || (!attachedFile && !editingItem)}
-              className={`px-5 py-2.5 rounded-2xl text-white text-xs font-extrabold flex items-center gap-2 transition shadow-md cursor-pointer ${
-                isSubmitting || (!attachedFile && !editingItem)
-                  ? 'bg-slate-300 cursor-not-allowed'
-                  : 'bg-[#16834a] hover:bg-[#236e3e]'
-              }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Securing & Persisting...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{editingItem ? 'Save Changes' : 'Submit Accomplishment'}</span>
-                </>
-              )}
-            </button>
+              </section>
+            </div>
           </div>
+
+          <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3">
+            <div className="flex flex-col-reverse gap-3 min-[820px]:flex-row min-[820px]:items-center min-[820px]:justify-between">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-800" aria-live="polite"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${footerStatus.tone}`} aria-hidden="true" />{footerStatus.text}</p>
+              <div className="flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={requestClose} className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Cancel</button>
+                <button type="submit" disabled={isSubmitting || (!attachedFile && !editingItem) || Boolean(submitBlocker)} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45">
+                  {isSubmitting
+                    ? <><RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />Adding…</>
+                    : <><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{editingItem ? 'Save Changes' : 'Add Accomplishment'}</>}
+                </button>
+              </div>
+            </div>
+          </footer>
         </form>
-      </div>
+      </section>
     </div>
   )
 }

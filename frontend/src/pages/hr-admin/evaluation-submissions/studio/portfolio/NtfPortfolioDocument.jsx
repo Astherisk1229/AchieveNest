@@ -1,6 +1,5 @@
-import React from 'react'
-import { LockKeyhole } from 'lucide-react'
-import { calculateNTFScores } from '../../evaluation/rating/NTFRatingEngine'
+import React, { useEffect, useState } from 'react'
+import { LockKeyhole, LoaderCircle, PencilLine } from 'lucide-react'
 
 const A_ROWS = [
   ['A.1', 'Job Performance', 50],
@@ -47,6 +46,49 @@ const textFrom = (item, keys, fallback = '—') => {
   return fallback
 }
 
+// DS shown in the form: the HR value, or the average of the two imported school years.
+const dsOf = (item) => {
+  if (!item) return null
+  const values = [].concat(itemSource(item).ds ?? []).filter(value => value !== null && value !== '' && Number.isFinite(Number(value))).map(Number)
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
+}
+const formatDs = value => Number(value).toLocaleString('en-PH', { maximumFractionDigits: 2 })
+
+// Inline DS cell: saves on Enter or when focus leaves, only if the value changed.
+export function DsInput({ code, title, value, onCommit }) {
+  const [draft, setDraft] = useState(value === null ? '' : String(Math.round(value * 100) / 100))
+  const [state, setState] = useState({ saving: false, error: '' })
+  useEffect(() => { setDraft(value === null ? '' : String(Math.round(value * 100) / 100)) }, [value])
+
+  const commit = async () => {
+    const text = draft.trim()
+    if (text === '' || (value !== null && Math.abs(Number(text) - value) < 0.005)) { setState({ saving: false, error: '' }); if (text === '') setDraft(value === null ? '' : String(Math.round(value * 100) / 100)); return }
+    const next = Number(text)
+    if (!Number.isFinite(next) || next < 0 || next > 100) { setState({ saving: false, error: 'Enter 0–100' }); return }
+    setState({ saving: true, error: '' })
+    try {
+      const saved = await onCommit(code, next)
+      if (saved === false) setDraft(value === null ? '' : String(Math.round(value * 100) / 100))
+      setState({ saving: false, error: '' })
+    } catch (error) {
+      setState({ saving: false, error: error?.error?.message || error?.message || 'Not saved' })
+    }
+  }
+
+  return <span className="inline-flex flex-col gap-0.5 font-sans">
+    <span className="inline-flex items-center gap-1">
+      <input type="number" inputMode="decimal" min="0" max="100" step="0.01" value={draft} disabled={state.saving}
+        onChange={event => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() } if (event.key === 'Escape') { setDraft(value === null ? '' : String(Math.round(value * 100) / 100)); setState({ saving: false, error: '' }) } }}
+        aria-label={`DS for ${code} ${title}`} aria-invalid={Boolean(state.error) || undefined}
+        className={`w-20 rounded-md border px-2 py-1 text-right text-xs tabular-nums outline-none focus:ring-2 focus:ring-emerald-600/30 dark:bg-slate-900 ${state.error ? 'border-rose-500' : 'border-slate-300 focus:border-emerald-700 dark:border-slate-600'}`}/>
+      {state.saving && <LoaderCircle className="h-3.5 w-3.5 animate-spin text-slate-500" aria-label="Saving"/>}
+    </span>
+    {state.error && <span role="alert" className="text-[10px] font-semibold text-rose-700">{state.error}</span>}
+  </span>
+}
+
 const itemCode = item => String(item.subcategory_code || item.criterionCode || item.criterion_code || '').trim().toUpperCase()
 const matches = (item, code) => {
   const actual = itemCode(item)
@@ -62,12 +104,11 @@ const matches = (item, code) => {
   return (aliases[code.toUpperCase()] || []).some(alias => subtype.includes(alias))
 }
 
-export default function NtfPortfolioDocument({ submission, evidenceItems, selectedEvidence, onSelectEvidence }) {
+export default function NtfPortfolioDocument({ submission, evidenceItems, selectedEvidence, onSelectEvidence, onUpdateAreaADs }) {
   const areaA = evidenceItems.filter(item => String(item.categoryArea || '').toLowerCase() === 'areaa')
   const areaB = evidenceItems.filter(item => String(item.categoryArea || '').toLowerCase() === 'areab')
   const tenureYears = Math.max(0, Number(submission.tenure_years) || 0)
   const servicePoints = Math.min(10, Math.floor(tenureYears / 2))
-  const scores = calculateNTFScores(evidenceItems, tenureYears)
 
   return <div className="flex-1 overflow-y-auto bg-white p-6 font-serif text-slate-950 dark:bg-slate-950 dark:text-slate-100">
     <header className="mb-6 text-center">
@@ -84,14 +125,23 @@ export default function NtfPortfolioDocument({ submission, evidenceItems, select
     <section className="border-2 border-slate-900 text-xs dark:border-slate-500">
       <SectionTitle>A. PERFORMANCE AND PERSONAL INDICATORS <span className="float-right">Maximum: 90</span></SectionTitle>
       <table className="w-full border-collapse">
-        <thead><tr className="border-b border-slate-900 bg-slate-100 dark:border-slate-500 dark:bg-slate-800"><Th>Item</Th><Th>Official HR score</Th><Th>Maximum</Th><Th>Status</Th></tr></thead>
+        <thead><tr className="border-b border-slate-900 bg-slate-100 dark:border-slate-500 dark:bg-slate-800"><Th>Item</Th><Th>Weight</Th><Th>DS</Th><Th>Points earned</Th><Th>Status</Th></tr></thead>
         <tbody>{A_ROWS.map(([code, title, max]) => {
           const item = areaA.find(entry => itemCode(entry) === code)
           const value = item?.awardedPoints
           const available = value !== null && value !== undefined && value !== ''
+          const ds = dsOf(item)
+          const hrSet = itemSource(item || {}).ds_source === 'hr'
           return <tr key={code} className="border-b border-slate-300 dark:border-slate-700">
-            <Td><strong>{code}</strong> {title}</Td><Td>{available ? Number(value).toFixed(2) : '—'}</Td><Td>{max}</Td>
-            <Td>{available ? <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300"><LockKeyhole className="h-3 w-3"/>Locked</span> : <span className="text-amber-700 dark:text-amber-300">Pending annual review</span>}</Td>
+            <Td><strong>{code}</strong> {title}</Td>
+            <Td>{max} pts</Td>
+            <Td>{onUpdateAreaADs ? <DsInput code={code} title={title} value={ds} onCommit={onUpdateAreaADs}/> : (ds === null ? '—' : formatDs(ds))}</Td>
+            <Td>{available ? Number(value).toFixed(2) : '—'}</Td>
+            <Td>{!available
+              ? <span className="text-amber-700 dark:text-amber-300">{onUpdateAreaADs ? 'Enter DS' : 'Pending annual review'}</span>
+              : hrSet
+                ? <span className="inline-flex items-center gap-1 font-semibold text-sky-800 dark:text-sky-300"><PencilLine className="h-3 w-3"/>Set by HR</span>
+                : <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300"><LockKeyhole className="h-3 w-3"/>Annual review</span>}</Td>
           </tr>
         })}</tbody>
       </table>
@@ -108,29 +158,7 @@ export default function NtfPortfolioDocument({ submission, evidenceItems, select
       </div>
       {B_SECTIONS.slice(7).map(section => <EvidenceSection key={section.code} section={section} items={areaB.filter(item => matches(item, section.code))} selectedEvidence={selectedEvidence} onSelectEvidence={onSelectEvidence}/>)}
     </section>
-
-    <ScoreSummary scores={scores}/>
   </div>
-}
-
-const B_CAPS = [['B.1', 'School Involvement', 30], ['B.2', 'Community Involvement', 30], ['B.3', 'No. of Years at NDMU', 10], ['B.4', 'Judge / Lecturer / Resource Person', 30], ['B.5', 'Recognition / Meritorious Award', 30]]
-const fmt = value => value === null || value === undefined ? '—' : Number(value).toFixed(2)
-
-// Final score summary: verified, rated Area B entries only; category caps, then the Area B cap of 60.
-function ScoreSummary({ scores }) {
-  const b = scores.areaB.categoryTotals || {}
-  return <section aria-label="Score summary" className="mt-6 border-2 border-slate-900 text-xs dark:border-slate-500">
-    <SectionTitle>SCORE SUMMARY <span className="float-right">Maximum: 150</span></SectionTitle>
-    <table className="w-full border-collapse">
-      <thead><tr className="border-b border-slate-900 bg-slate-100 dark:border-slate-500 dark:bg-slate-800"><Th>Area / category</Th><Th>Points</Th><Th>Maximum</Th></tr></thead>
-      <tbody>
-        <tr className="border-b border-slate-300 font-bold dark:border-slate-700"><Td>A. Performance and Personal Indicators</Td><Td>{scores.areaA.complete ? fmt(scores.areaA.total) : 'Pending annual review'}</Td><Td>90</Td></tr>
-        {B_CAPS.map(([code, title, cap]) => <tr key={code} className="border-b border-slate-300 dark:border-slate-700"><Td>{code} {title}</Td><Td>{fmt(Math.min(b[code] || 0, cap))}</Td><Td>{cap}</Td></tr>)}
-        <tr className="border-b border-slate-300 font-bold dark:border-slate-700"><Td>B. Service and Leadership (capped)</Td><Td>{fmt(scores.areaB.total)}</Td><Td>60</Td></tr>
-        <tr className="bg-slate-100 font-bold dark:bg-slate-800"><Td>TOTAL</Td><Td>{scores.grandTotalAwarded === null ? 'Pending Area A' : fmt(scores.grandTotalAwarded)}</Td><Td>150</Td></tr>
-      </tbody>
-    </table>
-  </section>
 }
 
 function EvidenceSection({ section, items, selectedEvidence, onSelectEvidence }) {

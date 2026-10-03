@@ -14,7 +14,7 @@ describe('Faculty document-first accomplishment workflow', () => {
     expect(source.indexOf('title="Supporting document"')).toBeLessThan(source.indexOf('title="Classification"'))
     expect(source.indexOf('title="Classification"')).toBeLessThan(source.indexOf('title="Accomplishment details"'))
     expect(source).toContain('Add Accomplishment')
-    expect(source).toContain('Submit Accomplishment')
+    expect(source).toContain('Add Accomplishment')
     expect(source).toContain('Re-scan')
     expect(source).not.toContain('Replace Document')
     expect(source).not.toContain('Log New Accomplishment')

@@ -24,16 +24,16 @@ export function ArchiveCycleDialog({ cycle, onClose, onArchived }) {
   const archive = async () => {
     setSaving(true); setError('')
     try { const result = await archiveRankingCycle(cycle.id, key.current); onArchived(result?.cycle || result) }
-    catch (failure) { setError(errorMessage(failure, 'The ranking cycle could not be archived.')); setSaving(false) }
+    catch (failure) { setError(errorMessage(failure, 'The ranking period could not be archived.')); setSaving(false) }
   }
-  return <RankingCycleDialog width="max-w-lg" title="Archive Ranking Cycle" onClose={() => !saving && onClose()} footer={<>
+  return <RankingCycleDialog width="max-w-lg" title="Archive Ranking Period" onClose={() => !saving && onClose()} footer={<>
     <button type="button" onClick={onClose} disabled={saving} className={buttonStyles.secondary}>Cancel</button>
-    <button type="button" onClick={archive} disabled={!confirmed || saving} className={buttonStyles.danger}>{saving ? 'Archiving…' : 'Archive Cycle'}</button>
+    <button type="button" onClick={archive} disabled={!confirmed || saving} className={buttonStyles.danger}>{saving ? 'Archiving…' : 'Archive Period'}</button>
   </>}>
     <div className="space-y-4 p-5 sm:p-6">
       <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900 dark:bg-amber-950/30">
         <AlertTriangle aria-hidden="true" className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300"/>
-        <div><p className="font-bold text-amber-900 dark:text-amber-100">Archive this ranking cycle?</p><p className="mt-1 leading-5 text-amber-900/90 dark:text-amber-100/90">The cycle moves to the archive. All annual reviews, submissions, evaluations, criteria versions, and results are preserved and remain viewable in read-only mode.</p></div>
+        <div><p className="font-bold text-amber-900 dark:text-amber-100">Archive this ranking period?</p><p className="mt-1 leading-5 text-amber-900/90 dark:text-amber-100/90">The period moves to the archive. All annual reviews, submissions, evaluations, criteria versions, and results are preserved and remain viewable in read-only mode.</p></div>
       </div>
       <CycleSummary cycle={cycle}/>
       <label className="flex items-start gap-2.5 text-sm font-semibold text-slate-800 dark:text-slate-200"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-400 accent-emerald-700"/>I understand that this action cannot be undone.</label>
@@ -49,9 +49,9 @@ export function DeleteEmptyCycleDialog({ cycle, onClose, onDeleted }) {
   const remove = async () => {
     setSaving(true); setError('')
     try { await deleteRankingCycle(cycle.id); onDeleted(cycle) }
-    catch (failure) { setError(errorMessage(failure, 'The ranking cycle could not be deleted.')); setSaving(false) }
+    catch (failure) { setError(errorMessage(failure, 'The ranking period could not be deleted.')); setSaving(false) }
   }
-  return <RankingCycleDialog width="max-w-lg" title="Delete Empty Cycle" onClose={() => !saving && onClose()} footer={<>
+  return <RankingCycleDialog width="max-w-lg" title="Delete Empty Period" onClose={() => !saving && onClose()} footer={<>
     <button type="button" onClick={onClose} disabled={saving} className={buttonStyles.secondary}>Cancel</button>
     <button type="button" onClick={remove} disabled={saving} className={buttonStyles.danger}>{saving ? 'Deleting…' : 'Delete Cycle'}</button>
   </>}>

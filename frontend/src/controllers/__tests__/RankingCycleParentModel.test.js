@@ -5,7 +5,7 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '../../../..')
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8')
 
-describe('Ranking Cycle parent model', () => {
+describe('Ranking Period parent model', () => {
   it('preserves period IDs and attaches tracks through a parent foreign key', () => {
     const migration = read('backend/app/Database/Migrations/2026-09-15-000002_CreateRankingCycles.php')
     expect(migration).toContain('ranking_cycle_id VARCHAR(36) NULL')
@@ -38,7 +38,7 @@ describe('Ranking Cycle parent model', () => {
 
   it('requires an explicit cycle in the track creation form', () => {
     const page = read('frontend/src/pages/hr-admin/PersonnelEvaluationSetupPage.jsx')
-    expect(page).toContain('Select a ranking cycle for this track.')
+    expect(page).toContain('Select a ranking period for this track.')
     expect(page).toContain('value={form.ranking_cycle_id}')
   })
 })

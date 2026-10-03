@@ -204,9 +204,9 @@ export default function OSADCollegeDetailsView({
       <OSADPageHeader
         variant="detail"
         onBack={onBack}
-        backLabel="Back to Academic Structure"
+        backLabel="Back to College and Programs"
         breadcrumbs={[
-          { label: 'Academic Structure', onClick: onBack },
+          { label: 'College and Programs', onClick: onBack },
           { label: college.code || 'College' }
         ]}
         title={college.name}

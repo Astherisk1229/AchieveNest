@@ -3,8 +3,8 @@
  * Accessible shared confirmation dialog for unsaved changes and critical actions.
  */
 
-import React, { useEffect, useRef } from 'react'
-import { AlertTriangle, AlertCircle, HelpCircle, X } from 'lucide-react'
+import React, { useEffect, useId, useRef } from 'react'
+import { AlertTriangle, AlertCircle, CheckCircle2, HelpCircle, Info, X } from 'lucide-react'
 import { Button } from './button'
 
 export function ConfirmDialog({
@@ -20,8 +20,20 @@ export function ConfirmDialog({
   type,
   onConfirm,
   onCancel,
-  isProcessing = false
+  isProcessing = false,
+  hideCancel = false, // single-button notice (replaces window.alert)
+  inputLabel, // optional text field (replaces window.prompt)
+  inputValue = '',
+  inputPlaceholder = '',
+  inputRequired = false,
+  onInputChange
 }) {
+  const baseId = useId()
+  const titleId = `${baseId}-title`
+  const descriptionId = `${baseId}-description`
+  const inputId = `${baseId}-input`
+  const hasInput = typeof onInputChange === 'function'
+  const inputMissing = hasInput && inputRequired && !String(inputValue || '').trim()
   const confirmBtnRef = useRef(null)
   const dialogRef = useRef(null)
   const previousFocusRef = useRef(null)
@@ -30,17 +42,28 @@ export function ConfirmDialog({
   const effectiveCancelLabel = cancelText || cancelLabel
   const effectiveTone = type || tone
 
+  // Keep the latest handlers in refs so typing in the optional input does not
+  // re-run the effects below (which would steal focus on every keystroke).
+  const onCancelRef = useRef(onCancel)
+  const isProcessingRef = useRef(isProcessing)
+  onCancelRef.current = onCancel
+  isProcessingRef.current = isProcessing
+
   useEffect(() => {
     if (!isDialogOpen) return
-
     previousFocusRef.current = document.activeElement
+    return () => { previousFocusRef.current?.focus?.() }
+  }, [isDialogOpen])
+
+  useEffect(() => {
+    if (!isDialogOpen) return
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
-        if (onCancel && !isProcessing) {
-          onCancel()
+        if (onCancelRef.current && !isProcessingRef.current) {
+          onCancelRef.current()
         }
       }
       if (e.key === 'Tab' && dialogRef.current) {
@@ -59,17 +82,15 @@ export function ConfirmDialog({
     }
 
     window.addEventListener('keydown', handleKeyDown, true)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, true)
-      previousFocusRef.current?.focus?.()
-    }
-  }, [isDialogOpen, onCancel, isProcessing])
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [isDialogOpen])
 
   useEffect(() => {
-    if (isDialogOpen && confirmBtnRef.current) {
-      confirmBtnRef.current.focus()
-    }
-  }, [isDialogOpen])
+    if (!isDialogOpen) return
+    const input = hasInput ? dialogRef.current?.querySelector('textarea') : null
+    if (input) input.focus()
+    else if (confirmBtnRef.current) confirmBtnRef.current.focus()
+  }, [isDialogOpen, hasInput])
 
   if (!isDialogOpen) return null
 
@@ -79,6 +100,18 @@ export function ConfirmDialog({
         return (
           <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 flex items-center justify-center shrink-0">
             <AlertCircle className="w-5 h-5" />
+          </div>
+        )
+      case 'success':
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        )
+      case 'info':
+        return (
+          <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800 flex items-center justify-center shrink-0">
+            <Info className="w-5 h-5" />
           </div>
         )
       case 'default':
@@ -112,8 +145,8 @@ export function ConfirmDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-      aria-describedby="confirm-dialog-description"
+      aria-labelledby={titleId}
+      aria-describedby={descriptionId}
       onClick={handleBackdropClick}
       className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-150 font-sans"
     >
@@ -135,31 +168,47 @@ export function ConfirmDialog({
         <div className="flex items-start gap-4">
           {getToneIcon()}
           <div className="space-y-1.5 pt-0.5">
-            <h3 id="confirm-dialog-title" className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <h3 id={titleId} className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
               {title}
             </h3>
-            <p id="confirm-dialog-description" className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+            <p id={descriptionId} className="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               {message}
             </p>
           </div>
         </div>
 
+        {hasInput && (
+          <div className="space-y-1.5">
+            <label htmlFor={inputId} className="block text-sm font-bold text-slate-800 dark:text-slate-200">{inputLabel || 'Details'}{inputRequired && <span className="text-rose-600"> *</span>}</label>
+            <textarea
+              id={inputId}
+              rows={3}
+              value={inputValue}
+              placeholder={inputPlaceholder}
+              onChange={(e) => onInputChange(e.target.value)}
+              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+            />
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isProcessing}
-            onClick={onCancel}
-            className="text-xs font-bold"
-          >
-            {effectiveCancelLabel}
-          </Button>
+          {!hideCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={onCancel}
+              className="text-xs font-bold"
+            >
+              {effectiveCancelLabel}
+            </Button>
+          )}
 
           <Button
             ref={confirmBtnRef}
             type="button"
             variant={getConfirmVariant()}
-            disabled={isProcessing}
+            disabled={isProcessing || inputMissing}
             onClick={onConfirm}
             className="text-xs font-extrabold shadow-sm"
           >

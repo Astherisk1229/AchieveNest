@@ -125,7 +125,7 @@ export default function NewRankingCycleDialog({ cycles, onClose, onCreated }) {
       }, requestKey.current)
       onCreated(result?.cycle || result)
     } catch (failure) {
-      setServerError(errorMessage(failure, 'The ranking cycle could not be created.'))
+      setServerError(errorMessage(failure, 'The ranking period could not be created.'))
       setSaving(false)
     }
   }
@@ -135,9 +135,9 @@ export default function NewRankingCycleDialog({ cycles, onClose, onCreated }) {
   const missing = [!form.groups.length && 'personnel coverage', (!form.submission_open_at || !form.submission_close_at) && 'submission period', (!form.evaluation_start_at || !form.evaluation_end_at) && 'evaluation period'].filter(Boolean)
 
   return <>
-    <RankingCycleDialog width="max-w-5xl" title="New Ranking Cycle" description="Configure the details for the new ranking cycle." onClose={() => !saving && onClose()} footer={<>
+    <RankingCycleDialog width="max-w-5xl" title="New Ranking Period" description="Configure the details for the new ranking period." onClose={() => !saving && onClose()} footer={<>
       <button type="button" onClick={onClose} disabled={saving} className={buttonStyles.secondary}>Cancel</button>
-      <button type="submit" form="new-ranking-cycle" disabled={!ready || saving} className={buttonStyles.primary}>{saving ? 'Creating…' : 'Create Ranking Cycle'}</button>
+      <button type="submit" form="new-ranking-cycle" disabled={!ready || saving} className={buttonStyles.primary}>{saving ? 'Creating…' : 'Create Ranking Period'}</button>
     </>}>
       <form id="new-ranking-cycle" onSubmit={submit} noValidate className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
         <div className="space-y-5">
@@ -157,11 +157,11 @@ export default function NewRankingCycleDialog({ cycles, onClose, onCreated }) {
           {serverError && <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{serverError}</p>}
         </div>
 
-        <aside aria-label="Cycle preview" className="h-fit rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-          <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-200">Cycle Preview</h3>
+        <aside aria-label="Period preview" className="h-fit rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+          <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-200">Period Preview</h3>
           <div className="mt-3 flex items-start gap-2.5 border-b border-emerald-200/70 pb-3 dark:border-emerald-900">
             <CalendarDays aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-800 dark:text-emerald-300"/>
-            <div><p className="font-black text-slate-950 dark:text-white" data-testid="generated-cycle-name">{name}</p><p className="text-xs text-slate-600 dark:text-slate-400">This is how the cycle will appear.</p></div>
+            <div><p className="font-black text-slate-950 dark:text-white" data-testid="generated-cycle-name">{name}</p><p className="text-xs text-slate-600 dark:text-slate-400">This is how the period will appear.</p></div>
           </div>
           <dl className="mt-2">
             <PreviewRow label="Academic Year" value={form.academic_year ? form.academic_year.replace('-', '–') : 'Not set'} missing={!form.academic_year}/>
@@ -175,7 +175,7 @@ export default function NewRankingCycleDialog({ cycles, onClose, onCreated }) {
               <span>{statusReady ? 'Ready to Create' : errors.coverage && form.groups.length ? errors.coverage : missing.length ? `Needs ${missing.join(', ')}` : serverError || Object.values(errors)[0] || 'Not ready'}</span>
             </dd></div>
           </dl>
-          <p className="mt-3 border-t border-emerald-200/70 pt-3 text-xs leading-5 text-slate-600 dark:border-emerald-900 dark:text-slate-400">The cycle opens in Annual Reviews. Submissions open when you start them from Cycle Settings.</p>
+          <p className="mt-3 border-t border-emerald-200/70 pt-3 text-xs leading-5 text-slate-600 dark:border-emerald-900 dark:text-slate-400">The period opens in Annual Reviews. Submissions open when you start them from Period Settings.</p>
         </aside>
       </form>
     </RankingCycleDialog>

@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, FileText, Maximize2, Minimize2, MoveHorizontal, PanelLeftClose, PanelLeftOpen, Paperclip, Printer, Search, X, ZoomIn, ZoomOut } from 'lucide-react'
-import { FACULTY_ACADEMIC_CRITERIA, isFacultyAcademicFormat, normalizeFacultyBookletItems } from '../../utils/facultyAcademicBooklet'
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, MoveHorizontal, PanelLeftClose, PanelLeftOpen, Printer, Search, X, ZoomIn, ZoomOut } from 'lucide-react'
 import BookletEvidenceDrawer from './booklet/BookletEvidenceDrawer'
-
-const AREAS = [
-  { key: 'A', title: 'A. PROFESSIONAL DEVELOPMENT' },
-  { key: 'B', title: 'B. PRODUCTIVITY AND CREATIVE WORK' },
-  { key: 'C', title: 'C. SERVICE AND LEADERSHIP' }
-]
+import BookletPage, { areaAnchor, buildBookletPages, criterionAnchor, proofAnchor, rowAnchor } from '../../components/portfolio-booklet/BookletPage'
+import { BookletPrintPortal, useBookletPrint } from '../../components/portfolio-booklet/BookletPrint'
+import { resolveBookletFormat } from '../../components/portfolio-booklet/bookletFormats'
+import { nonTeachingAreaARows } from '../../utils/nonTeachingBooklet'
 
 // A4 at 96dpi — the existing booklet page width.
 const PAGE_WIDTH = 794
@@ -16,31 +13,7 @@ const MAX_ZOOM = 2
 const ZOOM_STEP = 0.1
 const MAX_FIT_ZOOM = 1.2
 
-const displayDate = (value) => {
-  if (!value) return '—'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }).format(date)
-}
-
-const displayDateOrPeriod = (value) => String(value || '').split(' – ').map(displayDate).join(' – ').replace('Invalid Date', 'Ongoing')
-
-// Header values come only from authoritative personnel fields; missing values stay blank.
-const ENGAGEMENT_LABELS = { full_time_faculty: 'Full-Time', part_time_faculty: 'Part-Time' }
-const formatFacultyStatus = (user = {}, portfolio = {}) => {
-  const engagementKey = String(user.faculty_engagement || portfolio.faculty_engagement || '').toLowerCase()
-  const statusRaw = user.employment_status_label || portfolio.employment_status_label || user.employment_status || portfolio.employment_status || ''
-  const status = String(statusRaw).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  return [ENGAGEMENT_LABELS[engagementKey] || '', status].filter(Boolean).join(' - ')
-}
-const formatSchoolYear = (value) => String(value || '').replace(/^\s*(AY|A\.Y\.|S\.?Y\.?)\s*/i, '')
-
 const clampZoom = (value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(value * 100) / 100))
-
-// DOM ids used only by the on-screen copy (the print copy carries no ids).
-const areaAnchor = (key) => `booklet-area-${key}`
-const criterionAnchor = (key) => `booklet-criterion-${key}`
-const rowAnchor = (id) => `booklet-row-${id}`
-const proofAnchor = (id) => `booklet-proof-${id}`
 
 const isDesktop = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches
 
@@ -65,40 +38,41 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   const highlightTimerRef = useRef(null)
   const restoreOutlineRef = useRef(false)
 
-  const items = useMemo(() => normalizeFacultyBookletItems(portfolio), [portfolio])
+  // Faculty and Non-Teaching share this booklet; the format picks the title, areas and criteria.
+  const format = useMemo(() => resolveBookletFormat(user, portfolio), [user, portfolio])
+  const items = useMemo(() => format.normalize(portfolio), [format, portfolio])
   const proofItems = useMemo(() => items.filter((item) => item.evidence), [items])
-  const criterionLabelByKey = useMemo(() => Object.fromEntries(FACULTY_ACADEMIC_CRITERIA.map((criterion) => [criterion.key, criterion.label])), [])
+  const areaARows = useMemo(() => (format.id === 'non_teaching' ? nonTeachingAreaARows(portfolio) : []), [format.id, portfolio])
+  const criterionLabelByKey = useMemo(() => Object.fromEntries(format.criteria.map((criterion) => [criterion.key, criterion.label])), [format])
+  const print = useBookletPrint(proofItems.length)
 
   // Page order is unchanged from the previous paginated viewer and the print output:
   // Area A, Area B, Area C, then one Supporting Evidence page per attached proof.
-  const pages = useMemo(() => [
-    ...AREAS.map((area) => ({ type: 'area', key: `area-${area.key}`, area })),
-    ...proofItems.map((item) => ({ type: 'proof', key: `proof-${item.accomplishmentId}`, item }))
-  ], [proofItems])
+  const pages = useMemo(() => buildBookletPages(format, items), [format, items])
 
-  const outline = useMemo(() => AREAS.map((area) => ({
+  const outline = useMemo(() => format.areas.map((area) => ({
     id: areaAnchor(area.key),
     label: area.title,
-    children: FACULTY_ACADEMIC_CRITERIA.filter((criterion) => criterion.area === area.key).map((criterion) => ({
+    children: format.criteria.filter((criterion) => criterion.area === area.key && (!criterion.hideWhenEmpty || items.some((item) => item.criterionKey === criterion.key))).map((criterion) => ({
       id: criterionAnchor(criterion.key),
       label: criterion.label,
       count: items.filter((item) => item.criterionKey === criterion.key).length
     }))
-  })), [items])
+  })), [format, items])
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
     const matches = (...values) => values.filter(Boolean).join(' ').toLowerCase().includes(q)
     return [
-      ...AREAS.filter((area) => matches(area.title)).map((area) => ({ id: areaAnchor(area.key), kind: 'Section', label: area.title })),
-      ...FACULTY_ACADEMIC_CRITERIA.filter((criterion) => matches(criterion.label)).map((criterion) => ({ id: criterionAnchor(criterion.key), kind: 'Subsection', label: criterion.label })),
+      ...format.areas.filter((area) => matches(area.title)).map((area) => ({ id: areaAnchor(area.key), kind: 'Section', label: area.title })),
+      ...format.criteria.filter((criterion) => matches(criterion.label)).map((criterion) => ({ id: criterionAnchor(criterion.key), kind: 'Subsection', label: criterion.label })),
       ...items.filter((item) => matches(item.reference, item.accomplishment_display, item.organization_display, item.remarks_classification_display, item.date_or_period_display))
         .map((item) => ({ id: rowAnchor(item.accomplishmentId), kind: 'Accomplishment', label: `${item.reference} · ${item.accomplishment_display || '—'}` })),
       ...proofItems.filter((item) => matches(item.reference, item.accomplishment_display, item.evidence.original_filename, item.evidence.id))
         .map((item) => ({ id: proofAnchor(item.accomplishmentId), kind: 'Evidence', label: `${item.reference} · ${item.evidence.original_filename || 'Persisted evidence'}` }))
     ]
-  }, [query, items, proofItems])
+  }, [query, items, proofItems, format])
 
   const zoom = zoomMode === 'fit' ? fitZoom : manualZoom
 
@@ -249,51 +223,13 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   }
 
   if (!isOpen) return null
-  if (!isFacultyAcademicFormat(user, portfolio)) {
-    return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4"><section className="max-w-lg rounded-2xl bg-white p-8 text-center shadow-2xl"><h2 className="text-lg font-extrabold text-slate-900">Faculty Academic format unavailable</h2><p className="mt-2 text-sm text-slate-600">This booklet format is restricted to Faculty Academic Personnel. The saved classification was not changed or guessed.</p><button type="button" onClick={onClose} className="mt-5 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-bold text-white">Close</button></section></div>
-  }
 
-  // ---- Document pages (shared by the on-screen viewer and the print/PDF copy) ----
+  // ---- Document pages (the same component renders the on-screen viewer, the review views and the PDF) ----
 
-  const renderArea = ({ key, title }, interactive) => {
-    const criteria = FACULTY_ACADEMIC_CRITERIA.filter((criterion) => criterion.area === key)
-    return (
-      <article className="booklet-page min-h-[1040px] w-[794px] bg-white px-14 py-12 text-slate-950 shadow-xl print:shadow-none">
-        <header className="border-b-2 border-emerald-900 pb-5">
-          <p className="text-center font-serif text-xs font-bold tracking-[0.18em] text-emerald-900">NOTRE DAME OF MARBEL UNIVERSITY</p>
-          <h2 className="mt-3 text-center font-serif text-xl font-bold">FACULTY PORTFOLIO</h2>
-          <dl className="mt-6 grid grid-cols-[1fr_auto] gap-x-10 gap-y-0.5 font-serif text-sm">
-            <div><dt className="inline">Name: </dt><dd className="inline">{user.full_name || portfolio.personnel_name || ''}</dd></div>
-            <div><dt className="inline">Status: </dt><dd className="inline">{formatFacultyStatus(user, portfolio)}</dd></div>
-            <div><dt className="inline">School Year: </dt><dd className="inline">{formatSchoolYear(portfolio.academic_year)}</dd></div>
-            <div><dt className="inline">Rank: </dt><dd className="inline">{user.current_rank_title || portfolio.current_rank_title || ''}</dd></div>
-          </dl>
-        </header>
-        <h3 {...(interactive ? { id: areaAnchor(key), 'data-section-id': areaAnchor(key) } : {})} className="mt-7 scroll-mt-4 bg-emerald-900 px-4 py-3 font-serif text-sm font-bold tracking-wide text-white">{title}</h3>
-        <div className="mt-4 space-y-6">
-          {items.length === 0 && key === 'A' && <div className="rounded-lg border border-dashed border-slate-400 px-5 py-8 text-center"><p className="font-serif text-sm font-bold">Your Portfolio Booklet is currently empty.</p><p className="mt-1 text-xs text-slate-600">Add accomplishments to begin building your portfolio.</p></div>}
-          {criteria.map((criterion) => {
-            const rows = items.filter((item) => item.criterionKey === criterion.key)
-            const columns = criterion.columns || []
-            const compact = columns.length === 2
-            const sectionProps = interactive ? { id: criterionAnchor(criterion.key), 'data-section-id': criterionAnchor(criterion.key) } : {}
-            const proofButton = (row) => interactive && row.evidence
-              ? <button type="button" onClick={(event) => openProof(row, event)} className="mt-1 inline-flex items-center gap-1 rounded border border-emerald-800/40 px-1.5 py-0.5 text-[9px] font-bold text-emerald-900 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 print:hidden" aria-label={`View proof for ${row.reference}`}><Paperclip className="h-2.5 w-2.5" />View Proof</button>
-              : null
-            return <section key={criterion.key} {...sectionProps} className="scroll-mt-4"><h4 className="border-b border-slate-400 pb-2 font-serif text-sm font-bold">{criterion.label}</h4><div className="mt-2 overflow-hidden border border-slate-400"><table className="w-full table-fixed border-collapse text-left text-[10px]"><thead className="bg-slate-100"><tr>{columns.map((column) => <th key={column} className="border-r border-slate-400 p-2 last:border-r-0">{column}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row) => { const rowId = rowAnchor(row.accomplishmentId); return <tr key={row.accomplishmentId} {...(interactive ? { id: rowId } : {})} className={`scroll-mt-16 border-t border-slate-300 transition-colors ${interactive && highlightedId === rowId ? 'bg-amber-100' : ''}`}>{compact ? <><td className="w-[35%] border-r border-slate-300 p-2 align-top">{displayDateOrPeriod(row.date_or_period_display)}</td><td className="p-2 align-top"><span className="mr-1 text-[9px] font-bold text-emerald-900">{row.reference}</span>{row.remarks_classification_display || row.accomplishment_display || '—'}{proofButton(row) && <div>{proofButton(row)}</div>}</td></> : <><td className="w-[18%] border-r border-slate-300 p-2 align-top">{displayDateOrPeriod(row.date_or_period_display)}</td><td className="w-[34%] border-r border-slate-300 p-2 align-top font-semibold"><span className="mr-1 text-[9px] font-bold text-emerald-900">{row.reference}</span>{row.accomplishment_display || '—'}{proofButton(row) && <div>{proofButton(row)}</div>}</td><td className="w-[25%] border-r border-slate-300 p-2 align-top">{row.organization_display || '—'}</td><td className="w-[23%] p-2 align-top">{row.remarks_classification_display || '—'}</td></>}</tr> }) : <tr className="border-t border-slate-300"><td colSpan={columns.length} className="p-3 text-center italic text-slate-500">No accomplishments recorded.</td></tr>}</tbody></table></div></section>
-          })}
-        </div>
-        <footer className="mt-8 flex justify-between border-t border-slate-300 pt-3 text-[10px] text-slate-500"><span>Source: canonical {Array.isArray(portfolio.items) ? 'submitted snapshot' : 'editable portfolio'} records</span><span>{title}</span></footer>
-      </article>
-    )
-  }
-
-  const renderProof = (item, interactive) => {
-    const anchorProps = interactive ? { id: proofAnchor(item.accomplishmentId), 'data-section-id': proofAnchor(item.accomplishmentId) } : {}
-    return <article {...anchorProps} className="booklet-page flex min-h-[1040px] w-[794px] scroll-mt-4 flex-col bg-white px-14 py-12 text-slate-950 shadow-xl print:shadow-none"><header className="border-b-2 border-emerald-900 pb-4"><p className="font-serif text-xs font-bold tracking-[0.16em] text-emerald-900">SUPPORTING DOCUMENTS / EVIDENCE</p><h2 className="mt-2 font-serif text-xl font-bold">{item.reference} · {item.accomplishment_display}</h2><p className="mt-1 text-xs text-slate-600">Area {item.criterionKey.charAt(0)} · {criterionLabelByKey[item.criterionKey]}</p></header><dl className="mt-8 grid grid-cols-[170px_1fr] gap-y-3 text-sm"><dt className="font-bold">Reference</dt><dd>{item.reference}</dd><dt className="font-bold">Accomplishment</dt><dd>{item.accomplishment_display}</dd><dt className="font-bold">Document</dt><dd>{item.evidence.original_filename || 'Persisted evidence'}</dd><dt className="font-bold">Evidence status</dt><dd>{item.status}</dd></dl>{interactive && <button type="button" onClick={(event) => openProof(item, event)} className="mt-8 inline-flex w-fit items-center gap-2 rounded-lg bg-emerald-900 px-4 py-2.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 print:hidden"><FileText className="h-4 w-4" />Preview exact evidence</button>}<div className="mt-auto border-t border-slate-300 pt-4 text-xs text-slate-500">Linked accomplishment: {item.accomplishmentId} · Evidence ID: {item.evidence.id}</div></article>
-  }
-
-  const renderPage = (page, interactive) => (page.type === 'area' ? renderArea(page.area, interactive) : renderProof(page.item, interactive))
+  const pageProps = { format, rows: items, user, portfolio, areaARows, criterionLabelByKey }
+  const renderPage = (page, interactive) => (
+    <BookletPage {...pageProps} page={page} interactive={interactive} highlightedId={highlightedId} onOpenProof={interactive ? openProof : undefined} />
+  )
 
   // ---- Outline / search sidebar ----
 
@@ -372,7 +308,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   const outlineExpanded = isDesktop() ? !outlineCollapsed : mobileOutlineOpen
 
   return (
-    <div className="booklet-print-root fixed inset-0 z-50 bg-slate-950/85 p-0 sm:p-4" role="dialog" aria-modal="true" aria-label="Faculty Academic portfolio booklet">
+    <div className="booklet-viewer-root fixed inset-0 z-50 bg-slate-950/85 p-0 sm:p-4" role="dialog" aria-modal="true" aria-label={`${format.viewerTitle} booklet`}>
       <div className={`booklet-print-shell mx-auto flex h-full flex-col overflow-hidden bg-slate-100 shadow-2xl ${isFullscreen ? 'max-w-none sm:rounded-none' : 'max-w-[1600px] sm:rounded-2xl'}`}>
         <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-2 border-b border-slate-300 bg-white px-2 sm:px-4 print:hidden">
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
@@ -380,7 +316,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
               {outlineExpanded ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </button>
             <div className="min-w-0">
-              <h2 className="truncate text-sm font-extrabold text-slate-900">Faculty Academic Portfolio</h2>
+              <h2 className="truncate text-sm font-extrabold text-slate-900">{format.viewerTitle}</h2>
               <p className="hidden truncate text-xs text-slate-500 sm:block">{items.length} canonical accomplishments · {proofItems.length} attached proofs</p>
             </div>
           </div>
@@ -394,7 +330,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
             <button type="button" onClick={() => zoomBy(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM} className={`${toolButton} hidden md:inline-flex`} aria-label="Zoom in"><ZoomIn className="h-4 w-4" /></button>
             <button type="button" onClick={() => setZoomMode('fit')} aria-pressed={zoomMode === 'fit'} className={`${toolButton} hidden md:inline-flex ${zoomMode === 'fit' ? 'bg-emerald-50 text-emerald-900' : ''}`} aria-label="Fit page to width"><MoveHorizontal className="h-4 w-4" /></button>
             <span className="mx-1 hidden h-5 w-px bg-slate-200 md:block" aria-hidden="true" />
-            <button type="button" onClick={() => window.print()} className={toolButton} aria-label="Print or save as PDF"><Printer className="h-4 w-4" /></button>
+            <button type="button" onClick={print.startPrint} className={toolButton} aria-label="Print or save as PDF"><Printer className="h-4 w-4" /></button>
             <button type="button" onClick={() => setIsFullscreen((value) => !value)} className={`${toolButton} hidden sm:inline-flex`} aria-label={isFullscreen ? 'Exit expanded view' : 'Expand viewer'} aria-pressed={isFullscreen}>{isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
             <button type="button" onClick={onClose} className={toolButton} aria-label="Close booklet"><X className="h-5 w-5" /></button>
           </div>
@@ -437,10 +373,9 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
           />
         </div>
 
-        {/* Print / Save-as-PDF copy: same render functions and page order, no app controls */}
-        <div className="hidden print:block">{pages.map((page) => <div key={`print-${page.key}`} className="break-after-page">{renderPage(page, false)}</div>)}</div>
       </div>
-      <style>{`@media print { body * { visibility: hidden !important; } .booklet-print-root { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; height: auto !important; padding: 0 !important; overflow: visible !important; background: none !important; } .booklet-print-shell { display: block !important; height: auto !important; max-width: none !important; overflow: visible !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; } .booklet-page, .booklet-page * { visibility: visible !important; } .booklet-page { width: 210mm; min-height: 297mm; box-shadow: none; break-after: page; } @page { size: A4; margin: 0; } }`}</style>
+      <BookletPrintPortal printing={print.printing} prepared={print.prepared} total={proofItems.length} pages={pages} label={format.viewerTitle}
+        renderPage={(page) => <BookletPage {...pageProps} page={page} eagerEvidence onEvidenceSettled={print.onEvidenceSettled} />} />
     </div>
   )
 }

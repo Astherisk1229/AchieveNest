@@ -29,7 +29,7 @@ const cycle = (overrides = {}) => ({
   ...overrides,
 })
 
-describe('Ranking cycle naming and coverage', () => {
+describe('Ranking period naming and coverage', () => {
   it('generates human-readable names from academic year and coverage', () => {
     expect(generatedCycleName('2026-2027', ['FACULTY', 'NON_TEACHING_FACULTY'])).toBe('AY 2026–2027 Personnel Ranking')
     expect(generatedCycleName('2026-2027', ['FACULTY'])).toBe('AY 2026–2027 Faculty Ranking')
@@ -48,7 +48,7 @@ describe('Ranking cycle naming and coverage', () => {
   })
 })
 
-describe('New Ranking Cycle validation', () => {
+describe('New Ranking Period validation', () => {
   const ready = { FACULTY: { phase: 'ready' }, NON_TEACHING_FACULTY: { phase: 'ready' } }
   const form = { academic_year: '2026-2027', coverage: 'BOTH', submission_open_at: '2026-09-01', submission_close_at: '2026-09-30', evaluation_start_at: '2026-10-01', evaluation_end_at: '2026-10-20' }
 
@@ -64,13 +64,13 @@ describe('New Ranking Cycle validation', () => {
   it('blocks personnel groups that already have a cycle for the academic year', () => {
     const conflicts = conflictingGroups([cycle({ tracks: [track('FACULTY', 'CLOSED')] })], '2026-2027')
     expect([...conflicts]).toEqual(['FACULTY'])
-    expect(validateCycleDraft(form, { criteria: ready, conflicts }).errors.coverage).toBe('AY 2026–2027 already has a Faculty ranking cycle.')
+    expect(validateCycleDraft(form, { criteria: ready, conflicts }).errors.coverage).toBe('AY 2026–2027 already has a Faculty ranking period.')
     expect(validateCycleDraft({ ...form, coverage: 'NON_TEACHING_FACULTY' }, { criteria: ready, conflicts }).ready).toBe(true)
   })
 
   it('renders the compact single-step modal with a live preview and no manual name field', () => {
     const html = renderToStaticMarkup(<MemoryRouter><NewRankingCycleDialog cycles={[]} onClose={() => {}} onCreated={() => {}}/></MemoryRouter>)
-    for (const text of ['New Ranking Cycle', 'Academic Year', 'Personnel Coverage', 'Submission Period', 'Evaluation Period', 'Criteria', 'Cycle Preview', 'Not set', 'Cancel', 'Create Ranking Cycle']) expect(html).toContain(text)
+    for (const text of ['New Ranking Period', 'Academic Year', 'Personnel Coverage', 'Submission Period', 'Evaluation Period', 'Criteria', 'Period Preview', 'Not set', 'Cancel', 'Create Ranking Period']) expect(html).toContain(text)
     expect(html).toContain('Personnel Ranking')
     const text = html.replace(/<[^>]+>/g, ' ')
     expect(text).not.toMatch(/Cycle name|Save Draft|\btrack\b/i)
@@ -78,7 +78,7 @@ describe('New Ranking Cycle validation', () => {
   })
 })
 
-describe('Ranking Cycles list model', () => {
+describe('Ranking Periods list model', () => {
   const cycles = [
     cycle(),
     cycle({ id: 'cycle-2', academic_year: '2025-2026', display_name: 'AY 2025–2026 Faculty Ranking', coverage: { key: 'FACULTY', label: 'Faculty', groups: ['FACULTY'] }, lifecycle_status: { key: 'COMPLETED', label: 'Completed' }, allowed_actions: ['view', 'archive'], tracks: [track('FACULTY', 'CLOSED', { current_stage: { route: 'results' } })] }),
@@ -104,10 +104,10 @@ describe('Ranking Cycles list model', () => {
     expect(featuredCycle([cycles[2], { id: 'x', lifecycle_status: { key: 'INCOMPLETE' } }])).toBeNull()
   })
 
-  it('maps lifecycle to Open Cycle, View Cycle, or Complete Setup', () => {
-    expect(primaryAction(cycles[0]).label).toBe('Open Cycle')
-    expect(primaryAction(cycles[1]).label).toBe('View Cycle')
-    expect(primaryAction(cycles[2]).label).toBe('View Cycle')
+  it('maps lifecycle to Open Period, View Period, or Complete Setup', () => {
+    expect(primaryAction(cycles[0]).label).toBe('Open Period')
+    expect(primaryAction(cycles[1]).label).toBe('View Period')
+    expect(primaryAction(cycles[2]).label).toBe('View Period')
     expect(primaryAction({ allowed_actions: ['complete_setup', 'delete'] }).label).toBe('Complete Setup')
   })
 
@@ -121,7 +121,7 @@ describe('Ranking Cycles list model', () => {
     expect(page).not.toContain('cycle_name')
     expect(page).not.toContain('Setup required')
     expect(page).not.toContain('personnel-evaluation-setup')
-    for (const column of ['Ranking Cycle', 'Coverage', 'Schedule', 'Current Stage', 'Status', 'Action']) expect(page).toContain(`>${column}</th>`)
+    for (const column of ['Ranking Period', 'Coverage', 'Schedule', 'Current Stage', 'Status', 'Action']) expect(page).toContain(`>${column}</th>`)
   })
 })
 
@@ -133,16 +133,16 @@ describe('Personnel Ranking workspace header', () => {
     expect(render(cycle({ tracks: [track('FACULTY')] }))).not.toContain('aria-label="Personnel type"')
   })
 
-  it('shows the locked criteria reference and Cycle Settings without a Ranking Setup detour', () => {
+  it('shows the locked criteria reference and Period Settings without a Ranking Setup detour', () => {
     const html = render(cycle())
-    for (const text of ['Criteria:', 'Faculty Ranking Scale v1.0', 'Locked', 'View Criteria', 'Cycle Settings', 'Annual Reviews', 'Submissions', 'Evaluation', 'Results']) expect(html).toContain(text)
+    for (const text of ['Criteria:', 'Faculty Ranking Scale v1.0', 'Locked', 'View Criteria', 'Period Settings', 'Annual Reviews', 'Submissions', 'Evaluation', 'Results']) expect(html).toContain(text)
     expect(html).not.toContain('Ranking Setup')
     expect(html).not.toContain('Acceptance Fixture')
   })
 
   it('marks completed and archived cycles as read-only', () => {
-    expect(render(cycle({ is_read_only: true, lifecycle_status: { key: 'COMPLETED', label: 'Completed' } }))).toContain('This cycle is completed.')
-    expect(render(cycle({ is_read_only: true, is_archived: true, lifecycle_status: { key: 'ARCHIVED', label: 'Archived' } }))).toContain('This cycle is archived.')
+    expect(render(cycle({ is_read_only: true, lifecycle_status: { key: 'COMPLETED', label: 'Completed' } }))).toContain('This period is completed.')
+    expect(render(cycle({ is_read_only: true, is_archived: true, lifecycle_status: { key: 'ARCHIVED', label: 'Archived' } }))).toContain('This period is archived.')
   })
 })
 

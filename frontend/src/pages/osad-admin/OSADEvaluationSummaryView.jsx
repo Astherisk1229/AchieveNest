@@ -154,7 +154,7 @@ export default function OSADEvaluationSummaryView({ award, studentId, onBack, on
       breadcrumbs={[
         { label: 'Awards & Criteria', onClick: onCatalog },
         { label: award?.name || 'Award', onClick: onAward },
-        { label: 'Potential Candidates', onClick: onBack },
+        { label: 'Award Candidates', onClick: onBack },
         { label: model?.fields[0]?.value || 'Student' }
       ]}
       actions={model && (

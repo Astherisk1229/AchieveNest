@@ -70,7 +70,7 @@ export default class PersonnelAchievementController {
       category_area: newEntry.category_area || (newEntry.category?.startsWith('A.') ? 'areaA' : newEntry.category?.startsWith('B.') ? 'areaB' : 'areaC'),
       domain: newEntry.domain || (newEntry.category?.startsWith('A.') ? 'professional_development' : newEntry.category?.startsWith('B.') ? 'productivity_creative_work' : 'service_leadership'),
       organizer_or_publisher: newEntry.location || newEntry.issuer || newEntry.organizer_or_publisher || '',
-      // Never substitute today's date: a missing date makes the record NEEDS_INFORMATION for ranking cycles.
+      // Never substitute today's date: a missing date makes the record NEEDS_INFORMATION for ranking periods.
       occurrence_date: newEntry.date_achieved || newEntry.date || null,
       description: newEntry.description || '',
       scope_level: newEntry.scope_level || '',
@@ -86,8 +86,17 @@ export default class PersonnelAchievementController {
     let evidenceData = null
     // 3. If a real evidence file is attached, upload it directly to private server storage
     if (file && accomplishmentId) {
-      const uploadRes = await personnelAccomplishmentService.uploadEvidence(accomplishmentId, file)
-      evidenceData = uploadRes?.data?.evidence || uploadRes?.evidence
+      try {
+        const uploadRes = await personnelAccomplishmentService.uploadEvidence(accomplishmentId, file)
+        evidenceData = uploadRes?.data?.evidence || uploadRes?.evidence
+      } catch (uploadError) {
+        // The document already backs another accomplishment: undo the record we just created
+        // so the portfolio is left exactly as it was, then surface the server's message.
+        if (uploadError?.error?.code === 'DUPLICATE_EVIDENCE') {
+          try { await personnelAccomplishmentService.deleteAccomplishment(accomplishmentId) } catch { /* best effort */ }
+        }
+        throw uploadError
+      }
     }
 
     // 4. Return new hydrated model instance

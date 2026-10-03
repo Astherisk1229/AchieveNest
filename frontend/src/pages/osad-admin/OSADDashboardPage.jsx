@@ -97,7 +97,7 @@ export default function OSADDashboardPage({ currentUser }) {
   const [isAddClubOpen, setIsAddClubOpen] = useState(false)
   const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
 
-  // Persistent Student Organizations & Academic Structure State
+  // Persistent Student Organizations & College and Programs State
   const [persistentOrgs, setPersistentOrgs] = useState([])
   const [moderatorCandidates, setModeratorCandidates] = useState([])
   const [persistentColleges, setPersistentColleges] = useState([])

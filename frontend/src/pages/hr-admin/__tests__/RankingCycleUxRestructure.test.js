@@ -5,16 +5,16 @@ import path from 'node:path'
 const frontendRoot = path.resolve(import.meta.dirname, '../../..')
 const read = relative => fs.readFileSync(path.join(frontendRoot, relative), 'utf8')
 
-describe('Ranking Cycle UX restructure', () => {
+describe('Ranking Period UX restructure', () => {
   it('exposes one cycle-centric HR navigation entry', () => {
     const navigation = read('config/navigationCatalog.js')
-    expect(navigation).toContain("label: 'Ranking Cycles'")
+    expect(navigation).toContain("label: 'Ranking Periods'")
     expect(navigation).toContain("path: '/hr/ranking-cycles'")
     expect(navigation).not.toContain("label: 'Portfolio Evaluations'")
     expect(navigation).not.toContain("label: 'Rank Assignment Logs'")
   })
 
-  it('routes cycle, track, and stage context through the cycle workspace', () => {
+  it('routes cycle, track, and stage context through the period workspace', () => {
     const app = read('App.jsx')
     expect(app).toContain('path="/hr/ranking-cycles/:cycleId/:trackKey/:stage"')
     const context = read('components/ranking/RankingCycleContext.jsx')
@@ -75,7 +75,7 @@ describe('Ranking Cycle UX restructure', () => {
 
   it('keeps the landing page focused on cycle selection', () => {
     const workspace = read('pages/hr-admin/HRRankingCyclesPage.jsx')
-    for (const label of ['Academic Year', 'Status', 'Open Cycle', 'View Cycle']) expect(workspace).toContain(label)
+    for (const label of ['Academic Year', 'Status', 'Open Period', 'View Period']) expect(workspace).toContain(label)
     expect(workspace).not.toContain('<th className="px-4 py-3">Faculty</th>')
     expect(workspace).not.toContain('<th className="px-4 py-3">Non-Teaching Faculty</th>')
   })

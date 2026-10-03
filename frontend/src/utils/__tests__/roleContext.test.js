@@ -124,7 +124,7 @@ describe('roleContext utility & navigation registry', () => {
         'HR Dashboard',
         'Personnel Directory',
         'Organizational Structure',
-        'Ranking Cycles',
+        'Ranking Periods',
         'Password Resets',
         'HR Audit Trail'
       ])
@@ -143,7 +143,7 @@ describe('roleContext utility & navigation registry', () => {
       const labels = nav.map(n => n.label)
 
       expect(labels).toContain('OSAD Dashboard')
-      expect(labels).toContain('Academic Structure')
+      expect(labels).toContain('College and Programs')
       expect(labels).toContain('Certificate Templates')
       expect(labels).not.toContain('HR Dashboard')
       expect(labels).not.toContain('Edit Portfolio')

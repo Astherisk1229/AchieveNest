@@ -9,7 +9,7 @@ const legacyStages = { overview: 'annual-reviews', evaluations: 'evaluation' }
 
 /**
  * Personnel Ranking workspace header: cycle identity, Faculty | Non-Teaching Faculty context (only when
- * the cycle covers both), the locked criteria reference, Cycle Settings, and the four workflow stages.
+ * the period covers both), the locked criteria reference, Period Settings, and the four workflow stages.
  */
 export default function RankingCycleContext({ cycle, track, trackKey, onViewCriteria, onOpenSettings }) {
   const { stage = 'annual-reviews' } = useParams()
@@ -18,7 +18,7 @@ export default function RankingCycleContext({ cycle, track, trackKey, onViewCrit
   const tracks = cycle.tracks || []
   const showSwitch = tracks.length > 1
   return <div className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 px-4 pt-4 text-sm text-slate-500 sm:px-6"><Link className="hover:text-emerald-800" to="/hr/ranking-cycles">Ranking Cycles</Link><ChevronRight aria-hidden="true" className="h-4 w-4"/><span className="font-semibold text-slate-800 dark:text-slate-200">{cycle.display_name}</span>{track && <><ChevronRight aria-hidden="true" className="h-4 w-4"/><span>{GROUP_LABELS[track.personnel_group]}</span></>}</nav>
+    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 px-4 pt-4 text-sm text-slate-500 sm:px-6"><Link className="hover:text-emerald-800" to="/hr/ranking-cycles">Ranking Periods</Link><ChevronRight aria-hidden="true" className="h-4 w-4"/><span className="font-semibold text-slate-800 dark:text-slate-200">{cycle.display_name}</span>{track && <><ChevronRight aria-hidden="true" className="h-4 w-4"/><span>{GROUP_LABELS[track.personnel_group]}</span></>}</nav>
     <div className="flex flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0">
         <h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">Personnel Ranking</h1>
@@ -27,10 +27,10 @@ export default function RankingCycleContext({ cycle, track, trackKey, onViewCrit
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {showSwitch && <div className="inline-flex w-fit rounded-xl bg-slate-100 p-1 dark:bg-slate-900" role="group" aria-label="Personnel type">{tracks.map(item => { const key = TRACK_KEYS[item.personnel_group]; return <NavLink key={item.id} to={`${base}/${key}/${currentStage}`} aria-current={trackKey === key ? 'page' : undefined} className={`rounded-lg px-3.5 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${trackKey === key ? 'bg-emerald-800 text-white shadow-sm' : 'text-slate-600 hover:bg-white hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'}`}>{GROUP_LABELS[item.personnel_group]}</NavLink> })}</div>}
-        {onOpenSettings && <button type="button" onClick={onOpenSettings} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><Settings2 aria-hidden="true" className="h-4 w-4"/>Cycle Settings</button>}
+        {onOpenSettings && <button type="button" onClick={onOpenSettings} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-900"><Settings2 aria-hidden="true" className="h-4 w-4"/>Period Settings</button>}
       </div>
     </div>
-    {cycle.is_read_only && <p className="mx-4 mb-4 flex items-start gap-2 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-700 sm:mx-6 dark:bg-slate-900 dark:text-slate-300"><Lock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0"/>{cycle.is_archived ? 'This cycle is archived. Everything stays viewable; submissions, evaluations, and results cannot change.' : 'This cycle is completed. It is read-only for submissions and evaluations.'}</p>}
-    {track && <nav aria-label="Ranking cycle stages" className="flex overflow-x-auto px-4 sm:px-6">{stages.map(([key,label])=><NavLink key={key} to={`${base}/${trackKey}/${key}`} className={({isActive})=>`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-bold ${isActive?'border-emerald-700 text-emerald-800 dark:text-emerald-300':'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>{label}</NavLink>)}</nav>}
+    {cycle.is_read_only && <p className="mx-4 mb-4 flex items-start gap-2 rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-700 sm:mx-6 dark:bg-slate-900 dark:text-slate-300"><Lock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0"/>{cycle.is_archived ? 'This period is archived. Everything stays viewable; submissions, evaluations, and results cannot change.' : 'This period is completed. It is read-only for submissions and evaluations.'}</p>}
+    {track && <nav aria-label="Ranking period stages" className="flex overflow-x-auto px-4 sm:px-6">{stages.map(([key,label])=><NavLink key={key} to={`${base}/${trackKey}/${key}`} className={({isActive})=>`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-bold ${isActive?'border-emerald-700 text-emerald-800 dark:text-emerald-300':'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>{label}</NavLink>)}</nav>}
   </div>
 }

@@ -44,6 +44,7 @@ import EventCardOptionsMenu from './EventCardOptionsMenu'
 import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
 import DigitalCertificatesWorkspace from './certificates/DigitalCertificatesWorkspace'
 import { AchieveNestLogo } from '../../../components/brand'
+import { alertDialog, confirmDialog } from '../../../components/ui/DialogProvider'
 
 
 
@@ -242,9 +243,13 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   // Canonical cancellation preserves the persisted Event record.
   const handleCancelEvent = async (evtId) => {
     if (
-      window.confirm(
-        'Are you sure you want to cancel this event? The Event record will be preserved.'
-      )
+      await confirmDialog({
+        title: 'Cancel this event?',
+        message: 'The event will be marked as cancelled. Its record will be preserved.',
+        confirmLabel: 'Cancel event',
+        cancelLabel: 'Keep event',
+        tone: 'destructive',
+      })
     ) {
       try {
         await cancelEvent(evtId)
@@ -255,7 +260,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
           ?? 'Unable to cancel the Event.'
         )
 
-        alert(message)
+        alertDialog({ title: 'Event not cancelled', message, tone: 'destructive' })
       }
     }
   }

@@ -3,7 +3,9 @@
 namespace App\Controllers\Api;
 
 use App\Services\AuthenticatedActorService;
+use App\Services\OrganizationalAuthorityResolver;
 use App\Services\PersonnelEvaluationPeriodService;
+use App\Services\RankingCycleService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 
@@ -38,16 +40,29 @@ class DeanWorkspaceController extends Controller
         return ['actor' => $actor, 'college_id' => $assignment['scope_id'], 'college_name' => $assignment['scope_name'] ?? 'Assigned College'];
     }
 
+    /** @return array{0: ?array, 1: ?array} */
+    private function facultyRankingContext($db): array
+    {
+        $period = (new PersonnelEvaluationPeriodService($db))->currentWorkflowTrack('FACULTY');
+        $cycle = !empty($period['ranking_cycle_id']) ? (new RankingCycleService($db))->find((string) $period['ranking_cycle_id']) : null;
+        return [$period, $cycle];
+    }
+
+    private static function cycleSummary(?array $cycle): ?array
+    {
+        if (!$cycle) return null;
+        return [
+            'id'=>$cycle['id'], 'display_name'=>$cycle['display_name'], 'academic_year'=>$cycle['academic_year'],
+            'lifecycle_status'=>$cycle['lifecycle_status'], 'current_stage'=>$cycle['current_stage'], 'coverage'=>$cycle['coverage'],
+        ];
+    }
+
     public function dashboard(): mixed
     {
         $scope = $this->scope();
         if ($scope === false) return $this->respond(['error' => ['code' => 'DEAN_ASSIGNMENT_REQUIRED', 'message' => 'Your Dean role does not currently have an active college assignment.']], 403);
         $db = db_connect(); $collegeId = $scope['college_id'];
-        $periods = (new PersonnelEvaluationPeriodService($db))->list(['evaluation_type' => 'RANKING_PROMOTION']);
-        $period = null;
-        foreach ($periods as $candidate) {
-            if (in_array($candidate['status'], ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'], true)) { $period = $candidate; break; }
-        }
+        [$period, $cycle] = $this->facultyRankingContext($db);
         $people = $db->table('personnel_profiles pp')->select('pp.profile_id, pp.personnel_group, pp.organizational_side')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id=pp.profile_id AND pca.is_active=1')
             ->where('pca.college_id', $collegeId)->get()->getResultArray();
@@ -82,7 +97,7 @@ class DeanWorkspaceController extends Controller
                 ->join('personnel_evaluations pe', 'pe.id=ev.evaluation_id')->join('profiles p', 'p.id=pe.personnel_profile_id')
                 ->whereIn('ev.evaluation_id', $evaluationIds)->orderBy("ev.{$timeColumn}", 'DESC')->limit(10)->get()->getResultArray();
         }
-        return $this->respond(['data' => ['college'=>['id'=>$collegeId,'name'=>$scope['college_name']], 'evaluation_period'=>$period ? [
+        return $this->respond(['data' => ['college'=>['id'=>$collegeId,'name'=>$scope['college_name']], 'ranking_cycle'=>self::cycleSummary($cycle), 'evaluation_period'=>$period ? [
             'id'=>$period['id'],'name'=>$period['period_name'],'status'=>$period['status'],'status_label'=>$period['status_label'],
             'start_date'=>$period['submission_open_at'],'end_date'=>$period['evaluation_end_at'],'submission_close_at'=>$period['submission_close_at']
         ] : null, 'metrics'=>[
@@ -94,10 +109,7 @@ class DeanWorkspaceController extends Controller
     {
         $scope = $this->scope();
         if ($scope === false) return $this->respond(['error'=>['code'=>'DEAN_ASSIGNMENT_REQUIRED','message'=>'Your Dean role does not currently have an active college assignment.']], 403);
-        $db=db_connect(); $period=null;
-        foreach ((new PersonnelEvaluationPeriodService($db))->list(['evaluation_type'=>'RANKING_PROMOTION']) as $candidate) {
-            if (in_array($candidate['status'], ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'], true)) { $period=$candidate; break; }
-        }
+        $db=db_connect(); [$period, $cycle]=$this->facultyRankingContext($db);
         $rows=$db->table('personnel_profiles pp')->select('p.id,p.full_name,p.institutional_id,p.email AS institutional_email,p.status,pp.personnel_group,pp.organizational_side,pp.personnel_classification,pp.position_title,pp.current_rank_title,pp.faculty_engagement,pp.employment_status,ap.id AS program_id,ap.name AS program_name,au.name AS department_name')
             ->join('profiles p','p.id=pp.profile_id')->join('personnel_college_affiliations pca','pca.personnel_profile_id=pp.profile_id AND pca.is_active=1')
             ->join('personnel_program_affiliations ppa','ppa.personnel_profile_id=pp.profile_id AND ppa.is_active=1','left')->join('academic_programs ap','ap.id=ppa.academic_program_id','left')
@@ -136,7 +148,7 @@ class DeanWorkspaceController extends Controller
             ];
         }
         $deanRouteCount=count(array_filter($result,static fn($person)=>$person['evaluation_route']==='DEAN_THEN_HR'));
-        return $this->respond(['data'=>['college'=>['id'=>$scope['college_id'],'name'=>$scope['college_name']],'evaluation_period'=>$period,'summary'=>['total'=>count($result),'dean_then_hr'=>$deanRouteCount,'hr_direct'=>count($result)-$deanRouteCount],'personnel'=>$result,'total'=>count($result)]]);
+        return $this->respond(['data'=>['college'=>['id'=>$scope['college_id'],'name'=>$scope['college_name']],'ranking_cycle'=>self::cycleSummary($cycle),'evaluation_period'=>$period,'summary'=>['total'=>count($result),'dean_then_hr'=>$deanRouteCount,'hr_direct'=>count($result)-$deanRouteCount],'personnel'=>$result,'total'=>count($result)]]);
     }
 
     public function reviews(): mixed
@@ -147,22 +159,16 @@ class DeanWorkspaceController extends Controller
         }
 
         $db = db_connect();
-        $period = null;
-        foreach ((new PersonnelEvaluationPeriodService($db))->list(['evaluation_type' => 'RANKING_PROMOTION']) as $candidate) {
-            if (in_array($candidate['status'], ['OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'], true)) {
-                $period = $candidate;
-                break;
-            }
-        }
+        [$period, $cycle] = $this->facultyRankingContext($db);
 
         $emptyCounts = ['needs_review' => 0, 'resubmitted' => 0, 'returned' => 0, 'endorsed' => 0, 'completed' => 0];
         $workspace = ['role' => 'dean', 'college_id' => $scope['college_id'], 'college_name' => $scope['college_name']];
         if ($period === null) {
-            return $this->respond(['data' => ['workspace' => $workspace, 'evaluation_period' => null, 'counts' => $emptyCounts, 'programs' => [], 'reviews' => []]]);
+            return $this->respond(['data' => ['workspace' => $workspace, 'ranking_cycle' => null, 'evaluation_period' => null, 'counts' => $emptyCounts, 'programs' => [], 'reviews' => []]]);
         }
 
         $rows = $db->table('personnel_evaluations pe')
-            ->select('pe.id,pe.personnel_profile_id,pe.status,pe.version_number,pe.submitted_at,pe.return_reason,p.full_name,p.institutional_id,pp.current_rank_title,pp.position_title,ap.id AS program_id,ap.name AS program_name,au.name AS department_name')
+            ->select('pe.id,pe.evaluation_root_id,pe.personnel_profile_id,pe.evaluator_profile_id,pe.originating_evaluator_profile_id,pe.status,pe.version_number,pe.submitted_at,pe.return_reason,p.full_name,p.institutional_id,pp.current_rank_title,pp.position_title,ap.id AS program_id,ap.name AS program_name,au.name AS department_name')
             ->join('profiles p', 'p.id=pe.personnel_profile_id')
             ->join('personnel_profiles pp', 'pp.profile_id=pe.personnel_profile_id')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id=pe.personnel_profile_id AND pca.is_active=1')
@@ -174,24 +180,50 @@ class DeanWorkspaceController extends Controller
             ->where('pca.college_id', $scope['college_id'])
             ->where('pp.personnel_group', 'faculty')
             ->where('pe.personnel_profile_id !=', $scope['actor']['profile']['id'])
-            ->orderBy('pe.submitted_at', 'ASC')->get()->getResultArray();
+            ->orderBy('pe.version_number', 'DESC')->orderBy('pe.submitted_at', 'ASC')->get()->getResultArray();
 
         $eligibilityService = new \App\Services\PersonnelEligibilityService($db);
+        $authorityResolver = new OrganizationalAuthorityResolver($db);
         $unique = [];
         foreach ($rows as $row) {
-            if (!isset($unique[$row['id']])) {
-                $eligibility = $eligibilityService->evaluateEligibility($row['personnel_profile_id'], $period['id']);
-                if (($eligibility['eligibility_status'] ?? '') === 'eligible') $unique[$row['id']] = $row + ['eligibility' => $eligibility];
-            }
+            $personnelId = (string) $row['personnel_profile_id'];
+            if (isset($unique[$personnelId])) continue;
+            try { $authority = $authorityResolver->resolveResponsibleAuthority($personnelId, $period); }
+            catch (\RuntimeException) { continue; }
+            if (($authority['authority_type'] ?? '') !== 'DEAN' || !$authorityResolver->actorMayAct($authority, (string) $scope['actor']['profile']['id'])) continue;
+            // A submitted portfolio follows the current authoritative Dean
+            // assignment; starting it refreshes evaluator_profile_id. Once a
+            // review is in progress, keep it with the evaluator who started it.
+            if ($row['status'] === 'in_evaluation'
+                && (string) ($row['evaluator_profile_id'] ?? '') !== (string) $scope['actor']['profile']['id']) continue;
+
+            $eligibility = $eligibilityService->evaluateEligibility($personnelId, $period['id']);
+            $annualStatus = (string) ($eligibility['annual_review_requirement']['status'] ?? 'pending');
+            $rankingEligibility = (string) ($eligibility['eligibility_status'] ?? 'pending');
+            if ($annualStatus !== 'passed' || $rankingEligibility !== 'eligible') continue;
+
+            $version = (int) ($row['version_number'] ?? 1);
+            $deanReviewStatus = match ((string) $row['status']) {
+                'submitted', 'in_evaluation' => 'needs_review',
+                'returned_for_revision' => 'returned',
+                'ready_for_finalization', 'completed' => 'reviewed',
+                default => 'not_actionable',
+            };
+            $unique[$personnelId] = $row + [
+                'eligibility'=>$eligibility,
+                'annual_review_status'=>$annualStatus,
+                'ranking_eligibility_status'=>$rankingEligibility,
+                'dean_review_status'=>$deanReviewStatus,
+                'is_resubmitted'=>$version > 1 && $deanReviewStatus === 'needs_review',
+            ];
         }
         $all = array_values($unique);
         $counts = $emptyCounts;
         foreach ($all as $row) {
             $status = $row['status'];
-            $version = (int) ($row['version_number'] ?? 1);
-            if (in_array($status, ['submitted', 'in_evaluation'], true)) {
+            if ($row['dean_review_status'] === 'needs_review') {
                 $counts['needs_review']++;
-                if ($version > 1) $counts['resubmitted']++;
+                if ($row['is_resubmitted']) $counts['resubmitted']++;
             } elseif ($status === 'returned_for_revision') $counts['returned']++;
             elseif ($status === 'ready_for_finalization') $counts['endorsed']++;
             elseif ($status === 'completed') $counts['completed']++;
@@ -202,13 +234,12 @@ class DeanWorkspaceController extends Controller
         $program = trim((string) $this->request->getGet('program'));
         $filtered = array_values(array_filter($all, static function (array $row) use ($tab, $search, $program): bool {
             $status = $row['status'];
-            $version = (int) ($row['version_number'] ?? 1);
             $tabMatch = match ($tab) {
-                'resubmitted' => $version > 1 && in_array($status, ['submitted', 'in_evaluation'], true),
+                'resubmitted' => $row['is_resubmitted'],
                 'returned' => $status === 'returned_for_revision',
                 'endorsed' => $status === 'ready_for_finalization',
                 'completed' => $status === 'completed',
-                default => in_array($status, ['submitted', 'in_evaluation'], true),
+                default => $row['dean_review_status'] === 'needs_review',
             };
             if (!$tabMatch) return false;
             if ($program !== '' && (string) ($row['program_id'] ?? '') !== $program) return false;
@@ -226,6 +257,7 @@ class DeanWorkspaceController extends Controller
 
         return $this->respond(['data' => [
             'workspace' => $workspace,
+            'ranking_cycle' => self::cycleSummary($cycle),
             'evaluation_period' => ['id' => $period['id'], 'name' => $period['period_name'], 'status' => $period['status'], 'status_label' => $period['status_label']],
             'counts' => $counts,
             'programs' => array_values($programs),
@@ -239,15 +271,20 @@ class DeanWorkspaceController extends Controller
         $scope=$this->scope();
         if($scope===false) return $this->respond(['error'=>['code'=>'DEAN_ASSIGNMENT_REQUIRED','message'=>'Your Dean role does not currently have an active college assignment.']],403);
         $db=db_connect();
+        [$period] = $this->facultyRankingContext($db);
         $review=$db->table('personnel_evaluations pe')->select('pe.*,p.full_name,p.institutional_id,pp.current_rank_title,pp.position_title,c.name AS college_name')
             ->join('profiles p','p.id=pe.personnel_profile_id')->join('personnel_profiles pp','pp.profile_id=pe.personnel_profile_id')
             ->join('personnel_college_affiliations pca','pca.personnel_profile_id=pe.personnel_profile_id AND pca.is_active=1')->join('colleges c','c.id=pca.college_id','left')
             ->where('pe.id',$id)->where('pca.college_id',$scope['college_id'])->get()->getRowArray();
         if(!$review) return $this->respond(['error'=>['code'=>'WORKSPACE_SCOPE_FORBIDDEN','message'=>'This portfolio review is unavailable or outside your assigned college.']],403);
+        if(!$period || (string)$review['evaluation_period_id'] !== (string)$period['id']) return $this->respond(['error'=>['code'=>'REVIEW_OUTSIDE_CURRENT_HR_CYCLE','message'=>'This portfolio does not belong to the current HR Faculty ranking period.']],409);
         if($review['personnel_profile_id']===($scope['actor']['profile']['id']??null)) return $this->respond(['error'=>['code'=>'DEAN_SELF_REVIEW_FORBIDDEN','message'=>'Dean self-review is unavailable and routes to HR.']],403);
-        $eligibility=is_string($review['eligibility_snapshot']??null) ? json_decode($review['eligibility_snapshot'],true) : ($review['eligibility_snapshot']??[]);
-        if(!is_array($eligibility)||$eligibility===[]) $eligibility=(new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($review['personnel_profile_id'],$review['evaluation_period_id']);
-        if(($eligibility['eligibility_status']??'')!=='eligible') return $this->respond(['error'=>['code'=>'PORTFOLIO_NOT_ELIGIBLE','message'=>'This portfolio is not eligible for Dean review.','reasons'=>$eligibility['eligibility_reasons']??[]]],422);
+        $authorityResolver=new OrganizationalAuthorityResolver($db);
+        try { $authority=$authorityResolver->resolveResponsibleAuthority((string)$review['personnel_profile_id'],$period); }
+        catch (\RuntimeException) { $authority=null; }
+        if(!$authority || ($authority['authority_type']??'')!=='DEAN' || !$authorityResolver->actorMayAct($authority,(string)$scope['actor']['profile']['id'])) return $this->respond(['error'=>['code'=>'WORKSPACE_SCOPE_FORBIDDEN','message'=>'You are not the assigned reviewer for this Faculty portfolio.']],403);
+        $eligibility=(new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($review['personnel_profile_id'],$review['evaluation_period_id']);
+        if(($eligibility['annual_review_requirement']['status']??'pending')!=='passed' || ($eligibility['eligibility_status']??'')!=='eligible') return $this->respond(['error'=>['code'=>'PORTFOLIO_NOT_ELIGIBLE','message'=>'The current Annual Review and ranking eligibility requirements are not satisfied.','reasons'=>$eligibility['eligibility_reasons']??[]]],422);
         $items=$db->table('personnel_evaluation_items pei')->select('pei.*')->where('pei.evaluation_id',$id)->orderBy('pei.submission_order','ASC')->orderBy('pei.created_at','ASC')->get()->getResultArray();
         foreach ($items as &$item) foreach (['criterion_snapshot','evidence_snapshot','scoring_payload'] as $field) if(isset($item[$field])&&is_string($item[$field])) $item[$field]=json_decode($item[$field],true);
         foreach(['criteria_snapshot','eligibility_snapshot'] as $field) if(isset($review[$field])&&is_string($review[$field])) $review[$field]=json_decode($review[$field],true);

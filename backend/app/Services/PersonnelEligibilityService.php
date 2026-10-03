@@ -44,7 +44,7 @@ class PersonnelEligibilityService
         $missing = [];
         $hrSource = 'HR → Personnel Directory → Edit Master Data';
         $startDate = trim((string)($person['employment_start_date'] ?? ''));
-        // COMPUTED (Years of Service): measured up to the ranking cycle's achievement coverage end; legacy cycles without coverage keep the evaluation end.
+        // COMPUTED (Years of Service): measured up to the ranking period's achievement coverage end; legacy cycles without coverage keep the evaluation end.
         $cutoff = (new EvaluationValidityService($this->db))->serviceCutoff($period);
         if ($startDate === '') $missing[] = ['field'=>'employment_start_date','label'=>'Employment start date','detail'=>'Not recorded in HR master data; years of service cannot be calculated.','source'=>$hrSource];
         if (trim((string)($person['employment_status'] ?? '')) === '') $missing[] = ['field'=>'employment_status','label'=>'Employment status (Permanent or Probationary)','detail'=>'Not recorded in HR master data.','source'=>$hrSource];
@@ -78,7 +78,7 @@ class PersonnelEligibilityService
         elseif($status==='probationary'&&$serviceYears>=3.0)$serviceStatus='passed';
         elseif($status==='probationary'){$serviceStatus='not_passed';$reasons[]='Probationary personnel require at least 3.00 years of service.';}
         else{$serviceStatus='not_passed';$reasons[]='Employment status must be Permanent or Probationary.';}
-        // Part-time faculty hold part-time titles and are not ranked, so they cannot enter a ranking cycle.
+        // Part-time faculty hold part-time titles and are not ranked, so they cannot enter a ranking period.
         if(strtoupper((string)($person['personnel_group']??''))==='FACULTY'&&($person['faculty_engagement']??null)===FacultyStatusService::ENGAGEMENT_PART_TIME){$serviceStatus='not_passed';$reasons[]='Part-time faculty hold a part-time title and are not ranked; only full-time faculty can apply for a rank.';}
 
         $import=null;

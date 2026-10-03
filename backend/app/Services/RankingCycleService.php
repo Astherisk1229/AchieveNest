@@ -8,9 +8,9 @@ use RuntimeException;
 use Throwable;
 
 /**
- * HR-facing ranking cycle aggregate.
+ * HR-facing ranking period aggregate.
  *
- * A ranking cycle is the parent record (`ranking_cycles`); each personnel group it covers is
+ * A ranking period is the parent record (`ranking_cycles`); each personnel group it covers is
  * one authoritative track in `personnel_evaluation_periods` (ranking_cycle_id + personnel_group).
  * Every track write goes through PersonnelEvaluationPeriodService so schedule validation,
  * criteria binding, idempotency, lifecycle transitions and period events stay in one place.
@@ -210,7 +210,7 @@ class RankingCycleService
         $cycle = $this->find($id);
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
         if ($cycle['lifecycle_status']['key'] === 'ARCHIVED') return $cycle;
-        if ($cycle['lifecycle_status']['key'] !== 'COMPLETED') throw new RuntimeException('RANKING_CYCLE_NOT_COMPLETED: Only completed ranking cycles can be archived.');
+        if ($cycle['lifecycle_status']['key'] !== 'COMPLETED') throw new RuntimeException('RANKING_CYCLE_NOT_COMPLETED: Only completed ranking periods can be archived.');
 
         $requestId = $this->requestKey($requestId);
         $this->db->transBegin();
@@ -312,7 +312,7 @@ class RankingCycleService
         if ($groups === ['FACULTY']) return "{$prefix} Faculty Ranking";
         if ($groups === ['NON_TEACHING_FACULTY']) return "{$prefix} Non-Teaching Faculty Ranking";
         if (count($groups) === 2) return "{$prefix} Personnel Ranking";
-        return "{$prefix} Ranking Cycle";
+        return "{$prefix} Ranking Period";
     }
 
     public static function coverage(array $groups): array
@@ -475,7 +475,7 @@ class RankingCycleService
             ->where('evaluation_type', self::EVALUATION_TYPE)->where('personnel_group', $group)->where('academic_year', $year)
             ->groupStart()->where('semester', self::COVERAGE_SEMESTER)->orWhereIn('status', ['DRAFT', 'OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'])->groupEnd()
             ->countAllResults();
-        if ($conflict > 0) throw new RuntimeException('DUPLICATE_RANKING_CYCLE: AY ' . str_replace('-', '–', $year) . ' already has a ' . self::groupLabel($group) . ' ranking cycle.');
+        if ($conflict > 0) throw new RuntimeException('DUPLICATE_RANKING_CYCLE: AY ' . str_replace('-', '–', $year) . ' already has a ' . self::groupLabel($group) . ' ranking period.');
     }
 
     private function trackPayload(string $cycleId, string $year, string $group, array $schedule, string $scaleVersionId): array

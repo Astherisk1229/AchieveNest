@@ -7,6 +7,8 @@ import { ocrService } from '../../../services/ocrService'
 import OcrScanController from '../../../controllers/OcrScanController'
 import FacultyDocumentViewer from './FacultyDocumentViewer'
 import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '../../../services/PersonnelEvidenceUploadService'
+import { confirmDialog } from '../../../components/ui/DialogProvider'
+import { CardHeading, StepProgress } from './AccomplishmentModalParts'
 
 const initialForm = () => ({ ...EMPTY_ACCOMPLISHMENT_FORM, area: '', categoryCode: '', subcategoryCode: '', details: {}, persistedEvidence: [], pendingEvidence: [] })
 const categoryCodeFromSuggestion = (value = '') => String(value).match(/^([ABC]\.[0-9](?:\.[0-9])?)/)?.[1] || ''
@@ -150,22 +152,13 @@ const FILE_ACCEPT = [...ALLOWED_EXTENSIONS.map((extension) => `.${extension}`), 
 const AREA_NAMES = { A: 'Professional Development', B: 'Productivity & Creative Work', C: 'Service & Leadership' }
 const BUSY_STATES = ['staging', 'uploading', 'ocr_processing', 'classification_pending']
 const SCAN_FAILED_MESSAGE = "We couldn't read this document. Fill in the details manually or try a clearer scan."
+const DUPLICATE_DOCUMENT_PREFIX = 'This document is already used'
 const friendlyUploadError = (error) => {
+  if (error?.error?.code === 'DUPLICATE_EVIDENCE') return error.error.message || `${DUPLICATE_DOCUMENT_PREFIX} for another accomplishment in your portfolio.`
   const status = Number(error?.response?.status || error?.status || 0)
   if (status === 413) return 'This file is larger than the 10 MB limit. Please choose a smaller file.'
   if (status === 415 || status === 422) return "This file type isn't supported. Please choose a PDF, JPG/JPEG, or PNG document."
   return 'Document upload interrupted. Your draft is safe, and the selected file is still available in this session.'
-}
-
-function StepChip({ number, label, state }) {
-  const tone = state === 'active' ? 'bg-white text-emerald-950' : state === 'done' ? 'bg-emerald-800 text-white' : 'bg-white/5 text-emerald-100/70 ring-1 ring-inset ring-white/15'
-  return <li className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${tone}`} aria-current={state === 'active' ? 'step' : undefined}>
-    <span className="grid h-4 w-4 place-items-center rounded-full text-[10px] leading-none">{state === 'done' ? <Check className="h-3 w-3" aria-hidden="true" /> : number}</span>{label}
-  </li>
-}
-
-function CardHeading({ id, number, title, aside }) {
-  return <div className="flex items-center justify-between gap-3"><h3 id={id} className="flex items-center gap-2 text-sm font-extrabold text-slate-950"><span className="grid h-5 w-5 place-items-center rounded-full bg-emerald-900 text-[11px] font-bold text-white" aria-hidden="true">{number}</span>{title}</h3>{aside}</div>
 }
 
 export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, editingItem = null, currentUser = {}, areaCode = 'A', areaName = '' }) {
@@ -231,7 +224,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   if (!isOpen) return null
   const dirty = Boolean(stagedId || Object.keys(touchedFields).length || (form.originalSnapshot && JSON.stringify({ ...form, originalSnapshot: null }) !== form.originalSnapshot))
   const close = async () => {
-    if (dirty && !window.confirm('Discard unsaved changes?')) return
+    if (dirty && !(await confirmDialog({ title: 'Discard this accomplishment?', message: 'You have unsaved changes. If you close now, the uploaded document and details you entered will be lost.', confirmLabel: 'Discard', cancelLabel: 'Keep editing', tone: 'destructive' }))) return
     if (stagedId) { try { await personnelAccomplishmentService.deleteAccomplishment(stagedId) } catch { /* server cleanup can retry later */ } }
     onClose()
   }
@@ -252,11 +245,11 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
       return next
     })
   }
-  const selectClassification = (categoryCode, subcategoryCode = '', { fromUser = true } = {}) => {
+  const selectClassification = async (categoryCode, subcategoryCode = '', { fromUser = true } = {}) => {
     const schema = facultySchemaByCode(categoryCode)
     if (!schema || schema.area !== effectiveAreaCode) return
     const changingExisting = form.mode === 'edit' && form.subcategoryCode && subcategoryCode && subcategoryCode !== form.subcategoryCode
-    if (changingExisting && !window.confirm('Changing classification may replace category-specific fields that do not apply to the new selection. Continue?')) return
+    if (changingExisting && !(await confirmDialog({ title: 'Change classification?', message: 'Fields that only apply to the current category may be replaced by the new selection.', confirmLabel: 'Change', cancelLabel: 'Keep current' }))) return
     if (fromUser) setTouchedFields((old) => ({ ...old, classification: true }))
     if (!subcategoryCode) {
       setForm((old) => ({ ...old, area: effectiveAreaCode, categoryCode, subcategoryCode: '', details: {} }))
@@ -438,15 +431,16 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
     {renderHelp(key, errors[key])}
   </div>
 
+  const isDuplicateDocument = documentError.startsWith(DUPLICATE_DOCUMENT_PREFIX)
   const documentStatusText = documentState === 'staging' ? 'Preparing your draft…' : documentState === 'uploading' ? 'Uploading document…' : scanning ? 'Reading your document…' : null
 
   return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-0 min-[820px]:p-6">
     <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="faculty-entry-title" onKeyDown={onDialogKeyDown} className="flex h-full w-full flex-col overflow-hidden bg-[#fbfcf8] shadow-[0_24px_70px_-24px_rgba(15,23,42,.55)] min-[820px]:h-[min(760px,calc(100vh-48px))] min-[820px]:w-[1100px] min-[820px]:max-w-full min-[820px]:rounded-2xl">
       <header className="shrink-0 bg-emerald-950 px-5 py-3.5 text-white">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><GraduationCap className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h2 id="faculty-entry-title" className="text-lg font-extrabold tracking-[-0.02em]">{form.mode === 'edit' ? 'Edit Accomplishment' : 'Add Accomplishment'}</h2><p className="truncate text-sm text-emerald-50/90">Area {effectiveAreaCode} · {effectiveAreaName}</p></div></div>
+          <div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><GraduationCap className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h2 id="faculty-entry-title" className="text-lg font-extrabold tracking-[-0.02em]">{form.mode === 'edit' ? 'Edit Accomplishment' : 'New Accomplishment'}</h2><p className="truncate text-sm text-emerald-50/90">Area {effectiveAreaCode} · {effectiveAreaName}</p></div></div>
           <div className="flex items-center gap-3">
-            <ol aria-label="Progress" className="hidden items-center gap-1.5 min-[820px]:flex"><StepChip number={1} label="Upload" state={chipState(1)} /><li aria-hidden="true" className="text-emerald-200/60">→</li><StepChip number={2} label="Review" state={chipState(2)} /><li aria-hidden="true" className="text-emerald-200/60">→</li><StepChip number={3} label="Save" state={chipState(3)} /></ol>
+            <StepProgress chipState={chipState} />
             <button type="button" data-autofocus onClick={close} className="rounded-lg p-2 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close accomplishment form"><X className="h-5 w-5" /></button>
           </div>
         </div>
@@ -484,7 +478,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
               </div>}
               {scanning && <p className="mt-2 text-sm text-slate-700" aria-live="polite">Reading your document…</p>}
               {errors.evidence && <p role="alert" className="mt-2 text-sm font-semibold text-rose-700">{errors.evidence}</p>}
-              {documentState === 'upload_failed' && <div role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><p className="flex items-start gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{documentError}</p><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => selectedFile ? processFile(selectedFile, { reuseLocalPreview: true }) : fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white"><RefreshCw className="h-3.5 w-3.5" />Retry Upload</button>{activeEvidence && selectedFile && <button type="button" onClick={cancelReplacement} className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-white">Cancel Replacement</button>}</div></div>}
+              {documentState === 'upload_failed' && <div role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><p className="flex items-start gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{documentError}</p><div className="mt-2 flex flex-wrap gap-2">{isDuplicateDocument ? <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white"><UploadCloud className="h-3.5 w-3.5" />Choose Another File</button> : <button type="button" onClick={() => selectedFile ? processFile(selectedFile, { reuseLocalPreview: true }) : fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white"><RefreshCw className="h-3.5 w-3.5" />Retry Upload</button>}{activeEvidence && selectedFile && <button type="button" onClick={cancelReplacement} className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-white">Cancel Replacement</button>}</div></div>}
               {documentState === 'ocr_failed' && <div role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><div><p>{SCAN_FAILED_MESSAGE}</p><button type="button" onClick={() => runOcr()} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-950"><RefreshCw className="h-3.5 w-3.5" />Try Again</button></div></div>}
               {documentState === 'ocr_partial' && <p className="mt-2 text-xs text-amber-900">Some details were found. Please review them.</p>}
               {suggestion?.areaMismatch && <p className="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-950">This document may belong to another Area ({suggestion.category}). Keep Area {effectiveAreaCode} only if that is correct.</p>}
@@ -533,7 +527,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
             <div className="flex flex-wrap justify-end gap-2">
               <button type="button" onClick={close} className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Cancel</button>
               <button type="button" onClick={saveDraft} disabled={saving} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 hover:border-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-45">Save Draft</button>
-              <span title={submitBlocker || undefined}><button type="submit" disabled={saving || Boolean(submitBlocker)} aria-describedby={submitBlocker ? `${ids}-submit-blocker` : undefined} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45">{saving ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />Submitting…</> : <><CheckCircle2 className="h-4 w-4" aria-hidden="true" />Submit Accomplishment</>}</button></span>
+              <span title={submitBlocker || undefined}><button type="submit" disabled={saving || Boolean(submitBlocker)} aria-describedby={submitBlocker ? `${ids}-submit-blocker` : undefined} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45">{saving ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />Adding…</> : <><CheckCircle2 className="h-4 w-4" aria-hidden="true" />Add Accomplishment</>}</button></span>
               {submitBlocker && <span id={`${ids}-submit-blocker`} className="sr-only">{submitBlocker}</span>}
             </div>
           </div>

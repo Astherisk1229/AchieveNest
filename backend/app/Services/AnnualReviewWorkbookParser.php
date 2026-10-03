@@ -27,11 +27,11 @@ class AnnualReviewWorkbookParser
             $name=trim($cells['B6']??''); if($name==='') throw new RuntimeException('MISSING_PERSONNEL_NAME: Workbook personnel name is missing.');
             preg_match_all('/\b\d{4}\s*-\s*\d{4}\b/',(string)($cells['G7']??''),$yearMatches); $context=array_map(fn($v)=>preg_replace('/\s+/','',$v),$yearMatches[0]??[]);
             $required=array_values($requiredYears);
-            if(count($context)!==2 || $context!==$required) throw new RuntimeException('SCHOOL_YEAR_MISMATCH: The SY field (G7) reads "'.trim((string)($cells['G7']??'')).'", but this ranking cycle requires '.$required[0].' and '.$required[1].'.');
+            if(count($context)!==2 || $context!==$required) throw new RuntimeException('SCHOOL_YEAR_MISMATCH: The SY field (G7) reads "'.trim((string)($cells['G7']??'')).'", but this ranking period requires '.$required[0].' and '.$required[1].'.');
             $labels=[trim($cells['A39']??''),trim($cells['A40']??'')];
             foreach($labels as $label) if(stripos($label,'Performance Rating')===false) throw new RuntimeException('UNSUPPORTED_TEMPLATE: Performance Rating labels do not match the approved template.');
             $ratingYears=array_map(function($label){ preg_match('/\b\d{4}\s*-\s*\d{4}\b/',$label,$m); return isset($m[0])?preg_replace('/\s+/','',$m[0]):'no school year'; },$labels);
-            if($ratingYears!==$required) throw new RuntimeException('SCHOOL_YEAR_MISMATCH: The Performance Rating rows (A39–A40) are for '.$ratingYears[0].' and '.$ratingYears[1].', but this ranking cycle requires '.$required[0].' and '.$required[1].'. The SY field (G7) already lists the required years, so update the rating rows and their scores to match.');
+            if($ratingYears!==$required) throw new RuntimeException('SCHOOL_YEAR_MISMATCH: The Performance Rating rows (A39–A40) are for '.$ratingYears[0].' and '.$ratingYears[1].', but this ranking period requires '.$required[0].' and '.$required[1].'. The SY field (G7) already lists the required years, so update the rating rows and their scores to match.');
             // Workbook header fields, located by label: "Present Rank" = current rank,
             // "Applied Status" = rank applied for this cycle (not a workflow status).
             $presentRank=$this->labelValue($cells,'present rank'); $appliedStatus=$this->labelValue($cells,'applied status');

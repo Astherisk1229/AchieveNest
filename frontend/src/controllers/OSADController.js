@@ -509,7 +509,7 @@ class OSADController {
     this.#academicStructureController.organizationModeratorAssignments = this.#organizationModeratorAssignments
   }
 
-  // --- Academic Structure Hierarchy Queries & Mutators ---
+  // --- College and Programs Hierarchy Queries & Mutators ---
   getColleges() {
     return this.#academicStructureController.getColleges()
   }

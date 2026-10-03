@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
 
-/** Shared accessible dialog shell for the Ranking Cycles module. */
+/** Shared accessible dialog shell for the Ranking Periods module. */
 export default function RankingCycleDialog({ title, description, onClose, children, footer, width = 'max-w-3xl', layer = 'z-50', labelledBy }) {
   const panelRef = useRef(null)
   const autoId = useId()

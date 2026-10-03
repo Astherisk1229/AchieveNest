@@ -47,7 +47,7 @@ function PersonnelDetails({ person, onClose }) {
         ['Academic rank', person.current_rank_title || 'Not recorded'], ['Employment', titleCase(person.employment_status)],
         ['Review responsibility', person.review_responsibility === 'dean' ? 'Dean' : 'HR'],
         ['Evaluation status', person.evaluation_status_label || 'Not available']
-      ].map(([term, value]) => <div key={term}><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{term}</dt><dd className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</dd></div>)}</dl><Link to={`/dean/personnel/${encodeURIComponent(person.id)}/rank-placement`} className="mt-8 inline-flex min-h-10 items-center rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">View Rank &amp; Placement</Link></div>
+      ].map(([term, value]) => <div key={term}><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{term}</dt><dd className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</dd></div>)}</dl><Link to={`/dean/personnel/${encodeURIComponent(person.id)}/rank-placement`} state={{ person: { id: person.id, full_name: person.full_name, institutional_id: person.institutional_id || person.employee_id } }} className="mt-8 inline-flex min-h-10 items-center rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">View Rank &amp; Placement</Link></div>
     </aside>
   </div>
 }

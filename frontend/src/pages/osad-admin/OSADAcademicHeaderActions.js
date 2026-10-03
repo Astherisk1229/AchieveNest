@@ -1,6 +1,6 @@
 /**
  * OSADAcademicHeaderActions.js
- * Pure calculation helpers for OSAD Academic Structure Header Actions.
+ * Pure calculation helpers for OSAD College and Programs Header Actions.
  * Determines contextual primary action and dependency prerequisite availability.
  */
 

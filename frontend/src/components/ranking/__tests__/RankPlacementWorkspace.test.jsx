@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
@@ -11,7 +12,7 @@ vi.mock('../../../services/rankPlacementViewService', () => ({
 
 describe('Phase V rank and placement workspace', () => {
   it('renders an explicit accessible loading state', () => {
-    const html = renderToStaticMarkup(<RankPlacementWorkspace role="personnel" />)
+    const html = renderToStaticMarkup(<MemoryRouter><RankPlacementWorkspace role="personnel" /></MemoryRouter>)
     expect(html).toContain('aria-busy="true"')
     expect(html).toContain('Loading rank and placement information')
   })

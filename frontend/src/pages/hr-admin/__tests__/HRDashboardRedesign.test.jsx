@@ -8,7 +8,7 @@ describe('HR Dashboard operational home contract', () => {
   const backend = fs.readFileSync(path.resolve(__dirname, '../../../../../backend/app/Controllers/Api/HRPersonnelController.php'), 'utf8')
 
   it('contains only the approved operational dashboard sections', () => {
-    expect(dashboard).toContain('Ranking Cycle')
+    expect(dashboard).toContain('Ranking Period')
     expect(dashboard).toContain('Needs Attention')
     expect(dashboard).toContain('At a Glance')
     expect(dashboard).toContain('Recent Activity')

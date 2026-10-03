@@ -52,7 +52,7 @@ vi.mock('../../../context/AuthContext', () => ({
 describe('Plan 06 Phase 10 — OSAD Visual Consistency Suite', () => {
   it('verifies OSADPageHeader applies established heading typography and responsive action slot', () => {
     const header = OSADPageHeader({
-      title: 'Academic Structure',
+      title: 'College and Programs',
       description: 'Institutional hierarchy management',
       actions: <button type="button" className="btn-primary">Add College</button>
     })

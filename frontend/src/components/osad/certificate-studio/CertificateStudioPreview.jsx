@@ -36,8 +36,8 @@ export default function CertificateStudioPreview({ draft, scenarioData, scenario
   const longRecipient = CertificateTemplateRenderer.renderBody('{{recipient_name}}', scenarioData).length > 28
 
   return (
-    <section className="flex min-h-[34rem] min-w-0 flex-1 flex-col bg-[#e8ebed] dark:bg-[#09111b] md:h-[calc(100vh-10rem)]" aria-label="Live certificate preview">
-      <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-slate-300/80 bg-slate-100 px-3 py-2 dark:border-slate-800 dark:bg-[#101a28]">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#e8ebed] dark:bg-[#09111b]" aria-label="Live certificate preview">
+      <div className="relative z-20 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300/80 bg-slate-100 px-3 py-2 dark:border-slate-800 dark:bg-[#101a28]">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200"><Eye className="h-3.5 w-3.5" />Live Preview <span className="hidden text-[10px] font-medium text-slate-500 lg:inline">Synthetic data · no official identity</span></div>
         <div className="flex flex-wrap items-center gap-2">
           {!reviewMode && <details className="relative"><summary className="flex h-8 cursor-pointer list-none items-center rounded-md px-2 text-[11px] font-semibold text-slate-600 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-600 dark:text-slate-300 dark:hover:bg-slate-800">Test Preview</summary><div className="absolute right-0 top-9 z-30 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">{[['standard','Standard'],['long_recipient','Long Recipient Name'],['long_activity','Long Activity Title'],['long_organizer','Long Organizer Name'],['recognition','Recognition Winner'],['one_signatory','One Signer'],['two_signatories','Two Signers'],['three_signatories','Three Signers']].map(([id,label])=><button key={id} type="button" onClick={()=>setScenario(id)} className={`block w-full rounded-lg px-2.5 py-2 text-left text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 ${scenario===id?'bg-emerald-50 font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200':'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{label}</button>)}</div></details>}
@@ -50,8 +50,8 @@ export default function CertificateStudioPreview({ draft, scenarioData, scenario
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center overflow-auto p-2 sm:p-3 lg:p-4">
-        <div className="mx-auto transition-[width] duration-200" style={{ width: previewWidth, maxWidth: layout.orientation === 'portrait' ? 680 : 1100, minWidth: zoom === 'fit' ? 280 : 420 }}>
+      <div className="flex min-h-0 flex-1 overflow-auto p-2 sm:p-3 lg:p-4">
+        <div className="m-auto transition-[width] duration-200" style={{ width: previewWidth, maxWidth: layout.orientation === 'portrait' ? 680 : 1100, minWidth: zoom === 'fit' ? 280 : 420 }}>
           <article className={`relative isolate bg-white text-slate-900 shadow-[0_18px_45px_rgba(15,23,42,0.18)] ${ratioClass} ${paddingClass}`} style={{ backgroundColor: paperBackground(layout.background_preset), color: layout.title_color }}>
             <Frame layout={layout} />
             {layout.show_watermark && <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 grid place-items-center"><div className="grid h-[34%] aspect-square translate-y-[2%] place-items-center rounded-full border-[3px] text-[min(6vw,3.5rem)] font-bold" style={{ borderColor: `${layout.primary_color}12`, color: `${layout.primary_color}0c` }}>NDMU</div></div>}

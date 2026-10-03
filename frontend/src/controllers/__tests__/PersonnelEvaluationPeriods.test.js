@@ -9,7 +9,7 @@ describe('Personnel evaluation period architecture', () => {
   it('keeps criteria governance routable without a separate Ranking Setup navigation item', () => {
     expect(read('frontend/src/App.jsx')).toContain('/hr/personnel-evaluation-setup')
     expect(read('frontend/src/config/navigationCatalog.js')).not.toContain("label: 'Ranking Setup'")
-    expect(read('frontend/src/config/navigationCatalog.js')).toContain("label: 'Ranking Cycles'")
+    expect(read('frontend/src/config/navigationCatalog.js')).toContain("label: 'Ranking Periods'")
   })
 
   it('uses server-managed period identity for Faculty submission', () => {

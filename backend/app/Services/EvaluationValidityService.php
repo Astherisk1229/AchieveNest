@@ -95,7 +95,7 @@ final class EvaluationValidityService
             if ($date === null) return self::result(self::NEEDS_INFORMATION, $type, 'The completion date of this semester\'s graduate units is missing.');
             return ($date >= $start && $date <= $end)
                 ? self::result(self::ELIGIBLE, $type, 'These graduate units were completed within the cycle coverage.', $date)
-                : self::result(self::OUTSIDE_CYCLE, $type, 'These graduate units were completed outside the ranking cycle coverage.', $date);
+                : self::result(self::OUTSIDE_CYCLE, $type, 'These graduate units were completed outside the ranking period coverage.', $date);
         }
 
         if ($type === self::QUALIFICATION) {
@@ -121,10 +121,10 @@ final class EvaluationValidityService
         if ($date === null) return self::result(self::NEEDS_INFORMATION, $type, 'The date of this accomplishment is missing.');
         return ($date >= $start && $date <= $end)
             ? self::result(self::ELIGIBLE, $type, 'The accomplishment falls within the cycle coverage.', $date)
-            : self::result(self::OUTSIDE_CYCLE, $type, 'This accomplishment falls outside the ranking cycle coverage.', $date);
+            : self::result(self::OUTSIDE_CYCLE, $type, 'This accomplishment falls outside the ranking period coverage.', $date);
     }
 
-    /** Coverage of the ranking cycle that owns this track, or null when the cycle has none set. */
+    /** Coverage of the ranking period that owns this track, or null when the cycle has none set. */
     public function coverageForPeriod(?array $period): ?array
     {
         $cycleId = (string) ($period['ranking_cycle_id'] ?? '');
@@ -156,7 +156,7 @@ final class EvaluationValidityService
         $decisions = [];
         foreach ($records as $record) {
             $decision = $coverage === null
-                ? self::result(self::ELIGIBLE, null, 'This ranking cycle has no achievement coverage dates; included as before.')
+                ? self::result(self::ELIGIBLE, null, 'This ranking period has no achievement coverage dates; included as before.')
                 : self::evaluate($record, $coverage, $group);
             $decision['coverage'] = $coverage;
             $decisions[(string) $record['id']] = $decision;

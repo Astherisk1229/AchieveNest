@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { Camera, Loader2, Trash2, AlertCircle, CheckCircle2, User } from 'lucide-react'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
+import { confirmDialog } from '../../components/ui/DialogProvider'
 
 export default function ProfilePhotoUploader({
   currentAvatarUrl,
@@ -67,7 +68,7 @@ export default function ProfilePhotoUploader({
   }
 
   const handleRemovePhoto = async () => {
-    if (!window.confirm('Are you sure you want to remove your profile photo?')) return
+    if (!(await confirmDialog({ title: 'Remove profile photo?', message: 'Your profile will show your initials until you upload a new photo.', confirmLabel: 'Remove photo', tone: 'destructive' }))) return
     try {
       setIsUploading(true)
       setError('')

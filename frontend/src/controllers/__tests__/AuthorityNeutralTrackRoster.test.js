@@ -5,7 +5,7 @@ import path from 'node:path'
 const root = path.resolve(import.meta.dirname, '../../../..')
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8')
 
-describe('authority-neutral Ranking Cycle track roster', () => {
+describe('authority-neutral Ranking Period track roster', () => {
   it('publishes one actor-derived roster endpoint without client scope parameters', () => {
     const routes = read('backend/app/Config/Routes.php')
     expect(routes).toContain("reviewer/ranking-cycles/(:segment)/tracks/(:segment)/personnel")

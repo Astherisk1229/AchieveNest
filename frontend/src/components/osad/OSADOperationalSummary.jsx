@@ -36,10 +36,10 @@ export default function OSADOperationalSummary({ metrics = {} }) {
       {/* Simplified Operational KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         
-        {/* KPI 1: Academic Structure */}
+        {/* KPI 1: College and Programs */}
         <div className="p-4 rounded-xl bg-white dark:bg-[#131E2E] border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-xs font-semibold">Academic Structure</span>
+            <span className="text-xs font-semibold">College and Programs</span>
             <Building2 className="w-4 h-4 text-[#16834a] dark:text-emerald-400" />
           </div>
           <div className="flex items-baseline gap-2">

@@ -4,13 +4,17 @@ namespace App\Database\Seeds;
 
 use App\Services\EvaluationInstrumentRegistry;
 use App\Services\LocalEvidenceStorageService;
+use App\Services\NtfAnnualReviewAreaAService;
+use App\Services\NtfAnnualReviewSettingsService;
+use App\Services\NtfAnnualReviewTemplateService;
 use CodeIgniter\Database\Seeder;
 use RuntimeException;
 
 /**
  * LOCAL DEMO ONLY. Adds Area B accomplishments, PDF evidence and evaluation items to the open
- * NTF demo evaluations created by NtfRankingWorkspaceDemoSeeder, so the HR Evaluation Studio
- * can be previewed with a populated Non-Teaching Faculty portfolio.
+ * NTF demo evaluations created by NtfRankingWorkspaceDemoSeeder, plus a confirmed NTF annual-review
+ * import whose locked Area A scores are attached the same way portfolio submission does, so the
+ * HR Evaluation Studio can be previewed with a fully populated Non-Teaching Faculty portfolio.
  *
  * - Refuses to run in production.
  * - Only touches its own records (deterministic ids prefixed d7100000-). Re-running replaces them.
@@ -54,6 +58,7 @@ class NtfPortfolioEvidenceDemoSeeder extends Seeder
             }
 
             $this->removeDemoRows($evaluationId);
+            $this->removeAreaA($evaluation);
             if ($remove) {
                 $this->say("Removed demo evidence from {$evaluationId}.");
                 continue;
@@ -65,11 +70,12 @@ class NtfPortfolioEvidenceDemoSeeder extends Seeder
             foreach ($items as $order => $item) {
                 $this->seedItem($evaluation, $owner, $order, $item);
             }
+            $areaA = $this->seedAreaA($evaluation);
             $this->db->transComplete();
             if (! $this->db->transStatus()) {
                 throw new RuntimeException("Demo evidence for {$evaluationId} could not be seeded.");
             }
-            $this->say('Seeded ' . count($items) . " demo Area B items into {$evaluationId} ({$evaluation['status']}).");
+            $this->say('Seeded ' . count($items) . " demo Area B items and {$areaA} locked Area A items into {$evaluationId} ({$evaluation['status']}).");
         }
     }
 
@@ -163,6 +169,123 @@ class NtfPortfolioEvidenceDemoSeeder extends Seeder
             ]),
             'created_at' => $now, 'updated_at' => $now,
         ]);
+    }
+
+    /** Area A rows of the NTF annual-review workbook: code, name, max points, weight, DS for the two school years. */
+    private const AREA_A = [
+        ['A.1', 'Job Performance', 50, 0.50, [82, 79]],
+        ['A.2', 'Personal Attitudes and Qualities', 10, 0.10, [85, 88]],
+        ['A.3', 'Efficiency', 30, 0.30, [74, 78]],
+    ];
+
+    /**
+     * Records a confirmed NTF annual-review workbook import for the evaluation's personnel and lets
+     * NtfAnnualReviewAreaAService attach the locked Area A items, exactly as portfolio submission does.
+     */
+    private function seedAreaA(array $evaluation): int
+    {
+        if (! $this->db->tableExists('personnel_annual_review_imports') || ! $this->db->fieldExists('area_a_payload', 'personnel_annual_review_imports')) {
+            $this->say('Skipping Area A: this database has no NTF annual-review workbook columns.');
+            return 0;
+        }
+        $periodId = (string) ($evaluation['evaluation_period_id'] ?? '');
+        if ($periodId === '') return 0;
+        $owner = (string) $evaluation['personnel_profile_id'];
+        $now = date('Y-m-d H:i:s');
+        $years = $this->schoolYears((string) ($evaluation['academic_year'] ?? ''));
+
+        $items = [];
+        $totals = [0.0, 0.0];
+        foreach (self::AREA_A as [$code, $name, $max, $weight, $ds]) {
+            $points = [round($ds[0] * $weight, 2), round($ds[1] * $weight, 2)];
+            $totals[0] += $points[0];
+            $totals[1] += $points[1];
+            $items[] = ['code' => $code, 'name' => $name, 'max_points' => $max, 'weight' => $weight, 'ds' => $ds, 'points' => $points, 'average_points' => round(($points[0] + $points[1]) / 2, 2)];
+        }
+        $areaMax = array_sum(array_column(self::AREA_A, 2));
+        $percent = [round($totals[0] / $areaMax * 100, 2), round($totals[1] / $areaMax * 100, 2)];
+        [$scaleVersion, $bands, $ratings] = $this->ratings($percent);
+        $payload = [
+            'template_identifier' => NtfAnnualReviewTemplateService::TEMPLATE_ID,
+            'criteria_version_id' => $evaluation['evaluation_scale_version_id'] ?? null,
+            'area_max' => $areaMax,
+            'school_years' => $years,
+            'items' => $items,
+            'totals' => [round($totals[0], 2), round($totals[1], 2)],
+            'percentages' => $percent,
+            'ratings' => $ratings,
+            'passing' => [true, true],
+            'average_total' => round(array_sum(array_column($items, 'average_points')), 2),
+            'rating_scale' => ['version' => $scaleVersion, 'bands' => $bands, 'is_provisional' => true],
+            'workbook_personnel_profile_id' => $owner,
+            'fixture' => self::MARKER,
+        ];
+
+        // The newest confirmed import is authoritative; ours is confirmed now, so it wins.
+        $this->upsertExisting('personnel_annual_review_imports', [
+            'id' => $this->areaAImportId($evaluation), 'personnel_profile_id' => $owner, 'expected_personnel_profile_id' => $owner,
+            'evaluation_period_id' => $periodId, 'source' => 'demo_seed',
+            'source_file_path' => 'demo/ntf-annual-review/' . $owner . '.xlsx', 'original_filename' => 'NTF_Annual_Review_Demo.xlsx',
+            'file_hash' => hash('sha256', self::MARKER . $owner . $periodId), 'template_identifier' => NtfAnnualReviewTemplateService::TEMPLATE_ID,
+            'detected_personnel_name' => (string) ($this->db->table('profiles')->select('full_name')->where('id', $owner)->get()->getRowArray()['full_name'] ?? ''),
+            'review_1_school_year' => $years[0], 'review_1_rating' => $ratings[0],
+            'review_2_school_year' => $years[1], 'review_2_rating' => $ratings[1],
+            'two_review_status' => 'passed', 'two_review_reason' => null,
+            'validation_status' => 'valid', 'validation_issues' => json_encode([]), 'match_status' => 'matched',
+            'area_a_payload' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'uploaded_by' => $owner, 'uploader_workspace' => 'hr', 'uploaded_at' => $now, 'confirmed_at' => $now,
+            'supersedes_import_id' => null, 'superseded_at' => null, 'correction_reason' => null,
+            'created_at' => $now, 'updated_at' => $now,
+        ]);
+
+        return (new NtfAnnualReviewAreaAService($this->db))->attach((string) $evaluation['id'], $now);
+    }
+
+    /** Removes this seeder's workbook import and the locked Area A items attached from it. */
+    private function removeAreaA(array $evaluation): void
+    {
+        if (! $this->db->tableExists('personnel_annual_review_imports')) return;
+        $importId = $this->areaAImportId($evaluation);
+        foreach ($this->db->table('personnel_evaluation_items')->select('id,scoring_payload')->where(['evaluation_id' => $evaluation['id'], 'domain' => NtfAnnualReviewAreaAService::DOMAIN])->get()->getResultArray() as $row) {
+            $payload = json_decode((string) ($row['scoring_payload'] ?? ''), true) ?: [];
+            if (($payload['import_id'] ?? null) === $importId) $this->db->table('personnel_evaluation_items')->where('id', $row['id'])->delete();
+        }
+        $this->db->table('personnel_annual_review_imports')->where('id', $importId)->delete();
+    }
+
+    private function areaAImportId(array $evaluation): string
+    {
+        return $this->demoId('0004', substr((string) $evaluation['id'], -4), 0);
+    }
+
+    /** "2027-2028" → the two preceding school years the workbook covers. */
+    private function schoolYears(string $academicYear): array
+    {
+        if (preg_match('/(\d{4})\D+(\d{4})/', $academicYear, $m)) {
+            $start = (int) $m[1];
+            return [($start - 2) . '-' . ($start - 1), ($start - 1) . '-' . $start];
+        }
+        return ['2025-2026', '2026-2027'];
+    }
+
+    /** Ratings from the active NTF rating scale when configured; a passing label otherwise. */
+    private function ratings(array $percent): array
+    {
+        try {
+            $scale = (new NtfAnnualReviewSettingsService($this->db))->active('rating_scale');
+            return [$scale['version'] ?? null, $scale['value']['bands'] ?? [], [
+                NtfAnnualReviewSettingsService::band($percent[0], $scale['value'])['key'] ?? 'very_satisfactory',
+                NtfAnnualReviewSettingsService::band($percent[1], $scale['value'])['key'] ?? 'very_satisfactory',
+            ]];
+        } catch (\Throwable) {
+            return [null, [], ['very_satisfactory', 'very_satisfactory']];
+        }
+    }
+
+    private function upsertExisting(string $table, array $row): void
+    {
+        $fields = array_flip($this->db->getFieldNames($table));
+        $this->db->table($table)->upsert(array_intersect_key($row, $fields));
     }
 
     private function removeDemoRows(string $evaluationId): void

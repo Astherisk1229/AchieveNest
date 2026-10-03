@@ -7,7 +7,7 @@ import { filterAwardCandidates } from '../OSADAwardCandidateReviewPage'
 
 const source = (relativePath) => readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8')
 
-describe('OSAD Award Candidate Review route integrity', () => {
+describe('OSAD Award Candidates route integrity', () => {
   const candidateNav = NAVIGATION_CATALOG.find((item) => item.id === 'osad-award-candidate-review')
   const scoringNav = NAVIGATION_CATALOG.find((item) => item.id === 'osad-award-categories')
 

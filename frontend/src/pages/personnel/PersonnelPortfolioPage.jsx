@@ -41,7 +41,7 @@ import { fetchOwnLengthOfService, lengthOfServiceLabel } from '../../services/pe
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
-import personnelEvaluationResultService from '../../services/personnelEvaluationResultService'
+import personnelEvaluationResultService from '../../services/PersonnelEvaluationResultService'
 
 export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()

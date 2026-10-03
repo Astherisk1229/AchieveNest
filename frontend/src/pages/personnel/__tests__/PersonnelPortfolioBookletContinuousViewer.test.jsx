@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import PersonnelPortfolioBookletModal from '../PersonnelPortfolioBookletModal'
+import BookletPage, { buildBookletPages } from '../../../components/portfolio-booklet/BookletPage'
+import { resolveBookletFormat } from '../../../components/portfolio-booklet/bookletFormats'
 
 vi.mock('../../../services/personnelAccomplishmentService', () => ({
   default: { getEvidenceBlobUrl: vi.fn(), downloadEvidenceBlob: vi.fn() }
@@ -69,12 +71,18 @@ describe('Faculty Academic portfolio — continuous viewer', () => {
     expect(html).not.toContain('Fixture')
   })
 
-  it('renders an identical print copy without application controls', () => {
+  it('renders the print copy from the same pages without application controls', () => {
     const html = render(fixturePortfolio)
-    const printCopy = html.slice(html.indexOf('hidden print:block'))
+    // The print copy is mounted only while printing (after the attached documents load as images).
+    expect(html).not.toContain('booklet-print-root')
+    const format = resolveBookletFormat(facultyUser, fixturePortfolio)
+    const rows = format.normalize(fixturePortfolio)
+    const pages = buildBookletPages(format, rows)
+    const printCopy = pages.map((page) => renderToString(<BookletPage page={page} format={format} rows={rows} user={facultyUser} portfolio={fixturePortfolio} />)).join('')
     expect(printCopy.match(/class="booklet-page/g)).toHaveLength(4)
     expect(printCopy).not.toContain('View Proof')
     expect(printCopy).not.toContain('id="booklet-')
+    expect(printCopy).not.toContain('<a ')
   })
 
   it('shows the official header fields from authoritative personnel data only', () => {

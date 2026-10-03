@@ -67,7 +67,7 @@ function AchievementCoverage({ cycle, onSaved }) {
       <Row label="Achievement coverage">{current ? formatRange(current.start, current.end) : 'Not set'}<span className="block text-xs font-normal text-slate-500">Accomplishments dated in this range (or, for degrees, obtained by its end) are copied into submitted portfolios. Older records stay in each portfolio but are not scored in this cycle.</span></Row>
     </dl>
     {!current && <Notice tone="error">Set the achievement coverage before opening submissions.</Notice>}
-    {!editable && <Notice>{cycle.is_read_only ? 'This cycle is read-only.' : 'The achievement coverage is locked because portfolios have already been submitted for this cycle.'}</Notice>}
+    {!editable && <Notice>{cycle.is_read_only ? 'This period is read-only.' : 'The achievement coverage is locked because portfolios have already been submitted for this cycle.'}</Notice>}
     {editable && <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
       <DateRange idPrefix="settings-achievement-coverage" label="Achievement coverage" start={form.coverage_start} end={form.coverage_end} onStart={value => setForm({ ...form, coverage_start: value })} onEnd={value => setForm({ ...form, coverage_end: value })}/>
       {form.coverage_start && form.coverage_end && formError && <Notice tone="error">{formError}</Notice>}
@@ -98,7 +98,7 @@ function Schedule({ cycle, onSaved }) {
     <dl className="divide-y divide-slate-200 dark:divide-slate-800">
       {cycle.tracks.map(track => <Row key={track.id} label={track.personnel_group_label}>Submission {formatRange(track.submission_open_at, track.submission_close_at)}<span className="block">Evaluation {formatRange(track.evaluation_start_at, track.evaluation_end_at)}</span></Row>)}
     </dl>
-    {!editable && <Notice>{cycle.is_read_only ? 'This cycle is read-only. Its schedule is kept as historical record.' : cycle.tracks.length ? 'The schedule can no longer change after submissions have closed.' : 'Set the schedule under Personnel Coverage to complete this cycle.'}</Notice>}
+    {!editable && <Notice>{cycle.is_read_only ? 'This period is read-only. Its schedule is kept as historical record.' : cycle.tracks.length ? 'The schedule can no longer change after submissions have closed.' : 'Set the schedule under Personnel Coverage to complete this cycle.'}</Notice>}
     {editable && <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
       <div className="grid gap-4">
         <div><p className="mb-1.5 text-sm font-bold">Submission Period</p><DateRange idPrefix="settings-submission" label="Submission period" start={form.submission_open_at} end={form.submission_close_at} onStart={value => setForm({ ...form, submission_open_at: value })} onEnd={value => setForm({ ...form, submission_close_at: value })}/></div>
@@ -134,9 +134,9 @@ function Coverage({ cycle, cycles, onSaved }) {
   }
   return <div className="space-y-4">
     <dl className="divide-y divide-slate-200 dark:divide-slate-800"><Row label="Current coverage">{cycle.coverage?.label}</Row></dl>
-    {cycle.is_read_only && <Notice>This cycle is read-only. Its personnel coverage is kept as historical record.</Notice>}
+    {cycle.is_read_only && <Notice>This period is read-only. Its personnel coverage is kept as historical record.</Notice>}
     {!cycle.is_read_only && missing.length > 0 && <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-      <p className="text-sm text-slate-600 dark:text-slate-300">{needsSchedule ? 'Choose who this cycle covers and set its schedule. Each personnel group uses its active, locked criteria.' : `Add ${missing.map(group => GROUP_LABELS[group]).join(' and ')} to this cycle. The new group uses this cycle's schedule and its own active criteria.`}</p>
+      <p className="text-sm text-slate-600 dark:text-slate-300">{needsSchedule ? 'Choose who this period covers and set its schedule. Each personnel group uses its active, locked criteria.' : `Add ${missing.map(group => GROUP_LABELS[group]).join(' and ')} to this cycle. The new group uses this cycle's schedule and its own active criteria.`}</p>
       <CoverageToggle groups={groups} onChange={setGroups} blocked={conflicts} disabledGroups={new Set(present)}/>
       {needsSchedule && <div className="grid gap-4">
         <div><p className="mb-1.5 text-sm font-bold">Submission Period</p><DateRange idPrefix="setup-submission" label="Submission period" start={dates.submission_open_at} end={dates.submission_close_at} onStart={value => setDates({ ...dates, submission_open_at: value })} onEnd={value => setDates({ ...dates, submission_close_at: value })}/></div>
@@ -147,7 +147,7 @@ function Coverage({ cycle, cycles, onSaved }) {
       {state.error && <Notice tone="error">{state.error}</Notice>}
       <div className="flex justify-end"><button type="button" onClick={save} disabled={!adding.length || !ready || state.saving} className={buttonStyles.primary}>{state.saving ? 'Saving…' : needsSchedule ? 'Complete Setup' : 'Add Personnel Group'}</button></div>
     </div>}
-    {!cycle.is_read_only && missing.length === 0 && <Notice>This cycle covers Faculty and Non-Teaching Faculty. Personnel groups with records stay attached to preserve their history.</Notice>}
+    {!cycle.is_read_only && missing.length === 0 && <Notice>This period covers Faculty and Non-Teaching Faculty. Personnel groups with records stay attached to preserve their history.</Notice>}
     {viewing && <CriteriaPreviewDialog versionId={viewing} onClose={() => setViewing(null)}/>}
   </div>
 }
@@ -190,8 +190,8 @@ function Lifecycle({ cycle, onSaved, onArchive }) {
     </ul>
     {state.error && <Notice tone="error">{state.error}</Notice>}
     <p className="text-xs leading-5 text-slate-500">Lifecycle steps follow the existing ranking rules: submissions open only inside the submission window with an approved criteria version and valid reviewer assignments, and evaluation starts on its scheduled date.</p>
-    {cycle.allowed_actions?.includes('archive') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"><p className="text-sm text-slate-600 dark:text-slate-300">This cycle is completed. Archiving keeps every record and makes the cycle historical.</p><button type="button" onClick={onArchive} className={buttonStyles.secondary}>Archive Cycle</button></div>}
-    {cycle.is_archived && <Notice>This cycle is archived. It stays searchable and viewable, and its records cannot change.</Notice>}
+    {cycle.allowed_actions?.includes('archive') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"><p className="text-sm text-slate-600 dark:text-slate-300">This period is completed. Archiving keeps every record and makes the period historical.</p><button type="button" onClick={onArchive} className={buttonStyles.secondary}>Archive Period</button></div>}
+    {cycle.is_archived && <Notice>This period is archived. It stays searchable and viewable, and its records cannot change.</Notice>}
   </div>
 }
 
@@ -212,7 +212,7 @@ export default function CycleSettingsDialog({ cycle: initial, cycles = [], secti
     criteria: <Criteria cycle={cycle}/>,
     lifecycle: <Lifecycle cycle={cycle} onSaved={refresh} onArchive={() => onArchive?.(cycle)}/>,
   }
-  return <RankingCycleDialog width="max-w-4xl" title="Cycle Settings" description={cycle.display_name} onClose={onClose} footer={<button type="button" onClick={onClose} className={buttonStyles.secondary}>Close</button>}>
+  return <RankingCycleDialog width="max-w-4xl" title="Period Settings" description={cycle.display_name} onClose={onClose} footer={<button type="button" onClick={onClose} className={buttonStyles.secondary}>Close</button>}>
     <div className="grid min-h-[26rem] md:grid-cols-[12rem_1fr]">
       <nav aria-label="Cycle settings sections" className="flex gap-1 overflow-x-auto border-b border-slate-200 p-2 md:flex-col md:border-b-0 md:border-r dark:border-slate-800">
         {SETTINGS_SECTIONS.map(([key, label]) => <button key={key} type="button" aria-current={active === key ? 'page' : undefined} onClick={() => setActive(key)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${active === key ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white'}`}>{label}</button>)}

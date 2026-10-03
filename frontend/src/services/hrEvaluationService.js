@@ -27,6 +27,11 @@ export const hrEvaluationService = {
   },
   async finalize(id, payload = {}) {
     return unwrap(await apiClient.post(`/reviewer/evaluations/${id}/finalize`, payload))
+  },
+  // Non-Teaching Area A: HR enters or corrects the DS of one criterion (A.1–A.3).
+  async setAreaADs(id, criterionCode, ds, reason = '') {
+    const data = unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(id)}/area-a/${encodeURIComponent(criterionCode)}`, { ds, reason }))
+    return data?.item || data?.data?.item || null
   }
 }
 

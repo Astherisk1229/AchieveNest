@@ -458,6 +458,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->patch('hr/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::verifyItem/$1/$2');
     $routes->options('hr/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::options');
     $routes->patch('hr/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::rateItem/$1/$2');
+    $routes->patch('hr/evaluations/(:segment)/area-a/(:segment)', 'Api\HREvaluationController::updateAreaADs/$1/$2');
+    $routes->options('hr/evaluations/(:segment)/area-a/(:segment)', 'Api\HREvaluationController::options');
     $routes->options('hr/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::options');
 
     // Final points-summary report
@@ -497,6 +499,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->patch('reviewer/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::verifyItem/$1/$2');
     $routes->options('reviewer/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::options');
     $routes->patch('reviewer/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::rateItem/$1/$2');
+    $routes->patch('reviewer/evaluations/(:segment)/area-a/(:segment)', 'Api\HREvaluationController::updateAreaADs/$1/$2');
+    $routes->options('reviewer/evaluations/(:segment)/area-a/(:segment)', 'Api\HREvaluationController::options');
     $routes->options('reviewer/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::options');
     $routes->get('reviewer/evaluations/(:segment)/report', 'Api\HREvaluationController::getReport/$1');
     $routes->options('reviewer/evaluations/(:segment)/report', 'Api\HREvaluationController::options');

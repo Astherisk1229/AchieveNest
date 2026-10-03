@@ -31,7 +31,7 @@ export default function OSADStudentAwardReviewWorkspace({ award, awardId, studen
 
   return <OSADAwardPageShell title={model.student.full_name || 'Candidate review'} description={model.student.program || 'Program unavailable'} icon={UserRound}
     badge={<OSADAwardAuthorityBadge value={model.award.authority_status} />}
-    breadcrumbs={[{ label: 'Potential Candidates', onClick: onBack }, { label: model.student.full_name || 'Candidate review' }]}>
+    breadcrumbs={[{ label: 'Award Candidates', onClick: onBack }, { label: model.student.full_name || 'Candidate review' }]}>
     <div className="mx-auto max-w-5xl space-y-8">
       <section aria-labelledby="score-summary-heading" className="border-y border-slate-200 py-5 dark:border-slate-800">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">

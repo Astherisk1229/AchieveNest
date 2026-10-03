@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   ArrowRight,
@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
-import { authenticateUser, requestPasswordReset } from '../../services/authService'
+import { authenticateUser, getCurrentUser, requestPasswordReset } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import RouteAccessController from '../../controllers/RouteAccessController'
 import campusBanner from '../../assets/ndmu_login_bg.jpg'
@@ -34,7 +34,7 @@ const demoAccounts = [
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, user: signedInUser } = useAuth()
   const forgotEmailRef = useRef(null)
 
   const [email, setEmail] = useState('')
@@ -129,6 +129,11 @@ export default function LoginPage() {
     } finally {
       setForgotSubmitting(false)
     }
+  }
+
+  // Already signed in (e.g. an unknown URL redirected here): go to the user's own dashboard.
+  if (signedInUser && !isSubmitting && getCurrentUser()) {
+    return <Navigate to={RouteAccessController.resolveRedirect(signedInUser)} replace />
   }
 
   return (

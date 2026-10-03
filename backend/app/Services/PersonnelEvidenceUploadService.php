@@ -292,6 +292,22 @@ class PersonnelEvidenceUploadService
             ];
         }
 
+        // 3b. The same document may back only one accomplishment of a person. Unclassified
+        // evidence-first drafts (abandoned uploads) do not count, so a retry is never blocked.
+        $alreadyUsed = $incomingChecksum === false ? null : $this->findAccomplishmentUsingDocument((string) $ownerProfileId, $accomplishmentId, $incomingChecksum);
+        if ($alreadyUsed !== null) {
+            $title = trim((string) ($alreadyUsed['title'] ?? '')) ?: 'another accomplishment';
+            return [
+                'success' => false,
+                'status'  => 409,
+                'error'   => [
+                    'code'     => 'DUPLICATE_EVIDENCE',
+                    'message'  => "This document is already used for \"{$title}\" in your portfolio. Each document can support only one accomplishment.",
+                    'existing' => ['id' => $alreadyUsed['id'], 'title' => $alreadyUsed['title'], 'occurrence_date' => $alreadyUsed['occurrence_date'] ?? null],
+                ],
+            ];
+        }
+
         // 4. Store Real Physical File into Protected Root
         $stored = null;
         try {
@@ -378,5 +394,22 @@ class PersonnelEvidenceUploadService
                 'evidence' => $this->storage->formatSafeEvidence($evidenceRow, 'personnel'),
             ],
         ];
+    }
+
+    /** Another classified accomplishment of the same person that already holds this exact file, if any. */
+    private function findAccomplishmentUsingDocument(string $ownerProfileId, string $accomplishmentId, string $sha256): ?array
+    {
+        $builder = $this->db->table('personnel_accomplishment_evidence e')
+            ->select('a.id, a.title, a.occurrence_date')
+            ->join('personnel_accomplishments a', 'a.id = e.accomplishment_id')
+            ->where('e.sha256', $sha256)
+            ->where('e.status', 'active')
+            ->where('a.personnel_profile_id', $ownerProfileId)
+            ->where('a.id !=', $accomplishmentId);
+        if ($this->db->fieldExists('category_code', 'personnel_accomplishments')) {
+            $builder->where('a.category_code IS NOT NULL', null, false)->where('a.category_code !=', '');
+        }
+        if ($this->db->fieldExists('deleted_at', 'personnel_accomplishments')) $builder->where('a.deleted_at', null);
+        return $builder->get(1)->getRowArray() ?: null;
     }
 }

@@ -67,7 +67,7 @@ describe('permissionResolver', () => {
         'HR Dashboard',
         'Personnel Directory',
         'Organizational Structure',
-        'Ranking Cycles',
+        'Ranking Periods',
         'Password Resets',
         'HR Audit Trail'
       ])
@@ -86,7 +86,7 @@ describe('permissionResolver', () => {
       const labels = nav.map(n => n.label)
 
       expect(labels).toContain('OSAD Dashboard')
-      expect(labels).toContain('Academic Structure')
+      expect(labels).toContain('College and Programs')
       expect(labels).toContain('Student Accounts')
       expect(labels).not.toContain('HR Dashboard')
       expect(labels).not.toContain('Edit Portfolio')

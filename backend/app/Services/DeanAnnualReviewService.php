@@ -40,10 +40,9 @@ class DeanAnnualReviewService
     {
         $ref=trim((string)($payload['evaluation_period_id']??$payload['evaluation_cycle_id']??''));
         if($ref!=='') {
-            $p=$this->db->table('personnel_evaluation_periods')->groupStart()->where('id',$ref)->orWhere('academic_year',$ref)->orWhere('period_code',$ref)->groupEnd()->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
+            $p=$this->db->table('personnel_evaluation_periods')->where('evaluation_type','RANKING_PROMOTION')->where('personnel_group','FACULTY')->groupStart()->where('id',$ref)->orWhere('academic_year',$ref)->orWhere('period_code',$ref)->groupEnd()->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
         } else {
-            $p=$this->db->table('personnel_evaluation_periods')->whereIn('status',['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'])->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
-            $p ??= $this->db->table('personnel_evaluation_periods')->whereIn('status',['CLOSED','ARCHIVED'])->orderBy('evaluation_end_at','DESC')->get()->getRowArray();
+            $p=(new PersonnelEvaluationPeriodService($this->db))->currentWorkflowTrack('FACULTY');
         }
         if(!$p) throw new InvalidArgumentException('VALIDATION_ERROR: Evaluation period was not found.');
         return $p;
@@ -123,7 +122,7 @@ class DeanAnnualReviewService
             $count=$this->db->table('personnel_annual_reviews')->where('personnel_profile_id',$person['id'])->where('evaluation_period_id',$period['id'])->where('superseded_at !=',null)->countAllResults();
             $items[]=['personnel'=>$person,'evaluation_period_id'=>$period['id'],'annual_review'=>$review,'superseded_count'=>$count,'eligibility'=>$this->eligibilityService->evaluateEligibility($person['id'],$period['id'])];
         }
-        return ['evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'evaluation_period'=>['id'=>$period['id'],'name'=>$period['period_name'],'status'=>$period['status'],'evaluation_end_at'=>$period['evaluation_end_at'],'is_locked'=>in_array($period['status'],['CLOSED','ARCHIVED'],true)],'college_id'=>$college,'total_personnel'=>count($items),'personnel'=>$items];
+        return ['ranking_cycle_id'=>$period['ranking_cycle_id']??null,'evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'evaluation_period'=>['id'=>$period['id'],'name'=>$period['period_name'],'status'=>$period['status'],'status_label'=>$period['status_label']??$period['status'],'evaluation_end_at'=>$period['evaluation_end_at'],'is_locked'=>in_array($period['status'],['CLOSED','ARCHIVED'],true)],'college_id'=>$college,'total_personnel'=>count($items),'personnel'=>$items];
     }
 
     public function getReviewById(string $id): array

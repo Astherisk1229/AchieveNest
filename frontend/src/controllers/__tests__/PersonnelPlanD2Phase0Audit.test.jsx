@@ -197,14 +197,14 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-0: Current-State A
     it('10. verifies institutional College backend source and owner module', () => {
       const collegeAudit = {
         table: 'colleges',
-        ownerModule: 'Institutional Structure / Academic Structure',
+        ownerModule: 'Institutional Structure / College and Programs',
         canonicalEndpoint: '/api/v1/colleges',
         primaryKey: 'id',
         nameColumn: 'college_name',
         codeColumn: 'college_code'
       };
       expect(collegeAudit.table).toBe('colleges');
-      expect(collegeAudit.ownerModule).toContain('Academic Structure');
+      expect(collegeAudit.ownerModule).toContain('College and Programs');
     });
 
     it('11. audits College frontend binding in personnel placement utils', () => {

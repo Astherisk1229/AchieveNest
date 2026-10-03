@@ -1,5 +1,5 @@
 // LEGACY_QUARANTINED: retained only for historical test/import compatibility.
-// Production navigation redirects to the server-authoritative Ranking Cycles workspace.
+// Production navigation redirects to the server-authoritative Ranking Periods workspace.
 import React, { useState, useMemo } from 'react'
 import {
   FileCheck2, Search, Filter, Download, ArrowRight, Award,

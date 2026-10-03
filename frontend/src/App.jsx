@@ -7,6 +7,7 @@ import useIdleSession from './hooks/useIdleSession'
 import SessionTimeoutModal from './components/common/SessionTimeoutModal'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
+import { DialogProvider } from './components/ui/DialogProvider'
 import { useAuth } from './context/AuthContext'
 import { getCurrentUser } from './services/authService'
 import RouteAccessController from './controllers/RouteAccessController'
@@ -59,18 +60,33 @@ function QueryPreservingRedirect({ to }) {
   return <Navigate to={`${to}${location.search}${location.hash}`} replace />
 }
 
+// A lazily loaded page whose file changed (new deploy, or the dev server re-bundled its
+// dependencies) fails with this error. A single reload fetches the current version.
+const isStaleModuleError = (error) => /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Outdated Optimize Dep/i.test(String(error?.message || error))
+const RELOAD_GUARD_KEY = 'achievenest_stale_module_reload_at'
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
   }
   static getDerivedStateFromError(error) { return { hasError: true, error } }
-  componentDidCatch(error, errorInfo) { console.error('ErrorBoundary:', error, errorInfo) }
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary:', error, errorInfo)
+    if (!isStaleModuleError(error)) return
+    let last = 0
+    try { last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0) } catch { last = 0 }
+    if (Date.now() - last > 15000) {
+      try { sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now())) } catch { /* storage unavailable */ }
+      window.location.reload()
+    }
+  }
   componentDidUpdate(prevProps) {
     if (this.state.hasError && prevProps.children !== this.props.children) {
       this.setState({ hasError: false, error: null })
     }
   }
+  handleReload = () => { window.location.reload() }
   handleReset = () => { 
     localStorage.clear()
     sessionStorage.clear()
@@ -89,11 +105,18 @@ class ErrorBoundary extends React.Component {
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 break-words max-h-32 overflow-y-auto">
               {this.state.error?.message || 'Unknown React render error'}
             </div>
+            {/* Reloading keeps the user signed in; resetting signs them out. */}
             <button
-              onClick={this.handleReset}
+              onClick={this.handleReload}
               className="w-full py-3 bg-[#064e2b] hover:bg-[#1a382b] text-white font-bold rounded-xl text-sm transition shadow-md"
             >
-              Reset Session & Return to Safety
+              Reload Page
+            </button>
+            <button
+              onClick={this.handleReset}
+              className="w-full py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-sm transition"
+            >
+              Sign Out & Reset Session
             </button>
           </div>
         </div>
@@ -261,7 +284,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <DialogProvider>
+        <AppContent />
+      </DialogProvider>
     </AuthProvider>
   )
 }

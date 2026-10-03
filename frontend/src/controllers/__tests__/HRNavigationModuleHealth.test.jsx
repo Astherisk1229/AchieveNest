@@ -71,7 +71,7 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
       expect(labels).toContain('HR Dashboard')
       expect(labels).toContain('Personnel Directory')
       expect(labels).toContain('Organizational Structure')
-      expect(labels).toContain('Ranking Cycles')
+      expect(labels).toContain('Ranking Periods')
       expect(labels).toContain('HR Audit Trail')
       expect(labels).toContain('Password Resets')
 

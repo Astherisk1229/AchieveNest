@@ -1,11 +1,24 @@
-export function isAcademicPersonnel(personnel) {
-  if (!personnel || typeof personnel !== 'object') return false
+// Signed-in users carry placement under personnel_affiliation; personnel list rows carry it flat.
+const withAffiliation = (personnel) => {
+  const affiliation = personnel?.personnel_affiliation
+  if (!affiliation || typeof affiliation !== 'object') return personnel
+  const merged = { ...personnel }
+  Object.entries(affiliation).forEach(([key, value]) => {
+    if (merged[key] === undefined || merged[key] === null || merged[key] === '') merged[key] = value
+  })
+  return merged
+}
+
+export function isAcademicPersonnel(input) {
+  if (!input || typeof input !== 'object') return false
+  const personnel = withAffiliation(input)
   const side = personnel.organizational_side || personnel.personnel_classification || personnel.personnel_category || ''
   return side.toLowerCase() === 'academic'
 }
 
-export function formatPersonnelPlacement(personnel) {
-  if (!personnel || typeof personnel !== 'object') return 'Placement unassigned'
+export function formatPersonnelPlacement(input) {
+  if (!input || typeof input !== 'object') return 'Placement unassigned'
+  const personnel = withAffiliation(input)
   if (isAcademicPersonnel(personnel)) {
     const college = personnel.college_name || personnel.college_code || personnel.college || 'College unassigned'
     const programs = (personnel.program_affiliations || [])
@@ -13,7 +26,13 @@ export function formatPersonnelPlacement(personnel) {
       .filter(Boolean)
     return programs.length ? `${college} • ${programs.join(', ')}` : college
   }
-  return personnel.administrative_unit_name || personnel.administrative_unit_code || 'Administrative Unit unassigned'
+  const unit = personnel.administrative_unit_name || personnel.administrative_unit_code
+  if (unit) return unit
+  // Display only: rows that omit the side but carry a College (e.g. moderator candidates) show the College.
+  const side = personnel.organizational_side || personnel.personnel_classification || personnel.personnel_category
+  const college = personnel.college_name || personnel.college || personnel.college_code
+  if (!side && college) return college
+  return 'Administrative Unit unassigned'
 }
 
 export function collectPersonnelPlacementOptions(personnelList = []) {

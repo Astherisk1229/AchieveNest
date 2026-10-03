@@ -10,7 +10,7 @@ const number = (value) => {
   const n = Number(value)
   return Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'
 }
-// The cycle name usually already contains its academic year ("AY 2025-2026 …"); don't repeat it.
+// The period name usually already contains its academic year ("AY 2025-2026 …"); don't repeat it.
 const cycleLabel = (cycle) => {
   if (!cycle) return ''
   const name = String(cycle.name || '').trim()

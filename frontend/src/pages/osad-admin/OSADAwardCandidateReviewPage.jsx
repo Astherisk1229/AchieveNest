@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Search, Trophy } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowRight, Printer, Search, Trophy } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import OSADPageHeader from '../../components/osad/OSADPageHeader'
 import { OSADEmptyState, OSADErrorState, OSADLoadingState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
-import { fetchCandidates } from '../../services/awardAdminService'
+import { fetchAwards, fetchCandidates } from '../../services/awardAdminService'
 
 const text = (value) => String(value || '').trim()
 
@@ -28,10 +28,13 @@ const uniqueOptions = (items, idKey, labelKey) => Array.from(
 
 export default function OSADAwardCandidateReviewPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [candidates, setCandidates] = useState([])
+  const [awardCatalog, setAwardCatalog] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filters, setFilters] = useState({ search: '', award: 'all', college: 'all', status: 'all' })
+  // ?award=<id> arrives from an award's "View candidates" button (Awards & Scoring Criteria).
+  const [filters, setFilters] = useState(() => ({ search: '', award: searchParams.get('award') || 'all', college: 'all', status: 'all' }))
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -48,20 +51,45 @@ export default function OSADAwardCandidateReviewPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    let active = true
+    fetchAwards().then(items => { if (active) setAwardCatalog(Array.isArray(items) ? items : []) }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
-  const awards = useMemo(() => uniqueOptions(candidates, 'award_definition_id', 'award_name'), [candidates])
+  const awards = useMemo(() => {
+    const fromCandidates = uniqueOptions(candidates, 'award_definition_id', 'award_name')
+    const known = new Set(fromCandidates.map(option => String(option.value)))
+    const extra = awardCatalog.filter(award => award?.id && !known.has(String(award.id))).map(award => ({ value: award.id, label: award.name || award.code || award.id }))
+    return [...fromCandidates, ...extra].sort((a, b) => String(a.label).localeCompare(String(b.label)))
+  }, [candidates, awardCatalog])
+  const selectedAwardName = filters.award === 'all' ? '' : (awards.find(option => String(option.value) === String(filters.award))?.label || '')
   const colleges = useMemo(() => uniqueOptions(candidates, 'college_id', 'college_name'), [candidates])
   const visible = useMemo(() => filterAwardCandidates(candidates, filters), [candidates, filters])
-  const setFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value }))
-  const resetFilters = () => setFilters({ search: '', award: 'all', college: 'all', status: 'all' })
+  const syncAwardParam = (award) => setSearchParams(current => {
+    const next = new URLSearchParams(current)
+    if (award && award !== 'all') next.set('award', award)
+    else next.delete('award')
+    return next
+  }, { replace: true })
+  const setFilter = (key, value) => {
+    setFilters((current) => ({ ...current, [key]: value }))
+    if (key === 'award') syncAwardParam(value)
+  }
+  const resetFilters = () => { setFilters({ search: '', award: 'all', college: 'all', status: 'all' }); syncAwardParam('all') }
   const review = (candidate) => navigate(`/osad/awards/${candidate.award_definition_id}/candidates/${candidate.student_profile_id}/review`)
 
   return <div className="space-y-6 font-sans">
     <OSADPageHeader
-      title="Award Candidate Review"
-      description="Review authoritative portfolio-qualified and Dean-nominated candidates across active awards."
+      title="Award Candidates"
+      description={selectedAwardName
+        ? `Potential and Dean-nominated candidates for ${selectedAwardName}.`
+        : 'Potential (portfolio-qualified) and Dean-nominated candidates across active awards.'}
       icon={Trophy}
       badge="OSAD Review"
+      primaryAction={visible.length > 0 && !loading && !error
+        ? <button type="button" onClick={() => window.print()} className="print-hide inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:border-emerald-300 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><Printer className="h-4 w-4" aria-hidden="true" /> Print / Export PDF</button>
+        : null}
     />
 
     {loading ? <OSADLoadingState message="Loading award candidates…" />

@@ -22,9 +22,11 @@ export async function getDeanReviewDetail(id) {
 
 const unwrap = response => response?.data?.data || response?.data || response
 export async function startDeanReview(id) { return unwrap(await apiClient.post(`/reviewer/evaluations/${encodeURIComponent(id)}/start`)) }
-export async function approveDeanReviewItem(evaluationId, itemId, note = '') {
+// awardedPoints is sent only for criteria without an official point breakdown (evaluator_judgment_required).
+export async function approveDeanReviewItem(evaluationId, itemId, note = '', awardedPoints = null) {
   await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/verify`, { verification_status: 'verified', evaluator_remarks: note })
-  return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/rate`, { evaluator_remarks: note }))
+  const body = awardedPoints === null || awardedPoints === undefined ? { evaluator_remarks: note } : { evaluator_remarks: note, awarded_points: Number(awardedPoints) }
+  return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/rate`, body))
 }
 export async function rejectDeanReviewItem(evaluationId, itemId, reason) { return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/verify`, { verification_status: 'ineligible', evaluator_remarks: reason })) }
 export async function createDeanDeficiency(evaluationId, reason, evaluationItemId = '') {

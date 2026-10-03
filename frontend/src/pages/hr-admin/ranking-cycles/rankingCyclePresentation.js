@@ -1,4 +1,4 @@
-// Pure helpers for the HR Ranking Cycles module. Everything shown here is derived from the
+// Pure helpers for the HR Ranking Periods module. Everything shown here is derived from the
 // authoritative /hr/ranking-cycles projection; the only client-side derivation is the live
 // preview of a cycle that does not exist yet, which mirrors RankingCycleService::generatedName.
 
@@ -39,7 +39,7 @@ export function generatedCycleName(year, groups = []) {
   if (selected.length === 2) return `${prefix} Personnel Ranking`
   if (selected[0] === FACULTY) return `${prefix} Faculty Ranking`
   if (selected[0] === NON_TEACHING_FACULTY) return `${prefix} Non-Teaching Faculty Ranking`
-  return `${prefix} Ranking Cycle`
+  return `${prefix} Ranking Period`
 }
 
 export const coverageLabel = groups => {
@@ -106,7 +106,7 @@ export function validateCycleDraft(form, { criteria = {}, conflicts = new Set(),
   if (!/^\d{4}-\d{4}$/.test(form.academic_year || '') || Number(form.academic_year.slice(5)) !== Number(form.academic_year.slice(0, 4)) + 1) errors.academic_year = 'Select an academic year.'
   if (!groups.length) errors.coverage = 'Select the personnel covered by this cycle.'
   const blocked = groups.filter(group => conflicts.has(group))
-  if (blocked.length) errors.coverage = `${academicYearLabel(form.academic_year)} already has a ${blocked.map(group => GROUP_LABELS[group]).join(' and ')} ranking cycle.`
+  if (blocked.length) errors.coverage = `${academicYearLabel(form.academic_year)} already has a ${blocked.map(group => GROUP_LABELS[group]).join(' and ')} ranking period.`
   if (!form.submission_open_at || !form.submission_close_at) errors.submission = 'Enter the submission start and end dates.'
   else if (form.submission_close_at < form.submission_open_at) errors.submission = 'The submission period must end after it starts.'
   else if (today && form.submission_close_at < today) errors.submission = 'The submission period has already ended. Choose current or future dates.'
@@ -156,8 +156,8 @@ export function filterAndSortCycles(cycles, { search = '', academicYear = 'all',
 export function primaryAction(cycle) {
   const actions = cycle.allowed_actions || []
   if (actions.includes('complete_setup')) return { kind: 'complete_setup', label: 'Complete Setup' }
-  if (actions.includes('open')) return { kind: 'open', label: 'Open Cycle' }
-  return { kind: 'view', label: 'View Cycle' }
+  if (actions.includes('open')) return { kind: 'open', label: 'Open Period' }
+  return { kind: 'view', label: 'View Period' }
 }
 
 export function workspacePath(cycle, group = null) {
@@ -170,7 +170,7 @@ export function workspacePath(cycle, group = null) {
 }
 
 /**
- * The cycle the HR Dashboard features: the newest ongoing cycle, else the next upcoming one,
+ * The period the HR Dashboard features: the newest ongoing cycle, else the next upcoming one,
  * else the most recently completed one. Archived and incomplete cycles are never featured.
  */
 export function featuredCycle(cycles = []) {

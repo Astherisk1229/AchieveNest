@@ -13,7 +13,7 @@ describe('Cycle validity badge (server decision, display only)', () => {
   })
 
   it('renders the server reason as the tooltip and nothing when no cycle is open', () => {
-    expect(renderToStaticMarkup(<CycleValidityBadge validity={{ status: 'OUTSIDE_CYCLE', reason: 'This accomplishment falls outside the ranking cycle coverage.' }}/>)).toContain('This accomplishment falls outside the ranking cycle coverage.')
+    expect(renderToStaticMarkup(<CycleValidityBadge validity={{ status: 'OUTSIDE_CYCLE', reason: 'This accomplishment falls outside the ranking period coverage.' }}/>)).toContain('This accomplishment falls outside the ranking period coverage.')
     expect(renderToStaticMarkup(<CycleValidityBadge validity={null}/>)).toBe('')
   })
 })

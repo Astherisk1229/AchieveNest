@@ -104,7 +104,7 @@ export function HREvaluationSubmissionsPage(props) {
         return
       }
       if (sub.status === 'completed') {
-        showToast('Open completed evaluation summaries from Ranking Cycles → Results.')
+        showToast('Open completed evaluation summaries from Ranking Periods → Results.')
         return
       }
       if (sub.status === 'submitted') await hrEvaluationService.start(sub.id)
@@ -157,7 +157,7 @@ export function HREvaluationSubmissionsPage(props) {
       )}
       {phaseOEvaluation && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-4 sm:p-8"><div className="mx-auto max-w-4xl"><FacultyPhaseOWorkspace evaluationId={phaseOEvaluation.id} mode="hr" onChanged={loadSubmissions} onClose={() => setPhaseOEvaluation(null)} /></div></div>}
 
-      {/* The cycle shell supplies context when this queue is embedded. */}
+      {/* The period shell supplies context when this queue is embedded. */}
       {!props.embedded && <VerificationQueueHeader stats={counts} />}
 
       {/* Status Tabs */}

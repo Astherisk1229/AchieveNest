@@ -133,30 +133,52 @@ class PersonnelAccomplishmentController extends Controller
         return null;
     }
 
+    /**
+     * Official Non-Teaching Personnel (Appendix N) entry contracts.
+     * period = start/end dates (end optional only when ongoing is allowed); otherwise a single date.
+     */
+    private const NTF_CONTRACTS = [
+        'B.1.a' => ['contract' => 'NTF-B1A', 'required' => ['organization', 'organizer'], 'role' => ['assignment_role', ['MODERATOR', 'OFFICER']], 'period' => true],
+        'B.1.b' => ['contract' => 'NTF-B1B', 'required' => ['activity', 'organizer'], 'period' => true],
+        'B.1.c' => ['contract' => 'NTF-B1C', 'required' => ['committee', 'organizer'], 'period' => true],
+        'B.1.d' => ['contract' => 'NTF-B1D', 'required' => ['activity', 'organizer'], 'period' => false],
+        'B.2.a' => ['contract' => 'NTF-B2A', 'required' => ['activity', 'role'], 'period' => false],
+        'B.2.b' => ['contract' => 'NTF-B2B', 'required' => ['activity', 'role'], 'period' => false],
+        'B.2.c' => ['contract' => 'NTF-B2C', 'required' => ['project'], 'period' => false],
+        'B.4'   => ['contract' => 'NTF-B4', 'required' => ['engagement', 'organizer'], 'role' => ['role', ['JUDGE', 'LECTURER', 'RESOURCE_PERSON']], 'period' => false],
+        'B.5'   => ['contract' => 'NTF-B5', 'required' => ['award', 'issuing_body'], 'period' => false],
+    ];
+
     private function validateNtfMetadata(string $categoryCode, array $metadata): ?string
     {
         if (($metadata['portfolio_format'] ?? '') !== 'non_teaching_faculty') return null;
-        if ($categoryCode !== 'B.1.a'
-            || ($metadata['contract_code'] ?? '') !== 'NTF-B1A'
-            || ($metadata['criterion_code'] ?? '') !== 'B.1.a') {
+        $contract = self::NTF_CONTRACTS[$categoryCode] ?? null;
+        if ($contract === null
+            || ($metadata['contract_code'] ?? '') !== $contract['contract']
+            || ($metadata['criterion_code'] ?? '') !== $categoryCode) {
             return 'The selected NTF contract and criterion do not match.';
         }
         $details = is_array($metadata['details'] ?? null) ? $metadata['details'] : [];
-        foreach (['organization', 'organizer'] as $field) {
+        foreach ($contract['required'] as $field) {
             $value = trim((string) ($details[$field] ?? ''));
             if ($value === '' || ! ValidationHelper::validateBoundedText($value, ValidationHelper::MAX_LABEL_LENGTH)) {
                 return "Invalid or missing NTF detail: {$field}.";
             }
         }
-        $role = strtoupper(trim((string) ($details['assignment_role'] ?? $details['role'] ?? '')));
-        if (! in_array($role, ['MODERATOR', 'OFFICER'], true)) return 'Invalid NTF assignment role.';
-        $start = (string) ($metadata['start_date'] ?? '');
-        $end = (string) ($metadata['end_date'] ?? '');
-        $ongoing = ($metadata['ongoing'] ?? false) === true;
-        if (! ValidationHelper::validateDateString($start)
-            || (! $ongoing && ! ValidationHelper::validateDateString($end))
-            || ($end !== '' && $start > $end)) {
-            return 'Invalid NTF assignment period.';
+        if (isset($contract['role'])) {
+            [$field, $allowed] = $contract['role'];
+            $role = strtoupper(str_replace([' ', '-'], '_', trim((string) ($details[$field] ?? $details['role'] ?? ''))));
+            if (! in_array($role, $allowed, true)) return 'Invalid NTF role.';
+        }
+        if ($contract['period']) {
+            $start = (string) ($metadata['start_date'] ?? '');
+            $end = (string) ($metadata['end_date'] ?? '');
+            $ongoing = ($metadata['ongoing'] ?? false) === true;
+            if (! ValidationHelper::validateDateString($start)
+                || (! $ongoing && ! ValidationHelper::validateDateString($end))
+                || ($end !== '' && $start > $end)) {
+                return 'Invalid NTF assignment period.';
+            }
         }
         return null;
     }
@@ -348,7 +370,7 @@ class PersonnelAccomplishmentController extends Controller
                 ];
             }
 
-            // Status of this record for the owner's open ranking cycle (same gate used at submission).
+            // Status of this record for the owner's open ranking period (same gate used at submission).
             $owner = (string) ($r['personnel_profile_id'] ?? '');
             if (! array_key_exists($owner, $openCycles)) $openCycles[$owner] = $owner !== '' ? $validity->openCycleFor($owner) : null;
             $open = $openCycles[$owner];

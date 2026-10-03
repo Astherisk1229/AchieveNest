@@ -99,8 +99,9 @@ export const personnelMasterDataService = {
   async getDepartments() {
     return cachedRequest('personnel-master-data:departments', async () => {
     try {
-      const res = await apiClient.get('/administrative-units')
-      const data = res?.data?.administrative_units || res?.data?.data || res?.data || []
+      // Administrative units are served with the HR organizational structure (as "departments").
+      const res = await apiClient.get('/hr/organizational-structure')
+      const data = res?.data?.departments || res?.data?.administrative_units || res?.data?.data?.departments || []
       if (Array.isArray(data) && data.length > 0) {
         return data.map(u => ({
           id: u.id,

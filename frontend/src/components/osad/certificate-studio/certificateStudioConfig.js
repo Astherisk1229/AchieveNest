@@ -97,3 +97,26 @@ export function detectStudioIssues(draft, previewData = {}) {
   if (draft.layout_schema.show_qr && draft.layout_schema.qr_placement_studio === 'footer_center' && draft.signatory_slots.length >= 3) issues.push({ code: 'QR_COLLISION', area: 'QR area', message: 'Verification area needs more room with three signers.' })
   return issues
 }
+
+// The server only publishes a template whose placeholder contract governs the six official fields and
+// declares every placeholder the wording uses. The Studio has no screen for the contract, so it is
+// completed automatically here (existing stricter choices are kept).
+const ISSUANCE_REQUIREMENTS = new Set(['REQUIRED', 'RESOLVED_AT_ISSUANCE'])
+const placeholdersIn = content => [...new Set((Object.values(content || {}).join('\n').match(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi) || []).map(token => token.replace(/[{}\s]/g, '').toLowerCase()))]
+const REQUIRED_FIELDS = new Set(['recipient_name', 'activity_title', 'issuer_name'])
+const ISSUANCE_FIELDS = new Set(['issued_date', 'certificate_number', 'verification_url'])
+
+export function governPlaceholderContract(contract = [], content = {}, knownCodes = null) {
+  const byName = new Map(contract.map(item => [item.name, { ...item }]))
+  const ensure = (name, type) => {
+    const entry = byName.get(name)
+    if (!entry || !ISSUANCE_REQUIREMENTS.has(String(entry.requirement_type).toUpperCase())) byName.set(name, { ...entry, name, requirement_type: type })
+  }
+  REQUIRED_FIELDS.forEach(name => ensure(name, 'REQUIRED'))
+  ISSUANCE_FIELDS.forEach(name => ensure(name, 'RESOLVED_AT_ISSUANCE'))
+  placeholdersIn(content).forEach(name => { if (!byName.has(name) && (!knownCodes || knownCodes.has(name))) byName.set(name, { name, requirement_type: 'OPTIONAL' }) })
+  return [...byName.values()]
+}
+
+const STEP_FOR_FIELD = [[/^content_schema/, 'content'], [/^layout_schema/, 'design'], [/^signatory_slots/, 'signatories'], [/^asset_bindings/, 'design'], [/^placeholder_contract/, 'content']]
+export const stepForIssue = issue => STEP_FOR_FIELD.find(([pattern]) => pattern.test(String(issue?.field || '')))?.[1] || 'design'

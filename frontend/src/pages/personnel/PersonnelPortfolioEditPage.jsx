@@ -53,6 +53,8 @@ import {
   GitCommit,
   Lock
 } from 'lucide-react'
+import { confirmDialog } from '../../components/ui/DialogProvider'
+import { NTP_ENTRY_CRITERIA, ntpCategoryLabel, resolveNtpCriterion } from '../../config/nonTeachingPortfolioSchema'
 
 // D1: sort a portfolio area's accomplishments. Undated entries go last in date sorts.
 export function compareAccomplishments(a, b, order = 'newest') {
@@ -184,31 +186,43 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     setTimeout(() => setFeedbackMessage(''), 3500)
   }
 
+  // Faculty show their academic rank; Non-Teaching Personnel show their position (never a faculty rank).
+  const profileTitle = isFacultyAcademic
+    ? (activeUser.current_rank_title || activeUser.academic_rank || '')
+    : (activeUser.designation_title || activeUser.position_title || activeUser.designation || '')
+
   const portfolioAreas = useMemo(() => {
-    const configuredAreas = workspaceConfig?.areas || (isFacultyAcademic
-      ? [
+    if (isFacultyAcademic) {
+      return workspaceConfig?.areas || [
         { area_code: 'A', name: 'Area A: Professional Development' },
         { area_code: 'B', name: 'Area B: Productivity' },
         { area_code: 'C', name: 'Area C: Service & Leadership' }
       ]
-      : [
-        { area_code: 'A', name: 'Area A: Performance & Personal Indicators' },
-        { area_code: 'B', name: 'Area B: Professional Development & Technical Capability' },
-        { area_code: 'C', name: 'Area C: Institutional Service & Community Extension' }
-      ])
-
-    return configuredAreas.map((area) => {
-      if (isFacultyAcademic || area.area_code !== 'A') return area
-
-      return {
-        ...area,
+    }
+    // Non-Teaching Personnel follow the official Appendix N scale: Area A is rated by HR,
+    // Area B holds every personnel-entered accomplishment. Records saved under the older
+    // Area C categories stay visible (read-only) so nothing disappears.
+    const areas = [
+      {
+        area_code: 'A',
         name: 'Area A: Performance & Personal Indicators',
-        description: 'Official performance and supervisor assessment indicators are completed by authorized evaluators. Personnel cannot add accomplishments here.',
+        description: 'Rated by HR from your annual performance reviews (DS × weight). Personnel cannot add accomplishments here.',
         entry_policy: 'personnel_entry_disallowed_read_only',
         is_personnel_entry_allowed: false
-      }
-    })
-  }, [isFacultyAcademic, workspaceConfig])
+      },
+      { area_code: 'B', name: 'Area B: Service & Leadership' }
+    ]
+    if ((portfolio?.area_c_items?.length || 0) > 0) {
+      areas.push({
+        area_code: 'C',
+        name: 'Previous categories',
+        description: 'Accomplishments saved under the categories used before the official Appendix N scale. Re-add them in Area B so they are evaluated.',
+        entry_policy: 'personnel_entry_disallowed_read_only',
+        is_personnel_entry_allowed: false
+      })
+    }
+    return areas
+  }, [isFacultyAcademic, workspaceConfig, portfolio?.area_c_items?.length])
 
   // Open Canonical Plan A Submission Modal for Targeted Area
   const handleOpenAddAccomplishment = (areaKey = activeArea) => {
@@ -265,7 +279,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
   // Handle Canonical Accomplishment Removal
   const handleRemoveLineItem = async (itemId, itemTitleStr) => {
-    if (window.confirm(`Are you sure you want to remove "${itemTitleStr}" from your repository and portfolio draft?`)) {
+    if (await confirmDialog({ title: 'Remove accomplishment?', message: `"${itemTitleStr}" will be removed from your repository and portfolio draft.`, confirmLabel: 'Remove', tone: 'destructive' })) {
       try {
         await personnelAccomplishmentService.deleteAccomplishment(itemId)
         showToast(`Removed "${itemTitleStr}".`)
@@ -360,10 +374,14 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   }
 
   const rawAreaItems = getActiveAreaItems()
+  // Non-teaching Area B follows Appendix N, so its filter lists those criteria instead of the faculty list.
+  const usesNtpCategoryFilter = !isFacultyAcademic && activeArea === 'B'
 
   // Filtered Area Items
   const currentAreaItems = rawAreaItems.filter(item => {
-    const matchesCat = categoryFilter === 'ALL' || item.category?.toLowerCase().includes(categoryFilter.toLowerCase())
+    const matchesCat = categoryFilter === 'ALL' || (usesNtpCategoryFilter
+      ? resolveNtpCriterion(item) === categoryFilter
+      : item.category?.toLowerCase().includes(categoryFilter.toLowerCase()))
     const matchesScope = scopeFilter === 'ALL' || item.scope_level === scopeFilter
     const matchesSearch = !searchQuery || item.title?.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCat && matchesScope && matchesSearch
@@ -534,7 +552,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 STATUS: {submissionStatus}
               </span>
               <span className="text-xs font-bold text-[#245F42] hidden md:inline">
-                {evaluationPeriod ? `${evaluationPeriod.period_name} • ${evaluationPeriod.academic_year_label} · ${evaluationPeriod.semester_label}` : 'No evaluation period open'}
+                {evaluationPeriod ? `${evaluationPeriod.period_name} • ${evaluationPeriod.academic_year_label} · ${evaluationPeriod.semester_label}` : 'No ranking period open'}
               </span>
             </div>
 
@@ -689,10 +707,10 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
             />
             <div>
               <h2 className="text-sm font-extrabold text-[#17663B] dark:text-white leading-tight">
-                {activeUser.full_name} <span className="text-xs font-normal text-[#245F42]">• {activeUser.academic_rank || 'Associate Professor'}</span>
+                {activeUser.full_name} {profileTitle && <span className="text-xs font-normal text-[#245F42]">• {profileTitle}</span>}
               </h2>
               <p className="text-xs text-[#245F42] font-medium">
-                {formatPersonnelPlacement(activeUser)} • ID: {activeUser.employee_id}
+                {formatPersonnelPlacement(activeUser)}{(activeUser.employee_id || activeUser.institutional_id) ? ` • ID: ${activeUser.employee_id || activeUser.institutional_id}` : ''}
               </p>
             </div>
           </div>
@@ -741,7 +759,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         )}
 
         {/* ================= 3. WORKSPACE CATEGORY TABS ================= */}
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 dark:border-slate-800 pb-3 scrollbar-none">
+        <div role="tablist" aria-label="Portfolio areas" className="flex flex-col gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 sm:flex-row">
           {portfolioAreas.map((area) => {
             const isSelected = activeArea === area.area_code
             const itemCount = area.area_code === 'A'
@@ -757,18 +775,19 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 role="tab"
                 aria-selected={isSelected}
                 onClick={() => { setActiveArea(area.area_code); setCategoryFilter('ALL'); setScopeFilter('ALL'); }}
-                className={`portfolio-area-tab px-5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shrink-0 cursor-pointer transition ${isSelected ? 'is-active' : ''}`}
+                title={area.name}
+                className={`portfolio-area-tab min-w-0 sm:flex-1 px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-2 cursor-pointer transition ${isSelected ? 'is-active' : ''}`}
               >
-                {area.area_code === 'A' && <GraduationCap className="w-4 h-4 area-tab-icon" />}
-                {area.area_code === 'B' && <BookOpen className="w-4 h-4 area-tab-icon" />}
-                {area.area_code === 'C' && <Heart className="w-4 h-4 area-tab-icon" />}
-                <span>{area.name}</span>
+                {area.area_code === 'A' && <GraduationCap className="w-4 h-4 shrink-0 area-tab-icon" />}
+                {area.area_code === 'B' && <BookOpen className="w-4 h-4 shrink-0 area-tab-icon" />}
+                {area.area_code === 'C' && <Heart className="w-4 h-4 shrink-0 area-tab-icon" />}
+                <span className="min-w-0 truncate">{area.name}</span>
                 {!isPersonnelAreaEntryAllowed(activeUser, area.area_code, area) ? (
-                  <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-200 font-semibold">
+                  <span className="area-tab-count shrink-0 px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-200 font-semibold">
                     Read-Only
                   </span>
                 ) : (
-                  <span className="area-tab-count px-2 py-0.5 rounded-full text-[10px]">
+                  <span className="area-tab-count shrink-0 px-2 py-0.5 rounded-full text-[10px]">
                     {itemCount} Entries
                   </span>
                 )}
@@ -828,7 +847,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                         className="px-4 py-2 rounded-xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
-                        <span>+ Add Accomplishment to Area {activeArea}</span>
+                        <span>Add Accomplishment to Area {activeArea}</span>
                       </button>
                     </div>
                   )}
@@ -861,12 +880,16 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
                         >
                           <option value="ALL">All Categories</option>
-                          {(currentAreaConfig.categories ? currentAreaConfig.categories.map(c => c.name) : availableCategories).map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
+                          {usesNtpCategoryFilter
+                            ? NTP_ENTRY_CRITERIA.map((criterion) => (
+                              <option key={criterion.code} value={criterion.code}>{ntpCategoryLabel(criterion)}</option>
+                            ))
+                            : (currentAreaConfig.categories ? currentAreaConfig.categories.map(c => c.name) : availableCategories).map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
                         </select>
 
-                        <select
+                        {!usesNtpCategoryFilter && <select
                           value={scopeFilter}
                           onChange={(e) => setScopeFilter(e.target.value)}
                           className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium text-slate-700 dark:text-slate-200 focus:outline-none"
@@ -876,7 +899,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                           <option value="Regional">Regional</option>
                           <option value="National">National</option>
                           <option value="International">International</option>
-                        </select>
+                        </select>}
 
                         <select
                           aria-label="Sort accomplishments"
@@ -934,7 +957,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
                 No accomplishment records reflected in Area {activeArea}
               </p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
-                Click "+ Add Accomplishment to Area {activeArea}" to record a new achievement with documentary proof.
+                Click "Add Accomplishment to Area {activeArea}" to record a new achievement with documentary proof.
               </p>
             </div>
           ) : (

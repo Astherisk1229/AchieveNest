@@ -319,10 +319,17 @@ class AwardEvaluationController extends Controller
                 'sae.raw_score',
                 'sae.max_computable_score',
                 'sae.potential_score',
-                'sae.outcome',
-                'sae.verified_evidence_count',
+                'sae.status AS evaluation_status',
+                'sae.candidate_status',
                 'sae.evaluated_at',
             ])
+            // student_award_evaluations has no outcome/verified_evidence_count columns:
+            // the outcome is derived from candidate_status below, and the evidence count
+            // is the number of distinct portfolio records that contributed to the score.
+            ->select('(SELECT COUNT(DISTINCT sse.portfolio_record_id) FROM '
+                . $db->prefixTable('student_award_criterion_scores') . ' scs INNER JOIN '
+                . $db->prefixTable('student_award_score_evidence') . ' sse ON sse.criterion_score_id = scs.id'
+                . ' WHERE scs.evaluation_id = sae.id) AS verified_evidence_count', false)
             ->join('award_definitions ad', 'ad.id = sae.award_definition_id')
             ->join('profiles p', 'p.id = sae.student_profile_id')
             ->join('student_program_enrollments spe', 'spe.student_profile_id = p.id AND spe.is_active = 1', 'left')
@@ -338,7 +345,8 @@ class AwardEvaluationController extends Controller
             $evalBuilder->where('c.id', $collegeFilter);
         }
 
-        $evaluations = ($sourceFilter === 'dean_nomination') ? [] : $evalBuilder->get()->getResultArray();
+        try {
+            $evaluations = ($sourceFilter === 'dean_nomination') ? [] : $evalBuilder->get()->getResultArray();
 
         // 2. Dean nominations
         $nomBuilder = $db->table('dean_student_nominations dsn')
@@ -382,7 +390,15 @@ class AwardEvaluationController extends Controller
             $nomBuilder->where('c.id', $collegeFilter);
         }
 
-        $nominations = ($sourceFilter === 'portfolio_evaluation') ? [] : $nomBuilder->get()->getResultArray();
+            $nominations = ($sourceFilter === 'portfolio_evaluation') ? [] : $nomBuilder->get()->getResultArray();
+        } catch (\Throwable $e) {
+            // Never expose SQL/driver details to the browser; keep them in the server log.
+            log_message('error', '[AwardEvaluationController::listAllCandidates] ' . $e->getMessage());
+            return $this->respond(['error' => [
+                'code'    => 'CANDIDATES_UNAVAILABLE',
+                'message' => 'Award candidates are temporarily unavailable. Please try again or contact the system administrator.',
+            ]], 500);
+        }
 
         // Format unified candidate list
         $candidates = [];
@@ -415,7 +431,7 @@ class AwardEvaluationController extends Controller
                 'is_candidate'              => is_numeric($e['candidate_threshold_percent'] ?? null)
                     ? (float) $e['potential_score'] >= (float) $e['candidate_threshold_percent']
                     : false,
-                'outcome'                   => $e['outcome'],
+                'outcome'                   => $this->candidateOutcomeLabel($e['candidate_status'] ?? null, $e['evaluation_status'] ?? null),
                 'evaluated_at'              => $e['evaluated_at'],
                 'nominated_at'              => null,
             ];
@@ -1126,5 +1142,19 @@ class AwardEvaluationController extends Controller
             log_message('error', '[AwardEvaluationController::listEvaluatedResults] ' . $e->getMessage());
             return $this->respond(['error' => ['code' => 'FETCH_RESULTS_FAILED', 'message' => 'Failed to list evaluated results.']], 500);
         }
+    }
+
+    /**
+     * Human-readable outcome for a portfolio-based evaluation row.
+     */
+    private function candidateOutcomeLabel(?string $candidateStatus, ?string $evaluationStatus): string
+    {
+        return match (strtoupper((string) $candidateStatus)) {
+            'POTENTIAL_CANDIDATE' => 'Potential Candidate',
+            'BELOW_THRESHOLD'     => 'Below Threshold',
+            'STALE'               => 'Needs Re-evaluation',
+            'NOT_CLASSIFIED', ''  => ucfirst(str_replace('_', ' ', strtolower((string) ($evaluationStatus ?: 'pending')))),
+            default               => ucwords(str_replace('_', ' ', strtolower((string) $candidateStatus))),
+        };
     }
 }

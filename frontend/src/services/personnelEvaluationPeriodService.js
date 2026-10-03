@@ -11,7 +11,7 @@ export async function getRankingCycle(id) { return unwrap(await apiClient.get(cy
 export async function createRankingCycle(payload, requestKey) { return unwrap(await apiClient.post('/hr/ranking-cycles', payload, requestConfig(requestKey))) }
 export async function addRankingCycleCoverage(id, payload, requestKey) { return unwrap(await apiClient.post(`${cyclePath(id)}/tracks`, payload, requestConfig(requestKey))) }
 export async function updateRankingCycleSchedule(id, payload) { return unwrap(await apiClient.patch(`${cyclePath(id)}/schedule`, payload)) }
-/** Achievement coverage: which accomplishments belong to the cycle (not the submission/evaluation schedule). */
+/** Achievement coverage: which accomplishments belong to the period (not the submission/evaluation schedule). */
 export async function updateRankingCycleAchievementCoverage(id, payload) { return unwrap(await apiClient.patch(`${cyclePath(id)}/coverage`, payload)) }
 export async function archiveRankingCycle(id, requestKey) { return unwrap(await apiClient.post(`${cyclePath(id)}/archive`, { confirm: true }, requestConfig(requestKey))) }
 export async function deleteRankingCycle(id) { return unwrap(await apiClient.delete(cyclePath(id))) }

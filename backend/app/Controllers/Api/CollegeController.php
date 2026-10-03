@@ -53,6 +53,24 @@ class CollegeController extends Controller
     }
 
     /**
+     * Reads structured fields without attempting to decode multipart bodies as JSON.
+     */
+    protected function getRequestPayload(): array
+    {
+        $contentType = strtolower($this->request->getHeaderLine('Content-Type'));
+
+        if (str_contains($contentType, 'application/json')) {
+            $json = $this->request->getJSON(true);
+
+            return is_array($json) ? $json : [];
+        }
+
+        $post = $this->request->getPost();
+
+        return is_array($post) ? $post : [];
+    }
+
+    /**
      * GET /api/v1/osad/colleges
      */
     public function index()
@@ -139,9 +157,7 @@ class CollegeController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
         }
 
-        $json = $this->request->getJSON(true);
-        $post = $this->request->getPost();
-        $payload = is_array($json) && count($json) > 0 ? $json : (is_array($post) ? $post : []);
+        $payload = $this->getRequestPayload();
         $logoFile = null;
         if ($this->request->getFile('logo') !== null && $this->request->getFile('logo')->isValid()) {
             $logoFile = $this->request->getFile('logo');
@@ -205,10 +221,8 @@ class CollegeController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may manage academic structure.']], 403);
         }
 
-        // Support JSON or Multipart
-        $json = $this->request->getJSON(true);
-        $post = $this->request->getPost();
-        $payload = is_array($json) && count($json) > 0 ? $json : (is_array($post) ? $post : []);
+        // Support JSON or multipart without decoding multipart boundaries as JSON.
+        $payload = $this->getRequestPayload();
 
         // Optional logo file from multipart
         $logoFile = null;

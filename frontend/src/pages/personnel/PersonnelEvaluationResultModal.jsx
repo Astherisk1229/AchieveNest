@@ -1,6 +1,6 @@
 import React from 'react'
 import { Award, FileText, Printer, X } from 'lucide-react'
-import personnelEvaluationResultService from '../../services/personnelEvaluationResultService'
+import personnelEvaluationResultService from '../../services/PersonnelEvaluationResultService'
 
 const points = (value) => Number(value || 0).toFixed(2)
 

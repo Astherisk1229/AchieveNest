@@ -68,7 +68,7 @@ class AnnualReviewImportService
     private function candidates(array $actor,string $workspace,array $period): array
     {
         $cycleId=(string)($period['ranking_cycle_id']??'');
-        if($cycleId==='')throw new RuntimeException('EVALUATION_PERIOD_INVALID: Ranking track is not attached to a Ranking Cycle.');
+        if($cycleId==='')throw new RuntimeException('EVALUATION_PERIOD_INVALID: Ranking track is not attached to a Ranking Period.');
         $roster=$this->rosterService->list($actor,$cycleId,(string)$period['personnel_group']);
         return array_map(fn($item)=>$item['personnel'],$roster['personnel']);
     }

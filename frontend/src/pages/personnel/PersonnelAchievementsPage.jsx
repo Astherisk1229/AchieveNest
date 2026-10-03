@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
+import { alertDialog } from '../../components/ui/DialogProvider'
 
 export default function PersonnelAchievementsPage({ currentUser }) {
   const navigate = useNavigate()
@@ -146,10 +147,10 @@ export default function PersonnelAchievementsPage({ currentUser }) {
         await personnelAccomplishmentService.downloadEvidenceBlob(item.evidence_id, filename)
       } catch (err) {
         console.error('Evidence download failed:', err)
-        alert('Failed to stream evidence from server: ' + (err?.message || 'File not found'))
+        alertDialog({ title: 'Download failed', message: 'The proof document could not be downloaded: ' + (err?.message || 'File not found'), tone: 'destructive' })
       }
     } else {
-      alert(`No physical proof document was found on the server for "${item.title}".`)
+      alertDialog({ title: 'No proof document', message: `No proof document was found on the server for "${item.title}".`, tone: 'warning' })
     }
   }
 

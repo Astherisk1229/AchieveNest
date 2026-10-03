@@ -49,10 +49,11 @@ class PersonnelProfileController extends Controller
         $db = db_connect();
 
         try {
-            $userProfile = $db->table('user_profiles')
-                ->where('id', $profileId)
-                ->get()
-                ->getRowArray();
+            // user_profiles is a legacy table that newer databases no longer have; the
+            // authenticated profile row already carries the same fields.
+            $userProfile = $db->tableExists('user_profiles')
+                ? ($db->table('user_profiles')->where('id', $profileId)->get()->getRowArray() ?? [])
+                : [];
 
             $service = null;
             try {
@@ -84,10 +85,11 @@ class PersonnelProfileController extends Controller
                 'data' => $data,
             ]);
         } catch (Throwable $e) {
+            log_message('error', '[PersonnelProfileController::show] ' . $e->getMessage());
             return $this->respond([
                 'error' => [
                     'code'    => 'SERVER_ERROR',
-                    'message' => 'Failed to load personnel profile: ' . $e->getMessage(),
+                    'message' => 'Your profile could not be loaded. Please try again.',
                 ],
             ], 500);
         }

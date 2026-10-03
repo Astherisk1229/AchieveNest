@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Download, RefreshCw } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { AlertCircle, ArrowLeft, Download, RefreshCw } from 'lucide-react'
 import { downloadSignedApprovedRank, loadRankPlacementView, retryRankActivation } from '../../services/rankPlacementViewService'
+import { getDeanRoster } from '../../services/deanWorkspaceService'
 
 const rankStatuses = {
   active: ['Current Rank', 'border-emerald-200 bg-emerald-50 text-emerald-800'],
@@ -42,7 +44,34 @@ function HistoryTable({ rows, type, role, onDownload, onRetry }) {
   </>
 }
 
+
+// Where a reviewer or HR came from, so the page names whose record this is and links back.
+const SUBJECT_ORIGINS = [
+  { prefix: '/dean/personnel/', backTo: '/dean/college-personnel', backLabel: 'College Personnel Roster' },
+  { prefix: '/hr/personnel/', backTo: '/hr/personnel-directory', backLabel: 'Personnel Directory' },
+  { prefix: '/department/personnel/', backTo: null, backLabel: null }
+]
+
+function useRecordSubject(role, personnelId) {
+  const location = useLocation()
+  const fromState = location.state?.person
+  const [person, setPerson] = useState(fromState && fromState.id === personnelId ? fromState : null)
+  const origin = SUBJECT_ORIGINS.find(item => location.pathname.startsWith(item.prefix)) || null
+  useEffect(() => {
+    if (role === 'personnel' || person || !personnelId || !location.pathname.startsWith('/dean/')) return undefined
+    let active = true
+    // Opened directly (reload or shared link): look the name up in the Dean's own roster.
+    getDeanRoster().then(data => {
+      const match = (data?.personnel || []).find(item => item.id === personnelId)
+      if (active && match) setPerson({ id: match.id, full_name: match.full_name, institutional_id: match.institutional_id })
+    }).catch(() => {})
+    return () => { active = false }
+  }, [role, personnelId, person, location.pathname])
+  return { person, origin }
+}
+
 export default function RankPlacementWorkspace({ role, personnelId }) {
+  const { person: subject, origin } = useRecordSubject(role, personnelId)
   const [state, setState] = useState({ phase: 'loading', ranks: [], rankCompatibility: {}, placements: [], notifications: [], error: '' })
   const load = () => { setState(current => ({ ...current, phase: 'loading', error: '' })); loadRankPlacementView(role, personnelId).then(data => setState({ phase: 'ready', ...data, error: '' })).catch(error => setState({ phase: 'error', ranks: [], placements: [], notifications: [], error: error?.error?.message || error?.message || 'Rank and placement information could not be loaded.' })) }
   useEffect(load, [role, personnelId])
@@ -51,11 +80,10 @@ export default function RankPlacementWorkspace({ role, personnelId }) {
   if (state.phase === 'error') return <main className="mx-auto max-w-3xl py-10"><div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-900"><AlertCircle className="h-5 w-5"/><h1 className="mt-2 font-black">Rank and placement information unavailable</h1><p className="mt-1 text-sm">{state.error}</p><button type="button" onClick={load} className="mt-4 rounded-lg bg-rose-900 px-3 py-2 text-sm font-bold text-white focus-visible:ring-2 focus-visible:ring-rose-700">Try again</button></div></main>
   const download = async id => { try { await downloadSignedApprovedRank(id) } catch { setState(current => ({ ...current, error: 'The signed approved ranking document could not be downloaded.' })) } }; const retry = async id => { await retryRankActivation(id); load() }
   const notices = state.notifications.filter(item => rankNotificationTypes.has(item.type)).slice(0, 6)
-  return <main className="mx-auto max-w-7xl space-y-8 py-4"><header><h1 className="text-2xl font-black tracking-tight text-slate-950">Rank and Placement</h1><p className="mt-1 max-w-2xl text-sm text-slate-600">Review current, pending, and historical personnel ranking records.</p></header>
+  return <main className="mx-auto max-w-7xl space-y-8 py-4"><header>{role !== 'personnel' && origin?.backTo && <Link to={origin.backTo} className="mb-3 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-800 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"><ArrowLeft className="h-4 w-4" />{origin.backLabel}</Link>}<h1 className="text-2xl font-black tracking-tight text-slate-950">{role === 'personnel' ? 'Rank and Placement' : `Rank and Placement${subject?.full_name ? ` — ${subject.full_name}` : ''}`}</h1><p className="mt-1 max-w-2xl text-sm text-slate-600">{role === 'personnel' ? 'Your current, pending, and historical ranking records.' : subject?.institutional_id ? `${subject.institutional_id} · Current, pending, and historical ranking records.` : 'Current, pending, and historical ranking records for this personnel.'}</p></header>
     {state.error && <p role="alert" className="rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800">{state.error}</p>}
     <section aria-labelledby="current-rank-heading" className="border-y border-slate-200 py-5"><h2 id="current-rank-heading" className="text-base font-black text-slate-950">Current status</h2><dl className="mt-4 grid gap-x-8 gap-y-5 sm:grid-cols-2 lg:grid-cols-4"><div><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Current Rank</dt><dd className="mt-1 font-black text-slate-900">{display(presentRank)}</dd>{!state.rankCompatibility.history_initialized && presentRank && <p className="mt-0.5 text-xs text-slate-500">Legacy Present Rank · history not initialized</p>}</div><div><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Pending Approved Future Rank</dt><dd className="mt-1 font-black text-slate-900">{display(pendingRank?.approved_rank_code || pendingRank?.rank_code)}</dd><p className="mt-0.5 text-xs text-slate-500">Effectivity {date(pendingRank?.effectivity_date)}</p></div><div><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Current Placement</dt><dd className="mt-1 font-black text-slate-900">{currentPlacement?.qualification_source_label || display(currentPlacement?.qualification_tier_code || 'Unknown / not initialized')}</dd></div><div><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">Pending Placement</dt><dd className="mt-1 font-black text-slate-900">{pendingPlacement?.qualification_source_label || display(pendingPlacement?.qualification_tier_code)}</dd><p className="mt-0.5 text-xs text-slate-500">Effectivity {date(pendingPlacement?.effective_from)}</p></div></dl></section>
     <section aria-labelledby="rank-history-heading" className="overflow-hidden rounded-xl border border-slate-200 bg-white"><div className="px-4 py-4"><h2 id="rank-history-heading" className="font-black text-slate-950">Rank History</h2><p className="mt-1 text-sm text-slate-500">{role === 'reviewer' ? 'Rank, status, and effectivity only.' : 'Approved rank records and authorized details.'}</p></div><HistoryTable rows={state.ranks} type="rank" role={role} onDownload={download} onRetry={retry}/></section>
-    <section aria-labelledby="placement-history-heading" className="overflow-hidden rounded-xl border border-slate-200 bg-white"><div className="px-4 py-4"><h2 id="placement-history-heading" className="font-black text-slate-950">{role === 'reviewer' ? 'Current and Pending Placement' : 'Rank Placement History'}</h2><p className="mt-1 text-sm text-slate-500">{role === 'reviewer' ? 'Historical and sensitive placement details are not available in this workspace.' : 'Confirmed placement records and their effective periods.'}</p></div><HistoryTable rows={state.placements} type="placement" role={role} onDownload={download} onRetry={retry}/></section>
     {role === 'personnel' && <section aria-labelledby="rank-notifications-heading"><h2 id="rank-notifications-heading" className="font-black text-slate-950">Recent Rank Notifications</h2>{notices.length ? <ul className="mt-3 divide-y divide-slate-200 border-y border-slate-200">{notices.map(item => <li key={item.id} className="py-3"><p className="font-bold text-slate-900">{item.title}</p><p className="mt-0.5 text-sm text-slate-600">{item.message}</p></li>)}</ul> : <p className="mt-3 text-sm text-slate-500">No rank-status notifications yet.</p>}</section>}
   </main>
 }

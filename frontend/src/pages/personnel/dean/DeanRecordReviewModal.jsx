@@ -107,7 +107,7 @@ export default function DeanRecordReviewModal({
                 </h2>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Target: <strong>{personnel.full_name}</strong> ({personnel.institutional_id || 'ID Pending'}) • Evaluation Cycle: <strong>{cycleId}</strong>
+                Target: <strong>{personnel.full_name}</strong> ({personnel.institutional_id || 'ID Pending'}) • Ranking Period: <strong>{cycleId}</strong>
               </p>
             </div>
             <button

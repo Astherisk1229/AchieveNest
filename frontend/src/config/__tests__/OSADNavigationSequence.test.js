@@ -52,14 +52,14 @@ describe('Plan 06 Phase 3 — OSAD Navigation Sequence Rules', () => {
     expect(setupIndex).toBeLessThan(evalIndex)
   })
 
-  it('places Student Accounts before Award Candidate Review', () => {
+  it('places Student Accounts before Award Candidates', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
     const accountsIndex = nav.findIndex(i => i.id === 'osad-student-accounts')
     const reviewIndex = nav.findIndex(i => i.id === 'osad-award-candidate-review')
     expect(accountsIndex).toBeLessThan(reviewIndex)
   })
 
-  it('places Awards & Scoring Criteria before Award Candidate Review', () => {
+  it('places Awards & Scoring Criteria before Award Candidates', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
     const criteriaIndex = nav.findIndex(i => i.id === 'osad-award-categories')
     const reviewIndex = nav.findIndex(i => i.id === 'osad-award-candidate-review')

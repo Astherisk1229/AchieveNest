@@ -71,5 +71,7 @@ export function isNavigationItemActive(item, pathname = '', activeTab = 'overvie
     const currentTab = String(activeTab || 'overview').toLowerCase()
     return currentTab === itemTab || (TAB_ALIASES[itemTab] || []).includes(currentTab)
   }
-  return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`)
+  if (currentPath === itemPath || currentPath.startsWith(`${itemPath}/`)) return true
+  // Detail pages opened from this item (e.g. a person's Rank & Placement from the roster).
+  return (item.activePathPrefixes || []).some(prefix => currentPath.startsWith(prefix))
 }

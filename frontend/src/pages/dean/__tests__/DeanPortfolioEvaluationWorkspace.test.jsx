@@ -24,7 +24,9 @@ describe('real Dean portfolio evaluation workspace contracts', () => {
     expect(workspace).toContain('approveDeanReviewItem')
     expect(workspace).toContain('rejectDeanReviewItem')
     expect(workspace).toContain('A rejection reason is required.')
-    expect(workspace).not.toMatch(/type=["']number["']/)
+    // The only numeric input is the points field for criteria without an official breakdown (NTP B.5).
+    expect(workspace.match(/type="number"/g)).toHaveLength(1)
+    expect(workspace).toContain('{isJudgment(active) && <label')
     expect(service).toContain('/rate`')
     expect(service).toContain("verification_status: 'ineligible'")
   })
@@ -39,7 +41,7 @@ describe('real Dean portfolio evaluation workspace contracts', () => {
   it('shares one immutable printable summary between Dean and HR', () => {
     expect(workspace).toContain('FacultyEvaluationSummary')
     expect(hrPage).not.toContain('FacultyEvaluationSummary')
-    expect(hrPage).toContain('Ranking Cycles → Results')
+    expect(hrPage).toContain('Ranking Periods → Results')
     expect(summary).toContain('data-evaluation-summary')
     expect(summary).toContain('window.print()')
     expect(summary).toContain('rejection_reason')
@@ -90,9 +92,13 @@ describe('submitted Version 2 read-only inspection', () => {
   it('renders the FAC-A3 item, revised venue, and proof before evaluation starts', () => {
     const html = renderToStaticMarkup(<DeanPortfolioEvaluationWorkspace data={submittedV2} onReload={() => {}} />)
     expect(html).toContain('Submitted Portfolio · Version 2')
+    // Default view: the personnel's own Portfolio Booklet (same pages as their PDF).
+    expect(html).toContain('FACULTY PORTFOLIO')
     expect(html).toContain('R7BP_259C6B51884E Academic FAC-A3 Seminar Attendance')
-    expect(html).toContain('R7BP_259C6B51884E Controlled V2 Revision Venue')
     expect(html).toContain('controlled-fac-a3.pdf')
+    // The item list (with revised details such as the venue) stays one click away.
+    expect(html).toContain('Item list')
+    expect(workspace).toContain('submittedDetailsFor(item)')
   })
 
   it('keeps start and correction actions available without pre-start scoring controls', () => {

@@ -34,6 +34,7 @@ import personnelAccomplishmentService from '../../services/personnelAccomplishme
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
+import { alertDialog } from '../../components/ui/DialogProvider'
 
 export default function PersonnelDashboardPage({ currentUser: propUser, onRoleChange, initialAccomplishments = null }) {
   const navigate = useNavigate()
@@ -106,7 +107,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
     try {
       await personnelAccomplishmentService.downloadEvidenceBlob(item.evidence_id, item.attached_file_name || 'proof_document.pdf')
     } catch (err) {
-      alert('Failed to load proof file: ' + (err?.message || 'File not found'))
+      alertDialog({ title: 'Proof file unavailable', message: 'The proof file could not be loaded: ' + (err?.message || 'File not found'), tone: 'destructive' })
     }
   }
 

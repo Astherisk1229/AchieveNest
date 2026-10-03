@@ -5,7 +5,7 @@ import StudentOrganizationModel from '../StudentOrganizationModel'
 import ProgramCoordinatorAssignmentModel from '../ProgramCoordinatorAssignmentModel'
 import OrganizationModeratorAssignmentModel from '../OrganizationModeratorAssignmentModel'
 
-describe('OSAD Academic Structure and governance rules', () => {
+describe('OSAD College and Programs and governance rules', () => {
   const colleges = [new CollegeModel({ id: 'col-ceac', code: 'CEAC', name: 'College of Engineering', status: 'active' })]
   const programs = [new DegreeProgramModel({ id: 'prog-bscs', collegeId: 'col-ceac', code: 'BSCS', name: 'BS Computer Science', status: 'active' })]
   const personnel = [{ id: 'pers-101', full_name: 'Prof. Marco Valdez', role: 'personnel' }]

@@ -6,7 +6,7 @@ export default class PersonnelDashboardController {
    * Missing fields stay empty; no placeholder identity data is injected.
    */
   static getDefaultProfile(currentUser) {
-    const employeeId = currentUser?.employee_id || ''
+    const employeeId = currentUser?.employee_id || currentUser?.institutional_id || ''
 
     return {
       full_name: currentUser?.full_name || '',
@@ -17,6 +17,7 @@ export default class PersonnelDashboardController {
       program: currentUser?.program || '',
       program_affiliations: currentUser?.program_affiliations || [],
       administrative_unit: currentUser?.administrative_unit || '',
+      personnel_affiliation: currentUser?.personnel_affiliation || null,
       academic_rank: currentUser?.academic_rank || '',
       year_level: currentUser?.year_level || '',
       age: currentUser?.age || '',
@@ -34,7 +35,8 @@ export default class PersonnelDashboardController {
       ...previousProfile,
       ...baseProfile,
       full_name: currentUser?.full_name || previousProfile.full_name || baseProfile.full_name,
-      employee_id: currentUser?.employee_id || previousProfile.employee_id || baseProfile.employee_id,
+      employee_id: baseProfile.employee_id || previousProfile.employee_id,
+      personnel_affiliation: currentUser?.personnel_affiliation || previousProfile.personnel_affiliation || null,
       college: currentUser?.college || previousProfile.college || baseProfile.college,
       college_code: currentUser?.college_code || previousProfile.college_code || baseProfile.college_code,
       program_affiliations: currentUser?.program_affiliations || previousProfile.program_affiliations || baseProfile.program_affiliations,
@@ -93,4 +95,4 @@ export default class PersonnelDashboardController {
       return item.category === activeFilter
     })
   }
-}
+}

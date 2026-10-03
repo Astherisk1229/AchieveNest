@@ -10,9 +10,16 @@ import { normalizeRoleContext } from '../../utils/roleContext'
 import AdminOnboardingGuideWidget from '../common/AdminOnboardingGuideWidget'
 import { BrandLockup } from '../brand'
 
-const WORKFLOW_GROUP_LABELS = {
-  overview: 'Overview', setup: 'Student & Institutional Setup', evaluation: 'Portfolio & Evaluation',
-  credentials: 'Events & Certificates', governance: 'Governance & Reports'
+// Only one item may be highlighted. When a parent and a child route both match
+// (e.g. /personnel/portfolio and /personnel/portfolio/edit) the longest path wins.
+export function resolveActiveNavigationItem(items, pathname, activeTab) {
+  let best = null
+  for (const item of items) {
+    if (!isNavigationItemActive(item, pathname, activeTab)) continue
+    const length = String(item.path || '').split('?')[0].length + (item.tab ? 1 : 0)
+    if (!best || length > best.length) best = { item, length }
+  }
+  return best ? best.item : null
 }
 
 function CollapsedTooltip({ label, children, enabled }) {
@@ -51,7 +58,7 @@ export default function Sidebar({ currentUser, onCloseMobile, collapsed = false,
     return query ? navItems.filter(item => item.label.toLowerCase().includes(query)) : navItems
   }, [navItems, searchTerm])
   const activeTab = searchParams.get('tab') || 'overview'
-  let previousGroup = null
+  const activeItem = useMemo(() => resolveActiveNavigationItem(navItems, location.pathname, activeTab), [navItems, location.pathname, activeTab])
 
   return <aside className={`flex h-screen flex-col border-r border-slate-200 bg-white font-sans text-slate-900 shadow-[2px_0_14px_rgba(15,23,42,.035)] transition-[width] duration-200 dark:border-slate-800 dark:bg-[#101a28] dark:text-slate-100 ${collapsed ? 'w-64 md:w-[72px]' : 'w-64'}`} aria-label="Application navigation">
     <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-slate-100 px-4 dark:border-slate-800">
@@ -75,11 +82,8 @@ export default function Sidebar({ currentUser, onCloseMobile, collapsed = false,
     <nav aria-label={`${workspace.label} modules`} className="mt-3 min-h-0 flex-1 overflow-y-auto px-3 pb-4 [scrollbar-color:rgb(203_213_225)_transparent] [scrollbar-width:thin]">
       {filteredNavItems.length === 0 ? <p className={`px-2 py-6 text-center text-xs font-medium text-slate-600 dark:text-slate-400 ${collapsed ? 'md:hidden' : ''}`}>No modules found</p> : filteredNavItems.map(item => {
         const Icon = item.icon
-        const active = isNavigationItemActive(item, location.pathname, activeTab)
-        const showGroup = item.workflowFamily && item.workflowFamily !== previousGroup
-        previousGroup = item.workflowFamily || previousGroup
+        const active = activeItem === item
         return <React.Fragment key={item.id || item.label}>
-          {showGroup && <p className={`px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[.14em] text-slate-600 dark:text-slate-400 ${collapsed ? 'md:hidden' : ''}`}>{WORKFLOW_GROUP_LABELS[item.workflowFamily] || item.workflowFamily}</p>}
           <div className="my-0.5">
             <CollapsedTooltip label={item.label} enabled={collapsed}><Link to={item.path} onClick={onCloseMobile} aria-label={collapsed ? item.label : undefined} aria-current={active ? 'page' : undefined} className={`relative flex min-h-11 w-full items-center gap-3 rounded-[10px] text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-950 ${collapsed ? 'px-3 md:justify-center md:px-0' : 'px-3'} ${active ? 'bg-emerald-50 text-emerald-950 dark:bg-emerald-950/55 dark:text-emerald-200' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white'}`}>
               {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-emerald-700 dark:bg-emerald-400" aria-hidden="true" />}

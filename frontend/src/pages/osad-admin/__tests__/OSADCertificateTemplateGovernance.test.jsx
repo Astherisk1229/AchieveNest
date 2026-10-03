@@ -22,7 +22,9 @@ describe('OSAD governed certificate template workflow', () => {
     expect(editorSource).toContain('expected_token: sourceDraft.concurrency_token')
     expect(editorSource).toContain('Save Draft')
     expect(studioSource).toContain('Check readiness')
-    expect(editorSource).toContain('onValidate(sourceDraft.id, sourceDraft.concurrency_token)')
+    // Pending edits are saved first; validation then uses the saved version's concurrency token.
+    expect(editorSource).toContain('const result = await onValidate(sourceDraft.id, token)')
+    expect(editorSource).toContain('token = saved.concurrency_token')
     expect(editorSource).toContain('Publish v')
     expect(editorSource).toContain("validation?.status === 'PASS'")
     expect(editorSource).toContain('Publish ${family.name} v')
@@ -69,7 +71,7 @@ describe('OSAD governed certificate template workflow', () => {
     expect(editorSource).toContain('motion-reduce:animate-none')
     expect(editorSource).toContain('overflow-x-auto border-b')
     expect(editorSource).toContain('w-max min-w-full')
-    expect(panelsSource).toContain("isBusy?'Checking…':'Check readiness'")
+    expect(panelsSource).toContain("isBusy?'Checking…':'Save & check readiness'")
   })
 
   it('protects certificate composition zones and reports overflow without clipping bottom content', () => {

@@ -6,6 +6,22 @@ import CriterionEvaluation from '../studio/evaluation/CriterionEvaluation'
 import { calculateNDMUScores } from './rating/NDMURatingEngine'
 import { calculateNTFScores } from './rating/NTFRatingEngine'
 import { usesFacultyAcademicPortfolio } from '../../../../utils/personnelPortfolioFormat'
+import hrEvaluationService from '../../../../services/hrEvaluationService'
+import { promptDialog } from '../../../../components/ui/DialogProvider'
+
+// Server rows are snake_case; keep their recorded decisions (including locked NTF Area A items) visible to the progress count.
+const toStudioItem = item => ({
+  ...item,
+  categoryArea: item.categoryArea ?? item.category_area,
+  criterionCode: item.criterionCode ?? item.criterion_code,
+  criterionKey: item.criterionKey ?? item.criterion_key,
+  title: item.title ?? item.item_description ?? item.achievement ?? item.criterion_code,
+  evidenceTitle: item.evidenceTitle ?? item.evidence_title,
+  fileName: item.fileName ?? item.file_name,
+  verificationStatus: item.verificationStatus ?? item.verification_status,
+  ratingStatus: item.ratingStatus ?? item.rating_status,
+  awardedPoints: item.awardedPoints ?? (item.awarded_points === null || item.awarded_points === undefined ? undefined : Number(item.awarded_points)),
+})
 
 const WORKSPACE_MODE_KEY = 'achievenest_hr_evaluation_workspace_mode_v1'
 
@@ -35,17 +51,7 @@ export default function PortfolioEvaluationStudio({
   // Evidence items for the current evaluation
   const [evidenceItems, setEvidenceItems] = useState(() => {
     if (submission?.items && Array.isArray(submission.items) && submission.items.length > 0) {
-      // Server rows are snake_case; keep their recorded decisions (including locked NTF Area A items) visible to the progress count.
-      return submission.items.map(item => ({
-        ...item,
-        categoryArea: item.categoryArea ?? item.category_area,
-        criterionCode: item.criterionCode ?? item.criterion_code,
-        criterionKey: item.criterionKey ?? item.criterion_key,
-        title: item.title ?? item.item_description ?? item.achievement ?? item.criterion_code,
-        verificationStatus: item.verificationStatus ?? item.verification_status,
-        ratingStatus: item.ratingStatus ?? item.rating_status,
-        awardedPoints: item.awardedPoints ?? (item.awarded_points === null || item.awarded_points === undefined ? undefined : Number(item.awarded_points)),
-      }))
+      return submission.items.map(toStudioItem)
     }
     return []
   })
@@ -131,6 +137,29 @@ export default function PortfolioEvaluationStudio({
     )
   }
 
+  // Non-Teaching Area A: HR types the DS; the server recalculates Points Earned (DS × weight).
+  const canEditAreaADs = !usesFacultyAcademicPortfolio(submission) && submission?.status === 'in_evaluation' && Boolean(submission?.id)
+  const handleUpdateAreaADs = async (code, ds) => {
+    const current = evidenceItems.find(item => item.categoryArea === 'areaA' && String(item.criterionCode || '').toUpperCase() === code)
+    let reason = ''
+    if (current) {
+      reason = await promptDialog({
+        title: `Change DS for ${code}?`,
+        message: 'This replaces the DS from the annual review. The original value stays in the evaluation history.',
+        inputLabel: 'Reason for the change',
+        placeholder: 'e.g. Corrected per HR records',
+        required: true,
+        confirmLabel: 'Save DS',
+      })
+      if (reason === null) return false
+    }
+    const saved = await hrEvaluationService.setAreaADs(submission.id, code, ds, reason)
+    if (!saved) throw new Error('The DS could not be saved.')
+    const next = toStudioItem(saved)
+    setEvidenceItems(prev => prev.some(item => item.id === next.id) ? prev.map(item => item.id === next.id ? next : item) : [...prev, next])
+    return true
+  }
+
   const handleSaveDraft = () => {
     if (onSaveProgress) {
       onSaveProgress(evidenceItems, scores)
@@ -176,6 +205,7 @@ export default function PortfolioEvaluationStudio({
               onSelectEvidence={setSelectedEvidence}
               workspaceMode={workspaceMode}
               onWorkspaceModeChange={handleWorkspaceModeChange}
+              onUpdateAreaADs={canEditAreaADs ? handleUpdateAreaADs : undefined}
             />
           </div>
 

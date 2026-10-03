@@ -23,6 +23,19 @@ function friendlyStatus(status, version) {
   return ({ submitted: 'Awaiting Dean Review', in_evaluation: 'Review in Progress', returned_for_revision: 'Returned for Revision', ready_for_finalization: 'Endorsed to HR', completed: 'Completed' })[status] || status
 }
 
+const stateLabel = (kind, value) => ({
+  annual: { passed: 'Passed', pending: 'Pending', not_passed: 'Not Passed' },
+  eligibility: { eligible: 'Eligible', pending: 'Pending', not_eligible: 'Not Eligible' },
+  dean: { needs_review: 'Needs Review', returned: 'Returned', reviewed: 'Reviewed', not_actionable: 'Not Actionable' }
+})[kind]?.[value] || String(value || 'Pending').replaceAll('_', ' ')
+
+function WorkflowState({ label, kind, value }) {
+  const positive = value === 'passed' || value === 'eligible' || value === 'reviewed'
+  const attention = value === 'needs_review' || value === 'pending'
+  const tone = positive ? 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200' : attention ? 'bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-100' : 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200'
+  return <div><p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</p><span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold capitalize ring-1 ring-inset ${tone}`}>{stateLabel(kind, value)}</span></div>
+}
+
 function ReviewQueue() {
   const [params, setParams] = useSearchParams()
   const tab = tabs.some(([key]) => key === params.get('status')) ? params.get('status') : 'needs_review'
@@ -78,22 +91,23 @@ function ReviewQueue() {
     </section>}
 
     {state.phase === 'success' && data?.evaluation_period && <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 dark:border-slate-800"><p className="text-sm font-bold text-slate-800 dark:text-slate-200">{data.evaluation_period.name}</p><p className="text-xs font-semibold text-slate-500">{data.workspace?.college_name} · {data.evaluation_period.status_label}</p></div>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3 dark:border-slate-800"><div><p className="text-sm font-bold text-slate-800 dark:text-slate-200">{data.ranking_cycle?.display_name || data.evaluation_period.name}</p><p className="mt-0.5 text-xs text-slate-500">Faculty track · {data.evaluation_period.name}</p></div><p className="text-xs font-semibold text-slate-500">{data.workspace?.college_name} · {data.ranking_cycle?.lifecycle_status?.label || data.evaluation_period.status_label}</p></div>
       <nav className="flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Review status">
         {tabs.map(([key, label]) => <button key={key} type="button" onClick={() => updateParams({ status: key })} className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm font-bold ${tab === key ? 'border-emerald-700 text-emerald-800 dark:text-emerald-300' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>{label} <span className="ml-1 tabular-nums">{counts[key] || 0}</span></button>)}
       </nav>
+      <p className="text-xs leading-5 text-slate-500">Needs Review is derived from the active HR Faculty ranking period, a passed Annual Review, ranking eligibility, your College assignment, and an unfinished Dean review.</p>
       <form onSubmit={submitSearch} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_auto]">
         <label className="relative"><span className="sr-only">Search faculty</span><Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or personnel ID" className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm dark:border-slate-700 dark:bg-slate-950" /></label>
         <label className="relative"><span className="sr-only">Program or department</span><select value={program} onChange={e => setProgram(e.target.value)} className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2 pr-8 text-sm dark:border-slate-700 dark:bg-slate-950"><option value="">All programs / departments</option>{(data.programs || []).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 text-slate-400" /></label>
         <button className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700">Apply</button>
       </form>
       {!reviews.length ? <section className="rounded-xl border border-slate-200 px-6 py-12 text-center text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">{emptyMessages[tab]}</section> : <section className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-        <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,.8fr)_minmax(0,.8fr)] gap-4 bg-slate-50 px-4 py-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-500 md:grid dark:bg-slate-900"><span>Faculty</span><span>Program / Rank</span><span>Submission</span><span>Status / Action</span></div>
-        <div className="divide-y divide-slate-200 dark:divide-slate-800">{reviews.map(review => <article key={review.id} className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,.8fr)_minmax(0,.8fr)] md:items-center">
+        <div className="hidden grid-cols-[minmax(0,1.35fr)_minmax(0,.9fr)_minmax(0,1.4fr)_minmax(0,.75fr)] gap-4 bg-slate-50 px-4 py-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-500 md:grid dark:bg-slate-900"><span>Faculty</span><span>Program / Rank</span><span>Authoritative states</span><span>Submission / Action</span></div>
+        <div className="divide-y divide-slate-200 dark:divide-slate-800">{reviews.map(review => <article key={review.id} className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,.9fr)_minmax(0,1.4fr)_minmax(0,.75fr)] md:items-center">
           <div><p className="font-bold text-slate-950 dark:text-white">{review.full_name}</p><p className="text-xs text-slate-500">{review.institutional_id}</p></div>
           <div><p className="text-sm font-semibold">{review.program_name || review.department_name || 'Program not recorded'}</p><p className="text-xs text-slate-500">{review.current_rank_title || review.position_title || 'Rank not recorded'}</p></div>
-          <div><p className="text-sm font-bold">Version {review.version_number || 1}</p><p className="text-xs text-slate-500">{review.submitted_at ? new Date(review.submitted_at).toLocaleDateString() : 'Date unavailable'}</p></div>
-          <div><p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">{friendlyStatus(review.status, Number(review.version_number || 1))}</p><Link to={`${DEAN_ROUTES.FACULTY_RANKING_REVIEWS}/${encodeURIComponent(review.id)}`} className="mt-2 inline-flex rounded-lg bg-emerald-800 px-3 py-2 text-xs font-bold text-white">Review Portfolio</Link></div>
+          <div className="grid grid-cols-3 gap-2"><WorkflowState label="Annual Review" kind="annual" value={review.annual_review_status} /><WorkflowState label="Eligibility" kind="eligibility" value={review.ranking_eligibility_status} /><WorkflowState label="Dean Review" kind="dean" value={review.dean_review_status} /></div>
+          <div><p className="text-sm font-bold">Version {review.version_number || 1}</p><p className="text-xs text-slate-500">{review.submitted_at ? new Date(review.submitted_at).toLocaleDateString() : 'Date unavailable'} · {friendlyStatus(review.status, Number(review.version_number || 1))}</p><Link to={`${DEAN_ROUTES.FACULTY_RANKING_REVIEWS}/${encodeURIComponent(review.id)}`} className="mt-2 inline-flex rounded-lg bg-emerald-800 px-3 py-2 text-xs font-bold text-white">{review.dean_review_status === 'needs_review' ? 'Review Portfolio' : 'View Portfolio'}</Link></div>
         </article>)}</div>
       </section>}
     </>}
@@ -103,7 +117,8 @@ function ReviewQueue() {
 function ReviewDetail({ evaluationId }) {
   const [state, setState] = useState({ phase: 'loading', data: null, error: '' })
   const load = useCallback(async () => { setState(current => ({ phase: 'loading', data: current.data, error: '' })); try { const data=await getDeanReviewDetail(evaluationId); setState({ phase: 'success', data, error: '' }); return data } catch(error) { setState({ phase: 'error', data: null, error: error?.response?.data?.error?.message || error?.message || 'Unable to load this portfolio.' }); throw error } }, [evaluationId])
-  useEffect(load, [load])
+  // load() is async; keep the effect body a block so React never receives the promise as a cleanup.
+  useEffect(() => { load().catch(() => {}) }, [load])
   if (state.phase === 'loading') return <main className="mx-auto max-w-6xl space-y-3 py-4" aria-busy="true"><div className="h-9 w-64 animate-pulse rounded bg-slate-200" /><div className="h-72 animate-pulse rounded-xl bg-slate-100" /></main>
   if (state.phase === 'error') return <main className="mx-auto max-w-3xl py-10"><div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-900"><AlertCircle className="h-5 w-5" /><h1 className="mt-2 font-bold">Portfolio review unavailable</h1><p className="mt-1 text-sm">{state.error}</p><button onClick={load} className="mt-4 rounded-lg bg-rose-900 px-3 py-2 text-sm font-bold text-white">Try Again</button></div></main>
   const review=state.data?.review || {}

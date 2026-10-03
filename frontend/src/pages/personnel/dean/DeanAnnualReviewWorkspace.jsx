@@ -156,7 +156,7 @@ export default function DeanAnnualReviewWorkspace({ showToast }) {
 
         {/* Cycle Selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-500">Evaluation Cycle:</span>
+          <span className="text-xs font-bold text-slate-500">Ranking Period:</span>
           <select
             value={cycleId}
             onChange={e => setCycleId(e.target.value)}

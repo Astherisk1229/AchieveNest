@@ -13,7 +13,7 @@ export const ADMIN_SETUP_GUIDES = {
     steps: [
       {
         id: 'osad_step_1_structure',
-        title: 'Academic Structure',
+        title: 'College and Programs',
         description: 'Create Colleges and Academic Programs.',
         destination: '/osad/dashboard?tab=academic-programs',
         actionLabel: 'Open Structure',

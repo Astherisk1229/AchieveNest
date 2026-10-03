@@ -76,7 +76,7 @@ export default function OSADAcademicProgramsPage({
     <div className="space-y-6 animate-in fade-in duration-200 font-sans">
       {/* Standardized Page Header */}
       <OSADPageHeader
-        title="Academic Structure"
+        title="College and Programs"
         description="Click any College card to view its programs, dean leadership, and coordinator coverage."
         icon={Building2}
         primaryAction={

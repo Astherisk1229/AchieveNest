@@ -28,7 +28,6 @@ import {
   Download,
   Eye,
   GraduationCap,
-  Calendar,
   ExternalLink,
   Activity,
   ChevronRight,
@@ -109,10 +108,8 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   const [selectedWorkspaceItem, setSelectedWorkspaceItem] = useState(null)
   const [toastMessage, setToastMessage] = useState('')
 
-  // Verification Workspace Filter States (Default: Current AY 2025-2026)
+  // Verification Workspace Filter States
   const [categoryFilter, setCategoryFilter] = useState('All Categories')
-  const [scopeFilter, setScopeFilter] = useState('All Scopes')
-  const [ayFilter, setAyFilter] = useState('AY 2025-2026')
   const [sortBy, setSortBy] = useState('Newest')
 
 
@@ -378,14 +375,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
       {/* ================= TAB 2: VERIFICATION WORKSPACE (Master-Detail) ================= */}
       {activeTab === 'workspace' && (() => {
-        // Multi-Criteria Filtering & Sorting Algorithm (Strictly Active AY 2025-2026)
+        // Category options come from the queue itself so every option matches real submissions.
+        const categoryOptions = [...new Set((allSubmissions || []).map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b))
         const finalSubmissions = (filteredSubmissions || []).filter(item => {
-          // Strictly exclude past academic years from active verification queue
-          const itemAY = item.academic_year || 'AY 2025-2026'
-          if (itemAY !== 'AY 2025-2026') return false
-
           if (categoryFilter !== 'All Categories' && item.category !== categoryFilter) return false
-          if (scopeFilter !== 'All Scopes' && item.scope_level !== scopeFilter) return false
           return true
         }).sort((a, b) => {
           if (sortBy === 'Newest') return new Date(b.date || 0) - new Date(a.date || 0)
@@ -400,12 +393,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
         // Active Filter Counter & Reset Handler
         const activeFiltersCount =
           (categoryFilter !== 'All Categories' ? 1 : 0) +
-          (scopeFilter !== 'All Scopes' ? 1 : 0) +
           (sortBy !== 'Newest' ? 1 : 0)
 
         const resetWorkspaceFilters = () => {
           setCategoryFilter('All Categories')
-          setScopeFilter('All Scopes')
           setSortBy('Newest')
         }
 
@@ -420,7 +411,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
               <div className="bg-white rounded-2xl px-5 py-3 border border-slate-200/90 shadow-2xs">
                 <h2 className="text-base font-extrabold text-slate-900">Verification Workspace</h2>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Review and verify active <strong className="text-[#16834a]">AY 2025-2026</strong> student achievement submissions
+                  Review and verify student achievement submissions from your programs
                 </p>
               </div>
 
@@ -479,7 +470,7 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                 </div>
 
                 {/* Row 2: Integrated Filter Controls */}
-                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
                   
                   {/* Category Dropdown */}
                   <select
@@ -488,33 +479,10 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
                   >
                     <option value="All Categories">All Categories</option>
-                    <option value="Academic">Academic</option>
-                    <option value="Leadership">Leadership</option>
-                    <option value="Community">Community</option>
-                    <option value="Athletics">Athletics</option>
-                    <option value="Culture & Arts">Culture &amp; Arts</option>
-                    <option value="Research & Innovation">Research</option>
+                    {categoryOptions.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
                   </select>
-
-                  {/* Scope Level Dropdown */}
-                  <select
-                    value={scopeFilter}
-                    onChange={(e) => setScopeFilter(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-[#16834a] cursor-pointer"
-                  >
-                    <option value="All Scopes">All Scope Levels</option>
-                    <option value="Institutional / Campus-Wide">Institutional</option>
-                    <option value="Local / City Level">Local / City</option>
-                    <option value="Regional Level">Regional</option>
-                    <option value="National Level">National</option>
-                    <option value="International Level">International</option>
-                  </select>
-
-                  {/* Static Active Academic Year Indicator */}
-                  <div className="w-full px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-extrabold text-[#064e2b] flex items-center justify-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-[#16834a]" />
-                    <span>AY 2025-2026 (Active)</span>
-                  </div>
 
                   {/* Sort Order Dropdown */}
                   <select

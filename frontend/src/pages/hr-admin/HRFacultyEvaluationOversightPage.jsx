@@ -3,6 +3,7 @@ import { Search, ShieldCheck, Award, Building, Download, CheckCircle2, TrendingU
 import PersonnelPortfolioModel from '../../models/PersonnelPortfolioModel'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { useHR } from '../../hooks/useHR'
+import { alertDialog } from '../../components/ui/DialogProvider'
 
 export function HRFacultyEvaluationOversightPage(props) {
   const hrHook = useHR()
@@ -38,7 +39,7 @@ export function HRFacultyEvaluationOversightPage(props) {
   }, [rawPortfolios, searchQuery, affiliationFilter])
 
   const handleGenerateReport = () => {
-    alert("System-generated report: Faculty Evaluation & Ranking Summary (CSV/PDF) generated successfully.")
+    alertDialog({ title: 'Report generated', message: 'Faculty Evaluation & Ranking Summary (CSV/PDF) was generated successfully.', tone: 'success' })
   }
 
   const getPromotionBadge = (score) => {

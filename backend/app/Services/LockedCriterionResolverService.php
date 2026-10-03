@@ -19,6 +19,16 @@ final class LockedCriterionResolverService
             'category_code' => 'B.1',
             'subcategory_code' => 'B.1.1',
         ],
+        // Remaining Appendix N contracts: lettered form codes map to the numbered locked subcategories.
+        'NTF-B1B' => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.1.b', 'category_code' => 'B.1', 'subcategory_code' => 'B.1.2'],
+        'NTF-B1C' => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.1.c', 'category_code' => 'B.1', 'subcategory_code' => 'B.1.3'],
+        'NTF-B1D' => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.1.d', 'category_code' => 'B.1', 'subcategory_code' => 'B.1.4'],
+        'NTF-B2A' => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.2.a', 'category_code' => 'B.2', 'subcategory_code' => 'B.2.1'],
+        'NTF-B2B' => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.2.b', 'category_code' => 'B.2', 'subcategory_code' => 'B.2.2'],
+        'NTF-B2C' => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.2.c', 'category_code' => 'B.2', 'subcategory_code' => 'B.2.3'],
+        'NTF-B4'  => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.4', 'category_code' => 'B.4', 'subcategory_code' => 'B.4.1'],
+        // B.5 has no official point breakdown: the evaluator awards points (up to the category cap).
+        'NTF-B5'  => ['personnel_group' => 'NON_TEACHING_FACULTY', 'criterion_code' => 'B.5', 'category_code' => 'B.5', 'subcategory_code' => null, 'evaluator_judgment' => true],
     ];
 
     public function resolve(array $snapshot, string $categoryCode, array $metadata): array
@@ -37,6 +47,11 @@ final class LockedCriterionResolverService
         }
         $category = $this->findCategory($snapshot, $categoryCode);
         if ($category === null) throw new RuntimeException("CRITERION_MAPPING_INVALID: {$categoryCode} is not part of the locked criteria version.");
+        if (($contractMapping['evaluator_judgment'] ?? false) === true) {
+            $cap = (float) ($category['max_points'] ?? 0);
+            if ($cap <= 0) throw new RuntimeException("CRITERION_POINTS_UNRESOLVED: {$categoryCode} has no locked maximum.");
+            return ['criterion_reference' => $contractMapping['criterion_code'], 'category' => $category, 'level' => null, 'configured_points' => $cap, 'criterion_cap' => $cap, 'evaluator_judgment_required' => true];
+        }
         if ((int) ($category['requires_manual_hr_rule'] ?? 0) === 1 && empty($category['subcategories']) && empty($category['options'])) {
             throw new RuntimeException("CRITERION_CONFIGURATION_INCOMPLETE: {$categoryCode} has no locked automatic point rule.");
         }

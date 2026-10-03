@@ -2,7 +2,7 @@ import React from 'react'
 import { CalendarCheck2, CalendarX2, GraduationCap, HelpCircle } from 'lucide-react'
 
 /**
- * Shows whether a portfolio record takes part in the open ranking cycle. The decision comes
+ * Shows whether a portfolio record takes part in the open ranking period. The decision comes
  * from the server (the same gate used when the portfolio is submitted); this only displays it.
  */
 export function cycleValidityLabel(validity) {

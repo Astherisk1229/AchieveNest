@@ -62,3 +62,5 @@ frontend/vitest-results-*.json
 /.phase3b-httpd-vhosts.conf
 /Claude outputs/
 /AchieveNest System Readiness Audit*/
+/.vercel/
+/.env.local

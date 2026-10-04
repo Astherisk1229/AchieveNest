@@ -106,8 +106,17 @@ final class ProductionDemoAdminBootstrapConfigTest extends TestCase
 
     public function testCliCommandUsesTheExpectedNonHttpName(): void
     {
-        $defaults = (new ReflectionClass(BootstrapProductionDemoAdmins::class))->getDefaultProperties();
+        $reflection = new ReflectionClass(BootstrapProductionDemoAdmins::class);
+        $defaults = $reflection->getDefaultProperties();
 
         $this->assertSame('accounts:bootstrap-demo-admins', $defaults['name']);
+        $this->assertNotSame(
+            'd0000000-0000-0000-0001-000000000005',
+            $reflection->getReflectionConstant('HR_PROFILE_ID')->getValue()
+        );
+        $this->assertNotSame(
+            $reflection->getReflectionConstant('HR_PROFILE_ID')->getValue(),
+            $reflection->getReflectionConstant('OSAD_PROFILE_ID')->getValue()
+        );
     }
 }

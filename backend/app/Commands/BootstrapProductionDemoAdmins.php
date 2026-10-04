@@ -21,8 +21,10 @@ class BootstrapProductionDemoAdmins extends BaseCommand
     protected $name = 'accounts:bootstrap-demo-admins';
     protected $description = 'Creates only the authorized HR and OSAD demo administrators in an explicitly selected hosted environment.';
 
-    private const HR_PROFILE_ID = 'd0000000-0000-0000-0001-000000000005';
-    private const OSAD_PROFILE_ID = 'd0000000-0000-0000-0001-000000000006';
+    // Deliberately distinct from all legacy defense-fixture IDs. In particular,
+    // d0000000-0000-0000-0001-000000000005 is the canonical bridge actor.
+    private const HR_PROFILE_ID = '20853c88-a33d-494c-9576-39f28dac9544';
+    private const OSAD_PROFILE_ID = 'a36a96d8-4fbe-4649-ac38-54e8d551e756';
 
     public function run(array $params)
     {

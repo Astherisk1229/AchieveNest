@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { X, QrCode, CheckCircle2, UserCheck, Camera, AlertCircle, AlertTriangle, Loader2 } from 'lucide-react'
 import { Html5Qrcode } from 'html5-qrcode'
-import attendanceService, { parseScannedIdentifier, normalizeAttendanceError } from '../../../services/attendanceService'
+import attendanceService, { parseScannedIdentifier, normalizeAttendanceError, describeCameraError } from '../../../services/attendanceService'
 
 export default function AttendanceScannerModal({
   isOpen,
@@ -132,13 +132,13 @@ export default function AttendanceScannerModal({
           }
         }).catch((err) => {
           if (isMounted) {
-            setCameraError(err?.message || 'Camera access not available or permission denied.')
+            setCameraError(describeCameraError(err, 'Camera access not available or permission denied.'))
             setCameraActive(false)
           }
         })
       } catch (err) {
         if (isMounted) {
-          setCameraError(err?.message || 'Unable to initialize camera scanner.')
+          setCameraError(describeCameraError(err, 'Unable to initialize camera scanner.'))
           setCameraActive(false)
         }
       }

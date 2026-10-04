@@ -138,6 +138,27 @@ export function parseScannedIdentifier(rawInput) {
 }
 
 /**
+ * Turn a camera/scanner start failure into a message a person can act on.
+ * html5-qrcode rejects with plain strings (not Error objects), so read both shapes.
+ */
+export function describeCameraError(err, fallback = 'The camera could not be started.') {
+  const text = typeof err === 'string' ? err : [err?.name, err?.message].filter(Boolean).join(': ')
+  if (/notallowed|permission|denied/i.test(text)) {
+    return 'Camera access is blocked. Allow the camera for this site in your browser settings, then reload the page.'
+  }
+  if (/notfound|device not found|no camera/i.test(text)) {
+    return 'No camera was found on this device.'
+  }
+  if (/notreadable|in use|could not start video|abort/i.test(text)) {
+    return 'The camera is being used by another app or tab. Close it and try again.'
+  }
+  if (/secure|https|mediadevices|unable to query/i.test(text)) {
+    return 'The camera needs a secure (HTTPS) connection.'
+  }
+  return text || fallback
+}
+
+/**
  * Map API error responses to safe, user-friendly feedback without exposing backend internals.
  */
 export function normalizeAttendanceError(error) {

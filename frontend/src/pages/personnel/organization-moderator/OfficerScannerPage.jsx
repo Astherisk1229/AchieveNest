@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { Html5Qrcode } from 'html5-qrcode'
 
-import attendanceService, { parseScannedIdentifier, normalizeAttendanceError } from '../../../services/attendanceService'
+import attendanceService, { parseScannedIdentifier, normalizeAttendanceError, describeCameraError } from '../../../services/attendanceService'
 import eventService from '../../../services/eventService'
 import { AchieveNestLogo } from '../../../components/brand'
 
@@ -413,13 +413,13 @@ export default function OfficerScannerPage() {
           }
         }).catch((err) => {
           if (isMounted) {
-            setCameraError(err?.message || 'Camera offline or permission denied.')
+            setCameraError(describeCameraError(err, 'Camera offline or permission denied.'))
             setCameraActive(false)
           }
         })
       } catch (err) {
         if (isMounted) {
-          setCameraError(err?.message || 'Unable to start camera scanner.')
+          setCameraError(describeCameraError(err, 'Unable to start camera scanner.'))
           setCameraActive(false)
         }
       }

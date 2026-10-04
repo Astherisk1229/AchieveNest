@@ -258,6 +258,40 @@ because this service intentionally uses standalone `clamscan` and does not run
 the optional `clamd` daemon; scanner readiness must be judged by the signature
 inventory and successful `clamscan` execution.
 
+### Phase 6 staging smoke record (2026-10-04)
+
+The public staging API was exercised with a disposable student account and a
+harmless JPEG fixture. Before the smoke flow could proceed, the test exposed
+Railpack's PHP defaults of `post_max_size=0` and `upload_max_filesize=0`.
+CodeIgniter 4.7 interpreted the former as a zero-byte request ceiling and
+treated the literal string `php://input` as each non-empty JSON body. PR #33
+(merge commit `9c33623`) added the bounded repository `php.ini`; the running
+container then reported `12M` and `10M`, respectively, and an empty valid JSON
+login request returned the expected HTTP 422 validation response instead of
+HTTP 500.
+
+The complete staging smoke flow then passed:
+
+- login and `GET /api/v1/auth/me`: HTTP 200;
+- creation of an owned draft: HTTP 201;
+- evidence upload: HTTP 201;
+- standalone ClamAV scan: `clean`;
+- authenticated metadata and download: HTTP 200, with an exact SHA-256 match;
+- configured `http://localhost:5173` CORS preflight: allowed;
+- `https://unauthorized.example` CORS preflight: no allow-origin header;
+- redeployment `6d104144-a150-4998-8efe-37c32ff98239` of commit `9c33623`:
+  successful;
+- session, database record, evidence metadata, and evidence bytes after that
+  redeployment: preserved, with the same SHA-256;
+- evidence soft deletion and logout: HTTP 200;
+- reuse of the logged-out token: HTTP 401.
+
+After acceptance, the disposable physical file, evidence, portfolio record,
+student profile, enrollment, role, credentials, session, and audit rows were
+removed. Database verification reported zero remaining profile, record,
+evidence, and session rows for the fixture. The temporary Railway SSH key and
+local private/public keypair were also removed.
+
 ## Release blockers
 
 The backend is not production-ready while any of these remain unresolved:

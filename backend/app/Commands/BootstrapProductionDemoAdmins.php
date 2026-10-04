@@ -35,6 +35,7 @@ class BootstrapProductionDemoAdmins extends BaseCommand
                 'ACHIEVENEST_ENV' => $this->environmentValue('ACHIEVENEST_ENV'),
                 'RAILWAY_ENVIRONMENT_NAME' => $this->environmentValue('RAILWAY_ENVIRONMENT_NAME'),
                 'ACHIEVENEST_BOOTSTRAP_TARGET' => $this->environmentValue('ACHIEVENEST_BOOTSTRAP_TARGET'),
+                'ACHIEVENEST_BOOTSTRAP_EXPECTED_RAILWAY_ENVIRONMENT' => $this->environmentValue('ACHIEVENEST_BOOTSTRAP_EXPECTED_RAILWAY_ENVIRONMENT'),
                 'ACHIEVENEST_BOOTSTRAP_CONFIRM' => $this->environmentValue('ACHIEVENEST_BOOTSTRAP_CONFIRM'),
                 'ACHIEVENEST_BOOTSTRAP_HR_PASSWORD' => $this->environmentValue('ACHIEVENEST_BOOTSTRAP_HR_PASSWORD'),
                 'ACHIEVENEST_BOOTSTRAP_OSAD_PASSWORD' => $this->environmentValue('ACHIEVENEST_BOOTSTRAP_OSAD_PASSWORD'),

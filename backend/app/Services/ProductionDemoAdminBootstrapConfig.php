@@ -27,9 +27,17 @@ final class ProductionDemoAdminBootstrapConfig
             );
         }
 
-        if (($values['ACHIEVENEST_ENV'] ?? '') !== $target
-            || strtolower((string) ($values['RAILWAY_ENVIRONMENT_NAME'] ?? '')) !== $target) {
-            throw new RuntimeException('Bootstrap target must match ACHIEVENEST_ENV and RAILWAY_ENVIRONMENT_NAME.');
+        if (($values['ACHIEVENEST_ENV'] ?? '') !== $target) {
+            throw new RuntimeException('Bootstrap target must match ACHIEVENEST_ENV.');
+        }
+
+        $expectedRailwayEnvironment = strtolower(trim((string) ($values['ACHIEVENEST_BOOTSTRAP_EXPECTED_RAILWAY_ENVIRONMENT'] ?? '')));
+        $actualRailwayEnvironment = strtolower(trim((string) ($values['RAILWAY_ENVIRONMENT_NAME'] ?? '')));
+        if ($expectedRailwayEnvironment === '' || $actualRailwayEnvironment !== $expectedRailwayEnvironment) {
+            throw new RuntimeException('RAILWAY_ENVIRONMENT_NAME must match the explicitly expected Railway environment.');
+        }
+        if (($target === 'production') !== ($expectedRailwayEnvironment === 'production')) {
+            throw new RuntimeException('Only the production target may name the production Railway environment.');
         }
 
         $expectedConfirmation = $target === 'production' ? self::CONFIRMATION : self::STAGING_CONFIRMATION;

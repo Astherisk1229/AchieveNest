@@ -1,5 +1,11 @@
 # Phase 7 production readiness
 
+> **Closed 2026-10-04.** The controlled production promotion and final
+> authenticated acceptance tests completed successfully. The production
+> acceptance evidence is recorded in `RAILWAY_DEPLOYMENT.md`. The inventory
+> and unchecked preparation state below are retained as the historical
+> pre-promotion snapshot, not the current production status.
+
 This checklist prepares the production promotion without performing it. No
 production database, volume, variable, domain, migration, or deployment may be
 created or changed until an operator explicitly authorizes the promotion
@@ -16,7 +22,7 @@ window.
   contains this checklist and its frontend deployment guard. Record that full
   commit SHA before promotion.
 
-## Read-only production inventory (2026-10-04)
+## Historical read-only production inventory (before promotion, 2026-10-04)
 
 Railway project `d83e61ca-5879-40a2-83f4-0d2f66268bee` was inspected without
 changing it. The production environment is deliberately **NO-GO**:
@@ -131,9 +137,14 @@ rollback commit. For migration or data-integrity failure, stop application
 writes and restore the verified database and writable artifacts according to
 the Railway runbook. A code rollback is not a database rollback.
 
-## Go/no-go decision
+## Historical go/no-go decision
 
 Promotion is **NO-GO** until every unchecked preparation action has evidence,
 the production infrastructure gates are configured during an explicitly
 authorized window, and the exact candidate passes all required checks. Preparing
 or merging documentation does not authorize production deployment.
+
+That authorization and acceptance were subsequently completed on 2026-10-04;
+see the production acceptance record in `RAILWAY_DEPLOYMENT.md`. Production
+automatic deployment remains disabled, and future releases continue to use the
+staging-first, exact-commit manual promotion workflow.

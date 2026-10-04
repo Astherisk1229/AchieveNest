@@ -312,9 +312,53 @@ database or volumes, setting variables or secrets, running migrations,
 generating domains, and deploying a new commit all belong to that later
 operation.
 
-## Release blockers
+### Phase 7 production acceptance record (2026-10-04)
 
-The backend is not production-ready while any of these remain unresolved:
+The separately authorized production promotion completed successfully:
+
+- the production backend is deployed from reviewed commit
+  `59ce10a943190a1d4535ffccc679967ad61da08c` at
+  `https://achievenest-production.up.railway.app`;
+- `/api/v1/health` returns HTTP 200 with the production environment and a
+  connected MySQLi database;
+- the Vercel production frontend is available at
+  `https://achieve-nest-sand.vercel.app` and its production build targets
+  `https://achievenest-production.up.railway.app/api/v1`;
+- the backend permits the exact Vercel production origin rather than a
+  wildcard origin;
+- the production database and `/app/writable` data were backed up, restored
+  into an isolated target, and verified before migration;
+- only the authorized `Phase17Canonical` and `Phase2` migration namespaces
+  were applied;
+- an authenticated browser/API acceptance flow passed login, authenticated
+  reads and writes, ClamAV-clean upload, content-hash verification,
+  persistence across redeployment, deletion, logout, revoked-token rejection,
+  and rejection of an unauthorized browser origin; and
+- the disposable production student fixture, database rows, session, and
+  uploaded file were removed and verified absent after acceptance.
+
+Production Railway automatic deployment remains disabled. Release changes
+must first pass staging health and smoke tests, then promote the exact approved
+commit manually. The demo frontend remains connected only to the staging API;
+demo credentials and fixtures are not installed in production.
+
+Phase 7 deployment infrastructure is accepted. Provisioning legitimate HR and
+OSAD users from institution-approved identity data is a separate operational
+onboarding task and does not reopen the deployment gate. A custom domain is
+optional; if one is introduced, update the frontend domain, backend base URL,
+CORS origin, and public URL configuration together before repeating the smoke
+tests.
+
+Post-launch operational follow-ups:
+
+- enable Railway usage and budget alerts;
+- monitor `/api/v1/health` from outside Railway;
+- schedule MySQL and `/app/writable` backups; and
+- perform and record periodic restore drills.
+
+## Release blockers for future promotions
+
+Treat any of these conditions as a blocker for a future production promotion:
 
 - production database credentials or migrations are missing;
 - `LOCAL_AUTH_JWT_SECRET` is absent or reused from development;

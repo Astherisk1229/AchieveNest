@@ -356,6 +356,38 @@ Post-launch operational follow-ups:
 - schedule MySQL and `/app/writable` backups; and
 - perform and record periodic restore drills.
 
+### Temporary production demo-administrator bootstrap
+
+The production login has no public self-registration path. If the explicitly
+authorized temporary accounts `demo.hr.admin@ndmu.edu.ph` and
+`demo.osad.admin@ndmu.edu.ph` are required for a controlled launch exercise,
+use the CLI-only bootstrap command. It creates no other demo personas or
+scenario fixtures.
+
+Temporarily configure distinct, newly generated secret values for
+`ACHIEVENEST_BOOTSTRAP_HR_PASSWORD` and
+`ACHIEVENEST_BOOTSTRAP_OSAD_PASSWORD`. First prove the command in a disposable
+staging environment with matching `ACHIEVENEST_ENV` and Railway environment
+name, plus:
+
+```text
+ACHIEVENEST_BOOTSTRAP_TARGET=staging
+ACHIEVENEST_BOOTSTRAP_CONFIRM=CREATE_TWO_STAGING_DEMO_ADMINS
+```
+
+For the separately approved production run, use matching production values:
+
+```text
+ACHIEVENEST_BOOTSTRAP_TARGET=production
+ACHIEVENEST_BOOTSTRAP_CONFIRM=CREATE_TWO_PRODUCTION_DEMO_ADMINS
+```
+
+Run `php spark accounts:bootstrap-demo-admins` inside the selected backend service,
+verify both users are required to change their temporary password at first
+login, then immediately remove every `ACHIEVENEST_BOOTSTRAP_*` variable. Never
+reuse `ACHIEVENEST_DEMO_PASSWORD`. Replace these synthetic administrators with
+institution-approved identities before handling real institutional data.
+
 ## Release blockers for future promotions
 
 Treat any of these conditions as a blocker for a future production promotion:

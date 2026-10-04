@@ -146,14 +146,34 @@ the empty baseline is not a substitute for a production-data restore drill.
 
 ## 5. Database release gate
 
-Never point automated tests at production. Apply migrations from a controlled
-Railway shell or one-off job only after backing up the production database:
+Never point automated tests at production. Do not use `migrate --all`: the
+legacy `App` namespace is a quarantined PostgreSQL history and is not part of
+the canonical MySQL release path. Before applying the first canonical baseline
+to a persistent Railway database, temporarily configure all three exact target
+authorizations:
+
+```text
+CANONICAL_MIGRATION_APPROVAL=APPLY_CANONICAL_MYSQL_BASELINE
+CANONICAL_MIGRATION_APPROVED_DATABASE=${{MySQL.MYSQLDATABASE}}
+CANONICAL_MIGRATION_APPROVED_ENVIRONMENT=staging
+```
+
+The approved environment must exactly equal Railway's
+`RAILWAY_ENVIRONMENT_NAME`; use `production` only during a separately approved
+production release. Apply the two canonical namespaces from a controlled
+Railway shell or one-off job, after backing up any non-empty target database:
 
 ```sh
 php spark migrate:status
-php spark migrate --all
+php spark migrate -n Phase17Canonical
+php spark migrate -n Phase2
 php spark migrate:status
 ```
+
+Inspect command output for exceptions because remote shell wrappers may not
+preserve CodeIgniter's failure status. Verify the expected migration ledger and
+schema sentinels, then remove all three `CANONICAL_MIGRATION_*` authorization
+variables. Their absence is the normal runtime state.
 
 Run this first against a separate, disposable Railway staging MySQL service.
 Repeat the fresh migration replay and confirm the resulting schema and

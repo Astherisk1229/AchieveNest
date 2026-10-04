@@ -2,6 +2,7 @@
 
 namespace Phase17Canonical\Database\Migrations;
 
+use App\Services\CanonicalMigrationTargetGuard;
 use CodeIgniter\Database\Migration;
 use RuntimeException;
 
@@ -145,9 +146,6 @@ class RestoreBridgeCompatibilityActor extends Migration
 
     private function assertCanonicalMySQL(): void
     {
-        $database = (string) $this->db->getDatabase();
-        if ($this->db->DBDriver !== 'MySQLi' || ! str_starts_with($database, 'achievenest_phase17m_')) {
-            throw new RuntimeException("Refusing bridge actor restoration against [{$database}].");
-        }
+        CanonicalMigrationTargetGuard::assertAllowed($this->db, 'bridge actor restoration');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Phase17Canonical\Database\Migrations;
 
+use App\Services\CanonicalMigrationTargetGuard;
 use CodeIgniter\Database\Migration;
 use RuntimeException;
 
@@ -38,13 +39,7 @@ class CreateCanonicalMySQLBaseline extends Migration
 
     private function assertDisposableTarget(): void
     {
-        $database = (string) $this->db->getDatabase();
-        if ($database === 'achievenest_local' || ! str_starts_with($database, 'achievenest_phase17m_')) {
-            throw new RuntimeException("Refusing canonical replay against non-disposable database [{$database}].");
-        }
-        if ($this->db->DBDriver !== 'MySQLi') {
-            throw new RuntimeException('Canonical Phase 17M baseline requires MySQLi.');
-        }
+        CanonicalMigrationTargetGuard::assertAllowed($this->db, 'canonical baseline');
     }
 
     private function executeSqlFile(string $path): void

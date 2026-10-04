@@ -60,11 +60,11 @@ class DefenseDemoSeeder extends Seeder
         $db->table('personnel_program_affiliations')->like('id', $demoPrefix)->delete();
         $db->table('personnel_college_affiliations')->like('id', $demoPrefix)->delete();
         $db->table('student_program_enrollments')->like('id', $demoPrefix)->delete();
-        $db->table('student_profiles')->like('profile_id', $demoPrefix)->delete();
-        $db->table('personnel_profiles')->like('profile_id', $demoPrefix)->delete();
-        $db->table('profile_roles')->like('profile_id', $demoPrefix)->delete();
-        $db->table('local_auth_credentials')->like('profile_id', $demoPrefix)->delete();
-        $db->table('profiles')->like('id', $demoPrefix)->delete();
+        // Preserve the ten stable demo identity anchors. Long-lived staging records
+        // (for example evaluation periods) legitimately reference these profiles,
+        // and the persona seeder below already restores them idempotently with
+        // upserts. Deleting the identity graph here can therefore fail on a
+        // foreign-key constraint before credentials and roles are restored.
 
         // 2. Call Persona Seeder
         $this->call('DefenseDemoPersonaSeeder');

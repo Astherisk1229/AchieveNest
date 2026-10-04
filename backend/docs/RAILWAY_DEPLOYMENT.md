@@ -217,6 +217,31 @@ health verification.
 7. Merge the reviewed branch into `main` only after staging acceptance, then
    switch Railway to `main` for the production promotion.
 
+### Phase 5 staging rollout record (2026-10-04)
+
+The persistent Railway staging MySQL database was migrated from merge commit
+`242f2e4` by applying only the `Phase17Canonical` and `Phase2` namespaces. The
+post-migration checks reported:
+
+- 165 business tables;
+- 40 `Phase17Canonical` ledger rows through `2026-09-20-000004`;
+- 28 `Phase2` ledger rows through `2026-10-03-000027`;
+- all six application schema sentinels and `ranking_cycles.coverage_start`;
+- zero demo identities, exactly one neutral bridge actor, and no embedded or
+  local credentials for that actor.
+
+The three temporary `CANONICAL_MIGRATION_*` authorizations were removed after
+verification. The generated staging endpoint is
+`https://achievenest-staging-staging.up.railway.app/`; its public
+`/api/v1/health` response returned HTTP 200 with `status: ok`, a connected
+database, and `driver: MySQLi`.
+
+Standalone ClamAV 1.4.3 loaded current signature databases and completed a
+harmless scan with zero infections. `freshclam` may log a `NotifyClamd` warning
+because this service intentionally uses standalone `clamscan` and does not run
+the optional `clamd` daemon; scanner readiness must be judged by the signature
+inventory and successful `clamscan` execution.
+
 ## Release blockers
 
 The backend is not production-ready while any of these remain unresolved:

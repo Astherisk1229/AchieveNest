@@ -292,6 +292,26 @@ removed. Database verification reported zero remaining profile, record,
 evidence, and session rows for the fixture. The temporary Railway SSH key and
 local private/public keypair were also removed.
 
+## 7. Production preparation and promotion
+
+Use [`PHASE_7_PRODUCTION_READINESS.md`](PHASE_7_PRODUCTION_READINESS.md) as the
+tracked go/no-go checklist. Preparation does not authorize production changes.
+Keep the production service on its existing commit until the permanent
+frontend origin, production API URL, rollback commit, infrastructure gates,
+and maintenance window are recorded.
+
+The frontend production deployment must supply `VITE_API_BASE_URL` as an
+absolute HTTPS URL ending in `/api/v1`. The frontend prebuild guard rejects a
+missing value, a relative URL, localhost, or a staging hostname when Vercel
+reports `VERCEL_ENV=production`. This prevents a production frontend from
+silently using the repository's same-origin development fallback or the
+accepted staging backend.
+
+Production promotion is a separately authorized operation. Provisioning the
+database or volumes, setting variables or secrets, running migrations,
+generating domains, and deploying a new commit all belong to that later
+operation.
+
 ## Release blockers
 
 The backend is not production-ready while any of these remain unresolved:

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/start-achievenest-dev.ps1",
     "dev:frontend": "vite",
+    "prebuild": "node scripts/validate-production-deployment-env.js",
     "build": "vite build",
     "lint": "oxlint",
     "test": "vitest run",

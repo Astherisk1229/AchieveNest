@@ -362,7 +362,9 @@ The production login has no public self-registration path. If the explicitly
 authorized temporary accounts `demo.hr.admin@ndmu.edu.ph` and
 `demo.osad.admin@ndmu.edu.ph` are required for a controlled launch exercise,
 use the CLI-only bootstrap command. It creates no other demo personas or
-scenario fixtures.
+scenario fixtures. Its administrator UUIDs are intentionally distinct from
+the reserved canonical bridge compatibility actor and all legacy demo-fixture
+identities.
 
 Temporarily configure distinct, newly generated secret values for
 `ACHIEVENEST_BOOTSTRAP_HR_PASSWORD` and

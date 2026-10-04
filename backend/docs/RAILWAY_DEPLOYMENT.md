@@ -98,8 +98,51 @@ without the volume, a redeploy can permanently lose files while database rows
 still reference them.
 
 Enable Railway volume backups and verify a restore before production launch.
-One mounted volume also limits the backend service to a single replica; moving
-uploads to object storage is required before horizontal scaling.
+Railway Hobby currently reports a zero-backup plan limit, so a Hobby deployment
+must use the off-platform procedure below instead of treating the volume itself
+as a backup. One mounted volume also limits the backend service to a single
+replica; moving uploads to object storage is required before horizontal scaling.
+
+### Hobby backup and restore procedure
+
+Create both artifacts from the running backend, using its existing Railway
+reference variables. Never print or copy the database password:
+
+```sh
+set -eu
+backup_dir=/app/writable/backups/achievenest-$(date -u +%Y%m%dT%H%M%SZ)
+mkdir -p "$backup_dir"
+
+MYSQL_PWD="$database_default_password" mysqldump \
+  --host="$database_default_hostname" \
+  --port="$database_default_port" \
+  --user="$database_default_username" \
+  --single-transaction --quick --routines --triggers --events --hex-blob \
+  --no-tablespaces --databases "$database_default_database" \
+  | gzip -9 > "$backup_dir/database.sql.gz"
+
+tar --exclude='./backups' -czf "$backup_dir/writable.tar.gz" \
+  -C /app/writable .
+sha256sum "$backup_dir/database.sql.gz" "$backup_dir/writable.tar.gz" \
+  > "$backup_dir/SHA256SUMS"
+```
+
+Download all three files to encrypted storage outside Railway. Confirm their
+local SHA-256 values match `SHA256SUMS`; a copy left only on `/app/writable`
+does not satisfy the backup gate.
+
+Before migrations, restore `database.sql.gz` into a new disposable MySQL 8.4
+service and extract `writable.tar.gz` into an empty temporary directory. Verify
+the expected schema/table counts, reference-data fingerprint, file count, and
+file checksums. Delete the disposable database, temporary credentials, SSH
+keys, and extraction directory after the test, but retain the off-platform
+artifacts according to the project's retention policy.
+
+The staging baseline was exercised on 2026-10-04: both artifact hashes matched,
+the SQL dump completed, the empty pre-migration schema restored into isolated
+MySQL 8.4, and the writable archive restored its ten-directory baseline. Repeat
+the entire procedure after migrations when tables and application data exist;
+the empty baseline is not a substitute for a production-data restore drill.
 
 ## 5. Database release gate
 

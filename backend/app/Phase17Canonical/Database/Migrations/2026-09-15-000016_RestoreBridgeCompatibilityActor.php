@@ -24,11 +24,11 @@ class RestoreBridgeCompatibilityActor extends Migration
 
         $expectedProfile = [
             'id' => self::PROFILE_ID,
-            'institutional_id' => '2026-DEMO-005',
+            'institutional_id' => 'SYSTEM-HR-BRIDGE-001',
             'account_type' => 'hr_admin',
-            'email' => 'demo.hr.admin@ndmu.edu.ph',
-            'full_name' => 'Demo HR Administrator',
-            'designation_title' => 'HR Director',
+            'email' => 'hr-bridge@achievenest.invalid',
+            'full_name' => 'AchieveNest HR Bridge Actor',
+            'designation_title' => 'System Compatibility Actor',
             'status' => 'active',
         ];
         $matches = $this->db->table('profiles')

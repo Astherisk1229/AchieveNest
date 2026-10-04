@@ -10,6 +10,11 @@ separate, observable steps.
 - Root directory: `/backend`.
 - Builder: Railpack (automatic PHP detection from `composer.json`).
 - Public directory variable: `RAILPACK_PHP_ROOT_DIR=/app/public`.
+- Keep the repository's `/backend/php.ini` in the deployment image. It sets
+  `upload_max_filesize=10M` to match the application's evidence policy and
+  `post_max_size=12M` to allow multipart overhead. Do not set either directive
+  to `0`: CodeIgniter 4.7 treats `post_max_size=0` as a zero-byte request limit,
+  which breaks every non-empty JSON request under FrankenPHP.
 - Production autodeploy: disabled until staging acceptance is complete. Use
   Railway's **Deploy Latest Commit** action for controlled deployments.
 - Healthcheck path: `/api/v1/health`.
@@ -216,6 +221,17 @@ health verification.
    `app_baseURL`, redeploy, and repeat the health check over the public domain.
 7. Merge the reviewed branch into `main` only after staging acceptance, then
    switch Railway to `main` for the production promotion.
+
+Before step 4, verify the running container reports finite request limits:
+
+```sh
+php -i | grep -E '^(post_max_size|upload_max_filesize) =>'
+```
+
+Expected values are `post_max_size => 12M` and
+`upload_max_filesize => 10M`. A login request containing valid JSON must return
+an application response (for example 422 for missing credentials), never a
+JSON parse exception or HTTP 500.
 
 ### Phase 5 staging rollout record (2026-10-04)
 

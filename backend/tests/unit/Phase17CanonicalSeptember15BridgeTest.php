@@ -134,6 +134,22 @@ final class Phase17CanonicalSeptember15BridgeTest extends TestCase
         self::assertStringContainsString('BRIDGE_COMPATIBILITY_PERIOD_SET_CHANGED', $guard);
     }
 
+    public function testCompatibilityActorUsesProductionNeutralNonLoginIdentity(): void
+    {
+        $source = file_get_contents(
+            APPPATH . 'Phase17Canonical/Database/Migrations/2026-09-15-000016_RestoreBridgeCompatibilityActor.php'
+        );
+
+        self::assertStringContainsString("'d0000000-0000-0000-0001-000000000005'", $source);
+        self::assertStringContainsString("'SYSTEM-HR-BRIDGE-001'", $source);
+        self::assertStringContainsString("'hr-bridge@achievenest.invalid'", $source);
+        self::assertStringContainsString("'AchieveNest HR Bridge Actor'", $source);
+        self::assertStringContainsString("'password_hash' => null", $source);
+        self::assertStringNotContainsString('2026-DEMO-005', $source);
+        self::assertStringNotContainsString('demo.hr.admin@ndmu.edu.ph', $source);
+        self::assertStringNotContainsString('Demo HR Administrator', $source);
+    }
+
     public function testTrackScopedConcurrencyMatchesApprovedDefinitions(): void
     {
         $source = $this->source(3);

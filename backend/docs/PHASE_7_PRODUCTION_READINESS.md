@@ -44,19 +44,50 @@ is production-ready.
   values.
 - [x] Add a frontend prebuild guard that requires an explicit absolute HTTPS
   production API URL and rejects local or staging endpoints.
-- [ ] Choose and record the permanent HTTPS frontend production origin.
+- [x] Choose and record the permanent HTTPS frontend production origin:
+  `https://achieve-nest-sand.vercel.app` (the primary production alias on the
+  Vercel `achievenest/achieve-nest` project).
 - [ ] Choose and record the permanent HTTPS backend production domain.
 - [ ] In Vercel Production, set `VITE_API_BASE_URL` to the final backend URL
   ending in `/api/v1`. Do not put server secrets in `VITE_*` variables.
-- [ ] In a Vercel Preview or other permanent staging frontend, set
+- [x] In a Vercel Preview or other permanent staging frontend, set
   `VITE_API_BASE_URL=https://achievenest-staging-staging.up.railway.app/api/v1`.
-- [ ] Add that exact staging frontend origin to staging CORS and repeat the
+- [x] Add that exact staging frontend origin to staging CORS and repeat the
   browser login/read/write/upload/logout smoke flow.
 - [ ] Confirm Railway production automatic deployments are disabled before the
   preparation PR is merged.
 - [ ] Record the full reviewed production candidate and rollback commit SHAs.
 - [ ] Schedule an owner and maintenance window for the separately authorized
   production promotion.
+
+## Frontend staging acceptance (2026-10-04)
+
+- Vercel project: `achievenest/achieve-nest`
+  (`prj_dMeyWBt1lKnntzdP1BnQ15Qgr2fj`).
+- Stable protected preview origin:
+  `https://achieve-nest-git-codex-phase7-production-pre-8d1c2f-achievenest.vercel.app`.
+- Accepted preview deployment: `dpl_13hcgt4rDntjewrsbPMc6FRNUiPC`.
+- The branch-scoped Preview variable points to the public staging API. The
+  compiled preview asset contains that absolute API URL and does not contain
+  the relative `/api/v1` fallback.
+- Staging backend deployment `e2017e9e-e199-49b4-bc55-2198890acbd0` completed
+  successfully after setting the exact preview origin as the sole allowed
+  origin. A preview-origin preflight returns HTTP 204 and the matching
+  `Access-Control-Allow-Origin` value. A different origin receives the sole
+  configured preview-origin value, so browsers reject it because it does not
+  match the requesting origin.
+- Headless Chrome on the protected preview passed UI login, authenticated
+  `/auth/me`, an authorized draft write through the supported portfolio API,
+  JPEG upload, ClamAV scan (`clean`), evidence metadata and download, exact
+  SHA-256/229,721-byte verification, evidence deletion, logout, login-page
+  return, and HTTP 401 rejection of the revoked token.
+- The disposable portfolio row, uploaded physical file, local-auth session,
+  and temporary student fixture were removed and verified absent. The
+  temporary Railway SSH key and Vercel automation-bypass secret were revoked;
+  the Vercel project reports an empty `protectionBypass` object.
+
+This acceptance does not set the Vercel Production API variable, choose a
+production backend domain, or authorize a Railway production deployment.
 
 Run the frontend guard locally with a non-secret candidate URL:
 

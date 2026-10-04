@@ -160,6 +160,26 @@ Repeat the fresh migration replay and confirm the resulting schema and
 reference-data fingerprints are identical before production promotion. Do not
 seed demo or local-defense data in staging or production.
 
+### Phase 4 staging replay record (2026-10-04)
+
+Two independent, disposable MySQL 8.4 databases were migrated with
+`php spark verify:phase17m-fresh-replay` from commit `2717a42`. Both runs
+reached the latest `Phase17Canonical` and `Phase2` namespaces and produced:
+
+- 165 business tables;
+- schema SHA-256
+  `d8f6ba787c1faf95aa8a3075a09f950a3a028ba4dc04f3c009aa6b7eebec4ff9`;
+- reference-data SHA-256
+  `4b086ddbeea0d570b42003e192e2f5229a4722d40df7f0c7982e50f4c3a5c7ca`.
+
+The replay is deterministic, but production promotion remains blocked by
+`RestoreBridgeCompatibilityActor`: that canonical migration inserts one active
+profile named `Demo HR Administrator`. The profile has neither an embedded
+password nor a `local_auth_credentials` row, but its demo identity conflicts
+with the release rule above. Classify it as approved production compatibility
+data or replace it through a reviewed migration change, then repeat both fresh
+replays before accepting this gate.
+
 ## 6. Deployment verification
 
 1. Deploy the reviewed branch and wait for the healthcheck to pass.

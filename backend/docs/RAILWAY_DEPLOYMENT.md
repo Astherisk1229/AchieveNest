@@ -162,9 +162,11 @@ seed demo or local-defense data in staging or production.
 
 ### Phase 4 staging replay record (2026-10-04)
 
-Two independent, disposable MySQL 8.4 databases were migrated with
-`php spark verify:phase17m-fresh-replay` from commit `2717a42`. Both runs
-reached the latest `Phase17Canonical` and `Phase2` namespaces and produced:
+The compatibility actor was reclassified as a neutral, non-login system actor
+in PR #29 (merge commit `71f2853`). Two independent, disposable MySQL 8.4
+databases were then migrated with `php spark verify:phase17m-fresh-replay`
+from that exact commit. Both runs reached the latest `Phase17Canonical` and
+`Phase2` namespaces and produced:
 
 - 165 business tables;
 - schema SHA-256
@@ -172,13 +174,12 @@ reached the latest `Phase17Canonical` and `Phase2` namespaces and produced:
 - reference-data SHA-256
   `4b086ddbeea0d570b42003e192e2f5229a4722d40df7f0c7982e50f4c3a5c7ca`.
 
-The replay is deterministic, but production promotion remains blocked by
-`RestoreBridgeCompatibilityActor`: that canonical migration inserts one active
-profile named `Demo HR Administrator`. The profile has neither an embedded
-password nor a `local_auth_credentials` row, but its demo identity conflicts
-with the release rule above. Classify it as approved production compatibility
-data or replace it through a reviewed migration change, then repeat both fresh
-replays before accepting this gate.
+The two schema and reference-data fingerprints matched exactly. A read-only
+audit of each replay found zero demo identities, exactly one neutral bridge
+actor, zero embedded passwords, and zero `local_auth_credentials` rows for that
+actor. Phase 4 is accepted. The persistent staging database remains unmigrated;
+apply its migrations only as part of the controlled Phase 5 deployment and
+health verification.
 
 ## 6. Deployment verification
 

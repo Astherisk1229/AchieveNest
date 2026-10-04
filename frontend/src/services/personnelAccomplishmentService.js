@@ -93,7 +93,7 @@ export const personnelAccomplishmentService = {
       }
     }
 
-    const response = await fetch(`${baseURL}/evidence/personnel/${evidenceId}/preview`, {
+    const response = await fetch(`${baseURL}/evidence/personnel/${evidenceId}/download`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     })
 

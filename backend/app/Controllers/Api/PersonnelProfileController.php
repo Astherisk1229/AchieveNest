@@ -55,6 +55,8 @@ class PersonnelProfileController extends Controller
                 ? ($db->table('user_profiles')->where('id', $profileId)->get()->getRowArray() ?? [])
                 : [];
 
+            $own = $db->table('personnel_profiles')->where('profile_id', $profileId)->get()->getRowArray() ?? [];
+
             $service = null;
             try {
                 $service = (new \App\Services\EmploymentServiceDurationService($db))->calculateQualifyingService($profileId);
@@ -76,9 +78,10 @@ class PersonnelProfileController extends Controller
                 'length_of_service' => $service,
                 'college_id'      => $userProfile['college_id'] ?? $profile['college_id'] ?? null,
                 'department_id'   => $userProfile['department_id'] ?? $profile['department_id'] ?? null,
-                'phone'           => $userProfile['phone'] ?? $profile['phone'] ?? null,
-                'location'        => $userProfile['location'] ?? $profile['location'] ?? null,
-                'about_me'        => $userProfile['about_me'] ?? $profile['about_me'] ?? null,
+                'phone'           => $own['contact_number'] ?? $userProfile['phone'] ?? $profile['phone'] ?? null,
+                'location'        => $own['location'] ?? $userProfile['location'] ?? $profile['location'] ?? null,
+                'about_me'        => $own['about_me'] ?? $userProfile['about_me'] ?? $profile['about_me'] ?? null,
+                'specialization'  => $own['specialization'] ?? null,
             ];
 
             return $this->respond([
@@ -93,6 +96,57 @@ class PersonnelProfileController extends Controller
                 ],
             ], 500);
         }
+    }
+
+    /**
+     * PUT /api/v1/personnel/profile
+     * Self-service edit of contact number, location, about-me and specialization.
+     * Name, ID, designation and email are HR-managed and ignored here.
+     */
+    public function update(): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated personnel session required.']], 401);
+        }
+        $profile = $actor['profile'] ?? [];
+        if (($profile['account_type'] ?? '') !== 'personnel') {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only personnel can edit this profile.']], 403);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $limits = ['contact_number' => 40, 'location' => 160, 'about_me' => 2000, 'specialization' => 160];
+        $updates = [];
+        foreach ($limits as $field => $max) {
+            if (! array_key_exists($field, $json)) {
+                continue;
+            }
+            $value = trim((string) $json[$field]);
+            if (mb_strlen($value) > $max) {
+                return $this->respond(['error' => ['code' => 'FIELD_TOO_LONG', 'message' => "{$field} must be at most {$max} characters."]], 422);
+            }
+            if ($field === 'contact_number' && $value !== '' && ! preg_match('/^[0-9+()\-.\s]{5,40}$/', $value)) {
+                return $this->respond(['error' => ['code' => 'INVALID_CONTACT_NUMBER', 'message' => 'Contact number may contain digits, spaces and + ( ) - . only.']], 422);
+            }
+            $updates[$field] = $value === '' ? null : $value;
+        }
+        if ($updates === []) {
+            return $this->respond(['error' => ['code' => 'NO_EDITABLE_FIELDS', 'message' => 'Send at least one of contact_number, location, about_me, specialization.']], 422);
+        }
+        $updates['updated_at'] = date('Y-m-d H:i:s');
+
+        $db = db_connect();
+        try {
+            $db->table('personnel_profiles')->where('profile_id', $profile['id'])->update($updates);
+            if ($db->affectedRows() === 0 && $db->table('personnel_profiles')->where('profile_id', $profile['id'])->countAllResults() === 0) {
+                return $this->respond(['error' => ['code' => 'PERSONNEL_PROFILE_NOT_FOUND', 'message' => 'Personnel profile record missing.']], 404);
+            }
+        } catch (Throwable $e) {
+            log_message('error', '[PersonnelProfileController::update] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'SERVER_ERROR', 'message' => 'Your profile could not be saved. Please try again.']], 500);
+        }
+
+        return $this->show();
     }
 
     /**

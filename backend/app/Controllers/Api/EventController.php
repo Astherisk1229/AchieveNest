@@ -268,6 +268,9 @@ class EventController extends Controller
         $title = trim((string) ($json['title'] ?? ''));
         $description = trim((string) ($json['description'] ?? ''));
         $eventType = trim((string) ($json['event_type'] ?? $json['category'] ?? 'institutional'));
+        $osadTemplateId = isset($json['osad_template_id']) && trim((string) $json['osad_template_id']) !== ''
+            ? substr(trim((string) $json['osad_template_id']), 0, 32)
+            : null;
         $startTime = ! empty($json['start_time']) ? trim((string) $json['start_time']) : (! empty($json['event_date']) ? trim((string) $json['event_date']) . ' 08:00:00' : date('Y-m-d H:i:s'));
         $endTime = ! empty($json['end_time']) ? trim((string) $json['end_time']) : (! empty($json['event_date']) ? trim((string) $json['event_date']) . ' 17:00:00' : date('Y-m-d H:i:s', time() + 3600 * 4));
 
@@ -357,6 +360,7 @@ class EventController extends Controller
             'title'                => $title,
             'description'          => $description !== '' ? $description : null,
             'event_type'           => $eventType,
+            'osad_template_id'     => $osadTemplateId,
             'start_time'           => $startTime,
             'end_time'             => $endTime,
             'venue'                => $venueRes['venue'],
@@ -466,6 +470,7 @@ class EventController extends Controller
             'title',
             'description',
             'event_type',
+            'osad_template_id',
             'start_time',
             'end_time',
         ];

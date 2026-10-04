@@ -40,6 +40,7 @@ import { getCurrentUser } from '../../services/authService'
 import { fetchOwnLengthOfService, lengthOfServiceLabel } from '../../services/personnelProfileService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
+import { fetchOwnProfileFields } from '../../services/personnelProfileService'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
 import personnelEvaluationResultService from '../../services/PersonnelEvaluationResultService'
 
@@ -52,7 +53,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
     portfolio,
     latestSubmission,
     submissionHistory
-  } = usePersonnelPortfolio(activeUser?.employee_id || 'EMP-2021-0842')
+  } = usePersonnelPortfolio(activeUser?.employee_id || activeUser?.id || '')
 
   // Modals & Toast State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
@@ -89,22 +90,14 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   }, [])
 
   // Personnel Profile State
-  const [personnel, setPersonnel] = useState(activeUser || {
-    full_name: 'Dr. Maria Santos',
-    student_id: 'EMP-2021-0842',
-    employee_id: 'EMP-2021-0842',
-    personnel_classification: 'academic',
-    college_name: 'College of Engineering, Architecture, and Computing',
-    program_affiliations: [{ code: 'BSCS', name: 'BS Computer Science' }],
-    designation: 'Associate Professor & Research Coordinator',
-    year_level: '8 Years Service',
-    age: 38,
-    location: 'Koronadal City, South Cotabato',
-    email: 'faculty@ndmu.edu.ph',
-    phone: '+63 917 845 2910',
-    avatar_url: null,
-    about_me: 'Dedicated faculty member and researcher at Notre Dame of Marbel University.'
-  })
+  const [personnel, setPersonnel] = useState(activeUser || { program_affiliations: [] })
+
+  // Saved contact number, location and about-me come from the server so they survive a refresh.
+  useEffect(() => {
+    let active = true
+    fetchOwnProfileFields().then(fields => { if (active) setPersonnel(prev => ({ ...prev, ...fields })) }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   // Share Profile Handler
   const handleShareProfile = () => {
@@ -225,7 +218,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
                     <span className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1">
                       <CreditCard className="w-3 h-3 text-[#16834a] dark:text-emerald-400" />
-                      ID: {personnel.employee_id || 'EMP-2021-0842'}
+                      ID: {personnel.employee_id || '—'}
                     </span>
 
                     <span

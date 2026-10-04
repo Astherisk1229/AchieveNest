@@ -7,7 +7,7 @@ export function useUserProfile(currentUser) {
     return getAccountRolePresentation(currentUser)
   }, [currentUser])
 
-  const userId = currentUser?.id || currentUser?.employee_id || currentUser?.student_id || 'demo_user'
+  const userId = currentUser?.id || currentUser?.employee_id || currentUser?.student_id || 'unknown_user'
 
   const [savedOverrides, setSavedOverrides] = useState(() => {
     return UserProfileController.getProfileOverrides(userId)
@@ -15,7 +15,7 @@ export function useUserProfile(currentUser) {
 
   // Merged User Object
   const mergedUser = useMemo(() => {
-    const base = { ...presentation.defaultUserData, ...(currentUser || {}) }
+    const base = { ...(currentUser || {}) }
     return { ...base, ...savedOverrides }
   }, [presentation, currentUser, savedOverrides])
 

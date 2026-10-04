@@ -40,7 +40,7 @@ export function parseProvisioningCredentialResponse(rawResponse, expectedOwnerTy
     )
   }
 
-  const ownerType = (data.account_type || data.ownerType || '').toString().toLowerCase().trim()
+  const ownerType = (data.account_type || data.owner_type || data.ownerType || '').toString().toLowerCase().trim()
   const expectedType = (expectedOwnerType || '').toString().toLowerCase().trim()
   if (expectedType && ownerType !== expectedType) {
     throw new ProvisioningCredentialContractError(

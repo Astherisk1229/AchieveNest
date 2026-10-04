@@ -35,6 +35,24 @@ describe('Plan 07 Phase 4 — One-Time Credential Success Modal & Contract Test 
   }
 
   describe('1. Provisioning Credential Response Contract', () => {
+    it('accepts the snake_case owner_type returned by administrative password reset', () => {
+      const parsed = parseProvisioningCredentialResponse({
+        action: 'administrative_reset',
+        profile_id: 'student-reset-001',
+        owner_type: 'student',
+        full_name: 'Dela Cruz, Juan',
+        institutional_id: '202310492',
+        institutional_email: 'juan.delacruz@ndmu.edu.ph',
+        temporary_password: 'Ndmu#Reset123456',
+        account_lifecycle_status: 'pending_first_login',
+        must_change_password: true,
+        required_next_action: 'change_password'
+      }, 'student')
+
+      expect(parsed.ownerType).toBe('student')
+      expect(parsed.temporaryPassword).toBe('Ndmu#Reset123456')
+    })
+
     it('P4-CON-001: Correctly parses valid Student 201 response into allowlisted object', () => {
       const raw = {
         data: {

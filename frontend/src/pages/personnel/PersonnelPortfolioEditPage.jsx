@@ -70,14 +70,7 @@ export function compareAccomplishments(a, b, order = 'newest') {
 export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const navigate = useNavigate()
   const { user: authUser } = useAuth()
-  const activeUser = propUser || authUser || getCurrentUser() || {
-    full_name: 'Dr. Maria Santos',
-    employee_id: 'EMP-2021-0842',
-    personnel_classification: 'academic',
-    college_name: 'College of Information Technology',
-    program_affiliations: [{ code: 'BSIT' }],
-    active_role_context: 'personnel'
-  }
+  const activeUser = propUser || authUser || getCurrentUser() || { program_affiliations: [], active_role_context: 'personnel' }
 
   const {
     portfolio,
@@ -96,7 +89,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
     submitToDean,
     loadSubmissionHistory,
     autoPopulateFromVault
-  } = usePersonnelPortfolio(activeUser.employee_id || 'EMP-2021-0842', {
+  } = usePersonnelPortfolio(activeUser.employee_id || activeUser.id || '', {
     personnel_name: activeUser.full_name,
     academic_rank: activeUser.academic_rank || activeUser.designation,
     college_id: activeUser.college_id || activeUser.college_code,

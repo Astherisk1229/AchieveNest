@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Clock3, FileClock, FilePenLine, History, LoaderCircle, Plus, Search, ShieldCheck, Sparkles } from 'lucide-react'
 import { useCertificateTemplates } from '../../hooks/useCertificateTemplates'
 import { Button } from '../../components/ui/button'
+import IssuedCertificatesPanel from '../../components/certificates/IssuedCertificatesPanel'
 import OSADPageHeader from '../../components/osad/OSADPageHeader'
 import { OSADEmptyState, OSADErrorState, OSADLoadingState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 
@@ -96,6 +97,8 @@ export default function OSADCertificateTemplatesPage() {
 
       <div className="flex items-start gap-3 rounded-2xl bg-slate-100 p-4 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-300"><FileClock className="mt-0.5 h-5 w-5 shrink-0" /><p>Published and superseded versions are read-only. Editing always creates or resumes a draft, and Organization Moderators receive only the current compatible published version.</p></div>
 
+
+      <IssuedCertificatesPanel canManage />
     </div>
   )
 }

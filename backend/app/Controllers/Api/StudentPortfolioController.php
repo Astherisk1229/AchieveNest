@@ -1365,8 +1365,8 @@ class StudentPortfolioController extends Controller
             ->join('portfolio_categories pc', 'pc.id = spr.category_id')
             ->join('portfolio_subcategories ps', 'ps.id = spr.subcategory_id', 'left')
             ->join('profiles p', 'p.id = spr.student_profile_id')
-            ->join('student_program_enrollments spe', 'spe.student_profile_id = spr.student_profile_id AND spe.is_active = 1')
-            ->join('academic_programs ap', 'ap.id = spe.academic_program_id')
+            ->join('student_program_enrollments spe', 'spe.student_profile_id = spr.student_profile_id AND spe.is_active = 1', 'left')
+            ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
             ->whereIn('spr.status', $statuses)
             ->orderBy('spr.submitted_at', 'ASC');
 

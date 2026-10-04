@@ -149,11 +149,11 @@ export default class PersonnelPortfolioController {
 
     return new PersonnelPortfolioModel({
       personnel_id: personnelId,
-      personnel_name: profileContext.personnel_name || profileContext.full_name || 'Dr. Maria Santos',
-      academic_rank: profileContext.academic_rank || profileContext.designation || 'Associate Professor II',
-      college_id: profileContext.college_id || profileContext.college_code || 'COL-CEAC',
-      college_name: profileContext.college_name || 'College of Engineering, Architecture, and Technology',
-      program_affiliations: profileContext.program_affiliations || ['BSCS'],
+      personnel_name: profileContext.personnel_name || profileContext.full_name || '',
+      academic_rank: profileContext.academic_rank || profileContext.designation || '',
+      college_id: profileContext.college_id || profileContext.college_code || '',
+      college_name: profileContext.college_name || '',
+      program_affiliations: profileContext.program_affiliations || [],
       academic_year: profileContext.academic_year || 'AY 2025-2026',
       years_of_service: Number(profileContext.years_of_service !== undefined ? profileContext.years_of_service : 0),
       area_a_items,
@@ -186,11 +186,11 @@ export default class PersonnelPortfolioController {
   static loadPortfolio(personnelId = 'EMP-2024-001', defaultData = {}) {
     return new PersonnelPortfolioModel({
       personnel_id: personnelId,
-      personnel_name: defaultData.personnel_name || defaultData.full_name || 'Dr. Maria Santos',
-      academic_rank: defaultData.academic_rank || defaultData.designation || 'Associate Professor II',
-      college_id: defaultData.college_id || defaultData.college_code || 'COL-CEAC',
-      college_name: defaultData.college_name || 'College of Engineering, Architecture, and Technology',
-      program_affiliations: defaultData.program_affiliations || ['BSCS'],
+      personnel_name: defaultData.personnel_name || defaultData.full_name || '',
+      academic_rank: defaultData.academic_rank || defaultData.designation || '',
+      college_id: defaultData.college_id || defaultData.college_code || '',
+      college_name: defaultData.college_name || '',
+      program_affiliations: defaultData.program_affiliations || [],
       academic_year: defaultData.academic_year || 'AY 2025-2026',
       years_of_service: Number(defaultData.years_of_service !== undefined ? defaultData.years_of_service : 0),
       area_a_items: Array.isArray(defaultData.area_a_items) ? defaultData.area_a_items : [],

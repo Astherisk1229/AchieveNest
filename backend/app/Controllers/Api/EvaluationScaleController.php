@@ -100,13 +100,24 @@ class EvaluationScaleController extends BaseController
     public function getPersonnelAssignedScale(string $id): ResponseInterface
     {
         try {
+            // Phase 2: a person's scale assignment is readable by HR or by that person only.
+            $actor = $this->resolveActor();
+            if ($actor === null) return $this->authenticationRequired();
+            $isSelf = (string) ($actor['profile']['id'] ?? '') === $id;
+            $isHr = in_array('hr_staff', (array) ($actor['roles'] ?? []), true);
+            if (! $isSelf && ! $isHr) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'error' => ['code' => 'FORBIDDEN', 'message' => 'You do not have permission to perform this action.'],
+                ]);
+            }
             $assignmentService = new \App\Services\EvaluationScaleAssignmentService();
             $cycleId = $this->request->getGet('evaluation_cycle_id') ?? '2025-2026';
             $assignment = $assignmentService->resolveScaleForPersonnel($id, $cycleId);
 
+            // Personnel see the same scoring-free view as the self endpoint; HR sees the full scale.
             return $this->response->setStatusCode(200)->setJSON([
                 'success' => true,
-                'data' => $assignment
+                'data' => $isHr ? $assignment : $this->withoutPersonnelScoring($assignment)
             ]);
         } catch (Throwable $e) {
             $code = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;

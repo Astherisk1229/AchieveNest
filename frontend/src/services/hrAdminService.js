@@ -68,6 +68,11 @@ export async function updatePersonnelMasterData(profileId, payload) {
   return response?.data || response
 }
 
+export async function updatePersonnelAssignment(profileId, payload) {
+  const response = await apiClient.put(`/hr/personnel/${profileId}/assignment`, payload)
+  return response?.data || response
+}
+
 export async function updatePersonnelStatus(profileId, payload) {
   const response = await apiClient.put(`/hr/personnel/${profileId}/status`, payload)
   return response?.data || response
@@ -113,6 +118,7 @@ export default {
   updatePersonnelClassification,
   fetchPersonnelMasterData,
   updatePersonnelMasterData,
+  updatePersonnelAssignment,
   updatePersonnelStatus,
   downloadPersonnelTemplate,
   previewPersonnelImport,

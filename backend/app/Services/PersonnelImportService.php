@@ -621,9 +621,10 @@ class PersonnelImportService
                     'faculty_engagement'       => $row['faculty_engagement'],
                     'position_title'           => $row['position_title'],
                     'current_rank_title'       => $row['current_rank_title'],
-                    'college_id'               => $row['college_id'],
-                    'administrative_unit_id'   => $row['administrative_unit_id'],
                 ]);
+                // College / administrative unit placement lives in the affiliation tables below,
+                // not on personnel_profiles (which has no college_id / administrative_unit_id).
+
 
                 // Insert affiliations
                 if ($row['organizational_side'] === 'academic' && !empty($row['college_id'])) {

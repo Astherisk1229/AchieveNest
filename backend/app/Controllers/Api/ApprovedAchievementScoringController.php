@@ -63,6 +63,28 @@ class ApprovedAchievementScoringController extends Controller
         }
     }
 
+    /** GET /api/v1/osad/scoring/unscored — verified records with no contribution row (needs rescore). */
+    public function unscored(): mixed
+    {
+        $actor = $this->guard();
+        if (! is_array($actor)) {
+            return $actor;
+        }
+        $db = db_connect();
+        $ids = (new ApprovedAchievementScoringService($db))->verifiedRecordsLackingContributions();
+        $rows = [];
+        if ($ids !== []) {
+            $rows = $db->table('student_portfolio_records spr')
+                ->select('spr.id, spr.title, spr.verified_at, p.full_name AS student_name, p.institutional_id AS student_id_number')
+                ->join('profiles p', 'p.id = spr.student_profile_id')
+                ->whereIn('spr.id', array_slice($ids, 0, 200))
+                ->orderBy('spr.verified_at', 'DESC')
+                ->get()->getResultArray();
+        }
+
+        return $this->respond(['data' => ['records' => $rows, 'total' => count($ids)]], 200);
+    }
+
     /** GET /api/v1/osad/scoring/records/{id}/contributions */
     public function contributions(string $recordId): mixed
     {

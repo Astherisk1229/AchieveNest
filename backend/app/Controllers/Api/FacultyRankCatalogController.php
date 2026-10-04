@@ -31,6 +31,9 @@ class FacultyRankCatalogController extends BaseController
      */
     public function listRanks(): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $tier = $this->request->getGet('tier');
             $ranks = $this->rankService->getFullTimeFacultyRanks($tier);
@@ -55,6 +58,9 @@ class FacultyRankCatalogController extends BaseController
      */
     public function getRank(string $code): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $rank = $this->rankService->getRankByCode($code);
 
@@ -83,6 +89,9 @@ class FacultyRankCatalogController extends BaseController
      */
     public function getHierarchy(): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $hierarchy = $this->rankService->getRankHierarchy();
 
@@ -104,6 +113,9 @@ class FacultyRankCatalogController extends BaseController
      */
     public function getNextRank(string $code): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $next = $this->progressionService->getNextNormalRank($code);
             $isTerminal = $this->progressionService->isTerminalRank($code);
@@ -128,6 +140,9 @@ class FacultyRankCatalogController extends BaseController
      */
     public function getTransitions(string $code): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $hasVerifiedPhd = filter_var($this->request->getGet('has_verified_phd'), FILTER_VALIDATE_BOOLEAN);
             $engagement = $this->request->getGet('faculty_engagement') ?? 'full_time_faculty';
@@ -159,6 +174,9 @@ class FacultyRankCatalogController extends BaseController
      */
     public function validateTransition(): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $payload = $this->request->getJSON(true) ?? [];
             $from = $payload['from_rank_code'] ?? '';
@@ -188,5 +206,31 @@ class FacultyRankCatalogController extends BaseController
             'code' => 'CATALOG_MUTATION_RESTRICTED',
             'message' => 'Direct rank catalogue mutation is prohibited. Catalogue changes require an approved source revision and seed migration.',
         ]);
+    }
+
+    /**
+     * Phase 2 access guard. Returns an error response when the caller has no valid session,
+     * or (when $roles is given) holds none of the listed roles; null when the call may proceed.
+     */
+    private function denyUnlessAuthorized(?array $roles = null, ?string $allowSelfId = null): ?ResponseInterface
+    {
+        $actor = $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'error' => ['code' => 'AUTH_TOKEN_INVALID', 'message' => 'Unable to verify the current session. Please sign in again.'],
+            ]);
+        }
+        if ($roles === null) {
+            return null;
+        }
+        if ($allowSelfId !== null && (string) ($actor['profile']['id'] ?? '') === $allowSelfId) {
+            return null;
+        }
+        if (count(array_intersect($roles, (array) ($actor['roles'] ?? []))) === 0) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'error' => ['code' => 'FORBIDDEN', 'message' => 'You do not have permission to perform this action.'],
+            ]);
+        }
+        return null;
     }
 }

@@ -7,6 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../../componen
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
+import StudentAttendanceQrModal from './modals/StudentAttendanceQrModal'
 import {
   Trophy,
   CheckCircle2,
@@ -60,6 +61,7 @@ export default function StudentDashboardPage({ currentUser }) {
   const activeUser = currentUser || outletCtx?.currentUser || authUser || getCurrentUser()
   const [activeStatFilter, setActiveStatFilter] = useState('all') // 'all' | 'verified' | 'pending' | 'returned' | 'proofs'
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All')
+  const [qrOpen, setQrOpen] = useState(false)
 
   const student = {
     full_name: activeUser?.full_name || '',
@@ -167,6 +169,18 @@ export default function StudentDashboardPage({ currentUser }) {
                 </p>
               </div>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQrOpen(true)}
+              disabled={!student.student_id}
+              title={student.student_id ? 'Show my attendance QR code' : 'Your student ID is not available yet'}
+              className="gap-2 self-start sm:self-center shrink-0"
+            >
+              <QrCode className="w-4 h-4" />
+              My QR Code
+            </Button>
           </div>
 
           {/* 5 CLICKABLE INTERACTIVE BENTO STAT CARDS (Uniform CSS Grid) */}
@@ -376,6 +390,12 @@ export default function StudentDashboardPage({ currentUser }) {
         </div>
 
       </div>
+      <StudentAttendanceQrModal
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        studentId={student.student_id}
+        fullName={student.full_name}
+      />
     </>
   )
 }

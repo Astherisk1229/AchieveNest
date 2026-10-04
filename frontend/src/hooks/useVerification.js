@@ -29,7 +29,7 @@ export const normalizeQueueRecord = record => {
     category: record.category_name || record.category || 'Uncategorized',
     date: record.occurrence_date || record.submitted_at || record.created_at,
     student_id: record.student_id_number || record.student_id,
-    program: record.program_name || record.program,
+    program: record.program_name || record.program || 'No active enrollment',
     evidence,
     docs_count: Number(record.evidence_count ?? evidence.length),
     attached_file_name: evidence[0]?.original_filename || '',
@@ -69,8 +69,9 @@ export function useVerification() {
   }), [allSubmissions, searchQuery, statusFilter])
 
   const handleApprove = useCallback(async (id, remarks = '') => {
-    await portfolioService.verifyRecord(id, remarks)
+    const result = await portfolioService.verifyRecord(id, remarks)
     await refreshQueue()
+    return result
   }, [refreshQueue])
 
   const handleReturn = useCallback(async (id, remarks) => {

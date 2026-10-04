@@ -34,6 +34,7 @@ import PersonnelDashboardController from '../../controllers/PersonnelDashboardCo
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { ALL_FILTER_KEY, normalizeTimelineFilterKey, timelineCategoryState, timelineFiltersFor, timelineFormatFor } from '../../config/personnelTimelineFilters'
+import { fetchOwnProfileFields } from '../../services/personnelProfileService'
 import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
 
 const accomplishmentCount = (count) => `${count} ${count === 1 ? 'accomplishment' : 'accomplishments'}`
@@ -72,6 +73,13 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       setProfile(prev => PersonnelDashboardController.mergeProfile(prev, currentUser))
     }
   }, [currentUser])
+
+  // Saved contact number, location and about-me come from the server so they survive a refresh.
+  useEffect(() => {
+    let active = true
+    fetchOwnProfileFields().then(fields => { if (active) setProfile(prev => ({ ...prev, ...fields })) }).catch(() => {})
+    return () => { active = false }
+  }, [])
 
   const handleRoleChange = (newRole, updatedUser) => {
     if (onRoleChange) onRoleChange(newRole, updatedUser)

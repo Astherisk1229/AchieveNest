@@ -40,11 +40,7 @@ import { alertDialog } from '../../components/ui/DialogProvider'
 
 export default function PersonnelAchievementsPage({ currentUser }) {
   const navigate = useNavigate()
-  const user = currentUser || getCurrentUser() || {
-    full_name: 'Dr. Maria Santos',
-    employee_id: 'EMP-2021-0842',
-    personnel_classification: 'academic', college_code: 'CEAC', program_affiliations: [{ code: 'BSCS' }]
-  }
+  const user = currentUser || getCurrentUser() || { program_affiliations: [] }
 
   const location = useLocation()
 

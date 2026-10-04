@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, CheckCircle2, ExternalLink, LoaderCircle, RefreshCw } from 'lucide-react'
 import facultyPhaseOService from '../../services/facultyPhaseOService'
+import { beginReconsideration, rankActionError, recordApprovedRank } from '../../services/rankPlacementViewService'
+import { RecordApprovedRankDialog } from '../ranking/RankActionDialogs'
 
 const rankLabel = option => option?.display_label || option?.rank_code || 'Rank unavailable'
 
@@ -9,15 +11,18 @@ export default function FacultyPhaseOWorkspace({ evaluationId, mode, onChanged, 
   const [busy, setBusy] = useState('')
   const [selected, setSelected] = useState('')
   const [reason, setReason] = useState('')
+  const [recordOpen, setRecordOpen] = useState(false)
+  const [reconsiderResult, setReconsiderResult] = useState(null)
   const load = useCallback(async () => { setState(s => ({ ...s, loading: true, error: '' })); try { setState({ loading: false, data: await facultyPhaseOService.context(evaluationId), error: '' }) } catch (error) { setState({ loading: false, data: null, error: error?.response?.data?.error?.message || error?.message || 'Phase O context could not be loaded.' }) } }, [evaluationId])
   useEffect(() => { load() }, [load])
   const data = state.data
   const applied = data?.rank_applied_for
   const recommended = data?.recommended_rank
   const review = data?.hr_review
+  const approvedRank = data?.approved_rank
   const options = useMemo(() => recommended?.valid_rank_options || applied?.valid_rank_options || [], [recommended, applied])
   useEffect(() => { setSelected(recommended?.confirmed_rank_code || recommended?.suggested_rank_code || applied?.confirmed_rank_code || applied?.suggested_rank_code || '') }, [applied, recommended])
-  const act = async (name, operation) => { setBusy(name); setState(s => ({ ...s, error: '' })); try { await operation(); await load(); await onChanged?.() } catch (error) { setState(s => ({ ...s, error: error?.response?.data?.error?.message || error?.message || 'The rank workflow action failed.' })) } finally { setBusy('') } }
+  const act = async (name, operation) => { setBusy(name); setState(s => ({ ...s, error: '' })); try { await operation(); await load(); await onChanged?.() } catch (error) { setState(s => ({ ...s, error: rankActionError(error, 'The rank workflow action failed.') })) } finally { setBusy('') } }
   if (state.loading && !data) return <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-950" aria-busy="true"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /><p className="mt-2 text-sm font-semibold">Loading Faculty Phase O…</p></section>
   if (!data) return <section role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-900"><AlertCircle className="h-5 w-5" /><p className="mt-2 text-sm font-semibold">{state.error}</p><button onClick={load} className="mt-3 rounded-lg bg-rose-900 px-3 py-2 text-sm font-bold text-white">Retry</button></section>
   const reviewerMode = mode === 'reviewer' || data.actor_mode === 'reviewer'
@@ -35,6 +40,13 @@ export default function FacultyPhaseOWorkspace({ evaluationId, mode, onChanged, 
     {review&&<Status title="HR final-rank review" value={`${review.status} · ${review.hr_final_rank_code || 'Reconsideration returned'}`}/>} 
     {review?.status==='finalized_ready_for_printing'&&!data.official_document&&!reviewerMode&&<button disabled={!!busy} onClick={()=>act('document',()=>facultyPhaseOService.generateDocument(review.id))} className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-black text-white disabled:opacity-50 dark:bg-white dark:text-slate-950">Generate Official Evaluation Document</button>}
     {data.official_document&&<button type="button" disabled={!!busy} onClick={()=>act('open-document',()=>facultyPhaseOService.openDocument(data.official_document.id))} className="inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-black disabled:opacity-50">View Official Evaluation Document <ExternalLink className="h-4 w-4" /></button>}
+    {approvedRank&&<Status title="Approved rank (signed outside AchieveNest)" value={`${approvedRank.approved_rank_code} · ${approvedRank.status} · effective ${approvedRank.effectivity_date}`}/>}
+    {approvedRank?.status==='activation_failed'&&<p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-800">Activation failed{approvedRank.activation_failure_reason?`: ${approvedRank.activation_failure_reason}`:''}. Retry or correct it from the personnel's Rank and Placement page.</p>}
+    {review?.status==='finalized_ready_for_printing'&&data.official_document&&!approvedRank&&!reviewerMode&&<button type="button" disabled={!!busy} onClick={()=>setRecordOpen(true)} className="rounded-xl bg-emerald-800 px-4 py-3 text-sm font-black text-white disabled:opacity-50">Record Approved Rank</button>}
+    {review?.status==='finalized_ready_for_printing'&&!data.official_document&&!approvedRank&&!reviewerMode&&<p className="text-sm text-slate-500">Generate the official evaluation document before recording the signed approval.</p>}
+    {review?.status==='returned_for_reconsideration'&&reviewerMode&&!reconsiderResult&&<button type="button" disabled={!!busy} onClick={()=>act('reconsider-begin',async()=>{setReconsiderResult(await beginReconsideration(review.id))})} className="rounded-xl border border-amber-300 px-4 py-3 text-sm font-black text-amber-800 disabled:opacity-50">Begin Reconsideration (new evaluation version)</button>}
+    {reconsiderResult&&<Status title="Reconsideration started" value={`Evaluation version ${reconsiderResult.version_number} is open. A fresh recommended rank is required.`}/>}
+    {recordOpen&&review&&data.official_document&&<RecordApprovedRankDialog review={review} officialDocument={data.official_document} onClose={()=>setRecordOpen(false)} onSubmit={async values=>{await recordApprovedRank(review.id,values);setRecordOpen(false);await load();await onChanged?.()}}/>}
   </section>
 }
 

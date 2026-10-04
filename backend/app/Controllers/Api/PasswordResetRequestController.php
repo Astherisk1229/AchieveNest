@@ -284,6 +284,7 @@ class PasswordResetRequestController extends Controller
 
         $db->table('password_reset_requests')->where('id', $requestId)->update([
             'status'       => 'rejected',
+            'rejection_reason' => ($rejectionReason = trim((string) ($this->request->getJSON(true)['reason'] ?? ''))) !== '' ? substr($rejectionReason, 0, 1000) : null,
             'processed_by' => $actor['profile']['id'],
             'processed_at' => date('Y-m-d H:i:s'),
             'updated_at'   => date('Y-m-d H:i:s'),

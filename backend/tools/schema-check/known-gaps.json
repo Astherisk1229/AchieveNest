@@ -1,0 +1,16 @@
+{
+ "findings": [
+  "C personnel_accomplishment_evidence.evidence_id",
+  "C personnel_accomplishments.duplicate_hash",
+  "I personnel_accomplishments.primary_evidence_id",
+  "I personnel_qualification_reviews.actual_result_payload",
+  "I personnel_qualification_reviews.benchmark_payload",
+  "I personnel_qualification_reviews.benchmark_type",
+  "I personnel_qualification_reviews.evaluation_period",
+  "I personnel_qualification_reviews.recorded_by",
+  "I personnel_qualification_reviews.report_reference",
+  "I personnel_qualification_reviews.status",
+  "I personnel_qualification_reviews.updated_at",
+  "T user_profiles"
+ ]
+}

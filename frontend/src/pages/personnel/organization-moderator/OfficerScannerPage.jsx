@@ -115,6 +115,7 @@ export default function OfficerScannerPage() {
   const [activeSession, setActiveSession] = useState(null)
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
   // Scanner & Form state
   const [manualBarcode, setManualBarcode] = useState('')
@@ -168,17 +169,18 @@ export default function OfficerScannerPage() {
   const loadEventAndSessions = useCallback(async () => {
     if (!activeEventId) return
     setLoading(true)
+    setLoadError(null)
     try {
       const [allEvents, sessionList] = await Promise.all([
-        eventService.list().catch(() => []),
-        attendanceService.listEventAttendanceSessions(activeEventId).catch(() => [])
+        eventService.list(),
+        attendanceService.listEventAttendanceSessions(activeEventId)
       ])
 
       const evt = allEvents.find(e => String(e.id) === String(activeEventId)) || {
         id: activeEventId,
-        title: 'Organization Event',
-        event_type: 'General',
-        venue: 'NDMU Campus'
+        title: 'Event',
+        event_type: '',
+        venue: ''
       }
       setEventData(evt)
       setSessions(sessionList)
@@ -188,13 +190,13 @@ export default function OfficerScannerPage() {
       setActiveSession(openSess)
 
       if (openSess?.id) {
-        const recs = await attendanceService.listAttendanceSessionRecords(openSess.id).catch(() => [])
+        const recs = await attendanceService.listAttendanceSessionRecords(openSess.id)
         setRecords(sortRecordsDesc(recs))
       } else {
         setRecords([])
       }
-    } catch {
-      // Network failure fallback
+    } catch (err) {
+      setLoadError(err?.error?.message || err?.message || 'The event and its attendance sessions could not be loaded.')
     } finally {
       setLoading(false)
     }
@@ -708,6 +710,11 @@ export default function OfficerScannerPage() {
                   <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
                   <span>Loading recent check-ins...</span>
                 </div>
+              ) : loadError ? (
+                <p role="alert" className="text-center py-6 text-xs text-rose-400 font-medium">
+                  {loadError}{' '}
+                  <button type="button" onClick={loadEventAndSessions} className="underline font-bold cursor-pointer">Retry</button>
+                </p>
               ) : records.length === 0 ? (
                 <p className="text-center py-6 text-xs text-slate-400 font-medium">
                   No students have checked in yet.

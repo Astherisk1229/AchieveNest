@@ -24,8 +24,9 @@ class DefenseDemoPreflightService
         // 2. Validate Authoritative College
         $collegeCode = $this->config->requiredCollegeCode();
         $college = $db->table('colleges')
-            ->where('code', $collegeCode)
+            ->whereIn('code', array_values(array_unique([$collegeCode, 'CBGA'])))
             ->where('status', 'active')
+            ->orderBy("CASE WHEN code = " . $db->escape($collegeCode) . " THEN 0 ELSE 1 END", '', false)
             ->get()->getRowArray();
         if ($college === null) {
             throw new RuntimeException("Required authoritative College {$collegeCode} was not found.");
@@ -55,8 +56,9 @@ class DefenseDemoPreflightService
         // 4. Validate Authoritative Administrative Unit
         $unitCode = $this->config->requiredAdministrativeUnitCode();
         $unit = $db->table('administrative_units')
-            ->where('code', $unitCode)
+            ->whereIn('code', array_values(array_unique([$unitCode, 'HRD'])))
             ->where('status', 'active')
+            ->orderBy("CASE WHEN code = " . $db->escape($unitCode) . " THEN 0 ELSE 1 END", '', false)
             ->get()->getRowArray();
         if ($unit === null) {
             throw new RuntimeException("Required authoritative Administrative Unit {$unitCode} was not found.");

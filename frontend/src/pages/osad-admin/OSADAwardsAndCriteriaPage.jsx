@@ -5,6 +5,7 @@ import AwardCatalogSkeleton from '../../components/osad/AwardCatalogSkeleton'
 import AwardSearch from '../../components/osad/AwardSearch'
 import OSADAwardPageShell from '../../components/osad/OSADAwardPageShell'
 import { OSADEmptyState, OSADErrorState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
+import ScoringHealthPanel from '../../components/osad/ScoringHealthPanel'
 import useAwardCatalog from '../../hooks/useAwardCatalog'
 
 export default function OSADAwardsAndCriteriaPage({ onSelectAward }) {
@@ -60,6 +61,7 @@ export default function OSADAwardsAndCriteriaPage({ onSelectAward }) {
           )}
         </div>
       </section>
+      <ScoringHealthPanel />
     </OSADAwardPageShell>
   )
 }

@@ -14,7 +14,9 @@ describe('OSAD organization governance integrity', () => {
   it('uses authoritative moderator candidates rather than the demo personnel directory', () => {
     const dashboard = source('../OSADDashboardPage.jsx')
     expect(dashboard).toContain('fetchOrganizationModeratorCandidates(organizationId)')
-    expect(dashboard).toContain("personnelSelectorTarget.roleType === 'moderator' ? moderatorCandidates : getPersonnelList()")
+    expect(dashboard).toContain("personnelSelectorTarget.roleType === 'moderator' ? moderatorCandidates : []")
+    expect(dashboard).not.toContain('getPersonnelList')
+    expect(dashboard).not.toContain('useOSAD')
   })
 
   it('accepts authoritative empty organization responses without restoring demo records', () => {

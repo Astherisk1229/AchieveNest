@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   ShieldCheck,
   Clock,
@@ -11,43 +11,80 @@ import {
   FileSpreadsheet
 } from 'lucide-react'
 import OSADPageHeader from '../../components/osad/OSADPageHeader'
-import { OSADEmptyState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
+import { OSADEmptyState, OSADSearchEmptyState, OSADErrorState, OSADLoadingState } from '../../components/osad/OSADStateBlock'
+import provisioningService from '../../services/provisioningService'
 
-const CATEGORY_OPTIONS = [
-  { value: 'all', label: 'All Activities' },
-  { value: 'ROLE_ASSIGNMENT', label: 'Role Assignments' },
-  { value: 'ORGANIZATION_CREATED', label: 'Organizations' },
-  { value: 'AWARDEE_CONFIRMATION', label: 'Award Confirmations' },
-  { value: 'PASSWORD_RESET', label: 'Password Resets' },
-  { value: 'ACCREDITATION_REPORT_GEN', label: 'Report Generation' }
-]
+const humanize = (code) => String(code || 'System Action').replace(/[_.]+/g, ' ').toLowerCase().replace(/(^|\s)\w/g, (c) => c.toUpperCase())
 
-export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs }) {
+const formatTimestamp = (value) => {
+  if (!value) return ''
+  const d = new Date(String(value).replace(' ', 'T'))
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString()
+}
+
+const toDetailsText = (details) => {
+  if (details == null || details === '') return ''
+  if (typeof details === 'string') return details
+  try { return JSON.stringify(details) } catch { return '' }
+}
+
+const severityOf = (outcome) => {
+  const o = String(outcome || '').toLowerCase()
+  if (o === 'success' || o === 'succeeded') return 'SUCCESS'
+  if (o === 'failure' || o === 'failed' || o === 'denied' || o === 'error') return 'WARNING'
+  return 'INFO'
+}
+
+export default function OSADSystemAuditLogsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
 
-  const logs = auditLogs || [
-    { id: 'log-1', action_type: 'ROLE_ASSIGNMENT', action: 'Role Assigned', details: 'Program Coordinator assigned to Dr. Aris Santos (BSCS)', timestamp: '10 mins ago', admin_user: 'Director Marcus Vance (OSAD)', user: 'Director Vance', severity: 'INFO' },
-    { id: 'log-2', action_type: 'AWARDEE_CONFIRMATION', action: 'Award Confirmed', details: "Dean's Lister confirmed for Maria Santos (2024-01234)", timestamp: '1 hour ago', admin_user: 'Director Marcus Vance (OSAD)', user: 'Director Vance', severity: 'SUCCESS' },
-    { id: 'log-3', action_type: 'ACCREDITATION_REPORT_GEN', action: 'Report Generated', details: 'PACUCOA Annual Compliance Summary exported to PDF', timestamp: '3 hours ago', admin_user: 'OSAD Staff', user: 'OSAD Staff', severity: 'INFO' }
-  ]
+  const loadLogs = useCallback(async (signal) => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const events = await provisioningService.fetchAuditEvents({ per_page: 200 }, { signal })
+      setLogs(events.map((e) => ({
+        id: e.id,
+        action_type: e.category || e.event_code,
+        category: e.category || 'other',
+        action: humanize(e.event_code),
+        details: toDetailsText(e.details),
+        admin_user: e.actor_name || 'System',
+        target_entity: e.target_name || '',
+        timestamp: formatTimestamp(e.created_at),
+        severity: severityOf(e.outcome)
+      })))
+    } catch (err) {
+      if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return
+      setLogs([])
+      setLoadError(err?.error?.message || err?.message || 'The activity log could not be loaded.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadLogs(controller.signal)
+    return () => controller.abort()
+  }, [loadLogs])
+
+  const categoryOptions = useMemo(() => {
+    const cats = Array.from(new Set(logs.map((l) => l.category))).sort()
+    return [{ value: 'all', label: 'All Activities' }, ...cats.map((c) => ({ value: c, label: humanize(c) }))]
+  }, [logs])
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
-      const matchCat = categoryFilter === 'all' ||
-        log.action_type === categoryFilter ||
-        (log.action && log.action.toUpperCase().replace(/\s+/g, '_') === categoryFilter)
-
-      if (!matchCat) return false
-
+      if (categoryFilter !== 'all' && log.category !== categoryFilter) return false
       if (!searchTerm.trim()) return true
       const term = searchTerm.toLowerCase()
-      const user = (log.admin_user || log.user || '').toLowerCase()
-      const action = (log.action || log.action_type || '').toLowerCase()
-      const details = (log.details || '').toLowerCase()
-      const target = (log.target_entity || '').toLowerCase()
-
-      return user.includes(term) || action.includes(term) || details.includes(term) || target.includes(term)
+      return [log.admin_user, log.action, log.details, log.target_entity]
+        .some((v) => String(v || '').toLowerCase().includes(term))
     })
   }, [logs, categoryFilter, searchTerm])
 
@@ -72,7 +109,7 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
           <button
             type="button"
             onClick={() => {
-              if (typeof refreshAuditLogs === 'function') refreshAuditLogs()
+              loadLogs()
             }}
             className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-700 dark:text-slate-200 hover:text-[#16834a] border border-slate-200 dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
           >
@@ -96,7 +133,7 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          {CATEGORY_OPTIONS.map((cat) => (
+          {categoryOptions.map((cat) => (
             <button
               key={cat.value}
               type="button"
@@ -114,7 +151,11 @@ export default function OSADSystemAuditLogsPage({ auditLogs, refreshAuditLogs })
       </div>
 
       {/* Logs Table or Empty State */}
-      {logs.length === 0 ? (
+      {loadError ? (
+        <OSADErrorState title="Activity Log Unavailable" message={loadError} onRetry={() => loadLogs()} />
+      ) : loading && logs.length === 0 ? (
+        <OSADLoadingState message="Loading activity log..." subMessage="Fetching recorded OSAD activity." />
+      ) : logs.length === 0 ? (
         <OSADEmptyState
           icon={ShieldCheck}
           title="No OSAD Activity Recorded"

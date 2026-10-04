@@ -712,6 +712,122 @@ class TargetHRPersonnelController extends Controller
         ], 200);
     }
 
+    /**
+     * PUT /api/v1/hr/personnel/{id}/assignment
+     * HR-only change of institutional placement: college and programs (academic) or administrative unit (non-academic).
+     * Old affiliations are closed (not deleted) and an audit event records the change.
+     */
+    public function updateAssignment(string $profileId): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        }
+        if (! $this->requireHrAdmin($actor)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only HR Admin may change personnel assignments.']], 403);
+        }
+        if (! ValidationHelper::validateUuid($profileId)) {
+            return $this->respond(['error' => ['code' => 'INVALID_PROFILE_ID', 'message' => 'Invalid personnel profile ID UUID.']], 422);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $db = db_connect();
+        $targetProfile = $db->table('profiles')->where('id', $profileId)->where('account_type', 'personnel')->get()->getRowArray();
+        $personnel = $targetProfile === null ? null : $db->table('personnel_profiles')->where('profile_id', $profileId)->get()->getRowArray();
+        if ($targetProfile === null || $personnel === null) {
+            return $this->respond(['error' => ['code' => 'PERSONNEL_NOT_FOUND', 'message' => 'Personnel profile not found.']], 404);
+        }
+
+        $academic = ($personnel['organizational_side'] ?? $personnel['personnel_classification'] ?? '') === 'academic';
+        $collegeId = trim((string) ($json['college_id'] ?? ''));
+        $unitId = trim((string) ($json['administrative_unit_id'] ?? ''));
+        $programIds = array_values(array_unique(array_filter(array_map('strval', (array) ($json['academic_program_ids'] ?? [])))));
+
+        if ($academic) {
+            if (! ValidationHelper::validateUuid($collegeId)) {
+                return $this->respond(['error' => ['code' => 'COLLEGE_REQUIRED', 'message' => 'Academic personnel require a college.']], 422);
+            }
+            if ($db->table('colleges')->where('id', $collegeId)->countAllResults() === 0) {
+                return $this->respond(['error' => ['code' => 'COLLEGE_NOT_FOUND', 'message' => 'College not found.']], 422);
+            }
+            foreach ($programIds as $programId) {
+                if (! ValidationHelper::validateUuid($programId)) {
+                    return $this->respond(['error' => ['code' => 'INVALID_PROGRAM_ID', 'message' => 'Program IDs must be UUIDs.']], 422);
+                }
+            }
+            if ($programIds !== []) {
+                $valid = $db->table('academic_programs')->whereIn('id', $programIds)->where('college_id', $collegeId)->countAllResults();
+                if ($valid !== count($programIds)) {
+                    return $this->respond(['error' => ['code' => 'PROGRAM_COLLEGE_MISMATCH', 'message' => 'Every program must belong to the selected college.']], 422);
+                }
+            }
+            $activeDean = $db->table('dean_assignments')->where('personnel_profile_id', $profileId)->where('is_active', 1)->get()->getRowArray();
+            if ($activeDean !== null && (string) $activeDean['college_id'] !== $collegeId) {
+                return $this->respond(['error' => ['code' => 'ACTIVE_DEAN_ASSIGNMENT', 'message' => 'Revoke the Dean assignment before moving this person to another college.']], 409);
+            }
+        } else {
+            if (! ValidationHelper::validateUuid($unitId)) {
+                return $this->respond(['error' => ['code' => 'UNIT_REQUIRED', 'message' => 'Non-academic personnel require an administrative unit.']], 422);
+            }
+            if ($db->table('administrative_units')->where('id', $unitId)->countAllResults() === 0) {
+                return $this->respond(['error' => ['code' => 'UNIT_NOT_FOUND', 'message' => 'Administrative unit not found.']], 422);
+            }
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $today = date('Y-m-d');
+        $actorId = $actor['profile']['id'];
+        $db->transBegin();
+        try {
+            if ($academic) {
+                $db->table('personnel_college_affiliations')->where('personnel_profile_id', $profileId)->where('is_active', 1)
+                    ->update(['is_active' => 0, 'effective_to' => $today]);
+                $db->table('personnel_program_affiliations')->where('personnel_profile_id', $profileId)->where('is_active', 1)
+                    ->update(['is_active' => 0, 'effective_to' => $today]);
+                $db->table('personnel_college_affiliations')->insert([
+                    'id' => $this->genUuid(), 'personnel_profile_id' => $profileId, 'college_id' => $collegeId,
+                    'effective_from' => $today, 'is_active' => 1, 'recorded_by' => $actorId,
+                ]);
+                foreach ($programIds as $programId) {
+                    $db->table('personnel_program_affiliations')->insert([
+                        'id' => $this->genUuid(), 'personnel_profile_id' => $profileId, 'academic_program_id' => $programId,
+                        'effective_from' => $today, 'is_active' => 1, 'recorded_by' => $actorId,
+                    ]);
+                }
+                if ($db->fieldExists('college_id', 'personnel_profiles')) {
+                    $db->table('personnel_profiles')->where('profile_id', $profileId)->update(['college_id' => $collegeId, 'updated_at' => $now]);
+                }
+            } else {
+                $db->table('personnel_administrative_unit_affiliations')->where('personnel_profile_id', $profileId)->where('is_active', 1)
+                    ->update(['is_active' => 0, 'effective_to' => $today]);
+                $db->table('personnel_administrative_unit_affiliations')->insert([
+                    'id' => $this->genUuid(), 'personnel_profile_id' => $profileId, 'administrative_unit_id' => $unitId,
+                    'effective_from' => $today, 'is_active' => 1, 'recorded_by' => $actorId,
+                ]);
+                if ($db->fieldExists('administrative_unit_id', 'personnel_profiles')) {
+                    $db->table('personnel_profiles')->where('profile_id', $profileId)->update(['administrative_unit_id' => $unitId, 'updated_at' => $now]);
+                }
+            }
+            if ($db->tableExists('account_lifecycle_events')) {
+                $db->table('account_lifecycle_events')->insert($this->lifecycleAuditRow(
+                    $profileId,
+                    $actorId,
+                    'assignment_updated',
+                    $targetProfile['status'] ?? null,
+                    ['college_id' => $academic ? $collegeId : null, 'academic_program_ids' => $academic ? $programIds : [], 'administrative_unit_id' => $academic ? null : $unitId],
+                    $now
+                ));
+            }
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            log_message('error', '[TargetHRPersonnelController::updateAssignment] {m}', ['m' => $e->getMessage()]);
+            return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Assignment could not be updated.']], 500);
+        }
+
+        return $this->respond(['data' => ['profile_id' => $profileId, 'updated_at' => $now]], 200);
+    }
+
     public function assignDean(string $profileId): mixed
     {
         $actor = $this->resolveActor();

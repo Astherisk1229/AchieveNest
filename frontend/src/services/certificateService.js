@@ -25,6 +25,22 @@ const certificateService = {
   async issue(payload, options = {}) {
     return this.issueCertificate(payload, options)
   },
+  async listCertificates(params = {}, { signal } = {}) {
+    const response = await apiClient.get('/certificates', { params, signal })
+    const data = response?.data || {}
+    return {
+      certificates: Array.isArray(data.certificates) ? data.certificates : [],
+      summary: data.summary || { total: 0, issued: 0, revoked: 0, superseded: 0 }
+    }
+  },
+  async revokeCertificate(certificateId, payload) {
+    const response = await apiClient.post(`/certificates/${encodeURIComponent(certificateId)}/revoke`, payload)
+    return response?.data
+  },
+  async reissueCertificate(certificateId, payload) {
+    const response = await apiClient.post(`/certificates/${encodeURIComponent(certificateId)}/reissue`, payload)
+    return response?.data
+  },
   async verify(publicVerificationId) {
     const response = await apiClient.get(`/certificates/verify/${encodeURIComponent(publicVerificationId)}`)
     return response?.data

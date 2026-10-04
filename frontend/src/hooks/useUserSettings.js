@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import UserSettingsController from '../controllers/UserSettingsController'
 
 export function useUserSettings(currentUser) {
-  const userId = currentUser?.id || currentUser?.employee_id || currentUser?.student_id || 'demo_user'
+  const userId = currentUser?.id || currentUser?.employee_id || currentUser?.student_id || 'unknown_user'
 
   const [settings, setSettings] = useState(() => {
     return UserSettingsController.getSettings(userId)

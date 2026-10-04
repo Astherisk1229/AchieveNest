@@ -756,10 +756,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-slate-700 font-medium space-y-1">
                     <span className="font-extrabold text-emerald-900 block flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      Automatic Portfolio Delivery Enabled
+                      Certificate Issuance Is Manual
                     </span>
                     <p className="text-[11px] text-slate-600">
-                      When event attendance closes, digital certificates will automatically transmit directly to attending students' Student Achievement Portfolios.
+                      Certificates are not sent automatically when attendance closes. OSAD issues them after attendance is finalized, and they then appear in each attending student's portfolio.
                     </p>
                   </div>
                 </div>

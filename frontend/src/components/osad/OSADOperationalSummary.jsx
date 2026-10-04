@@ -5,12 +5,12 @@ import OSADPageHeader from './OSADPageHeader'
 
 export default function OSADOperationalSummary({ metrics = {} }) {
   const {
-    collegesCount = 3,
-    programsCount = 4,
-    activeStudentsCount = 3840,
-    activeOrganizationsCount = 24,
-    organizationsWithModeratorCount = 22,
-    pendingAssignmentsCount = 2
+    collegesCount = 0,
+    programsCount = 0,
+    activeStudentsCount = 0,
+    activeOrganizationsCount = 0,
+    organizationsWithModeratorCount = 0,
+    pendingAssignmentsCount = 0
   } = metrics
 
   const hasUnassigned = pendingAssignmentsCount > 0
@@ -25,9 +25,6 @@ export default function OSADOperationalSummary({ metrics = {} }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] dark:text-emerald-400 text-xs font-semibold border border-emerald-200/80 dark:border-emerald-800/40">
               OSAD Admin Portal
-            </span>
-            <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-              AY 2025–2026 • Main Campus
             </span>
           </div>
         }
@@ -61,7 +58,7 @@ export default function OSADOperationalSummary({ metrics = {} }) {
             <span className="text-2xl font-bold text-slate-900 dark:text-white">{activeStudentsCount.toLocaleString()}</span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Enrolled
+            Active accounts
           </p>
         </div>
 
@@ -80,12 +77,12 @@ export default function OSADOperationalSummary({ metrics = {} }) {
           </p>
         </div>
 
-        {/* KPI 4: Unassigned Roles */}
+        {/* KPI 4: Unassigned Moderators */}
         <div className={`p-4 rounded-xl bg-white dark:bg-[#131E2E] border space-y-1 shadow-2xs ${
           hasUnassigned ? 'border-amber-300 dark:border-amber-800/80' : 'border-slate-200/80 dark:border-slate-800'
         }`}>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unassigned Roles</span>
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Unassigned Moderators</span>
             {hasUnassigned ? (
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             ) : (
@@ -96,10 +93,10 @@ export default function OSADOperationalSummary({ metrics = {} }) {
             <span className={`text-2xl font-bold ${hasUnassigned ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
               {pendingAssignmentsCount}
             </span>
-            <span className="text-xs font-medium text-slate-500">Positions</span>
+            <span className="text-xs font-medium text-slate-500">Organizations</span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {hasUnassigned ? 'Action needed' : 'All active'}
+            {hasUnassigned ? 'Organizations without a moderator' : 'All organizations have a moderator'}
           </p>
         </div>
 

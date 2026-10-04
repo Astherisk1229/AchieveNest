@@ -194,39 +194,38 @@ class PersonnelEvidenceVersioningService
             $evidenceRows = $db->table('personnel_accomplishment_evidence pae')
                 ->select('pae.*')
                 ->join('personnel_accomplishments pa', 'pa.id = pae.accomplishment_id', 'left')
-                ->where('pae.personnel_id', $ownerId)
-                ->orWhere('pae.uploader_id', $ownerId)
-                ->orWhere('pa.personnel_profile_id', $ownerId)
+                ->groupStart()
+                    ->where('pae.uploaded_by', $ownerId)
+                    ->orWhere('pa.personnel_profile_id', $ownerId)
+                ->groupEnd()
                 ->get()
                 ->getResultArray();
         }
 
+        // 2. Delete evidence rows first, inside a transaction, so a failed delete leaves files
+        //    and rows untouched. Physical files are removed only after the commit.
+        $dbEvidenceIds = array_values(array_unique(array_filter(array_column($evidenceRows, 'id'))));
+        if (!empty($dbEvidenceIds) && $db->tableExists('personnel_accomplishment_evidence')) {
+            $db->transStart();
+            $db->table('personnel_accomplishment_evidence')->whereIn('id', $dbEvidenceIds)->delete();
+            $db->transComplete();
+            if ($db->transStatus() === false) {
+                throw new RuntimeException('Evidence purge failed; no files were removed.', 500);
+            }
+        }
+
+        // 3. Unlink physical files (storage_path is the stored location).
         $unlinkedCount = 0;
         $failedUnlinks = [];
-
-        // 2. Unlink physical files
         foreach ($evidenceRows as $ev) {
             $storageKey = $ev['storage_key'] ?? $ev['storage_path'] ?? '';
             if ($storageKey !== '') {
-                $unlinked = $this->cleanupPhysicalFile($storageKey);
-                if ($unlinked) {
+                if ($this->cleanupPhysicalFile($storageKey)) {
                     $unlinkedCount++;
                 } else {
                     $failedUnlinks[] = $storageKey;
                 }
             }
-        }
-
-        // 3. Delete evidence database rows
-        $evidenceIds = array_filter(array_column($evidenceRows, 'evidence_id'));
-        $dbEvidenceIds = array_filter(array_column($evidenceRows, 'id'));
-        $allIds = array_unique(array_merge($evidenceIds, $dbEvidenceIds));
-
-        if (!empty($allIds) && $db->tableExists('personnel_accomplishment_evidence')) {
-            $db->table('personnel_accomplishment_evidence')
-                ->whereIn('evidence_id', $allIds)
-                ->orWhereIn('id', $allIds)
-                ->delete();
         }
 
         return [

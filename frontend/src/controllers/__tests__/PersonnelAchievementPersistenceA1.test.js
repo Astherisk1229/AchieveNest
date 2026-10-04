@@ -219,7 +219,7 @@ describe('Phase A1: Evidence Persistence Foundation', () => {
       const success = await personnelAccomplishmentService.downloadEvidenceBlob('ev-uuid-201', 'proof.pdf')
       expect(success).toBe(true)
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/evidence/personnel/ev-uuid-201/preview'),
+        expect.stringContaining('/evidence/personnel/ev-uuid-201/download'),
         expect.any(Object)
       )
     })

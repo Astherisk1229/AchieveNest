@@ -189,7 +189,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
   describe('4. Institutional College Dropdown & Empty-State Defect Repair (Req 12–17)', () => {
     it('12. College dropdown loads from institutional API', async () => {
       vi.spyOn(apiClient, 'get').mockResolvedValue({
-        data: { data: mockColleges }
+        colleges: mockColleges
       });
 
       const colleges = await personnelMasterDataService.getColleges();

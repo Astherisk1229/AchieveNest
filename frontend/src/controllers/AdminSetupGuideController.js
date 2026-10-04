@@ -6,21 +6,24 @@
 
 import { ADMIN_SETUP_GUIDES, getAdminSetupGuide } from '../models/AdminSetupGuideRegistry'
 import { SETUP_STEP_STATUS, AdminSetupStatusModel } from '../models/AdminSetupStatusModel'
-import OSADController from './OSADController'
-import HRController from './HRController'
 
 export class AdminSetupGuideController {
-  static evaluateGuide(userOrRole) {
+  /**
+   * @param {object|string} userOrRole
+   * @param {object} [domainData] Live data supplied by the caller (loaded from the API).
+   *   Missing lists count as empty, so a guide never reports progress it cannot see.
+   */
+  static evaluateGuide(userOrRole, domainData = {}) {
     const guideDef = getAdminSetupGuide(userOrRole)
     if (!guideDef) return null
 
     // Read current domain state
-    const osadPrograms = OSADController.getDegreePrograms()
-    const osadCoordinatorAssignments = OSADController.getProgramCoordinatorAssignments()
-    const osadOrgs = OSADController.getOrganizations()
-    const osadClubs = OSADController.getClubs()
-    const osadUsers = OSADController.getUsers('student', '', 'all', 'name')
-    const hrPersonnel = HRController.getPersonnelList()
+    const osadPrograms = domainData.programs || []
+    const osadCoordinatorAssignments = domainData.coordinatorAssignments || []
+    const osadOrgs = domainData.organizations || []
+    const osadClubs = domainData.clubs || []
+    const osadUsers = domainData.students || []
+    const hrPersonnel = domainData.personnel || []
 
     const evaluatedSteps = guideDef.steps.map(step => {
       let status = SETUP_STEP_STATUS.NOT_STARTED

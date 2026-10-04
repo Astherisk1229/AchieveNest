@@ -222,7 +222,7 @@ export default function EditStudentInfoModal({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1 font-semibold text-slate-800">
                   <div>
                     <span className="text-[10px] text-slate-400 block font-bold uppercase">Full Name</span>
-                    <span>{student?.full_name || 'Maria Santos'}</span>
+                    <span>{student?.full_name || '—'}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-400 block font-bold uppercase">Student ID</span>

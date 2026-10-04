@@ -27,6 +27,9 @@ class PartTimeFacultyTitleController extends BaseController
      */
     public function listTitles(): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $titles = $this->titleService->getAllTitles();
 
@@ -54,6 +57,9 @@ class PartTimeFacultyTitleController extends BaseController
      */
     public function getTitle(string $code): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $title = $this->titleService->getTitleByCode($code);
 
@@ -82,6 +88,9 @@ class PartTimeFacultyTitleController extends BaseController
      */
     public function resolveTitle(): ResponseInterface
     {
+        if ($deny = $this->denyUnlessAuthorized()) {
+            return $deny;
+        }
         try {
             $payload = $this->request->getJSON(true) ?? [];
             $result = $this->titleService->resolveTitleFromQualification($payload);
@@ -107,5 +116,31 @@ class PartTimeFacultyTitleController extends BaseController
             'code' => 'CATALOG_MUTATION_RESTRICTED',
             'message' => 'Direct Part-Time title catalogue mutation is prohibited.',
         ]);
+    }
+
+    /**
+     * Phase 2 access guard. Returns an error response when the caller has no valid session,
+     * or (when $roles is given) holds none of the listed roles; null when the call may proceed.
+     */
+    private function denyUnlessAuthorized(?array $roles = null, ?string $allowSelfId = null): ?ResponseInterface
+    {
+        $actor = $this->actorService->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'error' => ['code' => 'AUTH_TOKEN_INVALID', 'message' => 'Unable to verify the current session. Please sign in again.'],
+            ]);
+        }
+        if ($roles === null) {
+            return null;
+        }
+        if ($allowSelfId !== null && (string) ($actor['profile']['id'] ?? '') === $allowSelfId) {
+            return null;
+        }
+        if (count(array_intersect($roles, (array) ($actor['roles'] ?? []))) === 0) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'error' => ['code' => 'FORBIDDEN', 'message' => 'You do not have permission to perform this action.'],
+            ]);
+        }
+        return null;
     }
 }

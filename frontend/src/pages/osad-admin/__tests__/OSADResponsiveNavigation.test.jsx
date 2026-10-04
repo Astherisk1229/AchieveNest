@@ -147,6 +147,6 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
     expect(awardsItem.tab).toBeUndefined()
     expect(reviewItem.path).toBe('/osad/candidates')
     expect(reviewItem.tab).toBeUndefined()
-    expect(reportsItem.tab).toBe('reports')
+    expect(reportsItem.tab).toBe('accreditation-reports')
   })
 })

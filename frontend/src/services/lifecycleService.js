@@ -16,6 +16,13 @@ export const lifecycleService = {
     return res?.data || res
   },
 
+  async resetTemporaryPassword(accountId) {
+    const res = await apiClient.post(`/accounts/${accountId}/reset-temporary-password`, {
+      verified_identity: true
+    })
+    return res?.data || res
+  },
+
   async getAccountLifecycleEvents(accountId) {
     const res = await apiClient.get(`/accounts/${accountId}/lifecycle`)
     return res?.data?.events || res?.events || []

@@ -134,6 +134,20 @@ class DeanAnnualReviewService
 
     private function audit(string $type,string $actor,array $meta): void
     {
-        try{$this->db->table('account_lifecycle_events')->insert(['id'=>$this->uuid(),'account_id'=>$meta['personnel_profile_id']??$actor,'event_type'=>$type,'performed_by'=>$actor,'reason'=>json_encode($meta),'occurred_at'=>date('Y-m-d H:i:s'),'created_at'=>date('Y-m-d H:i:s')]);}catch(\Throwable $e){}
+        try {
+            $this->db->table('account_lifecycle_events')->insert([
+                'id' => $this->uuid(),
+                'profile_id' => $meta['personnel_profile_id'] ?? $actor,
+                'actor_profile_id' => $actor,
+                'event_type' => $type,
+                'previous_status' => 'active',
+                'new_status' => 'active',
+                'reason' => $meta['correction_reason'] ?? null,
+                'metadata' => json_encode($meta),
+                'occurred_at' => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Dean annual review audit write failed: ' . $e->getMessage());
+        }
     }
 }

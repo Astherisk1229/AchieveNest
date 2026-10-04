@@ -58,6 +58,67 @@ final class CertificateController extends Controller
         catch(Throwable $e){$code=$e->getMessage();$status=match(true){$code==='SOURCE_RECORD_NOT_FOUND'=>404,$code==='UNAUTHORIZED_CERTIFICATE_ISSUANCE'=>403,str_starts_with($code,'IDEMPOTENCY_')=>409,default=>422};return $this->respond(['error'=>['code'=>$code,'message'=>$this->errorMessage($code)]],$status);}
     }
 
+    /**
+     * GET /api/v1/certificates — issued certificate history with summary counts.
+     * OSAD sees all; an organization moderator sees only certificates sourced from their organizations' events.
+     * Optional filters: status (ISSUED|SUPERSEDED|REVOKED), event_id. Returns at most 200 rows, newest first.
+     */
+    public function index(): mixed
+    {
+        $actor = $this->actor();
+        if (!$actor) return $this->unauthorized();
+        $roles = $actor['roles'] ?? [];
+        $isOsad = in_array('osad_staff', $roles, true);
+        if (!$isOsad && !in_array('organization_moderator', $roles, true)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Certificate history requires OSAD staff or an organization moderator assignment.']], 403);
+        }
+        $status = strtoupper(trim((string) $this->request->getGet('status')));
+        if ($status !== '' && !in_array($status, ['ISSUED', 'SUPERSEDED', 'REVOKED'], true)) {
+            return $this->respond(['error' => ['code' => 'INVALID_STATUS_FILTER', 'message' => 'status must be ISSUED, SUPERSEDED or REVOKED.']], 422);
+        }
+        $eventId = trim((string) $this->request->getGet('event_id'));
+        $db = $this->db;
+        if (!$db->tableExists('certificate_issuances')) {
+            return $this->respond(['data' => ['certificates' => [], 'summary' => ['total' => 0, 'issued' => 0, 'revoked' => 0, 'superseded' => 0]]]);
+        }
+
+        $orgIds = [];
+        if (!$isOsad) {
+            $orgIds = (new \App\Services\AuthorizationService())->getModeratedOrganizationIds($actor);
+            if ($orgIds === []) {
+                return $this->respond(['data' => ['certificates' => [], 'summary' => ['total' => 0, 'issued' => 0, 'revoked' => 0, 'superseded' => 0]]]);
+            }
+        }
+
+        $base = static function ($db, bool $isOsad, array $orgIds, string $eventId) {
+            $b = $db->table('certificate_issuances ci')
+                ->join('student_portfolio_records spr', 'spr.id = ci.source_record_id', 'left')
+                ->join('events e', "e.id = JSON_UNQUOTE(JSON_EXTRACT(spr.structured_metadata, '$.origin_event_id'))", 'left');
+            if (!$isOsad) $b->whereIn('e.organization_id', $orgIds);
+            if ($eventId !== '') $b->where('e.id', $eventId);
+            return $b;
+        };
+
+        $summaryRows = $base($db, $isOsad, $orgIds, $eventId)->select('ci.status, COUNT(*) AS n', false)->groupBy('ci.status')->get()->getResultArray();
+        $summary = ['total' => 0, 'issued' => 0, 'revoked' => 0, 'superseded' => 0];
+        foreach ($summaryRows as $row) {
+            $summary['total'] += (int) $row['n'];
+            $summary[strtolower((string) $row['status'])] = (int) $row['n'];
+        }
+
+        $list = $base($db, $isOsad, $orgIds, $eventId)
+            ->join('profiles p', 'p.id = ci.student_id', 'left')
+            ->select('ci.id, ci.certificate_number, ci.public_verification_id, ci.certificate_purpose, ci.status, ci.issued_at, ci.revoked_at, ci.revocation_reason, ci.superseded_by_certificate_id, p.full_name AS student_name, p.institutional_id AS student_id_number, e.id AS event_id, e.title AS event_title');
+        if ($status !== '') $list->where('ci.status', $status);
+        $rows = $list->orderBy('ci.issued_at', 'DESC')->limit(200)->get()->getResultArray();
+        foreach ($rows as &$row) {
+            $row['verification_url'] = '/verify/certificate/' . $row['public_verification_id'];
+        }
+        unset($row);
+
+        return $this->respond(['data' => ['certificates' => $rows, 'summary' => $summary]]);
+    }
+
     public function verify(string $publicId): mixed
     {
         $certificate=$this->issuance->verify($publicId);

@@ -174,10 +174,39 @@ class DefenseDemoPersonaSeeder extends Seeder
         ];
 
         foreach ($personas as $p) {
+            $profileId = $p['id'];
+            $emailOwner = $db->table('profiles')
+                ->select('id')
+                ->where('email', $p['email'])
+                ->get()->getRowArray();
+            if ($emailOwner !== null) {
+                $profileId = $emailOwner['id'];
+            }
+
+            $institutionalId = $p['institutional_id'];
+            $institutionalIdOwner = $db->table('profiles')
+                ->select('id')
+                ->where('institutional_id', $institutionalId)
+                ->get()->getRowArray();
+
+            if ($institutionalIdOwner !== null && $institutionalIdOwner['id'] !== $profileId) {
+                $institutionalId = 'ACH-' . $p['institutional_id'];
+                $fallbackOwner = $db->table('profiles')
+                    ->select('id')
+                    ->where('institutional_id', $institutionalId)
+                    ->get()->getRowArray();
+
+                if ($fallbackOwner !== null && $fallbackOwner['id'] !== $profileId) {
+                    throw new RuntimeException(
+                        "Both demo institutional IDs {$p['institutional_id']} and {$institutionalId} are already assigned."
+                    );
+                }
+            }
+
             // Profiles table
             $profileData = [
-                'id'                   => $p['id'],
-                'institutional_id'     => $p['institutional_id'],
+                'id'                   => $profileId,
+                'institutional_id'     => $institutionalId,
                 'email'                => $p['email'],
                 'full_name'            => $p['name'],
                 'account_type'         => $p['account_type'],
@@ -192,7 +221,7 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Student Subtype Table
             if ($p['account_type'] === 'student') {
                 $db->table('student_profiles')->upsert([
-                    'profile_id'        => $p['id'],
+                    'profile_id'        => $profileId,
                     'year_level'        => $p['year_level'] ?? '4th Year',
                     'enrollment_status' => 'enrolled',
                     'created_at'        => $now,
@@ -206,7 +235,7 @@ class DefenseDemoPersonaSeeder extends Seeder
                 $isAcademic = $personnelClassification === PersonnelClassificationService::SIDE_ACADEMIC;
 
                 $db->table('personnel_profiles')->upsert([
-                    'profile_id'               => $p['id'],
+                    'profile_id'               => $profileId,
                     'personnel_classification' => $personnelClassification,
                     'personnel_group'          => $isAcademic
                         ? PersonnelClassificationService::GROUP_FACULTY
@@ -223,7 +252,7 @@ class DefenseDemoPersonaSeeder extends Seeder
 
             // Local Auth Credentials table
             $credData = [
-                'profile_id'           => $p['id'],
+                'profile_id'           => $profileId,
                 'password_hash'        => $passwordHash,
                 'must_change_password' => 0,
                 'status'               => 'active',
@@ -237,13 +266,13 @@ class DefenseDemoPersonaSeeder extends Seeder
                 if (isset($roles[$roleKey])) {
                     $roleId = $roles[$roleKey];
                     $existingAssoc = $db->table('profile_roles')
-                        ->where('profile_id', $p['id'])
+                        ->where('profile_id', $profileId)
                         ->where('role_id', $roleId)
                         ->get()->getRowArray();
                     if ($existingAssoc === null) {
                         $db->table('profile_roles')->insert([
-                            'id'          => 'd0000000-0000-0000-0009-' . substr($p['id'], -8) . substr($roleId, -4),
-                            'profile_id'  => $p['id'],
+                            'id'          => 'd0000000-0000-0000-0009-' . substr($profileId, -8) . substr($roleId, -4),
+                            'profile_id'  => $profileId,
                             'role_id'     => $roleId,
                             'scope_type'  => 'university',
                             'is_active'   => 1,
@@ -256,13 +285,13 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Student Affiliation
             if (! empty($p['student_prog'])) {
                 $existingEnrollment = $db->table('student_program_enrollments')
-                    ->where('student_profile_id', $p['id'])
+                    ->where('student_profile_id', $profileId)
                     ->where('academic_program_id', $p['student_prog'])
                     ->get()->getRowArray();
                 if ($existingEnrollment === null) {
                     $db->table('student_program_enrollments')->insert([
-                        'id'                  => 'd0000000-0000-0000-0002-' . substr($p['id'], -12),
-                        'student_profile_id'  => $p['id'],
+                        'id'                  => 'd0000000-0000-0000-0002-' . substr($profileId, -12),
+                        'student_profile_id'  => $profileId,
                         'academic_program_id' => $p['student_prog'],
                         'year_level'          => $p['year_level'] ?? '4th Year',
                         'academic_year'       => '2025-2026',
@@ -277,13 +306,13 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Academic Personnel College & Program Affiliation
             if (! empty($p['college_id'])) {
                 $existingAff = $db->table('personnel_college_affiliations')
-                    ->where('personnel_profile_id', $p['id'])
+                    ->where('personnel_profile_id', $profileId)
                     ->where('college_id', $p['college_id'])
                     ->get()->getRowArray();
                 if ($existingAff === null) {
                     $db->table('personnel_college_affiliations')->insert([
-                        'id'                   => 'd0000000-0000-0000-0003-' . substr($p['id'], -12),
-                        'personnel_profile_id' => $p['id'],
+                        'id'                   => 'd0000000-0000-0000-0003-' . substr($profileId, -12),
+                        'personnel_profile_id' => $profileId,
                         'college_id'           => $p['college_id'],
                         'effective_from'       => date('Y-m-d', strtotime('-365 days')),
                         'is_active'            => 1,
@@ -295,13 +324,13 @@ class DefenseDemoPersonaSeeder extends Seeder
 
             if (! empty($p['program_id'])) {
                 $existingProgAff = $db->table('personnel_program_affiliations')
-                    ->where('personnel_profile_id', $p['id'])
+                    ->where('personnel_profile_id', $profileId)
                     ->where('academic_program_id', $p['program_id'])
                     ->get()->getRowArray();
                 if ($existingProgAff === null) {
                     $db->table('personnel_program_affiliations')->insert([
-                        'id'                   => 'd0000000-0000-0000-0004-' . substr($p['id'], -12),
-                        'personnel_profile_id' => $p['id'],
+                        'id'                   => 'd0000000-0000-0000-0004-' . substr($profileId, -12),
+                        'personnel_profile_id' => $profileId,
                         'academic_program_id'  => $p['program_id'],
                         'effective_from'       => date('Y-m-d', strtotime('-365 days')),
                         'is_active'            => 1,
@@ -314,13 +343,13 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Non-Academic Administrative Unit Affiliation
             if (! empty($p['admin_unit_id'])) {
                 $existingAdminAff = $db->table('personnel_administrative_unit_affiliations')
-                    ->where('personnel_profile_id', $p['id'])
+                    ->where('personnel_profile_id', $profileId)
                     ->where('administrative_unit_id', $p['admin_unit_id'])
                     ->get()->getRowArray();
                 if ($existingAdminAff === null) {
                     $db->table('personnel_administrative_unit_affiliations')->insert([
-                        'id'                     => 'd0000000-0000-0000-0005-' . substr($p['id'], -12),
-                        'personnel_profile_id'   => $p['id'],
+                        'id'                     => 'd0000000-0000-0000-0005-' . substr($profileId, -12),
+                        'personnel_profile_id'   => $profileId,
                         'administrative_unit_id' => $p['admin_unit_id'],
                         'effective_from'         => date('Y-m-d', strtotime('-365 days')),
                         'is_active'              => 1,
@@ -333,13 +362,13 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Dean Assignment
             if (! empty($p['dean_college_id'])) {
                 $existingDean = $db->table('dean_assignments')
-                    ->where('personnel_profile_id', $p['id'])
+                    ->where('personnel_profile_id', $profileId)
                     ->where('college_id', $p['dean_college_id'])
                     ->get()->getRowArray();
                 if ($existingDean === null) {
                     $db->table('dean_assignments')->insert([
                         'id'                   => 'd0000000-0000-0000-0006-000000000001',
-                        'personnel_profile_id' => $p['id'],
+                        'personnel_profile_id' => $profileId,
                         'college_id'           => $p['dean_college_id'],
                         'effective_from'       => date('Y-m-d', strtotime('-365 days')),
                         'is_active'            => 1,
@@ -353,13 +382,13 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Program Coordinator Assignment
             if (! empty($p['coord_program_id'])) {
                 $existingCoord = $db->table('program_coordinator_assignments')
-                    ->where('personnel_profile_id', $p['id'])
+                    ->where('personnel_profile_id', $profileId)
                     ->where('academic_program_id', $p['coord_program_id'])
                     ->get()->getRowArray();
                 if ($existingCoord === null) {
                     $db->table('program_coordinator_assignments')->insert([
-                        'id'                   => 'd0000000-0000-0000-0007-' . substr($p['id'], -12),
-                        'personnel_profile_id' => $p['id'],
+                        'id'                   => 'd0000000-0000-0000-0007-' . substr($profileId, -12),
+                        'personnel_profile_id' => $profileId,
                         'academic_program_id'  => $p['coord_program_id'],
                         'effective_from'       => date('Y-m-d', strtotime('-365 days')),
                         'is_active'            => 1,
@@ -373,13 +402,13 @@ class DefenseDemoPersonaSeeder extends Seeder
             // Organization Moderator Assignment
             if (! empty($p['moderator_org_id'])) {
                 $existingMod = $db->table('organization_moderator_assignments')
-                    ->where('personnel_profile_id', $p['id'])
+                    ->where('personnel_profile_id', $profileId)
                     ->where('organization_id', $p['moderator_org_id'])
                     ->get()->getRowArray();
                 if ($existingMod === null) {
                     $db->table('organization_moderator_assignments')->insert([
                         'id'                   => 'd0000000-0000-0000-0008-000000000001',
-                        'personnel_profile_id' => $p['id'],
+                        'personnel_profile_id' => $profileId,
                         'organization_id'      => $p['moderator_org_id'],
                         'effective_from'       => date('Y-m-d', strtotime('-365 days')),
                         'is_active'            => 1,

@@ -296,7 +296,7 @@ export default function FacultyDossierDrawer({
                     className="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
-                    <span>Manage Role</span>
+                    <span>Manage Dean Role</span>
                   </button>
                 </div>
               </div>

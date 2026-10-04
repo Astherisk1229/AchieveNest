@@ -4,7 +4,7 @@ import AdminSetupGuideController from '../controllers/AdminSetupGuideController'
 const STORAGE_KEY = 'achievenest_admin_setup_guide_preferences_v1'
 
 export function useAdminSetupGuide(currentUser, activeRoleContext) {
-  const userId = currentUser?.id || currentUser?.employee_id || 'demo_admin'
+  const userId = currentUser?.id || currentUser?.employee_id || 'unknown_user'
   const roleContext = activeRoleContext || currentUser?.active_role_context || currentUser?.user_type || 'osad_staff'
 
   const prefKey = `${userId}_${roleContext}`

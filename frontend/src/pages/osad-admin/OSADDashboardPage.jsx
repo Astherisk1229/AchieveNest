@@ -14,7 +14,7 @@ import {
   Check
 } from 'lucide-react'
 
-import useOSAD from '../../hooks/useOSAD'
+import provisioningService from '../../services/provisioningService'
 import { Button } from '../../components/ui/button'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
 import CreateCollegeModal from './modals/CreateCollegeModal'
@@ -50,35 +50,6 @@ export default function OSADDashboardPage({ currentUser }) {
     ? 'candidate-review'
     : rawTab === 'academic-structure' ? 'academic-programs' : rawTab
 
-  const {
-    metrics,
-    colleges,
-    degreePrograms,
-    organizations,
-    clubs,
-    awardCategories,
-    awardees,
-    accreditationReports,
-    auditLogs,
-    getUsers,
-    getPersonnelList,
-    getStudentPortfolios,
-    createOrganization,
-    createClub,
-    getStudentLeaderboards,
-    getAccreditationReportDetails,
-    assignOrganizationModerator,
-    revokeRole,
-    createAwardCategory,
-    generateAwardCandidates,
-    confirmAwardee,
-    batchConfirmAwardees,
-    undoAwardeeConfirmation,
-    resetStudentPassword,
-    getPasswordResetRequests,
-    approvePasswordResetRequest,
-    refreshAuditLogs
-  } = useOSAD()
 
   // Account & Portfolio Viewing States
   const [userRoleFilter, setUserRoleFilter] = useState('student')
@@ -94,47 +65,95 @@ export default function OSADDashboardPage({ currentUser }) {
   const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
   const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
-  const [isAddClubOpen, setIsAddClubOpen] = useState(false)
-  const [newClubData, setNewClubData] = useState({ name: '', parent_org: 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
 
   // Persistent Student Organizations & College and Programs State
   const [persistentOrgs, setPersistentOrgs] = useState([])
   const [moderatorCandidates, setModeratorCandidates] = useState([])
   const [persistentColleges, setPersistentColleges] = useState([])
   const [persistentPrograms, setPersistentPrograms] = useState([])
+  const [students, setStudents] = useState([])
+  const [loadErrors, setLoadErrors] = useState({})
+  const noteLoad = React.useCallback((key, err) => {
+    setLoadErrors((prev) => {
+      const next = { ...prev }
+      if (err) next[key] = err?.error?.message || err?.message || 'Server error'
+      else delete next[key]
+      return next
+    })
+  }, [])
 
   const loadPersistentOrgs = React.useCallback(async () => {
     try {
       const data = await apiFetchOrganizations()
       if (Array.isArray(data)) setPersistentOrgs(data)
+      noteLoad('organizations', null)
     } catch (err) {
-      console.warn('Failed to load persistent organizations:', err)
+      noteLoad('organizations', err)
     }
-  }, [])
+  }, [noteLoad])
 
   const loadPersistentColleges = React.useCallback(async () => {
     try {
       const data = await apiFetchColleges()
       if (Array.isArray(data)) setPersistentColleges(data)
+      noteLoad('colleges', null)
     } catch (err) {
-      console.warn('Failed to load persistent colleges:', err)
+      noteLoad('colleges', err)
     }
-  }, [])
+  }, [noteLoad])
 
   const loadPersistentPrograms = React.useCallback(async () => {
     try {
       const data = await apiFetchAcademicPrograms()
       if (Array.isArray(data)) setPersistentPrograms(data)
+      noteLoad('academic programs', null)
     } catch (err) {
-      console.warn('Failed to load persistent academic programs:', err)
+      noteLoad('academic programs', err)
     }
-  }, [])
+  }, [noteLoad])
+
+  const loadStudents = React.useCallback(async () => {
+    try {
+      const list = await provisioningService.fetchStudents()
+      if (Array.isArray(list)) setStudents(list)
+      noteLoad('student accounts', null)
+    } catch (err) {
+      noteLoad('student accounts', err)
+    }
+  }, [noteLoad])
 
   React.useEffect(() => {
     loadPersistentOrgs()
     loadPersistentColleges()
     loadPersistentPrograms()
-  }, [loadPersistentOrgs, loadPersistentColleges, loadPersistentPrograms])
+    loadStudents()
+  }, [loadPersistentOrgs, loadPersistentColleges, loadPersistentPrograms, loadStudents])
+
+  // Overview figures come from the lists loaded above, never from seeded data.
+  const metrics = React.useMemo(() => {
+    const activeOrgs = persistentOrgs.filter((o) => !o.status || o.status === 'active')
+    const withModerator = activeOrgs.filter((o) => o.moderator_profile_id).length
+    return {
+      collegesCount: persistentColleges.filter((c) => !c.status || c.status === 'active').length,
+      programsCount: persistentPrograms.length,
+      activeStudentsCount: students.filter((s) => (s.status || 'active') === 'active').length,
+      activeOrganizationsCount: activeOrgs.length,
+      organizationsWithModeratorCount: withModerator,
+      pendingAssignmentsCount: activeOrgs.length - withModerator
+    }
+  }, [persistentColleges, persistentPrograms, persistentOrgs, students])
+
+  const studentsByCollege = React.useMemo(() => {
+    const counts = new Map()
+    students.forEach((s) => {
+      if (!s.college_name && !s.college) return
+      const label = s.college_name ? `${s.college ? `${s.college} — ` : ''}${s.college_name}` : s.college
+      counts.set(label, (counts.get(label) || 0) + 1)
+    })
+    const total = Array.from(counts.values()).reduce((a, n) => a + n, 0)
+    return Array.from(counts, ([label, count]) => ({ label, count, percent: total ? Math.round((count / total) * 1000) / 10 : 0 }))
+      .sort((a, b) => b.count - a.count)
+  }, [students])
 
   React.useEffect(() => {
     const organizationId = personnelSelectorTarget?.roleType === 'moderator'
@@ -210,16 +229,6 @@ export default function OSADDashboardPage({ currentUser }) {
     return created
   }
 
-  // Handle Create Club
-  const handleCreateClubSubmit = (e) => {
-    e.preventDefault()
-    if (!newClubData.name) return
-    createClub(newClubData)
-    setIsAddClubOpen(false)
-    setNewClubData({ name: '', parent_org: organizations[0]?.name || 'Computer Society NDMU', category: 'Non-Academic Club & Extra-Curricular' })
-    showToast(`Created Student Club: [${newClubData.name}]`)
-  }
-
   return (
     <div className="space-y-6 font-sans">
       {/* Toast Banner */}
@@ -230,16 +239,27 @@ export default function OSADDashboardPage({ currentUser }) {
         </div>
       )}
 
+      {Object.keys(loadErrors).length > 0 && (
+        <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-center justify-between gap-3">
+          <span>
+            Some data could not be loaded ({Object.entries(loadErrors).map(([k, v]) => `${k}: ${v}`).join('; ')}). Figures on this page may be incomplete.
+          </span>
+          <button
+            type="button"
+            onClick={() => { loadPersistentOrgs(); loadPersistentColleges(); loadPersistentPrograms(); loadStudents() }}
+            className="font-bold underline cursor-pointer shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Sub-View Routing */}
       {activeTab === 'overview' && (
         <OSADCommandCenterPage 
           setSearchParams={setSearchParams} 
-          awardees={awardees} 
-          candidateDecisions={awardees}
-          currentUser={currentUser}
           metrics={metrics}
-          awardCategories={awardCategories}
-          getUsers={getUsers}
+          studentsByCollege={studentsByCollege}
         />
       )}
 
@@ -251,11 +271,6 @@ export default function OSADDashboardPage({ currentUser }) {
           setSelectedCollege={setSelectedCollege}
           selectedSort={selectedSort}
           setSelectedSort={setSelectedSort}
-          getUsers={getUsers}
-          getStudentPortfolios={getStudentPortfolios}
-          resetStudentPassword={resetStudentPassword}
-          getPasswordResetRequests={getPasswordResetRequests}
-          approvePasswordResetRequest={approvePasswordResetRequest}
           showToast={showToast}
           colleges={persistentColleges}
           degreePrograms={persistentPrograms}
@@ -282,13 +297,11 @@ export default function OSADDashboardPage({ currentUser }) {
       {activeTab === 'organizations' && (
         <OSADStudentOrganizationsPage
           organizations={persistentOrgs}
-          colleges={persistentColleges.length > 0 ? persistentColleges : colleges}
-          clubs={clubs}
+          colleges={persistentColleges}
           selectedOrganizationId={searchParams.get('orgId') || null}
           onSelectOrganization={(orgId) => setSearchParams({ tab: 'organizations', orgId })}
           onBackToOrganizations={() => setSearchParams({ tab: 'organizations' })}
           setIsAddOrgOpen={setIsAddOrgOpen}
-          setIsAddClubOpen={setIsAddClubOpen}
           setPersonnelSelectorTarget={setPersonnelSelectorTarget}
         />
       )}
@@ -306,18 +319,11 @@ export default function OSADDashboardPage({ currentUser }) {
       )}
 
       {activeTab === 'accreditation-reports' && (
-        <OSADAccreditationReportsPage
-          accreditationReports={accreditationReports}
-          getAccreditationReportDetails={getAccreditationReportDetails}
-          showToast={showToast}
-        />
+        <OSADAccreditationReportsPage />
       )}
 
       {activeTab === 'system-logs' && (
-        <OSADSystemAuditLogsPage
-          auditLogs={auditLogs}
-          refreshAuditLogs={refreshAuditLogs}
-        />
+        <OSADSystemAuditLogsPage />
       )}
 
       {activeTab === 'password-resets' && (
@@ -331,7 +337,7 @@ export default function OSADDashboardPage({ currentUser }) {
           title={personnelSelectorTarget.title}
           targetName={personnelSelectorTarget.targetName}
           roleType={personnelSelectorTarget.roleType}
-          personnelList={personnelSelectorTarget.roleType === 'moderator' ? moderatorCandidates : getPersonnelList()}
+          personnelList={personnelSelectorTarget.roleType === 'moderator' ? moderatorCandidates : []}
           onClose={() => setPersonnelSelectorTarget(null)}
           onSelect={async (personnel) => {
             if (personnelSelectorTarget.roleType === 'moderator') {
@@ -344,8 +350,7 @@ export default function OSADDashboardPage({ currentUser }) {
                   showToast(`Failed to assign moderator: ${err?.message || 'Server error'}`)
                 }
               } else {
-                assignOrganizationModerator(personnel.id, personnelSelectorTarget.targetName)
-                showToast(`Assigned ${personnel.full_name} as Org Moderator for [${personnelSelectorTarget.targetName}]`)
+                showToast('Could not assign a moderator: the organization was not identified.')
               }
             }
             setPersonnelSelectorTarget(null)
@@ -373,8 +378,8 @@ export default function OSADDashboardPage({ currentUser }) {
         isOpen={isAddOrgOpen}
         onClose={() => setIsAddOrgOpen(false)}
         onSubmit={handleCreateOrganizationSubmit}
-        colleges={(persistentColleges.length > 0 ? persistentColleges : colleges).filter((college) => !college.status || college.status === 'active')}
-        degreePrograms={degreePrograms}
+        colleges={persistentColleges.filter((college) => !college.status || college.status === 'active')}
+        degreePrograms={persistentPrograms}
       />
 
     </div>

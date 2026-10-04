@@ -45,7 +45,7 @@ export default function EditAssignmentModal({
     )
   }
 
-  const submit = event => {
+  const submit = async event => {
     event.preventDefault()
     const result = validatePersonnelPlacement(
       { classification: academic ? 'academic' : 'non_academic', collegeId, academicProgramIds, administrativeUnitId },
@@ -55,13 +55,18 @@ export default function EditAssignmentModal({
       setError(Object.values(result.errors)[0])
       return
     }
-    onSave?.({
-      ...personnel,
-      college_id: academic ? collegeId : null,
-      academic_program_ids: academic ? academicProgramIds : [],
-      administrative_unit_id: academic ? null : administrativeUnitId
-    })
-    onClose()
+    setError('')
+    try {
+      await onSave?.({
+        ...personnel,
+        college_id: academic ? collegeId : null,
+        academic_program_ids: academic ? academicProgramIds : [],
+        administrative_unit_id: academic ? null : administrativeUnitId
+      })
+      onClose()
+    } catch (err) {
+      setError(err?.error?.message || err?.message || 'The assignment could not be saved.')
+    }
   }
 
   return (

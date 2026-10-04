@@ -31,12 +31,12 @@ export default class PersonnelPortfolioModel {
 
   constructor(data = {}) {
     this.#id = data.id || `port_${Math.random().toString(36).substr(2, 9)}`
-    this.#personnel_id = data.personnel_id || 'EMP-2024-001'
-    this.#personnel_name = data.personnel_name || 'Dr. Maria Santos'
-    this.#academic_rank = data.academic_rank || 'Assistant Professor II'
-    this.#college_id = data.college_id || 'COL-CEAC'
-    this.#college_name = data.college_name || 'College of Engineering, Architecture, and Technology'
-    this.#program_affiliations = Array.isArray(data.program_affiliations) ? data.program_affiliations : ['BSCS']
+    this.#personnel_id = data.personnel_id || ''
+    this.#personnel_name = data.personnel_name || ''
+    this.#academic_rank = data.academic_rank || ''
+    this.#college_id = data.college_id || ''
+    this.#college_name = data.college_name || ''
+    this.#program_affiliations = Array.isArray(data.program_affiliations) ? data.program_affiliations : []
     this.#academic_year = data.academic_year || 'AY 2025-2026'
     this.#status = data.status || 'DRAFT'
     this.#years_of_service = Math.max(0, Number(data.years_of_service) || 0)

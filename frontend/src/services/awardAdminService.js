@@ -222,3 +222,15 @@ export async function submitDeanNomination(payload) {
   return response?.data || response
 }
 
+/** Verified portfolio records that have no scoring contributions yet. */
+export async function fetchUnscoredRecords() {
+  const response = await apiClient.get('/osad/scoring/unscored', { headers: getAuthHeaders() })
+  const data = response?.data || response || {}
+  return { records: Array.isArray(data.records) ? data.records : [], total: Number(data.total) || 0 }
+}
+
+/** Idempotent retry of scoring for one verified record. */
+export async function rescoreRecord(recordId) {
+  const response = await apiClient.post(`/osad/scoring/records/${recordId}/rescore`, {}, { headers: getAuthHeaders() })
+  return response?.data || response
+}

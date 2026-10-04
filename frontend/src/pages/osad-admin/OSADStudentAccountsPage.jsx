@@ -26,6 +26,8 @@ import {
   GraduationCap,
   Sparkles,
   RotateCcw,
+  PauseCircle,
+  Archive,
   AlertTriangle,
   Info,
   ChevronLeft,
@@ -42,6 +44,8 @@ import AddStudentAccountModal from './modals/AddStudentAccountModal'
 import { STUDENT_YEAR_LEVELS, STUDENT_SEX_OPTIONS, formatStudentSexDisplay } from '../../contracts/studentAccountContract'
 import { resolveStudentAccountStatus, STUDENT_ACCOUNT_STATUSES } from '../../contracts/studentStatusContract'
 import { provisioningService } from '../../services/provisioningService'
+import { lifecycleService } from '../../services/lifecycleService'
+import { parseProvisioningCredentialResponse } from '../../contracts/provisioningCredentialContract'
 
 const YEAR_LEVELS = ['all', ...STUDENT_YEAR_LEVELS]
 const SEX_OPTIONS = ['all', ...STUDENT_SEX_OPTIONS]
@@ -55,11 +59,6 @@ export default function OSADStudentAccountsPage({
   setSelectedCollege,
   selectedSort,
   setSelectedSort,
-  getUsers,
-  getStudentPortfolios,
-  resetStudentPassword,
-  getPasswordResetRequests,
-  approvePasswordResetRequest,
   showToast,
   colleges = [],
   degreePrograms = []
@@ -80,13 +79,20 @@ export default function OSADStudentAccountsPage({
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false)
   const [sortDirection, setSortDirection] = useState('asc') // 'asc' | 'desc'
   const [currentPage, setCurrentPage] = useState(1)
-  const [requestStatusFilter, setRequestStatusFilter] = useState('all') // 'all' | 'pending' | 'approved'
   const [viewingStudent, setViewingStudent] = useState(null)
   const [resetPasswordStudent, setResetPasswordStudent] = useState(null)
-  const [tempPasswordInput, setTempPasswordInput] = useState('NDMU-Student2026!')
+  // Lifecycle (suspend / archive / restore): { type, user } while the dialog is open.
+  const [lifecycleAction, setLifecycleAction] = useState(null)
+  const [lifecycleReason, setLifecycleReason] = useState('')
+  const [lifecycleError, setLifecycleError] = useState('')
+  const [isApplyingLifecycle, setIsApplyingLifecycle] = useState(false)
+  const [tempPasswordInput, setTempPasswordInput] = useState('')
   const [copiedNotification, setCopiedNotification] = useState(false)
+  const [verifiedResetIdentity, setVerifiedResetIdentity] = useState(false)
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [resetPasswordError, setResetPasswordError] = useState(null)
+  const [resetPasswordComplete, setResetPasswordComplete] = useState(false)
   const [activeAccountTab, setActiveAccountTab] = useState('directory') // 'directory' | 'requests'
-  const [resetRequests, setResetRequests] = useState(() => getPasswordResetRequests ? getPasswordResetRequests() : [])
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
 
   // Reset pagination when search or filters change
@@ -207,19 +213,28 @@ export default function OSADStudentAccountsPage({
     }
   }, [activeRowMenu])
 
-  const pendingRequests = useMemo(() => {
-    return resetRequests.filter(r => r.status === 'pending')
-  }, [resetRequests])
-
   // Reset Password Confirmation Close Hook
   const resetPasswordConfirmClose = useConfirmableClose({
     isOpen: Boolean(resetPasswordStudent),
-    isDirty: () => tempPasswordInput !== 'NDMU-Student2026!',
+    isDirty: () => resetPasswordComplete && !copiedNotification,
     onClose: () => {
       setResetPasswordStudent(null)
-      setTempPasswordInput('NDMU-Student2026!')
+      setTempPasswordInput('')
+      setVerifiedResetIdentity(false)
+      setResetPasswordError(null)
+      setResetPasswordComplete(false)
+      setCopiedNotification(false)
     }
   })
+
+  const openResetPassword = (student) => {
+    setResetPasswordStudent(student)
+    setTempPasswordInput('')
+    setVerifiedResetIdentity(false)
+    setResetPasswordError(null)
+    setResetPasswordComplete(false)
+    setCopiedNotification(false)
+  }
 
   // Filtered Programs based on selected college
   const availablePrograms = useMemo(() => {
@@ -255,14 +270,8 @@ export default function OSADStudentAccountsPage({
 
   // Base list selection: Server-backed list is the authoritative primary source of truth.
   const rawUsersList = useMemo(() => {
-    if (serverStudents.length > 0) {
-      return serverStudents
-    }
-    if (getUsers) {
-      return getUsers('student', userSearchTerm, selectedCollege, selectedSort) || []
-    }
-    return []
-  }, [serverStudents, getUsers, userSearchTerm, selectedCollege, selectedSort])
+    return serverStudents
+  }, [serverStudents])
 
   // Enhanced combined filtering with AND semantics
   const filteredUsersList = useMemo(() => {
@@ -356,78 +365,92 @@ export default function OSADStudentAccountsPage({
     }
   }
 
-  const handleGenerateRandomPassword = () => {
-    const randomNum = Math.floor(1000 + Math.random() * 9000)
-    setTempPasswordInput(`NDMU-Std${randomNum}!`)
-  }
-
-  const handleConfirmResetPassword = (e) => {
+  const handleConfirmResetPassword = async (e) => {
     e.preventDefault()
-    if (!resetPasswordStudent) return
+    if (!resetPasswordStudent || isResettingPassword || resetPasswordComplete) return
 
-    if (resetStudentPassword) {
-      resetStudentPassword(resetPasswordStudent.id || resetPasswordStudent.student_id, tempPasswordInput)
+    if (!verifiedResetIdentity) {
+      setResetPasswordError('Confirm the student\'s identity before resetting the password.')
+      return
     }
 
-    if (showToast) {
-      showToast(`Successfully reset credentials for student [${resetPasswordStudent.full_name}]`)
-    }
+    setIsResettingPassword(true)
+    setResetPasswordError(null)
 
-    setResetPasswordStudent(null)
-    setTempPasswordInput('NDMU-Student2026!')
-    // Refetch server state
-    fetchStudentAccounts()
-  }
-
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(tempPasswordInput)
-    setCopiedNotification(true)
-    setTimeout(() => setCopiedNotification(false), 2000)
-  }
-
-  const studentPortfolioItems = viewingStudent && getStudentPortfolios
-    ? (getStudentPortfolios(viewingStudent.full_name)[0]?.portfolio_items || [
-      {
-        id: 'p-1',
-        title: `1st Place — National ${viewingStudent.program?.includes('Computer') ? 'Hackathon & AI Challenge' : 'Academic Summit'} 2026`,
-        category: 'National Competition',
-        points: 120,
-        date: '2026-02-14',
-        status: 'OSAD Verified',
-        proof_url: '#'
-      },
-      {
-        id: 'p-2',
-        title: 'NDMU Supreme Student Council Executive Leadership Service',
-        category: 'Student Leadership',
-        points: 100,
-        date: '2026-01-20',
-        status: 'OSAD Verified',
-        proof_url: '#'
-      },
-      {
-        id: 'p-3',
-        title: 'Community Outreach & Extension Volunteer Accreditation',
-        category: 'Community Extension',
-        points: 80,
-        date: '2025-11-18',
-        status: 'OSAD Verified',
-        proof_url: '#'
+    try {
+      const accountId = resetPasswordStudent.id
+      if (!accountId) {
+        throw new Error('This student record is missing its account identifier. Refresh the list and try again.')
       }
-    ])
-    : []
 
-  const filteredRequests = resetRequests.filter(req => {
-    const term = (userSearchTerm || '').toLowerCase().trim()
-    const matchTerm = !term || (
-      (req.student_name && req.student_name.toLowerCase().includes(term)) ||
-      (req.user_email && req.user_email.toLowerCase().includes(term)) ||
-      (req.student_id && req.student_id.toLowerCase().includes(term)) ||
-      (req.remarks && req.remarks.toLowerCase().includes(term))
-    )
-    const matchStatus = requestStatusFilter === 'all' || req.status === requestStatusFilter
-    return matchTerm && matchStatus
-  })
+      const response = await lifecycleService.resetTemporaryPassword(accountId)
+      const credential = parseProvisioningCredentialResponse(response, 'student')
+      setTempPasswordInput(credential.temporaryPassword)
+      setResetPasswordComplete(true)
+
+      if (showToast) {
+        showToast(`Successfully reset credentials for student [${credential.fullName}]`)
+      }
+
+      await fetchStudentAccounts()
+    } catch (error) {
+      setResetPasswordError(
+        error?.error?.message || error?.message || 'Unable to reset this student password. Please try again.'
+      )
+    } finally {
+      setIsResettingPassword(false)
+    }
+  }
+
+  const openLifecycleAction = (type, user) => {
+    setLifecycleAction({ type, user })
+    setLifecycleReason('')
+    setLifecycleError('')
+  }
+
+  const closeLifecycleAction = () => {
+    if (isApplyingLifecycle) return
+    setLifecycleAction(null)
+  }
+
+  const handleConfirmLifecycle = async (event) => {
+    event.preventDefault()
+    if (!lifecycleAction || isApplyingLifecycle) return
+    const { type, user } = lifecycleAction
+    const reason = lifecycleReason.trim()
+    if (type !== 'restore' && !reason) {
+      setLifecycleError('A reason is required.')
+      return
+    }
+    if (!user.id) {
+      setLifecycleError('This student record is missing its account identifier. Refresh the list and try again.')
+      return
+    }
+    setIsApplyingLifecycle(true)
+    setLifecycleError('')
+    try {
+      if (type === 'suspend') await lifecycleService.suspendAccount(user.id, reason)
+      else if (type === 'archive') await lifecycleService.archiveAccount(user.id, reason)
+      else await lifecycleService.restoreAccount(user.id)
+      const done = { suspend: 'suspended', archive: 'archived', restore: 'restored' }[type]
+      if (showToast) showToast(`Account ${done} for ${user.full_name}.`)
+      setLifecycleAction(null)
+      await fetchStudentAccounts()
+    } catch (error) {
+      setLifecycleError(error?.error?.message || error?.message || 'The account could not be updated. Please try again.')
+    } finally {
+      setIsApplyingLifecycle(false)
+    }
+  }
+
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(tempPasswordInput)
+      setCopiedNotification(true)
+    } catch {
+      setResetPasswordError('Unable to copy automatically. Select the temporary password and copy it manually.')
+    }
+  }
 
   // Determine empty state classification
   const isTrueEmpty = rawUsersList.length === 0 && !isLoadingStudents && !studentsError && activeFilterCount === 0 && (!userSearchTerm || userSearchTerm.trim() === '')
@@ -525,24 +548,6 @@ export default function OSADStudentAccountsPage({
               }`}
             >
               Student Directory ({filteredUsersList.length})
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveAccountTab('requests')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                activeAccountTab === 'requests'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-              <span>Password Reset Requests</span>
-              {pendingRequests.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold">
-                  {pendingRequests.length}
-                </span>
-              )}
             </button>
           </div>
 
@@ -954,9 +959,7 @@ export default function OSADStudentAccountsPage({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      setResetPasswordStudent(user)
-                                      const randomNum = Math.floor(1000 + Math.random() * 9000)
-                                      setTempPasswordInput(`NDMU-Std${randomNum}!`)
+                                      openResetPassword(user)
                                       setActiveRowMenu(null)
                                     }}
                                     className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 flex items-center gap-2 transition cursor-pointer"
@@ -964,6 +967,37 @@ export default function OSADStudentAccountsPage({
                                     <KeyRound className="w-4 h-4 text-amber-600" />
                                     <span>Reset Password</span>
                                   </button>
+
+                                  {(user.status || 'active').toLowerCase() === 'active' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openLifecycleAction('suspend', user); setActiveRowMenu(null) }}
+                                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 flex items-center gap-2 transition cursor-pointer"
+                                    >
+                                      <PauseCircle className="w-4 h-4 text-amber-600" />
+                                      <span>Suspend Account</span>
+                                    </button>
+                                  )}
+                                  {(user.status || 'active').toLowerCase() !== 'archived' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openLifecycleAction('archive', user); setActiveRowMenu(null) }}
+                                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-700 flex items-center gap-2 transition cursor-pointer"
+                                    >
+                                      <Archive className="w-4 h-4 text-rose-600" />
+                                      <span>Archive Account</span>
+                                    </button>
+                                  )}
+                                  {['suspended', 'archived'].includes((user.status || '').toLowerCase()) && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openLifecycleAction('restore', user); setActiveRowMenu(null) }}
+                                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-[#16834a] flex items-center gap-2 transition cursor-pointer"
+                                    >
+                                      <RotateCcw className="w-4 h-4 text-[#16834a]" />
+                                      <span>Restore Account</span>
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1064,9 +1098,7 @@ export default function OSADStudentAccountsPage({
                       <button
                         type="button"
                         onClick={() => {
-                          setResetPasswordStudent(user)
-                          const randomNum = Math.floor(1000 + Math.random() * 9000)
-                          setTempPasswordInput(`NDMU-Std${randomNum}!`)
+                          openResetPassword(user)
                         }}
                         className="px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                       >
@@ -1115,91 +1147,6 @@ export default function OSADStudentAccountsPage({
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Pending Reset Requests Inbox View */}
-      {activeAccountTab === 'requests' && (
-        <div className="rounded-2xl bg-white dark:bg-[#131E2E] border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-2xs space-y-4 p-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-amber-500" />
-                <span>Password Reset Requests Inbox</span>
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Review and process student password reset requests.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-slate-400 font-medium">Filter:</span>
-              <select
-                value={requestStatusFilter}
-                onChange={(e) => setRequestStatusFilter(e.target.value)}
-                className="px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-800 dark:text-white cursor-pointer"
-              >
-                <option value="all">All Requests</option>
-                <option value="pending">Pending Only</option>
-                <option value="approved">Approved Only</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {filteredRequests.length === 0 ? (
-              <div className="p-8 text-center text-slate-400">
-                No password reset requests found matching your filter criteria.
-              </div>
-            ) : (
-              filteredRequests.map(req => (
-                <div
-                  key={req.id}
-                  className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900 dark:text-white">
-                        {req.student_name}
-                      </span>
-                      <span className="font-mono text-xs text-slate-400">
-                        [{req.student_id}]
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        req.status === 'pending'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                      }`}>
-                        {req.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">
-                      {req.user_email} • Requested: {req.created_at || 'Recently'}
-                    </p>
-                    {req.remarks && (
-                      <p className="text-[11px] text-slate-500 italic">
-                        "{req.remarks}"
-                      </p>
-                    )}
-                  </div>
-
-                  {req.status === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (approvePasswordResetRequest) approvePasswordResetRequest(req.id)
-                        if (showToast) showToast(`Approved reset request for ${req.student_name}`)
-                        setResetRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved' } : r))
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
-                    >
-                      Approve &amp; Send PWD
-                    </button>
-                  )}
-                </div>
-              ))
             )}
           </div>
         </div>
@@ -1291,38 +1238,60 @@ export default function OSADStudentAccountsPage({
                 </div>
               </div>
 
-              {/* Verified Portfolio Accomplishments Card */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-                  <span className="font-bold text-slate-900 dark:text-white">Verified Portfolio Accomplishments</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#16834a] font-extrabold">
-                    {studentPortfolioItems.length} Records
-                  </span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {studentPortfolioItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-900 dark:text-white text-xs">{item.title}</span>
-                        <span className="font-extrabold text-[#16834a] text-xs">+{item.points} pts</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                        <span>{item.category}</span>
-                        <span>•</span>
-                        <span>{item.date}</span>
-                        <span>•</span>
-                        <span className="text-emerald-600 font-medium">{item.status}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-2 pb-1">
+                <span className="font-bold text-slate-900 dark:text-white block">Verified Portfolio Accomplishments</span>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Verified records are not listed on this screen. Review a student&apos;s verified records through Awards &amp; Criteria.
+                </p>
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Account Lifecycle Dialog */}
+      {lifecycleAction && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) closeLifecycleAction() }}
+          className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${lifecycleAction.type} account`}
+        >
+          <form onSubmit={handleConfirmLifecycle} className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4 text-xs font-sans">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-white capitalize">{lifecycleAction.type} account</h3>
+              <p className="text-slate-500 mt-0.5">{lifecycleAction.user.full_name} [{lifecycleAction.user.student_id || lifecycleAction.user.institutional_id}]</p>
+            </div>
+            <p className="text-slate-600 dark:text-slate-300">
+              {lifecycleAction.type === 'suspend' && 'The student will be unable to sign in until the account is restored. Their records are kept.'}
+              {lifecycleAction.type === 'archive' && 'Archiving ends the student\'s access. Records are kept and the account can be restored.'}
+              {lifecycleAction.type === 'restore' && 'The account returns to active status and the student can sign in again.'}
+            </p>
+            {lifecycleAction.type !== 'restore' && (
+              <label className="block font-bold text-slate-700 dark:text-slate-300">
+                Reason
+                <textarea
+                  value={lifecycleReason}
+                  onChange={(e) => { setLifecycleReason(e.target.value); setLifecycleError('') }}
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 font-medium"
+                />
+              </label>
+            )}
+            {lifecycleError && (
+              <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{lifecycleError}</span>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={closeLifecycleAction} disabled={isApplyingLifecycle} className="px-4 py-2 rounded-xl font-bold text-slate-600 hover:bg-slate-100 cursor-pointer">Cancel</button>
+              <button type="submit" disabled={isApplyingLifecycle} className="px-4 py-2 rounded-xl bg-[#16834a] text-white font-extrabold disabled:opacity-60 cursor-pointer capitalize">
+                {isApplyingLifecycle ? 'Working...' : lifecycleAction.type}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -1363,25 +1332,38 @@ export default function OSADStudentAccountsPage({
             </div>
 
             <form onSubmit={handleConfirmResetPassword} className="p-6 space-y-4 text-xs">
+              {resetPasswordError && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{resetPasswordError}</span>
+                </div>
+              )}
+
+              {!resetPasswordComplete ? (
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={verifiedResetIdentity}
+                    onChange={(e) => setVerifiedResetIdentity(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-emerald-600"
+                  />
+                  <span>
+                    <strong className="block text-slate-900 dark:text-white">Identity verified</strong>
+                    I verified this student using an authoritative university ID or an approved in-person process.
+                  </span>
+                </label>
+              ) : (
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Generated Temporary Password
+                  One-Time Temporary Password
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={tempPasswordInput}
-                    onChange={(e) => setTempPasswordInput(e.target.value)}
+                    readOnly
                     className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
                   />
-                  <button
-                    type="button"
-                    onClick={handleGenerateRandomPassword}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-                    title="Generate new temporary password"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
                   <button
                     type="button"
                     onClick={handleCopyPassword}
@@ -1392,26 +1374,35 @@ export default function OSADStudentAccountsPage({
                   </button>
                 </div>
                 {copiedNotification && (
-                  <p className="text-[10px] text-emerald-600 font-bold">Password copied to clipboard!</p>
+                  <p role="status" className="text-[10px] text-emerald-600 font-bold">Password copied to clipboard.</p>
                 )}
               </div>
+              )}
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-                <p>• The student will be required to change this temporary password upon next login.</p>
-                <p>• Password reset event will be logged in the system audit trail.</p>
+                <p>The student must sign in with their institutional email and this temporary password.</p>
+                <p>They will be required to create a personal password immediately after signing in.</p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={resetPasswordConfirmClose.requestClose}
+                  disabled={isResettingPassword}
                   className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold cursor-pointer"
                 >
-                  Cancel
+                  {resetPasswordComplete ? 'Done' : 'Cancel'}
                 </button>
-                <Button type="submit" size="sm" className="bg-amber-600 hover:bg-amber-700 font-bold">
-                  Confirm Reset
-                </Button>
+                {!resetPasswordComplete && (
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isResettingPassword || !verifiedResetIdentity}
+                    className="bg-amber-600 hover:bg-amber-700 font-bold"
+                  >
+                    {isResettingPassword ? 'Resetting...' : 'Confirm Reset'}
+                  </Button>
+                )}
               </div>
             </form>
           </div>
@@ -1421,10 +1412,10 @@ export default function OSADStudentAccountsPage({
       {/* Discard Confirmation Dialog */}
       <ConfirmDialog
         open={resetPasswordConfirmClose.isConfirmOpen}
-        title="Discard Password Reset?"
-        message="Are you sure you want to close? The generated temporary password will be discarded."
-        confirmLabel="Discard Changes"
-        cancelLabel="Continue Editing"
+        title="Discard Temporary Password?"
+        message="This one-time temporary password cannot be shown again. Confirm that it has been securely saved or delivered before closing."
+        confirmLabel="Close and Discard"
+        cancelLabel="Continue Viewing"
         onConfirm={resetPasswordConfirmClose.confirmDiscard}
         onCancel={resetPasswordConfirmClose.cancelDiscard}
       />

@@ -36,8 +36,8 @@ class EvaluationScaleAssignmentService
         $db = Database::connect();
 
         $profile = $db->table('personnel_profiles')
-            ->select('id, personnel_group, organizational_side, faculty_status, workload_status, employment_status, college_id')
-            ->where('id', (int)$personnelProfileId)
+            ->select('profile_id, personnel_group, organizational_side, faculty_engagement, employment_status')
+            ->where('profile_id', (string)$personnelProfileId)
             ->get()
             ->getRowArray();
 
@@ -46,10 +46,10 @@ class EvaluationScaleAssignmentService
         }
 
         return $this->resolveScaleFromContext([
-            'personnel_profile_id' => (int)$profile['id'],
+            'personnel_profile_id' => $profile['profile_id'],
             'personnel_group' => $profile['personnel_group'] ?? '',
             'organizational_side' => $profile['organizational_side'] ?? '',
-            'faculty_status' => $profile['faculty_status'] ?? $profile['workload_status'] ?? '',
+            'faculty_status' => $profile['faculty_engagement'] ?? '',
             'evaluation_cycle_id' => $evaluationCycleId,
         ]);
     }
@@ -73,7 +73,7 @@ class EvaluationScaleAssignmentService
         }
 
         try {
-            $scaleCode = EvaluationInstrumentRegistry::resolveScaleCode($group);
+            $scaleCode = EvaluationInstrumentRegistry::resolveScaleCode($group, $side);
         } catch (RuntimeException $e) {
             return [
                 'personnel_profile_id' => $profileId,

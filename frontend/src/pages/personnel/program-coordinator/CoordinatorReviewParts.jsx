@@ -151,9 +151,9 @@ export function CoordinatorDecisionActions({ item, onApprove, onReturn, onReject
     setBusy(true); setError('')
     try {
       const handler = { approve: onApprove, return: onReturn, reject: onReject }[action]
-      await handler(item.id, remarks.trim())
+      const result = await handler(item.id, remarks.trim())
       setRemarks('')
-      onDone?.(action)
+      onDone?.(action, result)
     } catch (err) {
       setError(formatApiError(err, 'The decision could not be recorded.'))
     } finally { setBusy(false) }

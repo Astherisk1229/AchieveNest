@@ -39,8 +39,8 @@ export const WORKSPACE_NAVIGATION = Object.freeze({
   [CANONICAL_ROLES.ORGANIZATION_MODERATOR]: { label: 'Organization Moderator', icon: HeartHandshake },
   [CANONICAL_ROLES.DEAN]: { label: 'Dean Portal', icon: Building2 },
   [CANONICAL_ROLES.DEPARTMENT_HEAD]: { label: 'Department Head', icon: Building2 },
-  [CANONICAL_ROLES.HR_STAFF]: { label: 'HR Portal', icon: Users, showOnboardingGuide: true },
-  [CANONICAL_ROLES.OSAD_STAFF]: { label: 'OSAD Portal', icon: ShieldCheck, showOnboardingGuide: true }
+  [CANONICAL_ROLES.HR_STAFF]: { label: 'HR Portal', icon: Users, showOnboardingGuide: false },
+  [CANONICAL_ROLES.OSAD_STAFF]: { label: 'OSAD Portal', icon: ShieldCheck, showOnboardingGuide: false }
 })
 
 export const NAVIGATION_CATALOG = [
@@ -460,8 +460,8 @@ export const NAVIGATION_CATALOG = [
     id: 'osad-accreditation-reports',
     label: 'Accreditation Reports',
     icon: FileSpreadsheet,
-    path: '/osad/dashboard?tab=reports',
-    tab: 'reports',
+    path: '/osad/dashboard?tab=accreditation-reports',
+    tab: 'accreditation-reports',
     portal: 'osad',
     workflowFamily: 'governance',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],
@@ -472,8 +472,8 @@ export const NAVIGATION_CATALOG = [
     id: 'osad-activity-log',
     label: 'OSAD Activity Log',
     icon: ShieldCheck,
-    path: '/osad/dashboard?tab=audit',
-    tab: 'audit',
+    path: '/osad/dashboard?tab=system-logs',
+    tab: 'system-logs',
     portal: 'osad',
     workflowFamily: 'governance',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.OSAD_ADMIN],

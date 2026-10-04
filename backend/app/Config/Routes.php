@@ -83,6 +83,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('achievements', 'Api\AchievementController::options');
 
     // Governed student certificates
+    $routes->get('certificates', 'Api\CertificateController::index');
+    $routes->options('certificates', 'Api\CertificateController::options');
     $routes->get('certificates/templates', 'Api\CertificateController::templates');
     $routes->post('certificates/readiness', 'Api\CertificateController::readiness');
     $routes->post('certificates/issue', 'Api\CertificateController::issue');
@@ -119,6 +121,7 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
 
     // Personnel Profile & Photo Endpoints (Package B)
     $routes->get('personnel/profile', 'Api\PersonnelProfileController::show');
+    $routes->put('personnel/profile', 'Api\PersonnelProfileController::update');
     $routes->options('personnel/profile', 'Api\PersonnelProfileController::options');
     $routes->post('personnel/profile/photo', 'Api\PersonnelProfileController::uploadPhoto');
     $routes->delete('personnel/profile/photo', 'Api\PersonnelProfileController::deletePhoto');
@@ -249,6 +252,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('hr/personnel/import/commit', 'Api\TargetHRPersonnelController::options');
 
     // Personnel Classification Update (Plan D Phase D1)
+    $routes->put('hr/personnel/(:segment)/assignment', 'Api\TargetHRPersonnelController::updateAssignment/$1');
+    $routes->options('hr/personnel/(:segment)/assignment', 'Api\TargetHRPersonnelController::options');
     $routes->put('hr/personnel/(:segment)/classification', 'Api\TargetHRPersonnelController::updateClassification/$1');
     $routes->options('hr/personnel/(:segment)/classification', 'Api\TargetHRPersonnelController::options');
 
@@ -601,6 +606,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('osad/organizations/(:segment)/logo', 'Api\OrganizationController::options');
 
     // OSAD automatic criterion contributions (Step 6)
+    $routes->get('osad/scoring/unscored', 'Api\ApprovedAchievementScoringController::unscored');
+    $routes->options('osad/scoring/unscored', 'Api\ApprovedAchievementScoringController::options');
     $routes->post('osad/scoring/records/(:segment)/rescore', 'Api\ApprovedAchievementScoringController::rescore/$1');
     $routes->options('osad/scoring/records/(:segment)/rescore', 'Api\ApprovedAchievementScoringController::options');
     $routes->get('osad/scoring/records/(:segment)/contributions', 'Api\ApprovedAchievementScoringController::contributions/$1');
@@ -655,14 +662,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('awards/campus-journalism/candidates', 'Api\AwardEvaluationController::options');
 
     // OSAD Student Organization Management
-    $routes->get('osad/organizations', 'Api\OrganizationController::index');
-    $routes->options('osad/organizations', 'Api\OrganizationController::options');
-    $routes->post('osad/organizations', 'Api\OrganizationController::create');
-    $routes->options('osad/organizations', 'Api\OrganizationController::options');
-    $routes->get('osad/organizations/(:segment)', 'Api\OrganizationController::show/$1');
-    $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
-    $routes->get('osad/organizations/(:segment)/logo', 'Api\OrganizationController::logo/$1');
-    $routes->options('osad/organizations/(:segment)/logo', 'Api\OrganizationController::options');
     $routes->post('osad/organizations/(:segment)/moderator', 'Api\OrganizationController::assignModerator/$1');
     $routes->options('osad/organizations/(:segment)/moderator', 'Api\OrganizationController::options');
     $routes->delete('osad/organizations/(:segment)/moderator', 'Api\OrganizationController::removeModerator/$1');
@@ -672,8 +671,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->delete('osad/organizations/(:segment)/programs/(:segment)', 'Api\OrganizationController::removeProgram/$1/$2');
     $routes->options('osad/organizations/(:segment)/programs/(:segment)', 'Api\OrganizationController::options');
     $routes->patch('osad/organizations/(:segment)', 'Api\OrganizationController::update/$1');
-    $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
-    $routes->delete('osad/organizations/(:segment)', 'Api\OrganizationController::delete/$1');
     $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
 
     // Dean Nominations

@@ -133,13 +133,16 @@ export default function CoordinatorDashboardPage({ currentUser }) {
   }
 
   // Decisions go through CoordinatorDecisionActions; this only reports the outcome.
-  const handleDecisionDone = (action) => {
+  const handleDecisionDone = (action, result) => {
     const messages = {
       approve: 'Achievement approved and verified.',
       return: 'Submission returned to the student with your remarks.',
       reject: 'Submission rejected with your remarks.'
     }
-    triggerToast(messages[action] || 'Decision recorded.')
+    const scoringDeferred = action === 'approve' && result?.scoring_status === 'DEFERRED'
+    triggerToast(scoringDeferred
+      ? 'Approved, but scoring is pending. OSAD can rescore this record from Awards & Criteria.'
+      : (messages[action] || 'Decision recorded.'))
     setSelectedReviewItem(null)
     setSelectedWorkspaceItem(null)
   }

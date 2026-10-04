@@ -44,22 +44,7 @@ export const personnelMasterDataService = {
         }))
       }
     } catch (err) {
-      console.warn('Direct college admin fetch failed, attempting /colleges fallback:', err?.message)
-    }
-
-    try {
-      const res = await apiClient.get('/colleges', { params: filters })
-      const data = res?.data?.colleges || res?.data?.data || res?.data || []
-      if (Array.isArray(data) && data.length > 0) {
-        return data.map(c => ({
-          id: c.id,
-          code: c.code || '',
-          name: c.name || c.college_name || c.code,
-          status: c.status || 'active'
-        }))
-      }
-    } catch (fallbackErr) {
-      console.warn('Fallback /colleges fetch error:', fallbackErr?.message)
+      console.warn('Direct college admin fetch failed, returning empty list:', err?.message)
     }
 
     return []

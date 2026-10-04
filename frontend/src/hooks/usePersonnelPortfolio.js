@@ -9,7 +9,7 @@ import { derivePersonnelPortfolioState, normalizeLatestPersonnelSubmission } fro
  * Custom React Hook bridging UI View components to live PersonnelPortfolioController reflection
  * and server-enforced submitted snapshot lock states (Plan C Phase C2).
  */
-export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileContext = {}) {
+export function usePersonnelPortfolio(personnelId = '', profileContext = {}) {
   const [portfolio, setPortfolio] = useState(() => PersonnelPortfolioController.loadPortfolio(personnelId, profileContext))
   const [latestSubmission, setLatestSubmission] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -46,7 +46,7 @@ export function usePersonnelPortfolio(personnelId = 'EMP-2024-001', profileConte
       const parsedContext = JSON.parse(profileKey || '{}')
       const [loaded, subRes, histRes] = await Promise.all([
         PersonnelPortfolioController.loadPortfolioAsync(personnelId, parsedContext),
-        personnelPortfolioService.getLatestSubmission().catch(() => null),
+        personnelPortfolioService.getLatestSubmission(),
         personnelPortfolioService.getSubmissionHistory().catch(() => null)
       ])
 

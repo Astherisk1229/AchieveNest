@@ -11,9 +11,10 @@ use RuntimeException;
  * Restores the configured local-defense password for the synthetic demo
  * accounts without invoking the broad demo fixture reset.
  *
- * This deliberately touches credentials only. It must never be used against
- * a non-local-defense database and it does not create, delete, or alter any
- * achievement, evidence, routing, or verification data.
+ * This deliberately touches credentials only. Production execution requires
+ * an explicit flag and is restricted to the named Railway demo service. It
+ * does not create, delete, or alter achievement, evidence, routing, or
+ * verification data.
  */
 class SyncDefenseDemoCredentials extends BaseCommand
 {
@@ -22,24 +23,34 @@ class SyncDefenseDemoCredentials extends BaseCommand
     protected $description = 'Synchronizes only the ten local-defense demo-account credentials with ACHIEVENEST_DEMO_PASSWORD.';
 
     /** @var list<string> */
-    private const DEMO_PROFILE_IDS = [
-        'd0000000-0000-0000-0001-000000000001',
-        'd0000000-0000-0000-0001-000000000002',
-        'd0000000-0000-0000-0001-000000000003',
-        'd0000000-0000-0000-0001-000000000004',
-        'd0000000-0000-0000-0001-000000000005',
-        'd0000000-0000-0000-0001-000000000006',
-        'd0000000-0000-0000-0001-000000000007',
-        'd0000000-0000-0000-0001-000000000008',
-        'd0000000-0000-0000-0001-000000000009',
-        'd0000000-0000-0000-0001-000000000010',
+    private const DEMO_EMAILS = [
+        'demo.student.a@ndmu.edu.ph',
+        'demo.student.b@ndmu.edu.ph',
+        'demo.academic.personnel@ndmu.edu.ph',
+        'demo.nonacademic.personnel@ndmu.edu.ph',
+        'demo.hr.admin@ndmu.edu.ph',
+        'demo.osad.admin@ndmu.edu.ph',
+        'demo.dean@ndmu.edu.ph',
+        'demo.coordinator.a@ndmu.edu.ph',
+        'demo.coordinator.b@ndmu.edu.ph',
+        'demo.moderator@ndmu.edu.ph',
     ];
 
     public function run(array $params)
     {
         $environment = (string) (getenv('ACHIEVENEST_ENV') ?: env('ACHIEVENEST_ENV'));
-        if ($environment !== 'local-defense') {
-            throw new RuntimeException('demo:sync-credentials is permitted only when ACHIEVENEST_ENV=local-defense.');
+        $allowProduction = CLI::getOption('allow-production') !== null
+            || in_array('--allow-production', $_SERVER['argv'] ?? [], true);
+        $isApprovedProductionDemo = $environment === 'production'
+            && $allowProduction
+            && (string) getenv('RAILWAY_ENVIRONMENT_NAME') === 'production'
+            && (string) getenv('RAILWAY_SERVICE_NAME') === 'AchieveNest';
+
+        if ($environment !== 'local-defense' && ! $isApprovedProductionDemo) {
+            throw new RuntimeException(
+                'demo:sync-credentials requires ACHIEVENEST_ENV=local-defense, or --allow-production '
+                . 'on the production Railway AchieveNest demo service.'
+            );
         }
 
         $password = (new DefenseDemoConfigService())->requirePassword();
@@ -47,13 +58,15 @@ class SyncDefenseDemoCredentials extends BaseCommand
 
         $profiles = $db->table('profiles')
             ->select('id, email')
-            ->whereIn('id', self::DEMO_PROFILE_IDS)
-            ->like('email', 'demo.', 'after')
+            ->whereIn('email', self::DEMO_EMAILS)
             ->get()
             ->getResultArray();
 
-        if (count($profiles) !== count(self::DEMO_PROFILE_IDS)) {
-            throw new RuntimeException('The expected ten synthetic demo profiles were not found; credentials were not changed.');
+        if (count($profiles) !== count(self::DEMO_EMAILS)) {
+            throw new RuntimeException(sprintf(
+                'Found %d of 10 expected synthetic demo profiles; credentials were not changed.',
+                count($profiles)
+            ));
         }
 
         $profileIds = array_column($profiles, 'id');
@@ -61,7 +74,7 @@ class SyncDefenseDemoCredentials extends BaseCommand
             ->whereIn('profile_id', $profileIds)
             ->countAllResults();
 
-        if ($credentialCount !== count(self::DEMO_PROFILE_IDS)) {
+        if ($credentialCount !== count(self::DEMO_EMAILS)) {
             throw new RuntimeException('The expected ten demo credential rows were not found; credentials were not changed.');
         }
 

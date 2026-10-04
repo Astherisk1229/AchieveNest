@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 import PersonnelDirectoryHeader from './personnel-directory/PersonnelDirectoryHeader'
@@ -13,7 +13,8 @@ import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
 import BatchImportPersonnelModal from './personnel-directory/BatchImportPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
 import { collectPersonnelPlacementOptions, mergePlacementMasterData } from '../../utils/personnelPlacement'
-import { updatePersonnelMasterData } from '../../services/hrAdminService'
+import { updatePersonnelMasterData, updatePersonnelAssignment } from '../../services/hrAdminService'
+import lifecycleService from '../../services/lifecycleService'
 import { personnelMasterDataService } from '../../services/personnelMasterDataService'
 
 export function HRPersonnelDirectoryPage(props) {
@@ -21,12 +22,12 @@ export function HRPersonnelDirectoryPage(props) {
   // have their own routes and must not block the personnel table.
   const hrHook = useHR({ resources: ['directory', 'passwordResets'] })
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const personnelList = props.personnelList || hrHook.personnelList
   const passwordResets = props.passwordResets || hrHook.passwordResets
   const handleApprovePasswordReset = props.handleApprovePasswordReset || hrHook.handleApprovePasswordReset
   const handleCreatePersonnelAccount = props.handleCreatePersonnelAccount || hrHook.handleCreatePersonnelAccount
-  const handleUpdateRank = props.handleUpdateRank || hrHook.handleUpdateRank
 
   // Master Data Placement Options State (Institutional API backed)
   const [institutionalMasterData, setInstitutionalMasterData] = useState({
@@ -135,10 +136,15 @@ export function HRPersonnelDirectoryPage(props) {
     setEditingMasterDataPersonnel(p)
   }
 
-  const handleSaveAssignment = (updatedData) => {
-    showToast(`Updated administrative assignment for ${updatedData.full_name || 'personnel'}.`)
+  const handleSaveAssignment = async (updatedData) => {
+    await updatePersonnelAssignment(updatedData.id || updatedData.profile_id, {
+      college_id: updatedData.college_id,
+      academic_program_ids: updatedData.academic_program_ids,
+      administrative_unit_id: updatedData.administrative_unit_id
+    })
+    showToast(`Updated assignment for ${updatedData.full_name || 'personnel'}.`)
     setEditingAssignmentPersonnel(null)
-    hrHook.refreshData?.()
+    await hrHook.refreshData?.()
   }
 
   const handleSaveMasterData = async (profileId, payload) => {
@@ -155,24 +161,24 @@ export function HRPersonnelDirectoryPage(props) {
   }
 
   const handlePromoteRank = (p, newRank, newStatus) => {
-    if (handleUpdateRank) {
-      handleUpdateRank(p.id, newRank, newStatus)
-    }
-    showToast(`Promoted ${p.full_name} to ${newRank} (${newStatus}).`)
-    setIsDossierOpen(false)
+    // Rank changes are not saved from the directory yet, so do not report one as done.
+    showToast(`No rank change was saved for ${p.full_name}. Rank changes are not available from the directory yet.`)
   }
 
   const handleResetPassword = (p) => {
     setResetPasswordPersonnel(p)
   }
 
-  const handleConfirmResetPassword = (p, tempPassword) => {
-    showToast(`Issued temporary credentials reset passkey (${tempPassword}) for ${p.full_name || 'personnel'}.`)
-    setResetPasswordPersonnel(null)
+  // Returns the server-issued one-time credential; the modal shows it and surfaces any error.
+  const handleConfirmResetPassword = async (p) => {
+    const result = await lifecycleService.resetTemporaryPassword(p.id || p.profile_id)
+    showToast(`Temporary password issued for ${p.full_name || 'personnel'}.`)
+    return result
   }
 
-  const handleManageRole = (p, _roleKey) => {
-    showToast(`Updated administrative role authorization for ${p.full_name}.`)
+  // HR's only governance role is Dean, which has its own assign/reassign/revoke flow on the organization page.
+  const handleManageRole = () => {
+    navigate('/hr/organizational-structure')
   }
 
   const handleOnboardSubmit = async (formData) => {
@@ -315,7 +321,6 @@ export function HRPersonnelDirectoryPage(props) {
       {/* Onboard Personnel Multi-Step Modal */}
       <OnboardPersonnelModal
         isOpen={isOnboardingOpen}
-        evaluatorContext={{ evaluatorId: 'HR-2010-001', role: 'hr_staff' }}
         onClose={() => setIsOnboardingOpen(false)}
         onSubmit={handleOnboardSubmit}
         placementOptions={placementOptions}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, UserCheck, Briefcase, GraduationCap, Building2, Phone, Mail, MapPin, AlignLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { updateOwnProfile, fetchOwnProfileFields } from '../../../services/personnelProfileService'
 import ProfilePhotoUploader from '../../../components/common/ProfilePhotoUploader'
 
 export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user, onSave }) {
@@ -36,6 +37,14 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
     }
   }, [profileData.employee_id, profileData.full_name, profileData.avatar_url, isOpen])
 
+  // Prefill the editable fields from what the server has saved, not from stale login data.
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let active = true
+    fetchOwnProfileFields().then(fields => { if (active) setFormData(prev => ({ ...prev, ...fields })) }).catch(() => {})
+    return () => { active = false }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const handleChange = (e) => {
@@ -51,20 +60,20 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
     e.preventDefault()
     setError('')
 
-    if (!formData.full_name.trim() || !formData.designation.trim()) {
-      setError('Please fill in all mandatory fields (Name and Designation).')
-      return
-    }
-
     try {
       setIsSubmitting(true)
-      await new Promise(resolve => setTimeout(resolve, 300))
-      if (onSave) {
-        onSave(formData)
-      }
+      const saved = await updateOwnProfile(formData)
+      onSave?.({
+        ...formData,
+        contact_number: saved?.phone ?? '',
+        phone: saved?.phone ?? '',
+        location: saved?.location ?? '',
+        about_me: saved?.about_me ?? '',
+        specialization: saved?.specialization ?? ''
+      })
       onClose()
     } catch (err) {
-      setError('Failed to update basic information. Please try again.')
+      setError(err?.error?.message || err?.message || 'Failed to update basic information. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -122,32 +131,28 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
             {/* Full Name */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Full Name with Titles *
+                Full Name with Titles (managed by HR)
               </label>
               <input
                 type="text"
                 name="full_name"
                 value={formData.full_name}
-                onChange={handleChange}
-                placeholder="e.g. Dr. Maria L. Santos, Ph.D."
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#16834a]"
+                disabled
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
               />
             </div>
 
             {/* Designation / Academic Rank */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Designation / Position *
+                Designation / Position (managed by HR)
               </label>
               <input
                 type="text"
                 name="designation"
                 value={formData.designation}
-                onChange={handleChange}
-                placeholder="e.g. Associate Professor IV"
-                required
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#16834a]"
+                disabled
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
               />
             </div>
 
@@ -168,15 +173,14 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
             {/* Educational Attainment */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Highest Educational Degree
+                Highest Educational Degree (managed by HR)
               </label>
               <input
                 type="text"
                 name="educational_attainment"
                 value={formData.educational_attainment}
-                onChange={handleChange}
-                placeholder="e.g. Doctor of Information Technology"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#16834a]"
+                disabled
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
               />
             </div>
 
@@ -198,15 +202,14 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
             {/* Institutional Email */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Institutional Email
+                Institutional Email (managed by HR)
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
-                onChange={handleChange}
-                placeholder="faculty@ndmu.edu.ph"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#16834a]"
+                disabled
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
               />
             </div>
 

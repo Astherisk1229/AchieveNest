@@ -17,6 +17,7 @@ final class ProductionDemoAdminBootstrapConfigTest extends TestCase
             'ACHIEVENEST_ENV' => 'production',
             'RAILWAY_ENVIRONMENT_NAME' => 'production',
             'ACHIEVENEST_BOOTSTRAP_TARGET' => 'production',
+            'ACHIEVENEST_BOOTSTRAP_EXPECTED_RAILWAY_ENVIRONMENT' => 'production',
             'ACHIEVENEST_BOOTSTRAP_CONFIRM' => ProductionDemoAdminBootstrapConfig::CONFIRMATION,
             'ACHIEVENEST_BOOTSTRAP_HR_PASSWORD' => 'Hr-Temporary-2026!',
             'ACHIEVENEST_BOOTSTRAP_OSAD_PASSWORD' => 'Osad-Temporary-2026!',
@@ -55,6 +56,11 @@ final class ProductionDemoAdminBootstrapConfigTest extends TestCase
             'Railway environment does not match target' => [static function (array &$values): void {
                 $values['RAILWAY_ENVIRONMENT_NAME'] = 'staging';
             }],
+            'staging target cannot name production Railway' => [static function (array &$values): void {
+                $values['ACHIEVENEST_ENV'] = 'staging';
+                $values['ACHIEVENEST_BOOTSTRAP_TARGET'] = 'staging';
+                $values['ACHIEVENEST_BOOTSTRAP_CONFIRM'] = ProductionDemoAdminBootstrapConfig::STAGING_CONFIRMATION;
+            }],
             'missing confirmation' => [static function (array &$values): void {
                 $values['ACHIEVENEST_BOOTSTRAP_CONFIRM'] = '';
             }],
@@ -76,6 +82,21 @@ final class ProductionDemoAdminBootstrapConfigTest extends TestCase
         $values['ACHIEVENEST_ENV'] = 'staging';
         $values['RAILWAY_ENVIRONMENT_NAME'] = 'staging';
         $values['ACHIEVENEST_BOOTSTRAP_TARGET'] = 'staging';
+        $values['ACHIEVENEST_BOOTSTRAP_EXPECTED_RAILWAY_ENVIRONMENT'] = 'staging';
+        $values['ACHIEVENEST_BOOTSTRAP_CONFIRM'] = ProductionDemoAdminBootstrapConfig::STAGING_CONFIRMATION;
+
+        $result = (new ProductionDemoAdminBootstrapConfig())->validate($values);
+
+        $this->assertSame('staging', $result['target']);
+    }
+
+    public function testAcceptsExplicitlyNamedDisposableStagingEnvironment(): void
+    {
+        $values = $this->validValues();
+        $values['ACHIEVENEST_ENV'] = 'staging';
+        $values['RAILWAY_ENVIRONMENT_NAME'] = 'bootstrap-proof';
+        $values['ACHIEVENEST_BOOTSTRAP_TARGET'] = 'staging';
+        $values['ACHIEVENEST_BOOTSTRAP_EXPECTED_RAILWAY_ENVIRONMENT'] = 'bootstrap-proof';
         $values['ACHIEVENEST_BOOTSTRAP_CONFIRM'] = ProductionDemoAdminBootstrapConfig::STAGING_CONFIRMATION;
 
         $result = (new ProductionDemoAdminBootstrapConfig())->validate($values);

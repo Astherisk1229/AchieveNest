@@ -1,4 +1,4 @@
-import apiClient from './apiClient'
+import apiClient, { API_BASE_URL } from './apiClient'
 
 export async function fetchCurrentEvaluationPeriod(evaluationType = 'RANKING_PROMOTION') {
   const response = await apiClient.get('/personnel/evaluation-period/current', { params: { evaluation_type: evaluationType } })
@@ -81,7 +81,7 @@ export const personnelAccomplishmentService = {
    * Download real evidence binary file via authenticated stream endpoint.
    */
   async downloadEvidenceBlob(evidenceId, filename = 'evidence_document.pdf') {
-    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+    const baseURL = API_BASE_URL
     let token = localStorage.getItem('achievenest_access_token') || sessionStorage.getItem('achievenest_access_token')
     if (!token) {
       try {
@@ -119,7 +119,7 @@ export const personnelAccomplishmentService = {
    * Obtain a temporary Blob URL for inline viewing of proof documents.
    */
   async getEvidenceBlobUrl(evidenceId) {
-    const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+    const baseURL = API_BASE_URL
     let token = localStorage.getItem('achievenest_access_token') || sessionStorage.getItem('achievenest_access_token')
     if (!token) {
       try {

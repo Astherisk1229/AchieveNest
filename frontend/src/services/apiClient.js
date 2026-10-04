@@ -2,6 +2,14 @@ import axios from 'axios'
 
 const performanceLoggingEnabled = import.meta.env.DEV || import.meta.env.VITE_PERFORMANCE_LOGGING === 'true'
 
+const injectedApiBaseUrl = typeof __ACHIEVENEST_API_BASE_URL__ === 'string'
+  ? __ACHIEVENEST_API_BASE_URL__
+  : ''
+
+export const API_BASE_URL = injectedApiBaseUrl
+  || import.meta.env.VITE_API_BASE_URL
+  || '/api/v1'
+
 function responseBytes(data) {
   try {
     return new Blob([typeof data === 'string' ? data : JSON.stringify(data)]).size
@@ -32,7 +40,7 @@ function removeMultipartContentType(headers) {
  * Pre-configured Axios instance with JWT Bearer Token interceptors and error handlers.
  */
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'

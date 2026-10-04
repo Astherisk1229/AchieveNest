@@ -3,7 +3,7 @@
  * Administrative service for College identity, branding, and Academic Program management in OSAD.
  */
 
-import apiClient from './apiClient'
+import apiClient, { API_BASE_URL } from './apiClient'
 import { getCurrentUser } from './authService'
 
 function getAuthHeaders(contentType = null) {
@@ -100,7 +100,7 @@ export async function deleteCollege(id) {
  */
 export function getCollegeLogoUrl(id) {
   if (!id) return null
-  const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+  const baseURL = API_BASE_URL
   return `${baseURL.replace(/\/$/, '')}/osad/colleges/${id}/logo`
 }
 

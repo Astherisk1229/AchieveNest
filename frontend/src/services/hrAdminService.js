@@ -15,6 +15,21 @@ export async function createHRCollege(payload) {
   return response?.data || response
 }
 
+export async function updateHRCollege(id, payload) {
+  const response = await apiClient.post(`/hr/organizational-structure/colleges/${id}/update`, payload)
+  return response?.data?.data || response?.data
+}
+
+export async function updateHRCollegeStatus(id, status) {
+  const response = await apiClient.patch(`/hr/organizational-structure/colleges/${id}/status`, { status })
+  return response?.data?.data || response?.data
+}
+
+export async function deleteHRCollege(id) {
+  const response = await apiClient.delete(`/hr/organizational-structure/colleges/${id}`)
+  return response?.data?.data || response?.data
+}
+
 export async function createHRDepartment(payload) {
   const response = await apiClient.post('/hr/organizational-structure/departments', payload)
   return response?.data || response

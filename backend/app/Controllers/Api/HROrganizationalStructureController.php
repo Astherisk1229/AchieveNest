@@ -5,10 +5,14 @@ namespace App\Controllers\Api;
 use App\Services\AuthorizationService;
 use App\Services\PersonnelClassificationService;
 use App\Services\DeanAssignmentService;
+use App\Services\CollegeService;
+use App\Services\CollegeInUseException;
 use App\Helpers\ValidationHelper;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
+use InvalidArgumentException;
+use RuntimeException;
 
 class HROrganizationalStructureController extends Controller
 {
@@ -17,11 +21,13 @@ class HROrganizationalStructureController extends Controller
     public function __construct(
         private ?AuthorizationService $authz = null,
         private ?PersonnelClassificationService $classifications = null,
-        private ?DeanAssignmentService $deanAssignments = null
+        private ?DeanAssignmentService $deanAssignments = null,
+        private ?CollegeService $collegeService = null
     ) {
         $this->authz ??= new AuthorizationService();
         $this->classifications ??= new PersonnelClassificationService();
         $this->deanAssignments ??= new DeanAssignmentService();
+        $this->collegeService ??= new CollegeService();
     }
 
     public function options(): mixed
@@ -79,6 +85,65 @@ class HROrganizationalStructureController extends Controller
         }
     }
 
+    public function updateCollege(string $id): mixed
+    {
+        $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
+        $payload = $this->request->getJSON(true) ?? [];
+        try {
+            $college = $this->collegeService->updateCollege($id, $payload);
+            return $this->respond(['data' => $college, 'message' => 'College updated successfully.'], 200);
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'College not found.' ? 404 : 422;
+            return $this->respond(['error' => ['code' => $status === 404 ? 'NOT_FOUND' : 'VALIDATION_ERROR', 'message' => $e->getMessage()]], $status);
+        } catch (Throwable $e) {
+            log_message('error', '[HROrganizationalStructureController::updateCollege] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Unable to update this college.']], 500);
+        }
+    }
+
+    public function updateCollegeStatus(string $id): mixed
+    {
+        $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
+        $payload = $this->request->getJSON(true) ?? [];
+        try {
+            $college = $this->collegeService->updateCollegeStatus($id, (string) ($payload['status'] ?? ''));
+            return $this->respond(['data' => $college, 'message' => $college['status'] === 'inactive' ? 'College deactivated. Existing records were preserved.' : 'College reactivated.'], 200);
+        } catch (InvalidArgumentException $e) {
+            $status = $e->getMessage() === 'College not found.' ? 404 : 422;
+            return $this->respond(['error' => ['code' => $status === 404 ? 'NOT_FOUND' : 'VALIDATION_ERROR', 'message' => $e->getMessage()]], $status);
+        } catch (Throwable $e) {
+            log_message('error', '[HROrganizationalStructureController::updateCollegeStatus] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Unable to change this college status.']], 500);
+        }
+    }
+
+    public function deleteCollege(string $id): mixed
+    {
+        $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
+        try {
+            $college = $this->collegeService->deleteCollege($id);
+            log_message('notice', '[HROrganizationalStructureController] College ' . $college['code'] . ' deleted by ' . ($actor['profile']['id'] ?? 'unknown'));
+            return $this->respond(['data' => $college, 'message' => 'College deleted permanently.'], 200);
+        } catch (CollegeInUseException $e) {
+            return $this->respond(['error' => ['code' => 'COLLEGE_IN_USE', 'message' => 'This college is still linked to records and cannot be deleted.', 'references' => $e->references()]], 409);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => $e->getMessage()]], 404);
+        } catch (RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'COLLEGE_NOT_ARCHIVED')) return $this->respond(['error' => ['code' => 'COLLEGE_NOT_ARCHIVED', 'message' => 'Deactivate the college before deleting it.']], 409);
+            log_message('error', '[HROrganizationalStructureController::deleteCollege] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'DELETE_FAILED', 'message' => 'Unable to delete this college.']], 500);
+        } catch (Throwable $e) {
+            log_message('error', '[HROrganizationalStructureController::deleteCollege] ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'DELETE_FAILED', 'message' => 'Unable to delete this college.']], 500);
+        }
+    }
+
     private function genUuid(): string
     {
         return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
@@ -98,7 +163,7 @@ class HROrganizationalStructureController extends Controller
             $db = db_connect();
             $colleges = $db->table('colleges')
                 ->select('id, code, name, status')
-                ->where('status', 'active')->orderBy('name', 'ASC')->get()->getResultArray();
+                ->orderBy('name', 'ASC')->get()->getResultArray();
 
             // The WAMP schema retains the legacy table name; this API exposes these records as Departments only.
             $departments = $db->table('administrative_units')

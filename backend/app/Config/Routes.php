@@ -249,8 +249,14 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('hr/organizational-structure', 'Api\HROrganizationalStructureController::index');
     $routes->options('hr/organizational-structure', 'Api\HROrganizationalStructureController::options');
     $routes->post('hr/organizational-structure/colleges', 'Api\HROrganizationalStructureController::createCollege');
+    $routes->post('hr/organizational-structure/colleges/(:segment)/update', 'Api\HROrganizationalStructureController::updateCollege/$1');
+    $routes->patch('hr/organizational-structure/colleges/(:segment)/status', 'Api\HROrganizationalStructureController::updateCollegeStatus/$1');
+    $routes->delete('hr/organizational-structure/colleges/(:segment)', 'Api\HROrganizationalStructureController::deleteCollege/$1');
     $routes->post('hr/organizational-structure/departments', 'Api\HROrganizationalStructureController::createDepartment');
     $routes->options('hr/organizational-structure/colleges', 'Api\HROrganizationalStructureController::options');
+    $routes->options('hr/organizational-structure/colleges/(:segment)/update', 'Api\HROrganizationalStructureController::options');
+    $routes->options('hr/organizational-structure/colleges/(:segment)/status', 'Api\HROrganizationalStructureController::options');
+    $routes->options('hr/organizational-structure/colleges/(:segment)', 'Api\HROrganizationalStructureController::options');
     $routes->options('hr/organizational-structure/departments', 'Api\HROrganizationalStructureController::options');
 
     // Personnel Batch XLSX Import Workflow (CHU-02 Phase 1)

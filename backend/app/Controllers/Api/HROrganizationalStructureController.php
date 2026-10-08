@@ -10,6 +10,7 @@ use App\Services\CollegeInUseException;
 use App\Helpers\ValidationHelper;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
+use CodeIgniter\HTTP\Files\UploadedFile;
 use Throwable;
 use InvalidArgumentException;
 use RuntimeException;
@@ -40,18 +41,19 @@ class HROrganizationalStructureController extends Controller
         $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
         if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
-        $json = $this->request->getJSON(true) ?? [];
-        $code = strtoupper(trim((string) ($json['code'] ?? '')));
-        $name = trim((string) ($json['name'] ?? ''));
+        $payload = $this->getRequestPayload();
+        $code = strtoupper(trim((string) ($payload['code'] ?? '')));
+        $name = trim((string) ($payload['name'] ?? ''));
         if (! preg_match('/^[A-Z0-9_-]{2,20}$/', $code) || $name === '' || mb_strlen($name) > 150) {
             return $this->respond(['error' => ['code' => 'INVALID_COLLEGE', 'message' => 'Enter a 2–20 character code and a college name up to 150 characters.']], 422);
         }
-        $db = db_connect();
         try {
-            $id = $this->genUuid();
-            $db->table('colleges')->insert(['id' => $id, 'code' => $code, 'name' => $name, 'status' => 'active']);
-            return $this->respondCreated(['data' => ['id' => $id, 'code' => $code, 'name' => $name, 'status' => 'active']]);
+            $created = $this->collegeService->createCollege($payload, $this->getLogoFile());
+            return $this->respondCreated(['data' => $created['college']]);
+        } catch (InvalidArgumentException $e) {
+            return $this->respond(['error' => ['code' => 'INVALID_COLLEGE', 'message' => $e->getMessage()]], 422);
         } catch (Throwable $e) {
+            log_message('error', '[HROrganizationalStructureController::createCollege] ' . $e->getMessage());
             return $this->respond(['error' => ['code' => 'COLLEGE_CONFLICT', 'message' => 'A college with that code or name already exists.']], 409);
         }
     }
@@ -90,9 +92,9 @@ class HROrganizationalStructureController extends Controller
         $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
         if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
-        $payload = $this->request->getJSON(true) ?? [];
+        $payload = $this->getRequestPayload();
         try {
-            $college = $this->collegeService->updateCollege($id, $payload);
+            $college = $this->collegeService->updateCollege($id, $payload, $this->getLogoFile());
             return $this->respond(['data' => $college, 'message' => 'College updated successfully.'], 200);
         } catch (InvalidArgumentException $e) {
             $status = $e->getMessage() === 'College not found.' ? 404 : 422;
@@ -149,6 +151,27 @@ class HROrganizationalStructureController extends Controller
         return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
     }
 
+    private function getRequestPayload(): array
+    {
+        if (str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'application/json')) {
+            $json = $this->request->getJSON(true);
+            return is_array($json) ? $json : [];
+        }
+
+        $post = $this->request->getPost();
+        return is_array($post) ? $post : [];
+    }
+
+    private function getLogoFile(): ?UploadedFile
+    {
+        $file = $this->request->getFile('logo');
+        if ($file === null) return null;
+        if (! $file->isValid()) {
+            throw new InvalidArgumentException('Logo upload failed. Please choose a valid image file up to 5 MB.');
+        }
+        return $file;
+    }
+
     public function index(): mixed
     {
         $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
@@ -162,8 +185,13 @@ class HROrganizationalStructureController extends Controller
         try {
             $db = db_connect();
             $colleges = $db->table('colleges')
-                ->select('id, code, name, status')
+                ->select('id, code, name, status, logo_storage_key, logo_updated_at')
                 ->orderBy('name', 'ASC')->get()->getResultArray();
+            foreach ($colleges as &$college) {
+                $college['has_logo'] = ! empty($college['logo_storage_key']);
+                unset($college['logo_storage_key']);
+            }
+            unset($college);
 
             // The WAMP schema retains the legacy table name; this API exposes these records as Departments only.
             $departments = $db->table('administrative_units')

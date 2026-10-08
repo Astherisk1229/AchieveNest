@@ -66,6 +66,7 @@ const matchesPersonnelSearch = (person, query) => {
 
 export default function PersonnelDirectoryTable({
   personnelList = [],
+  initialSearch = '',
   sortConfig,
   onSortChange,
   newlyCreatedId,
@@ -83,7 +84,7 @@ export default function PersonnelDirectoryTable({
   const handleSelect = onSelectPersonnel || onSelectFaculty
 
   // Filter & Search State
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch)
   const [groupFilter, setGroupFilter] = useState('ALL')
   const [sideFilter, setSideFilter] = useState('ALL')
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState('ALL')
@@ -107,6 +108,17 @@ export default function PersonnelDirectoryTable({
   const [copiedEmailId, setCopiedEmailId] = useState(null)
 
   const triggerRefs = useRef({})
+
+  useEffect(() => {
+    setSearch(initialSearch || '')
+    setGroupFilter('ALL')
+    setSideFilter('ALL')
+    setEmploymentStatusFilter('ALL')
+    setCollegeFilter('ALL')
+    setUnitFilter('ALL')
+    setStatusFilter('ALL')
+    setCurrentPage(1)
+  }, [initialSearch])
 
   const activePersonnel = useMemo(() => {
     if (!activeMenuId) return null

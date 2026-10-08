@@ -23,6 +23,7 @@ export function HRPersonnelDirectoryPage(props) {
   const hrHook = useHR({ resources: ['directory', 'passwordResets'] })
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const directorySearchQuery = searchParams.get('search') || ''
 
   const personnelList = props.personnelList || hrHook.personnelList
   const passwordResets = props.passwordResets || hrHook.passwordResets
@@ -305,6 +306,7 @@ export function HRPersonnelDirectoryPage(props) {
       {activeTab === 'directory' && !hrHook.isLoading && (
         <PersonnelDirectoryTable
           personnelList={personnelList}
+          initialSearch={directorySearchQuery}
           sortConfig={directorySort}
           onSortChange={setDirectorySort}
           newlyCreatedId={newlyCreatedId}

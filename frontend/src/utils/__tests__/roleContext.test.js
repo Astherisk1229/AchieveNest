@@ -121,7 +121,7 @@ describe('roleContext utility & navigation registry', () => {
       expect(labels).toEqual([
         'HR Dashboard',
         'Personnel Directory',
-        'Organizational Structure',
+        'College and Department',
         'Ranking Periods',
         'Password Resets',
         'HR Audit Trail'

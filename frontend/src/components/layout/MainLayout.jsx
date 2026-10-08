@@ -35,7 +35,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   const isHrDashboard = location.pathname === '/hr/dashboard'
   const hrWorkspaceTabs = location.pathname.startsWith('/hr/') && location.pathname !== '/hr/dashboard'
     ? location.pathname.startsWith('/hr/personnel-directory') || location.pathname.startsWith('/hr/organizational-structure')
-      ? [{ label: 'Personnel Directory', path: '/hr/personnel-directory' }, { label: 'Organizational Structure', path: '/hr/organizational-structure' }]
+      ? [{ label: 'Personnel Directory', path: '/hr/personnel-directory' }, { label: 'College and Department', path: '/hr/organizational-structure' }]
       : location.pathname.startsWith('/hr/password-resets') || location.pathname.startsWith('/hr/audit-trail')
         ? [{ label: 'Password Resets', path: '/hr/password-resets' }, { label: 'HR Audit Trail', path: '/hr/audit-trail' }]
         : [{ label: 'Evaluation Queue', path: '/hr/evaluation-submissions' }, { label: 'Ranking Periods', path: '/hr/ranking-cycles' }, { label: 'Evaluation Criteria', path: '/hr/ranking-cycles/criteria' }]

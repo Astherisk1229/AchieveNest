@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 
-describe('HR Organizational Structure Directory and Workspace Contract', () => {
+describe('HR College and Department Directory and Workspace Contract', () => {
   const pagePath = path.resolve(__dirname, '../HROrganizationalStructurePage.jsx')
   const assignModalPath = path.resolve(__dirname, '../modals/AssignDeanModal.jsx')
   const reassignModalPath = path.resolve(__dirname, '../modals/ReassignDeanModal.jsx')
@@ -22,7 +22,7 @@ describe('HR Organizational Structure Directory and Workspace Contract', () => {
   describe('1. Directory and dedicated workspace architecture', () => {
     it('separates the organization directory from the selected workspace', () => {
       expect(page).toContain("directoryType === 'colleges'")
-      expect(page).toContain("directoryType === 'offices'")
+      expect(page).toContain("directoryType === 'departments'")
       expect(page).toContain('filteredOrganizations')
       expect(page).toContain('selectedOrganization')
       expect(page).toContain('returnToDirectory')
@@ -31,7 +31,7 @@ describe('HR Organizational Structure Directory and Workspace Contract', () => {
     it('uses contextual directory and personnel searches', () => {
       expect(page).toContain('directorySearch')
       expect(page).toContain('personnelSearch')
-      expect(page).toContain('Search colleges or offices...')
+      expect(page).toContain('Search colleges or departments...')
       expect(page).toContain('Search personnel by name or employee ID...')
       expect(page).not.toContain('Search college, department, dean, personnel')
     })

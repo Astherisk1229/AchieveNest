@@ -154,7 +154,7 @@ class HROrganizationalStructureController extends Controller
             ]], 200);
         } catch (Throwable $e) {
             log_message('error', '[HROrganizationalStructureController::index] ' . $e->getMessage());
-            return $this->respond(['error' => ['code' => 'ORGANIZATIONAL_STRUCTURE_LOAD_FAILED', 'message' => 'Unable to load organizational structure.']], 500);
+            return $this->respond(['error' => ['code' => 'ORGANIZATIONAL_STRUCTURE_LOAD_FAILED', 'message' => 'Unable to load college and department data.']], 500);
         }
     }
 

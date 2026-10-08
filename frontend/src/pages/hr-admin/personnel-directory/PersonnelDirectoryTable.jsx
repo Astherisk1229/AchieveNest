@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import PersonnelActionsMenu from './PersonnelActionsMenu'
 import { Select, SelectItem } from '../../../components/ui/select'
-import { isAcademicPersonnel, formatFacultyEngagement, formatPersonnelClassification } from '../../../utils/personnelPlacement'
+import { isAcademicPersonnel, formatPersonnelClassification } from '../../../utils/personnelPlacement'
 import { applyPersonnelFilters, NOT_RECORDED } from '../../../utils/personnelDirectoryFilters'
 
 // Normalized search string helper
@@ -451,10 +451,8 @@ export default function PersonnelDirectoryTable({
                 </th>
 
                 <th className="p-4 text-left">Assignment</th>
-                <th className="hidden lg:table-cell p-4 text-left">Employment</th>
                 <th className="hidden md:table-cell p-4 text-left">Job Title</th>
                 <th className="hidden md:table-cell p-4 text-left">Academic Rank</th>
-                <th className="hidden lg:table-cell p-4 text-left">Appointment</th>
                 <th className="p-4 text-left">Status &amp; Responsibilities</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
@@ -463,7 +461,7 @@ export default function PersonnelDirectoryTable({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
               {paginatedList.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center">
+                  <td colSpan={7} className="p-12 text-center">
                     <div className="space-y-3 max-w-md mx-auto">
                       <User className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
                       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No personnel records found</h3>
@@ -486,9 +484,6 @@ export default function PersonnelDirectoryTable({
                   const isSelected = selectedIds.has(p.id)
                   const isNewlyCreated = p.id === newlyCreatedId
                   const isAcademic = isAcademicPersonnel(p)
-
-                  const engagementLabel = formatFacultyEngagement(p)
-                  const employmentStatusLabel = (p.employment_status === 'probationary') ? 'Probationary' : 'Permanent'
 
                   return (
                     <tr
@@ -564,14 +559,6 @@ export default function PersonnelDirectoryTable({
                         </div>
                       </td>
 
-                      {/* Engagement & Employment Status (Plan D2) */}
-                      <td className="hidden lg:table-cell p-4">
-                        <div className="space-y-1 text-slate-700 dark:text-slate-300">
-                          <p className="font-semibold">{engagementLabel.replace(' Faculty', '')}</p>
-                          <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">{employmentStatusLabel}</p>
-                        </div>
-                      </td>
-
                       {/* Job title */}
                       <td className="hidden md:table-cell p-4">
                         <p className="font-semibold text-slate-800 dark:text-slate-200">
@@ -580,10 +567,6 @@ export default function PersonnelDirectoryTable({
                       </td>
 
                       <td className="hidden md:table-cell p-4 font-semibold text-slate-800 dark:text-slate-200">{p.current_rank_title || p.academic_rank || 'Unassigned'}</td>
-
-                      <td className="hidden lg:table-cell p-4 font-semibold text-slate-800 dark:text-slate-200">
-                        {(p.assigned_roles || []).some(role => (typeof role === 'object' ? role?.role_key : role) === 'dean') ? 'College Dean' : 'None'}
-                      </td>
 
                       {/* Status & Governance Roles */}
                       <td className="p-4">

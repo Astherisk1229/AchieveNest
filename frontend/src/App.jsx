@@ -38,6 +38,7 @@ const DeanFacultyRankingReviewsPage = lazy(() => import('./pages/dean/DeanFacult
 const DeanAnnualReviewEligibilityPage = lazy(() => import('./pages/dean/DeanAnnualReviewEligibilityPage'))
 
 const HRDashboardPage = lazy(() => import('./pages/hr-admin/HRDashboardPage'))
+const HREvaluationQueueLanding = lazy(() => import('./pages/hr-admin/HREvaluationQueueLanding'))
 const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnelDirectoryPage'))
 const HROrganizationalStructurePage = lazy(() => import('./pages/hr-admin/HROrganizationalStructurePage'))
 const PersonnelEvaluationSetupPage = lazy(() => import('./pages/hr-admin/PersonnelEvaluationSetupPage'))
@@ -60,11 +61,6 @@ function QueryPreservingRedirect({ to }) {
   return <Navigate to={`${to}${location.search}${location.hash}`} replace />
 }
 
-// A lazily loaded page whose file changed (new deploy, or the dev server re-bundled its
-// dependencies) fails with this error. A single reload fetches the current version.
-const isStaleModuleError = (error) => /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Outdated Optimize Dep/i.test(String(error?.message || error))
-const RELOAD_GUARD_KEY = 'achievenest_stale_module_reload_at'
-
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -73,13 +69,6 @@ class ErrorBoundary extends React.Component {
   static getDerivedStateFromError(error) { return { hasError: true, error } }
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary:', error, errorInfo)
-    if (!isStaleModuleError(error)) return
-    let last = 0
-    try { last = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || 0) } catch { last = 0 }
-    if (Date.now() - last > 15000) {
-      try { sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now())) } catch { /* storage unavailable */ }
-      window.location.reload()
-    }
   }
   componentDidUpdate(prevProps) {
     if (this.state.hasError && prevProps.children !== this.props.children) {
@@ -207,10 +196,6 @@ function AppContent() {
               <Route path={DEAN_ROUTES.LEGACY_ROSTER} element={<QueryPreservingRedirect to={DEAN_ROUTES.COLLEGE_PERSONNEL} />} />
             </Route>
 
-            <Route element={<LayoutShell allowedAccountTypes={['personnel']} requiredRoles={['department_head']} />}>
-              <Route path="/department/ranking-cycles/:cycleId/:trackKey/annual-reviews" element={<ActiveRoleGuard allowedActiveContexts={['department_head']} redirectTo="/personnel/dashboard"><DeanAnnualReviewEligibilityPage /></ActiveRoleGuard>} />
-              <Route path="/department/personnel/:personnelId/rank-placement" element={<ActiveRoleGuard allowedActiveContexts={['department_head']} redirectTo="/personnel/dashboard"><RankPlacementPage role="reviewer" /></ActiveRoleGuard>} />
-            </Route>
 
             {/* Student Portal */}
             <Route element={<LayoutShell allowedAccountTypes={['student']} requiredRoles={['student']} />}>
@@ -228,6 +213,7 @@ function AppContent() {
               <Route path="/hr/personnel-directory" element={<HRPersonnelDirectoryPage />} />
               <Route path="/hr/organizational-structure" element={<HROrganizationalStructurePage />} />
               <Route path="/hr/personnel-evaluation-setup" element={<PersonnelEvaluationSetupPage />} />
+              <Route path="/hr/ranking-cycles/criteria" element={<PersonnelEvaluationSetupPage criteriaOnly />} />
               <Route path="/hr/ranking-cycles" element={<HRRankingCyclesPage />} />
               <Route path="/hr/ranking-cycles/:cycleId" element={<HRRankingCyclesPage />} />
               <Route path="/hr/ranking-cycles/:cycleId/:trackKey/results/:evaluationId/summary" element={<EvaluationSummaryPage />} />
@@ -242,7 +228,7 @@ function AppContent() {
               {/* Legacy Route Redirects */}
               <Route path="/hr/profile" element={<Navigate to="/hr/account" replace />} />
               <Route path="/hr/personnel-governance" element={<Navigate to="/hr/personnel-directory" replace />} />
-              <Route path="/hr/evaluation-submissions" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
+              <Route path="/hr/evaluation-submissions" element={<HREvaluationQueueLanding />} />
               <Route path="/hr/faculty-evaluation-and-ranking" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
               <Route path="/hr/verification-queue" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
               <Route path="/hr/faculty-ranking-and-matrix" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
@@ -266,7 +252,6 @@ function AppContent() {
             <Route path="/scanner/:eventId" element={<Suspense fallback={<RouteLoadingFallback />}><OfficerScannerPage /></Suspense>} />
             <Route path="/personnel/achievements" element={<Navigate to="/personnel/portfolio/edit" replace />} />
             <Route path="/personnel" element={<Navigate to="/personnel/dashboard" replace />} />
-            <Route path="/depsec" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/coordinator" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/org-moderator" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/account" element={<Navigate to="/personnel/account" replace />} />

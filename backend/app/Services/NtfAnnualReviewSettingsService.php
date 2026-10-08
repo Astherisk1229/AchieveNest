@@ -17,7 +17,7 @@ class NtfAnnualReviewSettingsService
     public const GROUP = 'NON_TEACHING_FACULTY';
     public const KEY_RATING_SCALE = 'rating_scale';
     public const KEY_SIGNATORIES = 'signatories';
-    public const SIGNATORY_SOURCES = ['college_dean', 'unit_head', 'custom'];
+    public const SIGNATORY_SOURCES = ['college_dean', 'custom'];
     public const SIGNATORY_CONTEXTS = ['college', 'office'];
 
     public function __construct(private ?BaseConnection $db = null) { $this->db ??= db_connect(); }

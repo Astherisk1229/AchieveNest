@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { X, UserCheck, Briefcase, GraduationCap, Building2, Phone, Mail, MapPin, AlignLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { X, UserCheck, CheckCircle2, AlertCircle } from 'lucide-react'
 import { updateOwnProfile, fetchOwnProfileFields } from '../../../services/personnelProfileService'
 import ProfilePhotoUploader from '../../../components/common/ProfilePhotoUploader'
 
 export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user, onSave }) {
   const profileData = currentInfo || user || {}
   const [formData, setFormData] = useState({
-    full_name: '',
-    employee_id: '',
-    designation: '',
-    educational_attainment: '',
     contact_number: '',
-    email: '',
-    location: '',
     about_me: '',
     specialization: '',
     avatar_url: ''
@@ -23,25 +17,27 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
   useEffect(() => {
     if (profileData) {
       setFormData({
-        full_name: profileData.full_name || '',
-        employee_id: profileData.employee_id || '',
-        designation: profileData.designation || '',
-        educational_attainment: profileData.educational_attainment || '',
         contact_number: profileData.contact_number || profileData.phone || '',
-        email: profileData.email || '',
-        location: profileData.location || '',
         about_me: profileData.about_me || '',
         specialization: profileData.specialization || '',
         avatar_url: profileData.avatar_url || ''
       })
     }
-  }, [profileData.employee_id, profileData.full_name, profileData.avatar_url, isOpen])
+  }, [isOpen])
 
   // Prefill the editable fields from what the server has saved, not from stale login data.
   useEffect(() => {
     if (!isOpen) return undefined
     let active = true
-    fetchOwnProfileFields().then(fields => { if (active) setFormData(prev => ({ ...prev, ...fields })) }).catch(() => {})
+    fetchOwnProfileFields().then(fields => {
+      if (!active) return
+      setFormData(prev => ({
+        ...prev,
+        contact_number: fields.contact_number || fields.phone || '',
+        about_me: fields.about_me || '',
+        specialization: fields.specialization || '',
+      }))
+    }).catch(() => {})
     return () => { active = false }
   }, [isOpen])
 
@@ -54,6 +50,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
 
   const handlePhotoUpdated = (newUrl) => {
     setFormData(prev => ({ ...prev, avatar_url: newUrl }))
+    onSave?.({ avatar_url: newUrl })
   }
 
   const handleSubmit = async (e) => {
@@ -62,14 +59,17 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
 
     try {
       setIsSubmitting(true)
-      const saved = await updateOwnProfile(formData)
+      const saved = await updateOwnProfile({
+        contact_number: formData.contact_number,
+        about_me: formData.about_me,
+        specialization: formData.specialization
+      })
+      const savedProfile = saved?.data ?? saved ?? {}
       onSave?.({
-        ...formData,
-        contact_number: saved?.phone ?? '',
-        phone: saved?.phone ?? '',
-        location: saved?.location ?? '',
-        about_me: saved?.about_me ?? '',
-        specialization: saved?.specialization ?? ''
+        contact_number: savedProfile.phone ?? savedProfile.contact_number ?? formData.contact_number,
+        phone: savedProfile.phone ?? savedProfile.contact_number ?? formData.contact_number,
+        about_me: savedProfile.about_me ?? formData.about_me,
+        specialization: savedProfile.specialization ?? formData.specialization,
       })
       onClose()
     } catch (err) {
@@ -99,7 +99,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
           </div>
           <div>
             <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Edit Personnel Profile</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Update academic credentials, profile photo, biography, and contact info</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Edit only your profile picture, contact phone, specialization, and professional biography. Institutional details are maintained by HR.</p>
           </div>
         </div>
 
@@ -117,7 +117,7 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
           <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center gap-4">
             <ProfilePhotoUploader
               currentAvatarUrl={formData.avatar_url}
-              fullName={formData.full_name || 'Personnel'}
+              fullName={profileData.full_name || 'Personnel'}
               size="sm"
               onPhotoUpdated={handlePhotoUpdated}
             />
@@ -128,62 +128,6 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Full Name with Titles (managed by HR)
-              </label>
-              <input
-                type="text"
-                name="full_name"
-                value={formData.full_name}
-                disabled
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
-              />
-            </div>
-
-            {/* Designation / Academic Rank */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Designation / Position (managed by HR)
-              </label>
-              <input
-                type="text"
-                name="designation"
-                value={formData.designation}
-                disabled
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
-              />
-            </div>
-
-            {/* Employee ID (Read-only) */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Employee ID
-              </label>
-              <input
-                type="text"
-                name="employee_id"
-                value={formData.employee_id}
-                disabled
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-mono font-bold cursor-not-allowed"
-              />
-            </div>
-
-            {/* Educational Attainment */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Highest Educational Degree (managed by HR)
-              </label>
-              <input
-                type="text"
-                name="educational_attainment"
-                value={formData.educational_attainment}
-                disabled
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
-              />
-            </div>
-
             {/* Contact Number */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -199,44 +143,10 @@ export default function EditBasicInfoModal({ isOpen, onClose, currentInfo, user,
               />
             </div>
 
-            {/* Institutional Email */}
+            {/* Specialization */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Institutional Email (managed by HR)
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                disabled
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs font-semibold cursor-not-allowed"
-              />
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Campus Location
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="Koronadal City, South Cotabato"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#16834a]"
-              />
-            </div>
-
-            {/* Years of Service */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Years of Service
-              </label>
-              {/* Official value is maintained by HR (full-time service only); personnel cannot edit it. */}
-              <p className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-xs font-semibold">
-                Recorded by HR from your official service history. Only full-time service is counted.
-              </p>
+              <label htmlFor="profile-specialization" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Professional Specialization</label>
+              <input id="profile-specialization" type="text" name="specialization" maxLength={160} value={formData.specialization} onChange={handleChange} placeholder="e.g. Educational Technology" className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-[#16834a]" />
             </div>
           </div>
 

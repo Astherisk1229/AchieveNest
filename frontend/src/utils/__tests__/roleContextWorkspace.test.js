@@ -17,13 +17,13 @@ describe('workspace availability', () => {
     expect(isWorkspaceAvailable({ ...dean, role_assignments: [] }, 'personnel')).toBe(true)
   })
 
-  it('requires a Department-scoped assignment for the Department Head workspace', () => {
+  it('rejects the retired Department Head workspace', () => {
     const head = {
       account_type: 'personnel',
       assigned_roles: ['personnel', 'department_head'],
       role_assignments: [{ role_key: 'department_head', scope_type: 'department', scope_id: 'department-1' }]
     }
-    expect(isWorkspaceAvailable(head, 'department_head')).toBe(true)
+    expect(isWorkspaceAvailable(head, 'department_head')).toBe(false)
     expect(isWorkspaceAvailable({ ...head, role_assignments: [] }, 'department_head')).toBe(false)
     expect(isWorkspaceAvailable({ ...head, role_assignments: [{ role_key: 'department_head', scope_type: 'college', scope_id: 'college-1' }] }, 'department_head')).toBe(false)
   })

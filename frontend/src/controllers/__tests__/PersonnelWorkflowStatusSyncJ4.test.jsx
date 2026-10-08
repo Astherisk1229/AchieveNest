@@ -287,8 +287,8 @@ describe('Phase J4: Cross-Role Status Visibility & Lifecycle Synchronization', (
       expect(deanCollege).not.toBe(evaluationTargetCollege);
     });
 
-    it('26. denies Department Secretary role from accessing evaluator status views', () => {
-      const actorRoles = ['department_secretary'];
+    it('26. denies Unassigned reviewer role from accessing evaluator status views', () => {
+      const actorRoles = ['unassigned_reviewer'];
       const isEvaluator = actorRoles.includes('dean') || actorRoles.includes('hr_staff') || actorRoles.includes('hr_admin');
       expect(isEvaluator).toBe(false);
     });

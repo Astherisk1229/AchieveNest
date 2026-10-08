@@ -134,8 +134,8 @@ describe('Personnel Evaluation Track — Plan K — Phase K0: Final Acceptance M
       })
     })
 
-    it('13. Department Secretary evaluator route is absent', () => {
-      const deptSecEvaluator = CANONICAL_ROUTING_TABLE.find(r => r.reviewer_role === 'department_secretary')
+    it('13. Unassigned reviewer evaluator route is absent', () => {
+      const deptSecEvaluator = CANONICAL_ROUTING_TABLE.find(r => r.reviewer_role === 'unassigned_reviewer')
       expect(deptSecEvaluator).toBeUndefined()
     })
   })

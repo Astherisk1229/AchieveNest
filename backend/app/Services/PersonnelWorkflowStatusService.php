@@ -123,11 +123,6 @@ class PersonnelWorkflowStatusService
         $actorId = (string)($actor['profile_id'] ?? $actor['id'] ?? '');
         $roles = (array)($actor['roles'] ?? []);
 
-        // 1. Department Secretary strictly denied evaluator visibility
-        if (in_array('department_secretary', $roles, true) && !in_array('dean', $roles, true) && !in_array('hr_staff', $roles, true) && !in_array('hr_admin', $roles, true)) {
-            throw new RuntimeException('Department Secretary is not authorized to access evaluator status views.', 403);
-        }
-
         // 2. HR Admin / HR Staff has institutional access
         if (in_array('hr_admin', $roles, true) || in_array('hr_staff', $roles, true)) {
             return;

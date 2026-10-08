@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronDown,
   Eye,
   EyeOff,
   KeyRound,
@@ -32,10 +33,21 @@ const demoAccounts = [
   { label: 'Organization Moderator', description: 'DEMO_JPIA Moderator', email: 'demo.moderator@ndmu.edu.ph' },
 ]
 
+function loginErrorMessage(error, fallback) {
+  const message = typeof error === 'string'
+    ? error
+    : (error?.error?.message || error?.message || '')
+  if (/undefined variable|fatal error|uncaught exception|stack trace/i.test(message)) {
+    return 'Sign-in is temporarily unavailable. Please try again shortly.'
+  }
+  return message || fallback
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login, user: signedInUser } = useAuth()
   const forgotEmailRef = useRef(null)
+  const demoMenuRef = useRef(null)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -89,6 +101,7 @@ export default function LoginPage() {
   }
 
   const handleSelectDemo = async (demoEmail) => {
+    demoMenuRef.current?.removeAttribute('open')
     setEmail(demoEmail)
     setPassword('')
     setError('')
@@ -98,7 +111,7 @@ export default function LoginPage() {
       const session = await authenticateDemoUser(demoEmail, keepSignedIn)
       finishLogin(session)
     } catch (err) {
-      setError(err.message || 'We could not start the demo session. Please try again.')
+      setError(loginErrorMessage(err, 'We could not start the demo session. Please try again.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -118,7 +131,7 @@ export default function LoginPage() {
       const session = await authenticateUser(email, password, keepSignedIn)
       finishLogin(session)
     } catch (err) {
-      setError(err.message || 'We could not sign you in. Check your credentials and try again.')
+      setError(loginErrorMessage(err, 'We could not sign you in. Check your credentials and try again.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -157,25 +170,27 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-[#071a13]/80" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1440px] items-stretch lg:p-5 xl:p-7">
-        <section className="relative hidden min-h-[calc(100vh-2.5rem)] flex-1 overflow-hidden rounded-[28px] lg:block" aria-label="Notre Dame of Marbel University campus">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1920px] items-stretch lg:p-5 xl:p-7">
+        <section
+          className="relative hidden flex-1 overflow-hidden rounded-[28px] bg-[#071a13] lg:block"
+          style={{ containerType: 'size' }}
+          aria-label="Notre Dame of Marbel University campus"
+        >
+          {/* Soft backdrop: fills any space around the banner so it never looks letterboxed. */}
+          <img
+            src={campusBanner}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover object-center blur-2xl brightness-75"
+          />
+          {/* Banner keeps the crest and the school name inside the visible area at any screen size:
+              it fills the panel like object-cover, but is never scaled past 190% of the panel width. */}
           <img
             src={campusBanner}
             alt="Notre Dame of Marbel University campus at twilight"
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute left-1/2 top-1/2 max-w-none -translate-x-1/2 -translate-y-1/2"
+            style={{ width: 'min(max(100cqw, 212.5cqh), 190cqw)', height: 'auto' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#071a13]/10 via-transparent to-[#071a13]/90" />
-          <div className="absolute inset-x-0 bottom-0 p-10 xl:p-14">
-            <div className="max-w-xl text-white">
-              <div className="mb-6 h-px w-16 bg-emerald-300" />
-              <h2 className="max-w-lg text-4xl font-semibold leading-[1.08] tracking-[-0.03em] xl:text-5xl">
-                Achievement and recognition, gathered in one place.
-              </h2>
-              <p className="mt-5 max-w-md text-sm leading-6 text-emerald-50/80 xl:text-base">
-                Sign in with your NDMU institutional account to continue to your AchieveNest workspace.
-              </p>
-            </div>
-          </div>
         </section>
 
         <section className="relative flex min-h-screen w-full items-center justify-center px-4 py-8 sm:px-8 lg:ml-5 lg:min-h-0 lg:w-[510px] lg:rounded-[28px] lg:bg-white lg:px-12 xl:w-[560px] xl:px-16">
@@ -288,36 +303,44 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="my-7 flex items-center gap-3" aria-hidden="true">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Demo access</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
+            <section className="my-7" aria-label="Demo access">
+              <div className="mb-3 flex items-center gap-3" aria-hidden="true">
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Demo access</span>
+                <div className="h-px flex-1 bg-slate-200" />
+              </div>
 
-            <p className="mb-3 text-xs leading-5 text-slate-500">
-              Choose a persona to sign in instantly on this local demo.
-            </p>
+              <p className="mb-3 text-xs leading-5 text-slate-500">
+                Choose a persona to sign in instantly on this local demo.
+              </p>
 
-            <div className="grid grid-cols-2 gap-2.5" aria-label="Demo accounts">
-              {demoAccounts.map((demo) => (
-                <button
-                  key={demo.email}
-                  type="button"
-                  onClick={() => handleSelectDemo(demo.email)}
-                  disabled={isSubmitting}
-                  className={`min-h-12 rounded-[12px] px-3 py-2 text-left ring-1 ring-inset transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147a4c] ${
-                    email === demo.email
-                      ? 'bg-emerald-50 text-emerald-950 ring-emerald-300'
-                      : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50 hover:ring-slate-300'
-                  }`}
-                  title={`Sign in as ${demo.label}`}
-                  aria-pressed={email === demo.email}
-                >
-                  <span className="block text-xs font-bold">{demo.label}</span>
-                  <span className="mt-0.5 block truncate text-[10px] text-slate-500">{demo.description}</span>
-                </button>
-              ))}
-            </div>
+              <details ref={demoMenuRef} className="group relative">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] bg-white px-4 py-3 text-sm font-bold text-emerald-950 ring-1 ring-inset ring-emerald-800/30 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147a4c] [&::-webkit-details-marker]:hidden">
+                  <span>Demo Accounts</span>
+                  <ChevronDown className="size-4 shrink-0 text-emerald-800 transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <ul className="absolute bottom-[calc(100%+0.5rem)] left-0 z-20 max-h-[min(18rem,42vh)] w-full overflow-y-auto rounded-[14px] bg-white p-1.5 shadow-[0_16px_36px_rgba(11,39,26,0.2)] ring-1 ring-emerald-900/10">
+                  {demoAccounts.map((demo) => (
+                    <li key={demo.email}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectDemo(demo.email)}
+                        disabled={isSubmitting}
+                        className={`min-h-11 w-full rounded-[9px] px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#147a4c] disabled:cursor-not-allowed disabled:opacity-60 ${
+                          email === demo.email
+                            ? 'bg-emerald-50 text-emerald-950'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                        title={`Sign in as ${demo.label}`}
+                      >
+                        <span className="block text-xs font-bold">{demo.label}</span>
+                        <span className="mt-0.5 block truncate text-[10px] text-slate-500">{demo.description}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </section>
 
             <footer className="mt-7 flex items-start gap-2.5 border-t border-slate-200 pt-5 text-[10px] font-semibold leading-4 text-slate-500">
               <ShieldCheck className="mt-px size-4 shrink-0 text-[#11683f]" aria-hidden="true" />

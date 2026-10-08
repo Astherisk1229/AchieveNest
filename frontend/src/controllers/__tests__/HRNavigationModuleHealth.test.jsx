@@ -47,13 +47,12 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
       const hrItems = NAVIGATION_CATALOG.filter(
         item => item.portal === 'hr' || (item.allowedAccountTypes && item.allowedAccountTypes.includes(CANONICAL_ACCOUNT_TYPES.HR_ADMIN))
       )
-      expect(hrItems.length).toBeGreaterThanOrEqual(6)
+      expect(hrItems).toHaveLength(4)
 
       const expectedPaths = [
         '/hr/dashboard',
         '/hr/personnel-directory',
         '/hr/ranking-cycles',
-        '/hr/audit-trail',
         '/hr/password-resets'
       ]
 
@@ -65,15 +64,10 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
 
     it('returns authorized navigation items for hr_staff session with correct icons and paths', () => {
       const authorizedNav = getAuthorizedNavigationForSession(hrSession)
-      expect(authorizedNav.length).toBeGreaterThanOrEqual(6)
+      expect(authorizedNav).toHaveLength(4)
 
       const labels = authorizedNav.map(item => item.label)
-      expect(labels).toContain('HR Dashboard')
-      expect(labels).toContain('Personnel Directory')
-      expect(labels).toContain('Organizational Structure')
-      expect(labels).toContain('Ranking Periods')
-      expect(labels).toContain('HR Audit Trail')
-      expect(labels).toContain('Password Resets')
+      expect(labels).toEqual(['Dashboard', 'Personnel Management', 'Ranking & Evaluation', 'Administration'])
 
       authorizedNav.forEach(item => {
         expect(item.icon).toBeDefined()
@@ -120,15 +114,15 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
       expect(formatPersonnelClassification({
         personnel_group: 'faculty',
         organizational_side: 'academic'
-      })).toBe('Faculty • Academic')
+      })).toBe('Teaching • Academic')
       expect(formatPersonnelClassification({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'academic'
-      })).toBe('Non-Teaching Faculty • Academic')
+      })).toBe('Non-Teaching • Academic')
       expect(formatPersonnelClassification({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'non_academic'
-      })).toBe('Non-Teaching Faculty • Non-Academic')
+      })).toBe('Non-Teaching • Non-Academic')
     })
 
     it('formatFacultyEngagement and formatEmploymentStatus safely handle null', () => {

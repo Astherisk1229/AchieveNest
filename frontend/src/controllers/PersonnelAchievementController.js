@@ -76,6 +76,7 @@ export default class PersonnelAchievementController {
       scope_level: newEntry.scope_level || '',
       academic_year: newEntry.academic_year || '',
       category_metadata: newEntry.category_metadata || {},
+      criterion_id: newEntry.criterion_id || null,
       ocr_metadata: newEntry.ocr_metadata || null
     }
 
@@ -113,6 +114,10 @@ export default class PersonnelAchievementController {
       description: payload.description,
       ocr_metadata: payload.ocr_metadata,
       category_metadata: payload.category_metadata,
+      category_code: createRes?.data?.category_code || createRes?.category_code || null,
+      criterion_id: createRes?.data?.criterion_id || createRes?.criterion_id || payload.criterion_id,
+      evaluation_scale_version_id: createRes?.data?.evaluation_scale_version_id || createRes?.evaluation_scale_version_id,
+      criterion_snapshot: createRes?.data?.criterion_snapshot || createRes?.criterion_snapshot || null,
       status: 'Pending Review',
       attached_file_name: evidenceData?.id ? evidenceData.original_filename : '',
       evidence_id: evidenceData?.id || null,

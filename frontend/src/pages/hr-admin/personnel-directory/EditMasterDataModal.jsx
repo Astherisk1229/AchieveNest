@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { X, Check, ShieldCheck, Briefcase, GraduationCap, Building2, Sparkles } from 'lucide-react'
-import { validatePersonnelMasterData, validatePersonnelPlacement, isAcademicPersonnel } from '../../../utils/personnelPlacement'
+import { validatePersonnelMasterData, validatePersonnelPlacement } from '../../../utils/personnelPlacement'
 import { personnelMasterDataService } from '../../../services/personnelMasterDataService'
 import { personnelRankRecommendationService } from '../../../services/personnelRankRecommendationService'
 import { localToday, validateEmploymentStartDate } from '../../../utils/employmentDate'
+import DepartmentSelect from './DepartmentSelect'
 
 export default function EditMasterDataModal({
   personnel,
@@ -14,13 +15,14 @@ export default function EditMasterDataModal({
 }) {
   const [form, setForm] = useState({
     fullName: '',
+    contactNumber: '',
     facultyEngagement: 'full_time_faculty',
     employmentStatus: 'permanent',
     employmentStartDate: '',
     positionTitle: '',
     currentRankTitle: '',
     qualificationSummary: '',
-    personnelGroup: 'faculty',
+    personnelGroup: '',
     organizationalSide: 'academic',
     collegeId: '',
     academicProgramIds: [],
@@ -33,7 +35,6 @@ export default function EditMasterDataModal({
   // Master Data Catalogs State
   const [catalogs, setCatalogs] = useState({
     fullTimeRanks: [],
-    partTimeTitles: [],
     loading: false,
     error: null
   })
@@ -53,14 +54,10 @@ export default function EditMasterDataModal({
     let isMounted = true
     setCatalogs(prev => ({ ...prev, loading: true, error: null }))
 
-    Promise.all([
-      personnelMasterDataService.getFacultyRanks(),
-      personnelMasterDataService.getPartTimeTitles()
-    ]).then(([ftRanks, ptTitles]) => {
+    personnelMasterDataService.getFacultyRanks().then(ftRanks => {
       if (isMounted) {
         setCatalogs({
           fullTimeRanks: ftRanks || [],
-          partTimeTitles: ptTitles || [],
           loading: false,
           error: null
         })
@@ -84,50 +81,40 @@ export default function EditMasterDataModal({
   const [rankWasManuallyChanged, setRankWasManuallyChanged] = useState(false)
   const [rankSelectionSource, setRankSelectionSource] = useState('saved')
 
-  const programs = useMemo(
-    () => (placementOptions.academicPrograms || []).filter(program => String(program.collegeId) === String(form.collegeId)),
-    [placementOptions.academicPrograms, form.collegeId]
-  )
+  const teachingDepartments = useMemo(() => (placementOptions.administrativeUnits || []).filter(item => String(item.collegeId || item.college_id || '') === String(form.collegeId)), [placementOptions.administrativeUnits, form.collegeId])
+  const standaloneDepartments = useMemo(() => (placementOptions.administrativeUnits || []).filter(item => !(item.collegeId || item.college_id)), [placementOptions.administrativeUnits])
 
   useEffect(() => {
     if (!personnel) return
-    const engagement = personnel.faculty_engagement || 'full_time_faculty'
     const rankTitle = personnel.current_rank_title || personnel.academic_rank || ''
     setSavedOfficialRank(rankTitle)
     setRankWasManuallyChanged(false)
     setRankSelectionSource('saved')
     setForm({
       fullName: personnel.full_name || '',
-      facultyEngagement: engagement,
+      contactNumber: personnel.contact_number || '',
+      facultyEngagement: 'full_time_faculty',
       employmentStatus: personnel.employment_status || 'permanent',
       employmentStartDate: personnel.employment_start_date || '',
       positionTitle: personnel.position_title || personnel.designation || '',
       currentRankTitle: rankTitle,
       qualificationSummary: personnel.qualification_summary || '',
-      personnelGroup: personnel.personnel_group || (isAcademicPersonnel(personnel) ? 'faculty' : 'non_teaching_faculty'),
-      organizationalSide: personnel.organizational_side || personnel.personnel_classification || 'academic',
+      personnelGroup: personnel.personnel_group || '',
+      organizationalSide: personnel.personnel_group === 'faculty'
+        ? 'academic'
+        : personnel.personnel_group === 'non_teaching_faculty'
+          ? 'non_academic'
+          : personnel.organizational_side || personnel.personnel_classification || 'academic',
       collegeId: personnel.college_id || '',
       academicProgramIds: (personnel.program_affiliations || []).map(p => p.academic_program_id || p.id).filter(Boolean),
-      administrativeUnitId: personnel.administrative_unit_id || '',
+      administrativeUnitId: personnel.department_id || personnel.administrative_unit_id || '',
       reason: ''
     })
     setErrors({})
   }, [personnel, isOpen])
 
-  const isPartTime = form.facultyEngagement === 'part_time_faculty'
-
-  // Current Rank/Title Options based on Faculty Engagement
+  // Teaching faculty use the full-time academic rank catalog.
   const currentRankCatalog = useMemo(() => {
-    if (isPartTime) {
-      return (catalogs.partTimeTitles && catalogs.partTimeTitles.length > 0)
-        ? catalogs.partTimeTitles
-        : [
-            { code: 'PT_PROFESSORIAL_LECTURER', label: 'Professorial Lecturer' },
-            { code: 'PT_ASSISTANT_PROFESSORIAL_LECTURER', label: 'Assistant Professorial Lecturer' },
-            { code: 'PT_SENIOR_LECTURER', label: 'Senior Lecturer' },
-            { code: 'PT_LECTURER', label: 'Lecturer' }
-          ]
-    }
     return (catalogs.fullTimeRanks && catalogs.fullTimeRanks.length > 0)
       ? catalogs.fullTimeRanks
       : [
@@ -137,7 +124,7 @@ export default function EditMasterDataModal({
           { code: 'PROFESSOR_I', label: 'Professor I' },
           { code: 'UNIVERSITY_PROFESSOR', label: 'University Professor' }
         ]
-  }, [isPartTime, catalogs.fullTimeRanks, catalogs.partTimeTitles])
+  }, [catalogs.fullTimeRanks])
 
   // Check if existing saved rank matches the catalog
   const isSavedRankInCatalog = useMemo(() => {
@@ -221,38 +208,35 @@ export default function EditMasterDataModal({
 
   if (!isOpen || !personnel) return null
 
-  const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
-
-  const handleEngagementChange = (engagement) => {
-    setForm(current => {
-      const newIsPartTime = engagement === 'part_time_faculty'
-      const ptLabels = ['Professorial Lecturer', 'Assistant Professorial Lecturer', 'Senior Lecturer', 'Lecturer', 'PT_PROFESSORIAL_LECTURER', 'PT_ASSISTANT_PROFESSORIAL_LECTURER', 'PT_SENIOR_LECTURER', 'PT_LECTURER']
-      const isCurrentlyPt = ptLabels.some(l => l.toLowerCase() === (current.currentRankTitle || '').toLowerCase())
-
-      let nextRank = current.currentRankTitle
-      if (newIsPartTime && !isCurrentlyPt) {
-        nextRank = '' // Clear incompatible Full-Time rank
-      } else if (!newIsPartTime && isCurrentlyPt) {
-        nextRank = '' // Clear incompatible Part-Time title
-      }
-
-      return {
-        ...current,
-        facultyEngagement: engagement,
-        currentRankTitle: nextRank
-      }
-    })
-  }
+  const update = (key, value) => setForm(prev => {
+    if (key !== 'personnelGroup') return { ...prev, [key]: value }
+    const side = value === 'faculty' ? 'academic' : 'non_academic'
+    return {
+      ...prev,
+      personnelGroup: value,
+      organizationalSide: side,
+      collegeId: side === 'academic' ? prev.collegeId : '',
+      academicProgramIds: side === 'academic' ? prev.academicProgramIds : [],
+      administrativeUnitId: ''
+    }
+  })
 
   const submit = async (e) => {
     e.preventDefault()
     const nextErrors = {}
+    if (!['faculty', 'non_teaching_faculty'].includes(form.personnelGroup)) {
+      nextErrors.personnelGroup = 'Select Teaching or Non-Teaching. Unit placement does not determine Personnel Type.'
+    }
     const fullName = form.fullName.replace(/\s+/g, ' ').trim()
+    const contactNumber = form.contactNumber.trim()
 
     if (!fullName) {
       nextErrors.fullName = 'Full name is required.'
     } else if (fullName.length > 255) {
       nextErrors.fullName = 'Full name must be 255 characters or fewer.'
+    }
+    if (contactNumber.length > 40 || (contactNumber && !/^[0-9+()\-.\s]{5,40}$/.test(contactNumber))) {
+      nextErrors.contactNumber = 'Enter 5–40 characters using digits, spaces, +, parentheses, hyphens, or periods.'
     }
 
     const mdValidation = validatePersonnelMasterData({
@@ -268,8 +252,10 @@ export default function EditMasterDataModal({
       side: form.organizationalSide,
       classification: form.organizationalSide,
       collegeId: form.collegeId,
-      academicProgramIds: form.academicProgramIds,
-      administrativeUnitId: form.administrativeUnitId
+      academicProgramIds: [],
+      departmentId: form.administrativeUnitId,
+      administrativeUnitId: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null,
+      requireDepartment: true
     }, placementOptions)
     Object.assign(nextErrors, placementValidation.errors)
 
@@ -280,6 +266,7 @@ export default function EditMasterDataModal({
     try {
       const payload = {
         full_name: fullName,
+        contact_number: contactNumber || null,
         faculty_engagement: form.facultyEngagement,
         employment_status: form.employmentStatus,
         employment_start_date: form.employmentStartDate || null,
@@ -290,6 +277,7 @@ export default function EditMasterDataModal({
         organizational_side: form.organizationalSide,
         college_id: form.organizationalSide === 'academic' ? form.collegeId : null,
         academic_program_ids: form.organizationalSide === 'academic' ? form.academicProgramIds : [],
+        department_id: form.organizationalSide === 'academic' ? form.administrativeUnitId : null,
         administrative_unit_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null,
         reason: form.reason.trim() || 'Official HR master data update'
       }
@@ -302,13 +290,6 @@ export default function EditMasterDataModal({
         setErrors({ currentRankTitle: apiError.message || 'Incompatible rank/title catalog.' })
       } else if (apiError.code === 'INVALID_EMPLOYMENT_START_DATE') {
         setErrors({ employmentStartDate: apiError.message || 'Enter a valid employment start date.' })
-      } else if (apiError.code === 'POSITION_OCCUPIED') {
-        const holder = apiError.current_holder
-        const placement = holder?.placement?.name || 'this organizational placement'
-        setErrors({
-          positionTitle: 'Choose another job title.',
-          general: `Department Secretary position is already occupied. ${holder?.name || 'Another active personnel member'} currently holds this position in ${placement}. Only one active personnel member may hold this position at a time.`
-        })
       } else if (apiError.message) {
         setErrors({ general: apiError.message })
       }
@@ -384,6 +365,20 @@ export default function EditMasterDataModal({
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Institutional Email</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">{personnel.institutional_email || personnel.email || 'N/A'}</span>
               </div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Contact Phone
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={40}
+                  value={form.contactNumber}
+                  onChange={event => update('contactNumber', event.target.value)}
+                  aria-invalid={Boolean(errors.contactNumber)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+                {errors.contactNumber && <span className="mt-1 block text-xs font-bold text-rose-600">{errors.contactNumber}</span>}
+              </label>
             </div>
           </section>
 
@@ -401,40 +396,13 @@ export default function EditMasterDataModal({
 
             <div className="grid sm:grid-cols-2 gap-4">
               <fieldset className="space-y-1.5 sm:col-span-2">
-                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Personnel Group</legend>
+                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Personnel Type (required)</legend>
                 <div className="flex flex-wrap gap-4">
-                  <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold"><input type="radio" name="editPersonnelGroup" checked={form.personnelGroup === 'faculty'} onChange={() => update('personnelGroup', 'faculty')}/><span>Faculty</span></label>
-                  <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold"><input type="radio" name="editPersonnelGroup" checked={form.personnelGroup === 'non_teaching_faculty'} onChange={() => update('personnelGroup', 'non_teaching_faculty')}/><span>Non-Teaching Faculty</span></label>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold"><input type="radio" name="editPersonnelGroup" checked={form.personnelGroup === 'faculty'} onChange={() => update('personnelGroup', 'faculty')}/><span>Teaching</span></label>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold"><input type="radio" name="editPersonnelGroup" checked={form.personnelGroup === 'non_teaching_faculty'} onChange={() => update('personnelGroup', 'non_teaching_faculty')}/><span>Non-Teaching</span></label>
                 </div>
+                {errors.personnelGroup && <span role="alert" className="text-[11px] text-rose-600">{errors.personnelGroup}</span>}
               </fieldset>
-              {/* Engagement */}
-              <fieldset className="space-y-1.5">
-                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Faculty Engagement (Workload)
-                </legend>
-                <div className="flex gap-3">
-                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="editFacultyEngagement"
-                      checked={form.facultyEngagement === 'full_time_faculty'}
-                      onChange={() => handleEngagementChange('full_time_faculty')}
-                    />
-                    <span>Full-time Faculty</span>
-                  </label>
-                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="editFacultyEngagement"
-                      checked={form.facultyEngagement === 'part_time_faculty'}
-                      onChange={() => handleEngagementChange('part_time_faculty')}
-                    />
-                    <span>Part-time Faculty</span>
-                  </label>
-                </div>
-                {errors.facultyEngagement && <span className="text-xs text-rose-600 font-bold block">{errors.facultyEngagement}</span>}
-              </fieldset>
-
               {/* Employment Status */}
               <fieldset className="space-y-1.5">
                 <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -486,7 +454,7 @@ export default function EditMasterDataModal({
               <span>C. Institutional Assignment</span>
             </h3>
 
-            {form.organizationalSide === 'academic' ? (
+            {form.personnelGroup === 'faculty' ? (
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   College
@@ -505,38 +473,15 @@ export default function EditMasterDataModal({
                   </select>
                   {errors.collegeId && <span className="text-rose-600 block mt-0.5 text-xs font-semibold">{errors.collegeId}</span>}
                 </label>
-                <fieldset className="space-y-1.5">
-                  <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Academic Program Affiliations</legend>
-                  <div className="grid sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800">
-                    {programs.map(program => (
-                      <label key={program.id} className="text-xs font-medium flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={form.academicProgramIds.includes(program.id)}
-                          onChange={() => {
-                            const id = program.id
-                            setForm(curr => ({
-                              ...curr,
-                              academicProgramIds: curr.academicProgramIds.includes(id)
-                                ? curr.academicProgramIds.filter(p => p !== id)
-                                : [...curr.academicProgramIds, id]
-                            }))
-                          }}
-                          className="rounded"
-                        />
-                        <span>{program.code ? `${program.code} — ` : ''}{program.name}</span>
-                      </label>
-                    ))}
-                    {programs.length === 0 && (
-                      <span className="text-xs text-slate-400 italic col-span-2 p-1">
-                        {form.collegeId ? 'No programs found for selected college.' : 'Select a college to view academic programs.'}
-                      </span>
-                    )}
-                  </div>
-                  {errors.academicProgramIds && <span className="text-xs text-rose-600 block mt-0.5 font-semibold">{errors.academicProgramIds}</span>}
-                </fieldset>
+                <DepartmentSelect
+                  departments={teachingDepartments}
+                  value={form.administrativeUnitId}
+                  onChange={id => setForm(curr => ({ ...curr, administrativeUnitId: id }))}
+                  disabled={!form.collegeId}
+                  error={errors.departmentId}
+                />
               </div>
-            ) : (
+            ) : form.personnelGroup === 'non_teaching_faculty' ? (
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Department
                 <select
@@ -546,18 +491,18 @@ export default function EditMasterDataModal({
                   className="mt-1 w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-medium"
                 >
                   <option value="">Select a Department</option>
-                  {(placementOptions.administrativeUnits || []).map(item => (
+                  {standaloneDepartments.map(item => (
                     <option key={item.id} value={item.id}>
                       {item.code ? `${item.code} — ` : ''}{item.name || item.unit_name}
                     </option>
                   ))}
                 </select>
-                {errors.administrativeUnitId && <span className="text-rose-600 block mt-0.5 text-xs font-semibold">{errors.administrativeUnitId}</span>}
+                {errors.departmentId && <span className="text-rose-600 block mt-0.5 text-xs font-semibold">{errors.departmentId}</span>}
               </label>
-            )}
+            ) : null}
 
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Position / Job Title (Appointment)
+              Specific Job
               <input
                 type="text"
                 value={form.positionTitle}
@@ -572,24 +517,24 @@ export default function EditMasterDataModal({
           <section className="space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
               <GraduationCap className="w-3.5 h-3.5" />
-              <span>D. Educational Qualification &amp; Academic Rank (Plan E)</span>
+              <span>D. Educational Qualification &amp; Academic Rank</span>
             </h3>
 
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              Qualifications Summary (HR Structured Record)
+              Educational Qualifications (Completed and In Progress)
               <input
                 type="text"
                 value={form.qualificationSummary}
                 onChange={e => update('qualificationSummary', e.target.value)}
-                placeholder="e.g. MS in Information Technology, Ongoing Ph.D. in Computer Science"
+                placeholder="e.g. MS in Computer Science (completed); PhD in progress"
                 className="mt-1 w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs"
               />
             </label>
 
-            <div className="space-y-1">
+            <div className="mt-3 space-y-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {isPartTime ? 'Part-Time Faculty Title (Plan E)' : 'Current Academic Rank (Plan E)'}
+                  Current Academic Rank
                 </label>
                 {rankWasManuallyChanged && (
                   <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
@@ -604,11 +549,11 @@ export default function EditMasterDataModal({
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-medium"
               >
                 <option value="">
-                  {catalogs.loading ? 'Loading Catalog...' : isPartTime ? 'Select Part-Time Title' : 'Select Academic Rank'}
+                  {catalogs.loading ? 'Loading Catalog...' : 'Select Academic Rank'}
                 </option>
                 {/* Preservation of legacy/saved rank if not in standard catalog */}
                 {!isSavedRankInCatalog && form.currentRankTitle && (
-                  <option value={form.currentRankTitle}>
+                  <option value={form.currentRankTitle} disabled>
                     {form.currentRankTitle} (Saved / Legacy Record - Reconciliation Required)
                   </option>
                 )}
@@ -627,7 +572,7 @@ export default function EditMasterDataModal({
 
               {recommendation.status === 'loading' && (
                 <span className="text-[11px] text-slate-400 italic block mt-1">
-                  Resolving preferred recommendation from Plan E...
+                  Resolving preferred academic rank recommendation...
                 </span>
               )}
               {recommendation.status === 'resolved' && recommendation.recommendedLabel && (

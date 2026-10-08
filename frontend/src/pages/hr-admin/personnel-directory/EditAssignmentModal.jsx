@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Building2, Check, X } from 'lucide-react'
 import { isAcademicPersonnel, validatePersonnelPlacement } from '../../../utils/personnelPlacement'
+import DepartmentSelect from './DepartmentSelect'
 
 export default function EditAssignmentModal({
   personnel,
@@ -10,21 +11,18 @@ export default function EditAssignmentModal({
   placementOptions = { colleges: [], academicPrograms: [], administrativeUnits: [] }
 }) {
   const [collegeId, setCollegeId] = useState('')
-  const [academicProgramIds, setAcademicProgramIds] = useState([])
   const [administrativeUnitId, setAdministrativeUnitId] = useState('')
   const [error, setError] = useState('')
 
   const academic = isAcademicPersonnel(personnel)
-  const programs = useMemo(
-    () => placementOptions.academicPrograms.filter(program => String(program.collegeId) === String(collegeId)),
-    [placementOptions.academicPrograms, collegeId]
-  )
+  const departments = useMemo(() => (placementOptions.administrativeUnits || []).filter(item => academic
+    ? String(item.collegeId || item.college_id || '') === String(collegeId)
+    : !(item.collegeId || item.college_id)), [placementOptions.administrativeUnits, academic, collegeId])
 
   useEffect(() => {
     if (!personnel) return
     setCollegeId(personnel.college_id || '')
-    setAcademicProgramIds((personnel.program_affiliations || []).map(program => program.academic_program_id || program.id).filter(Boolean))
-    setAdministrativeUnitId(personnel.administrative_unit_id || '')
+    setAdministrativeUnitId(personnel.department_id || personnel.administrative_unit_id || '')
     setError('')
   }, [personnel, isOpen])
 
@@ -32,23 +30,13 @@ export default function EditAssignmentModal({
 
   const changeCollege = id => {
     setCollegeId(id)
-    setAcademicProgramIds(current =>
-      current.filter(programId =>
-        placementOptions.academicPrograms.some(program => String(program.id) === String(programId) && String(program.collegeId) === String(id))
-      )
-    )
-  }
-
-  const toggleProgram = id => {
-    setAcademicProgramIds(current =>
-      current.includes(id) ? current.filter(item => item !== id) : [...current, id]
-    )
+    setAdministrativeUnitId('')
   }
 
   const submit = async event => {
     event.preventDefault()
     const result = validatePersonnelPlacement(
-      { classification: academic ? 'academic' : 'non_academic', collegeId, academicProgramIds, administrativeUnitId },
+      { classification: academic ? 'academic' : 'non_academic', collegeId, academicProgramIds: [], departmentId: academic ? administrativeUnitId : null, administrativeUnitId: academic ? null : administrativeUnitId, requireDepartment: true },
       placementOptions
     )
     if (!result.isValid) {
@@ -60,7 +48,8 @@ export default function EditAssignmentModal({
       await onSave?.({
         ...personnel,
         college_id: academic ? collegeId : null,
-        academic_program_ids: academic ? academicProgramIds : [],
+        academic_program_ids: (personnel.program_affiliations || []).map(program => program.academic_program_id || program.id).filter(Boolean),
+        department_id: academic ? administrativeUnitId : null,
         administrative_unit_id: academic ? null : administrativeUnitId
       })
       onClose()
@@ -97,26 +86,14 @@ export default function EditAssignmentModal({
                   ))}
                 </select>
               </label>
-              <fieldset>
-                <legend className="text-xs font-bold">Academic Program affiliations</legend>
-                {programs.map(program => (
-                  <label key={program.id} className="block text-xs py-1">
-                    <input
-                      type="checkbox"
-                      checked={academicProgramIds.includes(program.id)}
-                      onChange={() => toggleProgram(program.id)}
-                    />{' '}
-                    {program.code ? `${program.code} — ` : ''}{program.name}
-                  </label>
-                ))}
-              </fieldset>
+              <DepartmentSelect departments={departments} value={administrativeUnitId} onChange={setAdministrativeUnitId} label="Department under College" />
             </>
           ) : (
             <label className="block text-xs font-bold">
               Department
               <select value={administrativeUnitId} onChange={e => setAdministrativeUnitId(e.target.value)} className="mt-1 w-full p-2.5 rounded-xl border">
                 <option value="">Select a Department</option>
-                {placementOptions.administrativeUnits.map(item => (
+                {departments.map(item => (
                   <option key={item.id} value={item.id}>
                     {item.code ? `${item.code} — ` : ''}{item.name || item.unit_name}
                   </option>

@@ -26,18 +26,27 @@ class PersonnelRankPlacementService
             $tier = null; $rule = null;
             if ($credential['credential_type'] === 'degree' && $credential['degree_level'] === 'masters') { $tier = 'masters'; $rule = "verified master's degree -> Assistant Professor family"; }
             if ($credential['credential_type'] === 'degree' && $credential['degree_level'] === 'doctorate') { $tier = 'doctoral'; $rule = 'verified doctorate -> Professor family'; }
-            if ($credential['credential_type'] === 'board_licensure' && $credential['board_licensure_status'] === 'board_passer') { $tier = 'board_licensure'; $rule = 'verified board passer/licensure -> Senior Instructor probationary placement'; }
-            if ($credential['credential_type'] === 'board_licensure' && $credential['board_licensure_status'] === 'non_board') { $tier = 'baccalaureate'; $rule = 'verified non-board status -> Assistant Instructor probationary placement'; }
+            if ($credential['credential_type'] === 'board_licensure' && $credential['board_licensure_status'] === 'board_passer') { $tier = 'board_licensure'; $rule = 'verified board passer/licensure -> Senior Instructor family'; }
+            if ($credential['credential_type'] === 'board_licensure' && $credential['board_licensure_status'] === 'non_board') { $tier = 'baccalaureate'; $rule = 'verified non-board status -> Assistant Instructor family'; }
             if ($tier !== null) { $candidates[$tier] = true; $basis[] = ['credential_id'=>$credential['id'], 'tier_code'=>$tier, 'rule'=>$rule]; }
         }
+        // A degree and board status commonly coexist. Apply the declared rank basis in order:
+        // graduate qualification first, then explicit board/non-board status for baccalaureate entry.
         $tiers = array_keys($candidates);
-        $status = count($tiers) === 1 ? 'suggested' : (count($tiers) > 1 ? 'ambiguous' : 'unresolved');
+        $boardConflict = isset($candidates['board_licensure'], $candidates['baccalaureate']);
+        if (isset($candidates['doctoral'])) $resolvedTier = 'doctoral';
+        elseif (isset($candidates['masters'])) $resolvedTier = 'masters';
+        elseif ($boardConflict) $resolvedTier = null;
+        elseif (isset($candidates['board_licensure'])) $resolvedTier = 'board_licensure';
+        elseif (isset($candidates['baccalaureate'])) $resolvedTier = 'baccalaureate';
+        else $resolvedTier = null;
+        $status = $resolvedTier !== null ? 'suggested' : (count($tiers) > 0 ? 'ambiguous' : 'unresolved');
         $group = null;
         if ($status === 'suggested') {
-            $group = $this->db->table('rank_placement_groups')->where(['personnel_group'=>'FACULTY','catalog_type'=>'full_time_academic_rank','qualification_tier_code'=>$tiers[0],'configuration_status'=>'configured','is_active'=>1])->get()->getRowArray();
+            $group = $this->db->table('rank_placement_groups')->where(['personnel_group'=>'FACULTY','catalog_type'=>'full_time_academic_rank','qualification_tier_code'=>$resolvedTier,'configuration_status'=>'configured','is_active'=>1])->get()->getRowArray();
             if (!$group) throw new RuntimeException('PLACEMENT_GROUP_NOT_CONFIGURED');
         }
-        $explanation = $status === 'suggested' ? $basis[0]['rule'] : ($status === 'ambiguous' ? 'Multiple verified active credentials resolve to different placement groups; HR policy precedence is required.' : 'No verified active credential supports an authoritative placement rule.');
+        $explanation = $status === 'suggested' ? (array_values(array_filter($basis, fn($item) => $item['tier_code'] === $resolvedTier))[0]['rule'] ?? 'Verified credentials resolved to an initial rank track.') : ($status === 'ambiguous' ? 'Verified board and non-board records conflict; HR verification is required.' : 'No verified active credential supports an authoritative placement rule.');
         $id = $this->uuid();
         $this->db->table('personnel_rank_placement_suggestions')->insert([
             'id'=>$id, 'personnel_profile_id'=>$personnelId, 'suggested_placement_group_id'=>$group['id'] ?? null,

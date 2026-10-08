@@ -34,7 +34,6 @@ final class NtfAnnualReviewTemplateController extends Controller
         if (($actor = $this->hr()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $actor;
         return $this->run(fn() => $this->respond(['data' => $this->settings->all() + ['signatory_sources' => [
             ['value' => 'college_dean', 'label' => 'Dean of the employee’s College (from Dean assignments)'],
-            ['value' => 'unit_head', 'label' => 'Head of the employee’s Department/Office (from Department Head assignments)'],
             ['value' => 'custom', 'label' => 'Named person (enter name and position)'],
         ]]]));
     }

@@ -123,18 +123,6 @@ export default class PersonnelEvidenceAccessService {
       }
     }
 
-    // 3. Department Secretary Exclusion
-    if (actorRoles.includes('department_secretary') && !actorRoles.includes('dean') && !actorRoles.includes('hr_staff') && !actorRoles.includes('hr_admin')) {
-      return {
-        evidence_id: evidenceId,
-        actor_id: actorId,
-        access_type: accessType,
-        allowed: false,
-        reason_code: ACCESS_REASON_CODES.FORBIDDEN,
-        message: 'Department Secretary role does not possess evaluator evidence access authority.'
-      }
-    }
-
     // 4. College Dean Access
     if (actorRoles.includes('dean')) {
       const actorCollegeId = String(actor.assigned_college_id || (actor.profile && actor.profile.college_id) || '')

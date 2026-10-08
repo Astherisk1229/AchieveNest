@@ -178,6 +178,49 @@
   background: #334155;
 }
 
+/* Keep the onboarding modal scrollbar subtle and blend it into the rounded panel. */
+.personnel-modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+.dark .personnel-modal-scroll {
+  scrollbar-color: #475569 transparent;
+}
+
+.personnel-modal-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.personnel-modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.personnel-modal-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+}
+
+.personnel-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.dark .personnel-modal-scroll::-webkit-scrollbar-thumb {
+  background: #475569;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.dark .personnel-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
 /* Standardized Responsive Main Content Container Limit (Tailwind 1280px / xl standard) */
 .container-responsive {
   width: 100%;

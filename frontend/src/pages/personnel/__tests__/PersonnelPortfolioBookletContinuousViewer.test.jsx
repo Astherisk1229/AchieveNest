@@ -22,15 +22,17 @@ const fixturePortfolio = {
 const render = (portfolio) => renderToString(<PersonnelPortfolioBookletModal isOpen onClose={() => {}} portfolio={portfolio} user={facultyUser} />)
 
 describe('Faculty Academic portfolio — continuous viewer', () => {
-  it('renders every page stacked in one scrollable canvas instead of a single active page', () => {
+  it('renders the two official HR pages and every attached proof in one scrollable canvas', () => {
     const html = render(fixturePortfolio)
-    // 3 area pages + 1 supporting evidence page, all present on screen at once
-    expect(html.match(/data-page-index="/g)).toHaveLength(4)
+    // 2 formal Faculty pages + 1 supporting evidence page, all present on screen at once
+    expect(html.match(/data-page-index="/g)).toHaveLength(3)
+    expect(html).toContain('FACULTY DEVELOPMENT PROGRAM')
+    expect(html).toContain('Signature over Printed Name')
     expect(html).toContain('id="booklet-area-A"')
     expect(html).toContain('id="booklet-area-B"')
     expect(html).toContain('id="booklet-area-C"')
     expect(html).toContain('id="booklet-proof-acc-a1"')
-    expect(html).toMatch(/1<!-- --> \/ <!-- -->4/)
+    expect(html).toMatch(/1<!-- --> \/ <!-- -->3/)
   })
 
   it('preserves canonical A → B → C order and evidence pages last', () => {
@@ -43,6 +45,32 @@ describe('Faculty Academic portfolio — continuous viewer', () => {
     expect(a).toBeLessThan(b)
     expect(b).toBeLessThan(c)
     expect(c).toBeLessThan(proof)
+  })
+
+  it('places Area A and B.1 on formal page 1, with remaining B and C plus signature on page 2', () => {
+    const html = render(fixturePortfolio)
+    const firstPageStart = html.indexOf('data-page-index="0"')
+    const secondPageStart = html.indexOf('data-page-index="1"')
+    const proofPageStart = html.indexOf('data-page-index="2"')
+    const firstPage = html.slice(firstPageStart, secondPageStart)
+    const secondPage = html.slice(secondPageStart, proofPageStart)
+    expect(firstPage).toContain('A. PROFESSIONAL DEVELOPMENT')
+    expect(firstPage).toContain('A.1 Education')
+    expect(firstPage).toContain('B. PRODUCTIVITY AND CREATIVE WORK')
+    expect(firstPage).toContain('B.1 Guest Lecturer / Consultant / Judge / Resource Person')
+    expect(firstPage).not.toContain('B.2 Publication')
+    expect(secondPage).toContain('B.2 Publication')
+    expect(secondPage).toContain('C. SERVICE AND LEADERSHIP')
+    expect(secondPage).toContain('Signature over Printed Name')
+  })
+
+  it('orders Faculty proof pages newest first', () => {
+    const format = resolveBookletFormat(facultyUser, {})
+    const pages = buildBookletPages(format, [
+      { accomplishmentId: 'older-proof', evidence: { id: 'proof-old' }, source: { occurrence_date: '2024-04-01' } },
+      { accomplishmentId: 'newer-proof', evidence: { id: 'proof-new' }, source: { occurrence_date: '2026-04-01' } }
+    ])
+    expect(pages.slice(2).map((page) => page.item.accomplishmentId)).toEqual(['newer-proof', 'older-proof'])
   })
 
   it('builds a hierarchical outline from the official criteria with a separate Supporting Evidence group', () => {
@@ -63,7 +91,7 @@ describe('Faculty Academic portfolio — continuous viewer', () => {
 
   it('keeps empty official sections visible and introduces no fallback data', () => {
     const html = render({ academic_year: '2026-2027', area_a_items: [], area_b_items: [], area_c_items: [] })
-    expect(html.match(/data-page-index="/g)).toHaveLength(3)
+    expect(html.match(/data-page-index="/g)).toHaveLength(2)
     expect(html).toContain('A.1 Education')
     expect(html).toContain('C.3 Years of Service at NDMU')
     expect(html).toContain('No accomplishments recorded.')
@@ -79,7 +107,7 @@ describe('Faculty Academic portfolio — continuous viewer', () => {
     const rows = format.normalize(fixturePortfolio)
     const pages = buildBookletPages(format, rows)
     const printCopy = pages.map((page) => renderToString(<BookletPage page={page} format={format} rows={rows} user={facultyUser} portfolio={fixturePortfolio} />)).join('')
-    expect(printCopy.match(/class="booklet-page/g)).toHaveLength(4)
+    expect(printCopy.match(/class="booklet-page/g)).toHaveLength(3)
     expect(printCopy).not.toContain('View Proof')
     expect(printCopy).not.toContain('id="booklet-')
     expect(printCopy).not.toContain('<a ')

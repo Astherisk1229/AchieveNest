@@ -329,11 +329,11 @@ describe('Plan J — Phase J6: Validation, Closure & Formal Plan J Completion', 
       );
     });
 
-    it('35. denies Department Secretary access to evaluator audit records', () => {
-      const secUser = { user_id: 'sec-1', role: 'department_secretary' };
+    it('35. denies Unassigned reviewer access to evaluator audit records', () => {
+      const secUser = { user_id: 'unassigned-1', role: 'unassigned_reviewer' };
       const ctx = { subject_personnel_id: 'prof-1' };
       expect(() => PersonnelEvaluationAuditService.validateAuditAccess(secUser, ctx)).toThrow(
-        /Department Secretary is not authorized/
+        /Unauthorized role/
       );
     });
 

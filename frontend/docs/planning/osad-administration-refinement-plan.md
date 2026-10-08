@@ -35,7 +35,7 @@ The dashboard should summarize current operational state and provide direct acce
 | Create Student Organization | OSAD | Create and link to Program, Department, College, or University scope as approved. |
 | Assign Organization Moderator | OSAD | Assign eligible Personnel to an Organization. |
 | Designate College Dean | HR | View only if needed; remove OSAD assignment action. |
-| Assign Department Secretary | HR | View only if needed; remove OSAD assignment action. |
+| Assign Dean | HR | View only if needed; remove OSAD assignment action. |
 | Manage Personnel account | HR | OSAD consumes an eligible read-only Personnel list for assignments. |
 
 Organization Moderators manage events, attendance, and certificate generation. They do not verify Student achievements.
@@ -415,7 +415,7 @@ Do not use raw comma-separated Programs.
 ### Phase 1 — Ownership Corrections
 
 - [ ] Remove OSAD Dean mutation.
-- [ ] Confirm no OSAD Department Secretary mutation exists.
+- [ ] Confirm no OSAD Dean mutation exists.
 - [ ] Change Coordinator assignment target to Department.
 - [ ] Keep Moderator assignment target as Organization.
 - [ ] Add controller validation and tests.
@@ -494,7 +494,7 @@ The Vite build command does not run linting.
 4. Verify invalid parent relationships are blocked.
 5. Assign a Program Coordinator to a Department.
 6. Create an Organization and assign its Moderator.
-7. Confirm no Dean or Department Secretary assignment action appears.
+7. Confirm no Dean or Dean assignment action appears.
 8. Confirm Student placement uses Program records from the hierarchy.
 9. Confirm dashboard metrics match current records.
 10. Confirm zero-data and incomplete-setup states.

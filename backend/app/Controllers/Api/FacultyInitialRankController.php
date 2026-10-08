@@ -38,6 +38,19 @@ class FacultyInitialRankController extends BaseController
         }
         try {
             $payload = $this->request->getJSON(true) ?? [];
+            $profileId = trim((string) ($payload['personnel_profile_id'] ?? ''));
+            if ($profileId === '') {
+                $result = $this->initialRankService->resolveInitialRank([
+                    'personnel_group' => $payload['personnel_group'] ?? null,
+                    'faculty_engagement' => $payload['faculty_engagement'] ?? null,
+                    'qualification_verified' => false,
+                ]);
+                return $this->response->setStatusCode(200)->setJSON(['success' => true, 'data' => $result]);
+            }
+            $db = \Config\Database::connect();
+            $personnel = $db->table('personnel_profiles')->where('profile_id', $profileId)->get()->getRowArray();
+            if (!$personnel) return $this->response->setStatusCode(404)->setJSON(['code' => 'PERSONNEL_NOT_FOUND', 'message' => 'Personnel profile was not found.']);
+            $payload = $this->verifiedCredentialContext($db, $personnel) + ['faculty_engagement' => $personnel['faculty_engagement'] ?? 'full_time_faculty'];
             $result = $this->initialRankService->resolveInitialRank($payload);
 
             return $this->response->setStatusCode(200)->setJSON([
@@ -102,14 +115,11 @@ class FacultyInitialRankController extends BaseController
                 ]);
             }
 
-            $context = [
+            $context = $this->verifiedCredentialContext($db, $personnel) + [
                 'personnel_profile_id' => $personnel['profile_id'],
                 'current_rank' => $personnel['current_rank_title'] ?? null,
-                'qualification_code' => $personnel['highest_educational_attainment'] ?? $personnel['qualifications'] ?? null,
-                'qualification_verified' => true, // HR profile records are considered verified
-                'licensure_verified' => !empty($personnel['licensure_board_passer']),
                 'faculty_engagement' => $personnel['faculty_engagement'] ?? 'full_time_faculty',
-                'personnel_group' => $personnel['personnel_group'] ?? 'faculty',
+                'personnel_group' => $personnel['personnel_group'] ?? null,
                 'employment_status' => $personnel['employment_status'] ?? 'permanent',
             ];
 
@@ -125,6 +135,34 @@ class FacultyInitialRankController extends BaseController
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /** Only verified active credentials can determine the initial rank qualification tier. */
+    private function verifiedCredentialContext($db, array $personnel): array
+    {
+        $group = strtolower(trim((string) ($personnel['personnel_group'] ?? '')));
+        $base = ['personnel_group' => $group ?: null, 'qualification_verified' => false, 'licensure_verified' => false];
+        if ($group !== 'faculty') return $base;
+        $credentials = $db->table('personnel_credentials')
+            ->where(['personnel_profile_id' => $personnel['profile_id'], 'verification_status' => 'verified', 'record_state' => 'active'])
+            ->get()->getResultArray();
+        $degrees = array_values(array_filter($credentials, static fn($c) => ($c['credential_type'] ?? '') === 'degree'));
+        $levels = array_column($degrees, 'degree_level');
+        $hasDoctorate = in_array('doctorate', $levels, true);
+        $hasMasters = in_array('masters', $levels, true);
+        $hasBachelor = in_array('baccalaureate', $levels, true);
+        $boardStatuses = array_values(array_unique(array_column(array_filter($credentials, static fn($c) => ($c['credential_type'] ?? '') === 'board_licensure'), 'board_licensure_status')));
+        if (count($boardStatuses) > 1) return array_merge($base, ['qualification_code' => null, 'credential_resolution' => 'conflicting_board_records']);
+        if ($hasDoctorate) return array_merge($base, ['qualification_code' => 'doctorate', 'qualification_verified' => true]);
+        if ($hasMasters) return array_merge($base, ['qualification_code' => 'masters', 'qualification_verified' => true]);
+        if (count($boardStatuses) === 1 && ($boardStatuses[0] === 'board_passer' || $hasBachelor)) {
+            return array_merge($base, [
+                'qualification_code' => $boardStatuses[0] === 'board_passer' ? 'CPA' : 'bachelor',
+                'qualification_verified' => true,
+                'licensure_verified' => $boardStatuses[0] === 'board_passer',
+            ]);
+        }
+        return array_merge($base, ['qualification_code' => null, 'credential_resolution' => 'hr_verification_required']);
     }
 
     /**

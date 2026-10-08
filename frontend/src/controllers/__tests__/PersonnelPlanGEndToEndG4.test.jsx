@@ -71,9 +71,9 @@ describe('Personnel Evaluation Track — Plan G — Phase G4: Reviewer Workflow 
     roles: ['hr_staff']
   }
 
-  const departmentSecretary = {
+  const unassignedReviewer = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const candidateFaculty = {
@@ -192,9 +192,9 @@ describe('Personnel Evaluation Track — Plan G — Phase G4: Reviewer Workflow 
       expect(PersonnelReviewerRoutingRegistry.resolveReviewerRoute(vpAdminContext).authorized_reviewer_role).toBe(REVIEWER_ROLES.HR)
     })
 
-    it('excludes Department Secretary and Candidate Self-Review from reviewer routing', () => {
+    it('excludes Unassigned reviewer and Candidate Self-Review from reviewer routing', () => {
       const isSecAuthorized = PersonnelReviewerRoutingRegistry.isAuthorizedReviewer(
-        departmentSecretary,
+        unassignedReviewer,
         { assigned_reviewer_role: REVIEWER_ROLES.DEAN, target_college_id: 'CEAC', personnel_profile_id: 'usr_fac_001' }
       )
       expect(isSecAuthorized).toBe(false)

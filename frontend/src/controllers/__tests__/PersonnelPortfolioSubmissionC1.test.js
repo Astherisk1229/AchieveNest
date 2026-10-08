@@ -146,7 +146,41 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
     })
   })
 
-  describe('23.3 Snapshot Integrity & Immutability', () => {
+  describe('23.3 Eligible Snapshot Proof Validation', () => {
+    it('does not require proof for records excluded from the current cycle, but still requires proof for included records', () => {
+      const portfolio = createMockPortfolio({
+        area_b_items: [
+          {
+            id: 'ACH-CONSUMED',
+            title: 'Previously finalized publication',
+            reuse: { is_consumed: true },
+            cycle_validity: { eligible: false }
+          }
+        ]
+      })
+
+      expect(PersonnelPortfolioController.validateSubmissionGuard(portfolio).isValid).toBe(true)
+
+      const portfolioWithoutEligibleProof = createMockPortfolio({
+        area_a_items: [
+          {
+            ...portfolio.area_a_items[0],
+            primary_evidence: null,
+            evidence: [],
+            evidence_snapshot: [],
+            proof_document: null,
+            proof_file_name: ''
+          }
+        ],
+        area_b_items: portfolio.area_b_items
+      })
+      const guard = PersonnelPortfolioController.validateSubmissionGuard(portfolioWithoutEligibleProof)
+      expect(guard.isValid).toBe(false)
+      expect(guard.missingItems.map((item) => item.id)).toContain('ACH-001')
+    })
+  })
+
+  describe('23.4 Snapshot Integrity & Immutability', () => {
     it('ensures submitted snapshot records remain immutable when active portfolio records change', async () => {
       const originalPortfolio = createMockPortfolio()
       const snapshotSubmission = {
@@ -318,7 +352,7 @@ describe('Personnel Evaluation Track — Plan C — Phase C1 Submission & Snapsh
       const syncSubmitted = PersonnelPortfolioController.submitToDean(mockPortfolio)
 
       expect(syncSubmitted.status).toBe('submitted')
-      expect(syncSubmitted.status).not.toBe('SUBMITTED_TO_DEP_SEC')
+      expect(syncSubmitted.status).not.toBe('SUBMITTED_TO_DEPARTMENT_REVIEWER')
       expect(syncSubmitted.status).not.toBe('SUBMITTED_TO_DEAN')
     })
   })

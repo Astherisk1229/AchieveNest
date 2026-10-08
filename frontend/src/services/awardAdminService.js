@@ -12,6 +12,11 @@ function getAuthHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+function unwrapApiData(response) {
+  const body = response?.data || response
+  return body?.data ?? body
+}
+
 /**
  * Fetches active award definitions with criteria and candidate threshold (80.00%).
  */
@@ -21,6 +26,31 @@ export async function fetchAwards() {
   })
 
   return response?.data?.awards || response?.awards || []
+}
+
+export async function fetchAwardCriteriaHierarchy(awardId) {
+  const response = await apiClient.get(`/osad/awards/${awardId}/criteria-hierarchy`, { headers: getAuthHeaders() })
+  return unwrapApiData(response)
+}
+
+export async function createAwardCriteriaHierarchyDraft(awardId, metadata) {
+  const response = await apiClient.post(`/osad/awards/${awardId}/criteria-hierarchy/drafts`, metadata, { headers: getAuthHeaders() })
+  return unwrapApiData(response)
+}
+
+export async function saveAwardCriteriaHierarchyDraft(awardId, versionId, hierarchy) {
+  const response = await apiClient.put(`/osad/awards/${awardId}/criteria-hierarchy/drafts/${versionId}`, { hierarchy }, { headers: getAuthHeaders() })
+  return unwrapApiData(response)
+}
+
+export async function validateAwardCriteriaHierarchyDraft(awardId, versionId) {
+  const response = await apiClient.post(`/osad/awards/${awardId}/criteria-hierarchy/drafts/${versionId}/validate`, {}, { headers: getAuthHeaders() })
+  return unwrapApiData(response)
+}
+
+export async function publishAwardCriteriaHierarchyDraft(awardId, versionId) {
+  const response = await apiClient.post(`/osad/awards/${awardId}/criteria-hierarchy/drafts/${versionId}/publish`, {}, { headers: getAuthHeaders() })
+  return unwrapApiData(response)
 }
 
 /**

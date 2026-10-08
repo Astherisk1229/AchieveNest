@@ -1,39 +1,40 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getCurrentUser, logoutUser } from '../../services/authService'
 import NotificationPopover from '../common/NotificationPopover'
+import HelpGuidePanel from '../common/HelpGuidePanel'
+import SettingsPage from '../../pages/common/SettingsPage'
 import useTheme from '../../hooks/useTheme'
 import { 
   Menu, 
   ChevronDown, 
-  ChevronUp, 
-  LogOut, 
-  Search, 
   User, 
-  Settings, 
-  RefreshCw, 
-  ShieldCheck, 
-  Building2, 
-  UserCheck, 
-  Users,
   Sun,
   Moon
 } from 'lucide-react'
 
 import { useAuth } from '../../context/AuthContext'
-import { normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
-import { getAccountRoute, getSettingsRoute } from '../../utils/portalRoutes'
+import { useHelpGuide } from '../../context/HelpGuideContext'
+import { isWorkspaceAvailable, normalizeAccountType, normalizeRoleContext, normalizeAssignedRoles } from '../../utils/roleContext'
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '../ui/avatar'
 
 export default function Header({ currentUser, isSidebarOpen = true, onToggleSidebar, onRoleChange }) {
   const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
   const { user: authUser, activeRoleContext: authRoleContext } = useAuth() || {}
+  const { request: helpRequest, openHelpGuide, consumeHelpGuideRequest, closeHelpGuide } = useHelpGuide()
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [isSwitchToOpen, setIsSwitchToOpen] = useState(true)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [profileView, setProfileView] = useState('menu')
+  const profileContainerRef = useRef(null)
+  const profileTriggerRef = useRef(null)
+  const helpGuideMenuItemRef = useRef(null)
+  const settingsMenuItemRef = useRef(null)
+  const helpReturnToProfileRef = useRef(false)
 
   const user = currentUser || authUser || getCurrentUser() || {
-    full_name: 'Juan A. Dela Cruz',
+    full_name: 'Account',
     user_type: 'student',
     active_role_context: 'student'
   }
@@ -41,15 +42,93 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
   const accountType = normalizeAccountType(user?.account_type || user?.user_type || 'student')
   const activeRoleContext = normalizeRoleContext(authRoleContext || user?.active_role_context || accountType)
   const assignedRoles = normalizeAssignedRoles(user?.assigned_roles || user?.roles, accountType)
-  const isPersonnelUser = accountType === 'personnel'
-  
-  const targetAccountPath = getAccountRoute(user)
-  const targetSettingsPath = getSettingsRoute(user)
+
+  useEffect(() => {
+    if (!helpRequest) return
+    setIsProfileOpen(false)
+    setIsHelpOpen(true)
+  }, [helpRequest])
+
+  useEffect(() => {
+    if (!isHelpOpen && !isSettingsOpen) return undefined
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        helpReturnToProfileRef.current = false
+        setIsHelpOpen(false)
+        setIsSettingsOpen(false)
+        closeHelpGuide()
+        profileTriggerRef.current?.focus()
+      }
+    }
+    const handleOutsidePointer = (event) => {
+      if (!profileContainerRef.current?.contains(event.target)) {
+        helpReturnToProfileRef.current = false
+        setIsHelpOpen(false)
+        setIsSettingsOpen(false)
+        closeHelpGuide()
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    document.addEventListener('pointerdown', handleOutsidePointer)
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+      document.removeEventListener('pointerdown', handleOutsidePointer)
+    }
+  }, [isHelpOpen, isSettingsOpen, closeHelpGuide])
 
   const handleLogout = () => {
     logoutUser()
     // Replace (not push) so Back does not return to the signed-in page just left.
     navigate('/login', { replace: true })
+  }
+
+  const openHelpFromProfile = () => {
+    helpReturnToProfileRef.current = true
+    setIsProfileOpen(false)
+    setIsSettingsOpen(false)
+    openHelpGuide({})
+  }
+
+  const openSettingsFromProfile = () => {
+    helpReturnToProfileRef.current = true
+    setIsProfileOpen(false)
+    setIsHelpOpen(false)
+    closeHelpGuide()
+    setIsSettingsOpen(true)
+  }
+
+  const returnToProfileMenu = () => {
+    helpReturnToProfileRef.current = false
+    setIsHelpOpen(false)
+    setIsSettingsOpen(false)
+    closeHelpGuide()
+    setProfileView('menu')
+    setIsProfileOpen(true)
+    requestAnimationFrame(() => helpGuideMenuItemRef.current?.focus())
+  }
+
+  const closeHelpPanel = () => {
+    helpReturnToProfileRef.current = false
+    setIsHelpOpen(false)
+    setIsSettingsOpen(false)
+    setIsProfileOpen(false)
+    closeHelpGuide()
+    profileTriggerRef.current?.focus()
+  }
+
+  const returnSettingsToProfile = () => {
+    helpReturnToProfileRef.current = false
+    setIsSettingsOpen(false)
+    setProfileView('menu')
+    setIsProfileOpen(true)
+    requestAnimationFrame(() => settingsMenuItemRef.current?.focus())
+  }
+
+  const closeSettingsPanel = () => {
+    helpReturnToProfileRef.current = false
+    setIsSettingsOpen(false)
+    setIsProfileOpen(false)
+    profileTriggerRef.current?.focus()
   }
 
   const handleSelectRole = (roleId) => {
@@ -59,36 +138,23 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
     }
   }
 
-  // Canonical display names for Personnel roles
   const ROLE_DISPLAY_NAMES = {
     personnel: 'Personnel',
-    dean: 'Dean',
+    student: 'Student',
+    dean: 'College Dean',
     program_coordinator: 'Program Coordinator',
-    organization_moderator: 'Organization Moderator'
+    organization_moderator: 'Organization Moderator',
+    hr_staff: 'HR',
+    osad_staff: 'OSAD'
   }
 
-  const ROLE_ICONS = {
-    personnel: UserCheck,
-    dean: Building2,
-    program_coordinator: ShieldCheck,
-    organization_moderator: Users
-  }
-
-  // Filter switch roles strictly from assigned roles, excluding current active context
-  const availableSwitchRoles = isPersonnelUser
-    ? assignedRoles
-        .filter(r => r !== activeRoleContext && ROLE_DISPLAY_NAMES[r])
-        .map(r => ({
-          id: r,
-          label: ROLE_DISPLAY_NAMES[r],
-          icon: ROLE_ICONS[r] || UserCheck
-        }))
-    : []
+  const availableAssignedRoles = assignedRoles.filter(role => ROLE_DISPLAY_NAMES[role] && isWorkspaceAvailable(user, role))
+  const canSwitchRole = availableAssignedRoles.length > 1
 
   // Label display helper for user type & active role context
   const getUserTypeLabel = () => {
-    if (accountType === 'hr_admin') return 'HR Admin'
-    if (accountType === 'osad_admin') return 'OSAD Admin'
+    if (activeRoleContext === 'hr_staff') return 'HR'
+    if (activeRoleContext === 'osad_staff') return 'OSAD'
     if (accountType === 'student') return 'Student'
     if (activeRoleContext === 'dean') {
       const deanAssignment = (user?.role_assignments || []).find(item => item.role_key === 'dean')
@@ -96,10 +162,11 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
     }
     if (activeRoleContext === 'program_coordinator') return 'Program Coordinator'
     if (activeRoleContext === 'organization_moderator') return 'Organization Moderator'
+    if (activeRoleContext !== 'personnel') return ROLE_DISPLAY_NAMES[activeRoleContext] || 'Account'
     const affiliation = user?.personnel_affiliation || {}
     const group = affiliation.personnel_group === 'faculty' ? 'Faculty' : affiliation.personnel_group === 'non_teaching_faculty' ? 'Non-teaching Faculty' : affiliation.personnel_group
     const side = affiliation.organizational_side === 'academic' ? 'Academic' : affiliation.organizational_side === 'non_academic' ? 'Non-academic' : affiliation.organizational_side
-    return group && side ? `${group} · ${side}` : user?.designation || affiliation.personnel_classification || 'Personnel'
+    return ['Personnel', group, side].filter(Boolean).join(' · ')
   }
 
   return (
@@ -112,7 +179,7 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
           onClick={onToggleSidebar}
           aria-expanded={isSidebarOpen}
           aria-controls="main-sidebar"
-          className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+          className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer md:hidden"
           aria-label="Toggle Navigation Sidebar"
         >
           <Menu className="w-5.5 h-5.5" />
@@ -140,34 +207,19 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
         <NotificationPopover />
 
         {/* User Profile Dropdown Container */}
-        <div className="relative">
+        <div className="relative" ref={profileContainerRef}>
           <button
+            ref={profileTriggerRef}
             type="button"
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            onClick={() => { setProfileView('menu'); setIsProfileOpen(!isProfileOpen) }}
+            aria-expanded={isProfileOpen}
             className="flex items-center gap-3 p-1 rounded-2xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80 transition active:scale-[0.98] cursor-pointer group"
           >
-            {accountType === 'student' ? (
-              <Avatar size="sm" className="w-9 h-9 border-2 border-[#16834a] shadow-xs">
-                <AvatarImage src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={user?.full_name || 'Student Avatar'} />
-                <AvatarFallback>
-                  {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('') : 'ST'}
-                </AvatarFallback>
-                <AvatarBadge className="bg-emerald-500 border border-white dark:border-slate-900" />
-              </Avatar>
-            ) : (
-              <div className="w-9.5 h-9.5 rounded-full border-2 border-[#16834a] p-0.5 overflow-hidden shrink-0 shadow-xs aspect-square">
-                <img
-                  src={user?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                  alt="User Avatar"
-                  width="38"
-                  height="38"
-                  className="w-full h-full object-cover rounded-full aspect-square"
-                  fetchPriority="high"
-                  decoding="async"
-                  loading="eager"
-                />
-              </div>
-            )}
+            <Avatar size="sm" className="w-9 h-9 border-2 border-[#16834a] shadow-xs">
+              <AvatarImage src={user?.avatar_url || ''} alt={user?.full_name ? `${user.full_name} profile picture` : 'Profile picture'} />
+              <AvatarFallback>{user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2) : 'A'}</AvatarFallback>
+              <AvatarBadge className="bg-emerald-500 border border-white dark:border-slate-900" />
+            </Avatar>
 
             <div className="text-left hidden sm:block">
               <p className="text-xs font-bold text-[#123D2A] dark:text-white leading-tight">{user?.full_name || 'Juan A. Dela Cruz'}</p>
@@ -185,123 +237,34 @@ export default function Header({ currentUser, isSidebarOpen = true, onToggleSide
           {isProfileOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
-              <div className="absolute right-0 top-full mt-2 w-72 rounded-3xl bg-white dark:bg-[#131e2e] text-[#123D2A] dark:text-slate-100 shadow-2xl border border-[#dde6dd] dark:border-slate-800 p-3.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl bg-white dark:bg-[#131e2e] text-[#123D2A] dark:text-slate-100 shadow-xl border border-[#dde6dd] dark:border-slate-800 p-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                 
-                {/* Header User Card inside Dropdown */}
-                <div className="flex items-center gap-3 p-3 bg-[#f8faf7] dark:bg-slate-800/60 rounded-2xl border border-[#dde6dd] dark:border-slate-800 mb-2">
-                  <div className="w-10 h-10 rounded-full bg-[#f5f8f3] dark:bg-emerald-950/60 border border-[#dde6dd] dark:border-emerald-800/60 flex items-center justify-center text-[#176B43] dark:text-emerald-400 shrink-0 font-bold">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-extrabold text-[#123D2A] dark:text-white truncate">{user?.full_name || 'Juan A. Dela Cruz'}</p>
-                    <p className="text-[11px] text-[#3F6B52] dark:text-slate-400 font-medium capitalize flex items-center gap-1 mt-0.5">
-                      <User className="w-3 h-3 text-[#176B43] dark:text-emerald-400" /> {getUserTypeLabel()}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-3 rounded-xl border border-[#dde6dd] bg-[#f8faf7] p-3 dark:border-slate-800 dark:bg-slate-800/60">
+                  {canSwitchRole ? <button type="button" onClick={() => setProfileView('roles')} aria-label={`Switch role from ${getUserTypeLabel()}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">
+                    <Avatar size="sm" className="h-10 w-10 shrink-0 border border-[#dde6dd] dark:border-slate-700"><AvatarImage src={user?.avatar_url || ''} alt=""/><AvatarFallback>{user?.full_name ? user.full_name.split(' ').map(name => name[0]).join('').slice(0, 2) : 'A'}</AvatarFallback></Avatar>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-extrabold text-[#123D2A] dark:text-white">{user?.full_name || 'Account'}</span><span className="mt-0.5 block truncate text-[11px] text-[#3F6B52] dark:text-slate-400">{getUserTypeLabel()}</span></span><ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-slate-500" aria-hidden="true"/>
+                  </button> : <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <Avatar size="sm" className="h-10 w-10 shrink-0 border border-[#dde6dd] dark:border-slate-700"><AvatarImage src={user?.avatar_url || ''} alt=""/><AvatarFallback>{user?.full_name ? user.full_name.split(' ').map(name => name[0]).join('').slice(0, 2) : 'A'}</AvatarFallback></Avatar>
+                    <span className="min-w-0 flex-1"><span className="block truncate text-xs font-extrabold text-[#123D2A] dark:text-white">{user?.full_name || 'Account'}</span><span className="mt-0.5 block truncate text-[11px] text-[#3F6B52] dark:text-slate-400">{getUserTypeLabel()}</span></span>
+                  </div>}
                 </div>
 
-                {/* Main Action Links */}
-                <div className="space-y-1 py-1">
-                  
-                  {/* My Profile */}
-                  <Link
-                    to={targetAccountPath}
-                    onClick={() => setIsProfileOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-[#123D2A] dark:text-slate-200 hover:bg-[#f8faf7] dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
-                  >
-                    <User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <span>My Profile</span>
-                  </Link>
+                {profileView === 'roles' ? <div className="py-2">
+                  <button type="button" onClick={() => setProfileView('menu')} className="mb-1 rounded-md px-2 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40">‹ Back</button>
+                  <p className="px-3 py-1 text-xs font-extrabold">Switch Role</p>
+                  {availableAssignedRoles.map(role => <button key={role} type="button" disabled={role === activeRoleContext} onClick={() => { handleSelectRole(role); setIsProfileOpen(false); setProfileView('menu') }} className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:bg-emerald-50/70 disabled:text-emerald-900 dark:text-slate-100 dark:hover:bg-emerald-950/40 dark:disabled:bg-emerald-950/50 dark:disabled:text-emerald-200"><span>{ROLE_DISPLAY_NAMES[role]}</span>{role === activeRoleContext && <span className="text-[11px] font-medium">Current</span>}</button>)}
+                </div> : <div className="space-y-0.5 py-2">
+                  <button ref={settingsMenuItemRef} type="button" onClick={openSettingsFromProfile} className="block w-full rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-[#123D2A] hover:bg-[#f8faf7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-slate-200 dark:hover:bg-slate-800">Settings</button>
+                  <button ref={helpGuideMenuItemRef} type="button" onClick={openHelpFromProfile} className="block w-full rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-[#123D2A] hover:bg-[#f8faf7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-slate-200 dark:hover:bg-slate-800">Help &amp; Guide</button>
+                </div>}
 
-                  {/* Settings */}
-                  <Link
-                    to={targetSettingsPath}
-                    onClick={() => setIsProfileOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-[#123D2A] dark:text-slate-200 hover:bg-[#f8faf7] dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-2.5 transition text-left active:scale-[0.98] cursor-pointer"
-                  >
-                    <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <span>Settings</span>
-                  </Link>
-
-                  {/* Theme Mode Toggle Option */}
-                  <button
-                    type="button"
-                    onClick={toggleTheme}
-                    className="w-full px-3 py-2 rounded-xl text-[#123D2A] dark:text-slate-200 hover:bg-[#f8faf7] dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-between transition text-left active:scale-[0.98] cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {isDark ? (
-                        <Sun className="w-4 h-4 text-amber-400" />
-                      ) : (
-                        <Moon className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                      )}
-                      <span>Appearance Mode</span>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[#f5f8f3] dark:bg-slate-800 text-[#123D2A] dark:text-slate-300 border border-[#dde6dd] dark:border-slate-700">
-                      {isDark ? 'Dark' : 'Light'}
-                    </span>
-                  </button>
-
-                  {/* Switch Role Accordion Submenu */}
-                  {isPersonnelUser && availableSwitchRoles.length > 0 && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setIsSwitchToOpen(!isSwitchToOpen)}
-                        className="w-full px-3 py-2 rounded-xl text-[#123D2A] dark:text-slate-200 hover:bg-[#f8faf7] dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-between transition text-left active:scale-[0.98] cursor-pointer"
-                        aria-expanded={isSwitchToOpen}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <RefreshCw className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                          <span>Switch Role</span>
-                        </div>
-                        {isSwitchToOpen ? (
-                          <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                        )}
-                      </button>
-
-                      {/* Expandable Role Options List */}
-                      {isSwitchToOpen && (
-                        <div className="ml-3 pl-3 my-1 border-l-2 border-[#dde6dd] dark:border-slate-800 space-y-1">
-                          {availableSwitchRoles.map(role => {
-                            const IconComp = role.icon
-                            return (
-                              <button
-                                key={role.id}
-                                type="button"
-                                onClick={() => { handleSelectRole(role.id); setIsProfileOpen(false) }}
-                                className="w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition text-left text-[#3F6B52] dark:text-slate-300 hover:bg-[#f5f8f3] dark:hover:bg-emerald-950/60 hover:text-[#176B43] dark:hover:text-emerald-300 active:scale-[0.98] cursor-pointer"
-                                aria-label={`Switch to ${role.label}`}
-                              >
-                                <IconComp className="w-3.5 h-3.5 text-[#176B43] dark:text-emerald-400" />
-                                <span>{role.label}</span>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Logout Button */}
-                <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="w-full px-3 py-2.5 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-2 transition text-left active:scale-[0.98] cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
+                {profileView === 'menu' && <div className="mt-1 border-t border-slate-200 pt-2 dark:border-slate-700"><button type="button" onClick={handleLogout} className="w-full rounded-lg px-3 py-2.5 text-left text-xs font-bold text-rose-700 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/40">Sign Out</button></div>}
 
               </div>
             </>
           )}
+          {isHelpOpen && <HelpGuidePanel role={activeRoleContext} user={user} request={helpRequest} onRequestConsumed={consumeHelpGuideRequest} onBack={helpReturnToProfileRef.current ? returnToProfileMenu : undefined} onClose={closeHelpPanel} />}
+          {isSettingsOpen && <SettingsPage compact currentUser={user} onBack={returnSettingsToProfile} onClose={closeSettingsPanel} />}
         </div>
       </div>
 

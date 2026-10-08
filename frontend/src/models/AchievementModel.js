@@ -32,6 +32,12 @@ export default class AchievementModel {
   #ocr_metadata
   #category_metadata
   #category_code
+  #criterion_id
+  #evaluation_scale_version_id
+  #criterion_snapshot
+  #raw_status
+  #reuse
+  #cycle_validity
 
   constructor(data = {}) {
     this.#id = data.id || `ach_${Math.random().toString(36).substr(2, 9)}`
@@ -45,6 +51,11 @@ export default class AchievementModel {
     this.#category = data.category || data.category_code || 'Unclassified'
     // Stored category code (personnel_accomplishments.category_code), kept separately from the display category.
     this.#category_code = data.category_code ?? null
+    this.#criterion_id = data.criterion_id ?? null
+    this.#evaluation_scale_version_id = data.evaluation_scale_version_id ?? null
+    this.#criterion_snapshot = typeof data.criterion_snapshot === 'string'
+      ? (() => { try { return JSON.parse(data.criterion_snapshot || 'null') } catch { return null } })()
+      : (data.criterion_snapshot ?? null)
     this.#scope_level = data.scope_level || 'Institutional / Campus-Wide'
     this.#rank_conferred = data.rank_conferred || 'Participant / Special Award'
     this.#academic_year = data.academic_year || 'AY 2025-2026'
@@ -53,6 +64,7 @@ export default class AchievementModel {
     this.#attached_file_name = data.primary_evidence?.original_filename || data.evidence?.[0]?.original_filename || ''
     this.#date = data.date || data.occurrence_date || data.date_achieved || new Date().toISOString().split('T')[0]
     this.#status = data.status === 'submitted' ? 'Pending Review' : (data.status === 'verified' ? 'Verified' : (data.status === 'rejected' ? 'Returned' : (data.status || 'Pending Review')))
+    this.#raw_status = data.raw_status || data.status || this.#status
     this.#return_remarks = data.return_remarks || data.rejection_reason || ''
     this.#docs_count = Number(data.docs_count) || (Array.isArray(data.evidence) ? data.evidence.length : 0)
     this.#participation_photo_name = data.participation_photo_name || ''
@@ -66,6 +78,8 @@ export default class AchievementModel {
     this.#category_metadata = typeof data.category_metadata === 'string'
       ? (() => { try { return JSON.parse(data.category_metadata || '{}') } catch { return {} } })()
       : (data.category_metadata || {})
+    this.#reuse = data.reuse || null
+    this.#cycle_validity = data.cycle_validity || null
   }
 
   // Encapsulated Getters
@@ -75,6 +89,12 @@ export default class AchievementModel {
   get ocr_metadata() { return this.#ocr_metadata }
   get category_metadata() { return this.#category_metadata }
   get category_code() { return this.#category_code }
+  get criterion_id() { return this.#criterion_id }
+  get evaluation_scale_version_id() { return this.#evaluation_scale_version_id }
+  get criterion_snapshot() { return this.#criterion_snapshot }
+  get raw_status() { return this.#raw_status }
+  get reuse() { return this.#reuse }
+  get cycle_validity() { return this.#cycle_validity }
   get student_id() { return this.#student_id }
   get student_name() { return this.#student_name }
   get program() { return this.#program }
@@ -116,7 +136,9 @@ export default class AchievementModel {
 
   // Personnel Capabilities
   canEdit() {
-    return this.#status === 'Pending Review' || this.#status === 'Pending' || this.#status === 'Returned' || this.#status === 'Draft'
+    const frozenStatuses = ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed', 'finalized', 'hr_approved']
+    return !frozenStatuses.includes(String(this.#raw_status || '').toLowerCase())
+      && ['pending review', 'pending', 'returned', 'draft'].includes(String(this.#status || '').toLowerCase())
   }
 
   canDelete() {
@@ -181,6 +203,9 @@ export default class AchievementModel {
       issuer: this.#issuer,
       location: this.#location,
       category: this.#category,
+      criterion_id: this.#criterion_id,
+      evaluation_scale_version_id: this.#evaluation_scale_version_id,
+      criterion_snapshot: this.#criterion_snapshot,
       scope_level: this.#scope_level,
       rank_conferred: this.#rank_conferred,
       academic_year: this.#academic_year,
@@ -200,7 +225,10 @@ export default class AchievementModel {
       evidence: this.#evidence,
       ocr_metadata: this.#ocr_metadata,
       category_metadata: this.#category_metadata,
-      category_code: this.#category_code
+      category_code: this.#category_code,
+      raw_status: this.#raw_status,
+      reuse: this.#reuse,
+      cycle_validity: this.#cycle_validity
     }
   }
 

@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Services\AuthorizationService;
+use App\Services\StudentAchievementRecordSummaryService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -66,6 +67,9 @@ class VerificationQueueController extends Controller
                 'spr.status AS request_status',
                 'spr.submitted_at',
                 'spr.title',
+                'spr.category_id',
+                'spr.subcategory_id',
+                'spr.structured_metadata',
                 'pc.name AS category',
                 'spr.description',
                 'spr.occurrence_date AS date_awarded',
@@ -83,6 +87,23 @@ class VerificationQueueController extends Controller
         $this->authz->portfolio()->scopeVerificationQuery($actor, $builder);
 
         $queue = $builder->get()->getResultArray();
+        $summaryService = new StudentAchievementRecordSummaryService($db);
+        foreach ($queue as &$item) {
+            $metadata = json_decode((string) ($item['structured_metadata'] ?? '{}'), true) ?: [];
+            $summary = $summaryService->derive(
+                (string) ($item['category_id'] ?? ''),
+                !empty($item['subcategory_id']) ? (string) $item['subcategory_id'] : null,
+                $metadata
+            );
+            if ($summary !== null) {
+                $item['title'] = $summary['title'];
+                $item['description'] = $summary['description'];
+                $item['date_awarded'] = $summary['occurrence_date'];
+                $item['venue'] = $summary['organizer_or_body'];
+            }
+            unset($item['structured_metadata']);
+        }
+        unset($item);
 
         return $this->respond([
             'data' => [

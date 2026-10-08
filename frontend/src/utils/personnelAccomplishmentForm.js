@@ -16,6 +16,13 @@ export function isStrictIsoDate(value) {
   return date.getFullYear() === Number(year) && date.getMonth() === Number(month) - 1 && date.getDate() === Number(day)
 }
 
+export function localIsoDateToday(now = new Date()) {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function mapAccomplishmentToForm(record = {}) {
   const metadata = parseMetadata(record.category_metadata)
   const categoryCode = record.category_code || String(record.category || '').match(/^([ABC]\.\d(?:\.\d)?)/)?.[1] || ''
@@ -50,7 +57,7 @@ export function mapAccomplishmentToForm(record = {}) {
   return form
 }
 
-export function validateAccomplishmentForm(form, config, today = new Date().toLocaleDateString('en-CA')) {
+export function validateAccomplishmentForm(form, config, today = localIsoDateToday()) {
   const errors = {}
   if (!config) return { form: 'Select a valid subcategory.' }
   const future = (value) => value && value > today

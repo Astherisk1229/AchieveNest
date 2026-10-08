@@ -25,7 +25,6 @@ export const REVISION_REASON_CODES = Object.freeze({
   OVERALL_MESSAGE_REQUIRED: 'revision_message_required',
   SUBMITTED_VERSION_MISSING: 'submitted_version_missing',
   SELF_REVIEW_PROHIBITED: 'self_evaluation_prohibited',
-  DEPT_SECRETARY_EXCLUDED: 'department_secretary_excluded',
   CROSS_COLLEGE_DENIED: 'cross_college_evaluation_prohibited'
 });
 
@@ -47,15 +46,6 @@ export default class PersonnelRevisionRequestService {
     }
 
     const roles = Array.isArray(actor.roles) ? actor.roles : (actor.role ? [actor.role] : []);
-
-    // 2. Department secretary strictly excluded
-    if (roles.includes('department_secretary') && !roles.includes('dean') && !roles.includes('hr_staff') && !roles.includes('hr_admin')) {
-      return {
-        allowed: false,
-        reason_code: REVISION_REASON_CODES.DEPT_SECRETARY_EXCLUDED,
-        message: 'Department Secretary is strictly excluded from returning portfolios.'
-      };
-    }
 
     // 3. Personnel role cannot create reviewer request
     if (roles.includes('personnel') && !roles.includes('dean') && !roles.includes('hr_staff') && !roles.includes('hr_admin')) {

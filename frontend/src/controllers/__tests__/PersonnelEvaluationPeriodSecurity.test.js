@@ -41,6 +41,10 @@ describe('Personnel evaluation period production security', () => {
     expect(controller).toContain('Idempotency-Key')
     expect(migration).toContain('uq_period_event_request')
     expect(service).toContain('idempotency_key')
+    expect(service).toContain("'notification_type'=>'personnel_evaluation_period_opened'")
+    expect(service).toContain("'reference_type'=>'personnel_evaluation_period'")
+    expect(service).toContain('Portfolio Submission is Now Open')
+    expect(service).toContain('Human Resources opened the ')
     expect(submission).toContain('Portfolio submission was already accepted.')
   })
 

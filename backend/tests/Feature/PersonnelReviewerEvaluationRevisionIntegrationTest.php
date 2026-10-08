@@ -453,14 +453,29 @@ final class PersonnelReviewerEvaluationRevisionIntegrationTest extends TestCase
         $crossRateResp = $hrCtrlDeanCed->rateItem($submissionIdV1, $itemV1['id']);
         $this->assertSame(403, $crossRateResp->getStatusCode(), 'Unauthorized reviewer rating must be blocked with 403');
 
-        // Rate item as assigned Dean
-        $rateReq = $this->createMockRequest('PATCH', ['evaluator_remarks' => 'Full points awarded per rubric'], ['Authorization' => 'Bearer fake-token']);
+        // Remarks and a forged points payload must not mutate the locked criterion or its points.
+        $lockedCriterionBeforeRate = $db->table('personnel_evaluation_items')->where('id', $itemV1['id'])->get()->getRowArray();
+        $lockedSnapshotBeforeRate = $lockedCriterionBeforeRate['criterion_snapshot'];
+        $lockedPointsBeforeRate = (float) $lockedCriterionBeforeRate['configured_points_snapshot'];
+        $rateReq = $this->createMockRequest('PATCH', ['evaluator_remarks' => 'Full points awarded per rubric', 'awarded_points' => 9999], ['Authorization' => 'Bearer fake-token']);
         $this->initController($hrCtrlDeanCas, $rateReq);
         $rateResp = $hrCtrlDeanCas->rateItem($submissionIdV1, $itemV1['id']);
         $this->assertSame(200, $rateResp->getStatusCode());
         $rateBody = json_decode((string)$rateResp->getBody(), true);
         $awardedPoints = $rateBody['data']['awarded_points'] ?? 0;
-        $this->assertGreaterThan(0, $awardedPoints, 'Server must calculate points from locked criterion snapshot');
+        $this->assertSame($lockedPointsBeforeRate, (float) $awardedPoints, 'Server must calculate points from the locked criterion snapshot and ignore client-supplied points for configured criteria');
+        $lockedCriterionAfterRate = $db->table('personnel_evaluation_items')->where('id', $itemV1['id'])->get()->getRowArray();
+        $this->assertSame($lockedSnapshotBeforeRate, $lockedCriterionAfterRate['criterion_snapshot'], 'Editing evaluator remarks must not change the matched category, subcategory, level, or criteria version.');
+        $this->assertSame('Full points awarded per rubric', $lockedCriterionAfterRate['evaluator_remarks'], 'Edited evaluator remarks must persist independently from the criterion snapshot.');
+
+        $remarksOnlyReq = $this->createMockRequest('PATCH', ['evaluator_remarks' => 'Saved draft comment without changing the decision.'], ['Authorization' => 'Bearer fake-token']);
+        $this->initController($hrCtrlDeanCas, $remarksOnlyReq);
+        $remarksOnlyResp = $hrCtrlDeanCas->updateItemRemarks($submissionIdV1, $itemV1['id']);
+        $this->assertSame(200, $remarksOnlyResp->getStatusCode(), 'The remarks-only endpoint must save draft text.');
+        $remarksOnlyItem = $db->table('personnel_evaluation_items')->where('id', $itemV1['id'])->get()->getRowArray();
+        $this->assertSame($lockedPointsBeforeRate, (float) $remarksOnlyItem['awarded_points'], 'Saving remarks alone must preserve awarded points.');
+        $this->assertSame('rated', $remarksOnlyItem['rating_status'], 'Saving remarks alone must preserve rating status.');
+        $this->assertSame('Saved draft comment without changing the decision.', $remarksOnlyItem['evaluator_remarks']);
 
         // No standalone deficiency yet: the personnel return-feedback projection is empty.
         $personnelReadReq = $this->createMockRequest('GET', [], ['Authorization' => 'Bearer fake-token']);

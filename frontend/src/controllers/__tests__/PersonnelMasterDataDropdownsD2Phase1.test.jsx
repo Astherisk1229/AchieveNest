@@ -56,7 +56,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
       });
 
       const ranks = await personnelMasterDataService.getFacultyRanks();
-      expect(ranks.length).toBe(26);
+      expect(ranks.length).toBe(22);
       expect(ranks[0]).toHaveProperty('code');
       expect(ranks[0]).toHaveProperty('label');
       expect(ranks.some(r => r.label === 'Instructor I')).toBe(true);
@@ -145,7 +145,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
       const ftRanks = await personnelMasterDataService.getFacultyRanks();
       const ptTitles = await personnelMasterDataService.getPartTimeTitles();
 
-      expect(ftRanks.length).toBe(26);
+      expect(ftRanks.length).toBe(22);
       expect(ptTitles.length).toBe(4);
       expect(ftRanks).not.toEqual(ptTitles);
     });
@@ -487,14 +487,15 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
       expect(SEEDED_ADMINISTRATIVE_UNITS.some(u => u.name === 'Business Office')).toBe(true);
     });
 
-    it('37. Plan E rank tests remain aligned with canonical 26-rank catalog', () => {
-      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(26);
+    it('37. Plan E rank options omit the four unsupported Senior Instructor steps', () => {
+      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(22);
       expect(facultyRankCatalogService.TIERS.DOCTORAL).toBe('doctoral');
+      expect(facultyRankCatalogService.FULL_TIME_RANKS.some(rank => /^Senior Instructor [IV]+$/.test(rank.label))).toBe(false);
     });
 
     it('38. Plan D classification tests formatting remains accurate', () => {
       const sample = { personnel_group: 'faculty', organizational_side: 'academic' };
-      expect(formatPersonnelClassification(sample)).toBe('Faculty • Academic');
+      expect(formatPersonnelClassification(sample)).toBe('Teaching • Academic');
     });
 
     it('39. faculty engagement and employment status formatters remain accurate', () => {

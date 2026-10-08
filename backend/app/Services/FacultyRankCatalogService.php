@@ -30,6 +30,14 @@ class FacultyRankCatalogService
         $builder = $this->db->table('faculty_rank_catalog')
             ->where('catalog_type', 'full_time_academic_rank')
             ->where('is_active', 1)
+            // Keep legacy rank rows addressable for existing records, but omit
+            // the Senior Instructor I–IV rungs from new rank selections.
+            ->whereNotIn('rank_code', [
+                'SENIOR_INSTRUCTOR_I',
+                'SENIOR_INSTRUCTOR_II',
+                'SENIOR_INSTRUCTOR_III',
+                'SENIOR_INSTRUCTOR_IV',
+            ])
             ->orderBy('display_order', 'ASC');
 
         if ($tierCode) {

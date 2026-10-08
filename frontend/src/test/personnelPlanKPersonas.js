@@ -10,7 +10,7 @@
  * - P5: College Dean Reviewer (College 1 scope, cross-college denied, HR-routed for own eval)
  * - P6: HR Administrator (Institutional scope, finalization & promotion decision authority)
  * - P7: Vice President (VP context, HR-routed)
- * - P-SEC: Department Secretary (Negative authorization case, not an evaluator)
+ * - P-UNASSIGNED: Unassigned reviewer (Negative authorization case, not an evaluator)
  * - P-LEG: Legacy Migration Fixtures (Supported official unit vs ambiguous)
  */
 
@@ -238,14 +238,14 @@ export const PLAN_K_PERSONAS = {
     expected_reviewer_route: 'hr', // VP routes to HR
   },
 
-  // P-SEC: Department Secretary (Negative authorization)
-  P_SEC: {
-    id: 'k1-psec-uuid-008',
-    institutional_id: 'K1-PSEC-008',
-    name: 'Sara Secretary (P-SEC Negative Authorization)',
-    email: 'k1.psec.secretary@ndmu.edu.ph',
+  // P-UNASSIGNED: Personnel account without reviewer authority
+  P_UNASSIGNED: {
+    id: 'k1-pno-reviewer-uuid-008',
+    institutional_id: 'K1-PNO-REVIEWER-008',
+    name: 'Sara Personnel (No Reviewer Authority)',
+    email: 'k1.personnel.no-reviewer@ndmu.edu.ph',
     account_type: 'personnel',
-    roles: ['personnel', 'department_secretary'],
+    roles: ['personnel'],
     personnel_group: PERSONNEL_GROUPS.NON_TEACHING_FACULTY,
     organizational_side: ORGANIZATIONAL_SIDES.ACADEMIC,
     faculty_status: FACULTY_STATUSES.FULL_TIME,

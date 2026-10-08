@@ -28,15 +28,15 @@ Student organizations do not own achievement portfolios and do not submit achiev
 
 - **Program Coordinator** — A Personnel account selected by OSAD to verify student achievement submissions for one degree program.
 - **Organization Moderator** — A Personnel account selected by OSAD to manage an organization's events, attendance, and certificate generation. This role does not verify achievement submissions.
-- **Department Secretary** — A Personnel account designated by HR to verify accomplishment submissions from regular personnel within the assigned college.
+- **Dean** — A Personnel account designated by HR to verify accomplishment submissions from regular personnel within the assigned college.
 - **College Dean** — A leadership designation applied by HR to an existing Personnel account. It is not a separate account type.
 
 > [!NOTE]
-> The stakeholder term **Department Secretary** is retained, but its current verification scope is **by college**. All system labels, filters, and routing rules must apply this meaning consistently.
+> The stakeholder term **Dean** is retained, but its current verification scope is **by college**. All system labels, filters, and routing rules must apply this meaning consistently.
 
 ### Dean and Secretary Conflict-of-Interest Rule
 
-The Department Secretary must not verify their own submission or the College Dean's submission. The system routes accomplishments submitted by either role directly to HR Admin.
+The Dean must not verify their own submission or the College Dean's submission. The system routes accomplishments submitted by either role directly to HR Admin.
 
 ---
 
@@ -104,9 +104,9 @@ College → Department → Degree Program
 2. Record employee identifiers and relevant personnel information.
 3. Assign each Personnel account to a college.
 4. Designate the College Dean from personnel assigned to that college.
-5. Designate the Department Secretary responsible for personnel verification in that college.
+5. Designate the Dean responsible for personnel verification in that college.
 
-HR—not OSAD—assigns the Dean and Department Secretary because both are personnel leadership designations. OSAD creates the college container but does not control personnel positions.
+HR—not OSAD—assigns the Dean and Dean because both are personnel leadership designations. OSAD creates the college container but does not control personnel positions.
 
 **Dependency created:** OSAD can now select existing Personnel accounts when assigning Program Coordinators and Organization Moderators.
 
@@ -129,9 +129,9 @@ Before enabling the related workflows, the system must confirm that:
 - every active department belongs to an existing college;
 - every active Personnel account belongs to an existing college;
 - every active degree program has one Program Coordinator;
-- every college receiving personnel submissions has a Department Secretary;
+- every college receiving personnel submissions has a Dean;
 - every active organization has one Organization Moderator; and
-- the designated Dean and Department Secretary are valid Personnel accounts assigned to the applicable college.
+- the designated Dean and Dean are valid Personnel accounts assigned to the applicable college.
 
 The current stakeholder process uses one named assignee for each responsibility. Backup verifiers, verifier pools, and automatic load distribution are not part of the current scope.
 
@@ -158,17 +158,17 @@ Student creates achievement
 
 ```text
 Regular Personnel submission
-→ Department Secretary assigned to the Personnel member's college
+→ Dean assigned to the Personnel member's college
 
 College Dean submission
 → HR Admin
 
-Department Secretary submission
+Dean submission
 → HR Admin
 ```
 
 - Routing is based on the Personnel member's assigned college.
-- The Dean and Department Secretary bypass college-level verification to prevent self-review and conflicts of interest.
+- The Dean and Dean bypass college-level verification to prevent self-review and conflicts of interest.
 - Approved accomplishments appear in the Personnel member's portfolio.
 
 ### 5.3 Organization Event and Certificate Workflow
@@ -206,7 +206,7 @@ Organization Moderator creates event
 - Can view Student portfolios.
 - Cannot view Personnel portfolios.
 
-### Department Secretary
+### Dean
 
 - Can view the verification queue for Personnel in the assigned college.
 - Can search and filter accomplishment submissions.
@@ -248,7 +248,7 @@ Each review action should record the reviewer, timestamp, decision, and remarks.
 ### Current Approved Limitations
 
 - One named Program Coordinator is assigned per degree program.
-- One named Department Secretary is assigned per college.
+- One named Dean is assigned per college.
 - One named Organization Moderator is assigned per organization.
 - The system has no backup-verifier or verifier-pool workflow.
 - Organizations do not submit achievements and do not own achievement portfolios.
@@ -269,7 +269,7 @@ The following should only be added after stakeholder approval:
 
 - **HR Admin portal:** Personnel onboarding, college assignment, leadership designation, and HR verification queue.
 - **OSAD Admin portal:** Academic structure, student management, coordinator assignment, and organization management.
-- **Department Secretary portal:** College-based personnel verification dashboard, search, filters, and review actions.
+- **Dean portal:** College-based personnel verification dashboard, search, filters, and review actions.
 - **Program Coordinator portal:** Program-based student verification dashboard, search, filters, and review actions.
 - **Organization Moderator portal:** Event creation, attendance management, and certificate generation.
 

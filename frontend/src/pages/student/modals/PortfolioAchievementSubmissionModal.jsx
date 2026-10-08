@@ -1,19 +1,18 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useHelpGuide } from '../../../context/HelpGuideContext'
 import { AlertCircle, CheckCircle2, Eye, FileText, LoaderCircle, RefreshCw, RotateCcw, Save, Send, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
-import SharedAchievementFields from '../components/SharedAchievementFields'
+import ConfiguredStructuredDetailsFields, { applyConfiguredFieldDefaults } from '../components/ConfiguredStructuredDetailsFields'
 import StructuredDetailsFields, { applyStructuredFieldDefaults } from '../components/StructuredDetailsFields'
 import { getSubcategorySchema } from '../../../config/portfolioFormSchemaRegistry'
 import portfolioService from '../../../services/portfolioService'
 import StudentAchievementDraftSession, {
   ACCEPTED_EVIDENCE_TYPES,
-  applyOcrSuggestions,
   applyOcrToDetails,
   buildRecordPayload,
   parseStructuredMetadata,
   validateForSubmit
 } from '../../../controllers/StudentAchievementDraftSession'
 
-const EMPTY_FORM = { title: '', organizer_or_body: '', start_date: '', end_date: '', description: '' }
 const PREVIEWABLE = ['application/pdf', 'image/jpeg', 'image/png']
 
 const evidenceLabel = item => {
@@ -24,22 +23,18 @@ const evidenceLabel = item => {
 
 /**
  * Student achievement entry backed by the single system of record (student_portfolio_records).
- * Order: evidence -> basic information -> category/subcategory -> additional information.
+ * Order: evidence -> category/subcategory -> configured details.
  * Evidence may be uploaded before a category is chosen (unclassified draft). OCR runs only after a
  * clean security scan and only suggests values; dropdowns are filled only on an exact option match.
  * No record is created until the first evidence upload or the first "Save draft".
  */
 export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, onSaved, editingRecordId = null, taxonomy = [] }) {
+  const { openHelpGuide } = useHelpGuide()
   const titleId = useId()
   const sessionRef = useRef(null)
   const replaceTargetRef = useRef(null)
   const replaceInputRef = useRef(null)
 
-  const [formData, setFormData] = useState(EMPTY_FORM)
-  const [touched, setTouched] = useState({})
-  const touchedRef = useRef({})
-  touchedRef.current = touched
-  const [ocrApplied, setOcrApplied] = useState({})
   const [ocrSuggestions, setOcrSuggestions] = useState([])
   const [detailsFromDocument, setDetailsFromDocument] = useState({})
   const [categoryId, setCategoryId] = useState('')
@@ -54,35 +49,38 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
   const [message, setMessage] = useState(null)
   const [scanMessage, setScanMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [schemaCatalog, setSchemaCatalog] = useState(null)
+  const [schemaLoadError, setSchemaLoadError] = useState('')
 
   const editable = status === null || ['draft', 'revision_requested'].includes(status)
-  const schema = getSubcategorySchema(subcategoryId)
+  const legacySchema = getSubcategorySchema(subcategoryId)
+  const isLegacyDraft = Boolean(editingRecordId && structuredMetadata.schema_version === '1.0')
+  const configuredSchema = schemaCatalog?.categories?.flatMap(item => item.subcategories || []).find(item => item.legacy_subcategory_id === subcategoryId) || null
+  const schema = isLegacyDraft ? legacySchema : configuredSchema
   const selectedCategory = taxonomy.find(category => category.id === categoryId)
   const subcategories = selectedCategory?.subcategories || []
+  const subcategoryRequired = subcategories.length > 0
   const cleanEvidence = evidence.some(item => item.status === 'active' && item.security_status === 'clean')
 
-  const payload = useCallback(() => buildRecordPayload({ formData, categoryId, subcategoryId, structuredMetadata }), [formData, categoryId, subcategoryId, structuredMetadata])
+  const payload = useCallback(() => buildRecordPayload({ categoryId, subcategoryId, structuredMetadata, schemaVersion: isLegacyDraft ? '1.0' : (schemaCatalog?.schema_version || 'student-form-schema-2') }), [categoryId, subcategoryId, structuredMetadata, isLegacyDraft, schemaCatalog])
 
   // Reset on open; load the record when editing. Opening never creates a backend record.
   useEffect(() => {
     if (!isOpen) return undefined
     let active = true
     sessionRef.current = new StudentAchievementDraftSession(portfolioService)
-    setFormData(EMPTY_FORM); setTouched({}); setOcrApplied({}); setOcrSuggestions([]); setDetailsFromDocument({}); setCategoryId(''); setSubcategoryId('')
-    setStructuredMetadata({ schema_version: '1.0' }); setEvidence([]); setStatus(null); setRevisionRemarks('')
+    setOcrSuggestions([]); setDetailsFromDocument({}); setCategoryId(''); setSubcategoryId('')
+    setStructuredMetadata({ schema_version: 'student-form-schema-2' }); setEvidence([]); setStatus(null); setRevisionRemarks('')
     setErrors({}); setMessage(null); setScanMessage(''); setFullPreview(null)
+    setSchemaCatalog(null); setSchemaLoadError('')
+    portfolioService.fetchAchievementSchema()
+      .then(catalog => { if (active && Array.isArray(catalog?.categories)) setSchemaCatalog(catalog) })
+      .catch(error => { if (active) setSchemaLoadError(error?.response?.data?.error?.message || error?.message || 'Achievement intake schema is unavailable.') })
     if (editingRecordId) {
       setBusy(true)
       sessionRef.current.load(editingRecordId)
         .then(({ record, evidence: rows, events }) => {
           if (!active) return
-          setFormData({
-            title: record.title || '',
-            organizer_or_body: record.organizer_or_body || '',
-            start_date: record.start_date || record.occurrence_date || '',
-            end_date: record.end_date || '',
-            description: record.description || ''
-          })
           setCategoryId(record.category_id || '')
           setSubcategoryId(record.subcategory_id || '')
           setStructuredMetadata(parseStructuredMetadata(record.structured_metadata))
@@ -115,14 +113,16 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
 
   // Once a subcategory is chosen, fill its empty details from the document (exact matches only for dropdowns).
   useEffect(() => {
+    // The OSAD contract catalog marks field-level OCR mapping as pending review.
+    // Keep OCR advisory and avoid applying legacy mappings to configured fields.
     if (!subcategoryId || ocrSuggestions.length === 0) return
-    const fields = getSubcategorySchema(subcategoryId)?.fields || []
+    const fields = schema?.fields || []
     setStructuredMetadata(previous => {
       const { metadata, applied } = applyOcrToDetails(previous, ocrSuggestions, fields)
       if (Object.keys(applied).length) setDetailsFromDocument(current => ({ ...current, ...applied }))
       return Object.keys(applied).length ? metadata : previous
     })
-  }, [subcategoryId, ocrSuggestions])
+  }, [subcategoryId, ocrSuggestions, schema, isLegacyDraft])
 
   const syncStatusFromSession = () => setStatus(sessionRef.current?.status ?? null)
 
@@ -131,21 +131,15 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
     setMessage({ type: 'error', text: `${error?.message || 'The request failed.'}${error?.code ? ` (${error.code})` : ''}` })
   }
 
-  const handleSharedChange = (field, value) => {
-    setFormData(previous => ({ ...previous, [field]: value }))
-    setTouched(previous => ({ ...previous, [field]: true }))
-    setOcrApplied(previous => ({ ...previous, [field]: false }))
-    setErrors(previous => { const next = { ...previous }; delete next[field]; return next })
-  }
 
   const chooseCategory = value => {
-    setCategoryId(value); setSubcategoryId(''); setStructuredMetadata({ schema_version: '1.0' }); setDetailsFromDocument({})
+    setCategoryId(value); setSubcategoryId(''); setStructuredMetadata({ schema_version: schemaCatalog?.schema_version || 'student-form-schema-2' }); setDetailsFromDocument({})
     setErrors(previous => { const next = { ...previous }; delete next.category_id; delete next.subcategory_id; return next })
   }
 
   const chooseSubcategory = value => {
-    const fields = getSubcategorySchema(value)?.fields || []
-    setSubcategoryId(value); setStructuredMetadata(applyStructuredFieldDefaults({ schema_version: '1.0' }, fields)); setDetailsFromDocument({})
+    const contract = schemaCatalog?.categories?.flatMap(item => item.subcategories || []).find(item => item.legacy_subcategory_id === value)
+    setSubcategoryId(value); setStructuredMetadata(applyConfiguredFieldDefaults({ schema_version: schemaCatalog?.schema_version || 'student-form-schema-2' }, contract)); setDetailsFromDocument({})
     setErrors(previous => { const next = { ...previous }; delete next.subcategory_id; return next })
   }
 
@@ -169,11 +163,6 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
       const read = await sessionRef.current.readEvidence(evidenceId)
       const suggestions = read.ocr?.review_suggestions || []
       setOcrSuggestions(suggestions)
-      setFormData(previous => {
-        const { formData: next, applied } = applyOcrSuggestions(previous, suggestions, touchedRef.current)
-        if (Object.keys(applied).length) setOcrApplied(current => ({ ...current, ...applied }))
-        return next
-      })
       setScanMessage(suggestions.length
         ? 'Your document is ready. Review any details we filled from it.'
         : read.ok ? 'Your document is ready.' : 'Your document is ready. We could not read details from it, so please enter them manually.')
@@ -231,7 +220,11 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
   }
 
   const submit = async () => {
-    const clientErrors = validateForSubmit({ formData, categoryId, subcategoryId, structuredMetadata, schemaFields: schema?.fields || [], evidence })
+    if ((!schemaCatalog && !isLegacyDraft) || schemaLoadError || (subcategoryId && !schema)) {
+      setMessage({ type: 'error', text: schemaLoadError || 'The configured achievement fields are still loading. Please try again.' })
+      return
+    }
+    const clientErrors = validateForSubmit({ categoryId, subcategoryId, subcategoryRequired, structuredMetadata, schemaFields: schema?.fields || [], evidence })
     if (Object.keys(clientErrors).length) {
       setErrors(clientErrors)
       setMessage({ type: 'error', text: 'Complete the highlighted items before submitting.' })
@@ -266,6 +259,7 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
 
       <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-7">
         {message && <div role="alert" className={`mb-5 flex gap-2 rounded-xl border p-3 text-sm ${message.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-rose-200 bg-rose-50 text-rose-900'}`}>{message.type === 'success' ? <CheckCircle2 size={18}/> : <AlertCircle size={18}/>}<span>{message.text}</span></div>}
+        {schemaLoadError && <div role="alert" className="mb-5 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Configured achievement fields could not be loaded: {schemaLoadError}</div>}
         {status === 'revision_requested' && <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="flex items-center gap-2 font-bold"><RotateCcw size={16}/>Returned for revision</p>{revisionRemarks && <p className="mt-1">Coordinator remarks: {revisionRemarks}</p>}</div>}
         {!editable && <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">This achievement is {status === 'submitted' ? 'pending review' : status} and can no longer be edited.</div>}
 
@@ -302,11 +296,6 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
           </aside>
 
           <div className="space-y-5">
-            <section aria-label="Basic information" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <h3 className="font-bold text-slate-900 dark:text-white">Basic information</h3>
-              {Object.values(ocrApplied).some(Boolean) && <p className="mt-1 text-xs text-emerald-800">Some fields were filled from your document. Your entries are always what gets saved.</p>}
-              <div className="mt-4"><SharedAchievementFields formData={formData} onChange={handleSharedChange} errors={errors} disabled={busy || !editable}/></div>
-            </section>
             <section aria-label="Classification" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <h3 className="font-bold text-slate-900 dark:text-white">Category and subcategory</h3>
               <p className="mt-1 text-xs text-slate-500">Choose these yourself. The document never decides the category.</p>
@@ -317,19 +306,22 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
                 </select>
               </label>
               {errors.category_id && <p className="mt-1 text-xs text-rose-700">{errors.category_id}</p>}
-              <label className="mt-3 block text-xs font-bold text-slate-700 dark:text-slate-300" htmlFor="achievement-subcategory">Subcategory<span className="text-rose-600"> *</span>
+              {selectedCategory && <button type="button" onClick={() => openHelpGuide({ topicId: 'categories', categoryId: selectedCategory.id, subcategoryId: subcategoryId || undefined })} className="mt-1 rounded-md px-1 py-1 text-xs font-bold text-emerald-800 underline underline-offset-2 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40">What belongs here?</button>}
+              {subcategoryRequired && <label className="mt-3 block text-xs font-bold text-slate-700 dark:text-slate-300" htmlFor="achievement-subcategory">Subcategory<span className="text-rose-600"> *</span>
                 <select id="achievement-subcategory" name="subcategory_id" value={subcategoryId} onChange={event => chooseSubcategory(event.target.value)} disabled={busy || !editable || !categoryId} className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm disabled:bg-slate-100 dark:border-slate-700 dark:bg-slate-900">
-                  <option value="">{categoryId ? 'Select a subcategory' : 'Select a category first'}</option>
+                  <option value="">Select a subcategory</option>
                   {subcategories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
-              </label>
+              </label>}
               {errors.subcategory_id && <p className="mt-1 text-xs text-rose-700">{errors.subcategory_id}</p>}
             </section>
 
             <section aria-label="Additional information" className="rounded-2xl border border-[#dce6df] bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
               {subcategoryId
-                ? <>{Object.values(detailsFromDocument).some(Boolean) && <p className="mb-3 text-xs text-emerald-800">Some details were filled from your document. Check them; your entries are what gets saved.</p>}<StructuredDetailsFields subcategoryId={subcategoryId} structuredMetadata={structuredMetadata} onChange={setStructuredMetadata} errors={errors} disabled={busy || !editable}/></>
-                : <p className="text-sm text-slate-500">Choose a subcategory to see the details it needs.</p>}
+                ? <>{Object.values(detailsFromDocument).some(Boolean) && <p className="mb-3 text-xs text-emerald-800">Some details were filled from your document. Check them; your entries are what gets saved.</p>}{isLegacyDraft ? <StructuredDetailsFields subcategoryId={subcategoryId} structuredMetadata={structuredMetadata} onChange={setStructuredMetadata} errors={errors} disabled={busy || !editable}/> : <ConfiguredStructuredDetailsFields contract={schema} structuredMetadata={structuredMetadata} onChange={setStructuredMetadata} errors={errors} disabled={busy || !editable}/>}</>
+                : selectedCategory && !subcategoryRequired
+                  ? <p className="text-sm text-slate-500">No subcategory-specific intake fields are configured for this category.</p>
+                  : <p className="text-sm text-slate-500">Choose a subcategory to see the details it needs.</p>}
             </section>
           </div>
         </div>

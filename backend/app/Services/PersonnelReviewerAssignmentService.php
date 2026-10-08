@@ -38,7 +38,6 @@ class PersonnelReviewerAssignmentService
     public const REASON_SELF_REVIEW_PROHIBITED = 'self_review_prohibited';
     public const REASON_REVIEWER_SCOPE_VIOLATION = 'reviewer_scope_violation';
     public const REASON_REVIEWER_ROUTE_UNRESOLVED = 'reviewer_route_unresolved';
-    public const REASON_DEPARTMENT_SECRETARY_EXCLUDED = 'department_secretary_excluded';
 
     /**
      * Resolves the canonical reviewer route from personnel evaluation context.
@@ -242,11 +241,6 @@ class PersonnelReviewerAssignmentService
 
         $actorRoles = $reviewerActor['roles'] ?? [$reviewerActor['role'] ?? ''];
 
-        // 2. Department Secretary Exclusion
-        if (in_array('department_secretary', $actorRoles, true) && !in_array('dean', $actorRoles, true) && !in_array('hr_staff', $actorRoles, true) && !in_array('hr_admin', $actorRoles, true)) {
-            return false;
-        }
-
         $assignedRole = $evaluationRecord['assigned_reviewer_role'] ?? $evaluationRecord['evaluator_role'] ?? null;
         $targetCollegeId = $evaluationRecord['evaluator_college_id'] ?? $evaluationRecord['target_college_id'] ?? null;
 
@@ -256,8 +250,9 @@ class PersonnelReviewerAssignmentService
                 return false;
             }
             $actorCollegeId = $reviewerActor['assigned_college_id'] ?? $reviewerActor['college_id'] ?? null;
-            if ($targetCollegeId !== null && $actorCollegeId !== $targetCollegeId) {
-                return false; // Cross-college access blocked
+            if (trim((string) $targetCollegeId) === '' || trim((string) $actorCollegeId) === ''
+                || (string) $actorCollegeId !== (string) $targetCollegeId) {
+                return false; // Missing and cross-college scopes are both denied
             }
             return true;
         }

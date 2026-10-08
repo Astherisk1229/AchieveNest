@@ -47,7 +47,7 @@ By integrating Optical Character Recognition (OCR) combined with Pattern Matchin
 |                                                                                                                       |
 | [ STEP 5: VIEW CONSUMPTION ]                                                                                          |
 |  - Auto-fills `PersonnelSubmissionModal.jsx` and `AchievementSubmissionModal.jsx` with confidence indicators         |
-|  - Stores structured payload in `AchievementModel.js` schema for `DepSecEvaluatorWorkbench.jsx`                       |
+|  - Stores structured payload in `AchievementModel.js` schema for `DeanEvaluatorWorkbench.jsx`                       |
 +-----------------------------------------------------------------------------------------------------------------------+
 ```
 
@@ -98,9 +98,9 @@ The OCR Engine utilizes a weighted keyword classifier to suggest official NDMU R
 
 ---
 
-### D. Evaluator Verification Workbench Integration (`DepSecEvaluatorWorkbench.jsx` & `HRDashboardView.jsx`)
+### D. Evaluator Verification Workbench Integration (`DeanEvaluatorWorkbench.jsx` & `HRDashboardView.jsx`)
 
-When a Department Secretary or HR Officer reviews a submitted portfolio:
+When a Dean or HR Officer reviews a submitted portfolio:
 1. **Split-Screen Interactive Review**:
    - Left Side: Original PDF/Image Certificate viewer.
    - Right Side: Submitted accomplishment details with **OCR Extracted Metadata Panel**.
@@ -194,7 +194,7 @@ export const AchievementSchema = {
 | **Hook** | `useOcrScanner.js` | Custom React hook providing loading states, progress percentages, and parsed field output. |
 | **View (Form)** | `PersonnelSubmissionModal.jsx` | Renders file drag-and-drop zone with OCR scan trigger and auto-filled field badges. |
 | **View (Form)** | `AchievementSubmissionModal.jsx` | Student submission view with certificate OCR auto-complete. |
-| **View (Audit)** | `DepSecEvaluatorWorkbench.jsx` | Department Secretary split-screen audit view with clickable bounding box overlays. |
+| **View (Audit)** | `DeanEvaluatorWorkbench.jsx` | Dean split-screen audit view with clickable bounding box overlays. |
 | **View (Audit)** | `HRDashboardView.jsx` | HR Admin master audit view displaying system-wide OCR identity match logs. |
 
 ---
@@ -219,4 +219,4 @@ export const AchievementSchema = {
 
 ### Manual Verification
 - Upload sample certificate PDFs in `PersonnelSubmissionModal.jsx` and confirm form fields auto-fill within 2 seconds.
-- Open `DepSecEvaluatorWorkbench.jsx` and verify bounding box visual highlights align with PDF text regions.
+- Open `DeanEvaluatorWorkbench.jsx` and verify bounding box visual highlights align with PDF text regions.

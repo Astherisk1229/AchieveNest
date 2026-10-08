@@ -232,6 +232,17 @@ class LocalAuthService
         ?string $ip = null,
         ?string $userAgent = null
     ): array {
+        if ($currentPassword === null || $currentPassword === '') {
+            return [
+                'success' => false,
+                'status'  => 422,
+                'error'   => [
+                    'code'    => 'CURRENT_PASSWORD_REQUIRED',
+                    'message' => 'Current password is required.',
+                ],
+            ];
+        }
+
         if (strlen($newPassword) < 8) {
             return [
                 'success' => false,
@@ -274,18 +285,28 @@ class LocalAuthService
             [$profileId]
         )->getRowArray();
 
-        if ($credRow !== null && $currentPassword !== null && $currentPassword !== '') {
-            if (! password_verify($currentPassword, $credRow['password_hash'])) {
-                $db->transRollback();
-                return [
-                    'success' => false,
-                    'status'  => 422,
-                    'error'   => [
-                        'code'    => 'INCORRECT_CURRENT_PASSWORD',
-                        'message' => 'The current temporary password is incorrect.',
-                    ],
-                ];
-            }
+        if ($credRow === null || empty($credRow['password_hash'])) {
+            $db->transRollback();
+            return [
+                'success' => false,
+                'status'  => 409,
+                'error'   => [
+                    'code'    => 'CREDENTIAL_NOT_AVAILABLE',
+                    'message' => 'The account credential is not available for password change.',
+                ],
+            ];
+        }
+
+        if (! password_verify($currentPassword, $credRow['password_hash'])) {
+            $db->transRollback();
+            return [
+                'success' => false,
+                'status'  => 422,
+                'error'   => [
+                    'code'    => 'INCORRECT_CURRENT_PASSWORD',
+                    'message' => 'The current password is incorrect.',
+                ],
+            ];
         }
 
         $newHash = password_hash($newPassword, PASSWORD_DEFAULT);

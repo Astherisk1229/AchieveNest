@@ -14,14 +14,14 @@ const root = path.resolve(import.meta.dirname, '../../../../..')
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8')
 
 const track = (group, status = 'DRAFT', extra = {}) => ({
-  id: `${group}-track`, personnel_group: group, personnel_group_label: group === 'FACULTY' ? 'Faculty' : 'Non-Teaching Faculty', status, academic_year: '2026-2027', semester: 'FULL_ACADEMIC_YEAR', version: 1,
+  id: `${group}-track`, personnel_group: group, personnel_group_label: group === 'FACULTY' ? 'Teaching Faculty' : 'Non-Teaching Faculty', status, academic_year: '2026-2027', semester: 'FULL_ACADEMIC_YEAR', version: 1,
   current_stage: { key: 'evaluation', route: 'evaluation', label: 'Evaluation', index: 2 },
   criteria: { version_id: `${group}-v1`, title: group === 'FACULTY' ? 'Faculty Ranking Scale' : 'Non-Teaching Faculty Ranking Scale', version_number: '1.0', locked: true },
   ...extra,
 })
 const cycle = (overrides = {}) => ({
   id: 'cycle-1', academic_year: '2026-2027', display_name: 'AY 2026–2027 Personnel Ranking', cycle_name: 'Legacy cycle — Acceptance Fixture', created_at: '2026-09-01 08:00:00',
-  coverage: { key: 'BOTH', label: 'Faculty + Non-Teaching Faculty', groups: ['FACULTY', 'NON_TEACHING_FACULTY'] },
+  coverage: { key: 'BOTH', label: 'Teaching Faculty + Non-Teaching Faculty', groups: ['FACULTY', 'NON_TEACHING_FACULTY'] },
   current_stage: { key: 'evaluation', label: 'Evaluation', index: 2 }, lifecycle_status: { key: 'ONGOING', label: 'Ongoing' },
   allowed_actions: ['open', 'settings'], is_read_only: false, is_archived: false, track_count: 2,
   tracks: [track('FACULTY', 'EVALUATION_ONGOING'), track('NON_TEACHING_FACULTY', 'EVALUATION_ONGOING')],
@@ -32,14 +32,14 @@ const cycle = (overrides = {}) => ({
 describe('Ranking period naming and coverage', () => {
   it('generates human-readable names from academic year and coverage', () => {
     expect(generatedCycleName('2026-2027', ['FACULTY', 'NON_TEACHING_FACULTY'])).toBe('AY 2026–2027 Personnel Ranking')
-    expect(generatedCycleName('2026-2027', ['FACULTY'])).toBe('AY 2026–2027 Faculty Ranking')
+    expect(generatedCycleName('2026-2027', ['FACULTY'])).toBe('AY 2026–2027 Teaching Faculty Ranking')
     expect(generatedCycleName('2026-2027', ['NON_TEACHING_FACULTY'])).toBe('AY 2026–2027 Non-Teaching Faculty Ranking')
     expect(groupsForCoverage('BOTH')).toEqual(['FACULTY', 'NON_TEACHING_FACULTY'])
   })
 
   it('mirrors the backend generator so preview and saved names agree', () => {
     const service = read('backend/app/Services/RankingCycleService.php')
-    for (const suffix of ['Personnel Ranking', 'Faculty Ranking', 'Non-Teaching Faculty Ranking']) expect(service).toContain(suffix)
+    for (const suffix of ['Personnel Ranking', 'Teaching Faculty Ranking', 'Non-Teaching Faculty Ranking']) expect(service).toContain(suffix)
   })
 
   it('formats schedules compactly', () => {
@@ -64,7 +64,7 @@ describe('New Ranking Period validation', () => {
   it('blocks personnel groups that already have a cycle for the academic year', () => {
     const conflicts = conflictingGroups([cycle({ tracks: [track('FACULTY', 'CLOSED')] })], '2026-2027')
     expect([...conflicts]).toEqual(['FACULTY'])
-    expect(validateCycleDraft(form, { criteria: ready, conflicts }).errors.coverage).toBe('AY 2026–2027 already has a Faculty ranking period.')
+    expect(validateCycleDraft(form, { criteria: ready, conflicts }).errors.coverage).toBe('AY 2026–2027 already has a Teaching Faculty ranking period.')
     expect(validateCycleDraft({ ...form, coverage: 'NON_TEACHING_FACULTY' }, { criteria: ready, conflicts }).ready).toBe(true)
   })
 
@@ -121,7 +121,18 @@ describe('Ranking Periods list model', () => {
     expect(page).not.toContain('cycle_name')
     expect(page).not.toContain('Setup required')
     expect(page).not.toContain('personnel-evaluation-setup')
+    expect(page).toContain('Manage Criteria')
+    expect(page).toContain('/hr/ranking-cycles/criteria')
     for (const column of ['Ranking Period', 'Coverage', 'Schedule', 'Current Stage', 'Status', 'Action']) expect(page).toContain(`>${column}</th>`)
+  })
+
+  it('routes Manage Criteria to the existing Criteria Sheets UI within Ranking Periods', () => {
+    const app = read('frontend/src/App.jsx')
+    const setup = read('frontend/src/pages/hr-admin/PersonnelEvaluationSetupPage.jsx')
+    expect(app).toContain('path="/hr/ranking-cycles/criteria" element={<PersonnelEvaluationSetupPage criteriaOnly />}')
+    expect(setup).toContain('criteriaOnly ? \'criteria\' : \'periods\'')
+    expect(setup).toContain('Manage Criteria')
+    expect(setup).toContain('Create New Version')
   })
 })
 

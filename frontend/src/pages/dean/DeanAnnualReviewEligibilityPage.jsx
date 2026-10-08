@@ -31,7 +31,6 @@ function ReviewResult({ schoolYear, rating, result: suppliedResult }) {
 function authorityLabel(authority = {}) {
   if (authority.status === 'unresolved') return 'Reviewer unresolved'
   if (authority.authority_type === 'DEAN') return `Managed by Dean${authority.authority_name ? ` ${authority.authority_name}` : ''}`
-  if (authority.authority_type === 'DEPARTMENT_HEAD') return `Managed by Department Head${authority.authority_name ? ` ${authority.authority_name}` : ''}`
   if (authority.authority_type === 'HR') return 'Managed by HR'
   return 'Managed by another authority'
 }

@@ -74,6 +74,22 @@ class PortfolioStructuredMetadataValidator
             ];
         }
 
+        // A category is a valid terminal node only when it has no active children.
+        // This keeps nullable subcategory support without allowing clients to skip
+        // a configured classification step.
+        $activeSubcategoryCount = $this->db->table('portfolio_subcategories')
+            ->where('category_id', $categoryId)
+            ->where('status', 'active')
+            ->countAllResults();
+        if (empty($subcategoryId) && $activeSubcategoryCount > 0) {
+            return [
+                'valid' => false,
+                'error' => ['code' => 'SUBCATEGORY_REQUIRED', 'message' => 'Select an active subcategory for this category.'],
+                'category' => $category,
+                'subcategory' => null,
+            ];
+        }
+
         $subcategory = null;
         if (! empty($subcategoryId)) {
             if (! ValidationHelper::validateUuid($subcategoryId)) {
@@ -120,6 +136,10 @@ class PortfolioStructuredMetadataValidator
         array $metadata,
         bool $submitNow = true
     ): array {
+        if (($metadata['schema_version'] ?? null) === StudentAchievementFormSchemaRegistry::VERSION) {
+            return $this->validateConfiguredSchemaMetadata($categoryId, $subcategoryId, $metadata, $submitNow);
+        }
+
         $errors = [];
         $sanitized = [];
 
@@ -241,5 +261,218 @@ class PortfolioStructuredMetadataValidator
             'errors' => $errors,
             'sanitized_metadata' => $sanitized,
         ];
+    }
+
+    /** Validate the active OSAD student contract schema on the existing portfolio API. */
+    private function validateConfiguredSchemaMetadata(string $categoryId, ?string $subcategoryId, array $metadata, bool $submitNow): array
+    {
+        $errors = [];
+        $sanitized = ['schema_version' => StudentAchievementFormSchemaRegistry::VERSION];
+        foreach (self::FORBIDDEN_METADATA_KEYS as $key) {
+            if (array_key_exists($key, $metadata)) {
+                $errors["structured_metadata.{$key}"] = ["Field '{$key}' is forbidden in student structured metadata."];
+            }
+        }
+
+        if ($subcategoryId === null || $subcategoryId === '') {
+            foreach (array_diff(array_keys($metadata), ['schema_version']) as $key) {
+                $errors["structured_metadata.{$key}"] = ['Select a configured subcategory before entering its fields.'];
+            }
+            return ['valid' => $errors === [], 'errors' => $errors, 'sanitized_metadata' => $sanitized];
+        }
+
+        $contract = $this->db->table('achievement_contracts')
+            ->where('domain', 'STUDENT')->where('is_active', 1)
+            ->where('legacy_category_id', $categoryId)
+            ->where('legacy_subcategory_id', $subcategoryId)
+            ->get()->getRowArray();
+        if ($contract === null) {
+            return ['valid' => false, 'errors' => ['structured_metadata' => ['No active OSAD intake schema is configured for this subcategory.']], 'sanitized_metadata' => $sanitized];
+        }
+
+        try {
+            $schema = (new StudentAchievementFormSchemaRegistry())->get((string) $contract['contract_code']);
+        } catch (\RuntimeException) {
+            return ['valid' => false, 'errors' => ['structured_metadata' => ['The configured OSAD intake schema is unavailable.']], 'sanitized_metadata' => $sanitized];
+        }
+
+        $fields = $schema['fields'] ?? [];
+        $allowed = ['schema_version'];
+        foreach ($fields as $field) {
+            $allowed = array_merge($allowed, $field['payload_keys'] ?? [$field['key']]);
+        }
+        $allowed = array_unique($allowed);
+        foreach ($metadata as $key => $value) {
+            if (!in_array($key, $allowed, true) && !in_array($key, self::FORBIDDEN_METADATA_KEYS, true)) {
+                $errors["structured_metadata.{$key}"] = ["Unknown or unsupported configured field: '{$key}'."];
+            }
+        }
+
+        foreach ($fields as $field) {
+            $key = (string) ($field['key'] ?? '');
+            $control = (string) ($field['control'] ?? 'text');
+            $rules = $field['validation'] ?? [];
+            $payloadKeys = $field['payload_keys'] ?? [$key];
+            $conditionalRequired = false;
+            if (isset($rules['required_when'])) {
+                foreach ($rules['required_when'] as $whenKey => $whenValue) {
+                    $conditionalRequired = $conditionalRequired || (($metadata[$whenKey] ?? null) === $whenValue);
+                }
+            }
+            $forbidden = false;
+            if (isset($rules['forbidden_when'])) {
+                foreach ($rules['forbidden_when'] as $whenKey => $whenValues) {
+                    $forbidden = $forbidden || in_array($metadata[$whenKey] ?? null, (array) $whenValues, true);
+                }
+            }
+            if ($forbidden && array_key_exists($key, $metadata) && $metadata[$key] !== '' && $metadata[$key] !== null) {
+                $errors["structured_metadata.{$key}"] = ["{$field['label']} is not applicable for the selected option."];
+                continue;
+            }
+
+            if ($control === 'fixed') {
+                $fixed = $rules['value'] ?? '';
+                if (array_key_exists($key, $metadata) && (string) $metadata[$key] !== (string) $fixed) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} is fixed by the configured schema."];
+                }
+                $sanitized[$key] = $fixed;
+                continue;
+            }
+
+            if (in_array($control, ['date_range', 'structured_date_or_range'], true)) {
+                $this->validateConfiguredDateGroup($field, $metadata, $submitNow, $errors, $sanitized);
+                continue;
+            }
+            if ($control === 'ongoing_academic_year_or_activity_dates') {
+                $this->validateConfiguredRecordMode($field, $metadata, $submitNow, $errors, $sanitized);
+                continue;
+            }
+
+            $value = $metadata[$key] ?? null;
+            $required = !empty($field['required']) || $conditionalRequired;
+            if ($submitNow && $required && ($value === null || $value === '')) {
+                $errors["structured_metadata.{$key}"] = ["{$field['label']} is required."];
+                continue;
+            }
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if (in_array($control, ['text', 'textarea'], true)) {
+                if (!is_scalar($value)) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} must be text."];
+                    continue;
+                }
+                $value = trim((string) $value);
+                if ($submitNow && $required && $value === '') {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} is required."];
+                    continue;
+                }
+            } elseif ($control === 'select') {
+                $options = array_column($field['options'] ?? [], 'value');
+                if (!in_array((string) $value, $options, true)) {
+                    $errors["structured_metadata.{$key}"] = ["Choose a valid {$field['label']} option."];
+                    continue;
+                }
+            } elseif ($control === 'date') {
+                if (!$this->isIsoDate((string) $value)) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} must be a valid date."];
+                    continue;
+                }
+            } elseif ($control === 'decimal') {
+                if (!is_numeric($value)) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} must be a number."];
+                    continue;
+                }
+                $number = (float) $value;
+                if (isset($rules['minimum_exclusive']) && $number <= (float) $rules['minimum_exclusive']) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} must be greater than {$rules['minimum_exclusive']}."];
+                    continue;
+                }
+                if (isset($rules['maximum']) && $number > (float) $rules['maximum']) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} cannot exceed {$rules['maximum']}."];
+                    continue;
+                }
+                $value = $number;
+            } elseif ($control === 'academic_year') {
+                if (!preg_match('/^(19|20)\d{2}-(19|20)\d{2}$/', (string) $value)) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} must use YYYY-YYYY format."];
+                    continue;
+                }
+                [$start, $end] = array_map('intval', explode('-', (string) $value));
+                if (isset($rules['end_year_rule']) && $rules['end_year_rule'] === 'start_year_plus_one' && $end !== $start + 1) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} must span consecutive academic years."];
+                    continue;
+                }
+                if (($rules['maximum_start_year'] ?? null) === 'current_calendar_year' && $start > (int) date('Y')) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} cannot start in a future academic year."];
+                    continue;
+                }
+            }
+            $sanitized[$key] = $value;
+        }
+
+        return ['valid' => $errors === [], 'errors' => $errors, 'sanitized_metadata' => $sanitized];
+    }
+
+    private function validateConfiguredDateGroup(array $field, array $metadata, bool $submitNow, array &$errors, array &$sanitized): void
+    {
+        $rules = $field['validation'] ?? [];
+        if (($field['control'] ?? '') === 'date_range') {
+            $startKey = $rules['start_key'] ?? '';
+            $endKey = $rules['end_key'] ?? '';
+            $start = $metadata[$startKey] ?? '';
+            $end = $metadata[$endKey] ?? '';
+            if ($submitNow && !empty($field['required']) && $start === '') $errors["structured_metadata.{$startKey}"] = ["{$field['label']} start date is required."];
+            foreach ([$startKey => $start, $endKey => $end] as $key => $value) {
+                if ($value !== '' && !$this->isIsoDate((string) $value)) $errors["structured_metadata.{$key}"] = ["{$field['label']} must contain valid dates."];
+                elseif ($value !== '') $sanitized[$key] = $value;
+            }
+            if (!empty($rules['end_not_before_start']) && $start !== '' && $end !== '' && $end < $start) $errors["structured_metadata.{$endKey}"] = ['End date cannot be before start date.'];
+            return;
+        }
+
+        $precisionKey = $rules['precision_key'] ?? 'period_precision';
+        $precision = $metadata[$precisionKey] ?? '';
+        $startYear = $metadata['period_start_year'] ?? '';
+        $startMonth = $metadata['period_start_month'] ?? '';
+        $startDay = $metadata['period_start_day'] ?? '';
+        $endYear = $metadata['period_end_year'] ?? '';
+        $endMonth = $metadata['period_end_month'] ?? '';
+        $endDay = $metadata['period_end_day'] ?? '';
+        if ($submitNow && !empty($field['required']) && !in_array($precision, ['DATE', 'RANGE'], true)) $errors["structured_metadata.{$precisionKey}"] = ["Select a date or date range for {$field['label']}."];
+        if (in_array($precision, ['DATE', 'RANGE'], true) && (!ctype_digit((string) $startYear) || (int) $startYear < 1900 || (int) $startYear > 2200)) $errors['structured_metadata.period_start_year'] = ["{$field['label']} needs a valid start year."];
+        if ($precision === 'DATE' && (!ctype_digit((string) $startMonth) || (int) $startMonth < 1 || (int) $startMonth > 12 || !ctype_digit((string) $startDay) || !checkdate((int) $startMonth, (int) $startDay, (int) $startYear))) $errors['structured_metadata.period_start_day'] = ["{$field['label']} needs a valid start date."];
+        if ($precision === 'RANGE' && $submitNow && !ctype_digit((string) $endYear)) $errors['structured_metadata.period_end_year'] = ["{$field['label']} needs a valid end year."];
+        if ($precision === 'RANGE' && $endYear !== '' && (!ctype_digit((string) $endYear) || (int) $endYear < (int) $startYear || ((int) $endYear === (int) $startYear && ($endMonth !== '' && (int) $endMonth < (int) $startMonth)))) $errors['structured_metadata.period_end_year'] = ["{$field['label']} end cannot be before its start."];
+        foreach ($field['payload_keys'] ?? [] as $payloadKey) if (array_key_exists($payloadKey, $metadata)) $sanitized[$payloadKey] = $metadata[$payloadKey];
+    }
+
+    private function validateConfiguredRecordMode(array $field, array $metadata, bool $submitNow, array &$errors, array &$sanitized): void
+    {
+        $mode = $metadata['record_mode'] ?? '';
+        $modes = $field['validation']['modes'] ?? [];
+        if ($submitNow && !array_key_exists($mode, $modes)) $errors['structured_metadata.record_mode'] = ['Choose a record period type.'];
+        if (array_key_exists($mode, $modes)) {
+            foreach ($modes[$mode] as $key) {
+                if ($submitNow && empty($metadata[$key])) $errors["structured_metadata.{$key}"] = ["{$key} is required for the selected record period."];
+            }
+            if ($mode === 'ACADEMIC_YEAR' && !empty($metadata['academic_year_start']) && !preg_match('/^(19|20)\d{2}-(19|20)\d{2}$/', (string) $metadata['academic_year_start'])) {
+                $errors['structured_metadata.academic_year_start'] = ['Academic year must use YYYY-YYYY format.'];
+            }
+            if ($mode === 'ACTIVITY') {
+                $start = (string) ($metadata['activity_start_date'] ?? '');
+                $end = (string) ($metadata['activity_end_date'] ?? '');
+                if ($start !== '' && !$this->isIsoDate($start)) $errors['structured_metadata.activity_start_date'] = ['Activity start date must be valid.'];
+                if ($end !== '' && !$this->isIsoDate($end)) $errors['structured_metadata.activity_end_date'] = ['Activity end date must be valid.'];
+                if ($start !== '' && $end !== '' && $end < $start) $errors['structured_metadata.activity_end_date'] = ['Activity end date cannot be before the start date.'];
+            }
+        }
+        foreach ($field['payload_keys'] ?? [] as $key) if (array_key_exists($key, $metadata)) $sanitized[$key] = $metadata[$key];
+    }
+
+    private function isIsoDate(string $value): bool
+    {
+        $date = \DateTime::createFromFormat('!Y-m-d', $value);
+        return $date !== false && $date->format('Y-m-d') === $value;
     }
 }

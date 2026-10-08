@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use App\Helpers\ValidationHelper;
 use App\Services\AuthorizationService;
 use App\Services\CanonicalPersonnelAccomplishmentService;
+use App\Services\PersonnelAccomplishmentCriterionService;
 use App\Services\LocalEvidenceStorageService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
@@ -20,15 +21,18 @@ class PersonnelAccomplishmentController extends Controller
     private AuthorizationService $authz;
     private LocalEvidenceStorageService $storage;
     private CanonicalPersonnelAccomplishmentService $canonicalPersistence;
+    private PersonnelAccomplishmentCriterionService $criterionPersistence;
 
     public function __construct(
         ?AuthorizationService $authz = null,
         ?LocalEvidenceStorageService $storage = null,
-        ?CanonicalPersonnelAccomplishmentService $canonicalPersistence = null
+        ?CanonicalPersonnelAccomplishmentService $canonicalPersistence = null,
+        ?PersonnelAccomplishmentCriterionService $criterionPersistence = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->storage = $storage ?? new LocalEvidenceStorageService();
         $this->canonicalPersistence = $canonicalPersistence ?? new CanonicalPersonnelAccomplishmentService();
+        $this->criterionPersistence = $criterionPersistence ?? new PersonnelAccomplishmentCriterionService();
     }
 
     public function options(): mixed
@@ -315,24 +319,19 @@ class PersonnelAccomplishmentController extends Controller
                 ];
             }
         }
-        // Package D: Load achievement usage history for 2-year reuse eligibility
-        $usageMap = [];
-        if (! empty($accIds) && $db->tableExists('personnel_achievement_usage')) {
-            $usageRows = $db->table('personnel_achievement_usage')
-                ->whereIn('achievement_id', $accIds)
-                ->orderBy('created_at', 'DESC')
-                ->get()->getResultArray();
-            foreach ($usageRows as $u) {
-                if (! isset($usageMap[$u['achievement_id']])) {
-                    $usageMap[$u['achievement_id']] = $u;
-                }
-            }
-        }
-
         $validity = new \App\Services\EvaluationValidityService($db);
         $openCycles = [];
-        $currentYear = (int) date('Y');
-        $currentAYStart = $currentYear; // e.g. 2026
+        $eligibilityById = [];
+        $recordsByOwner = [];
+        foreach ($rows as $row) {
+            $ownerId = (string) ($row['personnel_profile_id'] ?? '');
+            if ($ownerId !== '') $recordsByOwner[$ownerId][] = $row;
+        }
+        foreach ($recordsByOwner as $ownerId => $ownerRecords) {
+            $openCycles[$ownerId] = $validity->openCycleFor($ownerId);
+            $partition = $validity->partitionForPersonnel($ownerRecords, $openCycles[$ownerId]['period'] ?? null, $ownerId);
+            $eligibilityById += $partition['decisions'];
+        }
 
         foreach ($rows as &$r) {
             $r['evidence'] = $evidenceMap[$r['id']] ?? [];
@@ -347,34 +346,19 @@ class PersonnelAccomplishmentController extends Controller
                 }
             }
 
-            $usage = $usageMap[$r['id']] ?? null;
-            if ($usage !== null) {
-                $eligibleAgainAY = $usage['eligible_again_academic_year'];
-                $eligibleStartYear = 0;
-                if (preg_match('/(\d{4})/', $eligibleAgainAY, $m)) {
-                    $eligibleStartYear = (int) $m[1];
-                }
-                $isEligible = ($currentAYStart >= $eligibleStartYear);
-                $r['reuse'] = [
-                    'is_eligible'                 => $isEligible,
-                    'last_used_academic_year'     => $usage['academic_year'],
-                    'eligible_again_academic_year'=> $eligibleAgainAY,
-                    'status_label'                => $isEligible ? 'Eligible for Reuse' : 'Previously Used',
-                ];
-            } else {
-                $r['reuse'] = [
-                    'is_eligible'                 => true,
-                    'last_used_academic_year'     => null,
-                    'eligible_again_academic_year'=> null,
-                    'status_label'                => 'Eligible for Portfolio',
-                ];
-            }
-
-            // Status of this record for the owner's open ranking period (same gate used at submission).
-            $owner = (string) ($r['personnel_profile_id'] ?? '');
-            if (! array_key_exists($owner, $openCycles)) $openCycles[$owner] = $owner !== '' ? $validity->openCycleFor($owner) : null;
-            $open = $openCycles[$owner];
-            $r['cycle_validity'] = $open ? \App\Services\EvaluationValidityService::evaluate($r, $open['coverage'], $open['personnel_group']) + ['coverage' => $open['coverage']] : null;
+            $decision = $eligibilityById[(string) $r['id']] ?? null;
+            $consumed = ($decision['status'] ?? null) === \App\Services\EvaluationValidityService::PREVIOUSLY_FINALIZED;
+            $ownerId = (string) ($r['personnel_profile_id'] ?? '');
+            $group = (string) ($openCycles[$ownerId]['personnel_group'] ?? 'FACULTY');
+            $isEducation = \App\Services\EvaluationValidityService::isReusableEducationRecord($r, $group);
+            $r['reuse'] = [
+                'is_eligible' => ! $consumed,
+                'is_consumed' => $consumed,
+                'last_used_academic_year' => $decision['previous_finalized_academic_year'] ?? null,
+                'eligible_again_academic_year' => null,
+                'status_label' => $consumed ? 'Used in finalized evaluation' : ($isEducation ? 'Education is reusable' : 'Available for evaluation'),
+            ];
+            $r['cycle_validity'] = $openCycles[(string) ($r['personnel_profile_id'] ?? '')] ? $decision : null;
         }
 
         return $this->respond(['data' => ['accomplishments' => $rows, 'total' => count($rows)]]);
@@ -394,7 +378,7 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $protectedFields = ['claimed_points', 'points', 'points_earned', 'accepted_points', 'verified_points', 'provisional_points', 'reviewer_points', 'reviewer_score', 'verification_score', 'award_score', 'ranking_score', 'suggested_points', 'maximum_points', 'weight', 'rank', 'reviewer_id', 'review_status', 'verification_status', 'endorsed_by', 'approved_by'];
+        $protectedFields = ['claimed_points', 'points', 'points_earned', 'accepted_points', 'verified_points', 'provisional_points', 'reviewer_points', 'reviewer_score', 'verification_score', 'award_score', 'ranking_score', 'suggested_points', 'maximum_points', 'weight', 'rank', 'reviewer_id', 'review_status', 'verification_status', 'endorsed_by', 'approved_by', 'evaluation_scale_version_id', 'criterion_snapshot'];
         if (array_intersect($protectedFields, array_keys($json)) !== []) {
             return $this->respond(['error' => ['code' => 'PROTECTED_SCORING_FIELDS', 'message' => 'Personnel cannot set or change evaluation scores.']], 422);
         }
@@ -404,6 +388,23 @@ class PersonnelAccomplishmentController extends Controller
         $category = trim((string) ($json['category'] ?? ''));
         $categoryCode = preg_match('/^([ABC]\.\d(?:\.(?:\d+|[a-z]))?)/i', $category, $categoryMatch) ? $categoryMatch[1] : '';
         $categoryMetadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : [];
+        $criterionAssociation = null;
+        if (array_key_exists('criterion_id', $json) && ! is_string($json['criterion_id'])) {
+            return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => 'The criterion identifier must be a string.']], 422);
+        }
+        $criterionId = trim((string) ($json['criterion_id'] ?? ''));
+        if ($criterionId !== '') {
+            try {
+                $criterionAssociation = $this->criterionPersistence->resolveForCreation((string) $actor['profile']['id'], $criterionId);
+            } catch (Throwable $e) {
+                $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 422;
+                return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => $e->getMessage()]], $status);
+            }
+            // Once an HR leaf is selected, its published hierarchy owns classification.
+            $categoryCode = $criterionAssociation['category_code'];
+            $categoryArea = $criterionAssociation['category_area'];
+            $domain = $criterionAssociation['domain'];
+        }
         if ($this->isNonTeachingPersonnel((string) $actor['profile']['id']) && $this->isAreaAEntry($categoryArea, $category, $categoryCode)) {
             return $this->nonTeachingAreaAResponse();
         }
@@ -428,7 +429,7 @@ class PersonnelAccomplishmentController extends Controller
         $organizer = trim((string) ($json['organizer_or_publisher'] ?? $json['institution'] ?? $json['issuer'] ?? $json['location'] ?? '')) ?: null;
         $description = trim((string) ($json['description'] ?? ''));
         $dateAchieved = trim((string) ($json['date_achieved'] ?? $json['occurrence_date'] ?? $json['date'] ?? ''));
-        $facultyError = $this->validateFacultyMetadata($categoryCode, $categoryMetadata, $dateAchieved);
+        $facultyError = $criterionAssociation === null ? $this->validateFacultyMetadata($categoryCode, $categoryMetadata, $dateAchieved) : null;
         if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
         $ntfError = $this->validateNtfMetadata($categoryCode, $categoryMetadata);
         if ($ntfError !== null) return $this->respond(['error' => ['code' => 'INVALID_NTF_ACCOMPLISHMENT', 'message' => $ntfError]], 422);
@@ -466,6 +467,11 @@ class PersonnelAccomplishmentController extends Controller
             if ($db->fieldExists('category_area', 'personnel_accomplishments')) $insert['category_area'] = $categoryArea ?: null;
             if ($db->fieldExists('category_metadata', 'personnel_accomplishments')) $insert['category_metadata'] = $categoryMetadata !== [] ? json_encode($categoryMetadata) : null;
             if ($db->fieldExists('duplicate_hash', 'personnel_accomplishments')) $insert['duplicate_hash'] = $duplicateHash;
+            if ($criterionAssociation !== null) {
+                $insert['criterion_id'] = $criterionAssociation['criterion_id'];
+                $insert['evaluation_scale_version_id'] = $criterionAssociation['evaluation_scale_version_id'];
+                $insert['criterion_snapshot'] = json_encode($criterionAssociation['criterion_snapshot'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
             if ($this->canonicalPersistence->supports($categoryCode, $categoryMetadata)) {
                 $this->canonicalPersistence->create($categoryCode, $insert, $categoryMetadata);
             } else {
@@ -479,7 +485,14 @@ class PersonnelAccomplishmentController extends Controller
             return $this->respond(['error' => ['code' => 'CREATE_FAILED', 'message' => 'Unable to create the accomplishment.']], 500);
         }
 
-        return $this->respondCreated(['data' => ['id' => $id, 'status' => 'draft']]);
+        return $this->respondCreated(['data' => [
+            'id' => $id,
+            'status' => 'draft',
+            'category_code' => $criterionAssociation['category_code'] ?? ($categoryCode ?: null),
+            'criterion_id' => $criterionAssociation['criterion_id'] ?? null,
+            'evaluation_scale_version_id' => $criterionAssociation['evaluation_scale_version_id'] ?? null,
+            'criterion_snapshot' => $criterionAssociation['criterion_snapshot'] ?? null,
+        ]]);
     }
 
     /** Creates the owned MySQL draft required to persist evidence before OCR. */
@@ -521,10 +534,21 @@ class PersonnelAccomplishmentController extends Controller
         if (($record['status'] ?? '') !== 'draft' || $this->hasLockedPortfolio((string) $actor['profile']['id'])) return $this->respond(['error' => ['code' => 'DRAFT_NOT_EDITABLE', 'message' => 'This draft is no longer editable.']], 409);
 
         $json = $this->request->getJSON(true) ?? [];
-        $protected = ['points', 'points_earned', 'accepted_points', 'verified_points', 'reviewer_id', 'review_status', 'evaluation_status'];
+        $protected = ['points', 'points_earned', 'accepted_points', 'verified_points', 'reviewer_id', 'review_status', 'evaluation_status', 'evaluation_scale_version_id', 'criterion_snapshot'];
         if (array_intersect($protected, array_keys($json)) !== []) return $this->respond(['error' => ['code' => 'PROTECTED_FIELDS', 'message' => 'Evaluation fields cannot be saved by Personnel.']], 422);
         $title = trim((string) ($json['title'] ?? 'Pending document review')) ?: 'Pending document review';
         $metadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : [];
+        if (array_key_exists('criterion_id', $json) && ! is_string($json['criterion_id'])) return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => 'The criterion identifier must be a string.']], 422);
+        $criterionAssociation = null;
+        $criterionId = trim((string) ($json['criterion_id'] ?? ''));
+        if ($criterionId !== '') {
+            try {
+                $criterionAssociation = $this->criterionPersistence->resolveForCreation((string) $actor['profile']['id'], $criterionId);
+            } catch (Throwable $e) {
+                $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 422;
+                return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => $e->getMessage()]], $status);
+            }
+        }
         if ($this->isNonTeachingPersonnel((string) $actor['profile']['id'])
             && $this->isAreaAEntry((string) ($json['category_area'] ?? ''), '', (string) ($json['category_code'] ?? $metadata['criterion_code'] ?? ''))) {
             return $this->nonTeachingAreaAResponse();
@@ -533,6 +557,22 @@ class PersonnelAccomplishmentController extends Controller
         $update = ['title' => $title, 'updated_at' => date('Y-m-d H:i:s')];
         foreach (['category_code', 'category_area'] as $field) if ($db->fieldExists($field, 'personnel_accomplishments') && isset($json[$field])) $update[$field] = trim((string) $json[$field]) ?: null;
         if ($db->fieldExists('category_metadata', 'personnel_accomplishments')) $update['category_metadata'] = $metadata === [] ? null : json_encode($metadata);
+        $storedSnapshot = is_string($record['criterion_snapshot'] ?? null)
+            ? (json_decode($record['criterion_snapshot'], true) ?: null)
+            : ($record['criterion_snapshot'] ?? null);
+        if ($criterionAssociation === null && is_array($storedSnapshot)) {
+            $update['category_code'] = $storedSnapshot['category']['code'] ?? $record['category_code'] ?? null;
+            $update['category_area'] = $record['category_area'] ?? null;
+            $update['domain'] = $record['domain'];
+        }
+        if ($criterionAssociation !== null) {
+            $update['category_code'] = $criterionAssociation['category_code'];
+            $update['category_area'] = $criterionAssociation['category_area'];
+            $update['domain'] = $criterionAssociation['domain'];
+            $update['criterion_id'] = $criterionAssociation['criterion_id'];
+            $update['evaluation_scale_version_id'] = $criterionAssociation['evaluation_scale_version_id'];
+            $update['criterion_snapshot'] = json_encode($criterionAssociation['criterion_snapshot'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
         $db->table('personnel_accomplishments')->where('id', $id)->update($update);
         return $this->respond(['data' => ['id' => $id, 'status' => 'draft', 'message' => 'Draft saved.']]);
     }
@@ -554,6 +594,8 @@ class PersonnelAccomplishmentController extends Controller
         }
         $record['category_metadata'] = isset($record['category_metadata']) && is_string($record['category_metadata'])
             ? (json_decode($record['category_metadata'], true) ?: []) : ($record['category_metadata'] ?? []);
+        $record['criterion_snapshot'] = isset($record['criterion_snapshot']) && is_string($record['criterion_snapshot'])
+            ? (json_decode($record['criterion_snapshot'], true) ?: null) : ($record['criterion_snapshot'] ?? null);
         $record['evidence'] = $db->table('personnel_accomplishment_evidence')
             ->select('id, original_filename, byte_size, mime_type, detected_mime_type, uploaded_at, status')
             ->where('accomplishment_id', $id)->orderBy('uploaded_at', 'DESC')->get()->getResultArray();
@@ -606,7 +648,7 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $protectedFields = ['claimed_points', 'points', 'points_earned', 'accepted_points', 'verified_points', 'provisional_points', 'reviewer_points', 'reviewer_score', 'verification_score', 'award_score', 'ranking_score', 'suggested_points', 'maximum_points', 'weight', 'rank', 'reviewer_id', 'review_status', 'verification_status', 'endorsed_by', 'approved_by'];
+        $protectedFields = ['claimed_points', 'points', 'points_earned', 'accepted_points', 'verified_points', 'provisional_points', 'reviewer_points', 'reviewer_score', 'verification_score', 'award_score', 'ranking_score', 'suggested_points', 'maximum_points', 'weight', 'rank', 'reviewer_id', 'review_status', 'verification_status', 'endorsed_by', 'approved_by', 'criterion_id', 'evaluation_scale_version_id', 'criterion_snapshot'];
         if (array_intersect($protectedFields, array_keys($json)) !== []) {
             return $this->respond(['error' => ['code' => 'PROTECTED_SCORING_FIELDS', 'message' => 'Personnel cannot set or change evaluation scores.']], 422);
         }
@@ -616,6 +658,26 @@ class PersonnelAccomplishmentController extends Controller
         $category = trim((string) ($json['category'] ?? ''));
         $categoryCode = preg_match('/^([ABC]\.\d(?:\.\d)?)/', $category, $categoryMatch) ? $categoryMatch[1] : ($accomplishment['category_code'] ?? '');
         $categoryMetadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : null;
+        $criterionSnapshot = is_string($accomplishment['criterion_snapshot'] ?? null)
+            ? (json_decode($accomplishment['criterion_snapshot'], true) ?: null)
+            : ($accomplishment['criterion_snapshot'] ?? null);
+        if (is_array($criterionSnapshot)) {
+            // Preserve the saved HR classification/version while allowing factual detail edits.
+            $categoryCode = (string) ($criterionSnapshot['category']['code'] ?? $categoryCode);
+            $categoryArea = (string) ($accomplishment['category_area'] ?? '');
+            $category = $categoryCode . ' ' . (string) ($criterionSnapshot['category']['name'] ?? '');
+            $domain = (string) $accomplishment['domain'];
+        }
+        $criterionSnapshot = is_string($accomplishment['criterion_snapshot'] ?? null)
+            ? (json_decode($accomplishment['criterion_snapshot'], true) ?: null)
+            : ($accomplishment['criterion_snapshot'] ?? null);
+        if (is_array($criterionSnapshot)) {
+            // Preserve the saved HR classification/version while allowing factual detail edits.
+            $categoryCode = (string) ($criterionSnapshot['category']['code'] ?? $categoryCode);
+            $categoryArea = (string) ($accomplishment['category_area'] ?? '');
+            $category = $categoryCode . ' ' . (string) ($criterionSnapshot['category']['name'] ?? '');
+            $domain = (string) $accomplishment['domain'];
+        }
         $effectiveArea = $categoryArea !== '' ? $categoryArea : (string) ($accomplishment['category_area'] ?? '');
         if ($isOwner && ! $isHr && $this->isNonTeachingPersonnel((string) $actor['profile']['id']) && $this->isAreaAEntry($effectiveArea, $category, (string) $categoryCode)) {
             return $this->nonTeachingAreaAResponse();
@@ -639,7 +701,7 @@ class PersonnelAccomplishmentController extends Controller
         $dateAchieved = isset($json['date_achieved']) || isset($json['occurrence_date']) || isset($json['date'])
             ? trim((string) ($json['date_achieved'] ?? $json['occurrence_date'] ?? $json['date'] ?? ''))
             : ($accomplishment['occurrence_date'] ?? '');
-        if ($categoryMetadata !== null) {
+        if ($categoryMetadata !== null && ! is_array($criterionSnapshot)) {
             $facultyError = $this->validateFacultyMetadata($categoryCode, $categoryMetadata, $dateAchieved);
             if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
         }

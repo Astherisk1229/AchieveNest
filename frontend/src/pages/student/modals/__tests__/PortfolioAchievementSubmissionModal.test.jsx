@@ -20,17 +20,21 @@ describe('PortfolioAchievementSubmissionModal', () => {
     const html = renderToStaticMarkup(<PortfolioAchievementSubmissionModal isOpen onClose={vi.fn()} taxonomy={taxonomy} />)
     expect(html).toContain('Upload supporting evidence')
     expect(html).toContain('Leadership Position')
-    expect(html).toContain('Select a category first')
+    expect(html).toContain('Choose a subcategory to see the details it needs.')
+    expect(html).not.toContain('Basic Information')
     expect(html).toContain('Save draft')
     expect(html).toContain('Submit for review')
     expect(portfolioService.createRecord).not.toHaveBeenCalled()
   })
 
-  it('orders the form evidence, basic information, category, then details, with upload open before a category', () => {
+  it('orders the form evidence, classification, then configured details without generic fields', () => {
     const html = renderToStaticMarkup(<PortfolioAchievementSubmissionModal isOpen onClose={vi.fn()} taxonomy={taxonomy} />)
-    const order = ['Upload supporting evidence', 'Basic information', 'Category and subcategory', 'Choose a subcategory to see the details it needs.'].map(text => html.indexOf(text))
+    const order = ['Upload supporting evidence', 'Category and subcategory', 'Choose a subcategory to see the details it needs.'].map(text => html.indexOf(text))
     expect(order.every(index => index >= 0)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
+    expect(html).not.toContain('Activity / Event Title')
+    expect(html).not.toContain('Organizer / Issuing Body')
+    expect(html).not.toContain('Start Date')
     expect(html).toMatch(/id="evidence-file-input"(?![^>]*disabled)/)
   })
 

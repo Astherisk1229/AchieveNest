@@ -54,6 +54,7 @@ class PersonnelProfileController extends Controller
             $userProfile = $db->tableExists('user_profiles')
                 ? ($db->table('user_profiles')->where('id', $profileId)->get()->getRowArray() ?? [])
                 : [];
+            $canonicalProfile = $db->table('profiles')->where('id', $profileId)->get()->getRowArray() ?? $profile;
 
             $own = $db->table('personnel_profiles')->where('profile_id', $profileId)->get()->getRowArray() ?? [];
 
@@ -68,17 +69,21 @@ class PersonnelProfileController extends Controller
                 'id'              => $profileId,
                 'employee_id'     => $profile['employee_id'] ?? $userProfile['employee_id'] ?? $profile['institutional_id'] ?? '',
                 'full_name'       => $userProfile['full_name'] ?? $profile['full_name'] ?? '',
-                'email'           => $userProfile['email'] ?? $profile['email'] ?? '',
+                // Institutional email is canonical on profiles and shared with HR and sign-in.
+                'email'           => $canonicalProfile['email'] ?? $canonicalProfile['institutional_email'] ?? $profile['email'] ?? '',
                 'avatar_url'      => $userProfile['avatar_url'] ?? $profile['avatar_url'] ?? null,
                 'designation'     => $userProfile['designation'] ?? $profile['designation'] ?? null,
-                'academic_rank'   => $userProfile['academic_rank'] ?? $profile['academic_rank'] ?? null,
+                'academic_rank'   => $own['current_rank_title'] ?? $own['rank_level'] ?? $userProfile['academic_rank'] ?? $profile['academic_rank'] ?? null,
+                'current_rank_title' => $own['current_rank_title'] ?? $own['rank_level'] ?? $userProfile['academic_rank'] ?? $profile['academic_rank'] ?? null,
+                'position_title'  => $own['position_title'] ?? $userProfile['designation'] ?? $profile['designation'] ?? null,
                 // Server-derived qualifying length of service (full-time only, HR service history), as of today.
                 'tenure_years'    => $service['completed_years'] ?? 0,
                 'years_of_service' => $service['completed_years'] ?? null,
                 'length_of_service' => $service,
                 'college_id'      => $userProfile['college_id'] ?? $profile['college_id'] ?? null,
                 'department_id'   => $userProfile['department_id'] ?? $profile['department_id'] ?? null,
-                'phone'           => $own['contact_number'] ?? $userProfile['phone'] ?? $profile['phone'] ?? null,
+                // One shared canonical contact number for HR and Personnel.
+                'phone'           => $own['contact_number'] ?? null,
                 'location'        => $own['location'] ?? $userProfile['location'] ?? $profile['location'] ?? null,
                 'about_me'        => $own['about_me'] ?? $userProfile['about_me'] ?? $profile['about_me'] ?? null,
                 'specialization'  => $own['specialization'] ?? null,
@@ -100,8 +105,8 @@ class PersonnelProfileController extends Controller
 
     /**
      * PUT /api/v1/personnel/profile
-     * Self-service edit of contact number, location, about-me and specialization.
-     * Name, ID, designation and email are HR-managed and ignored here.
+     * Self-service edit of Personnel-owned profile details.
+     * Name, ID, designation, institutional email and campus location remain outside this editor.
      */
     public function update(): mixed
     {
@@ -115,7 +120,7 @@ class PersonnelProfileController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $limits = ['contact_number' => 40, 'location' => 160, 'about_me' => 2000, 'specialization' => 160];
+        $limits = ['contact_number' => 40, 'about_me' => 2000, 'specialization' => 160];
         $updates = [];
         foreach ($limits as $field => $max) {
             if (! array_key_exists($field, $json)) {
@@ -130,18 +135,35 @@ class PersonnelProfileController extends Controller
             }
             $updates[$field] = $value === '' ? null : $value;
         }
+
         if ($updates === []) {
-            return $this->respond(['error' => ['code' => 'NO_EDITABLE_FIELDS', 'message' => 'Send at least one of contact_number, location, about_me, specialization.']], 422);
+            return $this->respond(['error' => ['code' => 'NO_EDITABLE_FIELDS', 'message' => 'Send at least one of contact_number, about_me, or specialization.']], 422);
         }
-        $updates['updated_at'] = date('Y-m-d H:i:s');
 
         $db = db_connect();
+        $transactionStarted = false;
         try {
-            $db->table('personnel_profiles')->where('profile_id', $profile['id'])->update($updates);
-            if ($db->affectedRows() === 0 && $db->table('personnel_profiles')->where('profile_id', $profile['id'])->countAllResults() === 0) {
-                return $this->respond(['error' => ['code' => 'PERSONNEL_PROFILE_NOT_FOUND', 'message' => 'Personnel profile record missing.']], 404);
+            $profileId = (string) ($profile['id'] ?? '');
+            $db->transBegin();
+            $transactionStarted = true;
+            if ($updates !== []) {
+                $updates['updated_at'] = date('Y-m-d H:i:s');
+                $db->table('personnel_profiles')->where('profile_id', $profileId)->update($updates);
+                if ($db->affectedRows() === 0 && $db->table('personnel_profiles')->where('profile_id', $profileId)->countAllResults() === 0) {
+                    $db->transRollback();
+                    return $this->respond(['error' => ['code' => 'PERSONNEL_PROFILE_NOT_FOUND', 'message' => 'Personnel profile record missing.']], 404);
+                }
             }
+            if ($db->transStatus() === false) {
+                $db->transRollback();
+                return $this->respond(['error' => ['code' => 'PROFILE_SAVE_FAILED', 'message' => 'Your profile could not be saved. Please try again.']], 500);
+            }
+            $db->transCommit();
+            $transactionStarted = false;
         } catch (Throwable $e) {
+            if ($transactionStarted) {
+                $db->transRollback();
+            }
             log_message('error', '[PersonnelProfileController::update] ' . $e->getMessage());
             return $this->respond(['error' => ['code' => 'SERVER_ERROR', 'message' => 'Your profile could not be saved. Please try again.']], 500);
         }

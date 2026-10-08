@@ -505,7 +505,7 @@ supabase.serviceRoleKey = 'YOUR_SERVICE_ROLE_KEY'
 
 ### Exit criteria
 
-- [ ] Department secretary, coordinator, and HR workflows use authoritative server state
+- [ ] Dean, coordinator, and HR workflows use authoritative server state
 - [ ] Concurrent reviewer conflicts are handled predictably
 
 ---

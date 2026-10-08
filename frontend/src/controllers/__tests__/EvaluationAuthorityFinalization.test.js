@@ -19,9 +19,10 @@ describe('evaluation authority routing and HR finalization', () => {
     expect(submission).toContain("'returned_for_revision', 'submitted'")
   })
 
-  it('supports Dean, Department Head, and explicit HR initial evaluator paths', () => {
-    for (const type of ["result('DEAN'", "result('DEPARTMENT_HEAD'", "result('HR'"]) expect(resolver).toContain(type)
-    expect(evaluation).toContain("['dean','department_head']")
+  it('supports Dean and explicit HR initial evaluator paths only', () => {
+    for (const type of ["result('DEAN'", "result('HR'"]) expect(resolver).toContain(type)
+    expect(resolver).not.toContain("result('DEPARTMENT_HEAD'")
+    expect(evaluation).not.toContain('department_head')
     expect(evaluation).toContain('authorityMayEvaluate')
   })
 
@@ -33,9 +34,9 @@ describe('evaluation authority routing and HR finalization', () => {
     expect(evaluation).toContain('isValidEvaluatorActor')
   })
 
-  it('hands Dean and Department Head endorsements to HR and restricts completion to assigned HR', () => {
+  it('hands Dean endorsements to HR and restricts completion to assigned HR', () => {
     expect(evaluation).toContain("if (! $this->isHrAdmin($actor))")
-    expect(evaluation).toContain('department_head_endorsement')
+    expect(evaluation).not.toContain('department_head_endorsement')
     expect(evaluation).toContain("if (! $this->isHrAdmin($actor) || ! $this->isEvaluatorOrHr($actor, $evaluation))")
     expect(evaluation).toContain("'ready_for_finalization' => ['completed']")
   })

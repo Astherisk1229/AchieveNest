@@ -21,7 +21,7 @@ This document contains the exact commands to run the **Backend (CodeIgniter 4 / 
 Open a PowerShell terminal and run:
 
 ```powershell
-cd <REPO_ROOT>\backend
+cd backend
 & "C:\wamp64\bin\php\php8.2.29\php.exe" -S "127.0.0.1:8080" -t "public"
 ```
 
@@ -35,7 +35,7 @@ cd <REPO_ROOT>\backend
 Open a second PowerShell terminal and run:
 
 ```powershell
-cd <REPO_ROOT>\frontend
+cd frontend
 npm run dev
 ```
 

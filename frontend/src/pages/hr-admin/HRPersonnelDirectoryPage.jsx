@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Trash2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
 import PersonnelDirectoryHeader from './personnel-directory/PersonnelDirectoryHeader'
 import GovernanceTabs from './personnel-directory/GovernanceTabs'
@@ -86,6 +86,9 @@ export function HRPersonnelDirectoryPage(props) {
   const [editingAssignmentPersonnel, setEditingAssignmentPersonnel] = useState(null)
   const [editingMasterDataPersonnel, setEditingMasterDataPersonnel] = useState(null)
   const [resetPasswordPersonnel, setResetPasswordPersonnel] = useState(null)
+  const [deletePersonnel, setDeletePersonnel] = useState(null)
+  const [isDeletingPersonnel, setIsDeletingPersonnel] = useState(false)
+  const [deletePersonnelError, setDeletePersonnelError] = useState('')
 
   // Modals & Toast State
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
@@ -140,7 +143,8 @@ export function HRPersonnelDirectoryPage(props) {
     await updatePersonnelAssignment(updatedData.id || updatedData.profile_id, {
       college_id: updatedData.college_id,
       academic_program_ids: updatedData.academic_program_ids,
-      administrative_unit_id: updatedData.administrative_unit_id
+      administrative_unit_id: updatedData.administrative_unit_id,
+      department_id: updatedData.department_id
     })
     showToast(`Updated assignment for ${updatedData.full_name || 'personnel'}.`)
     setEditingAssignmentPersonnel(null)
@@ -149,11 +153,21 @@ export function HRPersonnelDirectoryPage(props) {
 
   const handleSaveMasterData = async (profileId, payload) => {
     try {
+      await updatePersonnelAssignment(profileId, {
+        college_id: payload.college_id,
+        academic_program_ids: payload.academic_program_ids || [],
+        department_id: payload.department_id,
+        administrative_unit_id: payload.administrative_unit_id
+      })
       const result = await updatePersonnelMasterData(profileId, payload)
       const saved = result?.data || result
       setSelectedFaculty(current => (
         current && (current.id === profileId || current.profile_id === profileId)
-          ? { ...current, full_name: saved?.full_name || payload.full_name }
+          ? {
+              ...current,
+              full_name: saved?.full_name || payload.full_name,
+              contact_number: saved?.contact_number ?? payload.contact_number ?? current.contact_number
+            }
           : current
       ))
       showToast('HR Master Data updated successfully with audit trail.')
@@ -173,6 +187,39 @@ export function HRPersonnelDirectoryPage(props) {
 
   const handleResetPassword = (p) => {
     setResetPasswordPersonnel(p)
+  }
+
+  const handleDeletePersonnel = (p) => {
+    setDeletePersonnelError('')
+    setDeletePersonnel(p)
+  }
+
+  const handleConfirmDeletePersonnel = async () => {
+    if (!deletePersonnel || isDeletingPersonnel) return
+    let archived = false
+    setIsDeletingPersonnel(true)
+    setDeletePersonnelError('')
+    try {
+      await lifecycleService.archiveAccount(
+        deletePersonnel.id || deletePersonnel.profile_id,
+        'HR Admin removed this personnel account from active use through the directory.'
+      )
+      archived = true
+      setDeletePersonnel(null)
+      showToast(`Personnel account archived for ${deletePersonnel.full_name || 'personnel'}. Records were preserved.`)
+    } catch (error) {
+      setDeletePersonnelError(error?.response?.data?.error?.message || error?.message || 'The personnel account could not be deleted.')
+    } finally {
+      setIsDeletingPersonnel(false)
+    }
+    if (archived) {
+      try {
+        await hrHook.refreshData?.()
+      } catch (error) {
+        console.warn('Personnel account was archived, but the directory could not refresh:', error)
+        showToast('Account archived. Refresh the directory to see its updated status.')
+      }
+    }
   }
 
   // Returns the server-issued one-time credential; the modal shows it and surfaces any error.
@@ -267,6 +314,7 @@ export function HRPersonnelDirectoryPage(props) {
           onEditMasterData={handleOpenEditMasterData}
           onPromoteRank={handleOpenDossier}
           onResetPassword={handleResetPassword}
+          onDeletePersonnel={handleDeletePersonnel}
           onManageRole={handleManageRole}
           showToast={showToast}
         />
@@ -297,6 +345,38 @@ export function HRPersonnelDirectoryPage(props) {
         onResetPassword={handleResetPassword}
         onManageRole={handleManageRole}
       />
+
+      {deletePersonnel && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 p-4"
+          role="presentation"
+          onMouseDown={event => { if (event.target === event.currentTarget && !isDeletingPersonnel) setDeletePersonnel(null) }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-personnel-title"
+            aria-describedby="delete-personnel-description"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"><Trash2 className="h-5 w-5" /></span>
+              <div>
+                <h2 id="delete-personnel-title" className="text-base font-extrabold text-slate-900 dark:text-white">Delete personnel account?</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-700 dark:text-slate-200">{deletePersonnel.full_name || 'Personnel'}</p>
+              </div>
+            </div>
+            <p id="delete-personnel-description" className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              This archives the account and ends sign-in access. Personnel and evaluation records are preserved, and an authorized HR administrator can restore the account later.
+            </p>
+            {deletePersonnelError && <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{deletePersonnelError}</p>}
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" disabled={isDeletingPersonnel} onClick={() => setDeletePersonnel(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cancel</button>
+              <button type="button" disabled={isDeletingPersonnel} onClick={handleConfirmDeletePersonnel} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50">{isDeletingPersonnel ? 'Deleting…' : 'Delete account'}</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Edit Master Data Modal (Plan D2 HR Control) */}
       <EditMasterDataModal

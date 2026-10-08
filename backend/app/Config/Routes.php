@@ -41,8 +41,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
 
     // Personnel Role & Scope Management
     $routes->get('personnel/roles', 'Api\PersonnelRoleController::index');
-    $routes->get('personnel/department-roster', 'Api\PersonnelRoleController::departmentRoster');
-    $routes->options('personnel/department-roster', 'Api\PersonnelRoleController::options');
     $routes->options('personnel/roles', 'Api\PersonnelRoleController::options');
     $routes->post('personnel/(:segment)/roles', 'Api\PersonnelRoleController::assign/$1');
     $routes->options('personnel/(:segment)/roles', 'Api\PersonnelRoleController::options');
@@ -130,6 +128,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('personnel/profile/photo', 'Api\PersonnelProfileController::options');
 
     // Personnel portfolio accomplishments (authoritative persistence)
+    $routes->get('personnel/accomplishments/active-criteria', 'Api\\EvaluationScaleController::activePersonnelIntakeCriteria');
+    $routes->options('personnel/accomplishments/active-criteria', 'Api\\EvaluationScaleController::options');
     $routes->get('personnel/accomplishments', 'Api\PersonnelAccomplishmentController::index');
     $routes->get('personnel/accomplishments/(:segment)', 'Api\PersonnelAccomplishmentController::show/$1');
     $routes->post('personnel/accomplishments', 'Api\PersonnelAccomplishmentController::create');
@@ -248,6 +248,10 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('hr/personnel', 'Api\TargetHRPersonnelController::options');
     $routes->get('hr/organizational-structure', 'Api\HROrganizationalStructureController::index');
     $routes->options('hr/organizational-structure', 'Api\HROrganizationalStructureController::options');
+    $routes->post('hr/organizational-structure/colleges', 'Api\HROrganizationalStructureController::createCollege');
+    $routes->post('hr/organizational-structure/departments', 'Api\HROrganizationalStructureController::createDepartment');
+    $routes->options('hr/organizational-structure/colleges', 'Api\HROrganizationalStructureController::options');
+    $routes->options('hr/organizational-structure/departments', 'Api\HROrganizationalStructureController::options');
 
     // Personnel Batch XLSX Import Workflow (CHU-02 Phase 1)
     $routes->get('hr/personnel/import/template', 'Api\TargetHRPersonnelController::downloadTemplate');
@@ -323,6 +327,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('admin/evaluation-scales', 'Api\EvaluationScaleController::listScales');
     $routes->get('admin/ranking-criteria/active', 'Api\EvaluationScaleController::activeRankingCriteria');
     $routes->options('admin/ranking-criteria/active', 'Api\EvaluationScaleController::options');
+    $routes->get('admin/evaluation-scales/versions/(:segment)/pdf', 'Api\EvaluationScaleController::downloadScaleVersionPdf/$1');
+    $routes->options('admin/evaluation-scales/versions/(:segment)/pdf', 'Api\EvaluationScaleController::options');
     $routes->get('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::showScaleVersion/$1');
     $routes->options('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::options');
     $routes->post('admin/evaluation-scales/versions/(:segment)/clone', 'Api\EvaluationScaleController::cloneVersion/$1');
@@ -509,6 +515,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('reviewer/evaluations/(:segment)/finalize', 'Api\HREvaluationController::options');
     $routes->patch('reviewer/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::verifyItem/$1/$2');
     $routes->options('reviewer/evaluations/(:segment)/items/(:segment)/verify', 'Api\HREvaluationController::options');
+    $routes->patch('reviewer/evaluations/(:segment)/items/(:segment)/remarks', 'Api\HREvaluationController::updateItemRemarks/$1/$2');
+    $routes->options('reviewer/evaluations/(:segment)/items/(:segment)/remarks', 'Api\HREvaluationController::options');
     $routes->patch('reviewer/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::rateItem/$1/$2');
     $routes->patch('reviewer/evaluations/(:segment)/area-a/(:segment)', 'Api\HREvaluationController::updateAreaADs/$1/$2');
     $routes->options('reviewer/evaluations/(:segment)/area-a/(:segment)', 'Api\HREvaluationController::options');
@@ -621,6 +629,16 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
 
     // OSAD Awards & Explainable Scoring Basis
     $routes->get('osad/awards', 'Api\AwardEvaluationController::listAwards');
+    $routes->get('osad/awards/(:segment)/criteria-hierarchy', 'Api\AwardCriteriaHierarchyController::index/$1');
+    $routes->options('osad/awards/(:segment)/criteria-hierarchy', 'Api\AwardCriteriaHierarchyController::options');
+    $routes->post('osad/awards/(:segment)/criteria-hierarchy/drafts', 'Api\AwardCriteriaHierarchyController::createDraft/$1');
+    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts', 'Api\AwardCriteriaHierarchyController::options');
+    $routes->put('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)', 'Api\AwardCriteriaHierarchyController::saveDraft/$1/$2');
+    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)', 'Api\AwardCriteriaHierarchyController::options');
+    $routes->post('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/validate', 'Api\AwardCriteriaHierarchyController::validateDraft/$1/$2');
+    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/validate', 'Api\AwardCriteriaHierarchyController::options');
+    $routes->post('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/publish', 'Api\AwardCriteriaHierarchyController::publishDraft/$1/$2');
+    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/publish', 'Api\AwardCriteriaHierarchyController::options');
     $routes->options('osad/awards', 'Api\AwardEvaluationController::options');
     $routes->get('osad/awards/(:segment)', 'Api\AwardEvaluationController::showAward/$1');
     $routes->options('osad/awards/(:segment)', 'Api\AwardEvaluationController::options');
@@ -732,16 +750,4 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('hr/faculty-ranks/hierarchy', 'Api\FacultyRankCatalogController::getHierarchy');
     $routes->options('hr/faculty-ranks/hierarchy', 'Api\FacultyRankCatalogController::options');
 
-    // =========================================================================
-    // Part-Time Faculty Titles & Qualification Resolution (Plan E Phase E3)
-    // =========================================================================
-    $routes->get('faculty-titles/part-time', 'Api\PartTimeFacultyTitleController::listTitles');
-    $routes->options('faculty-titles/part-time', 'Api\PartTimeFacultyTitleController::options');
-    $routes->post('faculty-titles/part-time/resolve', 'Api\PartTimeFacultyTitleController::resolveTitle');
-    $routes->options('faculty-titles/part-time/resolve', 'Api\PartTimeFacultyTitleController::options');
-    $routes->get('faculty-titles/part-time/(:segment)', 'Api\PartTimeFacultyTitleController::getTitle/$1');
-    $routes->options('faculty-titles/part-time/(:segment)', 'Api\PartTimeFacultyTitleController::options');
-    $routes->post('faculty-titles/part-time', 'Api\PartTimeFacultyTitleController::mutate');
-    $routes->put('faculty-titles/part-time/(:segment)', 'Api\PartTimeFacultyTitleController::mutate');
-    $routes->delete('faculty-titles/part-time/(:segment)', 'Api\PartTimeFacultyTitleController::mutate');
 });

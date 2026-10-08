@@ -114,15 +114,15 @@ export function formatServiceDate(value) {
 
 /* ---------- Onboarding (service history recorded with the new account) ---------- */
 
-/** Current appointment type from the Faculty Engagement field; non-teaching personnel count as full-time. */
-export function onboardingCurrentType(facultyEngagement) {
-  return facultyEngagement === 'part_time_faculty' ? 'part_time' : 'full_time'
+/** All new faculty appointments are full-time. */
+export function onboardingCurrentType(_facultyEngagement) {
+  return 'full_time'
 }
 
 /** Starting rows when HR says the person had earlier periods: one earlier period + the current appointment. */
 export function initialOnboardingPeriods(startDate, facultyEngagement) {
   return [
-    { ...emptyPeriod(), start_date: startDate || '', classification: 'part_time' },
+    { ...emptyPeriod(), start_date: startDate || '', classification: 'full_time' },
     { ...emptyPeriod(), is_ongoing: true, classification: onboardingCurrentType(facultyEngagement) },
   ]
 }

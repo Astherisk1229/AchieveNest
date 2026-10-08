@@ -29,6 +29,8 @@ final class EligibilityQualifyingServiceTest extends CIUnitTestCase
             'CREATE TABLE dean_assignments (personnel_profile_id TEXT, college_id TEXT, is_active INTEGER)',
             'CREATE TABLE personnel_evaluation_periods (id TEXT PRIMARY KEY, academic_year TEXT, period_code TEXT, status TEXT, evaluation_end_at TEXT, personnel_group TEXT)',
             'CREATE TABLE personnel_annual_review_imports (id TEXT, personnel_profile_id TEXT, evaluation_period_id TEXT, two_review_status TEXT, two_review_reason TEXT, review_1_school_year TEXT, review_1_rating TEXT, review_2_school_year TEXT, review_2_rating TEXT, confirmed_at TEXT, superseded_at TEXT)',
+            'CREATE TABLE personnel_accomplishments (id TEXT PRIMARY KEY, personnel_profile_id TEXT, category_code TEXT, status TEXT, date_achieved TEXT)',
+            'CREATE TABLE personnel_accomplishment_evidence (id TEXT PRIMARY KEY, accomplishment_id TEXT, security_status TEXT)',
             'CREATE TABLE personnel_service_histories (id TEXT PRIMARY KEY, personnel_profile_id TEXT NOT NULL, stream_code TEXT NOT NULL, current_version_id TEXT NULL, lifecycle_state TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (personnel_profile_id, stream_code))',
             'CREATE TABLE personnel_service_history_versions (id TEXT PRIMARY KEY, service_history_id TEXT NOT NULL, version_number INTEGER NOT NULL, previous_version_id TEXT NULL, resolution_status TEXT NOT NULL, countable_days INTEGER NULL, resolved_by_profile_id TEXT NULL, resolved_at TEXT NULL, policy_rule_version_reference TEXT NULL, created_at TEXT NOT NULL, UNIQUE (service_history_id, version_number))',
             'CREATE TABLE personnel_service_segments (id TEXT PRIMARY KEY, service_history_version_id TEXT NOT NULL, period_precision TEXT NOT NULL, period_start_year INTEGER, period_start_month INTEGER, period_start_day INTEGER, period_end_year INTEGER, period_end_month INTEGER, period_end_day INTEGER, is_ongoing INTEGER NOT NULL DEFAULT 0, source_period_text TEXT, source_classification TEXT NOT NULL, countability_state TEXT NOT NULL, source_remarks TEXT, hr_reason TEXT, created_at TEXT NOT NULL)',
@@ -44,6 +46,8 @@ final class EligibilityQualifyingServiceTest extends CIUnitTestCase
         $this->sqlite->table('profiles')->insert(['id' => $id, 'full_name' => "Fixture $id", 'status' => 'active']);
         $this->sqlite->table('personnel_profiles')->insert(['profile_id' => $id] + $values + ['personnel_group' => 'faculty', 'employment_status' => 'permanent', 'faculty_engagement' => 'full_time_faculty']);
         $this->sqlite->table('personnel_annual_review_imports')->insert(['id' => "IMP-$id", 'personnel_profile_id' => $id, 'evaluation_period_id' => 'TRACK', 'two_review_status' => 'passed', 'review_1_school_year' => '2025-2026', 'review_1_rating' => 'satisfactory', 'review_2_school_year' => '2026-2027', 'review_2_rating' => 'satisfactory', 'confirmed_at' => '2026-10-01 14:00:00']);
+        $this->sqlite->table('personnel_accomplishments')->insert(['id' => "ACC-$id", 'personnel_profile_id' => $id, 'category_code' => 'B.2', 'status' => 'draft', 'date_achieved' => '2026-03-15']);
+        $this->sqlite->table('personnel_accomplishment_evidence')->insert(['id' => "EV-$id", 'accomplishment_id' => "ACC-$id", 'security_status' => 'clean']);
     }
 
     private function history(string $id, array $segments): void

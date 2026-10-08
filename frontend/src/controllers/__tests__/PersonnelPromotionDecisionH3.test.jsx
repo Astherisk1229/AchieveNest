@@ -63,9 +63,9 @@ describe('Personnel Evaluation Track — Plan H — Phase H3: Deliberation, HR P
     roles: ['faculty']
   }
 
-  const secretaryActor = {
+  const unassignedActor = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const deanActor = {
@@ -202,7 +202,7 @@ describe('Personnel Evaluation Track — Plan H — Phase H3: Deliberation, HR P
       }).toThrow(/Access Denied \(403\)/i)
     })
 
-    it('1.4 denies department secretary from recording promotion decision (403)', () => {
+    it('1.4 denies unassigned reviewer from recording promotion decision (403)', () => {
       const snapshot = createPassedAdminSnapshot()
       expect(() => {
         PersonnelPromotionDecisionService.recordPromotionDecision({
@@ -210,7 +210,7 @@ describe('Personnel Evaluation Track — Plan H — Phase H3: Deliberation, HR P
           snapshotData: snapshot,
           decision: DECISION_VOCABULARY.APPROVED,
           approvedRankCode: 'ASSISTANT_PROFESSOR_II',
-          actor: secretaryActor
+          actor: unassignedActor
         })
       }).toThrow(/Access Denied \(403\)/i)
     })

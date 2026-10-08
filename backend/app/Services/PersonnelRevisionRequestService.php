@@ -27,7 +27,6 @@ class PersonnelRevisionRequestService
     public const REASON_OVERALL_MESSAGE_REQUIRED = 'revision_message_required';
     public const REASON_SUBMITTED_VERSION_MISSING = 'submitted_version_missing';
     public const REASON_SELF_REVIEW_PROHIBITED = 'self_evaluation_prohibited';
-    public const REASON_DEPT_SECRETARY_EXCLUDED = 'department_secretary_excluded';
     public const REASON_CROSS_COLLEGE_DENIED = 'cross_college_evaluation_prohibited';
 
     protected BaseConnection $db;
@@ -61,15 +60,6 @@ class PersonnelRevisionRequestService
         }
 
         $roles = (array)($actor['roles'] ?? []);
-
-        // 2. Department Secretary Exclusion
-        if (in_array('department_secretary', $roles, true) && !in_array('dean', $roles, true) && !in_array('hr_staff', $roles, true) && !in_array('hr_admin', $roles, true)) {
-            return [
-                'allowed' => false,
-                'reason_code' => self::REASON_DEPT_SECRETARY_EXCLUDED,
-                'message' => 'Department Secretary is strictly excluded from returning portfolios for revision.',
-            ];
-        }
 
         // 3. Personnel Role Cannot Create Reviewer Request
         if (in_array('personnel', $roles, true) && !in_array('dean', $roles, true) && !in_array('hr_staff', $roles, true) && !in_array('hr_admin', $roles, true)) {

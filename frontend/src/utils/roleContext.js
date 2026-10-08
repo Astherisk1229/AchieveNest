@@ -16,7 +16,6 @@ export const CANONICAL_ACCOUNT_TYPES = {
 
 export const CANONICAL_ROLES = {
   PERSONNEL: 'personnel',
-  DEPARTMENT_HEAD: 'department_head',
   PROGRAM_COORDINATOR: 'program_coordinator',
   ORGANIZATION_MODERATOR: 'organization_moderator',
   DEAN: 'dean',
@@ -69,21 +68,12 @@ export function normalizeRoleContext(roleStr = '') {
     case 'coordinator':
       return CANONICAL_ROLES.PROGRAM_COORDINATOR
 
-    case 'department_head':
-    case 'department head':
-      return CANONICAL_ROLES.DEPARTMENT_HEAD
-
     case 'organization_moderator':
     case 'org_moderator':
     case 'moderator':
       return CANONICAL_ROLES.ORGANIZATION_MODERATOR
 
-    // Transitional aliases only. Department Secretary is no longer a valid
-    // business role; old persisted/frontend aliases normalize to Dean so
-    // compatibility code cannot resurrect a separate Department Secretary role.
     case 'dean':
-    case 'dep_sec':
-    case 'department_secretary':
       return CANONICAL_ROLES.DEAN
 
     case 'hr_staff':
@@ -114,7 +104,6 @@ export function getValidRolesForAccountType(accountType = '') {
     case CANONICAL_ACCOUNT_TYPES.PERSONNEL:
       return [
         CANONICAL_ROLES.PERSONNEL,
-        CANONICAL_ROLES.DEPARTMENT_HEAD,
         CANONICAL_ROLES.DEAN,
         CANONICAL_ROLES.PROGRAM_COORDINATOR,
         CANONICAL_ROLES.ORGANIZATION_MODERATOR
@@ -250,13 +239,8 @@ export function getDeanAssignment(user = {}) {
   return getRoleAssignments(user).find(a => a.role_key === CANONICAL_ROLES.DEAN) || null
 }
 
-export function getDepartmentHeadAssignments(user = {}) {
-  return getRoleAssignments(user).filter(a => a.role_key === CANONICAL_ROLES.DEPARTMENT_HEAD)
-}
-
 export const PERSONNEL_DASHBOARD_CONTEXTS = Object.freeze([
   CANONICAL_ROLES.PERSONNEL,
-  CANONICAL_ROLES.DEPARTMENT_HEAD,
   CANONICAL_ROLES.PROGRAM_COORDINATOR,
   CANONICAL_ROLES.ORGANIZATION_MODERATOR
 ])
@@ -276,10 +260,6 @@ export function isWorkspaceAvailable(user = {}, workspace = '') {
     const assignment = getDeanAssignment(user)
     return Boolean(assignment?.scope_type === 'college' && assignment?.scope_id)
   }
-  if (role === CANONICAL_ROLES.DEPARTMENT_HEAD) {
-    return getDepartmentHeadAssignments(user)
-      .some(assignment => assignment.scope_type === 'department' && assignment.scope_id)
-  }
   if (role === CANONICAL_ROLES.PROGRAM_COORDINATOR) {
     return getProgramCoordinatorAssignments(user)
       .some(assignment => assignment.scope_type === 'academic_program' && assignment.scope_id)
@@ -295,7 +275,6 @@ export function getWorkspaceLandingRoute(workspace = '') {
   switch (normalizeRoleContext(workspace)) {
     case CANONICAL_ROLES.DEAN: return DEAN_ROUTES.DASHBOARD
     case CANONICAL_ROLES.PERSONNEL: return '/personnel/dashboard?tab=overview'
-    case CANONICAL_ROLES.DEPARTMENT_HEAD: return '/personnel/dashboard?tab=overview'
     case CANONICAL_ROLES.PROGRAM_COORDINATOR: return '/personnel/dashboard?tab=overview'
     case CANONICAL_ROLES.ORGANIZATION_MODERATOR: return '/personnel/dashboard?tab=overview'
     default: return '/personnel/dashboard?tab=overview'

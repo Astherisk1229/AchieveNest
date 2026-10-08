@@ -45,9 +45,9 @@ export default class PersonnelPortfolioModel {
     this.#area_b_items = Array.isArray(data.area_b_items) ? data.area_b_items : []
     this.#area_c_items = Array.isArray(data.area_c_items) ? data.area_c_items : []
 
-    this.#dean_evaluator_name = data.dean_evaluator_name || data.dep_sec_evaluator_name || ''
-    this.#dean_remarks = data.dean_remarks || data.dep_sec_remarks || ''
-    this.#dean_endorsed_date = data.dean_endorsed_date || data.dep_sec_endorsed_date || null
+    this.#dean_evaluator_name = data.dean_evaluator_name || ''
+    this.#dean_remarks = data.dean_remarks || ''
+    this.#dean_endorsed_date = data.dean_endorsed_date || null
     this.#hr_evaluator_name = data.hr_evaluator_name || ''
     this.#hr_remarks = data.hr_remarks || ''
     this.#hr_approved_date = data.hr_approved_date || null

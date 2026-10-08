@@ -217,11 +217,6 @@ class PersonnelEvaluationAuditService
             throw new RuntimeException("Unauthenticated access to audit trail is denied.");
         }
 
-        // Department Secretary has zero evaluator/personnel audit privilege
-        if ($role === 'department_secretary') {
-            throw new RuntimeException("Department Secretary is not authorized to inspect personnel evaluation audit records.");
-        }
-
         // HR has full institutional audit governance
         if (in_array($role, ['hr_admin', 'hr', 'system_admin', 'admin'], true)) {
             return;

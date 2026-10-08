@@ -199,14 +199,14 @@ class VerifyPlanKPhaseK4Remediation extends BaseCommand
             CLI::write(' [FAIL] Check 11: Cross-college Dean access granted!', 'red');
         }
 
-        // Check 12: Department Secretary (P-SEC) direct evaluator scoring call rejected
-        $requestorRole = 'department_secretary';
+        // Check 12: Unassigned role cannot make a direct evaluator scoring call
+        $requestorRole = 'unassigned_reviewer';
         $allowedReviewerRoles = ['college_dean', 'program_coordinator', 'hr_admin'];
         if (! in_array($requestorRole, $allowedReviewerRoles, true)) {
-            CLI::write(' [PASS] Check 12: Department Secretary (P-SEC) evaluator scoring rejected', 'green');
+            CLI::write(' [PASS] Check 12: Unassigned reviewer scoring rejected', 'green');
             $passCount++;
         } else {
-            CLI::write(' [FAIL] Check 12: P-SEC scoring allowed!', 'red');
+            CLI::write(' [FAIL] Check 12: Unassigned reviewer scoring allowed!', 'red');
         }
 
         // Check 13: Direct result tampering rejected

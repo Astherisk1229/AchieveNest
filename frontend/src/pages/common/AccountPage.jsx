@@ -36,6 +36,7 @@ export default function AccountPage({ currentUser }) {
     saveError,
     handleSaveOverrides
   } = useUserProfile(activeUser)
+  const isPersonnelAccount = user.account_type === 'personnel'
 
   // Edit Mode & Input State for Editable Self-Service Fields
   const [isEditing, setIsEditing] = useState(false)
@@ -43,6 +44,7 @@ export default function AccountPage({ currentUser }) {
   const [location, setLocation] = useState(user.location || '')
   const [avatarUrl, setAvatarUrl] = useState(user.avatar_url || '')
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState({ type: '', text: '' })
@@ -65,8 +67,9 @@ export default function AccountPage({ currentUser }) {
     }
     setIsUpdatingPassword(true)
     try {
-      await submitPasswordChange(newPassword, confirmPassword)
+      await submitPasswordChange(newPassword, confirmPassword, currentPassword)
       setPasswordMsg({ type: 'success', text: 'Password updated successfully!' })
+      setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
@@ -106,7 +109,9 @@ export default function AccountPage({ currentUser }) {
             <span>{presentation.pageTitle}</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-            View authoritative institutional credentials and update self-service contact details.
+            {isPersonnelAccount
+              ? 'Manage account security and credentials.'
+              : 'View authoritative institutional credentials and update self-service contact details.'}
           </p>
         </div>
 
@@ -116,14 +121,14 @@ export default function AccountPage({ currentUser }) {
       </div>
 
       {/* Persistence Feedback Toast */}
-      {saveSuccess && (
+      {!isPersonnelAccount && saveSuccess && (
         <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-[#245F42] text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>Profile contact preferences updated successfully!</span>
         </div>
       )}
 
-      {saveError && (
+      {!isPersonnelAccount && saveError && (
         <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs font-bold flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <span>{saveError}</span>
@@ -132,6 +137,7 @@ export default function AccountPage({ currentUser }) {
 
       {/* Profile Overview Card */}
       <div className="rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 p-6 space-y-6 shadow-2xs">
+        {!isPersonnelAccount && <>
         
         {/* User Identity Header */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-slate-100 dark:border-slate-800">
@@ -290,6 +296,7 @@ export default function AccountPage({ currentUser }) {
             </div>
           </div>
         </div>
+        </>}
 
         {/* Section 3: Account Security & Authentication Policy */}
         <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-3">
@@ -348,6 +355,18 @@ export default function AccountPage({ currentUser }) {
             )}
 
             <form onSubmit={handleUpdatePassword} className="space-y-3">
+              <div className="space-y-1">
+                <label htmlFor="account-current-password" className="text-xs font-bold text-slate-700 dark:text-slate-300">Current Password</label>
+                <input
+                  id="account-current-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={e => setCurrentPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-[#69A97C]"
+                />
+              </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">New Password</label>
                 <input

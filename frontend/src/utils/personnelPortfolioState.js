@@ -1,7 +1,6 @@
 const LOCKED_SUBMISSION_STATUSES = new Set([
   'submitted',
   'in_evaluation',
-  'submitted_to_dep_sec',
   'endorsed_to_hr',
   'ready_for_finalization',
   'completed',
@@ -68,7 +67,9 @@ export function derivePersonnelSubmissionActionGate({
     : !evaluationPeriod
       ? 'No personnel evaluation period is currently open for submission.'
       : !evaluationPeriod.can_submit
-        ? 'The current personnel evaluation period is outside its submission window.'
+        ? evaluationPeriod.status === 'DRAFT'
+          ? 'HR has scheduled this evaluation but has not opened submissions yet.'
+          : 'The current personnel evaluation period is outside its submission window.'
         : ''
   const eligibilityBlocked = !isReturnedForRevision && eligibilityStatus !== 'eligible'
   const visible = Boolean(portfolioState?.isEditable)

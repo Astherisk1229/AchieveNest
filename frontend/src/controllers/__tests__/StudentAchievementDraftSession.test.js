@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
 import StudentAchievementDraftSession, {
-  applyOcrSuggestions,
   applyOcrToDetails,
   parseOcrDate,
   buildRecordPayload,
@@ -110,7 +109,7 @@ describe('StudentAchievementDraftSession', () => {
 })
 
 describe('payload and validation helpers', () => {
-  it('maps only real record columns and never sends workflow or scoring fields', () => {
+  it('sends configured classification and details without the removed generic fields', () => {
     const payload = buildRecordPayload({
       formData: { title: '  SSG Secretary ', organizer_or_body: '', start_date: '2025-08-01', end_date: '', description: '' },
       categoryId: CATEGORY,
@@ -118,31 +117,23 @@ describe('payload and validation helpers', () => {
       structuredMetadata: { academic_year: '2025-2026' }
     })
     expect(payload).toEqual({
-      title: 'SSG Secretary',
-      organizer_or_body: null,
-      start_date: '2025-08-01',
-      occurrence_date: '2025-08-01',
-      end_date: null,
-      description: null,
       category_id: CATEGORY,
       subcategory_id: null,
       structured_metadata: { academic_year: '2025-2026', schema_version: '1.0' }
     })
+    for (const key of ['title', 'organizer_or_body', 'start_date', 'occurrence_date', 'end_date', 'description']) expect(payload).not.toHaveProperty(key)
     for (const key of ['status', 'points', 'verified_by', 'student_profile_id', 'submit_now']) expect(payload).not.toHaveProperty(key)
   })
 
-  it('applies OCR suggestions only to untouched empty fields and converts unambiguous dates', () => {
-    const { formData, applied } = applyOcrSuggestions(
-      { title: '', organizer_or_body: 'Typed by student', start_date: '' },
-      [
-        { key: 'activity_title', value: 'Leadership Summit' },
-        { key: 'organizer_granting_body', value: 'OCR organizer' },
-        { key: 'start_date_raw', value: 'May 28, 2026' }
-      ],
-      { organizer_or_body: true }
-    )
-    expect(formData).toEqual({ title: 'Leadership Summit', organizer_or_body: 'Typed by student', start_date: '2026-05-28' })
-    expect(applied).toEqual({ title: true, start_date: true })
+  it('validates configured details and evidence without requiring hidden generic fields', () => {
+    const errors = validateForSubmit({
+      categoryId: CATEGORY,
+      subcategoryId: 'configured-subcategory',
+      structuredMetadata: { organization_name: 'Student Council' },
+      schemaFields: [{ key: 'organization_name', label: 'Organization Name', required: true }],
+      evidence: [{ status: 'active', security_status: 'clean' }]
+    })
+    expect(errors).toEqual({})
   })
 
   it('converts only unambiguous OCR dates', () => {
@@ -183,6 +174,25 @@ describe('payload and validation helpers', () => {
     expect(kept.metadata.organization_name).toBe('Typed')
   })
 
+  it('maps OCR aliases into the selected configured contract fields', () => {
+    const fields = [
+      { key: 'title_of_work', label: 'Title of Work', control: 'text' },
+      { key: 'publication_outlet', label: 'Publication / Outlet', control: 'text' },
+      { key: 'publication_date', label: 'Publication Date', control: 'date' }
+    ]
+    const { metadata, applied } = applyOcrToDetails({}, [
+      { key: 'activity_title', value: 'Campus Research' },
+      { key: 'organizer_granting_body', value: 'The Campus Journal' },
+      { key: 'start_date_raw', value: 'May 28, 2026' }
+    ], fields)
+    expect(metadata).toMatchObject({
+      title_of_work: 'Campus Research',
+      publication_outlet: 'The Campus Journal',
+      publication_date: '2026-05-28'
+    })
+    expect(applied).toEqual({ title_of_work: true, publication_outlet: true, publication_date: true })
+  })
+
   it('requires clean active evidence and complete details before submission', () => {
     const errors = validateForSubmit({
       formData: { title: 'ok title', organizer_or_body: 'SSG', start_date: '2025-08-01' },
@@ -193,6 +203,28 @@ describe('payload and validation helpers', () => {
       evidence: [{ status: 'active', security_status: 'pending' }]
     })
     expect(Object.keys(errors).sort()).toEqual(['evidence', 'position_title'])
+  })
+
+  it('allows a terminal category without a subcategory when it has no active children', () => {
+    const errors = validateForSubmit({
+      formData: { title: 'Campus project', organizer_or_body: 'Student Council', start_date: '2026-02-01' },
+      categoryId: CATEGORY,
+      subcategoryId: '',
+      subcategoryRequired: false,
+      evidence: [{ status: 'active', security_status: 'clean' }]
+    })
+    expect(errors.subcategory_id).toBeUndefined()
+  })
+
+  it('requires a subcategory when the category has active children', () => {
+    const errors = validateForSubmit({
+      formData: { title: 'Campus project', organizer_or_body: 'Student Council', start_date: '2026-02-01' },
+      categoryId: CATEGORY,
+      subcategoryId: '',
+      subcategoryRequired: true,
+      evidence: [{ status: 'active', security_status: 'clean' }]
+    })
+    expect(errors.subcategory_id).toBe('Subcategory is required.')
   })
 
   it('parses stored metadata strings and normalizes API errors', () => {

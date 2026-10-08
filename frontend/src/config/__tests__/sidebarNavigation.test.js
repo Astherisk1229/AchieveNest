@@ -34,4 +34,16 @@ describe('global sidebar navigation metadata', () => {
     expect(affected.find(item => item.id === 'personnel-dashboard-overview')?.path).toBe('/personnel/dashboard?tab=overview')
     expect(affected.find(item => item.id === 'coordinator-verification-workspace')?.path).toBe('/personnel/dashboard?tab=workspace')
   })
+
+  it('limits the Personnel sidebar to Profile and Portfolio', () => {
+    const personnelItems = NAVIGATION_CATALOG.filter(item =>
+      item.portal === 'personnel' && item.requiredActiveContexts?.includes(CANONICAL_ROLES.PERSONNEL)
+    )
+
+    expect(personnelItems.map(item => item.id)).toEqual([
+      'personnel-dashboard-overview',
+      'personnel-portfolio-showcase'
+    ])
+    expect(personnelItems.map(item => item.label)).toEqual(['Profile', 'Portfolio'])
+  })
 })

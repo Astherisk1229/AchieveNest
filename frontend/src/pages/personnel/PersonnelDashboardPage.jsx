@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelEvidencePreviewModal from './modals/PersonnelEvidencePreviewModal'
+import AchievementPreviewModal from './modals/AchievementPreviewModal'
 import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
 import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
@@ -12,32 +13,34 @@ import {
   AlertTriangle,
   Award,
   BookOpen,
-  CheckCircle2,
-  FileText,
   Plus,
-  QrCode,
   ShieldCheck,
   FileCheck2,
-  Share2,
-  ChevronRight,
-  TrendingUp,
-  Sparkles,
+  Edit3,
+  Search,
+  ArrowDownUp,
+  MoreVertical,
+  Trash2,
   Users,
   Building2,
-  Edit3
+  IdCard,
+  Briefcase,
+  Mail
 } from 'lucide-react'
 
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
-import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import PersonnelDashboardController from '../../controllers/PersonnelDashboardController'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
-import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
+import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
+import personnelAccomplishmentService from '../../services/personnelAccomplishmentService'
+import campusBanner from '../../assets/ndmu_campus_banner.png'
+import { AchieveNestLogo } from '../../components/brand'
+import AchievementReuseBadge from '../../components/common/AchievementReuseBadge'
+import { isPersonnelAreaEntryAllowed, usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { ALL_FILTER_KEY, normalizeTimelineFilterKey, timelineCategoryState, timelineFiltersFor, timelineFormatFor } from '../../config/personnelTimelineFilters'
 import { fetchOwnProfileFields } from '../../services/personnelProfileService'
-import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
-
-const accomplishmentCount = (count) => `${count} ${count === 1 ? 'accomplishment' : 'accomplishments'}`
+import { alertDialog, confirmDialog } from '../../components/ui/DialogProvider'
 
 /** Category badge: a readable type, or a warning with icon + text (never color alone). */
 function TimelineCategoryBadge({ state }) {
@@ -55,16 +58,16 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const currentUser = propUser || authUser || getCurrentUser()
   const activeRoleContext = currentUser?.active_role_context || authRoleContext || 'personnel'
 
-  const { portfolio, totals } = usePersonnelPortfolio(currentUser?.employee_id || currentUser?.id)
-
   // Modals state
   const [isEditInfoOpen, setIsEditInfoOpen] = useState(false)
   const [isSubmitOpen, setIsSubmitOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState(ALL_FILTER_KEY)
-  const [evaluationPeriod, setEvaluationPeriod] = useState(null)
-
-  useEffect(() => { getCurrentPersonnelEvaluationPeriod().then((data) => setEvaluationPeriod(data?.period || null)).catch(() => setEvaluationPeriod(null)) }, [])
-
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortOrder, setSortOrder] = useState('newest')
+  const [editingAccomplishment, setEditingAccomplishment] = useState(null)
+  const [viewingAccomplishment, setViewingAccomplishment] = useState(null)
+  const [openActionsId, setOpenActionsId] = useState(null)
+  const actionButtonRefs = useRef(new Map())
   // User Profile
   const [profile, setProfile] = useState(() => PersonnelDashboardController.getDefaultProfile(currentUser))
 
@@ -104,22 +107,66 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   }, [])
 
   const handleSaveBasicInfo = (updatedData) => {
-    setProfile(prev => ({
-      ...prev,
-      ...updatedData,
-      student_id: updatedData.employee_id || prev.student_id
-    }))
+    setProfile(prev => ({ ...prev, ...updatedData }))
   }
 
   // Persists the entry (unless the modal already saved it), then refreshes from the server.
   // Errors are re-thrown so the submission modal can show them.
   const handleAddNewAccomplishment = async (newEntry, file = null, persistence = null) => {
-    if (!persistence?.alreadyPersisted) {
+    if (persistence?.alreadyPersisted) {
+      // Faculty forms persist the record themselves; refresh the permanent repository.
+    } else if (editingAccomplishment) {
+      await PersonnelAchievementController.updateAchievement([], editingAccomplishment.id, newEntry, file)
+    } else {
       await PersonnelDashboardController.saveAccomplishment(newEntry, file)
     }
     await reloadAccomplishments()
+    setEditingAccomplishment(null)
     return true
   }
+
+  const openAccomplishmentEditor = (item) => {
+    setEditingAccomplishment(item)
+    setViewingAccomplishment(null)
+    setIsSubmitOpen(true)
+  }
+
+  const handleDeleteAccomplishment = async (item) => {
+    const confirmed = await confirmDialog({
+      title: 'Delete accomplishment?',
+      message: `Are you sure you want to delete “${item.title}”? The accomplishment and its attached proof document will be removed. This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'destructive'
+    })
+    if (!confirmed) return
+    try {
+      await personnelAccomplishmentService.deleteAccomplishment(item.id)
+      setAccomplishments((current) => current.filter((accomplishment) => accomplishment.id !== item.id))
+      if (viewingAccomplishment?.id === item.id) setViewingAccomplishment(null)
+    } catch (error) {
+      await alertDialog({ title: 'Could not delete accomplishment', message: error?.message || 'The accomplishment could not be deleted. It may be locked by an active evaluation.', tone: 'destructive' })
+    }
+  }
+
+  useEffect(() => {
+    if (!openActionsId) return undefined
+    const handlePointerDown = (event) => {
+      if (!event.target.closest?.('[data-accomplishment-actions]')) setOpenActionsId(null)
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpenActionsId(null)
+        actionButtonRefs.current.get(openActionsId)?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [openActionsId])
 
   // "View proof" opens the secure in-app preview (images inline, PDFs in a viewer); download stays available there.
   const [previewEvidence, setPreviewEvidence] = useState(null)
@@ -135,17 +182,37 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const activeFilterKey = normalizeTimelineFilterKey(activeFilter, timelineFormat)
   const activeTimelineFilter = timelineFilters.find((option) => option.key === activeFilterKey)
   const categorizedAccomplishments = useMemo(
-    () => accomplishments.map((item) => ({ ...item, categoryState: timelineCategoryState(item, timelineFormat) })),
-    [accomplishments, timelineFormat]
+    () => accomplishments.map((item) => {
+      const area = String(item.category_area || item.category_code || item.category || '').match(/^\s*([ABC])(?:\.|\s|$)/i)?.[1]?.toUpperCase()
+        || (usesFacultyAcademicPortfolio(currentUser) ? 'A' : 'B')
+      return {
+        ...item,
+        is_editable: Boolean(item.is_editable && isPersonnelAreaEntryAllowed(currentUser, area)),
+        categoryState: timelineCategoryState(item, timelineFormat)
+      }
+    }),
+    [accomplishments, currentUser, timelineFormat]
   )
   // Drafts without a category are listed under "Needs attention" instead of the timeline.
   const needsAttentionEntries = categorizedAccomplishments.filter((item) => item.categoryState.kind === 'needs_category')
-  const timelineEntries = categorizedAccomplishments.filter((item) => item.categoryState.kind !== 'needs_category')
-  const filteredAccomplishments = PersonnelDashboardController.filterAccomplishments(timelineEntries, activeFilterKey, timelineFormat)
-  const timelineCountText = activeFilterKey === ALL_FILTER_KEY
-    ? accomplishmentCount(timelineEntries.length)
-    : `${filteredAccomplishments.length} of ${accomplishmentCount(timelineEntries.length)}`
-
+  const timelineEntries = categorizedAccomplishments
+  const filteredByCategory = PersonnelDashboardController.filterAccomplishments(timelineEntries, activeFilterKey, timelineFormat)
+  const filteredAccomplishments = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase()
+    const filtered = filteredByCategory.filter((item) => !query || [item.title, item.category, item.issuer, item.description]
+      .some((value) => String(value || '').toLocaleLowerCase().includes(query)))
+    const dateValue = (item) => {
+      const time = Date.parse(item.date || '')
+      return Number.isFinite(time) ? time : null
+    }
+    return filtered.sort((a, b) => {
+      if (sortOrder === 'title') return String(a.title || '').localeCompare(String(b.title || ''))
+      const first = dateValue(a)
+      const second = dateValue(b)
+      if (first === null || second === null) return first === null ? (second === null ? 0 : 1) : -1
+      return sortOrder === 'oldest' ? first - second : second - first
+    })
+  }, [filteredByCategory, searchQuery, sortOrder])
   // A role-context or personnel-group change never keeps the previous selection.
   useEffect(() => { setActiveFilter(ALL_FILTER_KEY) }, [activeRoleContext, timelineFormat])
   useEffect(() => { if (activeFilter !== activeFilterKey) setActiveFilter(activeFilterKey) }, [activeFilter, activeFilterKey])
@@ -156,9 +223,18 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
     Award,
     ShieldCheck
   }
+  const editingAreaCode = editingAccomplishment?.category_area?.replace('area', '')
+    || String(editingAccomplishment?.category_code || editingAccomplishment?.category || '').match(/^\s*([ABC])(?:\.|\s|$)/i)?.[1]?.toUpperCase()
+    || (usesFacultyAcademicPortfolio(currentUser) ? 'A' : 'B')
+  const profileDetails = [
+    { label: 'Employee ID', value: profile.employee_id || 'Not recorded by HR', Icon: IdCard },
+    { label: 'Current Rank', value: profile.current_rank_title || profile.academic_rank || profile.position_title || profile.designation || 'Not recorded by HR', Icon: Award },
+    { label: 'Years of Service', value: profile.length_of_service?.display || 'Not recorded by HR', Icon: Briefcase },
+    { label: 'Institutional Email', value: profile.institutional_email || profile.email || 'Not recorded by HR', Icon: Mail }
+  ]
 
   return (
-    <div key={activeRoleContext + '_' + (activeTabParam || 'overview')}>
+    <div>
       {activeRoleContext === 'program_coordinator' && activeTabParam !== 'faculty_view' ? (
         <CoordinatorDashboardPage key={activeTabParam || 'overview'} currentUser={currentUser} />
       ) : activeRoleContext === 'organization_moderator' && activeTabParam !== 'faculty_view' ? (
@@ -168,144 +244,74 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       ) : (
         <div className="space-y-8 font-sans">
 
-          {/* ================= HERO SUMMARY BANNER ================= */}
-          <div className="bg-[#EFF7F0] dark:bg-slate-900 p-6 sm:p-8 rounded-3xl shadow-xs border border-[#69A97C] dark:border-emerald-900/60 relative overflow-hidden">
-
-            <div className="flex items-start justify-between mb-8 relative z-10">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#149653] dark:bg-emerald-600 border border-emerald-300/30 flex items-center justify-center text-white shadow-md shrink-0">
-                  <Award className="w-6 h-6" />
+          {/* Profile identity and permanent accomplishment repository share one destination. */}
+          <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <svg aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1200 260" preserveAspectRatio="none">
+              <defs>
+                <clipPath id="personnel-profile-banner-curve">
+                  <path d="M0 0H180C166 52 148 103 127 151C105 202 76 238 44 260H0Z" />
+                </clipPath>
+              </defs>
+              <image href={campusBanner} x="0" y="0" width="250" height="260" preserveAspectRatio="xMidYMid slice" clipPath="url(#personnel-profile-banner-curve)" opacity="0.55" />
+              <path d="M0 0H180C166 52 148 103 127 151C105 202 76 238 44 260H0Z" fill="#064e2b" fillOpacity="0.82" />
+            </svg>
+            <div className="relative min-h-[290px] p-5 pt-24 sm:min-h-[280px] sm:px-8 sm:pt-7 sm:pb-5 sm:pl-[16%]">
+              <div className="absolute left-4 top-4 z-10 rounded-lg bg-white px-2 py-1 sm:left-8 sm:top-7">
+                <AchieveNestLogo variant="horizontal" size="compact" />
+              </div>
+              <span className="absolute right-6 top-7 hidden text-right font-serif text-sm italic text-slate-500 dark:text-slate-400 lg:block">Character, Competence and Culture in harmony</span>
+              <div className="mb-6 flex items-center gap-3 sm:absolute sm:left-8 sm:top-1/2 sm:mb-0 sm:-translate-y-1/2">
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border-[3px] border-white bg-emerald-950 text-lg font-black text-emerald-100 shadow-md sm:h-28 sm:w-28 sm:border-4">
+                  {profile.avatar_url
+                    ? <img src={profile.avatar_url} alt={profile.full_name || 'Personnel profile'} className="h-full w-full object-cover" />
+                    : <span>{PersonnelProfilePhotoService.getInitials(profile.full_name)}</span>}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-extrabold text-[#17663B] dark:text-emerald-300 tracking-tight">Personnel Professional Portfolio</h1>
+              </div>
+              <div className="sm:mt-12">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="text-2xl font-black leading-tight tracking-tight text-slate-950 dark:text-white sm:text-3xl">{profile.full_name || 'Personnel Profile'}</h1>
+                      </div>
+                      <p className="mt-1 text-sm font-extrabold text-emerald-800 dark:text-emerald-400">{formatPersonnelPlacement(profile)}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-[#245F42] dark:text-slate-300 font-medium mt-0.5">
-                    {[profile.full_name, profile.employee_id || 'Employee ID not set', formatPersonnelPlacement(profile)].filter(Boolean).join(' • ')}
-                  </p>
+                <button
+                  type="button"
+                  onClick={() => setIsEditInfoOpen(true)}
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-bold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-emerald-800 dark:bg-slate-950 dark:text-emerald-300 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900 sm:self-center"
+                >
+                  <Edit3 className="h-4 w-4" aria-hidden="true" />Edit Profile
+                </button>
+              </div>
+                <div className="mt-4 flex w-fit max-w-full flex-wrap items-center gap-y-3">
+                  {profileDetails.map(({ label, value, Icon }, index) => (
+                    <div key={label} className={`flex min-w-0 max-w-full items-center gap-2.5 pr-3 ${index > 0 ? 'xl:ml-1 xl:border-l xl:border-slate-200/70 xl:pl-3.5 dark:xl:border-slate-700/70' : ''}`}>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-emerald-50/70 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      </span>
+                      <span className={`min-w-0 ${label === 'Institutional Email' ? 'max-w-[24rem]' : ''}`}>
+                        <span className="block text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">{label}</span>
+                        <span className={`mt-0.5 block text-[13px] font-medium leading-snug text-slate-800 dark:text-slate-200 ${label === 'Institutional Email' ? 'break-all' : 'break-words'}`}>{value}</span>
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
+          </section>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 relative z-10 w-full">
-              {/* Card 1: Attached Proof Files */}
-              <Link
-                to="/personnel/portfolio/edit"
-                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
-              >
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] dark:bg-emerald-500 rounded-r-full"></div>
-
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <FileCheck2 className="w-4.5 h-4.5 stroke-[2.2]" />
-                  </div>
-                  <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
-                    Attached Proofs
-                  </h3>
-                </div>
-
-                <div className="translate-x-2.5 flex items-center gap-2 z-10 relative">
-                  <span className="text-xl sm:text-2xl font-extrabold text-[#159552] dark:text-emerald-400 font-heading leading-none">
-                    {accomplishments.filter(a => a.evidence_id).length}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#17663B] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800 text-[13px] font-bold">
-                    Proof PDFs
-                  </span>
-                </div>
-
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#159552] dark:text-emerald-400">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                    <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
-                    <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M50 70 Q 35 52 24 58 M50 70 C 38 60 30 55 24 58" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </Link>
-
-              {/* Card 2: Evaluation Period */}
-              <div className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs transition-all duration-200 text-left overflow-hidden flex flex-col justify-between w-full">
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] dark:bg-emerald-500 rounded-r-full"></div>
-
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <BookOpen className="w-4.5 h-4.5 stroke-[2.2]" />
-                  </div>
-                  <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
-                    Evaluation Period
-                  </h3>
-                </div>
-
-                <div className="flex items-center z-10 relative">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-[#159552]/40 dark:border-emerald-500/40 text-[#17663B] dark:text-emerald-300 text-[13px] font-bold bg-white dark:bg-slate-900">
-                    <span className="w-2 h-2 rounded-full bg-[#159552] dark:bg-emerald-400"></span>
-                    {evaluationPeriod?.academic_year_label || 'No open period'}
-                  </span>
-                </div>
-
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#159552] dark:text-emerald-400">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                    <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
-                    <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M50 70 Q 35 52 24 58 M50 70 C 38 60 30 55 24 58" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Card 3: Portfolio Status */}
-              <Link
-                to="/personnel/portfolio"
-                className="group relative p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-[#D9E5DC] dark:border-slate-800 shadow-xs hover:shadow-md transition-all duration-200 text-left overflow-hidden cursor-pointer flex flex-col justify-between w-full"
-              >
-                <div className="absolute left-0 top-3.5 h-8 w-1 bg-[#159552] dark:bg-emerald-500 rounded-r-full"></div>
-
-                <div className="flex items-center gap-2.5 mb-2.5">
-                  <div className="w-9 h-9 rounded-full bg-[#E7F3E9] dark:bg-emerald-950/80 text-[#159552] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <ShieldCheck className="w-4.5 h-4.5 stroke-[2.2]" />
-                  </div>
-                  <h3 className="text-s font-bold text-slate-800 dark:text-slate-100 truncate">
-                    Portfolio Status
-                  </h3>
-                </div>
-
-                <div className="flex items-center z-10 relative">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[13px] font-bold ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800' :
-                    (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800' :
-                      (portfolio?.status === 'SUBMITTED_TO_DEP_SEC' || portfolio?.status === 'submitted' || portfolio?.status === 'in_evaluation') ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800' :
-                        'border-amber-400 bg-amber-50/80 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
-                    }`}>
-                    <span className={`w-2 h-2 rounded-full ${(portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'bg-[#16834a] dark:bg-emerald-400' :
-                      (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'bg-blue-500' :
-                        'bg-amber-500 animate-pulse'
-                      }`}></span>
-                    <span className="truncate">
-                      {(portfolio?.status === 'submitted' || portfolio?.status === 'SUBMITTED_TO_DEP_SEC') ? 'Submitted' :
-                        portfolio?.status === 'in_evaluation' ? 'In Evaluation' :
-                          (portfolio?.status === 'ENDORSED_TO_HR' || portfolio?.status === 'ready_for_finalization') ? 'Ready for Finalization' :
-                            (portfolio?.status === 'HR_APPROVED' || portfolio?.status === 'completed') ? 'Approved' : 'Draft Portfolio'}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="absolute -bottom-1 -right-1 w-16 h-16 pointer-events-none opacity-20 text-[#16834a] dark:text-emerald-400">
-                  <svg className="w-full h-full" viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                    <path d="M40 95 Q 65 50 95 15 M95 15 C 75 28 55 45 40 95 M95 15 C 82 38 68 58 40 95" strokeWidth="2.5" strokeLinecap="round" />
-                    <path d="M62 55 Q 78 38 88 40 M62 55 C 74 46 82 42 88 40" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M50 70 Q 35 52 24 58 M50 70 C 38 60 30 55 24 58" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* ================= ACCOMPLISHMENTS TIMELINE SECTION ================= */}
+          {/* ================= PERMANENT ACCOMPLISHMENT REPOSITORY ================= */}
           <section id="achievements-timeline" aria-labelledby="accomplishments-timeline-title" className="scroll-mt-6">
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
-                <h2 id="accomplishments-timeline-title" className="text-base font-bold text-slate-800 dark:text-white">Accomplishments Timeline</h2>
-                {!accomplishmentsLoading && timelineEntries.length > 0 && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5" aria-live="polite">{timelineCountText}</p>
-                )}
+                <h2 id="accomplishments-timeline-title" className="text-xl font-extrabold text-slate-900 dark:text-white">My Accomplishments</h2>
+                <div className="mt-0.5 max-w-2xl text-xs text-slate-500 dark:text-slate-400">
+                  <p>Your permanent repository of professional accomplishments.</p>
+                  <p>These records remain here even if they have been used in previous evaluations.</p>
+                </div>
               </div>
               <button
                 type="button"
@@ -313,7 +319,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
               >
                 <Plus className="w-4 h-4" aria-hidden="true" />
-                <span>Add accomplishment</span>
+                <span>Add Accomplishment</span>
               </button>
             </div>
 
@@ -340,6 +346,9 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   <div role="group" aria-label="Filter accomplishments by type" className="flex flex-wrap gap-2">
                     {timelineFilters.map((option) => {
                       const selected = option.key === activeFilterKey
+                      const optionCount = option.key === ALL_FILTER_KEY
+                        ? timelineEntries.length
+                        : timelineEntries.filter((item) => PersonnelDashboardController.filterAccomplishments([item], option.key, timelineFormat).length > 0).length
                       return (
                         <button
                           key={option.key}
@@ -351,13 +360,38 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                             : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                           }`}
                         >
-                          {option.label}
+                          {option.label}{option.key === ALL_FILTER_KEY ? ` (${optionCount})` : ''}
                         </button>
                       )
                     })}
                   </div>
                 </div>
               </>
+            )}
+
+            {!accomplishmentsLoading && timelineEntries.length > 0 && (
+              <div className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="relative block">
+                  <span className="sr-only">Search accomplishments</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search accomplishments..."
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                  />
+                </label>
+                <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <ArrowDownUp className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                  <span className="sr-only">Sort accomplishments</span>
+                  <select value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} aria-label="Sort accomplishments" className="h-full min-w-32 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-200">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="title">Title A–Z</option>
+                  </select>
+                </label>
+              </div>
             )}
 
             {/* Drafts that cannot be submitted until a category is chosen. */}
@@ -411,11 +445,11 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                 </div>
               ) : filteredAccomplishments.length === 0 && timelineEntries.length > 0 ? (
                 <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{activeTimelineFilter.emptyHeading}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">No accomplishments match this type.</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{searchQuery ? 'No accomplishments match your search' : activeTimelineFilter.emptyHeading}</p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Adjust the search or choose another category to see more records.</p>
                   <button
                     type="button"
-                    onClick={() => setActiveFilter(ALL_FILTER_KEY)}
+                    onClick={() => { setActiveFilter(ALL_FILTER_KEY); setSearchQuery('') }}
                     className="mt-4 px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
                   >
                     Show all
@@ -427,51 +461,54 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   return (
                     <div
                       key={item.id}
-                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs hover:shadow-xs transition flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-emerald-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-emerald-900 sm:px-5"
                     >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${item.iconColor || 'text-[#16834a] dark:text-emerald-400 bg-[#E7F3E9] dark:bg-emerald-950/60 border-[#cbe6d2] dark:border-emerald-800'}`}>
-                          <IconComponent className="w-5 h-5" aria-hidden="true" />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">{item.title}</h3>
-                          {item.description && <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 line-clamp-1">{item.description}</p>}
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">📅 {item.date}</span>
-                            <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">•</span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.status === 'Verified'
-                                ? 'bg-[#E7F3E9] dark:bg-emerald-950/60 text-[#064e2b] dark:text-emerald-300 border border-[#cbe6d2] dark:border-emerald-800'
-                                : item.status === 'Endorsed'
-                                  ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                                }`}
-                            >
-                              {item.statusLabel || item.status}
-                            </span>
-                            {item.issuer && <>
-                              <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">•</span>
-                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{item.issuer}</span>
-                            </>}
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl border ${item.iconColor || 'border-[#cbe6d2] bg-[#E7F3E9] text-[#16834a] dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400'}`}>
+                            <IconComponent className="h-5 w-5" aria-hidden="true" />
                           </div>
-                          {item.categoryState.kind === 'classified'
-                            ? <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Official category: {item.categoryState.official}</p>
-                            : <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-200">{item.categoryState.message}</p>}
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => setViewingAccomplishment(item)}
+                              className="block max-w-full truncate text-left text-sm font-bold leading-tight text-slate-900 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-100 dark:hover:text-emerald-300"
+                              aria-label={`View details for ${item.title}`}
+                            >{item.title}</button>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              {item.date && <span>{item.date}</span>}
+                              {item.date && item.issuer && <span aria-hidden="true">•</span>}
+                              {item.issuer && <span className="truncate">{item.issuer}</span>}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <AchievementReuseBadge accomplishment={item} />
+                              {item.status === 'Returned' && <span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">Returned for revision</span>}
+                              <TimelineCategoryBadge state={item.categoryState} />
+                            </div>
+                            {item.categoryState.kind === 'needs_review' && <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-200">{item.categoryState.message}</p>}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
-                        {item.evidence_id && (
-                        <button
-                          type="button"
-                          onClick={() => handleViewProof(item)}
-                          className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-                        >
-                          <FileCheck2 className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" aria-hidden="true" />
-                          <span>View proof</span>
-                        </button>
-                        )}
-                        <TimelineCategoryBadge state={item.categoryState} />
+                        {(item.evidence_id || item.is_editable || item.is_deletable) && <div className="flex shrink-0 items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800 md:border-0 md:pt-0">
+                          <div className="relative" data-accomplishment-actions>
+                            <button
+                              ref={(node) => { if (node) actionButtonRefs.current.set(item.id, node); else actionButtonRefs.current.delete(item.id) }}
+                              type="button"
+                              aria-label={`Actions for ${item.title}`}
+                              aria-expanded={openActionsId === item.id}
+                              aria-controls={openActionsId === item.id ? `accomplishment-actions-${item.id}` : undefined}
+                              onClick={() => setOpenActionsId((current) => current === item.id ? null : item.id)}
+                              className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+                            >
+                              <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                            {openActionsId === item.id && <div id={`accomplishment-actions-${item.id}`} role="group" aria-label={`${item.title} actions`} className="absolute right-0 top-full z-30 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                              {item.evidence_id && <button type="button" onClick={() => { setOpenActionsId(null); handleViewProof(item) }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-200 dark:hover:bg-slate-800"><FileCheck2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />View proof</button>}
+                              {item.is_editable && <button type="button" onClick={() => { setOpenActionsId(null); openAccomplishmentEditor(item) }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-200 dark:hover:bg-slate-800"><Edit3 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />Edit</button>}
+                              {item.is_deletable && <button type="button" onClick={() => { setOpenActionsId(null); handleDeleteAccomplishment(item) }} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/40"><Trash2 className="h-4 w-4" aria-hidden="true" />Delete</button>}
+                            </div>}
+                          </div>
+                        </div>}
                       </div>
                     </div>
                   )
@@ -486,6 +523,14 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
 
       {/* MODALS */}
       <PersonnelEvidencePreviewModal evidence={previewEvidence} onClose={() => setPreviewEvidence(null)} />
+      <AchievementPreviewModal
+        isOpen={Boolean(viewingAccomplishment)}
+        achievement={viewingAccomplishment}
+        onClose={() => setViewingAccomplishment(null)}
+        onEdit={openAccomplishmentEditor}
+        onResubmit={openAccomplishmentEditor}
+        onDownload={(item) => personnelAccomplishmentService.downloadEvidenceBlob(item.evidence_id, item.attached_file_name)}
+      />
       <EditBasicInfoModal
         isOpen={isEditInfoOpen}
         onClose={() => setIsEditInfoOpen(false)}
@@ -496,17 +541,23 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       {usesFacultyAcademicPortfolio(currentUser) ? (
         <FacultyAcademicSubmissionModal
           isOpen={isSubmitOpen}
-          onClose={() => setIsSubmitOpen(false)}
+          onClose={() => { setIsSubmitOpen(false); setEditingAccomplishment(null) }}
           onSubmitAccomplishment={handleAddNewAccomplishment}
+          editingItem={editingAccomplishment}
           currentUser={currentUser}
-          areaCode="A"
-          areaName="Professional Development"
+          areaCode={editingAreaCode}
+          areaName={editingAccomplishment?.category || 'Professional Development'}
         />
       ) : (
         <PersonnelSubmissionModal
           isOpen={isSubmitOpen}
-          onClose={() => setIsSubmitOpen(false)}
+          onClose={() => { setIsSubmitOpen(false); setEditingAccomplishment(null) }}
           onSubmitAccomplishment={handleAddNewAccomplishment}
+          initialCategory={editingAccomplishment?.category || 'B.1 Guest Lecturer / Consultant / Judge'}
+          editingItem={editingAccomplishment}
+          existingAchievements={accomplishments}
+          areaCode={editingAreaCode}
+          areaName={editingAccomplishment?.category || 'Service & Leadership'}
         />
       )}
     </div>

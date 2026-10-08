@@ -12,7 +12,6 @@ import {
   Home,
   ShieldCheck,
   Users,
-  FolderKanban,
   Award,
   Calendar,
   QrCode,
@@ -23,7 +22,6 @@ import {
   User,
   GraduationCap,
   Trophy,
-  ListTree,
   FileSpreadsheet,
   KeyRound,
   BriefcaseBusiness,
@@ -38,7 +36,6 @@ export const WORKSPACE_NAVIGATION = Object.freeze({
   [CANONICAL_ROLES.PROGRAM_COORDINATOR]: { label: 'Program Coordinator', icon: BriefcaseBusiness },
   [CANONICAL_ROLES.ORGANIZATION_MODERATOR]: { label: 'Organization Moderator', icon: HeartHandshake },
   [CANONICAL_ROLES.DEAN]: { label: 'Dean Portal', icon: Building2 },
-  [CANONICAL_ROLES.DEPARTMENT_HEAD]: { label: 'Department Head', icon: Building2 },
   [CANONICAL_ROLES.HR_STAFF]: { label: 'HR Portal', icon: Users, showOnboardingGuide: false },
   [CANONICAL_ROLES.OSAD_STAFF]: { label: 'OSAD Portal', icon: ShieldCheck, showOnboardingGuide: false }
 })
@@ -93,24 +90,14 @@ export const NAVIGATION_CATALOG = [
   // ==========================================
   {
     id: 'personnel-dashboard-overview',
-    label: 'Dashboard Overview',
+    label: 'Profile',
     icon: Home,
     path: '/personnel/dashboard?tab=overview',
     tab: 'overview',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
+    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
     requiredPermissions: ['portfolio.personal.read']
-  },
-  {
-    id: 'personnel-portfolio-edit',
-    label: 'Edit Portfolio',
-    icon: FolderKanban,
-    path: '/personnel/portfolio/edit',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
-    requiredPermissions: ['portfolio.personal.update']
   },
   {
     id: 'personnel-portfolio-showcase',
@@ -119,30 +106,9 @@ export const NAVIGATION_CATALOG = [
     path: '/personnel/portfolio',
     portal: 'personnel',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
-    requiredPermissions: ['portfolio.personal.read']
-  },
-  {
-    id: 'personnel-rank-placement',
-    label: 'Rank & Placement',
-    icon: ListTree,
-    path: '/personnel/rank-placement',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL],
     requiredPermissions: ['portfolio.personal.read']
   },
-  {
-    id: 'personnel-account',
-    label: 'Account',
-    icon: User,
-    path: '/personnel/account',
-    portal: 'personnel',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.PERSONNEL, CANONICAL_ROLES.DEPARTMENT_HEAD],
-    requiredPermissions: ['personnel.account.manage']
-  },
-
   // ==========================================
   // 3. PROGRAM COORDINATOR NAVIGATION
   // ==========================================
@@ -289,7 +255,7 @@ export const NAVIGATION_CATALOG = [
   // ==========================================
   {
     id: 'hr-dashboard',
-    label: 'HR Dashboard',
+    label: 'Dashboard',
     icon: Home,
     path: '/hr/dashboard',
     tab: 'overview',
@@ -300,20 +266,10 @@ export const NAVIGATION_CATALOG = [
   },
   {
     id: 'hr-personnel-directory',
-    label: 'Personnel Directory',
+    label: 'Personnel Management',
     icon: Users,
     path: '/hr/personnel-directory',
-    activePathPrefixes: ['/hr/personnel/'],
-    portal: 'hr',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
-    requiredPermissions: ['hr.personnel.manage']
-  },
-  {
-    id: 'hr-organizational-structure',
-    label: 'Organizational Structure',
-    icon: Building2,
-    path: '/hr/organizational-structure',
+    activePathPrefixes: ['/hr/personnel/', '/hr/organizational-structure'],
     portal: 'hr',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
@@ -321,29 +277,21 @@ export const NAVIGATION_CATALOG = [
   },
   {
     id: 'hr-ranking-cycles',
-    label: 'Ranking Periods',
+    label: 'Ranking & Evaluation',
     icon: Calendar,
     path: '/hr/ranking-cycles',
+    activePathPrefixes: ['/hr/evaluation-submissions', '/hr/faculty-evaluation-and-ranking', '/hr/verification-queue'],
     portal: 'hr',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
     requiredPermissions: ['hr.evaluation.manage']
   },
   {
-    id: 'hr-password-resets',
-    label: 'Password Resets',
+    id: 'hr-audit-trail',
+    label: 'Administration',
     icon: KeyRound,
     path: '/hr/password-resets',
-    portal: 'hr',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
-    requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],
-    requiredPermissions: ['hr.personnel.manage']
-  },
-  {
-    id: 'hr-audit-trail',
-    label: 'HR Audit Trail',
-    icon: ShieldCheck,
-    path: '/hr/audit-trail',
+    activePathPrefixes: ['/hr/audit-trail'],
     portal: 'hr',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.HR_ADMIN],
     requiredActiveContexts: [CANONICAL_ROLES.HR_STAFF],

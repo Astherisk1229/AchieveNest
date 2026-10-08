@@ -78,11 +78,11 @@ describe('Phase J2: Whole-Portfolio Revision Request Workflow', () => {
       expect(result.reason_code).toBe(REVISION_REASON_CODES.CROSS_COLLEGE_DENIED);
     });
 
-    it('4. strictly denies Department Secretary from returning portfolio', () => {
+    it('4. strictly denies Unassigned reviewer from returning portfolio', () => {
       const actor = {
-        id: 'SEC-001',
-        profile_id: 'SEC-001',
-        roles: ['department_secretary'],
+        id: 'UNASSIGNED-001',
+        profile_id: 'UNASSIGNED-001',
+        roles: ['unassigned_reviewer'],
         assigned_college_id: 'COLLEGE-CAS'
       };
       const evaluation = {
@@ -96,7 +96,23 @@ describe('Phase J2: Whole-Portfolio Revision Request Workflow', () => {
 
       const result = PersonnelRevisionRequestService.canRequestRevision(actor, evaluation);
       expect(result.allowed).toBe(false);
-      expect(result.reason_code).toBe(REVISION_REASON_CODES.DEPT_SECRETARY_EXCLUDED);
+      expect(result.reason_code).toBe(REVISION_REASON_CODES.UNAUTHORIZED_REVIEWER);
+    });
+
+    it('denies Dean revision requests when the evaluation has no college scope', () => {
+      const actor = { profile_id: 'DEAN-CAS', roles: ['dean'], assigned_college_id: 'COLLEGE-CAS' };
+      const evaluation = {
+        id: 'EVAL-UNSCOPED',
+        personnel_profile_id: 'FACULTY-UNSCOPED',
+        status: CANONICAL_STATUSES.IN_EVALUATION,
+        assigned_reviewer_role: 'dean',
+        target_college_id: null,
+        version_number: 1
+      };
+
+      const result = PersonnelRevisionRequestService.canRequestRevision(actor, evaluation);
+      expect(result.allowed).toBe(false);
+      expect(result.reason_code).toBe(REVISION_REASON_CODES.UNAUTHORIZED_REVIEWER);
     });
 
     it('5. prohibits self-review and self-return by the submitting personnel', () => {
@@ -340,7 +356,7 @@ describe('Phase J2: Whole-Portfolio Revision Request Workflow', () => {
     });
 
     it('20. ensures failed authority check does not emit event or change status', () => {
-      const actor = { id: 'SEC-001', roles: ['department_secretary'] };
+      const actor = { id: 'UNASSIGNED-001', roles: ['unassigned_reviewer'] };
       const evaluation = { id: 'EVAL-402', personnel_profile_id: 'FACULTY-001', status: 'in_evaluation' };
 
       const check = PersonnelRevisionRequestService.canRequestRevision(actor, evaluation);

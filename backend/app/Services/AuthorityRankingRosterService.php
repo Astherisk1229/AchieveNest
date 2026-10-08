@@ -91,7 +91,7 @@ class AuthorityRankingRosterService
     {
         $normalized = strtoupper(str_replace('-', '_', trim($key)));
         $map = ['FACULTY'=>'FACULTY', 'NON_TEACHING_FACULTY'=>'NON_TEACHING_FACULTY'];
-        if (! isset($map[$normalized])) throw new InvalidArgumentException('RANKING_TRACK_INVALID: trackKey must identify Faculty or Non-Teaching Faculty.');
+        if (! isset($map[$normalized])) throw new InvalidArgumentException('RANKING_TRACK_INVALID: trackKey must identify Teaching Faculty or Non-Teaching Faculty.');
         return $map[$normalized];
     }
 
@@ -102,13 +102,7 @@ class AuthorityRankingRosterService
         if ($actorId === '') throw new RuntimeException('FORBIDDEN: Authenticated authority profile is missing.');
         if (array_intersect(['hr_admin','hr_staff'], $roles)) return ['HR', 'institution', null];
         if (in_array('dean', $roles, true)) return ['DEAN', 'college', $this->singleAssignment('dean_assignments', 'college_id', $actorId, 'DEAN')];
-        if (in_array('department_head', $roles, true)) {
-            $departmentId = $this->singleAssignment('department_head_assignments', 'department_id', $actorId, 'DEPARTMENT_HEAD');
-            $department = $this->db->table('administrative_units')->select('college_id')->where('id', $departmentId)->where('status', 'active')->get()->getRowArray();
-            if (! $department || ! empty($department['college_id'])) throw new RuntimeException('FORBIDDEN: Department Head roster authority applies only to an active outside-College Department.');
-            return ['DEPARTMENT_HEAD', 'department', $departmentId];
-        }
-        throw new RuntimeException('FORBIDDEN: Dean, Department Head, or HR authority role required.');
+        throw new RuntimeException('FORBIDDEN: Dean or HR authority role required.');
     }
 
     private function singleAssignment(string $table, string $scopeColumn, string $actorId, string $label): string

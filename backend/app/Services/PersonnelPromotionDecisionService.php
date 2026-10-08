@@ -171,7 +171,8 @@ class PersonnelPromotionDecisionService
             [
                 'faculty_engagement' => $engagement,
                 'personnel_group' => $personnelGroup,
-                'has_verified_phd' => $hasVerifiedPhd
+                'has_verified_phd' => $hasVerifiedPhd,
+                'personnel_profile_id' => (string) ($evaluationRecord['personnel_profile_id'] ?? ''),
             ]
         );
 
@@ -311,7 +312,8 @@ class PersonnelPromotionDecisionService
             [
                 'faculty_engagement' => $engagement,
                 'personnel_group' => $personnelGroup,
-                'has_verified_phd' => $hasVerifiedPhd
+                'has_verified_phd' => $hasVerifiedPhd,
+                'personnel_profile_id' => $personnelProfileId,
             ]
         );
 

@@ -6,6 +6,11 @@ export const portfolioService = {
     return res?.data?.categories || res?.categories || []
   },
 
+  async fetchAchievementSchema() {
+    const res = await apiClient.get('/student/achievement-schema')
+    return res?.data || res
+  },
+
   async fetchRecords(params = {}) {
     const res = await apiClient.get('/portfolio', { params })
     return res?.data?.records || res?.records || []

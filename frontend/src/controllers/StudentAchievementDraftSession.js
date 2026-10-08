@@ -36,18 +36,11 @@ export function parseStructuredMetadata(value) {
 }
 
 /** Builds the /portfolio create/update payload using only real student_portfolio_records columns. */
-export function buildRecordPayload({ formData = {}, categoryId, subcategoryId, structuredMetadata = {} }) {
-  const startDate = blankToNull(formData.start_date)
+export function buildRecordPayload({ formData = {}, categoryId, subcategoryId, structuredMetadata = {}, schemaVersion = '1.0' }) {
   return {
-    title: String(formData.title || '').trim(),
-    organizer_or_body: blankToNull(formData.organizer_or_body),
-    start_date: startDate,
-    occurrence_date: startDate,
-    end_date: blankToNull(formData.end_date),
-    description: blankToNull(formData.description),
     category_id: blankToNull(categoryId),
     subcategory_id: blankToNull(subcategoryId),
-    structured_metadata: { ...structuredMetadata, schema_version: '1.0' }
+    structured_metadata: { ...structuredMetadata, schema_version: schemaVersion }
   }
 }
 
@@ -93,28 +86,6 @@ export function parseOcrDate(value) {
   return null
 }
 
-/**
- * Applies advisory OCR suggestions only to fields the student has not touched and that are empty.
- * start_date is filled only when the OCR date converts unambiguously (see parseOcrDate).
- */
-export function applyOcrSuggestions(formData, suggestions = [], touched = {}) {
-  const next = { ...formData }
-  const applied = {}
-  const map = { activity_title: 'title', organizer_granting_body: 'organizer_or_body', start_date_raw: 'start_date' }
-  suggestions.forEach(item => {
-    const field = map[item?.key]
-    let value = String(item?.value || '').trim()
-    if (!field || !value || touched[field] || String(next[field] || '').trim() !== '') return
-    if (field === 'start_date') {
-      value = parseOcrDate(value)
-      if (!value) return
-    }
-    next[field] = value
-    applied[field] = true
-  })
-  return { formData: next, applied }
-}
-
 const normalizeText = value => String(value ?? '').trim().replace(/[\u2012-\u2015]/g, '-').replace(/\s+/g, ' ').toLowerCase()
 
 /**
@@ -129,16 +100,43 @@ export function applyOcrToDetails(metadata = {}, suggestions = [], fields = []) 
   const applied = {}
   const byKey = {}
   suggestions.forEach(item => { if (item?.key && item.value && byKey[item.key] === undefined) byKey[item.key] = String(item.value).trim() })
+  const aliases = {
+    activity_title: field => /title|work|position held/i.test(field.label || ''),
+    organizer_granting_body: field => /organizer|issuing|granting body|outlet|organization name|governing body|unit or office/i.test(field.label || ''),
+    position_title: field => /position held|publication role|student role|activity role|role \/ position/i.test(field.label || ''),
+    organization_name: field => /organization name|governing body/i.test(field.label || ''),
+    academic_year: field => (field.control || field.type) === 'academic_year',
+    start_date_raw: field => ['date', 'date_range', 'structured_date_or_range'].includes(field.control || field.type)
+  }
   fields.forEach(field => {
     if (!field?.key || ![undefined, null, ''].includes(next[field.key])) return
-    const candidates = field.key === 'position_level' ? [byKey.position_level, byKey.position_title] : [byKey[field.key]]
+    if ((field.control || field.type) === 'fixed') return
+    const candidates = [byKey[field.key]]
+    Object.entries(aliases).forEach(([alias, matches]) => {
+      if (byKey[alias] && matches(field)) candidates.push(byKey[alias])
+    })
+    if (field.key === 'position_level') candidates.push(byKey.position_title)
     for (const candidate of candidates) {
       if (!candidate) continue
-      if (field.type === 'select') {
+      const control = field.control || field.type
+      if (['date', 'date_range', 'structured_date_or_range'].includes(control)) {
+        const date = parseOcrDate(candidate)
+        if (!date) continue
+        if (control === 'date') next[field.key] = date
+        else if (control === 'date_range') next[field.validation?.start_key] = date
+        else {
+          const [, year, month, day] = date.match(/^(\d{4})-(\d{2})-(\d{2})$/) || []
+          if (!year) continue
+          Object.assign(next, { period_precision: 'DATE', period_start_year: year, period_start_month: month, period_start_day: day })
+        }
+        applied[field.key] = true
+        break
+      }
+      if (control === 'select') {
         const option = (field.options || []).find(item => normalizeText(item.label) === normalizeText(candidate) || normalizeText(item.value) === normalizeText(candidate))
         if (!option) continue
         next[field.key] = option.value
-      } else if (['text', 'textarea', undefined].includes(field.type)) {
+      } else if (['text', 'textarea', 'academic_year', undefined].includes(control)) {
         next[field.key] = candidate
       } else {
         continue
@@ -158,17 +156,26 @@ export function validateEvidenceFile(file) {
 }
 
 /** Client-side completeness check mirroring resubmitRecord(); the backend remains authoritative. */
-export function validateForSubmit({ formData = {}, categoryId, subcategoryId, structuredMetadata = {}, schemaFields = [], evidence = [] }) {
+export function validateForSubmit({ formData = {}, categoryId, subcategoryId, subcategoryRequired = true, structuredMetadata = {}, schemaFields = [], evidence = [] }) {
   const errors = {}
-  if (String(formData.title || '').trim().length < 3) errors.title = 'Title is required (minimum 3 characters).'
-  if (String(formData.organizer_or_body || '').trim().length < 2) errors.organizer_or_body = 'Organizer / Issuing Body is required.'
-  if (!formData.start_date) errors.start_date = 'Start date is required.'
-  if (formData.start_date && formData.end_date && formData.end_date < formData.start_date) errors.end_date = 'End date cannot be before start date.'
   if (!categoryId) errors.category_id = 'Category is required.'
-  if (!subcategoryId) errors.subcategory_id = 'Subcategory is required.'
+  if (subcategoryRequired && !subcategoryId) errors.subcategory_id = 'Subcategory is required.'
   schemaFields.forEach(field => {
-    const visible = !field.visibility || structuredMetadata[field.visibility.field] === field.visibility.equals
-    if (visible && field.required && [undefined, null, ''].includes(structuredMetadata[field.key])) {
+    const condition = field.validation?.required_when
+    const conditionRequired = condition && Object.entries(condition).some(([key, value]) => structuredMetadata[key] === value)
+    const visibleWhen = field.visibility || field.validation?.visible_when
+    const visible = !visibleWhen || Object.entries(visibleWhen).every(([key, value]) => structuredMetadata[key] === value)
+    const control = field.control || field.type
+    if (visible && (field.required || conditionRequired) && ['date_range', 'structured_date_or_range', 'ongoing_academic_year_or_activity_dates'].includes(control)) {
+      if (control === 'date_range' && !structuredMetadata[field.validation?.start_key]) errors[field.validation?.start_key] = `${field.label} start date is required.`
+      if (control === 'structured_date_or_range' && !['DATE', 'RANGE'].includes(structuredMetadata.period_precision)) errors.period_precision = `Select a date or range for ${field.label}.`
+      if (control === 'ongoing_academic_year_or_activity_dates') {
+        const mode = structuredMetadata.record_mode
+        const modeFields = field.validation?.modes?.[mode]
+        if (!modeFields) errors.record_mode = `Choose a period type for ${field.label}.`
+        else modeFields.forEach(key => { if (!structuredMetadata[key]) errors[key] = `${key} is required for the selected period.` })
+      }
+    } else if (visible && (field.required || conditionRequired) && [undefined, null, ''].includes(structuredMetadata[field.key])) {
       errors[field.key] = `${field.label} is required.`
     }
   })

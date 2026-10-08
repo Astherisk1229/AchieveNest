@@ -20,6 +20,11 @@ export default class PersonnelDashboardController {
       administrative_unit: currentUser?.administrative_unit || '',
       personnel_affiliation: currentUser?.personnel_affiliation || null,
       academic_rank: currentUser?.academic_rank || '',
+      current_rank_title: currentUser?.current_rank_title || currentUser?.academic_rank || '',
+      position_title: currentUser?.position_title || '',
+      designation: currentUser?.designation || '',
+      length_of_service: currentUser?.length_of_service || null,
+      institutional_email: currentUser?.institutional_email || currentUser?.email || '',
       year_level: currentUser?.year_level || '',
       age: currentUser?.age || '',
       location: currentUser?.location || '',
@@ -43,6 +48,10 @@ export default class PersonnelDashboardController {
       program_affiliations: currentUser?.program_affiliations || previousProfile.program_affiliations || baseProfile.program_affiliations,
       administrative_unit: currentUser?.administrative_unit || previousProfile.administrative_unit || baseProfile.administrative_unit,
       email: currentUser?.email || previousProfile.email || baseProfile.email,
+      institutional_email: currentUser?.institutional_email || previousProfile.institutional_email || baseProfile.institutional_email,
+      current_rank_title: currentUser?.current_rank_title || previousProfile.current_rank_title || baseProfile.current_rank_title,
+      position_title: currentUser?.position_title || previousProfile.position_title || baseProfile.position_title,
+      length_of_service: currentUser?.length_of_service || previousProfile.length_of_service || baseProfile.length_of_service,
       avatar_url: currentUser?.avatar_url || previousProfile.avatar_url || baseProfile.avatar_url
     }
   }
@@ -51,26 +60,34 @@ export default class PersonnelDashboardController {
    * Maps a persisted accomplishment (AchievementModel or raw API row) to the timeline card shape.
    */
   static toTimelineEntry(item) {
+    const source = typeof item?.toJSON === 'function' ? item.toJSON() : (item || {})
     const status = item.status || 'Pending Review'
     const statusLabel = status === 'Verified' ? 'HR Verified' : status === 'Endorsed' ? 'Dean Endorsed' : status
     return {
+      ...source,
       id: item.id,
       title: item.title,
       date: item.date,
+      date_achieved: item.date_achieved || item.date || item.occurrence_date || '',
       status,
       statusLabel,
       category: item.category || '',
       // Authoritative classification inputs for the timeline filters and badges.
       category_code: item.category_code ?? null,
       category_metadata: item.category_metadata || {},
-      raw_status: item.status || '',
+      raw_status: item.raw_status || source.raw_status || item.status || '',
       academic_year: item.academic_year || '',
       issuer: item.issuer || item.location || '',
       description: item.description || '',
       icon: 'Award',
       attached_file_name: item.attached_file_name || '',
       evidence_id: item.evidence_id || null,
-      evidence_mime_type: (Array.isArray(item.evidence) ? (item.evidence.find((file) => file?.id === item.evidence_id) || item.evidence[0]) : null)?.mime_type || ''
+      evidence_mime_type: (Array.isArray(item.evidence) ? (item.evidence.find((file) => file?.id === item.evidence_id) || item.evidence[0]) : null)?.mime_type || '',
+      is_editable: typeof item.canEdit === 'function' ? item.canEdit() : ['draft', 'pending', 'pending review', 'returned'].includes(String(item.status || '').toLowerCase()),
+      is_deletable: typeof item.canDelete === 'function' ? item.canDelete() : String(item.raw_status || item.status || '').toLowerCase() !== 'verified',
+      canEdit: typeof item.canEdit === 'function'
+        ? item.canEdit.bind(item)
+        : () => ['draft', 'pending', 'pending review', 'returned'].includes(String(item.status || '').toLowerCase())
     }
   }
 

@@ -15,7 +15,7 @@ use RuntimeException;
  * Core Governance Rules:
  * 1. Evaluator reviews the exact submitted snapshot; live portfolio edits do not replace snapshot.
  * 2. Access requires active, authorized reviewer assignment matching scope (Dean intra-college, HR scope).
- * 3. Department Secretary and Personnel self-review are strictly blocked.
+ * 3. Personnel self-review is strictly blocked.
  * 4. Plan F criteria, scoring metadata, and explanations are consumed directly without duplication.
  * 5. Evaluator-judgment items (B.3, B.6, B.5) display max allowed points and pending status.
  * 6. Non-Teaching Area A renders as read-only evaluator structure.
@@ -51,11 +51,6 @@ class PersonnelEvaluatorWorkspaceService
         }
 
         $actorRoles = $reviewerActor['roles'] ?? [$reviewerActor['role'] ?? ''];
-
-        // 2. Department Secretary Exclusion
-        if (in_array('department_secretary', $actorRoles, true) && !in_array('dean', $actorRoles, true) && !in_array('hr_staff', $actorRoles, true) && !in_array('hr_admin', $actorRoles, true)) {
-            throw new RuntimeException("Access Denied: Department Secretary role does not possess evaluator authority.", 403);
-        }
 
         $assignedRole = $evaluationRecord['assigned_reviewer_role'] ?? $evaluationRecord['evaluator_role'] ?? null;
         $targetCollegeId = $evaluationRecord['evaluator_college_id'] ?? $evaluationRecord['target_college_id'] ?? null;

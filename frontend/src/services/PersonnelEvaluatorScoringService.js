@@ -8,7 +8,7 @@
  * Core Governance Rules:
  * 1. Plan G controls who evaluates and records accepted points; Plan F controls caps, formulas, and totals.
  * 2. Only the assigned reviewer may submit official accepted values.
- * 3. Self-review, cross-college reviews, and Department Secretary evaluations are strictly prohibited.
+ * 3. Self-review and cross-college reviews are strictly prohibited.
  * 4. Deterministic Plan F items cannot be arbitrarily overridden.
  * 5. Judgment criteria enforce scale-specific maximums (Admin B.3: 40, B.6: 20, Non-Teaching B.5: 30).
  * 6. Null (unresolved) and 0.0 (explicitly zero) are strictly differentiated.
@@ -60,11 +60,6 @@ export default class PersonnelEvaluatorScoringService {
     const actorRoles = Array.isArray(reviewerActor.roles)
       ? reviewerActor.roles
       : (reviewerActor.role ? [reviewerActor.role] : [])
-
-    // 2. Department Secretary Prohibition
-    if (actorRoles.includes('department_secretary') && !actorRoles.includes('dean') && !actorRoles.includes('hr_staff') && !actorRoles.includes('hr_admin')) {
-      throw new Error('Access Denied (403): Department Secretary role does not possess evaluator authority.')
-    }
 
     // 3. Evaluation Status Check
     const status = String(evaluationRecord.evaluation_status || evaluationRecord.status || 'submitted').toLowerCase().trim()

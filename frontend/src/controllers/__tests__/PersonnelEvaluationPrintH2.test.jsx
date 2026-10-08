@@ -62,9 +62,9 @@ describe('Personnel Evaluation Track — Plan H — Phase H2: Printable Evaluati
     roles: ['faculty']
   }
 
-  const secretaryActor = {
+  const unassignedActor = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const deanActor = {
@@ -517,13 +517,13 @@ describe('Personnel Evaluation Track — Plan H — Phase H2: Printable Evaluati
       }).toThrow(/Access Denied \(403\)/i)
     })
 
-    it('6.4 denies department secretary from generating deliberation print (403)', () => {
+    it('6.4 denies unassigned reviewer from generating deliberation print (403)', () => {
       const snapshot = createAdminSnapshotWithScore(35.0, 15.0, 30.0)
       expect(() => {
         PersonnelEvaluationPrintService.buildPrintableEvaluation({
           evaluationRecord: validAdminRecord,
           snapshotData: snapshot,
-          actor: secretaryActor
+          actor: unassignedActor
         })
       }).toThrow(/Access Denied \(403\)/i)
     })

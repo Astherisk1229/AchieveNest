@@ -7,7 +7,7 @@
 
 ## 1. Executive Status
 
-AchieveNest currently has a broad, navigable **frontend prototype** covering all primary user roles. The earlier roadmap was outdated because it still listed the Department Secretary and HR workspaces as upcoming even though substantial implementations now exist.
+AchieveNest currently has a broad, navigable **frontend prototype** covering all primary user roles. The earlier roadmap was outdated because it still listed the Dean and HR workspaces as upcoming even though substantial implementations now exist.
 
 The application is not production-ready yet. Most workflows still use client-side or mock data, authentication is simulated, several exports are print or alert placeholders, automated tests are not configured, and lint currently fails on React hook-order errors.
 
@@ -111,11 +111,11 @@ Status definitions:
 | Student achievement submission | Partial | Multi-step submission, evidence fields, category data, preview, filters, and client-side status handling exist. | Backend uploads, validation, file security, transactional submission, verifier routing, revision history, and notifications. |
 | Personnel dashboard and professional portfolio | Implemented; needs stabilization | Personnel dashboard, profile, portfolio editor, achievement submission, preview, and booklet/export presentation exist. | Backend persistence, document storage, real PDF generation, validation, workflow history, and browser QA. |
 | Program Coordinator verification | Partial | Department-scoped dashboard, queue, dossier review, and verification controls exist. | Confirm Department assignment rules, persist decisions, implement concurrency/audit controls, and run role acceptance tests. |
-| Department Secretary portal | Partial | Dashboard, portfolio roster, evaluator workbench, verification controller, model/hook integration, endorsement/revision UI exist. | Replace alert-based evidence preview, confirm College-based assignment scope, persist decisions, add audit/history, and complete end-to-end testing. |
+| Dean portal | Partial | Dashboard, portfolio roster, evaluator workbench, verification controller, model/hook integration, endorsement/revision UI exist. | Replace alert-based evidence preview, confirm College-based assignment scope, persist decisions, add audit/history, and complete end-to-end testing. |
 | Organization Moderator portal | Partial | Organization dashboard, event creation, event management, attendance sessions, scanner routes, and certificate preview exist. | Backend event/attendance records, real scanner validation, duplicate prevention, certificate issuance service, permissions, and device testing. |
 | HR dashboard | Implemented; needs stabilization | HR overview, submission and activity presentation, and administrative entry points exist. | Remove mock data, validate metric definitions, connect authoritative services, and complete content/interaction QA. |
 | HR Personnel Directory and onboarding | Implemented; needs stabilization | Personnel table, search/filter/sort, portal-based row action menu, onboarding stepper, draft recovery, placement, password reset, assignment editing, and dossier drawer exist. | Complete table/browser regression testing, validate all actions, connect HR API, implement invitation delivery, and persist onboarding transactions. |
-| HR College leadership assignments | Partial | Department/College assignment UI, Dean presentation, Department Secretary assignment modal, and related controls exist. | Confirm College-based Secretary rules, enforce one-active-assignment constraints, persist assignments, and prevent cross-role mutations. |
+| HR College leadership assignments | Partial | Department/College assignment UI, Dean presentation, Dean assignment modal, and related controls exist. | Confirm College-based Secretary rules, enforce one-active-assignment constraints, persist assignments, and prevent cross-role mutations. |
 | HR evaluation submissions | Partial; lint-blocked | Queue, filtering, evaluation studio, evidence viewer, criteria scoring, return/finalize dialogs, and manual score controls exist. | Fix conditional hooks, replace mock submissions, persist drafts/decisions, validate scoring policy, implement document preview, and complete acceptance tests. |
 | HR faculty evaluation and ranking | Partial | Ranking page, rating engine/model, rank assignment logs, scoring and audit presentation exist. | Remove simulated export alert, confirm authoritative criteria and override rules, persist ranking cycles, and generate real approved reports. |
 | HR audit trail | Partial | Event registry, controller/hook, timeline, filters, pagination, and audit page exist. | Connect append-only backend audit source, enforce redaction/access policy, define retention/export, and verify event coverage. |
@@ -152,7 +152,7 @@ Future implementation and content review must preserve this ownership model.
 
 - reviews and verifies Student achievement submissions within the assigned Department scope.
 
-### Department Secretary
+### Dean
 
 - reviews Personnel submissions within the approved College-based scope and endorses or returns them according to policy.
 
@@ -203,10 +203,10 @@ Future implementation and content review must preserve this ownership model.
 ### Milestone 2 — Validate role workflows
 
 - [ ] Test Student submission through Program Coordinator verification.
-- [ ] Test Personnel submission through Department Secretary endorsement and HR evaluation.
+- [ ] Test Personnel submission through Dean endorsement and HR evaluation.
 - [ ] Test Organization event creation through attendance and certificate generation.
 - [ ] Test OSAD academic structure and role assignments.
-- [ ] Test HR Personnel onboarding, College placement, Dean designation, and Department Secretary assignment.
+- [ ] Test HR Personnel onboarding, College placement, Dean designation, and Dean assignment.
 - [ ] Verify role boundaries and unauthorized routes/actions.
 
 **Exit criterion:** A documented acceptance checklist exists for every role with defects recorded and prioritized.

@@ -80,17 +80,19 @@ export async function authenticateDemoUser(email, rememberMe = true) {
  * Resolves profile from backend /api/v1/auth/me using the provided access token.
  */
 async function fetchProfileAndCreateSessionUncached(accessToken, emailFallback = '', rememberMe = true) {
-  // Keep a preference candidate before clearing the stale profile. It is validated
-  // only after /auth/me supplies fresh roles and scoped assignments.
+  // Keep the last known session readable while validating the token. Clearing it
+  // before /auth/me completes exposes a transient logged-out state to other tabs.
   const priorSession = getCurrentUser()
   const savedWorkspace = priorSession?.active_role_context || null
-  clearStoredSession()
 
-  // Store token first so apiClient interceptor picks it up immediately
-  if (rememberMe) {
-    localStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
-  } else {
-    sessionStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+  // New sign-ins need a provisional token available to apiClient. During an
+  // existing-session refresh, retain the complete last-known credential pair.
+  if (!priorSession) {
+    if (rememberMe) {
+      localStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+    } else {
+      sessionStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+    }
   }
 
   let backendResponse
@@ -139,6 +141,14 @@ async function fetchProfileAndCreateSessionUncached(accessToken, emailFallback =
   }
   const authoritativeAssignedRoles = normalizeAssignedRoles(userRoles, accountType)
   const defaultWorkspace = resolveDefaultActiveRole(accountType, authoritativeAssignedRoles)
+
+  // Replace prior credentials only after the server has validated this profile.
+  clearStoredSession()
+  if (rememberMe) {
+    localStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+  } else {
+    sessionStorage.setItem(STORAGE_KEY_TOKEN, accessToken)
+  }
 
   // Explicitly allowlisted session payload: never spreads raw response and never persists temporary_password
   const sessionPayload = {

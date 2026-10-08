@@ -48,12 +48,9 @@ export const facultyRankCatalogService = {
     { code: 'ASSISTANT_PROFESSOR_II', label: 'Assistant Professor II', tier: 'masters', order: 18 },
     { code: 'ASSISTANT_PROFESSOR_I', label: 'Assistant Professor I', tier: 'masters', order: 19 },
 
-    // Board Licensure
+    // Board Licensure has one rank only. Advancement beyond Senior Instructor
+    // requires the separately verified master's qualification path.
     { code: 'SENIOR_INSTRUCTOR', label: 'Senior Instructor', tier: 'board_licensure', order: 20 },
-    { code: 'SENIOR_INSTRUCTOR_IV', label: 'Senior Instructor IV', tier: 'board_licensure', order: 21 },
-    { code: 'SENIOR_INSTRUCTOR_III', label: 'Senior Instructor III', tier: 'board_licensure', order: 22 },
-    { code: 'SENIOR_INSTRUCTOR_II', label: 'Senior Instructor II', tier: 'board_licensure', order: 23 },
-    { code: 'SENIOR_INSTRUCTOR_I', label: 'Senior Instructor I', tier: 'board_licensure', order: 24 },
 
     // Baccalaureate
     { code: 'INSTRUCTOR_I', label: 'Instructor I', tier: 'baccalaureate', order: 25 },

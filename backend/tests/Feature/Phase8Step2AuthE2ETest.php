@@ -83,4 +83,19 @@ final class Phase8Step2AuthE2ETest extends CIUnitTestCase
         ]);
         $resShort->assertStatus(401); // without bearer token
     }
+
+    public function testAuthLoginDoesNotRunPasswordChangeValidation(): void
+    {
+        $res = $this->post('/api/v1/auth/login', [
+            'institutional_email' => '',
+            'password' => '',
+        ]);
+
+        $res->assertStatus(422);
+        $res->assertJSONFragment([
+            'error' => [
+                'code' => 'VALIDATION_ERROR',
+            ],
+        ]);
+    }
 }

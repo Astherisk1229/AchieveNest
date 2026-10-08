@@ -152,9 +152,6 @@ export class PersonnelEvaluationAuditService {
       throw new Error('Unauthenticated access to audit trail is denied.');
     }
 
-    if (role === 'department_secretary') {
-      throw new Error('Department Secretary is not authorized to inspect personnel evaluation audit records.');
-    }
 
     if (['hr_admin', 'hr', 'system_admin', 'admin'].includes(role)) {
       return true;

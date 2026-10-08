@@ -48,7 +48,7 @@ export default class AuthController {
   static switchDemoRole(roleKey, collegeId = 'COL-CEAC') {
     const user = this.getCurrentUser()
     if (!user) return null
-    if (roleKey === 'dean' || roleKey === 'dep_sec') {
+    if (roleKey === 'dean') {
       user.active_role_context = 'dean'
       user.college = 'College of Engineering, Architecture & Computing'
     } else if (roleKey === 'hr' || roleKey === 'hr_staff') {

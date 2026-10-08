@@ -16,11 +16,10 @@ export function lengthOfServiceLabel(service) {
 }
 
 /**
- * Saves the self-service profile fields (contact number, location, about me, specialization).
- * Name, ID, designation and email are managed by HR and are not sent. Returns the saved profile.
+ * Saves Personnel-editable profile details. Institutional email remains HR-managed.
  */
-export async function updateOwnProfile({ contact_number, location, about_me, specialization }) {
-  const res = await apiClient.put('/personnel/profile', { contact_number, location, about_me, specialization })
+export async function updateOwnProfile({ contact_number, about_me, specialization }) {
+  const res = await apiClient.put('/personnel/profile', { contact_number, about_me, specialization })
   return res?.data || res
 }
 
@@ -31,8 +30,13 @@ export async function fetchOwnProfileFields() {
   return {
     contact_number: d.phone || '',
     phone: d.phone || '',
-    location: d.location || '',
     about_me: d.about_me || '',
-    specialization: d.specialization || ''
+    specialization: d.specialization || '',
+    ...(d.employee_id ? { employee_id: d.employee_id } : {}),
+    ...(d.email ? { email: d.email, institutional_email: d.email } : {}),
+    ...(d.avatar_url ? { avatar_url: d.avatar_url } : {}),
+    ...(d.current_rank_title ? { current_rank_title: d.current_rank_title, academic_rank: d.current_rank_title } : {}),
+    ...(d.position_title ? { position_title: d.position_title } : {}),
+    ...(d.length_of_service ? { length_of_service: d.length_of_service } : {})
   }
 }

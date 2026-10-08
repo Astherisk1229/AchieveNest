@@ -152,6 +152,7 @@ class FacultyRankCatalogController extends BaseController
                 'has_verified_phd' => $hasVerifiedPhd,
                 'faculty_engagement' => $engagement,
                 'personnel_group' => $group,
+                'personnel_profile_id' => (string) ($this->request->getGet('personnel_profile_id') ?? ''),
             ];
 
             $transitions = $this->progressionService->getAllowedTransitions($code, $context);

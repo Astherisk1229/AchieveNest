@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
 
 /** Shared accessible dialog shell for the Ranking Periods module. */
-export default function RankingCycleDialog({ title, description, onClose, children, footer, width = 'max-w-3xl', layer = 'z-50', labelledBy }) {
+export default function RankingCycleDialog({ title, description, onClose, children, footer, headerActions, width = 'max-w-3xl', layer = 'z-50', labelledBy }) {
   const panelRef = useRef(null)
   const autoId = useId()
   const titleId = labelledBy || autoId
@@ -29,7 +29,7 @@ export default function RankingCycleDialog({ title, description, onClose, childr
           <h2 id={titleId} className="text-lg font-black tracking-[-0.01em] text-slate-950 dark:text-white">{title}</h2>
           {description && <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{description}</p>}
         </div>
-        <button type="button" onClick={onClose} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:hover:bg-slate-800 dark:hover:text-white"><X className="h-5 w-5"/></button>
+        <div className="flex shrink-0 items-center gap-2">{headerActions}<button type="button" onClick={onClose} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:hover:bg-slate-800 dark:hover:text-white"><X className="h-5 w-5"/></button></div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       {footer && <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-5 py-3.5 sm:px-6 dark:border-slate-800">{footer}</footer>}

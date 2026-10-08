@@ -320,7 +320,6 @@ export default class HRModel {
   static EMPLOYMENT_STATUSES = [
     'Full-Time Permanent',
     'Full-Time Probationary',
-    'Part-Time Faculty',
     'Administrative Staff',
     'On Official Study Leave',
     'Professor Emeritus'

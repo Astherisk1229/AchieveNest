@@ -43,9 +43,7 @@ export const PLAN_E_RANKS = Object.freeze({
   INSTRUCTOR_I: { rank_code: 'INSTRUCTOR_I', display_label: 'Instructor I', tier: 'baccalaureate' },
   INSTRUCTOR_II: { rank_code: 'INSTRUCTOR_II', display_label: 'Instructor II', tier: 'baccalaureate' },
   INSTRUCTOR_III: { rank_code: 'INSTRUCTOR_III', display_label: 'Instructor III', tier: 'baccalaureate' },
-  SENIOR_INSTRUCTOR_I: { rank_code: 'SENIOR_INSTRUCTOR_I', display_label: 'Senior Instructor I', tier: 'baccalaureate' },
-  SENIOR_INSTRUCTOR_II: { rank_code: 'SENIOR_INSTRUCTOR_II', display_label: 'Senior Instructor II', tier: 'baccalaureate' },
-  SENIOR_INSTRUCTOR_III: { rank_code: 'SENIOR_INSTRUCTOR_III', display_label: 'Senior Instructor III', tier: 'baccalaureate' },
+  SENIOR_INSTRUCTOR: { rank_code: 'SENIOR_INSTRUCTOR', display_label: 'Senior Instructor', tier: 'board_licensure' },
 
   ASSISTANT_PROFESSOR_I: { rank_code: 'ASSISTANT_PROFESSOR_I', display_label: 'Assistant Professor I', tier: 'masters' },
   ASSISTANT_PROFESSOR_II: { rank_code: 'ASSISTANT_PROFESSOR_II', display_label: 'Assistant Professor II', tier: 'masters' },
@@ -66,10 +64,7 @@ export const NORMAL_PROGRESSION_MAP = Object.freeze({
   ASSISTANT_INSTRUCTOR: 'INSTRUCTOR_I',
   INSTRUCTOR_I: 'INSTRUCTOR_II',
   INSTRUCTOR_II: 'INSTRUCTOR_III',
-  INSTRUCTOR_III: 'SENIOR_INSTRUCTOR_I',
-  SENIOR_INSTRUCTOR_I: 'SENIOR_INSTRUCTOR_II',
-  SENIOR_INSTRUCTOR_II: 'SENIOR_INSTRUCTOR_III',
-  SENIOR_INSTRUCTOR_III: 'ASSISTANT_PROFESSOR_I',
+  INSTRUCTOR_III: 'SENIOR_INSTRUCTOR',
 
   ASSISTANT_PROFESSOR_I: 'ASSISTANT_PROFESSOR_II',
   ASSISTANT_PROFESSOR_II: 'ASSISTANT_PROFESSOR_III',
@@ -83,6 +78,13 @@ export const NORMAL_PROGRESSION_MAP = Object.freeze({
   PROFESSOR_III: 'PROFESSOR_IV',
   PROFESSOR_IV: 'PROFESSOR_V',
   PROFESSOR_V: 'UNIVERSITY_PROFESSOR'
+})
+
+const RETIRED_SENIOR_INSTRUCTOR_RANKS = Object.freeze({
+  SENIOR_INSTRUCTOR_I: { rank_code: 'SENIOR_INSTRUCTOR_I', display_label: 'Senior Instructor I', tier: 'legacy' },
+  SENIOR_INSTRUCTOR_II: { rank_code: 'SENIOR_INSTRUCTOR_II', display_label: 'Senior Instructor II', tier: 'legacy' },
+  SENIOR_INSTRUCTOR_III: { rank_code: 'SENIOR_INSTRUCTOR_III', display_label: 'Senior Instructor III', tier: 'legacy' },
+  SENIOR_INSTRUCTOR_IV: { rank_code: 'SENIOR_INSTRUCTOR_IV', display_label: 'Senior Instructor IV', tier: 'legacy' }
 })
 
 export default class PersonnelPromotionDecisionService {
@@ -106,7 +108,7 @@ export default class PersonnelPromotionDecisionService {
     const found = Object.values(PLAN_E_RANKS).find(
       (r) => r.display_label.toLowerCase() === normalized.toLowerCase() || r.rank_code.toLowerCase() === normalized.toLowerCase()
     )
-    return found || null
+    return found || RETIRED_SENIOR_INSTRUCTOR_RANKS[upperKey] || null
   }
 
   /**
@@ -229,6 +231,28 @@ export default class PersonnelPromotionDecisionService {
       })
     }
 
+    if (currentRank.rank_code === 'SENIOR_INSTRUCTOR' && Boolean(evaluationRecord.has_verified_masters || context.has_verified_masters)) {
+      const mastersRank = PLAN_E_RANKS.ASSISTANT_PROFESSOR_I
+      allowedTargets.push({
+        rank_code: mastersRank.rank_code,
+        display_label: mastersRank.display_label,
+        transition_type: 'masters_qualification',
+        rule_reference: 'NDMU-DOC-ACAD-RANKS-2026-V1/VERIFIED-MASTERS'
+      })
+    }
+
+    if (currentRank.tier === 'legacy') {
+      return {
+        eligible: true,
+        current_rank_code: currentRank.rank_code,
+        current_rank_name: currentRank.display_label,
+        is_terminal: true,
+        normal_next_rank: null,
+        allowed_targets: [],
+        rule_reference: this.RULE_REFERENCE
+      }
+    }
+
     // Check confirmed PhD exception: Assistant Professor I -> Professor I
     if (currentRank.rank_code === 'ASSISTANT_PROFESSOR_I' && hasVerifiedPhd) {
       const phdTarget = PLAN_E_RANKS.PROFESSOR_I
@@ -291,6 +315,21 @@ export default class PersonnelPromotionDecisionService {
       }
     }
 
+    if (toRank.tier === 'legacy') {
+      return {
+        allowed: false,
+        reason_code: 'retired_senior_instructor_step',
+        message: 'Senior Instructor I–IV are retired rank steps. The Board Licensure track has one rank: Senior Instructor.'
+      }
+    }
+    if (fromRank.tier === 'legacy') {
+      return {
+        allowed: false,
+        reason_code: 'legacy_rank_reconciliation_required',
+        message: 'This historical Senior Instructor step must be reconciled before progression.'
+      }
+    }
+
     const normalNextCode = NORMAL_PROGRESSION_MAP[fromRank.rank_code]
     if (normalNextCode === toRank.rank_code) {
       return {
@@ -298,6 +337,23 @@ export default class PersonnelPromotionDecisionService {
         transition_type: 'normal_sequential',
         target_rank: toRank,
         message: `Valid sequential progression from [${fromRank.display_label}] to [${toRank.display_label}].`
+      }
+    }
+
+    if (fromRank.rank_code === 'SENIOR_INSTRUCTOR' && toRank.rank_code === 'ASSISTANT_PROFESSOR_I') {
+      if (Boolean(context.has_verified_masters)) {
+        return {
+          allowed: true,
+          transition_type: 'masters_qualification',
+          target_rank: toRank,
+          rule_reference: 'NDMU-DOC-ACAD-RANKS-2026-V1/VERIFIED-MASTERS',
+          message: 'Verified Master’s qualification permits entry to the Assistant Professor tier.'
+        }
+      }
+      return {
+        allowed: false,
+        reason_code: 'verified_masters_required',
+        message: 'Progression beyond Senior Instructor requires a verified Master’s degree.'
       }
     }
 

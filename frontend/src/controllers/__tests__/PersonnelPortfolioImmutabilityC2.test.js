@@ -270,12 +270,12 @@ describe('Personnel Evaluation Track — Plan C — Phase C2 Immutability & Read
       }
     })
 
-    it('does not contain legacy Department Secretary routing strings', () => {
+    it('does not contain legacy Unassigned reviewer routing strings', () => {
       const mockPortfolio = createWorkingPortfolio()
       const syncResult = PersonnelPortfolioController.submitToDean(mockPortfolio)
 
       expect(syncResult.status).toBe('submitted')
-      expect(syncResult.status).not.toBe('SUBMITTED_TO_DEP_SEC')
+      expect(syncResult.status).not.toBe('SUBMITTED_TO_DEPARTMENT_REVIEWER')
       expect(syncResult.status).not.toBe('SUBMITTED_TO_DEAN')
     })
   })

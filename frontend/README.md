@@ -11,7 +11,7 @@ All project documentation files are organized under [`docs/`](<USER_HOME>/.gemin
 ### 📋 1. Role & Portal Feature Specifications ([`docs/specs/`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/))
 - **[OSAD Admin Features Spec](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/osad-admin-features-spec.md)** — Governance of student accounts, academic departments, student organizations, award scoring engine, & accreditation reports.
 - **[Program Coordinator Features Spec](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/program-coordinator-features-spec.md)** — Verification workspace for student achievement submissions prior to portfolio approval.
-- **[Department Secretary Features Spec](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/department-secretary-features-spec.md)** — Department portfolio endorsement and evaluator workbench.
+- **[Dean Features Spec](docs/specs/dean-features-spec.md)** — College-scoped portfolio review and evaluator workbench.
 - **[HR Admin Features Spec](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/specs/hr-admin-features-spec.md)** — Personnel directory, onboarding, evaluation studio, and ranking logs.
 
 ### 🏛️ 2. System Architecture & Technical Design ([`docs/architecture/`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/architecture/))
@@ -20,7 +20,7 @@ All project documentation files are organized under [`docs/`](<USER_HOME>/.gemin
 - **[Responsive Breakpoints Specification](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/architecture/RESPONSIVE_BREAKPOINTS_SPEC.md)** — Layout responsiveness across mobile, tablet, and desktop screens.
 
 ### 🔄 3. User Workflows & Role Governance ([`docs/workflows/`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/workflows/))
-- **[User Role Workflows & Governance](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/workflows/user-role-workflows-and-governance.md)** — Core workflow logic, HR Admin & OSAD Admin access boundaries, and department secretary rules.
+- **[User Role Workflows & Governance](docs/workflows/user-role-workflows-and-governance.md)** — Core workflow logic and HR Admin, OSAD Admin, and Dean access boundaries.
 - **[User Role Inputs & Transactions](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/workflows/achievenest_user_role_inputs_and_transactions.md)** — Comprehensive matrix of user inputs, actions, and transactional flows per role.
 
 ### 🛠️ 4. Project Planning & Roadmaps ([`docs/planning/`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/frontend/docs/planning/))

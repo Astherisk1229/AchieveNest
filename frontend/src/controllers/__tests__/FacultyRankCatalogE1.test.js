@@ -20,12 +20,12 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
   // 1. Catalogue Inventory & Tier Distribution
   // =========================================================================
   describe('1. Catalogue Inventory & Tier Distribution', () => {
-    it('E1-INV-001: contains exactly 26 frozen Full-Time Academic Ranks', () => {
-      expect(facultyRankCatalogService.getRankCount()).toBe(26)
-      expect(facultyRankCatalogService.FULL_TIME_RANKS).toHaveLength(26)
+    it('E1-INV-001: exposes 22 selectable Full-Time Academic Ranks', () => {
+      expect(facultyRankCatalogService.getRankCount()).toBe(22)
+      expect(facultyRankCatalogService.FULL_TIME_RANKS).toHaveLength(22)
     })
 
-    it('E1-INV-002: distributes correctly across the 4 qualification tiers (9 Doctoral, 10 Master, 5 Board, 2 Baccalaureate)', () => {
+    it('E1-INV-002: preserves the other qualification tiers and only one Board Licensure rank', () => {
       const ranks = facultyRankCatalogService.FULL_TIME_RANKS
       const doctoral = ranks.filter((r) => r.tier === 'doctoral')
       const masters = ranks.filter((r) => r.tier === 'masters')
@@ -34,21 +34,21 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
 
       expect(doctoral).toHaveLength(9)
       expect(masters).toHaveLength(10)
-      expect(board).toHaveLength(5)
+      expect(board).toHaveLength(1)
       expect(baccalaureate).toHaveLength(2)
-      expect(doctoral.length + masters.length + board.length + baccalaureate.length).toBe(26)
+      expect(doctoral.length + masters.length + board.length + baccalaureate.length).toBe(22)
     })
 
     it('E1-INV-003: maintains unique stable rank_code values for every rank', () => {
       const codes = facultyRankCatalogService.FULL_TIME_RANKS.map((r) => r.code)
       const uniqueCodes = new Set(codes)
-      expect(uniqueCodes.size).toBe(26)
+      expect(uniqueCodes.size).toBe(22)
     })
 
     it('E1-INV-004: maintains unique display_label values for every rank', () => {
       const labels = facultyRankCatalogService.FULL_TIME_RANKS.map((r) => r.label)
       const uniqueLabels = new Set(labels)
-      expect(uniqueLabels.size).toBe(26)
+      expect(uniqueLabels.size).toBe(22)
     })
   })
 
@@ -93,17 +93,13 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
       ])
     })
 
-    it('E1-SRC-003: preserves exact source labels for Board Licensure tier ranks', () => {
+    it('E1-SRC-003: Board Licensure has only the Senior Instructor rank', () => {
       const boardLabels = facultyRankCatalogService.FULL_TIME_RANKS
         .filter((r) => r.tier === 'board_licensure')
         .map((r) => r.label)
 
       expect(boardLabels).toEqual([
         'Senior Instructor',
-        'Senior Instructor IV',
-        'Senior Instructor III',
-        'Senior Instructor II',
-        'Senior Instructor I',
       ])
     })
 
@@ -126,7 +122,7 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
     it('E1-API-001: fetchFullTimeFacultyRanks invokes GET /faculty-ranks with optional tier filter', async () => {
       const mockResponse = {
         data: {
-          metadata: { total_active_ranks: 26 },
+          metadata: { total_active_ranks: 22 },
           data: facultyRankCatalogService.FULL_TIME_RANKS,
         },
       }
@@ -134,7 +130,7 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
 
       const result = await facultyRankCatalogService.fetchFullTimeFacultyRanks('doctoral')
       expect(apiClient.get).toHaveBeenCalledWith('/faculty-ranks', { params: { tier: 'doctoral' } })
-      expect(result.data).toHaveLength(26)
+      expect(result.data).toHaveLength(22)
     })
 
     it('E1-API-002: fetchRankByCode resolves rank details for valid code', async () => {
@@ -153,7 +149,7 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
     it('E1-API-003: fetchRankHierarchy returns grouped tiers with source provenance', async () => {
       const mockHierarchy = {
         source_document_id: 'NDMU-DOC-ACAD-RANKS-2026-V1',
-        total_ranks: 26,
+        total_ranks: 22,
         tiers: [],
       }
       apiClient.get.mockResolvedValueOnce({ data: { success: true, data: mockHierarchy } })
@@ -161,7 +157,7 @@ describe('Personnel Evaluation Track — Plan E — Phase E1: Full-time Faculty 
       const result = await facultyRankCatalogService.fetchRankHierarchy()
       expect(apiClient.get).toHaveBeenCalledWith('/faculty-ranks/hierarchy')
       expect(result.source_document_id).toBe('NDMU-DOC-ACAD-RANKS-2026-V1')
-      expect(result.total_ranks).toBe(26)
+      expect(result.total_ranks).toBe(22)
     })
   })
 

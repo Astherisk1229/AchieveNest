@@ -6,7 +6,7 @@ export const FACULTY = 'FACULTY'
 export const NON_TEACHING_FACULTY = 'NON_TEACHING_FACULTY'
 export const GROUPS = [FACULTY, NON_TEACHING_FACULTY]
 
-export const GROUP_LABELS = { [FACULTY]: 'Faculty', [NON_TEACHING_FACULTY]: 'Non-Teaching Faculty' }
+export const GROUP_LABELS = { [FACULTY]: 'Teaching Faculty', [NON_TEACHING_FACULTY]: 'Non-Teaching Faculty' }
 export const TRACK_KEYS = { [FACULTY]: 'faculty', [NON_TEACHING_FACULTY]: 'non-teaching-faculty' }
 export const GROUP_BY_TRACK_KEY = { faculty: FACULTY, 'non-teaching-faculty': NON_TEACHING_FACULTY }
 
@@ -27,7 +27,7 @@ export const LIFECYCLE_OPTIONS = [
 ]
 
 export const COVERAGE_OPTIONS = [
-  { value: 'FACULTY', label: 'Faculty' },
+  { value: 'FACULTY', label: 'Teaching Faculty' },
   { value: 'NON_TEACHING_FACULTY', label: 'Non-Teaching Faculty' },
   { value: 'BOTH', label: 'Both' },
 ]
@@ -38,14 +38,14 @@ export function generatedCycleName(year, groups = []) {
   const prefix = academicYearLabel(year)
   const selected = GROUPS.filter(group => groups.includes(group))
   if (selected.length === 2) return `${prefix} Personnel Ranking`
-  if (selected[0] === FACULTY) return `${prefix} Faculty Ranking`
+  if (selected[0] === FACULTY) return `${prefix} Teaching Faculty Ranking`
   if (selected[0] === NON_TEACHING_FACULTY) return `${prefix} Non-Teaching Faculty Ranking`
   return `${prefix} Ranking Period`
 }
 
 export const coverageLabel = groups => {
   const selected = GROUPS.filter(group => groups.includes(group))
-  if (selected.length === 2) return 'Faculty + Non-Teaching Faculty'
+  if (selected.length === 2) return 'Teaching Faculty + Non-Teaching Faculty'
   return selected.length ? GROUP_LABELS[selected[0]] : 'Not set'
 }
 

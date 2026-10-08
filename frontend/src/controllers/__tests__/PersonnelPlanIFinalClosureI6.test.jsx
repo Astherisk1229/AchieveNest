@@ -189,14 +189,14 @@ describe('Phase I6: Plan I Final End-to-End Validation, Closure & Formal Verific
       expect(res.reason_code).toBe(ACCESS_REASON_CODES.HR_ALLOWED);
     });
 
-    it('18. Department Secretary evaluator access is rejected', () => {
+    it('18. Unassigned reviewer evaluator access is rejected', () => {
       const evidence = {
         evidence_id: 'ev-uuid-0001-aaaa',
         personnel_id: 'USER-101',
         lifecycle_status: 'active',
       };
       const res = PersonnelEvidenceAccessService.authorizeAccess(
-        { profile_id: 'SEC-80', roles: ['department_secretary'] },
+        { profile_id: 'UNASSIGNED-80', roles: ['unassigned_reviewer'] },
         evidence,
         { evaluation_id: 'eval-01' },
         ACCESS_TYPES.PREVIEW

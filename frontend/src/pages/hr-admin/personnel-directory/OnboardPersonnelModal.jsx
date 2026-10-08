@@ -6,16 +6,8 @@ import OneTimeCredentialModal from '../../../components/credentials/OneTimeCrede
 import CredentialDeliveryFaultModal from '../../../components/credentials/CredentialDeliveryFaultModal'
 import { personnelMasterDataService } from '../../../services/personnelMasterDataService'
 import { personnelRankRecommendationService } from '../../../services/personnelRankRecommendationService'
-import { localToday, validateEmploymentStartDate, formatEmploymentStartDate } from '../../../utils/employmentDate'
-import ServicePeriodsEditor from './ServicePeriodsEditor'
-import {
-  classificationLabel,
-  initialOnboardingPeriods,
-  normalizeOnboardingPeriods,
-  onboardingCurrentType,
-  toPayloadSegments,
-  validateOnboardingPeriods,
-} from '../../../utils/serviceHistory'
+import { localToday, validateEmploymentStartDate } from '../../../utils/employmentDate'
+import DepartmentSelect from './DepartmentSelect'
 
 export default function OnboardPersonnelModal({
   isOpen,
@@ -37,17 +29,13 @@ export default function OnboardPersonnelModal({
     facultyEngagement: 'full_time_faculty',
     employmentStatus: 'permanent',
     employmentStartDate: '',
-    personnelGroup: 'faculty',
+    personnelGroup: '',
     organizationalSide: 'academic',
     collegeId: '',
     academicProgramIds: [],
     administrativeUnitId: ''
   })
   const [errors, setErrors] = useState({})
-  // Service history recorded with the account (default: one ongoing period from the start date).
-  const [hasEarlierService, setHasEarlierService] = useState(false)
-  const [servicePeriods, setServicePeriods] = useState([])
-  const [servicePeriodErrors, setServicePeriodErrors] = useState({ rows: {}, form: '' })
   const [submitting, setSubmitting] = useState(false)
 
   // Master Data Catalogs State
@@ -55,7 +43,6 @@ export default function OnboardPersonnelModal({
     colleges: [],
     departments: [],
     fullTimeRanks: [],
-    partTimeTitles: [],
     loading: false,
     error: null
   })
@@ -79,15 +66,13 @@ export default function OnboardPersonnelModal({
     Promise.all([
       personnelMasterDataService.getColleges(),
       personnelMasterDataService.getDepartments(),
-      personnelMasterDataService.getFacultyRanks(),
-      personnelMasterDataService.getPartTimeTitles()
-    ]).then(([colleges, departments, fullTimeRanks, partTimeTitles]) => {
+      personnelMasterDataService.getFacultyRanks()
+    ]).then(([colleges, departments, fullTimeRanks]) => {
       if (isMounted) {
         setMasterData({
           colleges: colleges || [],
           departments: departments || [],
           fullTimeRanks: fullTimeRanks || [],
-          partTimeTitles: partTimeTitles || [],
           loading: false,
           error: null
         })
@@ -120,26 +105,11 @@ export default function OnboardPersonnelModal({
     return placementOptions.administrativeUnits || []
   }, [masterData.departments, placementOptions.administrativeUnits])
 
-  const effectivePrograms = useMemo(() => {
-    return placementOptions.academicPrograms || []
-  }, [placementOptions.academicPrograms])
+  const teachingDepartments = useMemo(() => effectiveDepartments.filter(item => String(item.collegeId || item.college_id || '') === String(form.collegeId)), [effectiveDepartments, form.collegeId])
+  const standaloneDepartments = useMemo(() => effectiveDepartments.filter(item => !(item.collegeId || item.college_id)), [effectiveDepartments])
 
-  const programs = useMemo(() => {
-    return effectivePrograms.filter(program => String(program.collegeId) === String(form.collegeId))
-  }, [effectivePrograms, form.collegeId])
-
-  // Current Rank/Title Options based on Faculty Engagement
+  // Teaching faculty use the full-time academic rank catalog.
   const currentRankCatalog = useMemo(() => {
-    if (form.facultyEngagement === 'part_time_faculty') {
-      return (masterData.partTimeTitles && masterData.partTimeTitles.length > 0)
-        ? masterData.partTimeTitles
-        : [
-            { code: 'PT_PROFESSORIAL_LECTURER', label: 'Professorial Lecturer' },
-            { code: 'PT_ASSISTANT_PROFESSORIAL_LECTURER', label: 'Assistant Professorial Lecturer' },
-            { code: 'PT_SENIOR_LECTURER', label: 'Senior Lecturer' },
-            { code: 'PT_LECTURER', label: 'Lecturer' }
-          ]
-    }
     return (masterData.fullTimeRanks && masterData.fullTimeRanks.length > 0)
       ? masterData.fullTimeRanks
       : [
@@ -149,7 +119,7 @@ export default function OnboardPersonnelModal({
           { code: 'PROFESSOR_I', label: 'Professor I' },
           { code: 'UNIVERSITY_PROFESSOR', label: 'University Professor' }
         ]
-  }, [form.facultyEngagement, masterData.fullTimeRanks, masterData.partTimeTitles])
+  }, [masterData.fullTimeRanks])
 
   // Reactively resolve Plan E rank recommendation when qualification, engagement, or group changes
   useEffect(() => {
@@ -217,58 +187,22 @@ export default function OnboardPersonnelModal({
 
   const update = (key, value) => setForm(current => ({ ...current, [key]: value }))
 
-  const handleEngagementChange = (engagement) => {
-    setForm(current => {
-      // Check if current rank is compatible with new catalog
-      const newIsPartTime = engagement === 'part_time_faculty'
-      const ptLabels = ['Professorial Lecturer', 'Assistant Professorial Lecturer', 'Senior Lecturer', 'Lecturer']
-      const isCurrentlyPt = ptLabels.some(l => l.toLowerCase() === current.currentRankTitle.toLowerCase())
-
-      let nextRank = current.currentRankTitle
-      if (newIsPartTime && !isCurrentlyPt) {
-        nextRank = '' // Clear incompatible Full-Time rank
-      } else if (!newIsPartTime && isCurrentlyPt) {
-        nextRank = '' // Clear incompatible Part-Time title
-      }
-
-      return {
-        ...current,
-        facultyEngagement: engagement,
-        currentRankTitle: nextRank
-      }
-    })
-  }
-
   const setPersonnelGroup = (group) => {
+    const side = group === 'faculty' ? 'academic' : 'non_academic'
     setForm(current => ({
       ...current,
-      personnelGroup: group
-    }))
-  }
-
-  const setOrganizationalSide = (side) => {
-    setForm(current => ({
-      ...current,
+      personnelGroup: group,
       organizationalSide: side,
       collegeId: side === 'academic' ? current.collegeId : '',
       academicProgramIds: side === 'academic' ? current.academicProgramIds : [],
-      administrativeUnitId: side === 'non_academic' ? current.administrativeUnitId : ''
+      administrativeUnitId: ''
     }))
   }
 
   const setCollege = collegeId => setForm(current => ({
     ...current,
     collegeId,
-    academicProgramIds: current.academicProgramIds.filter(id =>
-      effectivePrograms.some(program => String(program.id) === String(id) && String(program.collegeId) === String(collegeId))
-    )
-  }))
-
-  const toggleProgram = id => setForm(current => ({
-    ...current,
-    academicProgramIds: current.academicProgramIds.includes(id)
-      ? current.academicProgramIds.filter(item => item !== id)
-      : [...current.academicProgramIds, id]
+    administrativeUnitId: ''
   }))
 
   const submit = async event => {
@@ -303,20 +237,25 @@ export default function OnboardPersonnelModal({
 
     const mergedOptions = {
       colleges: effectiveColleges,
-      academicPrograms: effectivePrograms,
+      academicPrograms: [],
       administrativeUnits: effectiveDepartments
     }
 
-    const placement = validatePersonnelPlacement({
-      group: form.personnelGroup,
-      side: form.organizationalSide,
-      classification: form.organizationalSide,
-      collegeId: form.collegeId,
-      academicProgramIds: form.academicProgramIds,
-      administrativeUnitId: form.administrativeUnitId
-    }, mergedOptions)
-
-    Object.assign(nextErrors, placement.errors)
+    if (!form.personnelGroup) {
+      nextErrors.personnelGroup = 'Select Teaching or Non-Teaching.'
+    } else {
+      const placement = validatePersonnelPlacement({
+        group: form.personnelGroup,
+        side: form.organizationalSide,
+        classification: form.organizationalSide,
+        collegeId: form.collegeId,
+        academicProgramIds: [],
+        departmentId: form.administrativeUnitId,
+        administrativeUnitId: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null,
+        requireDepartment: true
+      }, mergedOptions)
+      Object.assign(nextErrors, placement.errors)
+    }
 
     const masterDataValidation = validatePersonnelMasterData({
       facultyEngagement: form.facultyEngagement,
@@ -325,14 +264,6 @@ export default function OnboardPersonnelModal({
     Object.assign(nextErrors, masterDataValidation.errors)
     const employmentStartDateError = validateEmploymentStartDate(form.employmentStartDate, { required: true })
     if (employmentStartDateError) nextErrors.employmentStartDate = employmentStartDateError
-    if (hasEarlierService) {
-      const periodCheck = validateOnboardingPeriods(servicePeriods, form.employmentStartDate, form.facultyEngagement)
-      setServicePeriodErrors({ rows: periodCheck.rows, form: periodCheck.form })
-      if (!periodCheck.isValid) nextErrors.servicePeriods = periodCheck.form || 'Check the employment periods below.'
-    } else {
-      setServicePeriodErrors({ rows: {}, form: '' })
-    }
-
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length) return
     setSubmitting(true)
@@ -355,11 +286,8 @@ export default function OnboardPersonnelModal({
         organizational_side: form.organizationalSide,
         personnel_classification: form.organizationalSide,
         college_id: form.organizationalSide === 'academic' ? form.collegeId : null,
-        academic_program_ids: form.organizationalSide === 'academic' ? form.academicProgramIds : [],
-        department_id: form.organizationalSide === 'non_academic' ? form.administrativeUnitId : null,
-        ...(hasEarlierService
-          ? { service_history_periods: toPayloadSegments(normalizeOnboardingPeriods(servicePeriods, form.employmentStartDate, form.facultyEngagement)) }
-          : {})
+        academic_program_ids: [],
+        department_id: form.administrativeUnitId || null,
       })
 
       if (res && (res.data || res.temporary_password)) {
@@ -376,12 +304,12 @@ export default function OnboardPersonnelModal({
       } else if (apiError.code === 'INSTITUTIONAL_ID_ALREADY_EXISTS') {
         mappedErrors.institutionalId = 'This Institutional ID is already assigned to an account.'
       } else if (apiError.code === 'MISSING_ACADEMIC_AFFILIATION') {
-        mappedErrors.collegeId = 'Academic Personnel require a college and at least one program.'
-        mappedErrors.academicProgramIds = 'Select at least one academic program.'
+        mappedErrors.collegeId = 'Teaching personnel require a college and department.'
+        mappedErrors.departmentId = 'Select a department under the selected college.'
       } else if (apiError.code === 'INVALID_PROGRAM_AFFILIATION') {
         mappedErrors.academicProgramIds = 'Every Academic Program must belong to the selected College.'
       } else if (['MISSING_DEPARTMENT', 'INVALID_DEPARTMENT', 'MISSING_ADMINISTRATIVE_UNIT', 'INVALID_ADMINISTRATIVE_UNIT'].includes(apiError.code)) {
-        mappedErrors.administrativeUnitId = apiError.message || 'Select an active Department.'
+        mappedErrors.departmentId = apiError.message || 'Select an active Department.'
       } else if (apiError.code === 'INVALID_PERSONNEL_CLASSIFICATION') {
         mappedErrors.classificationPair = apiError.message || 'Invalid classification combination.'
       } else if (apiError.code === 'INVALID_FACULTY_ENGAGEMENT') {
@@ -392,25 +320,11 @@ export default function OnboardPersonnelModal({
         mappedErrors.employmentStartDate = apiError.message || 'Enter a valid employment start date.'
       } else if (apiError.code === 'CATALOG_CROSSOVER_REJECTED') {
         mappedErrors.currentRankTitle = apiError.message || 'Incompatible rank/title catalog.'
-      } else if (apiError.code === 'POSITION_OCCUPIED') {
-        const holder = apiError.current_holder
-        const placement = holder?.placement?.name || 'this organizational placement'
-        mappedErrors.positionTitle = 'Choose another job title.'
-        mappedErrors.general = `Department Secretary position is already occupied. ${holder?.name || 'Another active personnel member'} currently holds this position in ${placement}. Only one active personnel member may hold this position at a time.`
       } else if (apiError.code === 'VALIDATION_FAILED' && apiError.fields) {
         if (apiError.fields.institutional_email) mappedErrors.email = apiError.fields.institutional_email
         if (apiError.fields.institutional_id) mappedErrors.institutionalId = apiError.fields.institutional_id
         if (apiError.fields.name) mappedErrors.firstName = apiError.fields.name
         if (apiError.fields.employment_start_date) mappedErrors.employmentStartDate = apiError.fields.employment_start_date
-        if (apiError.fields.service_history_periods) {
-          const index = apiError.fields.service_history_period_index
-          if (Number.isInteger(index)) {
-            setServicePeriodErrors({ rows: { [index]: apiError.fields.service_history_periods }, form: '' })
-            mappedErrors.servicePeriods = 'Check the employment periods below.'
-          } else {
-            mappedErrors.servicePeriods = apiError.fields.service_history_periods
-          }
-        }
       } else {
         mappedErrors.general = apiError.message || error?.message || 'Personnel account was not created. Please retry or contact the system administrator.'
       }
@@ -447,7 +361,7 @@ export default function OnboardPersonnelModal({
     <>
       <div className={`fixed inset-0 bg-slate-900/50 z-50 transition-opacity ${credentialHook.isOpen || credentialHook.deliveryFault ? 'hidden' : ''}`} onClick={onClose} />
       <div className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 ${credentialHook.isOpen || credentialHook.deliveryFault ? 'hidden' : ''}`}>
-        <form onSubmit={submit} className="bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto font-sans">
+        <form onSubmit={submit} className="personnel-modal-scroll bg-white dark:bg-[#131e2e] rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto font-sans">
           {/* Header */}
           <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <div>
@@ -456,7 +370,7 @@ export default function OnboardPersonnelModal({
                 <span>Onboard Personnel Account</span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Create an authoritative Personnel profile with institutional placement and Plan E rank recommendation.
+                Create an authoritative Personnel profile with institutional placement and academic rank recommendation.
               </p>
             </div>
             <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition" aria-label="Close modal">
@@ -496,74 +410,29 @@ export default function OnboardPersonnelModal({
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-black uppercase tracking-wider text-[#064e2b] dark:text-emerald-400 flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5" />
-                <span>B. Employment Classification (Plans D1 &amp; D2)</span>
+                <span>B. Employment Classification</span>
               </h3>
               <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
                 Authoritative Master Data
               </span>
             </div>
 
-            {/* Personnel group and assignment type */}
-            <div className="grid sm:grid-cols-2 gap-4 pt-1 border-t border-emerald-200/40 dark:border-emerald-800/40">
+            {/* Personnel group determines the organizational assignment side. */}
+            <div className="grid gap-4 border-t border-emerald-200/40 pt-3 dark:border-emerald-800/40 sm:grid-cols-2">
               <fieldset className="space-y-1.5">
-                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Personnel Group</legend>
+                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Personnel Type (required)</legend>
                 <div className="flex gap-3">
                   <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="personnelGroup" checked={form.personnelGroup === 'faculty'} onChange={() => setPersonnelGroup('faculty')} />
-                    <span>Faculty</span>
+                    <span>Teaching</span>
                   </label>
                   <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
                     <input type="radio" name="personnelGroup" checked={form.personnelGroup === 'non_teaching_faculty'} onChange={() => setPersonnelGroup('non_teaching_faculty')} />
-                    <span>Non-Teaching Faculty</span>
+                    <span>Non-Teaching</span>
                   </label>
                 </div>
+                {errors.personnelGroup && <span role="alert" className="text-[11px] text-rose-600">{errors.personnelGroup}</span>}
               </fieldset>
-
-              <fieldset className="space-y-1.5">
-                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Assignment Type</legend>
-                <div className="flex gap-3">
-                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="organizationalSide" checked={form.organizationalSide === 'academic'} onChange={() => setOrganizationalSide('academic')} />
-                    <span>College</span>
-                  </label>
-                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="organizationalSide" checked={form.organizationalSide === 'non_academic'} onChange={() => setOrganizationalSide('non_academic')} />
-                    <span>Office / Unit</span>
-                  </label>
-                </div>
-              </fieldset>
-            </div>
-            {errors.classificationPair && <span className="text-xs text-rose-600 font-bold block">{errors.classificationPair}</span>}
-
-            {/* Engagement & Employment Status */}
-            <div className="grid sm:grid-cols-2 gap-4 pt-3 border-t border-emerald-200/40 dark:border-emerald-800/40">
-              <fieldset className="space-y-1.5">
-                <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Faculty Engagement (Workload)
-                </legend>
-                <div className="flex gap-3">
-                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="facultyEngagement"
-                      checked={form.facultyEngagement === 'full_time_faculty'}
-                      onChange={() => handleEngagementChange('full_time_faculty')}
-                    />
-                    <span>Full-time Faculty</span>
-                  </label>
-                  <label className="text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="facultyEngagement"
-                      checked={form.facultyEngagement === 'part_time_faculty'}
-                      onChange={() => handleEngagementChange('part_time_faculty')}
-                    />
-                    <span>Part-time Faculty</span>
-                  </label>
-                </div>
-                {errors.facultyEngagement && <span className="text-xs text-rose-600 font-bold block">{errors.facultyEngagement}</span>}
-              </fieldset>
-
               <fieldset className="space-y-1.5">
                 <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Employment Status (Tenure)
@@ -590,7 +459,11 @@ export default function OnboardPersonnelModal({
                 </div>
                 {errors.employmentStatus && <span className="text-xs text-rose-600 font-bold block">{errors.employmentStatus}</span>}
               </fieldset>
+            </div>
+            {errors.classificationPair && <span className="text-xs text-rose-600 font-bold block">{errors.classificationPair}</span>}
 
+            {/* Employment Start Date */}
+            <div className="border-t border-emerald-200/40 pt-3 dark:border-emerald-800/40">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 sm:col-span-2">
                 Employment Start Date <span className="text-rose-600" aria-hidden="true">*</span>
                 <input
@@ -606,45 +479,6 @@ export default function OnboardPersonnelModal({
                 {errors.employmentStartDate && <span className="mt-1 block text-xs font-bold text-rose-600">{errors.employmentStartDate}</span>}
               </label>
 
-              <fieldset className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:col-span-2">
-                <legend className="px-1 text-xs font-bold text-slate-700 dark:text-slate-300">Service History (Length of Service)</legend>
-                {!hasEarlierService && (
-                  <p className="text-[11px] leading-5 text-slate-600 dark:text-slate-300">
-                    Will be recorded as one ongoing <strong>{classificationLabel(onboardingCurrentType(form.facultyEngagement))}</strong> period from{' '}
-                    <strong>{form.employmentStartDate ? formatEmploymentStartDate(form.employmentStartDate) : 'the Employment Start Date'}</strong>.
-                    {onboardingCurrentType(form.facultyEngagement) === 'part_time' && ' Part-time service is not counted toward length of service.'}
-                  </p>
-                )}
-                <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={hasEarlierService}
-                    onChange={event => {
-                      const checked = event.target.checked
-                      setHasEarlierService(checked)
-                      setServicePeriodErrors({ rows: {}, form: '' })
-                      setErrors(prev => ({ ...prev, servicePeriods: null }))
-                      if (checked && servicePeriods.length === 0) setServicePeriods(initialOnboardingPeriods(form.employmentStartDate, form.facultyEngagement))
-                    }}
-                  />
-                  <span>This person had earlier periods at NDMU before the current appointment (e.g. part-time before becoming full-time, or a break in service).</span>
-                </label>
-                {hasEarlierService && (
-                  <>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">List periods from the first day at NDMU. The last one is the current appointment; only full-time periods are counted.</p>
-                    <ServicePeriodsEditor
-                      periods={normalizeOnboardingPeriods(servicePeriods, form.employmentStartDate, form.facultyEngagement)}
-                      onChange={setServicePeriods}
-                      rowErrors={servicePeriodErrors.rows}
-                      onboarding={{ startDate: form.employmentStartDate, currentType: onboardingCurrentType(form.facultyEngagement) }}
-                    />
-                  </>
-                )}
-                {(servicePeriodErrors.form || errors.servicePeriods) && (
-                  <p role="alert" className="text-xs font-bold text-rose-600">{servicePeriodErrors.form || errors.servicePeriods}</p>
-                )}
-              </fieldset>
             </div>
           </section>
 
@@ -655,7 +489,7 @@ export default function OnboardPersonnelModal({
               <span>C. Institutional Assignment</span>
             </h3>
 
-            {form.organizationalSide === 'academic' ? (
+            {form.personnelGroup === 'faculty' ? (
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   College
@@ -677,25 +511,15 @@ export default function OnboardPersonnelModal({
                   </select>
                   {errors.collegeId && <span className="text-rose-600 block mt-0.5 text-xs font-semibold">{errors.collegeId}</span>}
                 </label>
-                <fieldset className="space-y-1.5">
-                  <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">Academic Program Affiliations</legend>
-                  <div className="grid sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800">
-                    {programs.map(program => (
-                      <label key={program.id} className="text-xs font-medium flex items-center gap-2 p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer">
-                        <input type="checkbox" checked={form.academicProgramIds.includes(program.id)} onChange={() => toggleProgram(program.id)} className="rounded" />
-                        <span>{program.code ? `${program.code} — ` : ''}{program.name}</span>
-                      </label>
-                    ))}
-                    {programs.length === 0 && (
-                      <span className="text-xs text-slate-400 italic col-span-2 p-1">
-                        {form.collegeId ? 'No programs found for selected college.' : 'Select a college to view academic programs.'}
-                      </span>
-                    )}
-                  </div>
-                  {errors.academicProgramIds && <span className="text-xs text-rose-600 block mt-0.5 font-semibold">{errors.academicProgramIds}</span>}
-                </fieldset>
+                <DepartmentSelect
+                  departments={teachingDepartments}
+                  value={form.administrativeUnitId}
+                  onChange={id => update('administrativeUnitId', id)}
+                  disabled={!form.collegeId}
+                  error={errors.departmentId}
+                />
               </div>
-            ) : (
+            ) : form.personnelGroup === 'non_teaching_faculty' ? (
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Department
                 <select
@@ -705,32 +529,32 @@ export default function OnboardPersonnelModal({
                   className="mt-1 w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-medium"
                 >
                   <option value="">{masterData.loading ? 'Loading Departments...' : 'Select a Department'}</option>
-                  {effectiveDepartments.map(item => (
+                  {standaloneDepartments.map(item => (
                     <option key={item.id} value={item.id}>
                       {item.code ? `${item.code} — ` : ''}{item.name || item.unit_name}
                     </option>
                   ))}
                 </select>
-                {errors.administrativeUnitId && <span className="text-rose-600 block mt-0.5 text-xs font-semibold">{errors.administrativeUnitId}</span>}
+                {errors.departmentId && <span className="text-rose-600 block mt-0.5 text-xs font-semibold">{errors.departmentId}</span>}
               </label>
-            )}
+            ) : null}
 
-            {field('Position / Job Title (Appointment)', 'positionTitle', 'text', 'e.g. Instructor I, Assistant Dean')}
+            {field('Specific Job', 'positionTitle', 'text', 'e.g. Instructor, Assistant Dean')}
           </section>
 
           {/* Section D: Qualification & Academic Rank */}
           <section className="space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
               <GraduationCap className="w-3.5 h-3.5" />
-              <span>D. Educational Qualification &amp; Academic Rank (Plan E)</span>
+              <span>D. Educational Qualification &amp; Academic Rank</span>
             </h3>
 
-            {field('Educational Qualification Summary', 'qualificationSummary', 'text', 'e.g. MS in Computer Science (Ongoing PhD)')}
+            {field('Educational Qualifications (Completed and In Progress)', 'qualificationSummary', 'text', 'e.g. MS in Computer Science (completed); PhD in progress')}
 
-            <div className="space-y-1">
+            <div className="mt-3 space-y-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {form.facultyEngagement === 'part_time_faculty' ? 'Part-Time Faculty Title (Plan E Catalog)' : 'Current Academic Rank (Plan E Catalog)'}
+                  Current Academic Rank
                 </label>
                 {recommendation.isUserOverridden && form.currentRankTitle && (
                   <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded">
@@ -749,7 +573,7 @@ export default function OnboardPersonnelModal({
                 className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-xs font-medium"
               >
                 <option value="">
-                  {masterData.loading ? 'Loading Catalog...' : form.facultyEngagement === 'part_time_faculty' ? 'Select Part-Time Title' : 'Select Academic Rank'}
+                  {masterData.loading ? 'Loading Catalog...' : 'Select Academic Rank'}
                 </option>
                 {currentRankCatalog.map(rank => (
                   <option key={rank.code || rank.label} value={rank.label}>
@@ -759,7 +583,7 @@ export default function OnboardPersonnelModal({
               </select>
               {recommendation.status === 'loading' && (
                 <span className="text-[11px] text-slate-400 italic block mt-1">
-                  Resolving preferred recommendation from Plan E...
+                  Resolving preferred academic rank recommendation...
                 </span>
               )}
               {recommendation.status === 'resolved' && recommendation.recommendedLabel && (

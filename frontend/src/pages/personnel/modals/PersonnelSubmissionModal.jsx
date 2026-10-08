@@ -20,6 +20,7 @@ import PersonnelAchievementController from '../../../controllers/PersonnelAchiev
 import { confirmDialog } from '../../../components/ui/DialogProvider'
 import { CardHeading, StepProgress } from './AccomplishmentModalParts'
 import { NTP_ENTRY_CRITERIA, ntpCategoryLabel, ntpContractCode, ntpCriterionByCode, ntpDetailText, resolveNtpCriterion } from '../../../config/nonTeachingPortfolioSchema'
+import { useHelpGuide } from '../../../context/HelpGuideContext'
 
 // Helper component for required field labels (Clean Auto-filled badge when OCR populated)
 const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfidence = null }) => {
@@ -91,6 +92,7 @@ export default function PersonnelSubmissionModal({
   areaName = '',
   presentation = 'modal'
 }) {
+  const { openHelpGuide } = useHelpGuide()
   const lockedAreaCode = normalizeEntryArea(areaCode)
   const isPage = presentation === 'page'
   // Helper for Academic Year Infer
@@ -570,6 +572,7 @@ export default function PersonnelSubmissionModal({
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
+            {activeCriterion && <button type="button" onClick={() => openHelpGuide({ topicId: 'categories', categoryId: activeCriterion.group, subcategoryId: activeCriterion.code })} className="rounded-md px-1 py-1 text-xs font-bold text-emerald-900 underline underline-offset-2 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">What belongs here?</button>}
           </section>
 
               <section aria-labelledby="ntp-details-heading" className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">

@@ -315,17 +315,17 @@ describe('Personnel Evaluation Track — Plan D — Phase D1 Final Personnel Cla
       expect(formatPersonnelClassification({
         personnel_group: 'faculty',
         organizational_side: 'academic'
-      })).toBe('Faculty • Academic')
+      })).toBe('Teaching • Academic')
 
       expect(formatPersonnelClassification({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'academic'
-      })).toBe('Non-Teaching Faculty • Academic')
+      })).toBe('Non-Teaching • Academic')
 
       expect(formatPersonnelClassification({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'non_academic'
-      })).toBe('Non-Teaching Faculty • Non-Academic')
+      })).toBe('Non-Teaching • Non-Academic')
     })
   })
 

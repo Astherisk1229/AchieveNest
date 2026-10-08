@@ -35,6 +35,7 @@ final class EvaluationValidityService
     public const ELIGIBLE = 'ELIGIBLE';
     public const OUTSIDE_CYCLE = 'OUTSIDE_CYCLE';
     public const NEEDS_INFORMATION = 'NEEDS_INFORMATION';
+    public const PREVIOUSLY_FINALIZED = 'PREVIOUSLY_FINALIZED';
 
     /** Criterion (area.number) → validity type. Faculty A.1 is split by subcategory below. */
     private const FACULTY = [
@@ -147,7 +148,7 @@ final class EvaluationValidityService
      * Splits portfolio records into those copied into the snapshot and those kept only in the
      * permanent portfolio. A cycle without coverage dates keeps the previous behaviour (all copied).
      */
-    public function partition(array $records, ?array $period): array
+    public function partition(array $records, ?array $period, array $finalizedUsage = []): array
     {
         $coverage = $this->coverageForPeriod($period);
         $group = (string) ($period['personnel_group'] ?? 'FACULTY');
@@ -158,12 +159,67 @@ final class EvaluationValidityService
             $decision = $coverage === null
                 ? self::result(self::ELIGIBLE, null, 'This ranking period has no achievement coverage dates; included as before.')
                 : self::evaluate($record, $coverage, $group);
+            $accomplishmentId = (string) ($record['id'] ?? '');
+            $usedInFinalizedEvaluation = $accomplishmentId !== '' && array_key_exists($accomplishmentId, $finalizedUsage);
+            if ($usedInFinalizedEvaluation) {
+                $decision['previous_finalized_academic_year'] = $finalizedUsage[$accomplishmentId];
+                $decision['previously_finalized'] = true;
+            }
+            if ($usedInFinalizedEvaluation && ! self::isReusableEducationRecord($record, $group)) {
+                $decision = self::result(self::PREVIOUSLY_FINALIZED, $decision['validity_type'], 'This accomplishment was included in a finalized Personnel evaluation and cannot be reused.');
+                $decision['previous_finalized_academic_year'] = $finalizedUsage[$accomplishmentId];
+                $decision['previously_finalized'] = true;
+            }
             $decision['coverage'] = $coverage;
-            $decisions[(string) $record['id']] = $decision;
+            $decisions[$accomplishmentId] = $decision;
             if ($decision['eligible']) $eligible[] = $record;
-            else $excluded[] = ['id' => $record['id'], 'title' => $record['title'] ?? null, 'status' => $decision['status'], 'reason' => $decision['reason']];
+            else $excluded[] = ['id' => $record['id'] ?? null, 'title' => $record['title'] ?? null, 'status' => $decision['status'], 'reason' => $decision['reason']];
         }
         return ['coverage' => $coverage, 'applied' => $coverage !== null, 'eligible' => $eligible, 'excluded' => $excluded, 'decisions' => $decisions];
+    }
+
+    /** Canonical eligibility decision for a personnel member, including finalized evaluation history. */
+    public function partitionForPersonnel(array $records, ?array $period, string $personnelProfileId): array
+    {
+        return $this->partition($records, $period, $this->finalizedUsageFor($personnelProfileId));
+    }
+
+    /**
+     * Accomplishment use is derived from the immutable submitted evaluation items and completed
+     * evaluation state. Legacy time-based usage rows are deliberately not authoritative.
+     * @return array<string, string|null> accomplishment ID => finalized evaluation academic year
+     */
+    public function finalizedUsageFor(string $personnelProfileId): array
+    {
+        $personnelProfileId = trim($personnelProfileId);
+        if ($personnelProfileId === '') return [];
+
+        $db = $this->db();
+        $evaluations = $db->tableExists('public.personnel_evaluations') ? 'public.personnel_evaluations' : 'personnel_evaluations';
+        $items = $db->tableExists('public.personnel_evaluation_items') ? 'public.personnel_evaluation_items' : 'personnel_evaluation_items';
+        if (! $db->tableExists($evaluations) || ! $db->tableExists($items)
+            || ! $db->fieldExists('personnel_profile_id', $evaluations)
+            || ! $db->fieldExists('status', $evaluations)
+            || ! $db->fieldExists('academic_year', $evaluations)
+            || ! $db->fieldExists('evaluation_id', $items)
+            || ! $db->fieldExists('accomplishment_id', $items)) {
+            return [];
+        }
+
+        $rows = $db->table($items . ' pei')
+            ->select('pei.accomplishment_id, pe.academic_year')
+            ->join($evaluations . ' pe', 'pe.id = pei.evaluation_id', 'inner')
+            ->where('pe.personnel_profile_id', $personnelProfileId)
+            ->where('pe.status', 'completed')
+            ->where('pei.accomplishment_id IS NOT NULL', null, false)
+            ->get()->getResultArray();
+
+        $used = [];
+        foreach ($rows as $row) {
+            $id = (string) ($row['accomplishment_id'] ?? '');
+            if ($id !== '') $used[$id] = $row['academic_year'] ?? null;
+        }
+        return $used;
     }
 
     /** Coverage and group of the personnel member's currently open track, for portfolio status badges. */
@@ -177,7 +233,7 @@ final class EvaluationValidityService
             ->whereIn('status', ['OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'])
             ->orderBy('submission_open_at', 'DESC')->get()->getRowArray();
         $coverage = $period ? $this->coverageForPeriod($period) : null;
-        return $coverage === null ? null : ['coverage' => $coverage, 'personnel_group' => $group, 'evaluation_period_id' => $period['id']];
+        return $coverage === null ? null : ['coverage' => $coverage, 'personnel_group' => $group, 'evaluation_period_id' => $period['id'], 'period' => $period];
     }
 
     private function db(): BaseConnection
@@ -231,6 +287,13 @@ final class EvaluationValidityService
     private static function isNonTeaching(string $group): bool
     {
         return in_array(strtoupper(trim($group)), ['NON_TEACHING_FACULTY', 'NON-TEACHING FACULTY', 'NTF'], true);
+    }
+
+    public static function isReusableEducationRecord(array $record, string $group): bool
+    {
+        return ! self::isNonTeaching($group)
+            && (self::criterion($record['category_code'] ?? null) === 'A.1'
+                || self::criterion(self::metadata($record)['subcategory_code'] ?? null) === 'A.1');
     }
 
     private static function firstDate(mixed ...$values): ?string

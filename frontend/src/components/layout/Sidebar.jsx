@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import { PanelLeft, Search, X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { WORKSPACE_NAVIGATION } from '../../config/navigationCatalog'
@@ -47,11 +47,10 @@ export default function Sidebar({ currentUser, onCloseMobile, collapsed = false,
   const activeContext = normalizeRoleContext(authRoleContext || user?.active_role_context || user?.role)
   const workspace = WORKSPACE_NAVIGATION[activeContext] || WORKSPACE_NAVIGATION.personnel
   const WorkspaceIcon = workspace.icon
+  const isPersonnelPortal = activeContext === 'personnel'
+  const isCollapsed = collapsed
   const [searchTerm, setSearchTerm] = useState('')
-  const searchRef = useRef(null)
-
-  useEffect(() => { setSearchTerm('') }, [activeContext, collapsed])
-
+  useEffect(() => { setSearchTerm('') }, [activeContext, isCollapsed])
   const navItems = useMemo(() => user ? getAuthorizedNavigationForSession({ ...user, active_role_context: activeContext, assigned_roles: user.assigned_roles || [activeContext] }) : [], [user, activeContext])
   const filteredNavItems = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -60,46 +59,42 @@ export default function Sidebar({ currentUser, onCloseMobile, collapsed = false,
   const activeTab = searchParams.get('tab') || 'overview'
   const activeItem = useMemo(() => resolveActiveNavigationItem(navItems, location.pathname, activeTab), [navItems, location.pathname, activeTab])
 
-  return <aside className={`flex h-screen flex-col border-r border-slate-200 bg-white font-sans text-slate-900 shadow-[2px_0_14px_rgba(15,23,42,.035)] transition-[width] duration-200 dark:border-slate-800 dark:bg-[#101a28] dark:text-slate-100 ${collapsed ? 'w-64 md:w-[72px]' : 'w-64'}`} aria-label="Application navigation">
-    <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-slate-100 px-4 dark:border-slate-800">
-      <Link to="/" onClick={onCloseMobile} className={`group flex min-w-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${collapsed ? 'md:mx-auto' : ''}`} aria-label="AchieveNest home">
-        <span className="rounded-lg bg-white px-1.5 py-1 dark:bg-white"><span className={collapsed ? 'hidden md:block' : 'hidden'}><BrandLockup compact /></span><span className={collapsed ? 'md:hidden' : ''}><BrandLockup /></span></span>
+  return <aside className={`flex h-screen flex-col border-r border-slate-200 bg-white font-sans text-slate-900 shadow-[2px_0_14px_rgba(15,23,42,.035)] transition-[width] duration-200 dark:border-slate-800 dark:bg-[#101a28] dark:text-slate-100 ${isCollapsed ? 'w-64 md:w-[72px]' : 'w-64'}`} aria-label="Application navigation">
+    <header className={`flex h-[68px] shrink-0 items-center justify-between border-b border-slate-100 dark:border-slate-800 ${isCollapsed ? 'px-1' : 'px-4'}`}>
+      <Link to="/" onClick={onCloseMobile} className="group flex min-w-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600" aria-label="AchieveNest home">
+        <span className="rounded-lg bg-white px-1.5 py-1 dark:bg-white"><span className={isCollapsed ? 'hidden md:block' : 'hidden'}><BrandLockup compact /></span><span className={isCollapsed ? 'md:hidden' : ''}><BrandLockup subtitle={isPersonnelPortal ? '' : undefined} /></span></span>
       </Link>
-      <button ref={searchRef} type="button" onClick={onCloseMobile} className="grid h-11 w-11 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 md:hidden dark:hover:bg-slate-800" aria-label="Close navigation drawer"><X className="h-5 w-5" /></button>
+      <button type="button" onClick={onToggleCollapsed} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!isCollapsed} aria-controls="main-sidebar" className="hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-300 md:grid"><PanelLeft className="h-4 w-4" aria-hidden="true" /></button>
+      <button type="button" onClick={onCloseMobile} className="grid h-11 w-11 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 md:hidden dark:hover:bg-slate-800" aria-label="Close navigation drawer"><X className="h-5 w-5" aria-hidden="true" /></button>
     </header>
 
-    <div className={`shrink-0 px-3 pt-4 ${collapsed ? 'md:hidden' : ''}`}>
+    {!isPersonnelPortal && <div className={`shrink-0 px-3 pt-4 ${isCollapsed ? 'md:hidden' : ''}`}>
       <label className="relative block"><span className="sr-only">Search modules</span><Search className="pointer-events-none absolute left-3 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-slate-500" /><input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search modules..." className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-11 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-600/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400" />{searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-lg text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:hover:text-white" aria-label="Clear navigation search"><X className="h-4 w-4" /></button>}</label>
-    </div>
+    </div>}
 
-    <div className="mx-3 mt-4 shrink-0">
-      <CollapsedTooltip label={workspace.label} enabled={collapsed}><div tabIndex={collapsed ? 0 : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl bg-slate-50 text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-slate-900 dark:text-slate-100 ${collapsed ? 'px-3 md:justify-center md:px-0' : 'px-3'}`}>
+    {!isPersonnelPortal && <div className="mx-3 mt-4 shrink-0">
+      <CollapsedTooltip label={workspace.label} enabled={isCollapsed}><div tabIndex={isCollapsed ? 0 : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl bg-slate-50 text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-slate-900 dark:text-slate-100 ${isCollapsed ? 'px-3 md:justify-center md:px-0' : 'px-3'}`}>
         <WorkspaceIcon className="h-[19px] w-[19px] shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
-        <div className={`min-w-0 ${collapsed ? 'md:hidden' : ''}`}><span className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-600 dark:text-slate-400">Workspace</span><span className="block truncate text-xs font-bold">{workspace.label}</span></div>
+        <div className={`min-w-0 ${isCollapsed ? 'md:hidden' : ''}`}><span className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-600 dark:text-slate-400">Workspace</span><span className="block truncate text-xs font-bold">{workspace.label}</span></div>
       </div></CollapsedTooltip>
-    </div>
+    </div>}
 
     <nav aria-label={`${workspace.label} modules`} className="mt-3 min-h-0 flex-1 overflow-y-auto px-3 pb-4 [scrollbar-color:rgb(203_213_225)_transparent] [scrollbar-width:thin]">
-      {filteredNavItems.length === 0 ? <p className={`px-2 py-6 text-center text-xs font-medium text-slate-600 dark:text-slate-400 ${collapsed ? 'md:hidden' : ''}`}>No modules found</p> : filteredNavItems.map(item => {
+      {filteredNavItems.length === 0 ? <p className={`px-2 py-6 text-center text-xs font-medium text-slate-600 dark:text-slate-400 ${isCollapsed ? 'md:hidden' : ''}`}>No modules found</p> : filteredNavItems.map(item => {
         const Icon = item.icon
         const active = activeItem === item
         return <React.Fragment key={item.id || item.label}>
           <div className="my-0.5">
-            <CollapsedTooltip label={item.label} enabled={collapsed}><Link to={item.path} onClick={onCloseMobile} aria-label={collapsed ? item.label : undefined} aria-current={active ? 'page' : undefined} className={`relative flex min-h-11 w-full items-center gap-3 rounded-[10px] text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-950 ${collapsed ? 'px-3 md:justify-center md:px-0' : 'px-3'} ${active ? 'bg-emerald-50 text-emerald-950 dark:bg-emerald-950/55 dark:text-emerald-200' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white'}`}>
+            <CollapsedTooltip label={item.label} enabled={isCollapsed}><Link to={item.path} onClick={onCloseMobile} aria-label={isCollapsed ? item.label : undefined} aria-current={active ? 'page' : undefined} className={`relative flex min-h-11 w-full items-center gap-3 rounded-[10px] text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-950 ${isCollapsed ? 'px-3 md:justify-center md:px-0' : 'px-3'} ${active ? 'bg-emerald-50 text-emerald-950 dark:bg-emerald-950/55 dark:text-emerald-200' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white'}`}>
               {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-emerald-700 dark:bg-emerald-400" aria-hidden="true" />}
               <Icon className={`h-[19px] w-[19px] shrink-0 ${active ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`} aria-hidden="true" />
-              <span className={`min-w-0 leading-5 ${collapsed ? 'md:hidden' : ''}`}>{item.label}</span>
+              <span className={`min-w-0 leading-5 ${isCollapsed ? 'md:hidden' : ''}`}>{item.label}</span>
             </Link></CollapsedTooltip>
           </div>
         </React.Fragment>
       })}
     </nav>
 
-    {workspace.showOnboardingGuide && <div className={`shrink-0 px-3 pb-2 ${collapsed ? 'md:hidden' : ''}`}><AdminOnboardingGuideWidget currentUser={user} activeRoleContext={activeContext} /></div>}
-    <footer className="hidden shrink-0 border-t border-slate-100 p-3 md:block dark:border-slate-800">
-      <button type="button" onClick={onToggleCollapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} className={`flex min-h-11 w-full items-center rounded-[10px] text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white ${collapsed ? 'justify-center' : 'gap-2 px-3'}`}>
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <><ChevronLeft className="h-4 w-4" /><span>Collapse</span></>}
-      </button>
-    </footer>
+    {workspace.showOnboardingGuide && <div className={`shrink-0 px-3 pb-2 ${isCollapsed ? 'md:hidden' : ''}`}><AdminOnboardingGuideWidget currentUser={user} activeRoleContext={activeContext} /></div>}
   </aside>
 }

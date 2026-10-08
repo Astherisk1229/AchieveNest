@@ -223,9 +223,9 @@ Destination:
 
 Blocked when no College or eligible Personnel exists.
 
-Complete when every active College receiving Personnel submissions has one Department Secretary.
+Complete when every active College receiving Personnel submissions has one Dean.
 
-The stakeholder title Department Secretary is retained, but verification and assignment scope is College-based.
+The stakeholder title Dean is retained, but verification and assignment scope is College-based.
 
 ## 7. Progress Calculation
 
@@ -577,7 +577,7 @@ Add tests for:
 - Department Coordinator coverage;
 - Organization Moderator coverage;
 - College Dean coverage;
-- College-based Department Secretary coverage;
+- College-based Dean coverage;
 - user- and role-scoped preferences;
 - dismissal and rediscovery;
 - query-tab navigation;

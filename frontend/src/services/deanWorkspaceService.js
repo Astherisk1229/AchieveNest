@@ -29,6 +29,7 @@ export async function approveDeanReviewItem(evaluationId, itemId, note = '', awa
   return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/rate`, body))
 }
 export async function rejectDeanReviewItem(evaluationId, itemId, reason) { return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/verify`, { verification_status: 'ineligible', evaluator_remarks: reason })) }
+export async function saveDeanReviewItemRemarks(evaluationId, itemId, remarks) { return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/items/${encodeURIComponent(itemId)}/remarks`, { evaluator_remarks: remarks })) }
 export async function createDeanDeficiency(evaluationId, reason, evaluationItemId = '') {
   return unwrap(await apiClient.post(`/hr/evaluations/${encodeURIComponent(evaluationId)}/deficiencies`, {
     reason,

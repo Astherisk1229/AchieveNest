@@ -165,7 +165,7 @@ describe('Personnel Evaluation Track — Plan G — Phase G1: Reviewer Routing, 
   })
 
   // =========================================================================
-  // 3. Self-Review Prevention & Department Secretary Exclusion
+  // 3. Self-Review Prevention & Unassigned reviewer Exclusion
   // =========================================================================
   describe('3. Self-Review & Role Access Constraints', () => {
     it('strictly prohibits candidate from reviewing their own evaluation', () => {
@@ -178,6 +178,16 @@ describe('Personnel Evaluation Track — Plan G — Phase G1: Reviewer Routing, 
 
       const canAccess = PersonnelReviewerAssignmentService.canReviewerAccessEvaluation(actor, evaluation)
       expect(canAccess).toBe(false)
+    })
+
+    it('fails closed when Dean assignment or actor college scope is missing', () => {
+      const dean = { profile_id: 'USER-DEAN-CEAC', roles: ['dean'], assigned_college_id: 'COLLEGE-CEAC' }
+      const unscopedEvaluation = { personnel_profile_id: 'FAC-3', assigned_reviewer_role: REVIEWER_ROLES.DEAN, evaluator_college_id: null }
+      const unscopedDean = { profile_id: 'USER-DEAN-UNSCOPED', roles: ['dean'] }
+      const scopedEvaluation = { personnel_profile_id: 'FAC-4', assigned_reviewer_role: REVIEWER_ROLES.DEAN, evaluator_college_id: 'COLLEGE-CEAC' }
+
+      expect(PersonnelReviewerAssignmentService.canReviewerAccessEvaluation(dean, unscopedEvaluation)).toBe(false)
+      expect(PersonnelReviewerAssignmentService.canReviewerAccessEvaluation(unscopedDean, scopedEvaluation)).toBe(false)
     })
 
     it('selects alternate HR evaluator when candidate is an HR staff evaluator', () => {
@@ -194,8 +204,8 @@ describe('Personnel Evaluation Track — Plan G — Phase G1: Reviewer Routing, 
       expect(assignment.evaluator_profile_id).toBe('USER-HR-2') // Successfully picked alternate evaluator HR-2
     })
 
-    it('strictly denies Department Secretary access to evaluator queues', () => {
-      const actor = { profile_id: 'USER-DEP-SEC', roles: ['department_secretary'] }
+    it('strictly denies Unassigned reviewer access to evaluator queues', () => {
+      const actor = { profile_id: 'USER-DEP-UNASSIGNED', roles: ['unassigned_reviewer'] }
       const evaluation = {
         personnel_profile_id: 'USER-FACULTY-1',
         assigned_reviewer_role: REVIEWER_ROLES.DEAN,

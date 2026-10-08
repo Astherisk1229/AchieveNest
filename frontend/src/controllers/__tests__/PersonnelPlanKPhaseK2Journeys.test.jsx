@@ -154,10 +154,10 @@ describe('Personnel Evaluation Track — Plan K — Phase K2: Core End-to-End Pe
   // Section 4: Negative Authorization & Regression Baseline (Req 15–17)
   // =========================================================================
   describe('Negative Authorization & Plans A/B Regression Baseline', () => {
-    it('15. P-SEC (Department Secretary) is strictly denied evaluator access', () => {
-      expect(PLAN_K_PERSONAS.P_SEC.is_evaluator).toBe(false);
+    it('15. P-UNASSIGNED (Unassigned reviewer) is strictly denied evaluator access', () => {
+      expect(PLAN_K_PERSONAS.P_UNASSIGNED.is_evaluator).toBe(false);
       const isAuthorizedEvaluator = (persona) => persona.roles.includes('dean') || persona.roles.includes('hr_admin');
-      expect(isAuthorizedEvaluator(PLAN_K_PERSONAS.P_SEC)).toBe(false);
+      expect(isAuthorizedEvaluator(PLAN_K_PERSONAS.P_UNASSIGNED)).toBe(false);
     });
 
     it('16. Plan A upload/OCR regression: accomplishment persists without fabricated data', () => {

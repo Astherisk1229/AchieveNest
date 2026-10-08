@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import AwardCatalogController from '../../../controllers/AwardCatalogController'
 import AwardCatalogModel from '../../../models/AwardCatalogModel'
 import AwardCatalogRow from '../../../components/osad/AwardCatalogRow'
+import AwardCriteriaHierarchyEditor from '../../../components/osad/AwardCriteriaHierarchyEditor'
 
 function award(overrides = {}) {
   return new AwardCatalogModel({
@@ -64,6 +65,14 @@ describe('Awards Catalog Phase 2', () => {
     const html = renderToStaticMarkup(element)
     expect(html).toContain('<button')
     expect(html).toContain('aria-label="Open Campus Journalism Award"')
+  })
+
+  it('offers the progressive Category to Subcategory to optional Level editor from the existing award catalog row', () => {
+    const record = award().record
+    const html = renderToStaticMarkup(<AwardCriteriaHierarchyEditor award={record} onClose={() => {}} />)
+    expect(html).toContain('Manage Categories')
+    expect(html).toContain('Category → Subcategory → optional Levels')
+    expect(html).toContain('This hierarchy controls category, subcategory and level choices.')
   })
 
   it('contains no hard-coded version, year, ranking, or Top-N copy', async () => {

@@ -74,9 +74,9 @@ describe('Personnel Evaluation Track — Plan H — Phase H4: Final Lock, Histor
     roles: ['faculty']
   }
 
-  const secretaryActor = {
+  const unassignedActor = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const deanActor = {
@@ -474,13 +474,13 @@ describe('Personnel Evaluation Track — Plan H — Phase H4: Final Lock, Histor
       }).toThrow(/Access Denied \(403\)/i)
     })
 
-    it('6.4 denies department secretary from executing final lock (403)', () => {
+    it('6.4 denies unassigned reviewer from executing final lock (403)', () => {
       const snapshot = createPassedAdminSnapshot()
       expect(() => {
         PersonnelEvaluationFinalLockService.lockEvaluation({
           evaluationRecord: validFacultyRecord,
           snapshotData: snapshot,
-          actor: secretaryActor
+          actor: unassignedActor
         })
       }).toThrow(/Access Denied \(403\)/i)
     })

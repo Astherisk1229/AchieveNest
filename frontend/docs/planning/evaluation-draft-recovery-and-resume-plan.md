@@ -31,9 +31,9 @@
 | MODIFY | src/pages/hr-admin/HRDashboardPage.jsx | Mount HR draft status UI once at the evaluator portal level. |
 | MODIFY | src/pages/hr-admin/HREvaluationSubmissionsPage.jsx | Start, resume, pause, and complete HR drafts. |
 | MODIFY | src/pages/hr-admin/evaluation-submissions/evaluation/PortfolioEvaluationStudio.jsx | Capture and restore supported HR evaluation inputs. |
-| MODIFY | src/pages/personnel/department-secretary/DepSecDashboardPage.jsx | Mount Secretary recovery UI and coordinate resume routing. |
-| MODIFY | src/pages/personnel/department-secretary/DepSecEvaluatorWorkbench.jsx | Capture and restore Secretary workbench state. |
-| MODIFY | src/hooks/useDepSecVerification.js | Connect Secretary domain actions to draft lifecycle events. |
+| MODIFY | src/pages/personnel/department-secretary/DeanDashboardPage.jsx | Mount Secretary recovery UI and coordinate resume routing. |
+| MODIFY | src/pages/personnel/department-secretary/DeanEvaluatorWorkbench.jsx | Capture and restore Secretary workbench state. |
+| MODIFY | src/hooks/useDeanVerification.js | Connect Secretary domain actions to draft lifecycle events. |
 | MODIFY | src/pages/personnel/program-coordinator/CoordinatorDashboardPage.jsx | Mount Coordinator recovery UI and restore the workspace target. |
 | MODIFY | src/pages/personnel/program-coordinator/tabs/CoordinatorQueueTab.jsx | Guard attempts to open a second Student evaluation. |
 | MODIFY | src/hooks/useVerification.js | Connect Coordinator decisions to draft lifecycle events. |
@@ -50,7 +50,7 @@ Explicitly excluded:
 Implement a shared draft-recovery workflow for the three roles that evaluate or verify submissions:
 
 - HR Staff;
-- Department Secretary; and
+- Dean; and
 - Program Coordinator.
 
 If an evaluator refreshes the page, closes the browser, loses the session unexpectedly, or navigates away, AchieveNest preserves the latest draft and offers a safe way to resume it.
@@ -62,7 +62,7 @@ This phase uses browser local storage because the current frontend is local-stor
 | Role | Evaluation scope | Integration point |
 | :--- | :--- | :--- |
 | HR Staff | HR evaluation submissions and personnel cases routed directly to HR | HRDashboardPage and HREvaluationSubmissionsPage |
-| Department Secretary | Personnel submissions within the Secretary's assigned College | DepSecDashboardPage, DepSecEvaluatorWorkbench, and useDepSecVerification |
+| Dean | Personnel submissions within the Secretary's assigned College | DeanDashboardPage, DeanEvaluatorWorkbench, and useDeanVerification |
 | Program Coordinator | Student submissions from programs under the Coordinator's assigned Department | CoordinatorDashboardPage and useVerification |
 
 Organization Moderator and OSAD account-management screens are excluded. Organization Moderators manage events, attendance, and certificates; they do not verify achievements.
@@ -340,13 +340,13 @@ Integration:
 
 HRPersonnelDirectoryPage is not an evaluation workspace and should not independently own draft recovery.
 
-### Department Secretary
+### Dean
 
 Primary files:
 
-- src/pages/personnel/department-secretary/DepSecDashboardPage.jsx;
-- src/pages/personnel/department-secretary/DepSecEvaluatorWorkbench.jsx; and
-- src/hooks/useDepSecVerification.js.
+- src/pages/personnel/department-secretary/DeanDashboardPage.jsx;
+- src/pages/personnel/department-secretary/DeanEvaluatorWorkbench.jsx; and
+- src/hooks/useDeanVerification.js.
 
 Integration:
 
@@ -356,7 +356,7 @@ Integration:
 - restore the exact workbench target and active area; and
 - clear the draft only after the Secretary's final action succeeds.
 
-The existing code currently uses department-oriented identifiers in places. Draft identity must follow the approved College-based Department Secretary scope and should not deepen that terminology mismatch.
+The existing code currently uses department-oriented identifiers in places. Draft identity must follow the approved College-based Dean scope and should not deepen that terminology mismatch.
 
 ### Program Coordinator
 
@@ -452,7 +452,7 @@ Tasks:
 
 - [ ] Confirm all decisions in User Review Required.
 - [ ] Inventory editable HR evaluation state.
-- [ ] Inventory editable Department Secretary workbench state.
+- [ ] Inventory editable Dean workbench state.
 - [ ] Inventory editable Program Coordinator verification state.
 - [ ] Identify the canonical target ID and evaluator ID used by each role.
 - [ ] Document which final actions mean completion for each role.
@@ -532,13 +532,13 @@ Exit criteria:
 - HR passes all applicable acceptance tests.
 - No regression occurs in the evaluation queue or finalization flow.
 
-### Phase 4 — Department Secretary Integration
+### Phase 4 — Dean Integration
 
 **Goal:** Apply the proven shared workflow to College-based Personnel evaluation.
 
 Tasks:
 
-- [ ] Mount the banner in DepSecDashboardPage.
+- [ ] Mount the banner in DeanDashboardPage.
 - [ ] Guard target changes in the evaluation workbench.
 - [ ] Persist verified points, proof checks, remarks, active area, and selected evidence reference.
 - [ ] Restore the exact Personnel target and workbench area.
@@ -548,7 +548,7 @@ Tasks:
 
 Exit criteria:
 
-- Department Secretary recovery passes all applicable acceptance tests.
+- Dean recovery passes all applicable acceptance tests.
 - Draft identity does not depend on ambiguous department display names.
 
 ### Phase 5 — Program Coordinator Integration
@@ -642,7 +642,7 @@ If a test command is added or already available, run it separately. The build co
 
 ## 17. Manual Acceptance Tests
 
-Run every applicable scenario as HR Staff, Department Secretary, and Program Coordinator.
+Run every applicable scenario as HR Staff, Dean, and Program Coordinator.
 
 1. Enter partial scores and remarks, refresh, and restore the exact draft.
 2. Close and reopen the browser on the same device and resume.
@@ -662,7 +662,7 @@ Run every applicable scenario as HR Staff, Department Secretary, and Program Coo
 
 ## 18. Acceptance Criteria
 
-- Draft recovery works for HR Staff, Department Secretary, and Program Coordinator on the same browser and device.
+- Draft recovery works for HR Staff, Dean, and Program Coordinator on the same browser and device.
 - Draft ownership is enforced by evaluator ID and role.
 - Only one draft may be ACTIVE per evaluator in the current client.
 - Editable state is debounced and saved without noticeable typing lag.

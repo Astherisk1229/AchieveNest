@@ -73,16 +73,6 @@ class PersonnelPortfolioSubmissionController extends Controller
         );
     }
 
-    private function calculateEligibleAgainAcademicYear(string $academicYear, int $lockYears = 2): string
-    {
-        if (preg_match('/(\d{4})\s*-\s*(\d{4})/', $academicYear, $matches)) {
-            $start = (int) $matches[1] + $lockYears;
-            $end = (int) $matches[2] + $lockYears;
-            return "AY {$start}-{$end}";
-        }
-        return "AY " . (date('Y') + $lockYears) . "-" . (date('Y') + $lockYears + 1);
-    }
-
     private function getRootsTable($db): string
     {
         return $db->tableExists('public.personnel_evaluation_roots') ? 'public.personnel_evaluation_roots' : 'personnel_evaluation_roots';
@@ -479,7 +469,21 @@ class PersonnelPortfolioSubmissionController extends Controller
             ], 422);
         }
 
-        // Load evidence attachments for all accomplishments
+        // Resolve the canonical cycle set first. Proof and structure requirements apply to
+        // records that will be snapshotted, while excluded repository records remain untouched.
+        $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partitionForPersonnel($accomplishments, $period, $personnelProfileId);
+        if ($cycleValidity['eligible'] === []) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
+                    'message' => 'None of your accomplishments are valid for this ranking period\'s achievement coverage. Your records remain in your portfolio.',
+                    'excluded_items' => $cycleValidity['excluded'],
+                ],
+            ], 422);
+        }
+        $accomplishments = $cycleValidity['eligible'];
+
+        // Load evidence attachments only for records included in the submission snapshot.
         $accIds = array_column($accomplishments, 'id');
         $evidenceMap = [];
         if (! empty($accIds)) {
@@ -534,20 +538,6 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'items' => $incompleteDrafts,
             ]], 422);
         }
-
-        // Ranking-cycle eligibility gate: only records valid for this cycle are copied into the snapshot.
-        // Excluded records stay in the permanent portfolio untouched.
-        $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partition($accomplishments, $period);
-        if ($cycleValidity['eligible'] === []) {
-            return $this->respond([
-                'error' => [
-                    'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
-                    'message' => 'None of your accomplishments are valid for this ranking period\'s achievement coverage. Your records remain in your portfolio.',
-                    'excluded_items' => $cycleValidity['excluded'],
-                ],
-            ], 422);
-        }
-        $accomplishments = $cycleValidity['eligible'];
 
         $now = date('Y-m-d H:i:s');
         $rootId = $this->genUuid();
@@ -669,6 +659,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                 if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
                 $metadata = is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? []);
                 $criterionSnapshot = (new \App\Services\LockedCriterionResolverService())->resolve($criteriaSnapshot, $criterionCode, $metadata + ['scope_level' => $acc['scope_level'] ?? null, 'organizer' => $acc['organizer_or_publisher'] ?? null]);
+                $criterionSnapshot = (new \App\Services\EvaluationCriterionRemarkService())->snapshot($criterionSnapshot);
 
                 $itemData = [
                     'id'                  => $this->genUuid(),
@@ -714,21 +705,6 @@ class PersonnelPortfolioSubmissionController extends Controller
 
                 $db->table($itemsTable)->insert($this->existingFieldsOnly($db, $itemsTable, $itemData));
 
-                // Package D: Record achievement usage and 2-year reuse lock
-                if ($db->tableExists('personnel_achievement_usage')) {
-                    $eligibleAgainAY = $this->calculateEligibleAgainAcademicYear($academicYear, 2);
-                    $db->table('personnel_achievement_usage')->ignore(true)->insert([
-                        'id'                           => $this->genUuid(),
-                        'achievement_id'               => $acc['id'],
-                        'personnel_profile_id'         => $personnelProfileId,
-                        'portfolio_submission_id'      => $evaluationId,
-                        'academic_year'                => $academicYear,
-                        'used_at'                      => $now,
-                        'reuse_lock_years'             => 2,
-                        'eligible_again_academic_year' => $eligibleAgainAY,
-                        'created_at'                   => $now,
-                    ]);
-                }
             }
 
             // Non-Teaching Faculty: Area A comes from the confirmed NTF annual-review workbook as locked items.
@@ -920,7 +896,24 @@ class PersonnelPortfolioSubmissionController extends Controller
             ], 422);
         }
 
-        // 3. Load evidence attachments for all accomplishments
+        $academicYear = $latestSubmission['academic_year'] ?? '2025-2026';
+        $resolvedCycleId = $existingRoot['evaluation_cycle_id'] ?? $latestSubmission['evaluation_cycle_id'] ?? $academicYear;
+        $resolvedPeriodId = $existingRoot['evaluation_period_id'] ?? $latestSubmission['evaluation_period_id'] ?? null;
+        $periodSnapshot = $resolvedPeriodId ? $db->table('personnel_evaluation_periods')->where('id', $resolvedPeriodId)->get()->getRowArray() : null;
+        // The revised snapshot uses the same canonical eligible set as the live booklet preview.
+        $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partitionForPersonnel($accomplishments, $periodSnapshot, $personnelProfileId);
+        if ($cycleValidity['eligible'] === []) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
+                    'message' => 'None of your accomplishments are valid for this ranking period\'s achievement coverage. Your records remain in your portfolio.',
+                    'excluded_items' => $cycleValidity['excluded'],
+                ],
+            ], 422);
+        }
+        $accomplishments = $cycleValidity['eligible'];
+
+        // 3. Load evidence attachments only for records in the new immutable version.
         $accIds = array_column($accomplishments, 'id');
         $evidenceMap = [];
         if (! empty($accIds)) {
@@ -960,24 +953,7 @@ class PersonnelPortfolioSubmissionController extends Controller
         $newEvaluationId = $this->genUuid();
         $previousVersionNumber = (int) ($latestSubmission['version_number'] ?? 1);
         $newVersionNumber = $previousVersionNumber + 1;
-        $academicYear = $latestSubmission['academic_year'] ?? '2025-2026';
         $tenureYears = (int) ($latestSubmission['tenure_years'] ?? 0);
-        $resolvedCycleId = $existingRoot['evaluation_cycle_id'] ?? $latestSubmission['evaluation_cycle_id'] ?? $academicYear;
-        $resolvedPeriodId = $existingRoot['evaluation_period_id'] ?? $latestSubmission['evaluation_period_id'] ?? null;
-        $periodSnapshot = $resolvedPeriodId ? $db->table('personnel_evaluation_periods')->where('id', $resolvedPeriodId)->get()->getRowArray() : null;
-        // Ranking-cycle eligibility gate: only records valid for this cycle are copied into the snapshot.
-        // Excluded records stay in the permanent portfolio untouched.
-        $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partition($accomplishments, $periodSnapshot);
-        if ($cycleValidity['eligible'] === []) {
-            return $this->respond([
-                'error' => [
-                    'code' => 'NO_ELIGIBLE_ACCOMPLISHMENTS',
-                    'message' => 'None of your accomplishments are valid for this ranking period\'s achievement coverage. Your records remain in your portfolio.',
-                    'excluded_items' => $cycleValidity['excluded'],
-                ],
-            ], 422);
-        }
-        $accomplishments = $cycleValidity['eligible'];
 
         $rootId = $existingRoot['id'] ?? $latestSubmission['evaluation_root_id'] ?? null;
         try {
@@ -1073,6 +1049,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                 if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
                 $metadata = is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? []);
                 $criterionSnapshot = (new \App\Services\LockedCriterionResolverService())->resolve($resubmissionCriteria, $criterionCode, $metadata + ['scope_level' => $acc['scope_level'] ?? null, 'organizer' => $acc['organizer_or_publisher'] ?? null]);
+                $criterionSnapshot = (new \App\Services\EvaluationCriterionRemarkService())->snapshot($criterionSnapshot);
 
                 $itemData = [
                     'id'                  => $this->genUuid(),
@@ -1118,21 +1095,6 @@ class PersonnelPortfolioSubmissionController extends Controller
 
                 $db->table($itemsTable)->insert($this->existingFieldsOnly($db, $itemsTable, $itemData));
 
-                // Package D: Record achievement usage and 2-year reuse lock for resubmission
-                if ($db->tableExists('personnel_achievement_usage')) {
-                    $eligibleAgainAY = $this->calculateEligibleAgainAcademicYear($academicYear, 2);
-                    $db->table('personnel_achievement_usage')->ignore(true)->insert([
-                        'id'                           => $this->genUuid(),
-                        'achievement_id'               => $acc['id'],
-                        'personnel_profile_id'         => $personnelProfileId,
-                        'portfolio_submission_id'      => $newEvaluationId,
-                        'academic_year'                => $academicYear,
-                        'used_at'                      => $now,
-                        'reuse_lock_years'             => 2,
-                        'eligible_again_academic_year' => $eligibleAgainAY,
-                        'created_at'                   => $now,
-                    ]);
-                }
             }
 
             // Non-Teaching Faculty: Area A comes from the confirmed NTF annual-review workbook as locked items.
@@ -1212,9 +1174,30 @@ class PersonnelPortfolioSubmissionController extends Controller
 
     /**
      * GET /api/v1/personnel/portfolio/submissions/history
-     * Plan C — Phase C4 & C5: Multi-Version Submission History sourced from the Evaluation Root.
-     * Returns chronological audit history of all submitted versions for the cycle.
+     * Plan C — Phase C4 & C5: versioned submission snapshots across all evaluation cycles.
+     * Returns chronological audit history without limiting the owner to the newest root.
      */
+    private function loadSubmissionHistoryRows(object $db, string $evalsTable, string $personnelProfileId): array
+    {
+        $builder = $db->table($evalsTable)->where('personnel_profile_id', $personnelProfileId);
+        if ($db->fieldExists('submitted_at', $evalsTable)) {
+            $builder->orderBy('submitted_at', 'ASC');
+        } elseif ($db->fieldExists('created_at', $evalsTable)) {
+            $builder->orderBy('created_at', 'ASC');
+        }
+        if ($db->fieldExists('evaluation_root_id', $evalsTable)) {
+            $builder->orderBy('evaluation_root_id', 'ASC');
+        }
+        if ($db->fieldExists('version_number', $evalsTable)) {
+            $builder->orderBy('version_number', 'ASC');
+        }
+        if ($db->fieldExists('created_at', $evalsTable)) {
+            $builder->orderBy('created_at', 'ASC');
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
     public function getHistory(): mixed
     {
         try {
@@ -1241,42 +1224,9 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
 
             $db = db_connect();
-            $rootsTable = $this->getRootsTable($db);
             $evalsTable = $this->getEvaluationsTable($db);
             $itemsTable = $this->getItemsTable($db);
-
-            $submissions = [];
-            $root = null;
-
-            if ($db->tableExists($rootsTable)) {
-                $root = $db->table($rootsTable)
-                    ->where('personnel_profile_id', $targetProfileId)
-                    ->orderBy('created_at', 'DESC')
-                    ->get()
-                    ->getRowArray();
-
-                if ($root !== null && $db->fieldExists('evaluation_root_id', $evalsTable)) {
-                    $builder = $db->table($evalsTable)->where('evaluation_root_id', $root['id']);
-                    if ($db->fieldExists('version_number', $evalsTable)) {
-                        $builder->orderBy('version_number', 'ASC');
-                    } elseif ($db->fieldExists('submitted_at', $evalsTable)) {
-                        $builder->orderBy('submitted_at', 'ASC');
-                    } else {
-                        $builder->orderBy('created_at', 'ASC');
-                    }
-                    $submissions = $builder->get()->getResultArray();
-                }
-            }
-
-            if (empty($submissions)) {
-                $builder = $db->table($evalsTable)->where('personnel_profile_id', $targetProfileId);
-                if ($db->fieldExists('submitted_at', $evalsTable)) {
-                    $builder->orderBy('submitted_at', 'ASC');
-                } else {
-                    $builder->orderBy('created_at', 'ASC');
-                }
-                $submissions = $builder->get()->getResultArray();
-            }
+            $submissions = $this->loadSubmissionHistoryRows($db, $evalsTable, (string) $targetProfileId);
 
             if (empty($submissions)) {
                 return $this->respond([
@@ -1350,7 +1300,7 @@ class PersonnelPortfolioSubmissionController extends Controller
 
                 $versionList[] = [
                     'id'                  => $sub['id'],
-                    'evaluation_root_id'  => $sub['evaluation_root_id'] ?? ($root['id'] ?? null),
+                    'evaluation_root_id'  => $sub['evaluation_root_id'] ?? null,
                     'version_number'      => $vNum,
                     'status'              => $sub['status'] ?? 'submitted',
                     'academic_year'       => $sub['academic_year'] ?? '2025-2026',
@@ -1365,7 +1315,7 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
 
             $latestVersionNum = end($versionList)['version_number'] ?? 1;
-            $rootId = $root['id'] ?? ($submissions[0]['evaluation_root_id'] ?? null);
+            $rootId = $submissions[array_key_last($submissions)]['evaluation_root_id'] ?? null;
 
             return $this->respond([
                 'data' => [

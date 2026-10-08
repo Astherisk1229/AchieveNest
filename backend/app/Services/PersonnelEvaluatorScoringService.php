@@ -15,7 +15,7 @@ use InvalidArgumentException;
  * Core Governance Rules:
  * 1. Plan G controls who evaluates and records accepted points; Plan F controls caps, formulas, and totals.
  * 2. Only the assigned reviewer may submit official accepted values.
- * 3. Self-review, cross-college reviews, and Department Secretary evaluations are strictly prohibited.
+ * 3. Self-review and cross-college reviews are strictly prohibited.
  * 4. Deterministic Plan F items cannot be arbitrarily overridden.
  * 5. Judgment criteria enforce scale-specific maximums (Admin B.3: 40, B.6: 20, Non-Teaching B.5: 30).
  * 6. Null (unresolved) and 0.0 (explicitly zero) are strictly differentiated.
@@ -76,11 +76,6 @@ class PersonnelEvaluatorScoringService
         $actorRoles = isset($reviewerActor['roles']) && is_array($reviewerActor['roles'])
             ? $reviewerActor['roles']
             : (isset($reviewerActor['role']) ? [$reviewerActor['role']] : []);
-
-        // 2. Department Secretary Prohibition
-        if (in_array('department_secretary', $actorRoles, true) && !in_array('dean', $actorRoles, true) && !in_array('hr_staff', $actorRoles, true) && !in_array('hr_admin', $actorRoles, true)) {
-            throw new RuntimeException('Access Denied (403): Department Secretary role does not possess evaluator authority.', 403);
-        }
 
         // 3. Evaluation Status Check
         $status = strtolower(trim((string) ($evaluationRecord['evaluation_status'] ?? $evaluationRecord['status'] ?? 'submitted')));

@@ -8,7 +8,7 @@ import { NTP_OTHER_KEY, normalizeNonTeachingBookletItems } from '../../utils/non
  * — the personnel view, the Dean / HR review view and the printed PDF — is identical.
  */
 
-const ENGAGEMENT_LABELS = { full_time_faculty: 'Full-Time', part_time_faculty: 'Part-Time' }
+const ENGAGEMENT_LABELS = { full_time_faculty: 'Full-Time' }
 const titleCase = (value) => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 const formatSchoolYear = (value) => String(value || '').replace(/^\s*(AY|A\.Y\.|S\.?Y\.?)\s*/i, '')
 
@@ -22,8 +22,8 @@ const nameOf = (user = {}, portfolio = {}) => user.full_name || portfolio.person
 
 export const FACULTY_BOOKLET_FORMAT = Object.freeze({
   id: 'faculty_academic',
-  documentTitle: 'FACULTY PORTFOLIO',
-  viewerTitle: 'Faculty Academic Portfolio',
+  documentTitle: 'FACULTY DEVELOPMENT PROGRAM',
+  viewerTitle: 'Faculty Development Program Portfolio',
   areas: [
     { key: 'A', title: 'A. PROFESSIONAL DEVELOPMENT' },
     { key: 'B', title: 'B. PRODUCTIVITY AND CREATIVE WORK' },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { CheckCircle2, AlertCircle, HelpCircle, ChevronRight, MessageSquare, ExternalLink, FileText, ShieldAlert, Check } from 'lucide-react'
+import { CheckCircle2, AlertCircle, HelpCircle, ChevronRight, ExternalLink, FileText, ShieldAlert, Check } from 'lucide-react'
 import {
   NDMU_PERSONNEL_RATING_RULES,
   SOURCE_CONFIDENCE,
@@ -13,12 +13,14 @@ import MultiFactorControl from '../../evaluation/rating/scoring/MultiFactorContr
 import MatrixLookupControl from '../../evaluation/rating/scoring/MatrixLookupControl'
 import ManualBoundedControl from '../../evaluation/rating/scoring/ManualBoundedControl'
 import AutomaticDerivedControl from '../../evaluation/rating/scoring/AutomaticDerivedControl'
+import { getEvaluationCriterionContext } from '../../../../../utils/evaluationCriterionContext'
 
 export default function CriterionEvaluation({
   selectedEvidence,
   onVerifyAndNext,
   onVerify,
   onReject,
+  onRemarksChange,
   hasNextItem = false,
   workspaceMode = 'split',
   onWorkspaceModeChange,
@@ -27,7 +29,8 @@ export default function CriterionEvaluation({
   const [scoringPayload, setScoringPayload] = useState({})
   const [calculatedPoints, setCalculatedPoints] = useState(0)
   const [remarks, setRemarks] = useState('')
-  const [showRemarks, setShowRemarks] = useState(false)
+  const [savingDecision, setSavingDecision] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [a1Mode, setA1Mode] = useState('phd_degree') // for A.1 qualification switcher
 
   // Resolve authoritative criterion rule config
@@ -61,7 +64,9 @@ export default function CriterionEvaluation({
     if (selectedEvidence) {
       const initPayload = selectedEvidence.scoringPayload || selectedEvidence.scoring_payload || {}
       setScoringPayload(initPayload)
-      setRemarks(selectedEvidence.evaluatorRemarks || selectedEvidence.evaluator_remarks || '')
+      const criterionContext = getEvaluationCriterionContext(selectedEvidence)
+      setRemarks(selectedEvidence.evaluatorRemarks || selectedEvidence.evaluator_remarks || criterionContext.generatedRemark)
+      setActionError('')
       
       const code = ruleConfig?.code || 'A.1'
       const mode = ruleConfig?.criterionRule?.scoringMode || SCORING_MODES.SINGLE_CATEGORY
@@ -94,6 +99,7 @@ export default function CriterionEvaluation({
   const scoringMode = criterionRule?.scoringMode || SCORING_MODES.SINGLE_CATEGORY
   const confidence = criterionRule?.sourceConfidence || SOURCE_CONFIDENCE.EXPLICIT
   const maxPoints = criterionRule?.maxPoints || 40
+  const criterionContext = getEvaluationCriterionContext(selectedEvidence)
 
   const handlePayloadChange = (newPayload, pts) => {
     setScoringPayload(newPayload)
@@ -114,25 +120,22 @@ export default function CriterionEvaluation({
 
   const isManual = scoringMode === SCORING_MODES.MANUAL_BOUNDED
   const manualJustification = scoringPayload.justification || scoringPayload.manualJustification || ''
-  const isConfirmDisabled = isManual && (manualJustification.trim().length < 10 || calculatedPoints < 0)
+  const isConfirmDisabled = savingDecision || (isManual && (manualJustification.trim().length < 10 || calculatedPoints < 0))
 
-  const handleConfirmCurrent = () => {
-    if (onVerify) {
-      onVerify(selectedEvidence.id, calculatedPoints, scoringPayload, remarks)
-    }
+  const saveDecision = async callback => {
+    if (!callback) return
+    setActionError('')
+    setSavingDecision(true)
+    try { await callback() }
+    catch (error) { setActionError(error?.response?.data?.error?.message || error?.error?.message || error?.message || 'The evaluation decision could not be saved. Try again.') }
+    finally { setSavingDecision(false) }
   }
 
-  const handleConfirmNextCurrent = () => {
-    if (onVerifyAndNext) {
-      onVerifyAndNext(selectedEvidence.id, calculatedPoints, scoringPayload, remarks)
-    }
-  }
+  const handleConfirmCurrent = () => saveDecision(() => onVerify?.(selectedEvidence.id, calculatedPoints, scoringPayload, remarks))
 
-  const handleMarkIneligible = () => {
-    if (onReject) {
-      onReject(selectedEvidence.id, remarks)
-    }
-  }
+  const handleConfirmNextCurrent = () => saveDecision(() => onVerifyAndNext?.(selectedEvidence.id, calculatedPoints, scoringPayload, remarks))
+
+  const handleMarkIneligible = () => saveDecision(() => onReject?.(selectedEvidence.id, remarks))
 
   // Area A items of Non-Teaching Faculty come from the confirmed NTF annual-review workbook and are read-only.
   const lockedPayload = (() => { const raw = selectedEvidence.scoring_payload ?? selectedEvidence.scoringPayload; if (!raw) return {}; if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return {} } } return raw })()
@@ -372,39 +375,39 @@ export default function CriterionEvaluation({
 
           <button
             type="button"
+            disabled={savingDecision}
             onClick={handleMarkIneligible}
-            className="py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200 dark:border-rose-800"
+            className="py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 disabled:opacity-50 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200 dark:border-rose-800"
           >
             <AlertCircle className="w-4 h-4" />
             <span>Mark Evidence Ineligible</span>
           </button>
         </div>
 
-        {/* Contextual Evaluator Remarks */}
-        <div className="pt-2">
-          {!showRemarks ? (
-            <button
-              type="button"
-              onClick={() => setShowRemarks(true)}
-              className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-1 cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>+ Add Evaluator Item Remark</span>
-            </button>
-          ) : (
-            <div className="space-y-1.5 animate-in fade-in duration-150">
-              <label className="block text-[11px] font-bold text-slate-500">
-                Evaluator Item Remarks
-              </label>
-              <textarea
-                rows={2}
-                value={remarks}
-                onChange={e => setRemarks(e.target.value)}
-                placeholder="Optional verification/rating observation for this evidence item..."
-                className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43]"
-              />
-            </div>
-          )}
+        {/* This context is frozen on the submitted item. Editable remarks never drive scoring. */}
+        {actionError && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{actionError}</p>}
+        <div className="space-y-3 pt-2">
+          <dl className="grid grid-cols-2 gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-[11px] dark:border-emerald-900/50 dark:bg-emerald-950/20">
+            {[
+              ['Category', criterionContext.category],
+              ['Subcategory', criterionContext.subcategory],
+              ['Level', criterionContext.level],
+              ['Configured points', criterionContext.configuredPoints],
+              ['Category cut-off', criterionContext.categoryCutoff],
+              ['Criteria version ID', criterionContext.criteriaVersionId],
+            ].filter(([, value]) => value !== '').map(([label, value]) => <div key={label} className="min-w-0"><dt className="font-bold text-slate-500">{label}</dt><dd className="mt-0.5 truncate font-semibold text-slate-800 dark:text-slate-200">{value}{['Configured points', 'Category cut-off'].includes(label) ? ' pts' : ''}</dd></div>)}
+          </dl>
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-bold text-slate-500">Evaluator Item Remarks</label>
+            {criterionContext.generatedRemark && <p className="text-[11px] leading-5 text-slate-500">Initial suggestion from the locked criteria version. Edit freely; it does not change scoring.</p>}
+            <textarea
+              rows={3}
+              value={remarks}
+              onChange={e => { setRemarks(e.target.value); onRemarksChange?.(selectedEvidence.id, e.target.value) }}
+              placeholder="Add an evaluator observation for this evidence item..."
+              className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43]"
+            />
+          </div>
         </div>
       </div>
     </div>

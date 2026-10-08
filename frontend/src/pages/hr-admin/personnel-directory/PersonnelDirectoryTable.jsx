@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import PersonnelActionsMenu from './PersonnelActionsMenu'
 import { Select, SelectItem } from '../../../components/ui/select'
-import { isAcademicPersonnel, formatPersonnelClassification } from '../../../utils/personnelPlacement'
+import { isAcademicPersonnel, formatFacultyEngagement, formatPersonnelClassification } from '../../../utils/personnelPlacement'
 import { applyPersonnelFilters, NOT_RECORDED } from '../../../utils/personnelDirectoryFilters'
 
 // Normalized search string helper
@@ -76,6 +76,7 @@ export default function PersonnelDirectoryTable({
   onEditMasterData,
   onPromoteRank,
   onResetPassword,
+  onDeletePersonnel,
   onManageRole,
   showToast
 }) {
@@ -85,11 +86,9 @@ export default function PersonnelDirectoryTable({
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('ALL')
   const [sideFilter, setSideFilter] = useState('ALL')
-  const [engagementFilter, setEngagementFilter] = useState('ALL')
   const [employmentStatusFilter, setEmploymentStatusFilter] = useState('ALL')
   const [collegeFilter, setCollegeFilter] = useState('ALL')
   const [unitFilter, setUnitFilter] = useState('ALL')
-  const [roleFilter, setRoleFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
 
   const searchInputRef = useRef(null)
@@ -126,18 +125,16 @@ export default function PersonnelDirectoryTable({
   useEffect(() => {
     setCurrentPage(1)
     setActiveMenuId(null)
-  }, [search, groupFilter, sideFilter, engagementFilter, employmentStatusFilter, collegeFilter, unitFilter, roleFilter, statusFilter, sortColumn, sortDirection, rowsPerPage])
+  }, [search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection, rowsPerPage])
 
   useEffect(() => {
     if (revealRequestKey) {
       setSearch('')
       setGroupFilter('ALL')
       setSideFilter('ALL')
-      setEngagementFilter('ALL')
       setEmploymentStatusFilter('ALL')
       setCollegeFilter('ALL')
       setUnitFilter('ALL')
-      setRoleFilter('ALL')
       setStatusFilter('ALL')
       setCurrentPage(1)
     }
@@ -163,11 +160,9 @@ export default function PersonnelDirectoryTable({
     // 2–9. Structured filters (see utils/personnelDirectoryFilters.js)
     list = applyPersonnelFilters(list, {
       group: groupFilter,
-      engagement: engagementFilter,
       appointment: employmentStatusFilter,
       college: collegeFilter,
       department: unitFilter,
-      role: roleFilter,
       status: statusFilter
     })
     if (sideFilter !== 'ALL') {
@@ -198,7 +193,7 @@ export default function PersonnelDirectoryTable({
     })
 
     return list
-  }, [personnelList, search, groupFilter, sideFilter, engagementFilter, employmentStatusFilter, collegeFilter, unitFilter, roleFilter, statusFilter, sortColumn, sortDirection])
+  }, [personnelList, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection])
 
   const totalItems = filteredSortedList.length
   const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage))
@@ -237,20 +232,17 @@ export default function PersonnelDirectoryTable({
     setSearch('')
     setGroupFilter('ALL')
     setSideFilter('ALL')
-    setEngagementFilter('ALL')
     setEmploymentStatusFilter('ALL')
     setCollegeFilter('ALL')
     setUnitFilter('ALL')
-    setRoleFilter('ALL')
     setStatusFilter('ALL')
     setCurrentPage(1)
   }
 
   const hasActiveFilters = Boolean(
     search || groupFilter !== 'ALL' || sideFilter !== 'ALL' ||
-    engagementFilter !== 'ALL' || employmentStatusFilter !== 'ALL' ||
-    collegeFilter !== 'ALL' || unitFilter !== 'ALL' ||
-    roleFilter !== 'ALL' || statusFilter !== 'ALL'
+    employmentStatusFilter !== 'ALL' ||
+    collegeFilter !== 'ALL' || unitFilter !== 'ALL' || statusFilter !== 'ALL'
   )
 
   const renderStatusBadge = (statusStr = 'active') => {
@@ -335,21 +327,8 @@ export default function PersonnelDirectoryTable({
             triggerClassName="py-2 text-xs font-medium"
           >
             <SelectItem value="ALL">All Groups</SelectItem>
-            <SelectItem value="faculty">Faculty</SelectItem>
+            <SelectItem value="faculty">Teaching Faculty</SelectItem>
             <SelectItem value="non_teaching_faculty">Non-Teaching Faculty</SelectItem>
-          </Select>
-
-          {/* Employment type */}
-          <Select
-            value={engagementFilter}
-            onValueChange={setEngagementFilter}
-            ariaLabel="Filter by faculty engagement"
-            className="w-full"
-            triggerClassName="py-2 text-xs font-medium"
-          >
-            <SelectItem value="ALL">All Employment Types</SelectItem>
-            <SelectItem value="full_time_faculty">Full-time Faculty</SelectItem>
-            <SelectItem value="part_time_faculty">Part-time Faculty</SelectItem>
           </Select>
 
           {/* Appointment status */}
@@ -388,20 +367,6 @@ export default function PersonnelDirectoryTable({
           >
             <SelectItem value="ALL">All Departments</SelectItem>
             {departmentOptions.map(department => <SelectItem key={department.id} value={department.id}>{department.code ? `${department.code} — ` : ''}{department.name}</SelectItem>)}
-          </Select>
-
-          {/* Governance Role Filter */}
-          <Select
-            value={roleFilter}
-            onValueChange={setRoleFilter}
-            ariaLabel="Filter by governance role"
-            className="w-full"
-            triggerClassName="py-2 text-xs font-medium"
-          >
-            <SelectItem value="ALL">All Roles</SelectItem>
-            <SelectItem value="dean">Dean</SelectItem>
-            <SelectItem value="program_coordinator">Program Coordinator</SelectItem>
-            <SelectItem value="organization_moderator">Organization Moderator</SelectItem>
           </Select>
 
           {/* Status Filter */}
@@ -510,7 +475,7 @@ export default function PersonnelDirectoryTable({
                   const isNewlyCreated = p.id === newlyCreatedId
                   const isAcademic = isAcademicPersonnel(p)
 
-                  const engagementLabel = (p.faculty_engagement === 'part_time_faculty') ? 'Part-time Faculty' : 'Full-time Faculty'
+                  const engagementLabel = formatFacultyEngagement(p)
                   const employmentStatusLabel = (p.employment_status === 'probationary') ? 'Probationary' : 'Permanent'
 
                   return (
@@ -720,6 +685,7 @@ export default function PersonnelDirectoryTable({
             setActiveMenuId(null)
             if (typeof onResetPassword === 'function') onResetPassword(activePersonnel)
           }}
+          onDeletePersonnel={onDeletePersonnel ? () => onDeletePersonnel(activePersonnel) : undefined}
           onManageRole={(roleKey) => {
             setActiveMenuId(null)
             if (typeof onManageRole === 'function') onManageRole(activePersonnel, roleKey)

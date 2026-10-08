@@ -52,9 +52,9 @@ describe('Personnel Evaluation Track — Plan H — Phase H1: Evaluation Result 
     roles: ['faculty']
   }
 
-  const secretaryActor = {
+  const unassignedActor = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const deanActor = {
@@ -545,13 +545,13 @@ describe('Personnel Evaluation Track — Plan H — Phase H1: Evaluation Result 
       }).toThrow(/Access Denied \(403\)/i)
     })
 
-    it('6.4 denies department secretary from recording result (403)', () => {
+    it('6.4 denies unassigned reviewer from recording result (403)', () => {
       const snapshot = createAdminSnapshotWithScore(35.0, 15.0, 30.0)
       expect(() => {
         PersonnelEvaluationResultPersistenceService.recordEvaluationResult({
           evaluationRecord: validAdminRecord,
           snapshotData: snapshot,
-          actor: secretaryActor
+          actor: unassignedActor
         })
       }).toThrow(/Access Denied \(403\)/i)
     })

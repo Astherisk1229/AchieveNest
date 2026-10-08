@@ -143,21 +143,21 @@ describe('Personnel Evaluation Track — Plan G — Phase G2: Evaluator Workspac
       expect(workspace.scale_context.is_non_teaching).toBe(true)
     })
 
-    it('strictly denies Department Secretary access to evaluator workspace', () => {
+    it('strictly denies Unassigned reviewer access to evaluator workspace', () => {
       const evaluation = {
         evaluation_id: 'EVAL-CEAC-01',
         personnel_profile_id: 'USER-FACULTY-1',
         assigned_reviewer_role: REVIEWER_ROLES.DEAN,
         evaluator_college_id: 'COLLEGE-CEAC'
       }
-      const secActor = {
-        profile_id: 'USER-DEP-SEC',
-        roles: ['department_secretary']
+      const unassignedActor = {
+        profile_id: 'USER-DEP-UNASSIGNED',
+        roles: ['unassigned_reviewer']
       }
 
       expect(() => {
-        PersonnelEvaluatorWorkspaceService.getEvaluationWorkspace(evaluation, secActor, sampleAdminSnapshot)
-      }).toThrow(/Department Secretary role does not possess evaluator authority/i)
+        PersonnelEvaluatorWorkspaceService.getEvaluationWorkspace(evaluation, unassignedActor, sampleAdminSnapshot)
+      }).toThrow(/actor does not hold the active dean role/i)
     })
 
     it('strictly denies Personnel candidate access to evaluator workspace for self-review', () => {

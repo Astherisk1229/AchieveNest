@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
-import PersonnelProfilePhotoService, {
-  MAX_PHOTO_SIZE_BYTES,
-  ALLOWED_PHOTO_EXTENSIONS,
-  ALLOWED_PHOTO_MIME_TYPES
-} from '../../../services/PersonnelProfilePhotoService'
+import PersonnelProfilePhotoService from '../../../services/PersonnelProfilePhotoService'
 import AchievementReuseEligibilityService from '../../../services/AchievementReuseEligibilityService'
 import apiClient from '../../../services/apiClient'
 
@@ -134,7 +130,7 @@ describe('AchieveNest — Personnel Portfolio Unified Remediation Test Suite', (
   })
 
   // =========================================================================
-  // PACKAGE C: Portfolio Gallery & Hero Banner Preservation
+  // PACKAGE C: Current evaluation Portfolio and immutable evaluation history
   // =========================================================================
   describe('PACKAGE C: Academic-Year Portfolio Gallery & Hero Banner', () => {
     it('preserves existing Portfolio hero banner layout, branding, and fetchPriority', () => {
@@ -144,8 +140,9 @@ describe('AchieveNest — Personnel Portfolio Unified Remediation Test Suite', (
       expect(content).toContain('AchieveNest')
       expect(content).toContain('heroGreenGrad')
       expect(content).toContain('PersonnelPortfolioGallery')
-      expect(content).toContain('Portfolio Booklet View')
-      expect(content).toContain('Manage Portfolio Draft')
+      expect(content).toContain('Current HR Evaluation')
+      expect(content).toContain('Review Before Submission')
+      expect(content).toContain('Submit Portfolio')
     })
 
     it('replaces résumé-like sections below the banner with PersonnelPortfolioGallery', () => {
@@ -156,59 +153,54 @@ describe('AchieveNest — Personnel Portfolio Unified Remediation Test Suite', (
       expect(content).toContain('<PersonnelPortfolioGallery')
     })
 
-    it('PersonnelPortfolioGallery defines academic-year filter tabs and card layouts', () => {
+    it('PersonnelPortfolioGallery presents real versioned submissions as evaluation history', () => {
       const galleryPath = path.resolve(__dirname, '../PersonnelPortfolioGallery.jsx')
       const content = fs.readFileSync(galleryPath, 'utf8')
-      expect(content).toContain("['ALL', 'DRAFT', 'SUBMITTED', 'FINALIZED']")
-      expect(content).toContain('Academic-Year Portfolios')
-      expect(content).toContain('No portfolio submissions yet')
-      expect(content).toContain('Continue Editing')
+      expect(content).toContain("['ALL', 'SUBMITTED', 'FINALIZED']")
+      expect(content).toContain('Evaluation History')
+      expect(content).toContain('No previous portfolio submissions yet')
+      expect(content).not.toContain('Continue Editing')
+      expect(content).not.toContain('Academic-Year Portfolios')
       expect(content).toContain('View Portfolio')
+      expect(content).toContain("String(snapshot.status || 'submitted').toLowerCase() !== 'draft'")
     })
   })
 
   // =========================================================================
-  // PACKAGE D: 2-Year Achievement Reuse Eligibility Rules
+  // Finalized evaluation usage is the authority for accomplishment reuse.
   // =========================================================================
-  describe('PACKAGE D: 2-Year Achievement Reuse Lock Calculations', () => {
-    it('calculates eligible_again_academic_year by adding 2 years to used academic year', () => {
-      expect(AchievementReuseEligibilityService.calculateEligibleAgainAcademicYear('AY 2025-2026', 2)).toBe('AY 2027-2028')
-      expect(AchievementReuseEligibilityService.calculateEligibleAgainAcademicYear('2024-2025', 2)).toBe('AY 2026-2027')
-      expect(AchievementReuseEligibilityService.calculateEligibleAgainAcademicYear('AY 2026-2027', 2)).toBe('AY 2028-2029')
-    })
-
-    it('locks achievement from reuse during the 2-year lock period', () => {
+  describe('Finalized evaluation reuse decisions', () => {
+    it('does not consume an item that was only submitted or returned', () => {
       const item = {
         id: 'acc-1',
-        title: 'CHED Regional Training on AI Curriculum',
+        title: 'Returned training',
         reuse: {
           last_used_academic_year: 'AY 2025-2026',
-          eligible_again_academic_year: 'AY 2027-2028'
+          eligible_again_academic_year: 'AY 2027-2028',
+          is_consumed: false
         }
       }
 
-      // During AY 2026-2027 -> Locked
-      const eval2026 = AchievementReuseEligibilityService.evaluateReuseEligibility(item, 'AY 2026-2027')
-      expect(eval2026.isEligible).toBe(false)
-      expect(eval2026.badgeType).toBe('locked')
-      expect(eval2026.statusLabel).toContain('Eligible Again: AY 2027-2028')
+      const result = AchievementReuseEligibilityService.evaluateReuseEligibility(item)
+      expect(result.isEligible).toBe(true)
+      expect(result.badgeType).toBe('eligible')
     })
 
-    it('automatically marks achievement eligible again after the 2-year lock period ends', () => {
+    it('blocks reuse only when backend reports use in a finalized evaluation', () => {
       const item = {
         id: 'acc-1',
-        title: 'CHED Regional Training on AI Curriculum',
+        title: 'Finalized publication',
         reuse: {
-          last_used_academic_year: 'AY 2025-2026',
-          eligible_again_academic_year: 'AY 2027-2028'
+          last_used_academic_year: '2023-2025',
+          eligible_again_academic_year: '2025-2027',
+          is_consumed: true
         }
       }
 
-      // During AY 2027-2028 -> Automatically Eligible
-      const eval2027 = AchievementReuseEligibilityService.evaluateReuseEligibility(item, 'AY 2027-2028')
-      expect(eval2027.isEligible).toBe(true)
-      expect(eval2027.badgeType).toBe('eligible_reuse')
-      expect(eval2027.statusLabel).toBe('Eligible for Reuse')
+      const result = AchievementReuseEligibilityService.evaluateReuseEligibility(item)
+      expect(result.isEligible).toBe(false)
+      expect(result.badgeType).toBe('locked')
+      expect(result.statusLabel).toContain('finalized evaluation')
     })
 
     it('marks unused achievements as immediately eligible for portfolio inclusion', () => {
@@ -217,7 +209,7 @@ describe('AchieveNest — Personnel Portfolio Unified Remediation Test Suite', (
         title: 'New Publication 2026'
       }
 
-      const evalFresh = AchievementReuseEligibilityService.evaluateReuseEligibility(freshItem, 'AY 2026-2027')
+      const evalFresh = AchievementReuseEligibilityService.evaluateReuseEligibility(freshItem)
       expect(evalFresh.isEligible).toBe(true)
       expect(evalFresh.badgeType).toBe('eligible')
     })

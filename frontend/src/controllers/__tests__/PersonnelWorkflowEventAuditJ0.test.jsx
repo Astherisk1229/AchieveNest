@@ -227,10 +227,10 @@ describe('Phase J0: Personnel Evaluation Workflow Event & Status Audit', () => {
         hr_admin: { can_view_audit_trail: true, scope: 'institutional' },
         dean: { can_view_audit_trail: true, scope: 'assigned_college' },
         faculty: { can_view_audit_trail: true, scope: 'own_submission_history_only' },
-        department_secretary: { can_view_audit_trail: false, scope: 'none' }
+        unassigned_reviewer: { can_view_audit_trail: false, scope: 'none' }
       };
       expect(accessRules.hr_admin.can_view_audit_trail).toBe(true);
-      expect(accessRules.department_secretary.can_view_audit_trail).toBe(false);
+      expect(accessRules.unassigned_reviewer.can_view_audit_trail).toBe(false);
     });
 
     it('24. explicitly records the unresolved audit-retention rule without guessing', () => {

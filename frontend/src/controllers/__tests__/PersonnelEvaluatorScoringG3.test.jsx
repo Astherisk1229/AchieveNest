@@ -47,9 +47,9 @@ describe('Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-
     roles: ['hr_staff']
   }
 
-  const departmentSecretary = {
+  const unassignedReviewer = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const candidateActor = {
@@ -162,17 +162,17 @@ describe('Personnel Evaluation Track — Plan G — Phase G3: Official Accepted-
       expect(result.area_raw_sums.B).toBe(45.0) // 20 (deterministic B.1) + 25 (B.5 accepted)
     })
 
-    it('denies Department Secretary from submitting evaluator points (403)', () => {
+    it('denies Unassigned reviewer from submitting evaluator points (403)', () => {
       const snapshot = createAdminSnapshot()
       expect(() => {
         PersonnelEvaluatorScoringService.submitAcceptedPoints({
           evaluationRecord: sampleAdminRecord,
-          reviewerActor: departmentSecretary,
+          reviewerActor: unassignedReviewer,
           snapshotData: snapshot,
           itemId: 'item_b3',
           acceptedPoints: 35.0
         })
-      }).toThrow(/Department Secretary role does not possess evaluator authority/i)
+      }).toThrow(/actor does not hold the active dean role/i)
     })
 
     it('denies self-review when candidate attempts to score own evaluation (403)', () => {

@@ -280,7 +280,6 @@ final class RankingCycleWorkspaceReadService
 
         return match (strtolower($responsibility)) {
             'dean' => ['key' => 'with_dean_for_evaluation', 'label' => 'With Dean for Evaluation'],
-            'department_head' => ['key' => 'with_department_head_for_evaluation', 'label' => 'With Department Head for Evaluation'],
             'hr' => ['key' => 'with_assigned_hr_for_evaluation', 'label' => 'With Assigned HR for Evaluation'],
             default => ['key' => 'with_assigned_reviewer', 'label' => 'With Assigned Reviewer'],
         };

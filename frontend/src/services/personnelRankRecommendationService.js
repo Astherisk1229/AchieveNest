@@ -1,17 +1,15 @@
 import apiClient from './apiClient'
 import { facultyInitialRankService } from './facultyInitialRankService'
-import { partTimeFacultyTitleService } from './partTimeFacultyTitleService'
 
 /**
  * Service for Personnel Qualification-Driven Preferred Rank/Title Recommendation (Plan D2 — Phase D2-2).
  *
  * Integrates with existing authoritative Plan E backend resolvers:
  * - Full-Time: POST /api/v1/faculty-ranks/resolve-initial (FacultyInitialRankService)
- * - Part-Time: POST /api/v1/faculty-titles/part-time/resolve (PartTimeFacultyTitleService)
  *
  * Enforces:
  * 1. Non-demotion / non-promotion safety (recommendation is advisory, not promotion).
- * 2. Strict Full-Time vs Part-Time catalog isolation.
+ * 2. Teaching faculty use the full-time academic rank catalog.
  * 3. Race-condition protection with request sequencing.
  * 4. Catalog validation of resolved recommendation against active master data.
  */
@@ -23,7 +21,7 @@ export const personnelRankRecommendationService = {
    *
    * @param {Object} params
    * @param {string} params.qualificationText - Free-text qualification summary (e.g. "MS in CS", "PhD in Education")
-   * @param {string} params.facultyEngagement - 'full_time_faculty' | 'part_time_faculty'
+   * @param {string} params.facultyEngagement - 'full_time_faculty'
    * @param {string} [params.personnelGroup] - 'faculty' | 'non_teaching_faculty'
    * @param {boolean} [params.licensureVerified] - Whether professional board licensure is verified
    * @param {Array} [params.activeCatalog] - Active catalog options to validate against
@@ -68,55 +66,7 @@ export const personnelRankRecommendationService = {
     }
 
     try {
-      if (facultyEngagement === 'part_time_faculty') {
-        // Part-Time Recommendation via Plan E Part-Time Title Resolver
-        const payload = {
-          qualification: trimmedQual,
-          is_verified: true,
-          verified: true,
-          faculty_engagement: 'part_time_faculty',
-          personnel_group: 'faculty',
-          board_passer: Boolean(licensureVerified)
-        }
-
-        let ptRes = null
-        try {
-          ptRes = await partTimeFacultyTitleService.resolveTitleFromQualification(payload)
-        } catch (apiErr) {
-          // Fallback to synchronous local Plan E logic if network fails
-        }
-        if (!ptRes || (!ptRes.resolved_title && !ptRes.resolved_title_code)) {
-          ptRes = partTimeFacultyTitleService.resolveTitleSync({
-            ...payload,
-            qualification_verified: true
-          })
-        }
-
-        const resolvedTitle = ptRes?.resolved_title || {}
-        const code = resolvedTitle.title_code || ptRes?.resolved_title_code || null
-        const label = resolvedTitle.display_label || ptRes?.resolved_title_name || (code ? partTimeFacultyTitleService.getTitleByCodeSync(code)?.label : null)
-        const isResolved = Boolean(code && label && (ptRes?.status === 'RESOLVED' || ptRes?.status === 'OK'))
-
-        // Catalog compatibility check
-        const isCompatible = Boolean(
-          isResolved &&
-          (!activeCatalog || activeCatalog.length === 0 || activeCatalog.some(c =>
-            (c.code && c.code.toLowerCase() === code.toLowerCase()) ||
-            (c.label && c.label.toLowerCase() === label.toLowerCase())
-          ))
-        )
-
-        return {
-          sequenceId: seqId,
-          status: isResolved ? 'resolved' : 'unresolved',
-          recommendedCode: code,
-          recommendedLabel: label,
-          reasonCode: ptRes?.reason_code || (isResolved ? 'part_time_qualification_mapped' : 'seed_rule_unresolved'),
-          message: ptRes?.message || (isResolved ? `Suggested Part-Time Title: ${label}` : 'No preferred title could be determined from the current qualification data.'),
-          source: 'plan_e',
-          isCompatibleWithCatalog: isCompatible
-        }
-      } else {
+      {
         // Full-Time Recommendation via Plan E Initial Rank Resolver
         const payload = {
           qualification: trimmedQual,

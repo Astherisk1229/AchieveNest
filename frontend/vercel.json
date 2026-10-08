@@ -12,7 +12,6 @@
     { "source": "/hr/:path*", "destination": "/index.html" },
     { "source": "/osad/:path*", "destination": "/index.html" },
     { "source": "/scanner/:path*", "destination": "/index.html" },
-    { "source": "/depsec", "destination": "/index.html" },
     { "source": "/coordinator", "destination": "/index.html" },
     { "source": "/org-moderator", "destination": "/index.html" },
     { "source": "/account", "destination": "/index.html" },

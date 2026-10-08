@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext'
 import { isPersonnelAreaEntryAllowed, usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { derivePersonnelPortfolioState, derivePersonnelSubmissionActionGate } from '../../utils/personnelPortfolioState'
 import PersonnelAchievementController from '../../controllers/PersonnelAchievementController'
+import PersonnelPortfolioController from '../../controllers/PersonnelPortfolioController'
 import personnelAccomplishmentService, { fetchCurrentEvaluationPeriod } from '../../services/personnelAccomplishmentService'
 import portfolioConfigurationService from '../../services/portfolioConfigurationService'
 import { getCurrentEligibility } from '../../services/personnelPortfolioService'
@@ -126,7 +127,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         }
         if (mounted) setEvaluationPeriod(periodRes?.period || periodRes?.data?.period || null)
         const period = periodRes?.period || periodRes?.data?.period
-        if (mounted && period?.id) setEligibility(await getCurrentEligibility(period.id))
+        if (mounted && period?.id && period.can_submit) setEligibility(await getCurrentEligibility(period.id))
       } catch (err) {
         console.warn('Could not load dynamic workspace configuration, using fallback rubric:', err.message)
       } finally {
@@ -310,18 +311,23 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   const handleSubmitPortfolio = async () => {
     setSubmitError('')
 
-    const allItems = [
+    const repositoryItems = [
       ...(portfolio?.area_a_items || []),
       ...(portfolio?.area_b_items || []),
       ...(portfolio?.area_c_items || [])
     ]
+    const submissionItems = [
+      ...(eligibleBookletPreview?.area_a_items || []),
+      ...(eligibleBookletPreview?.area_b_items || []),
+      ...(eligibleBookletPreview?.area_c_items || [])
+    ]
 
-    if (allItems.length === 0) {
+    if (repositoryItems.length === 0) {
       setSubmitError('Cannot submit an empty portfolio. Please add at least one accomplishment with proof.')
       return
     }
 
-    const missingProofItems = allItems.filter(i => !hasValidPersonnelEvidence(i))
+    const missingProofItems = submissionItems.filter(i => !hasValidPersonnelEvidence(i))
 
     if (missingProofItems.length > 0) {
       setSubmitError(`Validation Error: ${missingProofItems.length} accomplishment record(s) are missing documentary proof attachments. Please upload proof before submitting.`)
@@ -381,6 +387,10 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
   }).sort((a, b) => compareAccomplishments(a, b, sortOrder))
 
   const allPortfolioItems = [...(portfolio?.area_a_items || []), ...(portfolio?.area_b_items || []), ...(portfolio?.area_c_items || [])]
+  const eligibleBookletPreview = useMemo(
+    () => PersonnelPortfolioController.eligiblePortfolioPreview(portfolio),
+    [portfolio]
+  )
   const persistedEvidenceCount = allPortfolioItems.filter(hasValidPersonnelEvidence).length
   const periodUnavailableReason = submissionActionGate.periodUnavailableReason
 
@@ -1122,7 +1132,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
         }}
         onResubmit={(item) => { setEditingAccomplishment(item); setIsSubmissionModalOpen(true) }}
       />
-      <PersonnelPortfolioBookletModal isOpen={isBookletOpen} onClose={() => setIsBookletOpen(false)} portfolio={latestSubmission?.items?.length ? latestSubmission : portfolio} user={activeUser} />
+      <PersonnelPortfolioBookletModal isOpen={isBookletOpen} onClose={() => setIsBookletOpen(false)} portfolio={latestSubmission?.items?.length ? latestSubmission : eligibleBookletPreview} user={activeUser} />
     </>
   )
 }

@@ -19,7 +19,7 @@ import {
   EVALUATION_RULE_VERSION,
 } from '../../services/evaluationInstrumentRegistry.js';
 import { RESULT_VOCABULARY } from '../../services/PersonnelEvaluationResultPersistenceService.js';
-import { DECISION_VOCABULARY } from '../../services/PersonnelPromotionDecisionService.js';
+import PersonnelPromotionDecisionService, { DECISION_VOCABULARY } from '../../services/PersonnelPromotionDecisionService.js';
 import { AUDIT_EVENTS } from '../../services/PersonnelEvaluationAuditService.js';
 
 describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Validation', () => {
@@ -31,22 +31,22 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
   // Section 1: Full-Time & Part-Time Seed Catalog Integrity (Req 1–9)
   // =========================================================================
   describe('Full-Time & Part-Time Catalogs Seed Integrity', () => {
-    it('01. Full-Time rank catalog loads exactly 26 canonical ranks', () => {
+    it('01. Full-Time rank catalog loads exactly 22 selectable ranks', () => {
       const ranks = facultyRankCatalogService.FULL_TIME_RANKS;
       expect(ranks).toBeDefined();
-      expect(ranks.length).toBe(26);
+      expect(ranks.length).toBe(22);
     });
 
     it('02. Full-Time rank codes are completely unique', () => {
       const codes = facultyRankCatalogService.FULL_TIME_RANKS.map((r) => r.code);
       const uniqueCodes = new Set(codes);
-      expect(uniqueCodes.size).toBe(26);
+      expect(uniqueCodes.size).toBe(22);
     });
 
     it('03. Full-Time rank display labels are completely unique', () => {
       const labels = facultyRankCatalogService.FULL_TIME_RANKS.map((r) => r.label);
       const uniqueLabels = new Set(labels);
-      expect(uniqueLabels.size).toBe(26);
+      expect(uniqueLabels.size).toBe(22);
     });
 
     it('04. Part-Time title catalog contains exactly 4 canonical titles', () => {
@@ -82,7 +82,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
     it('08. seed does not produce duplicate Full-Time rank rows', () => {
       const orders = facultyRankCatalogService.FULL_TIME_RANKS.map((r) => r.order);
       const uniqueOrders = new Set(orders);
-      expect(uniqueOrders.size).toBe(26);
+      expect(uniqueOrders.size).toBe(22);
     });
 
     it('09. seed does not produce duplicate Part-Time title rows', () => {
@@ -98,11 +98,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
   describe('Rank Transition Graph & Negative Progressions', () => {
     const CANONICAL_TRANSITIONS = [
       { from: 'ASSISTANT_INSTRUCTOR', to: 'INSTRUCTOR_I', type: 'normal_sequential' },
-      { from: 'INSTRUCTOR_I', to: 'SENIOR_INSTRUCTOR_I', type: 'normal_sequential' },
-      { from: 'SENIOR_INSTRUCTOR_I', to: 'SENIOR_INSTRUCTOR_II', type: 'normal_sequential' },
-      { from: 'SENIOR_INSTRUCTOR_II', to: 'SENIOR_INSTRUCTOR_III', type: 'normal_sequential' },
-      { from: 'SENIOR_INSTRUCTOR_III', to: 'SENIOR_INSTRUCTOR_IV', type: 'normal_sequential' },
-      { from: 'SENIOR_INSTRUCTOR_IV', to: 'ASSISTANT_PROFESSOR_I', type: 'normal_sequential' },
+      { from: 'SENIOR_INSTRUCTOR', to: 'ASSISTANT_PROFESSOR_I', type: 'masters_qualification', requires_masters: true },
       { from: 'ASSISTANT_PROFESSOR_I', to: 'ASSISTANT_PROFESSOR_II', type: 'normal_sequential' },
       { from: 'ASSISTANT_PROFESSOR_II', to: 'ASSISTANT_PROFESSOR_III', type: 'normal_sequential' },
       { from: 'ASSISTANT_PROFESSOR_III', to: 'ASSISTANT_PROFESSOR_IV', type: 'normal_sequential' },
@@ -118,7 +114,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
       { from: 'PROFESSOR_IV', to: 'UNIVERSITY_PROFESSOR_I', type: 'normal_sequential' },
     ];
 
-    it('10. all transition rows reference valid ranks from the 26 canonical ranks', () => {
+    it('10. all current transition targets reference selectable ranks', () => {
       const validCodes = new Set(facultyRankCatalogService.FULL_TIME_RANKS.map((r) => r.code));
       CANONICAL_TRANSITIONS.forEach((t) => {
         expect(validCodes.has(t.from)).toBe(true);
@@ -210,6 +206,38 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
       const isLicensed = false;
       const tier = isLicensed ? facultyInitialRankService.BASE_RANKS.BOARD_LICENSURE : facultyInitialRankService.BASE_RANKS.BACCALAUREATE;
       expect(tier.code).toBe('ASSISTANT_INSTRUCTOR');
+    });
+
+    it('22. Senior Instructor is a single rank and cannot progress without verified Master’s evidence', () => {
+      expect(facultyRankCatalogService.FULL_TIME_RANKS.filter(rank => /^Senior Instructor [IV]+$/.test(rank.label))).toHaveLength(0);
+      const transitions = PersonnelPromotionDecisionService.resolveAllowedRankTransitions({
+        evaluationRecord: { current_rank: 'SENIOR_INSTRUCTOR' }
+      });
+      expect(transitions.is_terminal).toBe(true);
+      expect(transitions.allowed_targets).toHaveLength(0);
+      expect(PersonnelPromotionDecisionService.validateTransition({
+        fromRankIdentifier: 'SENIOR_INSTRUCTOR',
+        toRankIdentifier: 'ASSISTANT_PROFESSOR_I'
+      }).reason_code).toBe('verified_masters_required');
+    });
+
+    it('23. Senior Instructor may enter the Assistant Professor tier only with verified Master’s evidence', () => {
+      const transitions = PersonnelPromotionDecisionService.resolveAllowedRankTransitions({
+        evaluationRecord: { current_rank: 'SENIOR_INSTRUCTOR', has_verified_masters: true }
+      });
+      expect(transitions.allowed_targets.map(target => target.rank_code)).toContain('ASSISTANT_PROFESSOR_I');
+      expect(PersonnelPromotionDecisionService.validateTransition({
+        fromRankIdentifier: 'SENIOR_INSTRUCTOR',
+        toRankIdentifier: 'ASSISTANT_PROFESSOR_I',
+        context: { has_verified_masters: true }
+      }).allowed).toBe(true);
+    });
+
+    it('24. retired Senior Instructor steps cannot be selected as progression targets', () => {
+      expect(PersonnelPromotionDecisionService.validateTransition({
+        fromRankIdentifier: 'INSTRUCTOR_III',
+        toRankIdentifier: 'SENIOR_INSTRUCTOR_I'
+      }).reason_code).toBe('retired_senior_instructor_step');
     });
   });
 
@@ -325,7 +353,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
 
     it('35. inactive/legacy rank is not offered for new assignment', () => {
       const activeRanks = facultyRankCatalogService.FULL_TIME_RANKS.filter((r) => r.order >= 1);
-      expect(activeRanks.length).toBe(26);
+      expect(activeRanks.length).toBe(22);
     });
 
     it('36. P4 NTF + Non-Academic strictly maintains NO GUESSED ACADEMIC-RANK RULE', () => {
@@ -339,7 +367,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K3: Rank & Seed Valida
     });
 
     it('38. Plan E regression suite expectations remain satisfied', () => {
-      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(26);
+      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(22);
       expect(partTimeFacultyTitleService.PART_TIME_TITLES.length).toBe(4);
     });
 

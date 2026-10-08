@@ -77,7 +77,7 @@ final class RankingCycleDisplayStatusTest extends TestCase
     public function testGeneratedNamesFollowCoverage(): void
     {
         self::assertSame('AY 2026–2027 Personnel Ranking', RankingCycleService::generatedName('2026-2027', ['NON_TEACHING_FACULTY', 'FACULTY']));
-        self::assertSame('AY 2026–2027 Faculty Ranking', RankingCycleService::generatedName('2026-2027', ['FACULTY']));
+        self::assertSame('AY 2026–2027 Teaching Faculty Ranking', RankingCycleService::generatedName('2026-2027', ['FACULTY']));
         self::assertSame('AY 2026–2027 Non-Teaching Faculty Ranking', RankingCycleService::generatedName('2026-2027', ['NON_TEACHING_FACULTY']));
         self::assertSame('AY 2026–2027 Ranking Period', RankingCycleService::generatedName('2026-2027', []));
     }

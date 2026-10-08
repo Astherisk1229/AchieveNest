@@ -18,7 +18,7 @@ final class PersonnelDirectorySummaryTest extends CIUnitTestCase
         $rows = [
             ['F1', 'active', 'faculty', null], ['F2', 'active', 'faculty', null], ['F3', 'archived', 'faculty', null],
             ['N1', 'active', 'non_teaching_faculty', null],
-            ['L1', 'active', null, 'academic'],   // legacy classification -> Faculty via the resolver
+            ['L1', 'active', null, 'academic'],   // legacy classification remains unresolved until HR confirms Personnel Type
             ['U1', 'active', null, null],         // unclassified
         ];
         foreach ($rows as [$id, $status, $group, $legacy]) {
@@ -33,9 +33,9 @@ final class PersonnelDirectorySummaryTest extends CIUnitTestCase
         $summary = (new \ReflectionMethod($controller, 'directorySummary'))->invoke($controller, $db, true, true);
 
         self::assertSame(6, $summary['total_personnel']);
-        self::assertSame(4, $summary['total_faculty']);
+        self::assertSame(3, $summary['total_faculty']);
         self::assertSame(1, $summary['total_non_teaching']);
-        self::assertSame(1, $summary['total_unclassified']);
+        self::assertSame(2, $summary['total_unclassified']);
         self::assertSame(1, $summary['total_archived']);
         $db->close();
     }

@@ -121,6 +121,7 @@ export default function FacultyDossierDrawer({
                   {personnel.full_name}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{personnel.email || personnel.institutional_email}</p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">Contact Phone: <span className="font-semibold">{personnel.contact_number || 'Not recorded'}</span></p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <span className="font-mono text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                     {personnel.employee_id || personnel.institutional_id || 'ID Pending'}
@@ -212,11 +213,11 @@ export default function FacultyDossierDrawer({
                   <p className="font-extrabold text-[#064e2b] dark:text-emerald-400 mt-0.5">{formatPersonnelClassification(personnel)}</p>
                 </div>
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] uppercase font-extrabold text-slate-400">College / Unit</p>
-                  <p className="font-extrabold text-slate-900 dark:text-white mt-0.5">{personnel.college || personnel.college_name || personnel.administrative_unit_name || 'N/A'}</p>
+                  <p className="text-[10px] uppercase font-extrabold text-slate-400">College / Department</p>
+                  <p className="font-extrabold text-slate-900 dark:text-white mt-0.5">{personnel.college || personnel.college_name || personnel.department_name || personnel.administrative_unit_name || 'N/A'}</p>
                 </div>
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <p className="text-[10px] uppercase font-extrabold text-slate-400">{isAcademicPersonnel(personnel) ? 'College & Academic Programs' : 'Administrative Unit'}</p>
+                  <p className="text-[10px] uppercase font-extrabold text-slate-400">{isAcademicPersonnel(personnel) ? 'College & Department' : 'Department'}</p>
                   <p className="font-extrabold text-slate-900 dark:text-white mt-0.5">{formatPersonnelPlacement(personnel)}</p>
                 </div>
               </div>

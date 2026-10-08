@@ -1,7 +1,6 @@
 import apiClient from './apiClient'
 import { fetchColleges as fetchCollegesFromAdmin, fetchAcademicPrograms } from './collegeAdminService'
 import { facultyRankCatalogService } from './facultyRankCatalogService'
-import { partTimeFacultyTitleService } from './partTimeFacultyTitleService'
 import { cachedRequest } from '../utils/requestCache'
 
 const REFERENCE_DATA_TTL_MS = 5 * 60 * 1000
@@ -92,6 +91,7 @@ export const personnelMasterDataService = {
           id: u.id,
           code: u.code || '',
           name: u.name || u.unit_name || u.code,
+          collegeId: u.college_id || u.collegeId || null,
           status: u.status || 'active'
         }))
       }
@@ -110,28 +110,21 @@ export const personnelMasterDataService = {
     try {
       const res = await facultyRankCatalogService.fetchFullTimeFacultyRanks(tier)
       if (res && Array.isArray(res.data) && res.data.length > 0) {
-        return res.data
+        // The API uses rank_code/display_label/qualification_tier_code while
+        // the HR forms consume code/label/tier. Normalize here so the live
+        // catalog renders the same options as the local fallback catalog.
+        return res.data.map(rank => ({
+          ...rank,
+          code: rank.code ?? rank.rank_code,
+          label: rank.label ?? rank.display_label,
+          tier: rank.tier ?? rank.qualification_tier_code,
+          order: rank.order ?? rank.display_order
+        }))
       }
     } catch (err) {
       console.warn('Plan E full-time ranks API failed, using frozen local catalog:', err?.message)
     }
     return facultyRankCatalogService.FULL_TIME_RANKS
-  },
-
-  /**
-   * Fetches Part-Time Plan E 4-title catalog.
-   * @returns {Promise<Array<{ code: string, label: string, tier: string, order: number }>>}
-   */
-  async getPartTimeTitles() {
-    try {
-      const res = await partTimeFacultyTitleService.fetchPartTimeTitles()
-      if (res && Array.isArray(res.titles) && res.titles.length > 0) {
-        return res.titles
-      }
-    } catch (err) {
-      console.warn('Plan E part-time titles API failed, using frozen local catalog:', err?.message)
-    }
-    return partTimeFacultyTitleService.PART_TIME_TITLES
   },
 
   /**
@@ -141,12 +134,6 @@ export const personnelMasterDataService = {
     return facultyRankCatalogService.FULL_TIME_RANKS
   },
 
-  /**
-   * Synchronous helper for Part-Time Plan E 4-title catalog.
-   */
-  getPartTimeFacultyTitles() {
-    return partTimeFacultyTitleService.PART_TIME_TITLES
-  }
 }
 
 export default personnelMasterDataService

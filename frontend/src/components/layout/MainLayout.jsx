@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import Footer from './Footer'
 import { getCurrentUser, updateUserRoleContext } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import { ArrowUp } from 'lucide-react'
+import { HelpGuideProvider } from '../../context/HelpGuideContext'
 import {
   getWorkspaceLandingRoute,
   isWorkspaceAvailable,
@@ -32,6 +33,13 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   const [showScrollTop, setShowScrollTop] = useState(false)
   const mainRef = useRef(null)
   const isHrDashboard = location.pathname === '/hr/dashboard'
+  const hrWorkspaceTabs = location.pathname.startsWith('/hr/') && location.pathname !== '/hr/dashboard'
+    ? location.pathname.startsWith('/hr/personnel-directory') || location.pathname.startsWith('/hr/organizational-structure')
+      ? [{ label: 'Personnel Directory', path: '/hr/personnel-directory' }, { label: 'Organizational Structure', path: '/hr/organizational-structure' }]
+      : location.pathname.startsWith('/hr/password-resets') || location.pathname.startsWith('/hr/audit-trail')
+        ? [{ label: 'Password Resets', path: '/hr/password-resets' }, { label: 'HR Audit Trail', path: '/hr/audit-trail' }]
+        : [{ label: 'Evaluation Queue', path: '/hr/evaluation-submissions' }, { label: 'Ranking Periods', path: '/hr/ranking-cycles' }, { label: 'Evaluation Criteria', path: '/hr/ranking-cycles/criteria' }]
+    : null
   const isCollegePersonnelRoster = location.pathname === '/dean/college-personnel'
   const normalizedActiveWorkspace = normalizeRoleContext(activeRoleContext || currentUser?.active_role_context)
   const routeOwnership = resolveRouteOwnership(
@@ -177,11 +185,13 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   }, [mobileOpen])
 
   const handleNavigationToggle = () => {
-    if (window.innerWidth >= 768) setSidebarCollapsed(value => !value)
-    else setMobileOpen(value => !value)
+    if (window.innerWidth >= 768) {
+      if (normalizedActiveWorkspace !== 'personnel') setSidebarCollapsed(value => !value)
+    } else setMobileOpen(value => !value)
   }
 
   return (
+    <HelpGuideProvider>
     <div className="h-screen w-screen flex overflow-hidden bg-[#F8FAF7] dark:bg-[#0b1320] text-slate-900 dark:text-slate-100 font-sans selection:bg-[#16834a] selection:text-white relative transition-colors duration-200">
       
       {/* Mobile / Tablet Backdrop Overlay for screens < 1024px */}
@@ -217,15 +227,21 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
         {/* Stationary Fixed Header Bar / Topbar */}
         <Topbar
           currentUser={currentUser}
-          isSidebarOpen={isMobileViewport ? mobileOpen : !sidebarCollapsed}
+          isSidebarOpen={isMobileViewport ? mobileOpen : normalizedActiveWorkspace === 'personnel' || !sidebarCollapsed}
           onToggleSidebar={handleNavigationToggle}
           onRoleChange={handleRoleChange}
         />
 
-        {/* Independent Scrollable Workspace Area with max-w-[1280px] Container Limit */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full max-w-full bg-[#F8FAF7] dark:bg-[#0b1320] transition-colors duration-200 relative flex flex-col justify-between">
-          <div className="container-responsive space-y-6">
-            {routeWorkspaceNeedsReconciliation ? <div className="py-16 text-center text-sm font-semibold text-slate-500">Restoring workspace…</div> : children}
+        {/* Scrollable workspace; page content stays inset while the footer spans the shell. */}
+        <main ref={mainRef} className="flex-1 overflow-y-auto w-full max-w-full bg-[#F8FAF7] dark:bg-[#0b1320] transition-colors duration-200 relative flex flex-col">
+          <div className="w-full flex-1 p-4 sm:p-6 lg:p-8">
+            <div className="container-responsive space-y-6">
+              {hrWorkspaceTabs && <nav aria-label="HR workspace tabs" className="flex flex-wrap gap-2 border-b border-[#DDE8E2] pb-3 dark:border-slate-800">{hrWorkspaceTabs.map(tab => {
+                const active = location.pathname === tab.path || (tab.path === '/hr/ranking-cycles' && location.pathname.startsWith('/hr/ranking-cycles/') && location.pathname !== '/hr/ranking-cycles/criteria')
+                return <Link key={tab.path} to={tab.path} aria-current={active ? 'page' : undefined} className={`rounded-lg px-3 py-2 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${active ? 'bg-emerald-800 text-white' : 'text-slate-700 hover:bg-emerald-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}>{tab.label}</Link>
+              })}</nav>}
+              {routeWorkspaceNeedsReconciliation ? <div className="py-16 text-center text-sm font-semibold text-slate-500">Restoring workspace…</div> : children}
+            </div>
           </div>
           {!isHrDashboard && <Footer />}
         </main>
@@ -249,6 +265,7 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
       )}
 
     </div>
+    </HelpGuideProvider>
   )
 }
 

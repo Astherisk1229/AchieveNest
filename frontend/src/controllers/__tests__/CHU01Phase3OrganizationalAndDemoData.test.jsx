@@ -89,7 +89,7 @@ describe('CHU-01 Phase 3 — Organizational and Demo Data Preparation Test Suite
         faculty_engagement: 'full_time_faculty'
       }
 
-      expect(formatPersonnelClassification(faculty)).toBe('Faculty • Academic')
+      expect(formatPersonnelClassification(faculty)).toBe('Teaching • Academic')
       expect(formatEmploymentStatus(faculty)).toBe('Permanent')
       expect(formatFacultyEngagement(faculty)).toBe('Full-time Faculty')
 
@@ -110,7 +110,7 @@ describe('CHU-01 Phase 3 — Organizational and Demo Data Preparation Test Suite
         employment_status: 'permanent'
       }
 
-      expect(formatPersonnelClassification(nonTeachingFaculty)).toBe('Non-Teaching Faculty • Non-Academic')
+      expect(formatPersonnelClassification(nonTeachingFaculty)).toBe('Non-Teaching • Non-Academic')
       expect(formatEmploymentStatus(nonTeachingFaculty)).toBe('Permanent')
 
       const route = PersonnelReviewerRoutingRegistry.resolveReviewerRoute({

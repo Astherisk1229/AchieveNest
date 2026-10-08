@@ -123,13 +123,52 @@ final class EvaluationValidityServiceTest extends CIUnitTestCase
     public function testGateGuardsBothSubmissionPathsAndStoresTheDecision(): void
     {
         $source = file_get_contents(ROOTPATH . 'app/Controllers/Api/PersonnelPortfolioSubmissionController.php');
-        self::assertStringContainsString('->partition($accomplishments, $period)', $source, 'first submission');
-        self::assertStringContainsString('->partition($accomplishments, $periodSnapshot)', $source, 'resubmission');
+        self::assertStringContainsString('->partitionForPersonnel($accomplishments, $period, $personnelProfileId)', $source, 'first submission');
+        self::assertStringContainsString('->partitionForPersonnel($accomplishments, $periodSnapshot, $personnelProfileId)', $source, 'resubmission');
+        $submitStart = strpos($source, 'public function submit(): mixed');
+        $resubmitStart = strpos($source, 'public function resubmit(): mixed');
+        $historyStart = strpos($source, 'public function getHistory(): mixed');
+        $submitFlow = substr($source, $submitStart, $resubmitStart - $submitStart);
+        $resubmitFlow = substr($source, $resubmitStart, $historyStart - $resubmitStart);
+        self::assertLessThan(strpos($submitFlow, '// Guard: Verify all items have proof attachments'), strpos($submitFlow, 'partitionForPersonnel('), 'initial submission filters to eligible records before proof validation');
+        self::assertLessThan(strpos($resubmitFlow, '// Guard: Verify all items have proof attachments'), strpos($resubmitFlow, 'partitionForPersonnel('), 'resubmission filters to eligible records before proof validation');
         self::assertSame(2, substr_count($source, "\$accomplishments = \$cycleValidity['eligible'];"));
         self::assertSame(2, substr_count($source, "'cycle_validity'   => \$cycleValidity['decisions']"));
+        self::assertStringNotContainsString("->table('personnel_achievement_usage')->ignore(true)->insert", $source, 'a submission must not consume its accomplishments');
         self::assertStringNotContainsString("->table('personnel_accomplishments')->whereIn('id', \$cycleValidity", $source, 'excluded records are never deleted');
         self::assertStringContainsString('assertAchievementCoverage($row)', file_get_contents(ROOTPATH . 'app/Services/PersonnelEvaluationPeriodService.php'));
         self::assertStringContainsString('serviceCutoff($period)', file_get_contents(ROOTPATH . 'app/Services/PersonnelEligibilityService.php'));
+    }
+
+    public function testOnlyFinalizedNonEducationUsageConsumesAnAccomplishment(): void
+    {
+        $db = $this->database('2025-06-01', '2027-05-31');
+        $db->query('CREATE TABLE personnel_evaluations (id TEXT PRIMARY KEY, personnel_profile_id TEXT, status TEXT, academic_year TEXT)');
+        $db->query('CREATE TABLE personnel_evaluation_items (id TEXT PRIMARY KEY, evaluation_id TEXT, accomplishment_id TEXT)');
+        $db->table('personnel_evaluations')->insertBatch([
+            ['id' => 'done-owner', 'personnel_profile_id' => 'P1', 'status' => 'completed', 'academic_year' => '2023-2025'],
+            ['id' => 'returned-owner', 'personnel_profile_id' => 'P1', 'status' => 'returned_for_revision', 'academic_year' => '2025-2027'],
+            ['id' => 'done-other', 'personnel_profile_id' => 'P2', 'status' => 'completed', 'academic_year' => '2023-2025'],
+        ]);
+        $db->table('personnel_evaluation_items')->insertBatch([
+            ['id' => 'item-used', 'evaluation_id' => 'done-owner', 'accomplishment_id' => 'used-publication'],
+            ['id' => 'item-returned', 'evaluation_id' => 'returned-owner', 'accomplishment_id' => 'returned-training'],
+            ['id' => 'item-other', 'evaluation_id' => 'done-other', 'accomplishment_id' => 'other-person-record'],
+            ['id' => 'item-education', 'evaluation_id' => 'done-owner', 'accomplishment_id' => 'old-degree'],
+        ]);
+        $records = [
+            array_merge(self::single('B.2', '2026-02-01'), ['id' => 'used-publication', 'title' => 'Used publication']),
+            array_merge(self::single('B.2', '2026-02-01'), ['id' => 'returned-training', 'title' => 'Returned training']),
+            array_merge(self::single('A.1', '2018-02-01', ['subcategory_code' => 'A1_MA_HOLDER']), ['id' => 'old-degree', 'title' => 'Old degree']),
+            array_merge(self::single('B.2', '2026-02-01'), ['id' => 'other-person-record', 'title' => 'Other person record']),
+        ];
+
+        $result = (new V($db))->partitionForPersonnel($records, ['ranking_cycle_id' => 'RC1', 'personnel_group' => 'FACULTY'], 'P1');
+
+        self::assertSame(['returned-training', 'old-degree', 'other-person-record'], array_column($result['eligible'], 'id'));
+        self::assertSame(V::PREVIOUSLY_FINALIZED, $result['decisions']['used-publication']['status']);
+        self::assertSame('2023-2025', $result['decisions']['used-publication']['previous_finalized_academic_year']);
+        self::assertTrue($result['decisions']['old-degree']['eligible'], 'old Faculty education remains reusable');
     }
 
     private function database(?string $start, ?string $end)

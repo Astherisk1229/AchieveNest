@@ -152,10 +152,10 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
   // 3. Reviewer Authority & Scope Boundaries
   // =========================================================================
   describe('3. Reviewer Authority & Scope Access Control', () => {
-    it('strictly excludes Department Secretary from evaluator authority', () => {
+    it('strictly excludes Unassigned reviewer from evaluator authority', () => {
       const actor = {
-        profile_id: 'USER-DEP-SEC',
-        roles: ['department_secretary']
+        profile_id: 'USER-DEP-UNASSIGNED',
+        roles: ['unassigned_reviewer']
       }
       const evaluation = {
         personnel_profile_id: 'USER-FACULTY-1',
@@ -202,6 +202,16 @@ describe('Personnel Evaluation Track — Plan G — Phase G0: Reviewer Routing, 
 
       expect(PersonnelReviewerRoutingRegistry.isAuthorizedReviewer(deanCEAC, evalCEAC)).toBe(true)
       expect(PersonnelReviewerRoutingRegistry.isAuthorizedReviewer(deanCEAC, evalCBA)).toBe(false)
+    })
+
+    it('fails closed when either Dean college scope is missing', () => {
+      const deanCEAC = { profile_id: 'DEAN-CEAC', roles: ['dean'], assigned_college_id: 'COLLEGE-CEAC' }
+      const unscopedEvaluation = { personnel_profile_id: 'FAC-3', assigned_reviewer_role: REVIEWER_ROLES.DEAN, target_college_id: null }
+      const unscopedDean = { profile_id: 'DEAN-UNSCOPED', roles: ['dean'] }
+      const scopedEvaluation = { personnel_profile_id: 'FAC-4', assigned_reviewer_role: REVIEWER_ROLES.DEAN, target_college_id: 'COLLEGE-CEAC' }
+
+      expect(PersonnelReviewerRoutingRegistry.isAuthorizedReviewer(deanCEAC, unscopedEvaluation)).toBe(false)
+      expect(PersonnelReviewerRoutingRegistry.isAuthorizedReviewer(unscopedDean, scopedEvaluation)).toBe(false)
     })
 
     it('authorizes HR Staff for university-wide HR assigned evaluations', () => {

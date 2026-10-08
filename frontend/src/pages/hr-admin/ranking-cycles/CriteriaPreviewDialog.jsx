@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { FileText } from 'lucide-react'
+import { FileDown, FileText } from 'lucide-react'
 import portfolioService from '../../../services/portfolioConfigurationService'
 import CriteriaSheetRenderer from '../ranking-criteria/CriteriaSheetRenderer'
 import RankingCycleDialog, { LockedBadge, buttonStyles, errorMessage } from './RankingCycleDialog'
@@ -12,6 +12,8 @@ import { formatDate } from './rankingCyclePresentation'
 export default function CriteriaPreviewDialog({ versionId, onClose }) {
   const [state, setState] = useState({ phase: 'loading', tree: null, error: '' })
   const [tab, setTab] = useState('overview')
+  const [pdfError, setPdfError] = useState('')
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -26,12 +28,27 @@ export default function CriteriaPreviewDialog({ versionId, onClose }) {
   const sheet = tree?.sheet
   const version = tree?.version
   const title = sheet ? `${sheet.name} v${version?.version_number}` : 'Criteria'
+  const pdfTitle = sheet ? `${sheet.name} - ${sheet.applies_to} - v${version?.version_number}` : 'Evaluation Criteria'
 
-  return <RankingCycleDialog layer="z-[60]" width="max-w-4xl" title="View Criteria" description={state.phase === 'ready' ? title : 'Read-only criteria preview'} onClose={onClose} footer={<button type="button" onClick={onClose} className={buttonStyles.secondary}>Close</button>}>
+  const downloadPdf = async () => {
+    if (!version?.id || downloadingPdf) return
+    setDownloadingPdf(true)
+    setPdfError('')
+    try {
+      await portfolioService.downloadEvaluationScaleVersionPdf(version.id, pdfTitle)
+    } catch (failure) {
+      setPdfError(failure?.message || 'The ranking criteria PDF could not be generated.')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
+  return <RankingCycleDialog layer="z-[60]" width="max-w-4xl" title="View Criteria" description={state.phase === 'ready' ? title : 'Read-only criteria preview'} onClose={onClose} headerActions={<button type="button" disabled={state.phase !== 'ready' || downloadingPdf} onClick={downloadPdf} className={`${buttonStyles.secondary} border-emerald-200 text-emerald-800 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40`}><FileDown className="h-4 w-4" aria-hidden="true"/>{downloadingPdf ? 'Generating PDF…' : 'Download PDF'}</button>} footer={<button type="button" onClick={onClose} className={buttonStyles.secondary}>Close</button>}>
     <div className="border-b border-slate-200 px-5 sm:px-6 dark:border-slate-800" role="tablist" aria-label="Criteria preview sections">
       {[['overview', 'Overview'], ['breakdown', 'Criteria Breakdown']].map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${tab === key ? 'border-emerald-700 text-emerald-800 dark:text-emerald-300' : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}>{label}</button>)}
     </div>
     <div className="px-5 py-5 sm:px-6">
+      {pdfError && <p role="alert" className="mb-4 rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{pdfError}</p>}
       {state.phase === 'loading' && <div role="status" className="space-y-3"><span className="sr-only">Loading criteria…</span><div className="h-16 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900"/><div className="h-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900"/></div>}
       {state.phase === 'error' && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{state.error}</p>}
       {state.phase === 'ready' && tab === 'overview' && <div className="space-y-6">

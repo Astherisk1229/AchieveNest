@@ -32,22 +32,7 @@ vi.mock('../../../context/AuthContext', () => ({
   })
 }))
 
-vi.mock('../../../hooks/usePersonnelPortfolio', () => ({
-  usePersonnelPortfolio: () => ({
-    portfolio: {
-      status: 'HR_APPROVED'
-    },
-    evaluationPeriod: {
-      academic_year_label: 'AY 2025-2026'
-    },
-    totals: {
-      totalPoints: 85,
-      totalAccomplishments: 5
-    }
-  })
-}))
-
-describe('PersonnelDashboardPage Dark Mode & Accomplishment Card Readability Remediation Suite', () => {
+describe('Personnel Profile and accomplishment repository', () => {
   it('renders hero container with proper dark background, border, and light emerald typography', () => {
     const html = renderToString(
       <MemoryRouter>
@@ -57,32 +42,28 @@ describe('PersonnelDashboardPage Dark Mode & Accomplishment Card Readability Rem
 
     // Hero container dark mode classes
     expect(html).toContain('dark:bg-slate-900')
-    expect(html).toContain('dark:border-emerald-900/60')
+    expect(html).toContain('dark:border-slate-800')
 
     // Hero title & subtitle dark mode typography
     expect(html).toContain('dark:text-emerald-300')
-    expect(html).toContain('dark:text-slate-300')
-    expect(html).toContain('Personnel Professional Portfolio')
+    expect(html).toContain('dark:text-slate-400')
+    expect(html).toContain('Dr. Maria L. Santos, Ph.D.')
+    expect(html).toContain('My Accomplishments')
   })
 
-  it('renders summary badges with high-contrast dark text and surfaces', () => {
+  it('keeps repository actions on Profile and leaves evaluation status to Portfolio', () => {
     const html = renderToString(
       <MemoryRouter>
         <PersonnelDashboardPage />
       </MemoryRouter>
     )
 
-    // Proof PDFs badge
-    expect(html).toContain('Proof PDFs')
-    expect(html).toContain('dark:bg-emerald-950/60')
-
-    // Evaluation Period badge
-    expect(html).toContain('Evaluation Period')
-    expect(html).toContain('dark:border-emerald-500/40')
-
-    // Portfolio Status badge (HR_APPROVED state)
-    expect(html).toContain('Approved')
-    expect(html).toContain('dark:border-emerald-800')
+    expect(html).toContain('Edit Profile')
+    expect(html).toContain('My Accomplishments')
+    expect(html).toContain('Add Accomplishment')
+    expect(html).not.toContain('Manage accomplishments')
+    expect(html).not.toContain('Evaluation Period')
+    expect(html).not.toContain('Portfolio Status')
   })
 
   it('renders accomplishment timeline and category pills with proper dark mode contrast', () => {

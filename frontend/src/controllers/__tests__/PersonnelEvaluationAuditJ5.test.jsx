@@ -349,11 +349,11 @@ describe('Plan J — Phase J5: Immutable Audit Trail & Material Transition Recon
       );
     });
 
-    it('29. denies Department Secretary access to evaluator audit records', () => {
-      const secUser = { user_id: 'sec-1', role: 'department_secretary' };
+    it('29. denies Unassigned reviewer access to evaluator audit records', () => {
+      const secUser = { user_id: 'unassigned-1', role: 'unassigned_reviewer' };
       const context = { subject_personnel_id: 'prof-101' };
       expect(() => PersonnelEvaluationAuditService.validateAuditAccess(secUser, context)).toThrow(
-        /Department Secretary is not authorized/
+        /Unauthorized role/
       );
     });
 

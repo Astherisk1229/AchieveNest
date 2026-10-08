@@ -8,6 +8,7 @@ use App\Services\LocalEvidenceStorageService;
 use App\Services\PortfolioStructuredMetadataValidator;
 use App\Services\ApprovedAchievementScoringService;
 use App\Services\StudentAchievementEvidenceUploadPolicy;
+use App\Services\StudentAchievementRecordSummaryService;
 use App\Services\StudentEvidenceClamAvScanner;
 use App\Services\StudentEvidencePaddleOcrService;
 use CodeIgniter\API\ResponseTrait;
@@ -21,6 +22,7 @@ class StudentPortfolioController extends Controller
     protected AuthorizationService $authz;
     protected LocalEvidenceStorageService $storage;
     protected PortfolioStructuredMetadataValidator $metadataValidator;
+    protected StudentAchievementRecordSummaryService $recordSummary;
     protected ?\CodeIgniter\Database\BaseConnection $db;
     protected ?StudentEvidenceClamAvScanner $scanner = null;
     protected ?StudentEvidencePaddleOcrService $ocr = null;
@@ -38,7 +40,8 @@ class StudentPortfolioController extends Controller
         ?AuthorizationService $authz = null,
         ?LocalEvidenceStorageService $storage = null,
         ?PortfolioStructuredMetadataValidator $metadataValidator = null,
-        ?\CodeIgniter\Database\BaseConnection $db = null
+        ?\CodeIgniter\Database\BaseConnection $db = null,
+        ?StudentAchievementRecordSummaryService $recordSummary = null
     ) {
         $this->db = $db ?? db_connect();
         $portfolioPolicy = new \App\Services\Policies\StudentPortfolioPolicy($this->db);
@@ -49,6 +52,7 @@ class StudentPortfolioController extends Controller
         );
         $this->storage = $storage ?? new LocalEvidenceStorageService();
         $this->metadataValidator = $metadataValidator ?? new PortfolioStructuredMetadataValidator($this->db);
+        $this->recordSummary = $recordSummary ?? new StudentAchievementRecordSummaryService($this->db);
     }
 
     protected function getDb(): \CodeIgniter\Database\BaseConnection
@@ -220,6 +224,7 @@ class StudentPortfolioController extends Controller
                 ->orderBy('occurred_at', 'DESC')
                 ->get(1)->getRowArray();
             $rec['latest_remarks'] = $latestDecision['remarks'] ?? null;
+            $rec = $this->withConfiguredSummary($rec);
             if (($actor['profile']['account_type'] ?? '') === 'student') {
                 $rec = $this->stripStudentScoringFields($rec);
             }
@@ -282,6 +287,7 @@ class StudentPortfolioController extends Controller
             return $this->storage->formatSafeEvidence($ev, 'student', false);
         }, $evidence);
 
+        $record = $this->withConfiguredSummary($record);
         if (($actor['profile']['account_type'] ?? '') === 'student') {
             $record = $this->stripStudentScoringFields($record);
         }
@@ -471,6 +477,25 @@ class StudentPortfolioController extends Controller
         return $records;
     }
 
+    /** Adds configured-field summaries to read models without changing historical stored columns. */
+    private function withConfiguredSummary(array $record): array
+    {
+        $metadata = $record['structured_metadata'] ?? [];
+        if (is_string($metadata)) $metadata = json_decode($metadata, true) ?: [];
+        if (!is_array($metadata)) return $record;
+        $summary = $this->recordSummary->derive(
+            (string) ($record['category_id'] ?? ''),
+            !empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null,
+            $metadata
+        );
+        if ($summary === null) return $record;
+        foreach ($summary as $key => $value) {
+            // Keep stored legacy columns intact; configured metadata is authoritative in the read model.
+            $record[$key] = $value;
+        }
+        return $record;
+    }
+
     /**
      * PUT /api/v1/portfolio/{id}
      * Updates an owned draft or revision-requested record before submission.
@@ -541,10 +566,15 @@ class StudentPortfolioController extends Controller
                 'structured_metadata' => json_encode($metadataResult['sanitized_metadata']),
                 'updated_at' => date('Y-m-d H:i:s'),
             ];
-            foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
-                if (array_key_exists($field, $json)) {
-                    $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
+            $summary = $this->recordSummary->derive($categoryId, $subcategoryId, $metadataResult['sanitized_metadata']);
+            if ($summary === null) {
+                foreach (['title', 'organizer_or_body', 'occurrence_date', 'start_date', 'end_date', 'description'] as $field) {
+                    if (array_key_exists($field, $json)) {
+                        $changes[$field] = $json[$field] === null ? null : trim((string) $json[$field]);
+                    }
                 }
+            } else {
+                $changes += $this->recordSummary->missingLegacyColumns($record, $summary);
             }
             $db->table('student_portfolio_records')->where('id', $id)->where('student_profile_id', $actor['profile']['id'])->where('status', $record['status'])->update($changes);
                 $this->commitMutation($db);
@@ -645,11 +675,21 @@ class StudentPortfolioController extends Controller
         }
         $sanitizedMetadata = $metaResult['sanitized_metadata'];
 
+        $summary = $this->recordSummary->derive($categoryId, $subcategoryId, $sanitizedMetadata);
+        if ($summary !== null) {
+            $title = $summary['title'];
+            $organizer = $summary['organizer_or_body'];
+            $occurrenceDate = $summary['occurrence_date'];
+            $startDate = $summary['start_date'];
+            $endDate = $summary['end_date'];
+            $description = $summary['description'];
+        }
+
         $db = $this->getDb();
 
         // Sports Metadata Rule
         $isSports = strtolower($category['code'] ?? '') === 'sports' || stripos($category['name'] ?? '', 'sport') !== false;
-        if ($isSports) {
+        if ($isSports && $summary === null) {
             $hasEventDate = ! empty($occurrenceDate) || ! empty($structuredMetadata['event_date']);
             $hasAcademicYear = ! empty($structuredMetadata['academic_year']);
             if (! $hasEventDate && ! $hasAcademicYear) {
@@ -667,7 +707,7 @@ class StudentPortfolioController extends Controller
             || strtolower($category['code'] ?? '') === 'campus_journalism_publication'
             || stripos($category['name'] ?? '', 'journalism') !== false;
 
-        if ($isJournalism && $submitNow) {
+        if ($isJournalism && $submitNow && $summary === null) {
             if (empty($subcategoryId)) {
                 return $this->respond([
                     'error' => [
@@ -1159,17 +1199,17 @@ class StudentPortfolioController extends Controller
                 (string) ($record['category_id'] ?? ''),
                 ! empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null
             );
-            if (! $taxonomy['valid'] || empty($record['subcategory_id'])) {
+            if (! $taxonomy['valid']) {
                 return $this->respond(['error' => [
                     'code' => 'INCOMPLETE_CLASSIFICATION',
-                    'message' => 'A valid category and matching subcategory are required before submission.',
+                    'message' => $taxonomy['error']['message'] ?? 'Select a valid category and any required subcategory before submission.',
                 ]], 422);
             }
 
             $metadata = json_decode((string) ($record['structured_metadata'] ?? '{}'), true);
             $metadataResult = $this->metadataValidator->validateMetadata(
                 (string) $record['category_id'],
-                (string) $record['subcategory_id'],
+                ! empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null,
                 is_array($metadata) ? $metadata : [],
                 true
             );
@@ -1181,20 +1221,24 @@ class StudentPortfolioController extends Controller
                 ]], 422);
             }
 
-            $title = trim((string) ($record['title'] ?? ''));
-            $organizer = trim((string) ($record['organizer_or_body'] ?? ''));
-            $startDate = trim((string) ($record['start_date'] ?? $record['occurrence_date'] ?? ''));
-            if (mb_strlen($title) < 3 || $organizer === '' || $startDate === '') {
-                return $this->respond(['error' => [
-                    'code' => 'INCOMPLETE_COMMON_DETAILS',
-                    'message' => 'Title, organizer or issuing body, and start date are required before submission.',
-                ]], 422);
-            }
-            if (! empty($record['end_date']) && (string) $record['end_date'] < $startDate) {
+            $summary = $this->recordSummary->derive(
+                (string) $record['category_id'],
+                ! empty($record['subcategory_id']) ? (string) $record['subcategory_id'] : null,
+                $metadataResult['sanitized_metadata']
+            );
+            $legacySummaryChanges = $summary !== null
+                ? $this->recordSummary->missingLegacyColumns($record, $summary)
+                : [];
+            $title = (string) ($summary['title'] ?? trim((string) ($record['title'] ?? '')));
+            $startDate = (string) ($summary['start_date'] ?? trim((string) ($record['start_date'] ?? $record['occurrence_date'] ?? '')));
+            $endDate = $summary !== null ? ($summary['end_date'] ?? '') : (string) ($record['end_date'] ?? '');
+            if ($startDate !== '' && $endDate !== '' && $endDate < $startDate) {
                 return $this->respond(['error' => ['code' => 'INVALID_DATE_RANGE', 'message' => 'End date cannot be before start date.']], 422);
             }
-            // Only achievements that already happened can be submitted (pre-final defense G1).
-            if (\App\Helpers\ValidationHelper::isFutureDate($startDate) || (! empty($record['end_date']) && \App\Helpers\ValidationHelper::isFutureDate((string) $record['end_date']))) {
+            // Keep the existing happened-in-the-past rule when the selected configured contract
+            // provides a complete calendar date. Academic-year/partial periods remain date-free.
+            if ($summary === null && (($startDate !== '' && \App\Helpers\ValidationHelper::isFutureDate($startDate))
+                || ($endDate !== '' && \App\Helpers\ValidationHelper::isFutureDate($endDate)))) {
                 return $this->respond(['error' => ['code' => 'FUTURE_DATE', 'message' => 'Achievement dates cannot be in the future.']], 422);
             }
 
@@ -1210,15 +1254,39 @@ class StudentPortfolioController extends Controller
                 ]], 422);
             }
 
-            $duplicate = $db->table('student_portfolio_records')
-                ->where('student_profile_id', $record['student_profile_id'])
-                ->where('category_id', $record['category_id'])
-                ->where('subcategory_id', $record['subcategory_id'])
-                ->where('title', $title)
-                ->where('start_date', $startDate)
-                ->where('id !=', $id)
-                ->whereNotIn('status', ['rejected'])
-                ->countAllResults();
+            $duplicate = 0;
+            $fingerprint = $summary !== null
+                ? $this->recordSummary->fingerprint((string) $record['category_id'], (string) $record['subcategory_id'], $metadataResult['sanitized_metadata'])
+                : null;
+            if ($fingerprint !== null) {
+                $candidates = $db->table('student_portfolio_records')
+                    ->select('id, structured_metadata')
+                    ->where('student_profile_id', $record['student_profile_id'])
+                    ->where('category_id', $record['category_id'])
+                    ->where('subcategory_id', $record['subcategory_id'])
+                    ->where('id !=', $id)
+                    ->whereNotIn('status', ['rejected'])
+                    ->get()->getResultArray();
+                foreach ($candidates as $candidate) {
+                    $candidateMetadata = is_array($candidate['structured_metadata'] ?? null)
+                        ? $candidate['structured_metadata']
+                        : (json_decode((string) ($candidate['structured_metadata'] ?? '{}'), true) ?: []);
+                    if ($this->recordSummary->fingerprint((string) $record['category_id'], (string) $record['subcategory_id'], $candidateMetadata) === $fingerprint) {
+                        $duplicate = 1;
+                        break;
+                    }
+                }
+            } elseif ($summary === null && $startDate !== '') {
+                $duplicate = $db->table('student_portfolio_records')
+                    ->where('student_profile_id', $record['student_profile_id'])
+                    ->where('category_id', $record['category_id'])
+                    ->where('subcategory_id', $record['subcategory_id'])
+                    ->where('title', $title)
+                    ->where('start_date', $startDate)
+                    ->where('id !=', $id)
+                    ->whereNotIn('status', ['rejected'])
+                    ->countAllResults();
+            }
             if ($duplicate > 0) {
                 return $this->respond(['error' => ['code' => 'DUPLICATE_ACHIEVEMENT', 'message' => 'A matching achievement record already exists. Review the existing record instead of submitting a duplicate.']], 409);
             }
@@ -1246,7 +1314,7 @@ class StudentPortfolioController extends Controller
             try {
                 $db->table('student_portfolio_records')->where('id', $id)
                     ->where('student_profile_id', $actor['profile']['id'])
-                    ->where('status', $record['status'])->update([
+                    ->where('status', $record['status'])->update($legacySummaryChanges + [
                     'status'       => 'submitted',
                     'submitted_at' => $now,
                     'updated_at'   => $now,
@@ -1388,6 +1456,7 @@ class StudentPortfolioController extends Controller
                 ->orderBy('occurred_at', 'DESC')
                 ->get(1)->getRowArray();
             $item['latest_remarks'] = $latestDecision['remarks'] ?? null;
+            $item = $this->withConfiguredSummary($item);
         }
         unset($item);
 
@@ -1518,6 +1587,8 @@ class StudentPortfolioController extends Controller
                 }
                 return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You are not the authorized active Program Coordinator for this student program.']], 403);
             }
+
+            $record = $this->withConfiguredSummary($record);
 
             // Only 'submitted' records can be decided. Already-decided records get 409.
             if (in_array($record['status'], ['verified', 'rejected', 'revision_requested'], true)) {

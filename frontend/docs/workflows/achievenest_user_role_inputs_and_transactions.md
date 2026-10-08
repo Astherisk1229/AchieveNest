@@ -161,7 +161,7 @@ When finalizing event attendance:
 
 ---
 
-## 5. Department Secretary (`Department Secretary`)
+## 5. Dean (`Dean`)
 
 ### Transaction 1: Reviewing Faculty Accomplishment Submissions
 When reviewing department faculty/staff accomplishments before HR submission:

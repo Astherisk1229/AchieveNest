@@ -31,6 +31,9 @@ export function notificationTarget(item = {}, portal = null) {
   if (['personnel_portfolio_submission', 'personnel_evaluations'].includes(referenceType)) {
     return { path: '/personnel/portfolio/edit', state: referenceId ? { highlightId: referenceId } : null }
   }
+  if (referenceType === 'personnel_evaluation_period') {
+    return { path: '/personnel/portfolio', state: null }
+  }
   return null
 }
 

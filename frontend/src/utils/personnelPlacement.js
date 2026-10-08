@@ -24,7 +24,8 @@ export function formatPersonnelPlacement(input) {
     const programs = (personnel.program_affiliations || [])
       .map(program => program.code || program.name || program.academic_program_name)
       .filter(Boolean)
-    return programs.length ? `${college} • ${programs.join(', ')}` : college
+    const department = personnel.administrative_unit_name || personnel.department_name
+    return department ? `${college} • ${department}` : (programs.length ? `${college} • ${programs.join(', ')}` : college)
   }
   const unit = personnel.administrative_unit_name || personnel.administrative_unit_code
   if (unit) return unit
@@ -105,7 +106,7 @@ export function mergePlacementMasterData(scrapedOptions = {}, masterData = {}) {
   }
 }
 
-export function validatePersonnelPlacement({ classification, group, side, collegeId, academicProgramIds = [], administrativeUnitId }, options) {
+export function validatePersonnelPlacement({ classification, group, side, collegeId, academicProgramIds = [], administrativeUnitId, departmentId, requireDepartment = false }, options) {
   const errors = {}
 
   // Validate group & side pairing
@@ -123,14 +124,27 @@ export function validatePersonnelPlacement({ classification, group, side, colleg
 
   if (effectiveSide === 'academic') {
     if (!collegeId) errors.collegeId = 'Select a College.'
-    if (!academicProgramIds.length) errors.academicProgramIds = 'Select at least one Academic Program.'
-    if (options && options.academicPrograms) {
-      const validIds = new Set(options.academicPrograms.filter(program => program.collegeId === collegeId).map(program => program.id))
-      if (academicProgramIds.some(id => !validIds.has(id))) errors.academicProgramIds = 'Every Academic Program must belong to the selected College.'
+    if (requireDepartment) {
+      const selectedDepartmentId = departmentId || administrativeUnitId
+      if (!selectedDepartmentId) errors.departmentId = 'Select a Department.'
+      if (options && options.administrativeUnits && selectedDepartmentId) {
+        const department = options.administrativeUnits.find(item => String(item.id) === String(selectedDepartmentId))
+        const departmentCollegeId = department?.collegeId || department?.college_id || null
+        if (!department || String(departmentCollegeId || '') !== String(collegeId || '')) errors.departmentId = 'Select a Department under the selected College.'
+      }
+    } else {
+      if (!academicProgramIds.length) errors.academicProgramIds = 'Select at least one Academic Program.'
+      if (options && options.academicPrograms) {
+        const validIds = new Set(options.academicPrograms.filter(program => program.collegeId === collegeId).map(program => program.id))
+        if (academicProgramIds.some(id => !validIds.has(id))) errors.academicProgramIds = 'Every Academic Program must belong to the selected College.'
+      }
     }
   } else if (effectiveSide === 'non_academic') {
     if (!administrativeUnitId) {
-      errors.administrativeUnitId = 'Select a Department.'
+      errors.departmentId = 'Select a Department.'
+    } else if (requireDepartment && options && options.administrativeUnits) {
+      const department = options.administrativeUnits.find(item => String(item.id) === String(administrativeUnitId))
+      if (!department || (department.collegeId || department.college_id)) errors.departmentId = 'Select an independent Department.'
     }
   }
   return { isValid: Object.keys(errors).length === 0, errors }
@@ -138,11 +152,11 @@ export function validatePersonnelPlacement({ classification, group, side, colleg
 
 export function formatPersonnelClassification(personnel) {
   if (!personnel || typeof personnel !== 'object') return ''
-  const isAcad = isAcademicPersonnel(personnel)
-  const group = (personnel.personnel_group || (isAcad ? 'faculty' : 'non_teaching_faculty')).toLowerCase()
-  const side = (personnel.organizational_side || (isAcad ? 'academic' : 'non_academic')).toLowerCase()
+  const group = String(personnel.personnel_group || '').toLowerCase()
+  const side = String(personnel.organizational_side || '').toLowerCase()
+  if (!['faculty', 'non_teaching_faculty'].includes(group)) return 'Personnel Type needs HR classification'
 
-  const groupLabel = group === 'faculty' ? 'Faculty' : 'Non-Teaching Faculty'
+  const groupLabel = group === 'faculty' ? 'Teaching' : 'Non-Teaching'
   const sideLabel  = side === 'academic' ? 'Academic' : 'Non-Academic'
 
   return `${groupLabel} • ${sideLabel}`
@@ -152,8 +166,7 @@ export function formatFacultyEngagement(personnel) {
   if (!personnel || typeof personnel !== 'object') return 'Unassigned'
   const engagement = (personnel.faculty_engagement || '').toLowerCase()
   if (engagement === 'full_time_faculty') return 'Full-time Faculty'
-  if (engagement === 'part_time_faculty') return 'Part-time Faculty'
-  return personnel.faculty_engagement || 'Unassigned'
+  return 'Unassigned'
 }
 
 export function formatEmploymentStatus(personnel) {
@@ -171,11 +184,11 @@ export function validatePersonnelMasterData({
   currentRankTitle
 }) {
   const errors = {}
-  const validEngagements = ['full_time_faculty', 'part_time_faculty']
+  const validEngagements = ['full_time_faculty']
   const validStatuses = ['permanent', 'probationary']
 
   if (facultyEngagement && !validEngagements.includes(facultyEngagement.toLowerCase())) {
-    errors.facultyEngagement = 'Faculty engagement must be either Full-time Faculty or Part-time Faculty.'
+    errors.facultyEngagement = 'Faculty engagement must be Full-time Faculty.'
   }
 
   if (employmentStatus && !validStatuses.includes(employmentStatus.toLowerCase())) {

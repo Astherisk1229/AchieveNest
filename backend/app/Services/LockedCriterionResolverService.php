@@ -50,7 +50,7 @@ final class LockedCriterionResolverService
         if (($contractMapping['evaluator_judgment'] ?? false) === true) {
             $cap = (float) ($category['max_points'] ?? 0);
             if ($cap <= 0) throw new RuntimeException("CRITERION_POINTS_UNRESOLVED: {$categoryCode} has no locked maximum.");
-            return ['criterion_reference' => $contractMapping['criterion_code'], 'category' => $category, 'level' => null, 'configured_points' => $cap, 'criterion_cap' => $cap, 'evaluator_judgment_required' => true];
+            return ['criterion_reference' => $contractMapping['criterion_code'], 'category' => $category, 'subcategory' => null, 'level' => null, 'configured_points' => $cap, 'criterion_cap' => $cap, 'evaluator_judgment_required' => true];
         }
         if ((int) ($category['requires_manual_hr_rule'] ?? 0) === 1 && empty($category['subcategories']) && empty($category['options'])) {
             throw new RuntimeException("CRITERION_CONFIGURATION_INCOMPLETE: {$categoryCode} has no locked automatic point rule.");
@@ -62,7 +62,9 @@ final class LockedCriterionResolverService
         if ($subcategoryCode !== null) {
             foreach ($category['subcategories'] ?? [] as $row) {
                 if (strcasecmp((string) ($row['subcategory_code'] ?? ''), $subcategoryCode) === 0) {
-                    return $this->result($category, $row, (float) ($row['default_points'] ?? 0), $subcategoryCode);
+                    $selectedLevel = $this->selectedLevel($row, $metadata, $details);
+                    $points = $selectedLevel === null ? (float) ($row['default_points'] ?? 0) : (float) ($selectedLevel['points'] ?? 0);
+                    return $this->result($category, $row, $points, $subcategoryCode, [], $selectedLevel);
                 }
             }
         }
@@ -79,13 +81,51 @@ final class LockedCriterionResolverService
             'B.5' => $this->option($category, 'MATERIAL_TYPE', $this->materialType($details['material_type'] ?? '')),
             default => throw new RuntimeException("CRITERION_LEVEL_REQUIRED: {$categoryCode} claim does not identify a resolvable locked level or subtype."),
         };
-        return $this->result($category, null, $points, $submittedSubtype ?: $categoryCode);
+        return $this->result($category, null, $points, $submittedSubtype ?: $categoryCode, $this->matchedOptions($category, $categoryCode, $details, $metadata));
     }
 
-    private function result(array $category, ?array $level, float $points, string $reference): array
+    private function result(array $category, ?array $level, float $points, string $reference, array $matchedOptions = [], ?array $selectedLevel = null): array
     {
         if ($points <= 0) throw new RuntimeException('CRITERION_POINTS_UNRESOLVED: Locked configured points could not be determined.');
-        return ['criterion_reference' => $reference, 'category' => $category, 'level' => $level, 'configured_points' => $points, 'criterion_cap' => (float) ($category['max_points'] ?? $points)];
+        return ['criterion_reference' => $reference, 'category' => $category, 'subcategory' => $level, 'level' => $level, 'selected_level' => $selectedLevel, 'matched_options' => $matchedOptions, 'configured_points' => $points, 'criterion_cap' => (float) ($category['max_points'] ?? $points)];
+    }
+    private function selectedLevel(array $subcategory, array $metadata, array $details): ?array
+    {
+        $selection = trim((string) ($metadata['selected_level_id'] ?? $metadata['level_id'] ?? $metadata['selected_level_code'] ?? $metadata['level_code'] ?? $details['selected_level_id'] ?? $details['level_id'] ?? $details['selected_level_code'] ?? $details['level_code'] ?? ''));
+        if ($selection === '') return null;
+        foreach ($subcategory['levels'] ?? [] as $level) {
+            if ((int) ($level['is_active'] ?? 1) !== 1) continue;
+            foreach (['id', 'option_code', 'label', 'name'] as $field) {
+                if (isset($level[$field]) && strcasecmp(trim((string) $level[$field]), $selection) === 0) return $level;
+            }
+        }
+        throw new RuntimeException('CRITERION_OPTION_INVALID: selected level is not configured for this locked subcategory.');
+    }
+    private function matchedOptions(array $category, string $categoryCode, array $details, array $metadata): array
+    {
+        $codes = match ($categoryCode) {
+            'A.3' => [['LEVEL', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')]],
+            'B.1' => [
+                ['ROLE', preg_match('/judge|evaluator/i', (string) ($details['role'] ?? '')) ? 'JUDGE' : 'LECTURER'],
+                ['EXTENT', $this->extentCode($details['extent'] ?? '')],
+                ['PARTICIPANTS', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')],
+                ['SPONSOR', preg_match('/ndmu|notre dame/i', (string) ($details['organizer'] ?? $metadata['organizer'] ?? '')) ? 'NDMU' : 'EXTERNAL'],
+            ],
+            'B.2' => [['TYPE', $this->publicationType($details['publication_type'] ?? '')], ['SCOPE', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')]],
+            'B.4' => [[preg_match('/nomin/i', (string) ($details['recognition_status'] ?? '')) ? 'NOMINEE' : 'AWARDEE', $this->awardScope($details['scope'] ?? $metadata['scope_level'] ?? '')]],
+            'B.5' => [['MATERIAL_TYPE', $this->materialType($details['material_type'] ?? '')]],
+            default => [],
+        };
+        $matched = [];
+        foreach ($codes as [$group, $code]) {
+            foreach ($category['options'] ?? [] as $option) {
+                if (strcasecmp((string) ($option['option_group_code'] ?? ''), $group) === 0 && strcasecmp((string) ($option['option_code'] ?? ''), $code) === 0) {
+                    $matched[] = $option;
+                    break;
+                }
+            }
+        }
+        return $matched;
     }
     private function findCategory(array $snapshot, string $code): ?array { foreach ($snapshot['areas'] ?? [] as $area) foreach ($area['categories'] ?? [] as $category) if (strcasecmp((string) ($category['category_code'] ?? ''), $code) === 0) return $category + ['area_code' => $area['area_code'] ?? null, 'area_max_points' => $area['max_points'] ?? null]; return null; }
     private function option(array $category, string $group, string $code): float { foreach ($category['options'] ?? [] as $row) if (strcasecmp((string) ($row['option_group_code'] ?? ''), $group) === 0 && strcasecmp((string) ($row['option_code'] ?? ''), $code) === 0) return (float) ($row['points'] ?? 0); throw new RuntimeException("CRITERION_OPTION_INVALID: {$group}/{$code} is not configured in the locked criterion."); }

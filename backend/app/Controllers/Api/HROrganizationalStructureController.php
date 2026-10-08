@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use App\Services\AuthorizationService;
 use App\Services\PersonnelClassificationService;
 use App\Services\DeanAssignmentService;
+use App\Helpers\ValidationHelper;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -28,6 +29,61 @@ class HROrganizationalStructureController extends Controller
         return $this->respond(null, 204);
     }
 
+    public function createCollege(): mixed
+    {
+        $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
+        $json = $this->request->getJSON(true) ?? [];
+        $code = strtoupper(trim((string) ($json['code'] ?? '')));
+        $name = trim((string) ($json['name'] ?? ''));
+        if (! preg_match('/^[A-Z0-9_-]{2,20}$/', $code) || $name === '' || mb_strlen($name) > 150) {
+            return $this->respond(['error' => ['code' => 'INVALID_COLLEGE', 'message' => 'Enter a 2–20 character code and a college name up to 150 characters.']], 422);
+        }
+        $db = db_connect();
+        try {
+            $id = $this->genUuid();
+            $db->table('colleges')->insert(['id' => $id, 'code' => $code, 'name' => $name, 'status' => 'active']);
+            return $this->respondCreated(['data' => ['id' => $id, 'code' => $code, 'name' => $name, 'status' => 'active']]);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'COLLEGE_CONFLICT', 'message' => 'A college with that code or name already exists.']], 409);
+        }
+    }
+
+    public function createDepartment(): mixed
+    {
+        $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! $this->authz->hasRole($actor, 'hr_staff')) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'HR Staff access required.']], 403);
+        $json = $this->request->getJSON(true) ?? [];
+        $code = strtoupper(trim((string) ($json['code'] ?? '')));
+        $name = trim((string) ($json['name'] ?? ''));
+        $collegeId = trim((string) ($json['college_id'] ?? '')) ?: null;
+        if (! preg_match('/^[A-Z0-9_-]{2,20}$/', $code) || $name === '' || mb_strlen($name) > 150) {
+            return $this->respond(['error' => ['code' => 'INVALID_DEPARTMENT', 'message' => 'Enter a 2–20 character code and a department name up to 150 characters.']], 422);
+        }
+        $db = db_connect();
+        if ($collegeId !== null && (! ValidationHelper::validateUuid($collegeId) || $db->table('colleges')->where('id', $collegeId)->where('status', 'active')->countAllResults() === 0)) {
+            return $this->respond(['error' => ['code' => 'INVALID_COLLEGE', 'message' => 'Select an active College or leave the department independent.']], 422);
+        }
+        try {
+            $id = $this->genUuid();
+            $db->table('administrative_units')->insert([
+                'id' => $id, 'code' => $code, 'name' => $name,
+                'unit_type' => $collegeId === null ? 'central_office' : 'college_based_office',
+                'college_id' => $collegeId, 'status' => 'active',
+            ]);
+            return $this->respondCreated(['data' => ['id' => $id, 'code' => $code, 'name' => $name, 'college_id' => $collegeId, 'status' => 'active']]);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'DEPARTMENT_CONFLICT', 'message' => 'A department with that code or name already exists.']], 409);
+        }
+    }
+
+    private function genUuid(): string
+    {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
+    }
+
     public function index(): mixed
     {
         $actor = $this->authz->resolveActor($this->request->getHeaderLine('Authorization'));
@@ -46,7 +102,7 @@ class HROrganizationalStructureController extends Controller
 
             // The WAMP schema retains the legacy table name; this API exposes these records as Departments only.
             $departments = $db->table('administrative_units')
-                ->select('id, code, name, status')
+                ->select('id, code, name, status, college_id, unit_type')
                 ->where('status', 'active')->orderBy('name', 'ASC')->get()->getResultArray();
 
             $deans = $db->table('dean_assignments da')

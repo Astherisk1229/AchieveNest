@@ -68,7 +68,10 @@ function CyclesList({ cycles, error, onCreate, onAction }) {
   return <section className="space-y-5">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div><h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">Ranking Periods</h1><p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">Choose the ranking period you want to work on.</p></div>
-      <button type="button" onClick={onCreate} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"><Plus className="h-4 w-4"/>New Ranking Period</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Link to="/hr/ranking-cycles/criteria" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900">Manage Criteria</Link>
+        <button type="button" onClick={onCreate} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"><Plus className="h-4 w-4"/>New Ranking Period</button>
+      </div>
     </header>
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</p>}
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">

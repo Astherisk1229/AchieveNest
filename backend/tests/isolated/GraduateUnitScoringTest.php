@@ -183,8 +183,8 @@ final class GraduateUnitScoringTest extends CIUnitTestCase
         self::assertSame(array_column($first['eligible'], 'id'), array_column($again['eligible'], 'id'));
         self::assertSame(10.0, self::totals(array_map([self::class, 'item'], $again['eligible']))['category_scores']['A.1']);
         $source = file_get_contents(ROOTPATH . 'app/Controllers/Api/PersonnelPortfolioSubmissionController.php');
-        self::assertStringContainsString('->partition($accomplishments, $period)', $source);
-        self::assertStringContainsString('->partition($accomplishments, $periodSnapshot)', $source);
+        self::assertStringContainsString('->partitionForPersonnel($accomplishments, $period, $personnelProfileId)', $source);
+        self::assertStringContainsString('->partitionForPersonnel($accomplishments, $periodSnapshot, $personnelProfileId)', $source);
         $hr = file_get_contents(ROOTPATH . 'app/Controllers/Api/HREvaluationController.php');
         self::assertStringContainsString('GraduateUnitScoringService::aggregate($items)', $hr);
         self::assertStringContainsString('GraduateUnitScoringService::isUnitItem($item)) $awardedPoints = 0.0', $hr);

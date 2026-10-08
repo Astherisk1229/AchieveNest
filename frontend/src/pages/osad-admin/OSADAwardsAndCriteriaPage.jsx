@@ -6,10 +6,12 @@ import AwardSearch from '../../components/osad/AwardSearch'
 import OSADAwardPageShell from '../../components/osad/OSADAwardPageShell'
 import { OSADEmptyState, OSADErrorState, OSADSearchEmptyState } from '../../components/osad/OSADStateBlock'
 import ScoringHealthPanel from '../../components/osad/ScoringHealthPanel'
+import AwardCriteriaHierarchyEditor from '../../components/osad/AwardCriteriaHierarchyEditor'
 import useAwardCatalog from '../../hooks/useAwardCatalog'
 
 export default function OSADAwardsAndCriteriaPage({ onSelectAward }) {
   const catalog = useAwardCatalog()
+  const [managedAward, setManagedAward] = React.useState(null)
 
   return (
     <OSADAwardPageShell
@@ -56,12 +58,13 @@ export default function OSADAwardsAndCriteriaPage({ onSelectAward }) {
             </div>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800" aria-label="Awards">
-              {catalog.filteredAwards.map((award) => <AwardCatalogRow key={award.id} award={award} onOpen={onSelectAward} />)}
+              {catalog.filteredAwards.map((award) => <AwardCatalogRow key={award.id} award={award} onOpen={onSelectAward} onManage={setManagedAward} />)}
             </ul>
           )}
         </div>
       </section>
       <ScoringHealthPanel />
+      {managedAward && <AwardCriteriaHierarchyEditor award={managedAward} onClose={() => setManagedAward(null)} onPublished={catalog.reload} />}
     </OSADAwardPageShell>
   )
 }

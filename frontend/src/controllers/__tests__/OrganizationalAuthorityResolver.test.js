@@ -16,11 +16,9 @@ describe('central organizational authority resolution', () => {
     expect(resolver).toContain('AUTHORITY_AMBIGUOUS_DEAN')
   })
 
-  it('resolves an outside-College Department through exactly one Department Head', () => {
-    expect(resolver).toContain('department_head_assignments')
-    expect(resolver).toContain('AUTHORITY_MISSING_DEPARTMENT_HEAD')
-    expect(resolver).toContain('AUTHORITY_AMBIGUOUS_DEPARTMENT_HEAD')
-    expect(resolver).toContain("result('DEPARTMENT_HEAD'")
+  it('does not resolve or authorize a Department Head evaluator', () => {
+    expect(resolver).not.toContain('department_head_assignments')
+    expect(resolver).not.toContain("result('DEPARTMENT_HEAD'")
   })
 
   it('uses HR for the explicit Non-Teaching Faculty route', () => {

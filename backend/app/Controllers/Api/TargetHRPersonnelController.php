@@ -9,7 +9,6 @@ use App\Services\FacultyStatusService;
 use App\Services\PersonnelClassificationService;
 use App\Services\PersonnelLoginReadinessService;
 use App\Services\DeanAssignmentService;
-use App\Services\DepartmentSecretaryOccupancyService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -24,7 +23,6 @@ class TargetHRPersonnelController extends Controller
     protected \App\Services\PersonnelImportService $importService;
     protected PersonnelLoginReadinessService $loginReadinessService;
     protected DeanAssignmentService $deanAssignmentService;
-    protected DepartmentSecretaryOccupancyService $secretaryOccupancyService;
 
     public function __construct(
         ?AuthorizationService $authz = null,
@@ -32,8 +30,7 @@ class TargetHRPersonnelController extends Controller
         ?FacultyStatusService $facultyStatusService = null,
         ?\App\Services\PersonnelImportService $importService = null,
         ?PersonnelLoginReadinessService $loginReadinessService = null,
-        ?DeanAssignmentService $deanAssignmentService = null,
-        ?DepartmentSecretaryOccupancyService $secretaryOccupancyService = null
+        ?DeanAssignmentService $deanAssignmentService = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->classificationService = $classificationService ?? new PersonnelClassificationService();
@@ -41,7 +38,6 @@ class TargetHRPersonnelController extends Controller
         $this->importService = $importService ?? new \App\Services\PersonnelImportService();
         $this->loginReadinessService = $loginReadinessService ?? new PersonnelLoginReadinessService();
         $this->deanAssignmentService = $deanAssignmentService ?? new DeanAssignmentService();
-        $this->secretaryOccupancyService = $secretaryOccupancyService ?? new DepartmentSecretaryOccupancyService();
     }
 
     public function options(): mixed
@@ -137,6 +133,7 @@ class TargetHRPersonnelController extends Controller
         $hasPositionCol   = $db->fieldExists('position_title', 'personnel_profiles');
         $hasRankCol       = $db->fieldExists('current_rank_title', 'personnel_profiles');
         $hasQualCol       = $db->fieldExists('qualification_summary', 'personnel_profiles');
+        $hasContactNumberCol = $db->fieldExists('contact_number', 'personnel_profiles');
 
         $selectCols = [
             'p.id', 'p.institutional_id', 'p.email AS institutional_email', 'p.full_name',
@@ -150,9 +147,10 @@ class TargetHRPersonnelController extends Controller
             "CASE WHEN lac.profile_id IS NULL THEN 'missing' WHEN lac.must_change_password IS NULL THEN 'invalid' ELSE 'valid' END AS credential_integrity_status",
             'p.created_at',
             'pp.personnel_classification',
+            $hasContactNumberCol ? 'pp.contact_number' : 'NULL AS contact_number',
             'pp.employment_status',
             'pp.employment_start_date',
-            $hasGroupCol ? 'pp.personnel_group' : "CASE WHEN pp.personnel_classification='academic' THEN 'faculty' ELSE 'non_teaching_faculty' END AS personnel_group",
+            $hasGroupCol ? 'pp.personnel_group' : "NULL AS personnel_group",
             $hasSideCol  ? 'pp.organizational_side' : "pp.personnel_classification AS organizational_side",
             $hasEngagementCol ? 'pp.faculty_engagement' : "NULL AS faculty_engagement",
             $hasPositionCol   ? 'pp.position_title' : "p.designation_title AS position_title",
@@ -211,7 +209,7 @@ class TargetHRPersonnelController extends Controller
         if ($hasSideCol && in_array($organizationalSide, ['academic', 'non_academic'], true)) {
             $builder->where('pp.organizational_side', $organizationalSide);
         }
-        if ($hasEngagementCol && in_array($facultyEngagement, ['full_time_faculty', 'part_time_faculty'], true)) {
+        if ($hasEngagementCol && $facultyEngagement === 'full_time_faculty') {
             $builder->where('pp.faculty_engagement', $facultyEngagement);
         }
         if (in_array($employmentStatus, ['permanent', 'probationary'], true)) {
@@ -315,10 +313,16 @@ class TargetHRPersonnelController extends Controller
 
             // Resolved canonical classification details
             $resolvedCls = $this->classificationService->resolveFromRecord($row);
-            $row['personnel_group']             = $resolvedCls['group'];
-            $row['organizational_side']         = $resolvedCls['side'];
-            $row['classification_code']        = $resolvedCls['code'];
-            $row['classification_label']       = $resolvedCls['label'];
+            if (in_array(strtolower(trim((string) ($row['personnel_group'] ?? ''))), ['faculty', 'non_teaching_faculty'], true)) {
+                $row['personnel_group'] = $resolvedCls['group'];
+                $row['organizational_side'] = $resolvedCls['side'];
+                $row['classification_code'] = $resolvedCls['code'];
+                $row['classification_label'] = $resolvedCls['label'];
+            } else {
+                $row['personnel_group'] = null;
+                $row['classification_code'] = null;
+                $row['classification_label'] = 'Needs HR classification';
+            }
 
             // Resolved master data DTO details
             $dto = $this->facultyStatusService->buildMasterDataDto($row);
@@ -447,16 +451,20 @@ class TargetHRPersonnelController extends Controller
         }
 
         $db = db_connect();
-        $row = $db->table('profiles p')
-            ->select([
+        $hasContactNumberCol = $db->fieldExists('contact_number', 'personnel_profiles');
+        $masterDataSelect = [
                 'p.id', 'p.institutional_id', 'p.email AS institutional_email', 'p.full_name',
                 'p.first_name', 'p.middle_name', 'p.last_name', 'p.designation_title AS designation', 'p.status',
-                'pp.personnel_classification', 'pp.employment_status', 'pp.employment_start_date',
+                'pp.personnel_classification',
+                $hasContactNumberCol ? 'pp.contact_number' : 'NULL AS contact_number',
+                'pp.employment_status', 'pp.employment_start_date',
                 'pp.personnel_group', 'pp.organizational_side',
                 'pp.faculty_engagement', 'pp.position_title', 'pp.current_rank_title', 'pp.qualification_summary',
                 'pca.college_id', 'c.code AS college_code', 'c.name AS college_name',
                 'pau.administrative_unit_id', 'au.code AS administrative_unit_code', 'au.name AS administrative_unit_name',
-            ])
+            ];
+        $row = $db->table('profiles p')
+            ->select($masterDataSelect, false)
             ->join('personnel_profiles pp', 'pp.profile_id = p.id')
             ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1', 'left')
             ->join('colleges c', 'c.id = pca.college_id', 'left')
@@ -476,6 +484,10 @@ class TargetHRPersonnelController extends Controller
             log_message('error', 'Length of service unavailable for {id}: {msg}', ['id' => $profileId, 'msg' => $e->getMessage()]);
         }
         $dto = $this->facultyStatusService->buildMasterDataDto($row);
+        // Contact phone is shared only with HR and the account owner, not other dossier readers.
+        if ($isHr || $isSelf) {
+            $dto['contact_number'] = $row['contact_number'] ?? null;
+        }
         return $this->respond(['data' => $dto], 200);
     }
 
@@ -498,12 +510,30 @@ class TargetHRPersonnelController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
+        $contactNumber = null;
+        if (array_key_exists('contact_number', $json)) {
+            if (! is_string($json['contact_number']) && $json['contact_number'] !== null) {
+                return $this->respond(['error' => ['code' => 'INVALID_CONTACT_NUMBER', 'message' => 'Contact number must be text.']], 422);
+            }
+            $contactNumber = trim((string) ($json['contact_number'] ?? ''));
+            if (mb_strlen($contactNumber) > 40 || ($contactNumber !== '' && ! preg_match('/^[0-9+()\-.\s]{5,40}$/', $contactNumber))) {
+                return $this->respond(['error' => ['code' => 'INVALID_CONTACT_NUMBER', 'message' => 'Contact number may contain 5–40 digits, spaces and + ( ) - . only.']], 422);
+            }
+            $contactNumber = $contactNumber === '' ? null : $contactNumber;
+        }
         $validation = $this->facultyStatusService->validateMasterDataPayload($json);
         if (! $validation['valid']) {
             return $this->respond(['error' => $validation['error']], 422);
         }
 
         $db = db_connect();
+        $hasContactNumberCol = $db->fieldExists('contact_number', 'personnel_profiles');
+        if (array_key_exists('contact_number', $json) && ! $hasContactNumberCol) {
+            return $this->respond(['error' => [
+                'code' => 'CONTACT_PHONE_NOT_CONFIGURED',
+                'message' => 'Contact phone is not available until the personnel profile migration is applied.',
+            ]], 409);
+        }
         $targetProfile = $db->table('profiles')->where('id', $profileId)->where('account_type', 'personnel')->get()->getRowArray();
         if ($targetProfile === null) {
             return $this->respond(['error' => ['code' => 'PERSONNEL_NOT_FOUND', 'message' => 'Active personnel profile not found.']], 404);
@@ -531,6 +561,7 @@ class TargetHRPersonnelController extends Controller
         $priorPosition   = $currentPersonnel['position_title'] ?? ($targetProfile['designation_title'] ?? '');
         $priorRank       = $currentPersonnel['current_rank_title'] ?? ($currentPersonnel['rank_level'] ?? '');
         $priorFullName   = (string) ($targetProfile['full_name'] ?? '');
+        $priorContactNumber = $currentPersonnel['contact_number'] ?? null;
 
         $db->transBegin();
         try {
@@ -538,16 +569,6 @@ class TargetHRPersonnelController extends Controller
                 ->select('college_id')->where('personnel_profile_id', $profileId)->where('is_active', 1)->get()->getRowArray();
             $unitAffiliation = $db->table('personnel_administrative_unit_affiliations')
                 ->select('administrative_unit_id')->where('personnel_profile_id', $profileId)->where('is_active', 1)->get()->getRowArray();
-            $secretaryConflict = $this->secretaryOccupancyService->findConflict(
-                $db,
-                $validation['position_title'],
-                $collegeAffiliation['college_id'] ?? null,
-                $unitAffiliation['administrative_unit_id'] ?? null,
-                $profileId
-            );
-            if ($secretaryConflict !== null) {
-                throw new \DomainException(json_encode($secretaryConflict));
-            }
             $updateData = [
                 'employment_status'     => $validation['employment_status'],
                 'employment_start_date' => $validation['employment_start_date'],
@@ -560,6 +581,9 @@ class TargetHRPersonnelController extends Controller
 
             if ($validation['faculty_engagement'] !== null) {
                 $updateData['faculty_engagement'] = $validation['faculty_engagement'];
+            }
+            if (array_key_exists('contact_number', $json)) {
+                $updateData['contact_number'] = $contactNumber;
             }
 
             $db->table('personnel_profiles')->where('profile_id', $profileId)->update($updateData);
@@ -594,6 +618,9 @@ class TargetHRPersonnelController extends Controller
                         'prior_full_name'  => $priorFullName,
                         'new_full_name'    => $fullName,
                         'full_name_changed' => $priorFullName !== $fullName,
+                        'prior_contact_number' => $priorContactNumber,
+                        'new_contact_number' => array_key_exists('contact_number', $json) ? $contactNumber : $priorContactNumber,
+                        'contact_number_changed' => array_key_exists('contact_number', $json) && $priorContactNumber !== $contactNumber,
                         'justification'    => trim((string) ($json['reason'] ?? 'HR Admin updated faculty status and master data.')),
                     ],
                     $now
@@ -603,12 +630,6 @@ class TargetHRPersonnelController extends Controller
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
-            if ($e instanceof \DomainException) {
-                $details = json_decode($e->getMessage(), true);
-                if (is_array($details) && ($details['code'] ?? null) === 'POSITION_OCCUPIED') {
-                    return $this->respond(['error' => $details], 409);
-                }
-            }
             return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Failed to update personnel master data: ' . $e->getMessage()]], 500);
         }
 
@@ -617,6 +638,7 @@ class TargetHRPersonnelController extends Controller
                 'message'                  => 'Personnel master data updated successfully.',
                 'profile_id'               => $profileId,
                 'full_name'                => $fullName,
+                'contact_number'           => array_key_exists('contact_number', $json) ? $contactNumber : $priorContactNumber,
                 'faculty_engagement'       => $validation['faculty_engagement'],
                 'faculty_engagement_label' => $validation['faculty_engagement_label'],
                 'employment_status'        => $validation['employment_status'],
@@ -756,7 +778,7 @@ class TargetHRPersonnelController extends Controller
 
         $academic = ($personnel['organizational_side'] ?? $personnel['personnel_classification'] ?? '') === 'academic';
         $collegeId = trim((string) ($json['college_id'] ?? ''));
-        $unitId = trim((string) ($json['administrative_unit_id'] ?? ''));
+        $unitId = trim((string) ($json['department_id'] ?? $json['administrative_unit_id'] ?? ''));
         $programIds = array_values(array_unique(array_filter(array_map('strval', (array) ($json['academic_program_ids'] ?? [])))));
 
         if ($academic) {
@@ -765,6 +787,10 @@ class TargetHRPersonnelController extends Controller
             }
             if ($db->table('colleges')->where('id', $collegeId)->countAllResults() === 0) {
                 return $this->respond(['error' => ['code' => 'COLLEGE_NOT_FOUND', 'message' => 'College not found.']], 422);
+            }
+            $department = $db->table('administrative_units')->where('id', $unitId)->where('status', 'active')->get()->getRowArray();
+            if ($department === null || (string) ($department['college_id'] ?? '') !== $collegeId) {
+                return $this->respond(['error' => ['code' => 'DEPARTMENT_COLLEGE_MISMATCH', 'message' => 'Select an active Department under the selected College.']], 422);
             }
             foreach ($programIds as $programId) {
                 if (! ValidationHelper::validateUuid($programId)) {
@@ -785,7 +811,8 @@ class TargetHRPersonnelController extends Controller
             if (! ValidationHelper::validateUuid($unitId)) {
                 return $this->respond(['error' => ['code' => 'UNIT_REQUIRED', 'message' => 'Non-academic personnel require an administrative unit.']], 422);
             }
-            if ($db->table('administrative_units')->where('id', $unitId)->countAllResults() === 0) {
+            $department = $db->table('administrative_units')->where('id', $unitId)->where('college_id', null)->where('status', 'active')->get()->getRowArray();
+            if ($department === null) {
                 return $this->respond(['error' => ['code' => 'UNIT_NOT_FOUND', 'message' => 'Administrative unit not found.']], 422);
             }
         }
@@ -813,16 +840,15 @@ class TargetHRPersonnelController extends Controller
                 if ($db->fieldExists('college_id', 'personnel_profiles')) {
                     $db->table('personnel_profiles')->where('profile_id', $profileId)->update(['college_id' => $collegeId, 'updated_at' => $now]);
                 }
-            } else {
-                $db->table('personnel_administrative_unit_affiliations')->where('personnel_profile_id', $profileId)->where('is_active', 1)
-                    ->update(['is_active' => 0, 'effective_to' => $today]);
-                $db->table('personnel_administrative_unit_affiliations')->insert([
-                    'id' => $this->genUuid(), 'personnel_profile_id' => $profileId, 'administrative_unit_id' => $unitId,
-                    'effective_from' => $today, 'is_active' => 1, 'recorded_by' => $actorId,
-                ]);
-                if ($db->fieldExists('administrative_unit_id', 'personnel_profiles')) {
-                    $db->table('personnel_profiles')->where('profile_id', $profileId)->update(['administrative_unit_id' => $unitId, 'updated_at' => $now]);
-                }
+            }
+            $db->table('personnel_administrative_unit_affiliations')->where('personnel_profile_id', $profileId)->where('is_active', 1)
+                ->update(['is_active' => 0, 'effective_to' => $today]);
+            $db->table('personnel_administrative_unit_affiliations')->insert([
+                'id' => $this->genUuid(), 'personnel_profile_id' => $profileId, 'administrative_unit_id' => $unitId,
+                'effective_from' => $today, 'is_active' => 1, 'recorded_by' => $actorId,
+            ]);
+            if ($db->fieldExists('administrative_unit_id', 'personnel_profiles')) {
+                $db->table('personnel_profiles')->where('profile_id', $profileId)->update(['administrative_unit_id' => $unitId, 'updated_at' => $now]);
             }
             if ($db->tableExists('account_lifecycle_events')) {
                 $db->table('account_lifecycle_events')->insert($this->lifecycleAuditRow(
@@ -830,7 +856,7 @@ class TargetHRPersonnelController extends Controller
                     $actorId,
                     'assignment_updated',
                     $targetProfile['status'] ?? null,
-                    ['college_id' => $academic ? $collegeId : null, 'academic_program_ids' => $academic ? $programIds : [], 'administrative_unit_id' => $academic ? null : $unitId],
+                    ['college_id' => $academic ? $collegeId : null, 'academic_program_ids' => $academic ? $programIds : [], 'department_id' => $unitId],
                     $now
                 ));
             }

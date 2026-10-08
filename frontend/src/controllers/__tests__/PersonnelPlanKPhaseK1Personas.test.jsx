@@ -180,25 +180,27 @@ describe('Personnel Evaluation Track — Plan K — Phase K1: Required Test Pers
     expect(PLAN_K_PERSONAS.P7.expected_reviewer_route).toBe('hr');
   });
 
-  // Test 24: P-SEC authenticates
-  it('24. P-SEC authenticates with department_secretary role', () => {
-    const session = createSyntheticSession('P_SEC');
-    expect(session.user.roles).toContain('department_secretary');
+  // Test 24: P-UNASSIGNED is a personnel account without reviewer authority
+  it('24. P-UNASSIGNED authenticates with personnel role only', () => {
+    const session = createSyntheticSession('P_UNASSIGNED');
+    expect(session.user.roles).toContain('personnel');
+    expect(session.user.roles).not.toContain('dean');
+    expect(session.user.roles).not.toContain('hr_staff');
   });
 
-  // Test 25: P-SEC has no evaluator authority
-  it('25. P-SEC is strictly excluded from evaluator authority', () => {
-    expect(PLAN_K_PERSONAS.P_SEC.is_evaluator).toBe(false);
+  // Test 25: P-UNASSIGNED has no evaluator authority
+  it('25. P-UNASSIGNED is strictly excluded from evaluator authority', () => {
+    expect(PLAN_K_PERSONAS.P_UNASSIGNED.is_evaluator).toBe(false);
   });
 
-  // Test 26: P-SEC own route derives from group+side
-  it('26. P-SEC own evaluation route derives from NTF + Academic -> Dean', () => {
+  // Test 26: P-UNASSIGNED own route derives from group+side
+  it('26. P-UNASSIGNED own evaluation route derives from NTF + Academic -> Dean', () => {
     const route = resolveReviewerRole(
-      PLAN_K_PERSONAS.P_SEC.personnel_group,
-      PLAN_K_PERSONAS.P_SEC.organizational_side
+      PLAN_K_PERSONAS.P_UNASSIGNED.personnel_group,
+      PLAN_K_PERSONAS.P_UNASSIGNED.organizational_side
     );
     expect(route).toBe('dean');
-    expect(PLAN_K_PERSONAS.P_SEC.expected_reviewer_route).toBe('dean');
+    expect(PLAN_K_PERSONAS.P_UNASSIGNED.expected_reviewer_route).toBe('dean');
   });
 
   // Test 27: P-LEG legacy group fixture exists
@@ -307,7 +309,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K1: Required Test Pers
       P5: ['K0-G01', 'K0-G04', 'K0-G05'],
       P6: ['K0-H01', 'K0-H02', 'K0-H03'],
       P7: ['K0-G06'],
-      P_SEC: ['K0-G07', 'K0-S03'],
+      P_UNASSIGNED: ['K0-G07', 'K0-S03'],
       P_LEG_SUPPORTED: ['K0-M01'],
       P_LEG_AMBIGUOUS: ['K0-M02'],
     };
@@ -320,6 +322,6 @@ describe('Personnel Evaluation Track — Plan K — Phase K1: Required Test Pers
 
   // Test 40: full regression baseline passes
   it('40. Master regression baseline integrity holds across all persona definitions', () => {
-    expect(Object.keys(PLAN_K_PERSONAS).length).toBe(10); // P1..P7 + P-SEC + P-LEG-SUPP + P-LEG-AMB
+    expect(Object.keys(PLAN_K_PERSONAS).length).toBe(10); // P1..P7 + P-UNASSIGNED + P-LEG-SUPP + P-LEG-AMB
   });
 });

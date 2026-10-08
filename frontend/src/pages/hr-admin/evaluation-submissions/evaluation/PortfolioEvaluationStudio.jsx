@@ -57,6 +57,9 @@ export default function PortfolioEvaluationStudio({
   })
 
   const [selectedEvidence, setSelectedEvidence] = useState(() => evidenceItems[0] || null)
+  const [draftRemarks, setDraftRemarks] = useState({})
+  const [draftSaveMessage, setDraftSaveMessage] = useState('')
+  const [draftSaveError, setDraftSaveError] = useState(false)
 
   // Live calculation of authoritative scores
   const scores = useMemo(() => {
@@ -87,7 +90,16 @@ export default function PortfolioEvaluationStudio({
   if (!submission) return null
 
   // Rate & verify evidence item
-  const handleVerify = (itemId, awardedPts, payload = {}, remarks = '') => {
+  const handleVerify = async (itemId, awardedPts, payload = {}, remarks = '') => {
+    const selected = evidenceItems.find(item => item.id === itemId)
+    await hrEvaluationService.verifyItem(submission.id, itemId, 'verified', remarks)
+    const saved = await hrEvaluationService.rateItem(
+      submission.id,
+      itemId,
+      remarks,
+      selected?.evaluator_judgment_required ? awardedPts : null
+    )
+    const serverPoints = saved?.data?.awarded_points ?? saved?.awarded_points
     setEvidenceItems((prev) =>
       prev.map((item) => {
         if (item.id === itemId) {
@@ -95,7 +107,7 @@ export default function PortfolioEvaluationStudio({
             ...item,
             verificationStatus: 'verified',
             ratingStatus: 'rated',
-            awardedPoints: awardedPts,
+            awardedPoints: serverPoints === undefined ? awardedPts : Number(serverPoints),
             scoringPayload: payload,
             evaluatorRemarks: remarks
           }
@@ -106,8 +118,8 @@ export default function PortfolioEvaluationStudio({
   }
 
   // Rate & advance to next item
-  const handleVerifyAndNext = (itemId, awardedPts, payload = {}, remarks = '') => {
-    handleVerify(itemId, awardedPts, payload, remarks)
+  const handleVerifyAndNext = async (itemId, awardedPts, payload = {}, remarks = '') => {
+    await handleVerify(itemId, awardedPts, payload, remarks)
 
     const currentIndex = evidenceItems.findIndex((i) => i.id === itemId)
     const nextItem =
@@ -120,7 +132,8 @@ export default function PortfolioEvaluationStudio({
   }
 
   // Mark item ineligible
-  const handleReject = (itemId, remarks = '') => {
+  const handleReject = async (itemId, remarks = '') => {
+    await hrEvaluationService.verifyItem(submission.id, itemId, 'ineligible', remarks)
     setEvidenceItems((prev) =>
       prev.map((item) => {
         if (item.id === itemId) {
@@ -160,9 +173,20 @@ export default function PortfolioEvaluationStudio({
     return true
   }
 
-  const handleSaveDraft = () => {
-    if (onSaveProgress) {
-      onSaveProgress(evidenceItems, scores)
+  const handleSaveDraft = async () => {
+    setDraftSaveMessage('')
+    setDraftSaveError(false)
+    try {
+      await Promise.all(Object.entries(draftRemarks).map(([itemId, remarks]) => hrEvaluationService.saveItemRemarks(submission.id, itemId, remarks)))
+      if (Object.keys(draftRemarks).length) {
+        setEvidenceItems(prev => prev.map(item => Object.prototype.hasOwnProperty.call(draftRemarks, item.id) ? { ...item, evaluatorRemarks: draftRemarks[item.id] } : item))
+        setDraftRemarks({})
+      }
+      onSaveProgress?.(evidenceItems, scores)
+      setDraftSaveMessage('Evaluator remarks saved.')
+    } catch (error) {
+      setDraftSaveError(true)
+      setDraftSaveMessage(error?.response?.data?.error?.message || error?.error?.message || error?.message || 'Evaluator remarks could not be saved.')
     }
   }
 
@@ -224,6 +248,12 @@ export default function PortfolioEvaluationStudio({
               onVerifyAndNext={handleVerifyAndNext}
               onVerify={handleVerify}
               onReject={handleReject}
+              onRemarksChange={(itemId, value) => {
+                setDraftSaveMessage('')
+                setDraftSaveError(false)
+                setDraftRemarks(current => ({ ...current, [itemId]: value }))
+                setEvidenceItems(current => current.map(item => item.id === itemId ? { ...item, evaluatorRemarks: value } : item))
+              }}
               hasNextItem={Boolean(
                 evidenceItems.find(
                   (i) => (i.verificationStatus === 'pending' || i.ratingStatus !== 'rated') && i.id !== selectedEvidence?.id
@@ -233,6 +263,7 @@ export default function PortfolioEvaluationStudio({
               onWorkspaceModeChange={handleWorkspaceModeChange}
               tenureYears={tenureYears}
             />
+            {draftSaveMessage && <p role="status" className={`mt-3 text-xs font-semibold ${draftSaveError ? 'text-rose-700' : 'text-emerald-700'}`}>{draftSaveMessage}</p>}
           </div>
         </div>
       </div>

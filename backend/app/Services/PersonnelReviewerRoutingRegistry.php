@@ -20,7 +20,7 @@ use RuntimeException;
  * 5. Dean (Self/Peer) -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
  * 6. VP for Academics -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
  * 7. VP for Administration -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
- * 8. Department Secretary is strictly NOT an authorized evaluator [Plan G0].
+ * 8. Only explicitly assigned Dean and HR roles are authorized evaluators.
  * 9. Personnel cannot self-evaluate or self-route [Plan G0].
  * 10. Scale code alone does not determine reviewer identity [Plan G0].
  * 11. Unresolved inputs strictly return status='unresolved' with zero silent fallback [CHU-01 Phase 2 & Plan G0].
@@ -35,7 +35,6 @@ class PersonnelReviewerRoutingRegistry
     public const REASON_ROUTE_ASSIGNED = 'route_assigned';
     public const REASON_REVIEWER_ROUTE_UNRESOLVED = 'reviewer_route_unresolved';
     public const REASON_UNAUTHORIZED_EVALUATOR = 'unauthorized_evaluator';
-    public const REASON_DEPARTMENT_SECRETARY_EXCLUDED = 'department_secretary_excluded';
     public const REASON_SELF_EVALUATION_PROHIBITED = 'self_evaluation_prohibited';
 
     /**
@@ -226,11 +225,6 @@ class PersonnelReviewerRoutingRegistry
 
         $actorRoles = $actor['roles'] ?? [];
 
-        // Rule: Department Secretary is strictly excluded
-        if (in_array('department_secretary', $actorRoles, true) && !in_array('dean', $actorRoles, true) && !in_array('hr_staff', $actorRoles, true)) {
-            return false;
-        }
-
         $assignedRole = $evaluation['assigned_reviewer_role'] ?? null;
         $targetCollegeId = $evaluation['target_college_id'] ?? null;
 
@@ -238,10 +232,12 @@ class PersonnelReviewerRoutingRegistry
             if (!in_array('dean', $actorRoles, true)) {
                 return false;
             }
-            // Dean must match the assigned college
+            // Dean access requires an authoritative target and actor college.
+            // Missing scope must fail closed just like a cross-college mismatch.
             $actorCollegeId = $actor['assigned_college_id'] ?? null;
-            if ($targetCollegeId !== null && $actorCollegeId !== $targetCollegeId) {
-                return false; // Cross-college evaluation prohibited
+            if (trim((string) $targetCollegeId) === '' || trim((string) $actorCollegeId) === ''
+                || (string) $actorCollegeId !== (string) $targetCollegeId) {
+                return false;
             }
             return true;
         }

@@ -28,7 +28,7 @@ class PersonnelRankPlacementController extends Controller
     public function reviewerCurrent(string $personnelId):mixed
     {
         $a=$this->actor();if(!$a)return$this->unauthorized();$id=(string)($a['profile']['id']??'');
-        if(!$this->authz->hasAnyRole($a,['dean','department_head']))return$this->forbidden();
+        if(!$this->authz->hasAnyRole($a,['dean']))return$this->forbidden();
         try{$resolved=$this->authority->resolveResponsibleAuthority($personnelId);if(!$this->authority->actorMayAct($resolved,$id))return$this->forbidden();return$this->respond(['data'=>$this->placements->history($personnelId,true)]);}catch(Throwable $e){return$this->error($e);}
     }
 

@@ -19,7 +19,6 @@ The following areas are explicitly deferred until a later approval:
 - `.xlsx` and `.csv` roster imports
 - Password-reset workflows
 - Governance appointments
-- Department Secretary assignment
 - Program Coordinator assignment
 - Organization Moderator assignment
 - Dean assignment
@@ -124,7 +123,6 @@ Canonical application roles are:
 ```text
 student
 personnel
-department_secretary
 program_coordinator
 organization_moderator
 hr_staff
@@ -546,7 +544,6 @@ Confirmed later governance authority remains:
 
 ```text
 HR
-`- Department Secretary
 
 OSAD
 |- Program Coordinator

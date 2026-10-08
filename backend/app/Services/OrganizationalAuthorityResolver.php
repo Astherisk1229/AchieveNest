@@ -46,7 +46,7 @@ class OrganizationalAuthorityResolver
         // the routing registry sends both NON_TEACHING_FACULTY_ACADEMIC and
         // NON_TEACHING_FACULTY_NON_ACADEMIC to HR. A College or Department
         // affiliation remains valid metadata, but it must not redirect their
-        // annual review or evaluation to a Dean or Department Head.
+        // annual review or evaluation to a Dean.
         $explicitRoute = PersonnelReviewerRoutingRegistry::resolveReviewerRoute($this->routingContext($personnel));
         if (strtolower((string) ($personnel['personnel_group'] ?? '')) === 'non_teaching_faculty'
             && ($explicitRoute['status'] ?? '') === 'resolved'
@@ -112,14 +112,6 @@ class OrganizationalAuthorityResolver
         return $this->result('DEAN', $rows[0]['id'], $personnel['id'], 'college', $collegeId, 'Personnel Department or affiliation resolves to a College.', 'active dean assignment', $track);
     }
 
-    private function resolveDepartmentHead(array $personnel, string $departmentId, ?array $track): array
-    {
-        $rows = $this->db->table('department_head_assignments dha')->select('p.id, p.full_name')->join('profiles p', 'p.id=dha.personnel_profile_id')->where('dha.department_id', $departmentId)->where('dha.is_active', 1)->where('p.status', 'active')->get()->getResultArray();
-        if (count($rows) !== 1) throw new RuntimeException(count($rows) === 0 ? 'AUTHORITY_MISSING_DEPARTMENT_HEAD: No active Department Head is assigned to the outside-College Department.' : 'AUTHORITY_AMBIGUOUS_DEPARTMENT_HEAD: Multiple active Department Heads are assigned to the outside-College Department.');
-        if ($rows[0]['id'] === $personnel['id']) throw new RuntimeException('AUTHORITY_SELF_REVIEW_BLOCKED: Department Head self-review has no approved fallback.');
-        return $this->result('DEPARTMENT_HEAD', $rows[0]['id'], $personnel['id'], 'department', $departmentId, 'Personnel belongs to a Department outside any College.', 'active department head assignment', $track);
-    }
-
     private function resolveExplicitHrForSelfAuthority(array $personnel, ?array $track, string $reason): array
     {
         // array_merge (not +) so is_dean=true overrides routingContext()'s default false.
@@ -145,7 +137,7 @@ class OrganizationalAuthorityResolver
 
     private function result(string $type, string $authorityId, string $personnelId, string $scopeType, ?string $scopeId, string $reason, string $source, ?array $track): array
     {
-        $evaluatorRole = ['DEAN'=>'dean', 'DEPARTMENT_HEAD'=>'department_head', 'HR'=>'hr_staff'][$type] ?? strtolower($type);
+        $evaluatorRole = ['DEAN'=>'dean', 'HR'=>'hr_staff'][$type] ?? strtolower($type);
         return ['authority_type'=>$type, 'authority_profile_id'=>$authorityId, 'authority_personnel_id'=>$authorityId, 'personnel_profile_id'=>$personnelId, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'reason'=>$reason, 'source'=>$source, 'ranking_track_id'=>$track['id'] ?? null,
             'evaluator_profile_id'=>$authorityId, 'evaluator_role'=>$evaluatorRole, 'evaluator_college_id'=>$scopeType === 'college' ? $scopeId : null];
     }

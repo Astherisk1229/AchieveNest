@@ -61,7 +61,7 @@ This document specifies the exact slide deck structure of the portfolio booklet,
   - **Area B (Productivity & Creative Work)**: Claimed/Accepted Points vs **50 Max Section Cap**
   - **Area C (Service & Leadership)**: Claimed/Accepted Points vs **40 Max Cap**
   - **Grand Capped Score**: Total Capped Points vs **160 Max Total**
-- **Status Tag**: `DRAFT` | `SUBMITTED_TO_DEP_SEC` | `ENDORSED_TO_HR` | `HR_APPROVED`
+- **Status Tag**: `draft` | `submitted` | `in_evaluation` | `ready_for_finalization` | `completed`
 
 ### Page 04: Faculty Profile & Service History
 - Biography summary, educational background, years of service at NDMU, and primary teaching/research domains.
@@ -89,7 +89,7 @@ This document specifies the exact slide deck structure of the portfolio booklet,
 ### Page 16: Authentication & Administrative Endorsement Sign-off
 - Formal authentication section containing:
   - Faculty Member Signature & Submission Date
-  - Department Secretary Verification & Endorsement Signature
+  - Dean Verification & Endorsement Signature
   - HR Evaluation Officer Approval & Official Seal
 
 ---

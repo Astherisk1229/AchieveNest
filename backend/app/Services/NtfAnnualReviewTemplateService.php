@@ -117,7 +117,6 @@ class NtfAnnualReviewTemplateService
                 [$name, $position] = match ($line['source']) {
                     'custom' => [$line['custom_name'], $line['custom_position']],
                     'college_dean' => $person ? $this->dean($person) : ['', 'Dean of the employee’s College'],
-                    'unit_head' => $person ? $this->unitHead($person) : ['', 'Head of the employee’s Department/Office'],
                     default => ['', ''],
                 };
                 $lines[] = ['label' => $line['label'], 'name' => $name, 'position' => $position];
@@ -326,14 +325,6 @@ class NtfAnnualReviewTemplateService
         $row = $this->db->table('dean_assignments da')->select('p.full_name')->join('profiles p', 'p.id = da.personnel_profile_id')
             ->where(['da.college_id' => $person['college']['id'], 'da.is_active' => 1])->where('p.status', 'active')->get()->getResultArray();
         return count($row) === 1 ? [$row[0]['full_name'], 'Dean, ' . $person['college']['name']] : ['', 'Dean, ' . $person['college']['name'] . ' (not assigned)'];
-    }
-
-    private function unitHead(array $person): array
-    {
-        if (empty($person['unit']['id'])) return ['', ''];
-        $row = $this->db->table('department_head_assignments dha')->select('p.full_name')->join('profiles p', 'p.id = dha.personnel_profile_id')
-            ->where(['dha.department_id' => $person['unit']['id'], 'dha.is_active' => 1])->where('p.status', 'active')->get()->getResultArray();
-        return count($row) === 1 ? [$row[0]['full_name'], 'Head, ' . $person['unit']['name']] : ['', 'Head, ' . $person['unit']['name'] . ' (not assigned)'];
     }
 
     private static function num(float|int|string $value): string

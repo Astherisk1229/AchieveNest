@@ -21,6 +21,16 @@ describe('personnel submission action gating', () => {
     expect(gate.disabled).toBe(false)
   })
 
+  it('shows a scheduled draft period while keeping initial submission disabled', () => {
+    const gate = derivePersonnelSubmissionActionGate({
+      portfolioState: editableDraft,
+      evaluationPeriod: { status: 'DRAFT', can_submit: false },
+      eligibilityStatus: 'eligible'
+    })
+    expect(gate.disabled).toBe(true)
+    expect(gate.periodUnavailableReason).toMatch(/scheduled.*not opened/i)
+  })
+
   it('enables returned Version 1 resubmission when facultyCurrent returns no open period', () => {
     const gate = derivePersonnelSubmissionActionGate({ portfolioState: returnedV1, evaluationPeriod: null, eligibilityStatus: 'eligible' })
     expect(gate.action).toBe('resubmit')

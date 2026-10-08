@@ -14,11 +14,11 @@ describe('authority-neutral Ranking Period track roster', () => {
     expect(controller).not.toMatch(/getGet\(['\"](?:department_id|college_id|dean_id|department_head_id)/)
   })
 
-  it('derives Dean and outside-College Department Head scope from active assignments', () => {
+  it('derives Dean scope from active assignments and excludes the retired role', () => {
     const service = read('backend/app/Services/AuthorityRankingRosterService.php')
     expect(service).toContain("singleAssignment('dean_assignments', 'college_id'")
-    expect(service).toContain("singleAssignment('department_head_assignments', 'department_id'")
-    expect(service).toContain("where('au.college_id', null)")
+    expect(service).not.toContain('department_head_assignments')
+    expect(service).not.toContain('DEPARTMENT_HEAD')
     expect(service).toContain('AUTHORITY_AMBIGUOUS_')
   })
 

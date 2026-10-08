@@ -292,7 +292,7 @@ describe('Phase J3: Persisted Event-Driven Notifications & Recipient Routing', (
       expect(filteredForA[0].id).toBe('N-1');
     });
 
-    it('24. ensures Department Secretary role does not receive evaluator notifications', () => {
+    it('24. ensures Unassigned reviewer role does not receive evaluator notifications', () => {
       const config = PersonnelWorkflowNotificationRegistry.getEventConfig(CANONICAL_EVENT_KEYS.PORTFOLIO_SUBMITTED);
       expect(config.recipient_target).toBe(RECIPIENT_CATEGORIES.ASSIGNED_REVIEWER);
       // Evaluator notifications target assigned Dean or HR reviewer only

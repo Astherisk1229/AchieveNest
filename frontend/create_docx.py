@@ -132,7 +132,6 @@ def create_hr_clarification_doc(file_path):
     row_data = [
         ("College Dean", "HR Admin", "Oversees an entire College (CEAC, CBA, CAS, CED)."),
         ("Program Director / Coordinator", "HR Admin", "Oversees a Degree Program (e.g. BS Computer Science)."),
-        ("Department Secretary", "HR Admin", "Evaluates and endorses faculty portfolios under their department."),
         ("Student Organization Moderator", "OSAD Admin", "Serves as Faculty Advisor for a student club or organization.")
     ]
 
@@ -159,7 +158,6 @@ def create_hr_clarification_doc(file_path):
         ("2. Onboard Faculty & Personnel Accounts", "HR Admin"),
         ("3. Assign College Deans", "HR Admin"),
         ("4. Assign Program Directors / Coordinators", "HR Admin"),
-        ("5. Assign Department Secretaries", "HR Admin"),
         ("6. Import / Create Student Accounts", "OSAD Admin"),
         ("7. Create Student Organizations & Clubs", "OSAD Admin"),
         ("8. Assign Organization Moderators", "OSAD Admin")
@@ -181,18 +179,17 @@ def create_hr_clarification_doc(file_path):
 
     categories = [
         ("Category A: Institutional Workflow & Setup Flow", [
-            ("1. Setup Flow Order: ", "Does the 8-step setup order (Departments → Faculty → Deans → Coordinators → Dept Secs → Students → Orgs → Moderators) match NDMU's official annual administrative workflow?"),
-            ("2. Assignment Sequence Flexibility: ", "Can HR Admin assign Deans, Coordinators, and Dept Secs in any order during setup, or must it strictly follow the step-by-step sequence?"),
+            ("1. Setup Flow Order: ", "Does the 7-step setup order (Departments → Faculty → Deans → Coordinators → Students → Orgs → Moderators) match NDMU's official annual administrative workflow?"),
+            ("2. Assignment Sequence Flexibility: ", "Can HR Admin assign Deans and Coordinators in any order during setup, or must it strictly follow the step-by-step sequence?"),
             ("3. Mid-Year Department Additions: ", "If a new Department or Program is added mid-year, can OSAD Admin immediately map Student Organizations to it without re-running the full setup?")
         ]),
 
         ("Category B: Role Expiration & Term Limits", [
-            ("4. Role Expiration Terms: ", "What is the exact expiration period or term limit for each role (College Dean, Program Coordinator, Department Secretary, Organization Moderator)?")
+            ("4. Role Expiration Terms: ", "What is the exact expiration period or term limit for each role (College Dean, Program Coordinator, Organization Moderator)?")
         ]),
 
         ("Category C: Portfolio Verification & Review Flow", [
-            ("5. Dean Involvement in Review Flow: ", "Since regular faculty portfolios are reviewed by the Dept Sec, and Dept Sec portfolios are reviewed directly by HR, does the College Dean have any mandatory review step in this flow?"),
-            ("6. Mandatory Dept Sec Review: ", "Is Dept Sec review strictly required for regular faculty before HR final audit, or can HR audit a faculty portfolio directly if needed?"),
+            ("5. Dean Review Flow: ", "Which personnel portfolios require College Dean review before HR final audit?"),
             ("7. Returned Portfolios: ", "How many working days do faculty have to re-submit proof if their portfolio is returned for revision?"),
             ("8. Security Seals: ", "Should security seal codes (HR-SEAL-2026-XXXX) be attached to each individual proof item, or to the final annual ranking report?")
         ]),

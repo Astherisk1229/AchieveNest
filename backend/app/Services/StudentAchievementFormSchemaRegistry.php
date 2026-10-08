@@ -13,7 +13,18 @@ use RuntimeException;
  */
 final class StudentAchievementFormSchemaRegistry
 {
-    public const VERSION = 'student-form-schema-1';
+    public const VERSION = 'student-form-schema-2';
+
+    /** Evidence constraints mirrored from the canonical student upload/submit boundary. */
+    private const EVIDENCE_RULES = [
+        'required' => true,
+        'minimum_clean_files' => 1,
+        'accepted_mime_types' => StudentAchievementEvidenceUploadPolicy::ALLOWED_MIMES,
+        'maximum_file_bytes' => LocalEvidenceStorageService::DEFAULT_MAX_BYTES,
+        'maximum_pdf_pages' => StudentAchievementEvidenceUploadPolicy::MAX_PDF_PAGES,
+        'security_scan_required' => true,
+        'semantic_acceptance' => 'The document must substantiate the selected achievement contract; OSAD verification remains authoritative.',
+    ];
 
     private const CATEGORIES = [
         'LEADERSHIP_POSITION' => 'Leadership Position',
@@ -112,12 +123,10 @@ final class StudentAchievementFormSchemaRegistry
             'source' => 'student_master_tracker_finalized_contracts',
             'ocr_field_mapping_status'
                 => 'representative_evidence_audit_pending',
-            'evidence' => [
-                'required' => true,
+            'evidence' => array_merge(self::EVIDENCE_RULES, [
                 'control' => 'file',
-                'supported_types_status'
-                    => 'upload_boundary_integration_pending',
-            ],
+                'upload_policy' => 'StudentAchievementEvidenceUploadPolicy',
+            ]),
             'categories' => array_values($categories),
         ];
     }
@@ -140,6 +149,7 @@ final class StudentAchievementFormSchemaRegistry
             'category_code' => $categoryCode,
             'category_label' => self::CATEGORIES[$categoryCode],
             'fields' => $this->fieldsFor($contractCode),
+            'evidence_rules' => self::EVIDENCE_RULES,
         ];
     }
 
@@ -210,6 +220,7 @@ final class StudentAchievementFormSchemaRegistry
     {
         $fields = [
             $this->field('governing_body_name', 'Organization / Governing Body', 'text', true),
+            $this->leadershipLevelField(),
             $this->field('position_held', 'Position Held', 'text', true),
             $this->field('academic_year_start', 'Academic Year / Inclusive Years', 'academic_year', true, [], [
                 'end_year_rule' => 'start_year_plus_one',
@@ -229,6 +240,23 @@ final class StudentAchievementFormSchemaRegistry
         $fields[] = $this->notes();
 
         return $fields;
+    }
+
+    /**
+     * Collect the same role-level values consumed by the existing award scoring
+     * rules. Keep the position title as a separate student-entered detail.
+     */
+    private function leadershipLevelField(): array
+    {
+        $field = $this->field('position_level', 'Leadership Role Level', 'select', true);
+        $field['options'] = [
+            ['value' => 'executive', 'label' => 'Executive Officer (President / Vice President / Governor)'],
+            ['value' => 'officer', 'label' => 'Officer (Secretary / Treasurer / Auditor)'],
+            ['value' => 'committee_head', 'label' => 'Committee Chairperson / Head'],
+            ['value' => 'member', 'label' => 'Member / Representative'],
+        ];
+
+        return $field;
     }
 
     private function organizationFields(string $code): array

@@ -13,6 +13,7 @@ final class PersonnelEvaluationPeriodCurrentWorkflowTrackTest extends TestCase
     {
         return new class($rows) extends PersonnelEvaluationPeriodService {
             public function __construct(private array $rows) {}
+            public function openDueScheduledSubmissions(?string $personnelGroup = null): int { return 0; }
             public function list(array $filters = []): array
             {
                 return array_values(array_filter($this->rows, static fn(array $row): bool =>
@@ -66,5 +67,41 @@ final class PersonnelEvaluationPeriodCurrentWorkflowTrackTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         $this->service([])->currentWorkflowTrack('ALL');
+    }
+
+    public function testPersonnelCurrentPeriodIncludesScheduledDraftWithoutAllowingItToReplaceAnOpenPeriod(): void
+    {
+        $scheduled = [
+            'id'=>'scheduled-faculty',
+            'evaluation_type'=>'RANKING_PROMOTION',
+            'personnel_group'=>'FACULTY',
+            'status'=>'DRAFT',
+            'submission_close_at'=>date('Y-m-d H:i:s', strtotime('+30 days')),
+            'can_submit'=>false,
+        ];
+        $open = [
+            'id'=>'open-faculty',
+            'evaluation_type'=>'RANKING_PROMOTION',
+            'personnel_group'=>'FACULTY',
+            'status'=>'OPEN_FOR_SUBMISSION',
+            'submission_close_at'=>date('Y-m-d H:i:s', strtotime('+10 days')),
+            'can_submit'=>true,
+        ];
+
+        self::assertSame($scheduled['id'], $this->service([$scheduled])->current('RANKING_PROMOTION', 'FACULTY')['id']);
+        self::assertSame($open['id'], $this->service([$scheduled, $open])->current('RANKING_PROMOTION', 'FACULTY')['id']);
+    }
+
+    public function testExpiredScheduledDraftIsNotPresentedAsPersonnelCurrentPeriod(): void
+    {
+        $expired = [
+            'id'=>'expired-faculty',
+            'evaluation_type'=>'RANKING_PROMOTION',
+            'personnel_group'=>'FACULTY',
+            'status'=>'DRAFT',
+            'submission_close_at'=>date('Y-m-d H:i:s', strtotime('-1 day')),
+        ];
+
+        self::assertNull($this->service([$expired])->current('RANKING_PROMOTION', 'FACULTY'));
     }
 }

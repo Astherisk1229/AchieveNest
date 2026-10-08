@@ -103,6 +103,7 @@ class VerifyPhase7Auth extends BaseCommand
 
         // Test 4: Change Password
         $req = $this->makeRequest('POST', 'http://localhost:8080/api/v1/auth/change-password', [
+            'current_password' => 'Password123!@#',
             'new_password'     => 'NewSecretPass123!@#',
             'confirm_password' => 'NewSecretPass123!@#',
         ], $mariaToken);

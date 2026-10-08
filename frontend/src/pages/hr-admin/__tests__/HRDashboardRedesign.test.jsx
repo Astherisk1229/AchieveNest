@@ -7,44 +7,39 @@ describe('HR Dashboard operational home contract', () => {
   const layout = fs.readFileSync(path.resolve(__dirname, '../../../components/layout/MainLayout.jsx'), 'utf8')
   const backend = fs.readFileSync(path.resolve(__dirname, '../../../../../backend/app/Controllers/Api/HRPersonnelController.php'), 'utf8')
 
-  it('contains only the approved operational dashboard sections', () => {
-    expect(dashboard).toContain('Ranking Period')
+  it('contains the approved hierarchy and exactly three linked KPI cards', () => {
+    expect(dashboard).toContain('HR Dashboard')
+    expect(dashboard).toContain('Overview of your HR workspace')
     expect(dashboard).toContain('Needs Attention')
-    expect(dashboard).toContain('At a Glance')
-    expect(dashboard).toContain('Recent Activity')
-    expect(dashboard).not.toContain('Operational Overview')
-    expect(dashboard).not.toContain('Pending HR Actions')
-    expect(dashboard).not.toContain('Assign Dean')
+    expect(dashboard).toContain('Current Ranking Period')
+    expect(dashboard).toContain('Active Personnel')
+    expect(dashboard).toContain('Awaiting HR Review')
+    expect(dashboard).toContain('Submitted Portfolios')
+    expect(dashboard).not.toContain('At a Glance')
+    expect(dashboard).not.toContain('Recent Activity')
+    expect(dashboard.match(/aria-label="HR dashboard key metrics"/g)).toHaveLength(1)
   })
 
-  it('suppresses zero-value attention items and provides the caught-up state', () => {
-    expect(dashboard).toContain('evaluationCount > 0')
+  it('uses the current cycle workspace for roster and reviewer-authorized action counts', () => {
+    expect(dashboard).toContain("hrEvaluationService.workspace(featured.id, key, 'submissions')")
+    expect(dashboard).toContain("hrEvaluationService.workspace(featured.id, key, 'evaluation')")
+    expect(dashboard).toContain("'start_evaluation', 'evaluate_items'")
+    expect(dashboard).toContain('cycleData?.roster?.length')
+    expect(dashboard).not.toContain('fetchHRAudit')
+  })
+
+  it('suppresses zero-value attention items and displays an empty state', () => {
+    expect(dashboard).toContain('cycleData?.actionable > 0')
     expect(dashboard).toContain('colleges_without_dean || 0) > 0')
     expect(dashboard).toContain('You’re all caught up.')
   })
 
-  it('uses confirmed dedicated module routes', () => {
-    for (const route of ['/hr/ranking-cycles', '/hr/organizational-structure', '/hr/personnel-directory', '/hr/password-resets', '/hr/audit-trail']) {
-      expect(dashboard).toContain(route)
-    }
-  })
-
-  it('loads narrowly owned data instead of the broad useHR hook', () => {
-    expect(dashboard).toContain('fetchHRDashboard')
-    expect(dashboard).toContain('fetchHRAudit({ per_page: 5 })')
-    expect(dashboard).toContain('listRankingCycles')
-    expect(dashboard).toContain('featuredCycle(cycles)')
-    expect(dashboard).not.toContain('getCurrentPersonnelEvaluationPeriod')
-    expect(dashboard).not.toContain("from '../../hooks/useHR'")
-  })
-
-  it('backs institutional metrics with dashboard aggregation queries', () => {
-    expect(backend).toContain("'total_colleges'")
-    expect(backend).toContain("'total_offices_units'")
+  it('backs active-personnel and dean metrics with server aggregation', () => {
+    expect(backend).toContain("'total_personnel'")
     expect(backend).toContain("'colleges_without_dean'")
   })
 
-  it('removes dashboard-only footer and Back to Top chrome', () => {
+  it('keeps dashboard footer and scroll chrome suppressed', () => {
     expect(layout).toContain("location.pathname === '/hr/dashboard'")
     expect(layout).toContain('!isHrDashboard && <Footer />')
     expect(layout).toContain('showScrollTop && !isHrDashboard')

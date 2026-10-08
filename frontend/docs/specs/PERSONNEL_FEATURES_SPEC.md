@@ -2,7 +2,7 @@
 
 **Document Version:** 3.0.0 (Comprehensive Personnel Features & Canva Booklet Presenter Architecture)  
 **System:** AchieveNest Student & Personnel Achievement Management Platform  
-**Target Roles:** Personnel (Faculty & Staff), Department Secretary (`department_secretary`), Human Resources (`hr_staff`), OSAD Admin (`osad_staff`)  
+**Target Roles:** Personnel (Faculty & Staff), Dean (`dean`), Human Resources (`hr_staff`), OSAD Admin (`osad_staff`)
 **Reference Specification:** NDMU Rating Sheet for Ranking (Notre Dame of Marbel University) & [`SYSTEM_ARCHITECTURE_ANALYSIS.md`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/SYSTEM_ARCHITECTURE_ANALYSIS.md)
 
 ---
@@ -16,7 +16,7 @@
 - **Primary Operational Objectives**:
   1. Record line-item accomplishments across Area A (Professional Development), Area B (Productivity & Creative Work), and Area C (Service & Leadership).
   2. Upload and manage documentary evidence (PDF/image proofs) with automated file validation.
-  3. Compile and track academic ranking portfolios through a multi-stage approval workflow (`DRAFT` → `SUBMITTED_TO_DEP_SEC` → `ENDORSED_TO_HR` → `HR_APPROVED`).
+  3. Compile and track academic ranking portfolios through the evaluation workflow (`draft` → `submitted` → `in_evaluation` → `ready_for_finalization` → `completed`).
   4. Generate formal academic dossier booklets with zero internal scrollbars for department and HR review.
 
 ---
@@ -54,7 +54,7 @@ In strict compliance with project architectural guidelines ([`AGENTS.md`](<USER_
    - [`AchievementModel.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/models/AchievementModel.js): Encapsulates individual accomplishment schemas, category codes (`A.1` to `C.2`), proof document URL attachments, verification state flags (`Verified`, `Endorsed`, `Pending`), and tailored NDMU rating field metadata.
 
 2. **Controllers (`src/controllers/`)**:
-   - [`PersonnelPortfolioController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelPortfolioController.js): Handles portfolio compilation, auto-population from achievement vault, evaluation status checks, and submission triggers to Department Secretary / HR.
+   - [`PersonnelPortfolioController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelPortfolioController.js): Handles portfolio compilation, auto-population from achievement vault, evaluation status checks, and submission triggers to Dean / HR.
    - [`PersonnelAchievementController.js`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/controllers/PersonnelAchievementController.js): Implements CRUD operations, real-time search indexing, category filter algorithms, and portfolio attachment toggles.
 
 3. **Bridge Hooks (`src/hooks/`)**:
@@ -129,7 +129,7 @@ The **Homepage** ([`PersonnelDashboard.jsx`](<USER_HOME>/.gemini/antigravity/scr
   2. **`Verified Records` Card**: Displays count of HR-verified achievements (e.g., `3 Items`).
   3. **`Pending Review` Card**: Displays count of items undergoing review (e.g., `1 Items`).
   4. **`Attached Proofs` Card**: Displays total uploaded documentary proof files (e.g., `5 Files`).
-  5. **`Portfolio Status` Card**: Displays current portfolio stage (e.g., `Draft Portfolio`, `Submitted to DepSec`, `Endorsed to HR`, `HR Approved`) rendered in styled badge typography.
+  5. **`Portfolio Status` Card**: Displays current portfolio stage (e.g., `Draft Portfolio`, `Submitted to Dean`, `Endorsed to HR`, `HR Approved`) rendered in styled badge typography.
 
 #### B. Quick Actions Bar & Action Cards
 - **Top Quick Log Pills**:
@@ -173,7 +173,7 @@ The **Edit Portfolio** workspace ([`PersonnelPortfolioEditPage.jsx`](<USER_HOME>
 |  - Status Pill: [ LIVE INTERACTIVE PORTFOLIO ] | STATUS: DRAFT                                    |
 |  - Page Header Action Toolbar:                                                                    |
 |    * [ Preview Booklet ]            (Secondary Outline Button - Launches Canva Presenter)         |
-|    * [ Submit Portfolio to DepSec ] (Primary Solid Emerald Button - Endorses portfolio)           |
+|    * [ Submit Portfolio to Dean ] (Primary Solid Emerald Button - Endorses portfolio)           |
 +---------------------------------------------------------------------------------------------------+
 | [ Hero Profile Banner & Header Toolbar ]                                                          |
 |  - Left Curvy Green Shape, NDMU Seal, Faculty Avatar, Rank, Department & Credential Chips         |
@@ -210,7 +210,7 @@ The **Edit Portfolio** workspace ([`PersonnelPortfolioEditPage.jsx`](<USER_HOME>
 
 #### B. Direct Inline Editing Controls
 Personnel can manage line-items directly within the live portfolio showcase:
-1. **`Primary Header Submission`**: `Submit Portfolio to DepSec` stands as the single primary header action button.
+1. **`Primary Header Submission`**: `Submit Portfolio to Dean` stands as the single primary header action button.
 2. **`Secondary Booklet Preview`**: `Preview Booklet` is positioned in the page header as a clean outline button.
 3. **`Section Header Import & Add Toolbar`**: Each evaluation area card header features `Import Vault Entries` alongside `+ Add Item to Area A/B/C`.
 4. **`Card-Level Edit Button`**: Every accomplishment entry displays an inline `Edit` button opening a pre-filled modification modal.
@@ -232,7 +232,7 @@ The **Portfolio** section ([`PersonnelPortfolioPage.jsx`](<USER_HOME>/.gemini/an
 |    * [ Canva Booklet View ] (Primary Dark Emerald Button - Launches Interactive Presenter)        |
 |    * [ Edit Basic Info ]   (Opens EditBasicInfoModal)                                             |
 |    * [ Export PDF ]        (Opens ExportPortfolioPreviewModal)                                    |
-|    * [ Submit Portfolio ]  (Triggers DepSec / HR submission pipeline)                             |
+|    * [ Submit Portfolio ]  (Triggers Dean / HR submission pipeline)                             |
 |    * [ Share Public Link ] (Copies shareable URL slug with toast confirmation)                    |
 +---------------------------------------------------------------------------------------------------+
 | [ Faculty Profile & Timeline Section ]                                                            |
@@ -312,7 +312,7 @@ The **Canva Booklet View Presenter** provides an elite presentation experience m
 | Page 13 : CATEGORY SEPARATOR SLIDE - AREA C: SERVICE AND LEADERSHIP                           |
 | Page 14 : Item Slide (C.1 Faculty Adviser: Computer Studies Society)                          |
 | Page 15 : Item Slide (C.2 Koronadal LGU Smart Governance Literacy Extension)                  |
-| Page 16 : Institutional Evaluator Sign-Off Page (DepSec & HR Signature Blocks & Official Seal)|
+| Page 16 : Institutional Evaluator Sign-Off Page (Dean & HR Signature Blocks & Official Seal)|
 +-----------------------------------------------------------------------------------------------+
 ```
 
@@ -367,7 +367,7 @@ A 3-step security modal for credential updates:
 The **Notifications** section handles real-time alerts and system audit updates for personnel.
 
 #### A. Alert Channels & Categories
-1. **Verification Updates**: Notification when a Department Secretary endorses a portfolio (`"Department Secretary endorsed your portfolio to HR"`) or requests revisions (`"Portfolio returned for proof revision"`).
+1. **Verification Updates**: Notification when a Dean endorses a portfolio (`"Dean endorsed your portfolio to HR"`) or requests revisions (`"Portfolio returned for proof revision"`).
 2. **HR Approvals**: Notification when Institutional HR finalizes ranking evaluation (`"HR Director approved your AY 2026-2027 Academic Rank"`).
 3. **System Audit Alerts**: Notifications regarding security logins and profile updates.
 
@@ -437,28 +437,28 @@ The **Logout** action ([`Sidebar.jsx`](<USER_HOME>/.gemini/antigravity/scratch/a
 | PORTFOLIO LIFECYCLE & SELF-REVIEW BYPASS STATE MACHINE                                            |
 +---------------------------------------------------------------------------------------------------+
 |                                                                                                   |
-| [ DRAFT ] ------------(Personnel Submits)-----------> [ SUBMITTED_TO_DEP_SEC ]                      |
+| [ DRAFT ] ------------(Personnel Submits)-----------> [ SUBMITTED ]                                 |
 |   |                                                         |                                     |
-|   | (If Faculty is DepSec - Self Review Bypass)             | (DepSec Evaluates)                  |
+|   | (If Faculty is Dean - Self Review Bypass)             | (Dean Evaluates)                  |
 |   +---------------------------------------+                 |                                     |
 |                                           v                 v                                     |
-|                                     [ ENDORSED_TO_HR ] <----+                                     |
+|                                     [ ready_for_finalization ] <----+                                     |
 |                                           |                 |                                     |
 |                                           |                 +-->(Returned)--> [ RETURNED ]        |
 |                                     (HR Evaluates)                                                |
 |                                           v                                                       |
-|                                    [ HR_APPROVED ]                                                |
+|                                    [ completed ]                                                |
 |                                                                                                   |
 +---------------------------------------------------------------------------------------------------+
 ```
 
 ### State Progression Rules
 1. **`DRAFT`**: Portfolio created and edited by personnel. Items can be added, updated, or re-ordered.
-2. **`SUBMITTED_TO_DEP_SEC`**: Submitted to Department Secretary for initial proof auditing and point validation.
-3. **`ENDORSED_TO_HR`**: Department Secretary approves score line-items and forwards portfolio to HR.
-4. **`HR_APPROVED`**: Final verification and academic rank sign-off by HR Director.
-5. **`RETURNED_TO_PERSONNEL`**: Sent back by DepSec or HR with feedback notes for revision.
-6. **Conflict of Interest / Self-Review Bypass**: If the personnel submitting the portfolio is themselves a Department Secretary, the system automatically bypasses department review and routes the portfolio directly to `ENDORSED_TO_HR` for HR Director sign-off.
+2. **`SUBMITTED`**: Submitted to the assigned Dean or HR evaluator for review.
+3. **`ready_for_finalization`**: Dean approves score line-items and forwards portfolio to HR.
+4. **`completed`**: Final verification and academic rank sign-off by HR Director.
+5. **`returned_for_revision`**: Sent back by Dean or HR with feedback notes for revision.
+6. **Conflict of Interest / Self-Review Bypass**: If the personnel submitting the portfolio is themselves a Dean, the system automatically bypasses department review and routes the portfolio directly to `ready_for_finalization` for HR Director sign-off.
 
 ---
 

@@ -47,9 +47,39 @@ class RubricAdministrationService
         foreach ($areas as &$area) {
             $categories = $db->table('evaluation_scale_categories')->where('scale_area_id', $area['id'])->orderBy('display_order')->get()->getResultArray();
             foreach ($categories as &$category) {
+                foreach (['field_schema', 'evidence_rules'] as $jsonField) {
+                    if (is_string($category[$jsonField] ?? null)) {
+                        $category[$jsonField] = json_decode($category[$jsonField], true) ?: null;
+                    }
+                }
+                $category['is_active'] = (int) ($category['is_active'] ?? 1);
                 $category['subcategories'] = $db->table('evaluation_scale_subcategories')->where('scale_category_id', $category['id'])->orderBy('display_order')->get()->getResultArray();
+                foreach ($category['subcategories'] as &$subcategory) {
+                    $subcategory['is_active'] = (int) ($subcategory['is_active'] ?? 1);
+                    foreach (['field_schema', 'evidence_rules'] as $jsonField) {
+                        if (is_string($subcategory[$jsonField] ?? null)) {
+                            $subcategory[$jsonField] = json_decode($subcategory[$jsonField], true) ?: null;
+                        }
+                    }
+                    $subcategory['levels'] = [];
+                    if ($db->tableExists('evaluation_scale_criterion_options') && $db->fieldExists('scale_subcategory_id', 'evaluation_scale_criterion_options')) {
+                        $subcategory['levels'] = $db->table('evaluation_scale_criterion_options')
+                            ->where('scale_category_id', $category['id'])->where('scale_subcategory_id', $subcategory['id'])
+                            ->where('option_group_code', 'LEVEL')->orderBy('display_order')->get()->getResultArray();
+                        foreach ($subcategory['levels'] as &$level) $level['is_active'] = (int) ($level['is_active'] ?? 1);
+                        unset($level);
+                    }
+                }
+                unset($subcategory);
                 $category['criteria'] = $db->table('evaluation_scale_criteria')->where('scale_category_id', $category['id'])->orderBy('criterion_code')->get()->getResultArray();
-                $category['options'] = $db->tableExists('evaluation_scale_criterion_options') ? $db->table('evaluation_scale_criterion_options')->where('scale_category_id', $category['id'])->orderBy('option_group_code')->orderBy('display_order')->get()->getResultArray() : [];
+                $category['options'] = [];
+                if ($db->tableExists('evaluation_scale_criterion_options')) {
+                    $optionQuery = $db->table('evaluation_scale_criterion_options')->where('scale_category_id', $category['id']);
+                    if ($db->fieldExists('scale_subcategory_id', 'evaluation_scale_criterion_options')) {
+                        $optionQuery->groupStart()->where('scale_subcategory_id', null)->orWhere('scale_subcategory_id', '')->groupEnd();
+                    }
+                    $category['options'] = $optionQuery->orderBy('option_group_code')->orderBy('display_order')->get()->getResultArray();
+                }
             }
             $area['categories'] = $categories;
         }
@@ -69,6 +99,211 @@ class RubricAdministrationService
         if (! $rows) throw new RuntimeException('CRITERIA_NOT_CONFIGURED', 404);
         if (count($rows) > 1) throw new RuntimeException('MULTIPLE_ACTIVE_CRITERIA', 409);
         return $this->getScaleVersionHierarchy($rows[0]['id']);
+    }
+
+    /** Resolve a personnel caller's own group and return only its published intake criteria. */
+    public function findActiveIntakeCriteriaForPersonnelProfile(string $profileId): array
+    {
+        $profile = Database::connect()->table('personnel_profiles')->select('personnel_group')
+            ->where('profile_id', $profileId)->get()->getRowArray();
+        if (! $profile) throw new RuntimeException('PERSONNEL_PROFILE_NOT_FOUND', 404);
+        if (strtoupper((string) ($profile['personnel_group'] ?? '')) !== 'FACULTY') {
+            throw new RuntimeException('FACULTY_INTAKE_CRITERIA_ONLY', 422);
+        }
+        return $this->getActiveIntakeCriteriaContract((string) $profile['personnel_group']);
+    }
+
+    /** Return the published, HR-authored intake contract for a group. */
+    public function getActiveIntakeCriteriaContract(string $personnelGroup): array
+    {
+        $group = strtoupper(trim($personnelGroup));
+        if (! in_array($group, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) throw new RuntimeException('INVALID_PERSONNEL_GROUP', 422);
+        $db = Database::connect();
+        foreach (['evaluation_scale_subcategories' => ['intake_active', 'intake_mode', 'field_schema', 'evidence_rules', 'scoring_rule_reference'], 'evaluation_scale_categories' => ['intake_active', 'intake_mode', 'field_schema', 'evidence_rules', 'scoring_rule_reference'] ] as $table => $fields) {
+            foreach ($fields as $field) {
+                if (! $db->fieldExists($field, $table)) {
+                    throw new RuntimeException('INTAKE_CRITERIA_SCHEMA_NOT_READY', 503);
+                }
+            }
+        }
+
+        return self::buildActiveIntakeCriteriaContract($this->findActiveCriteriaForPersonnelGroup($group));
+    }
+
+    /** Pure contract builder: strips inactive leaves and emits explicit canonical identity/schema fields. */
+    public static function buildActiveIntakeCriteriaContract(array $hierarchy): array
+    {
+        $version = $hierarchy['version'] ?? [];
+        if (strtolower((string) ($version['status'] ?? '')) !== 'approved') {
+            throw new RuntimeException('INTAKE_CRITERIA_VERSION_NOT_PUBLISHED', 409);
+        }
+
+        $activeLeafCount = 0;
+        $areas = [];
+        foreach (($hierarchy['areas'] ?? []) as $area) {
+            $categories = [];
+            foreach (($area['categories'] ?? []) as $category) {
+                if ((int) ($category['is_active'] ?? 1) !== 1) continue;
+                $criteria = [];
+                if ((int) ($category['intake_active'] ?? 0) === 1) {
+                    try {
+                        self::assertValidIntakeDefinition($category);
+                    } catch (RuntimeException $error) {
+                        throw new RuntimeException('INTAKE_CRITERIA_DEFINITION_INCOMPLETE: ' . $error->getMessage(), 409, $error);
+                    }
+                    $activeLeafCount++;
+                    $criteria[] = [
+                        'criterion_id' => (string) $category['id'],
+                        'scale_version_id' => (string) ($version['id'] ?? ''),
+                        'code' => (string) ($category['category_code'] ?? ''),
+                        'label' => (string) $category['name'],
+                        'name' => (string) $category['name'],
+                        'description' => $category['description'] ?? null,
+                        'intake_mode' => strtoupper((string) $category['intake_mode']),
+                        'intake_level' => 'CATEGORY',
+                        'field_schema' => $category['field_schema'] ?? [],
+                        'evidence_rules' => $category['evidence_rules'] ?? null,
+                        'scoring' => [
+                            'rule_reference' => (string) $category['scoring_rule_reference'],
+                            'default_points' => (float) ($category['max_points'] ?? 0),
+                            'criterion_maximum' => (float) ($category['max_points'] ?? 0),
+                            'category_maximum' => (float) ($category['max_points'] ?? 0),
+                            'area_maximum' => (float) ($area['max_points'] ?? 0),
+                        ],
+                        'source_reference' => $category['source_ref'] ?? null,
+                        'active' => true,
+                    ];
+                }
+                foreach (($category['subcategories'] ?? []) as $leaf) {
+                    if ((int) ($leaf['is_active'] ?? 1) !== 1 || (int) ($leaf['intake_active'] ?? 0) !== 1) continue;
+                    try {
+                        self::assertValidIntakeDefinition($leaf);
+                    } catch (RuntimeException $error) {
+                        throw new RuntimeException('INTAKE_CRITERIA_DEFINITION_INCOMPLETE: ' . $error->getMessage(), 409, $error);
+                    }
+                    $activeLeafCount++;
+                    $criteria[] = [
+                        'criterion_id' => (string) $leaf['id'],
+                        'scale_version_id' => (string) ($version['id'] ?? ''),
+                        'code' => (string) ($leaf['subcategory_code'] ?? ''),
+                        'label' => (string) $leaf['name'],
+                        'name' => (string) $leaf['name'],
+                        'description' => $leaf['description'] ?? null,
+                        'intake_mode' => strtoupper((string) $leaf['intake_mode']),
+                        'intake_level' => 'SUBCATEGORY',
+                        'field_schema' => $leaf['field_schema'] ?? [],
+                        'evidence_rules' => $leaf['evidence_rules'] ?? null,
+                        'levels' => array_values(array_map(static fn (array $level): array => [
+                            'level_id' => (string) ($level['id'] ?? ''),
+                            'name' => (string) ($level['label'] ?? ''),
+                            'points' => (float) ($level['points'] ?? 0),
+                            'active' => (int) ($level['is_active'] ?? 1) === 1,
+                            'order' => (int) ($level['display_order'] ?? 1),
+                        ], array_filter($leaf['levels'] ?? [], static fn (array $level): bool => strtoupper((string) ($level['option_group_code'] ?? '')) === 'LEVEL' && (int) ($level['is_active'] ?? 1) === 1))),
+                        'scoring' => [
+                            'rule_reference' => (string) $leaf['scoring_rule_reference'],
+                            'default_points' => (float) ($leaf['default_points'] ?? 0),
+                            'criterion_maximum' => (float) ($leaf['default_points'] ?? 0),
+                            'category_maximum' => (float) ($category['max_points'] ?? 0),
+                            'area_maximum' => (float) ($area['max_points'] ?? 0),
+                        ],
+                        'source_reference' => $leaf['source_ref'] ?? null,
+                        'active' => true,
+                    ];
+                }
+                if ($criteria === []) continue;
+
+                $scoringRules = [];
+                foreach (($category['criteria'] ?? []) as $rule) {
+                    $ruleLeafId = (string) ($rule['scale_subcategory_id'] ?? '');
+                    if ($ruleLeafId !== '' && ! in_array($ruleLeafId, array_column($criteria, 'criterion_id'), true)) continue;
+                    foreach (['field_schema', 'evidence_rules', 'formula_params'] as $jsonField) {
+                        if (is_string($rule[$jsonField] ?? null)) $rule[$jsonField] = json_decode($rule[$jsonField], true) ?: null;
+                    }
+                    $scoringRules[] = [
+                        'rule_id' => (string) ($rule['id'] ?? ''),
+                        'code' => (string) ($rule['criterion_code'] ?? ''),
+                        'label' => (string) ($rule['name'] ?? ''),
+                        'description' => $rule['description'] ?? null,
+                        'formula_key' => $rule['formula_key'] ?? null,
+                        'formula_parameters' => $rule['formula_params'] ?? null,
+                        'maximum_per_entry' => (float) ($rule['max_points_per_entry'] ?? 0),
+                        'maximum_occurrences' => isset($rule['max_occurrences']) ? (int) $rule['max_occurrences'] : null,
+                        'source_reference' => $rule['source_ref'] ?? null,
+                    ];
+                }
+                $options = array_map(static fn (array $option): array => [
+                    'option_id' => (string) ($option['id'] ?? ''),
+                    'group_code' => (string) ($option['option_group_code'] ?? ''),
+                    'code' => (string) ($option['option_code'] ?? ''),
+                    'label' => (string) ($option['label'] ?? ''),
+                    'points' => isset($option['points']) ? (float) $option['points'] : null,
+                    'maximum_points' => isset($option['maximum_points']) ? (float) $option['maximum_points'] : null,
+                ], $category['options'] ?? []);
+
+                $categories[] = [
+                    'category_id' => (string) $category['id'],
+                    'code' => (string) ($category['category_code'] ?? ''),
+                    'name' => (string) ($category['name'] ?? ''),
+                    'description' => $category['description'] ?? null,
+                    'maximum_points' => (float) ($category['max_points'] ?? 0),
+                    'cut_off_points' => (float) ($category['max_points'] ?? 0),
+                    'active' => true,
+                    'order' => (int) ($category['display_order'] ?? 1),
+                    'subcategories' => array_values(array_map(static fn (array $subcategory): array => [
+                        'subcategory_id' => (string) $subcategory['id'],
+                        'code' => (string) ($subcategory['subcategory_code'] ?? ''),
+                        'name' => (string) ($subcategory['name'] ?? ''),
+                        'points' => (float) ($subcategory['default_points'] ?? 0),
+                        'active' => true,
+                        'order' => (int) ($subcategory['display_order'] ?? 1),
+                        'levels' => array_values(array_map(static fn (array $level): array => [
+                            'level_id' => (string) ($level['id'] ?? ''),
+                            'name' => (string) ($level['label'] ?? ''),
+                            'points' => (float) ($level['points'] ?? 0),
+                            'active' => (int) ($level['is_active'] ?? 1) === 1,
+                            'order' => (int) ($level['display_order'] ?? 1),
+                        ], array_filter($subcategory['levels'] ?? [], static fn (array $level): bool => strtoupper((string) ($level['option_group_code'] ?? '')) === 'LEVEL' && (int) ($level['is_active'] ?? 1) === 1))),
+                    ], array_filter($category['subcategories'] ?? [], static fn (array $subcategory): bool => (int) ($subcategory['is_active'] ?? 1) === 1 && (int) ($subcategory['intake_active'] ?? 0) === 1))),
+                    'intake_level' => (int) ($category['intake_active'] ?? 0) === 1 ? 'CATEGORY' : null,
+                    'criteria' => $criteria,
+                    'scoring_rules' => $scoringRules,
+                    'scoring_options' => $options,
+                ];
+            }
+            if ($categories === []) continue;
+            $areas[] = [
+                'area_id' => (string) $area['id'],
+                'code' => (string) ($area['area_code'] ?? ''),
+                'name' => (string) ($area['name'] ?? ''),
+                'description' => $area['description'] ?? null,
+                'maximum_points' => (float) ($area['max_points'] ?? 0),
+                'categories' => $categories,
+            ];
+        }
+        if ($activeLeafCount === 0) throw new RuntimeException('INTAKE_CRITERIA_NOT_CONFIGURED', 409);
+
+        $sheet = $hierarchy['sheet'] ?? [];
+        return [
+            'personnel_group' => strtoupper((string) ($sheet['applies_to'] ?? '')),
+            'scale' => [
+                'id' => (string) ($sheet['id'] ?? ''),
+                'code' => (string) ($sheet['code'] ?? ''),
+                'title' => (string) ($sheet['name'] ?? ''),
+                'description' => $sheet['description'] ?? null,
+                'maximum_points' => (float) ($sheet['overall_max_points'] ?? 0),
+                'passing_score' => (float) ($sheet['passing_score'] ?? 0),
+            ],
+            'version' => [
+                'scale_version_id' => (string) ($version['id'] ?? ''),
+                'version_number' => (string) ($version['version_number'] ?? ''),
+                'status' => 'approved',
+                'effective_start_date' => $version['effective_start_date'] ?? null,
+                'effective_end_date' => $version['effective_end_date'] ?? null,
+                'approved_at' => $version['approved_at'] ?? null,
+            ],
+            'areas' => $areas,
+        ];
     }
 
     public function cloneVersion(string $sourceVersionId, array $input, string $actorUserId): array
@@ -125,7 +360,11 @@ class RubricAdministrationService
                         $db->table('evaluation_scale_criteria')->insert($criterion);
                     }
                     if ($db->tableExists('evaluation_scale_criterion_options')) foreach ($db->table('evaluation_scale_criterion_options')->where('scale_category_id', $oldCategoryId)->orderBy('display_order')->get()->getResultArray() as $option) {
-                        $option['id']=$this->newId('eso'); $option['scale_category_id']=$category['id']; $option['created_at']=$now; $option['updated_at']=$now;
+                        $option['id']=$this->newId('eso'); $option['scale_category_id']=$category['id'];
+                        if (($option['scale_subcategory_id'] ?? null) !== null && ($option['scale_subcategory_id'] ?? '') !== '') {
+                            $option['scale_subcategory_id'] = $subcategoryMap[$option['scale_subcategory_id']] ?? null;
+                        }
+                        $option['created_at']=$now; $option['updated_at']=$now;
                         $db->table('evaluation_scale_criterion_options')->insert($option);
                     }
                 }
@@ -185,6 +424,10 @@ class RubricAdministrationService
     {
         $db = Database::connect(); $db->transBegin();
         try {
+            foreach (['evaluation_scale_categories' => ['is_active'], 'evaluation_scale_subcategories' => ['is_active'], 'evaluation_scale_criterion_options' => ['scale_subcategory_id', 'is_active']] as $table => $fields) {
+                if (! $db->tableExists($table)) throw new RuntimeException('CRITERIA_HIERARCHY_SCHEMA_NOT_READY', 503);
+                foreach ($fields as $field) if (! $db->fieldExists($field, $table)) throw new RuntimeException('CRITERIA_HIERARCHY_SCHEMA_NOT_READY', 503);
+            }
             $version = $db->query('SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
             if (! $version) throw new RuntimeException('Criteria version not found.', 404);
             if ($version['status'] !== 'draft') throw new RuntimeException('Only draft criteria versions can be edited.', 409);
@@ -198,12 +441,17 @@ class RubricAdministrationService
 
             $this->updateOwnedRows($db, 'evaluation_scale_areas', 'scale_version_id', $versionId, $input['areas'] ?? [], ['max_points','description'], $now);
             $areaIds = array_column($db->table('evaluation_scale_areas')->select('id')->where('scale_version_id', $versionId)->get()->getResultArray(), 'id');
-            foreach ($areaIds as $areaId) $this->updateOwnedRows($db, 'evaluation_scale_categories', 'scale_area_id', $areaId, $input['categories'] ?? [], ['max_points','description','scoring_mode','requires_manual_hr_rule'], $now);
+            foreach ($areaIds as $areaId) {
+                $this->updateOwnedRows($db, 'evaluation_scale_categories', 'scale_area_id', $areaId, $input['categories'] ?? [], ['name','category_code','display_order','max_points','description','scoring_mode','requires_manual_hr_rule','is_active'], $now);
+                $this->insertNewCategories($db, $areaId, $input['categories'] ?? [], $now);
+            }
             $categoryIds = $areaIds ? array_column($db->table('evaluation_scale_categories')->select('id')->whereIn('scale_area_id', $areaIds)->get()->getResultArray(), 'id') : [];
             foreach ($categoryIds as $categoryId) {
-                $this->updateOwnedRows($db, 'evaluation_scale_subcategories', 'scale_category_id', $categoryId, $input['subcategories'] ?? [], ['default_points','description'], $now);
+                $this->updateOwnedRows($db, 'evaluation_scale_categories', 'id', $categoryId, $input['categories'] ?? [], ['intake_active','intake_mode','field_schema','evidence_rules','scoring_rule_reference','is_active'], $now);
+                $this->updateOwnedRows($db, 'evaluation_scale_subcategories', 'scale_category_id', $categoryId, $input['subcategories'] ?? [], ['subcategory_code','name','display_order','default_points','description','intake_active','intake_mode','field_schema','evidence_rules','scoring_rule_reference','is_active'], $now);
+                $this->insertNewSubcategories($db, $categoryId, $input['subcategories'] ?? [], $now);
                 $this->updateOwnedRows($db, 'evaluation_scale_criteria', 'scale_category_id', $categoryId, $input['criteria'] ?? [], ['max_points_per_entry','max_occurrences','description','field_schema','evidence_rules','formula_key','formula_params'], $now);
-                if ($db->tableExists('evaluation_scale_criterion_options')) $this->updateOwnedRows($db, 'evaluation_scale_criterion_options', 'scale_category_id', $categoryId, $input['options'] ?? [], ['points','label'], $now);
+                if ($db->tableExists('evaluation_scale_criterion_options')) $this->saveDraftOptions($db, $categoryId, $input['options'] ?? [], $now);
             }
             $after = $db->table('evaluation_scale_versions')->where('id', $versionId)->get()->getRowArray();
             $this->audit($db, $versionId, 'draft_edited', $actorUserId, trim((string)($input['change_reason'] ?? 'Draft criteria updated')), $version, $after, $now);
@@ -252,6 +500,8 @@ class RubricAdministrationService
         if (empty($version['effective_start_date'])) throw new RuntimeException('An effective date is required.', 422);
         $areas = $db->table('evaluation_scale_areas')->where('scale_version_id', $version['id'])->get()->getResultArray();
         if (! $areas) throw new RuntimeException('Add at least one criteria area before publishing.', 422);
+        $scale = $db->table('evaluation_scales')->select('personnel_group')->where('id', $version['scale_id'])->get()->getRowArray();
+        $isFacultyScale = strtoupper((string) ($scale['personnel_group'] ?? '')) === 'FACULTY';
         $codes = array_map(fn($row) => strtoupper(trim($row['area_code'])), $areas);
         if (count($codes) !== count(array_unique($codes))) throw new RuntimeException('Area codes must be unique within a version.', 422);
         $areaTotal = array_sum(array_map(fn($row) => (float)$row['max_points'], $areas));
@@ -261,6 +511,7 @@ class RubricAdministrationService
             $categories = $db->table('evaluation_scale_categories')->where('scale_area_id', $area['id'])->get()->getResultArray();
             if (! $categories) throw new RuntimeException("Area {$area['area_code']} must contain at least one category.", 422);
             foreach ($categories as $category) {
+                if (trim((string) ($category['name'] ?? '')) === '' || ! is_numeric($category['max_points'] ?? null) || (float) $category['max_points'] < 0) throw new RuntimeException('Each category needs a name and non-negative cut-off points.', 422);
                 $mode = strtoupper((string)($category['scoring_mode'] ?? 'MANUAL'));
                 if (! in_array($mode, ['FIXED','FORMULA','DIMENSIONAL','LOOKUP','CATEGORY_CAP','MANUAL'], true)) throw new RuntimeException("Category {$category['category_code']} has an invalid scoring mode.", 422);
                 if ($mode === 'MANUAL' && (int)($category['requires_manual_hr_rule'] ?? 0) !== 1) {
@@ -282,7 +533,109 @@ class RubricAdministrationService
                     $criterionCodes[$code] = true;
                     if ($mode !== 'MANUAL' && ! $criterion['formula_key'] && ! $criterion['formula_params'] && (float)$criterion['max_points_per_entry'] <= 0) throw new RuntimeException("Criterion {$code} has no deterministic scoring configuration.", 422);
                 }
+                if ($isFacultyScale) {
+                    foreach (['field_schema', 'evidence_rules'] as $jsonField) {
+                        if (is_string($category[$jsonField] ?? null)) $category[$jsonField] = json_decode($category[$jsonField], true) ?: null;
+                    }
+                    self::assertValidIntakeDefinition(array_merge(['intake_active' => 0], $category));
+                    foreach ($db->table('evaluation_scale_subcategories')->where('scale_category_id', $category['id'])->get()->getResultArray() as $subcategory) {
+                        foreach (['field_schema', 'evidence_rules'] as $jsonField) {
+                            if (is_string($subcategory[$jsonField] ?? null)) {
+                                $subcategory[$jsonField] = json_decode($subcategory[$jsonField], true) ?: null;
+                            }
+                        }
+                        self::assertValidIntakeDefinition($subcategory);
+                    }
+                }
+                foreach ($db->table('evaluation_scale_subcategories')->where('scale_category_id', $category['id'])->get()->getResultArray() as $subcategory) {
+                    if (trim((string) ($subcategory['name'] ?? '')) === '' || ! is_numeric($subcategory['default_points'] ?? null) || (float) $subcategory['default_points'] < 0) throw new RuntimeException('Each subcategory needs a name and non-negative corresponding points.', 422);
+                    if ($db->tableExists('evaluation_scale_criterion_options') && $db->fieldExists('scale_subcategory_id', 'evaluation_scale_criterion_options')) {
+                        foreach ($db->table('evaluation_scale_criterion_options')->where('scale_category_id', $category['id'])->where('scale_subcategory_id', $subcategory['id'])->where('option_group_code', 'LEVEL')->get()->getResultArray() as $level) {
+                            if (trim((string) ($level['label'] ?? '')) === '' || ! is_numeric($level['points'] ?? null) || (float) $level['points'] < 0) throw new RuntimeException('Each level needs a name and non-negative points.', 422);
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    /** Validate the HR-authored intake contract without accepting executable or scoring input. */
+    public static function assertValidIntakeDefinition(array $criterion): void
+    {
+        if ((int) ($criterion['intake_active'] ?? 1) !== 1) return;
+
+        $name = trim((string) ($criterion['name'] ?? 'Selectable criterion'));
+        if (mb_strlen($name) > 255) throw new RuntimeException('Selectable criterion labels must be 255 characters or fewer.', 422);
+        $mode = strtoupper(trim((string) ($criterion['intake_mode'] ?? 'FORM')));
+        if (! in_array($mode, ['FORM', 'MANUAL_HR'], true)) {
+            throw new RuntimeException("{$name} has an invalid Faculty intake mode.", 422);
+        }
+
+        $fields = $criterion['field_schema'] ?? [];
+        if (! is_array($fields) || (! array_is_list($fields) && $fields !== [])) {
+            throw new RuntimeException("{$name} field definitions must be a list.", 422);
+        }
+        if ($mode === 'FORM' && $fields === []) {
+            throw new RuntimeException("{$name} needs at least one required or optional field, or must be marked Manual / HR-defined.", 422);
+        }
+        if ($mode === 'MANUAL_HR' && $fields !== []) {
+            throw new RuntimeException("{$name} is Manual / HR-defined and cannot also define form fields.", 422);
+        }
+
+        $keys = [];
+        $allowedTypes = ['text', 'textarea', 'number', 'date', 'select'];
+        foreach ($fields as $field) {
+            if (! is_array($field)) throw new RuntimeException("{$name} contains an invalid field definition.", 422);
+            $key = trim((string) ($field['key'] ?? ''));
+            $label = trim((string) ($field['label'] ?? ''));
+            $type = strtolower(trim((string) ($field['type'] ?? '')));
+            if (! preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key) || $label === '' || ! in_array($type, $allowedTypes, true)) {
+                throw new RuntimeException("{$name} has a field with an invalid key, label, or type.", 422);
+            }
+            if (isset($keys[$key])) throw new RuntimeException("{$name} has duplicate field key {$key}.", 422);
+            $keys[$key] = true;
+            if (! is_bool($field['required'] ?? null)) throw new RuntimeException("{$name} field {$label} must be marked required or optional.", 422);
+            if ($type === 'select') {
+                $options = $field['options'] ?? null;
+                if (! is_array($options) || ! array_is_list($options) || $options === []) {
+                    throw new RuntimeException("{$name} select field {$label} needs at least one HR-defined choice.", 422);
+                }
+                $normalizedOptions = array_map(static fn ($option) => is_string($option) ? trim($option) : '', $options);
+                if (in_array('', $normalizedOptions, true) || count($normalizedOptions) !== count(array_unique($normalizedOptions))) {
+                    throw new RuntimeException("{$name} select field {$label} contains a blank or duplicate choice.", 422);
+                }
+            }
+            if (isset($field['ocr_key']) && ! preg_match('/^[a-z][a-z0-9_]{0,63}$/', (string) $field['ocr_key'])) {
+                throw new RuntimeException("{$name} field {$label} has an invalid OCR mapping key.", 422);
+            }
+            $constraints = $field['validation'] ?? [];
+            if (! is_array($constraints)) throw new RuntimeException("{$name} field {$label} has invalid validation constraints.", 422);
+            foreach (['min', 'max', 'minLength', 'maxLength'] as $constraint) {
+                if (isset($constraints[$constraint]) && (! is_numeric($constraints[$constraint]) || (float) $constraints[$constraint] < 0)) {
+                    throw new RuntimeException("{$name} field {$label} has an invalid {$constraint} constraint.", 422);
+                }
+            }
+            if (isset($constraints['min'], $constraints['max']) && (float) $constraints['min'] > (float) $constraints['max']) {
+                throw new RuntimeException("{$name} field {$label} has a minimum greater than its maximum.", 422);
+            }
+            if (isset($constraints['minLength'], $constraints['maxLength']) && (float) $constraints['minLength'] > (float) $constraints['maxLength']) {
+                throw new RuntimeException("{$name} field {$label} has a minimum length greater than its maximum length.", 422);
+            }
+        }
+
+        $evidence = $criterion['evidence_rules'] ?? null;
+        if (! is_array($evidence) || ! is_bool($evidence['required'] ?? null) || ! is_array($evidence['accepted'] ?? null) || ! array_is_list($evidence['accepted'])) {
+            throw new RuntimeException("{$name} must define whether Supporting Document evidence is required and list accepted evidence.", 422);
+        }
+        $accepted = array_map(static fn ($item) => is_string($item) ? trim($item) : '', $evidence['accepted']);
+        if (($evidence['required'] === true && $accepted === []) || in_array('', $accepted, true)) {
+            throw new RuntimeException("{$name} must list valid accepted evidence when evidence is required, and evidence entries cannot be blank.", 422);
+        }
+        if (count($accepted) !== count(array_unique($accepted))) {
+            throw new RuntimeException("{$name} accepted evidence entries must be unique.", 422);
+        }
+        if (trim((string) ($criterion['scoring_rule_reference'] ?? '')) === '') {
+            throw new RuntimeException("{$name} needs an HR scoring rule reference or a Manual / HR-defined note.", 422);
         }
     }
 
@@ -315,6 +668,101 @@ class RubricAdministrationService
                 $update[$field]=$value;
             }
             if (count($update) > 1) $db->table($table)->where('id',$id)->where($ownerField,$ownerId)->update($update);
+        }
+    }
+
+    private function insertNewCategories(BaseConnection $db, string $areaId, array $categories, string $now): void
+    {
+        foreach ($categories as $category) {
+            if (($category['scale_area_id'] ?? '') !== $areaId || empty($category['id']) || $db->table('evaluation_scale_categories')->where('id', $category['id'])->countAllResults() > 0) continue;
+            $name = trim((string) ($category['name'] ?? ''));
+            $points = $category['max_points'] ?? null;
+            if ($name === '' || ! is_numeric($points) || (float) $points < 0) throw new RuntimeException('Each category needs a name and non-negative cut-off points.', 422);
+            $id = (string) $category['id'];
+            $code = trim((string) ($category['category_code'] ?? '')) ?: ('CAT-' . strtoupper(substr(hash('sha256', $id), 0, 12)));
+            $db->table('evaluation_scale_categories')->insert([
+                'id' => $id, 'scale_area_id' => $areaId, 'category_code' => $code, 'name' => $name,
+                'description' => $category['description'] ?? null, 'display_order' => max(1, (int) ($category['display_order'] ?? 1)),
+                'max_points' => (float) $points, 'scoring_mode' => $category['scoring_mode'] ?? 'MANUAL',
+                'requires_manual_hr_rule' => (int) ($category['requires_manual_hr_rule'] ?? 0),
+                'created_at' => $now, 'updated_at' => $now,
+            ]);
+            if ($db->fieldExists('is_active', 'evaluation_scale_categories')) $db->table('evaluation_scale_categories')->where('id', $id)->update(['is_active' => (int) ($category['is_active'] ?? 1)]);
+        }
+    }
+
+    private function insertNewSubcategories(BaseConnection $db, string $categoryId, array $subcategories, string $now): void
+    {
+        foreach ($subcategories as $subcategory) {
+            if (($subcategory['scale_category_id'] ?? '') !== $categoryId || empty($subcategory['id']) || $db->table('evaluation_scale_subcategories')->where('id', $subcategory['id'])->countAllResults() > 0) continue;
+            $name = trim((string) ($subcategory['name'] ?? ''));
+            $points = $subcategory['default_points'] ?? null;
+            if ($name === '' || ! is_numeric($points) || (float) $points < 0) throw new RuntimeException('Each subcategory needs a name and non-negative corresponding points.', 422);
+            $id = (string) $subcategory['id'];
+            $row = [
+                'id' => $id, 'scale_category_id' => $categoryId,
+                'subcategory_code' => trim((string) ($subcategory['subcategory_code'] ?? '')) ?: ('SUB-' . strtoupper(substr(hash('sha256', $id), 0, 12))),
+                'name' => $name, 'description' => $subcategory['description'] ?? null,
+                'display_order' => max(1, (int) ($subcategory['display_order'] ?? 1)), 'default_points' => (float) $points,
+                'source_ref' => $subcategory['source_ref'] ?? null, 'created_at' => $now, 'updated_at' => $now,
+            ];
+            if ($db->fieldExists('is_active', 'evaluation_scale_subcategories')) $row['is_active'] = (int) ($subcategory['is_active'] ?? 1);
+            foreach (['intake_active','intake_mode','field_schema','evidence_rules','scoring_rule_reference'] as $field) {
+                if ($db->fieldExists($field, 'evaluation_scale_subcategories') && array_key_exists($field, $subcategory)) {
+                    $row[$field] = is_array($subcategory[$field]) ? json_encode($subcategory[$field]) : $subcategory[$field];
+                }
+            }
+            $db->table('evaluation_scale_subcategories')->insert($row);
+        }
+    }
+
+    /** Saves subcategory level rows in the existing versioned options table. */
+    private function saveDraftOptions(BaseConnection $db, string $categoryId, array $options, string $now): void
+    {
+        $table = 'evaluation_scale_criterion_options';
+        if (! $db->fieldExists('scale_subcategory_id', $table) && array_filter($options, static fn(array $option): bool => ! empty($option['scale_subcategory_id']))) {
+            throw new RuntimeException('The optional levels schema migration must be applied before saving subcategory levels.', 503);
+        }
+
+        $existing = $db->table($table)->where('scale_category_id', $categoryId)->get()->getResultArray();
+        $existingById = array_column($existing, null, 'id');
+        $submittedIds = [];
+        foreach ($options as $option) {
+            $id = (string) ($option['id'] ?? '');
+            if ($id === '') continue;
+            $submittedIds[] = $id;
+            $subcategoryId = trim((string) ($option['scale_subcategory_id'] ?? '')) ?: null;
+            if ($subcategoryId !== null) {
+                $ownedSubcategory = $db->table('evaluation_scale_subcategories')->where('id', $subcategoryId)->where('scale_category_id', $categoryId)->countAllResults() > 0;
+                if (! $ownedSubcategory) throw new RuntimeException('A level must belong to a subcategory in this draft.', 422);
+                if (trim((string) ($option['label'] ?? '')) === '' || ! is_numeric($option['points'] ?? null) || (float) $option['points'] < 0) {
+                    throw new RuntimeException('Each level needs a name and non-negative points.', 422);
+                }
+            }
+            $row = [
+                'scale_category_id' => $categoryId,
+                'option_group_code' => $subcategoryId === null ? (string) ($option['option_group_code'] ?? '') : 'LEVEL',
+                'option_code' => trim((string) ($option['option_code'] ?? '')) ?: ('OPT-' . strtoupper(substr(hash('sha256', $id), 0, 12))),
+                'label' => (string) ($option['label'] ?? ''), 'points' => $option['points'] ?? null,
+                'display_order' => max(1, (int) ($option['display_order'] ?? 1)), 'updated_at' => $now,
+            ];
+            if ($db->fieldExists('scale_subcategory_id', $table)) $row['scale_subcategory_id'] = $subcategoryId;
+            if ($db->fieldExists('is_active', $table)) $row['is_active'] = (int) ($option['is_active'] ?? 1);
+            if (isset($existingById[$id])) {
+                $db->table($table)->where('id', $id)->where('scale_category_id', $categoryId)->update($row);
+            } else {
+                if ($subcategoryId === null) throw new RuntimeException('New scoring options must be attached to a subcategory.', 422);
+                $row['id'] = $id; $row['created_at'] = $now; $row['source_ref'] = $option['source_ref'] ?? null;
+                $db->table($table)->insert($row);
+            }
+        }
+
+        if ($db->fieldExists('scale_subcategory_id', $table)) {
+            foreach ($existing as $row) {
+                if (($row['option_group_code'] ?? '') === 'LEVEL' && ! in_array((string) $row['id'], $submittedIds, true)) {
+                    $db->table($table)->where('id', $row['id'])->where('scale_category_id', $categoryId)->delete();
+                }
+            }
         }
     }
 

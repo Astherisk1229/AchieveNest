@@ -15,7 +15,19 @@ export default class notificationApiService {
   static async getNotifications() {
     try {
       const res = await apiClient.get('/notifications')
-      return res?.data || res || { data: { notifications: [], unread_count: 0, total: 0 } }
+      // apiClient's response interceptor already returns Axios `response.data`.
+      // The API wraps its payload once more under `data`, so preserve the
+      // `{ data: ... }` shape expected by NotificationPopover instead of
+      // unwrapping that envelope a second time.
+      const payload = res?.data || res || {}
+      const data = payload?.data || payload
+      return {
+        data: {
+          notifications: Array.isArray(data?.notifications) ? data.notifications : [],
+          unread_count: Number(data?.unread_count || 0),
+          total: Number(data?.total || 0)
+        }
+      }
     } catch (err) {
       console.warn('[notificationApiService] Could not load notifications:', err.message)
       return { data: { notifications: [], unread_count: 0, total: 0 } }

@@ -295,9 +295,9 @@ describe('Personnel Evaluation Track — Plan I — Phase I3: Authorized Preview
       expect(decision.reason_code).toBe(ACCESS_REASON_CODES.DELETED)
     })
 
-    it('7.2 denies Department Secretary role from evaluator evidence access', () => {
-      const secretaryActor = { profile_id: 'USER-SEC-1', roles: ['department_secretary'] }
-      const decision = PersonnelEvidenceAccessService.authorizeAccess(secretaryActor, sampleEvidenceA, {}, ACCESS_TYPES.PREVIEW)
+    it('7.2 denies Unassigned reviewer role from evaluator evidence access', () => {
+      const unassignedActor = { profile_id: 'USER-UNASSIGNED-1', roles: ['unassigned_reviewer'] }
+      const decision = PersonnelEvidenceAccessService.authorizeAccess(unassignedActor, sampleEvidenceA, {}, ACCESS_TYPES.PREVIEW)
       expect(decision.allowed).toBe(false)
       expect(decision.reason_code).toBe(ACCESS_REASON_CODES.FORBIDDEN)
     })

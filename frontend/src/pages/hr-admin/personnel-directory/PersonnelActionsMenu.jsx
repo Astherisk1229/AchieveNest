@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Eye, Edit3, KeyRound, Award, ClipboardList } from 'lucide-react'
+import { Eye, Edit3, KeyRound, Award, ClipboardList, Trash2 } from 'lucide-react'
 
 export default function PersonnelActionsMenu({
   isOpen,
@@ -13,6 +13,7 @@ export default function PersonnelActionsMenu({
   onEditAssignment,
   onPromoteRank,
   onResetPassword,
+  onDeletePersonnel,
   onAssignDean,
   onRevokeDean
 }) {
@@ -30,7 +31,7 @@ export default function PersonnelActionsMenu({
     if (!triggerRef?.current) return
     const rect = triggerRef.current.getBoundingClientRect()
     const menuWidth = 224 // w-56 in px
-    const menuHeight = 220 // Approximate menu height in px
+    const menuHeight = 264 // Approximate menu height in px
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
 
@@ -196,6 +197,23 @@ export default function PersonnelActionsMenu({
           </button>
         )}
       </div>
+
+      {typeof onDeletePersonnel === 'function' && String(personnel.account_status || personnel.status || '').toLowerCase() !== 'archived' && (
+        <div className="py-1">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              onClose()
+              onDeletePersonnel(personnel)
+            }}
+            className="w-full px-3.5 py-2 text-left text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2.5 transition cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4 shrink-0" />
+            <span>Delete</span>
+          </button>
+        </div>
+      )}
     </div>,
     document.body
   )

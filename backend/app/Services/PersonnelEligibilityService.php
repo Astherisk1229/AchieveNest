@@ -34,6 +34,12 @@ class PersonnelEligibilityService
 
         $reasons = [];
         if (!$person) return $this->result($personnelProfileId, $period, 'pending', ['Personnel record is unavailable.']);
+        $personnelGroup = strtolower(trim((string) ($person['personnel_group'] ?? '')));
+        $classificationStatus = 'resolved';
+        if (!in_array($personnelGroup, ['faculty', 'non_teaching_faculty'], true)) {
+            $classificationStatus = 'pending';
+            $reasons[] = 'Personnel Type (Teaching or Non-Teaching) must be explicitly recorded by HR before eligibility can be determined.';
+        }
         try { $authority=(new OrganizationalAuthorityResolver($this->db))->resolveResponsibleAuthority($personnelProfileId,$period);$reviewResponsibility=strtolower((string)$authority['authority_type']); }
         catch (\RuntimeException) { $reviewResponsibility='unresolved'; }
         if (!$period) $reasons[] = 'Evaluation period is unavailable.';
@@ -87,9 +93,18 @@ class PersonnelEligibilityService
         if(!$import)$reasons[]='Two confirmed annual-review reports are required.';
         elseif($annualStatus==='pending')$reasons[]=$import['two_review_reason']?:'Second required annual review is missing.';
         elseif($annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
-        $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
-        $eligibility=$hardFailure?'not_eligible':(($serviceStatus==='passed'&&$annualStatus==='passed'&&$period)?'eligible':'pending');
+        $researchStatus = 'not_applicable';
+        if ($personnelGroup === 'faculty') {
+            $researchStatus = $this->researchOutputStatus($personnelProfileId, $period);
+            if ($researchStatus !== 'passed') $reasons[] = $researchStatus === 'pending'
+                ? 'At least one Research Output in the Publications category with clean supporting evidence is required before evaluation.'
+                : 'A required Research Output could not be verified.';
+        }
+        $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||$researchStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
+        $eligibility=$hardFailure?'not_eligible':(($classificationStatus==='resolved'&&$serviceStatus==='passed'&&$annualStatus==='passed'&&in_array($researchStatus,['passed','not_applicable'],true)&&$period)?'eligible':'pending');
         $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;
+        $result['personnel_type_requirement'] = ['status' => $classificationStatus, 'personnel_group' => $personnelGroup ?: null];
+        $result['research_output_requirement'] = ['status' => $researchStatus, 'required' => $personnelGroup === 'faculty'];
         $result['service_completed_years'] = $service['completed_years'] ?? null;
         $result['service_requirement'] += [
             'completed_years' => $service['completed_years'] ?? null,
@@ -103,6 +118,26 @@ class PersonnelEligibilityService
         // Reported only while the service requirement is unresolved; it does not change the decision above.
         $result['missing_hr_requirements']=$serviceStatus==='pending'?$missing:[];
         return$result;
+    }
+
+    /** Teaching Faculty need one evidence-backed Research Output from the canonical B.2 Publications category. */
+    private function researchOutputStatus(string $personnelProfileId, ?array $period): string
+    {
+        if (!$this->db->tableExists('personnel_accomplishments') || !$this->db->tableExists('personnel_accomplishment_evidence')) return 'pending';
+        $query = $this->db->table('personnel_accomplishments a')
+            ->select('a.id')
+            ->join('personnel_accomplishment_evidence e', 'e.accomplishment_id = a.id')
+            ->where('a.personnel_profile_id', $personnelProfileId)
+            ->whereIn('a.category_code', ['B.2', 'B2_PUBLICATION'])
+            ->whereIn('a.status', ['draft', 'submitted', 'under_review', 'verified']);
+        if ($this->db->fieldExists('security_status', 'personnel_accomplishment_evidence')) $query->where('e.security_status', 'clean');
+        if ($period) {
+            $coverage = (new EvaluationValidityService($this->db))->coverageForPeriod($period);
+            $dateField = $this->db->fieldExists('date_achieved', 'personnel_accomplishments') ? 'date_achieved'
+                : ($this->db->fieldExists('occurrence_date', 'personnel_accomplishments') ? 'occurrence_date' : null);
+            if ($coverage && $dateField !== null) $query->where("a.{$dateField} >=", $coverage['start'])->where("a.{$dateField} <=", $coverage['end']);
+        }
+        return $query->groupBy('a.id')->countAllResults() > 0 ? 'passed' : 'pending';
     }
 
     private function resolvePeriod(string $reference): ?array

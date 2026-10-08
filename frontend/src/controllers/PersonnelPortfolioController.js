@@ -68,6 +68,12 @@ export default class PersonnelPortfolioController {
       advisory_classification: acc.advisory_classification || null,
       ocr_metadata: acc.ocr_metadata || null,
       category_metadata: metadata,
+      criterion_id: acc.criterion_id || null,
+      evaluation_scale_version_id: acc.evaluation_scale_version_id || null,
+      criterion_snapshot: typeof acc.criterion_snapshot === 'string'
+        ? (() => { try { return JSON.parse(acc.criterion_snapshot || 'null') } catch { return null } })()
+        : (acc.criterion_snapshot || null),
+      reuse: acc.reuse || null,
       cycle_validity: acc.cycle_validity || null,
       created_at: acc.created_at || null,
       updated_at: acc.updated_at || null
@@ -162,6 +168,18 @@ export default class PersonnelPortfolioController {
     })
   }
 
+  /** Filters a live booklet preview using the backend's canonical eligibility decisions. */
+  static eligiblePortfolioPreview(portfolio) {
+    if (!portfolio) return portfolio
+    const eligible = items => (items || []).filter(item => item?.reuse?.is_consumed !== true && item?.cycle_validity?.eligible !== false)
+    return {
+      ...portfolio,
+      area_a_items: eligible(portfolio.area_a_items),
+      area_b_items: eligible(portfolio.area_b_items),
+      area_c_items: eligible(portfolio.area_c_items)
+    }
+  }
+
   /**
    * Asynchronously loads canonical accomplishments from backend and builds the working portfolio model.
    * If backend fails, throws or surfaces error cleanly without falling back to mock seeds.
@@ -249,10 +267,11 @@ export default class PersonnelPortfolioController {
    * Returns { isValid: boolean, missingProofCount: number, missingItems: Array }
    */
   static validateSubmissionGuard(portfolioModel) {
+    const eligiblePortfolio = PersonnelPortfolioController.eligiblePortfolioPreview(portfolioModel)
     const allItems = [
-      ...portfolioModel.area_a_items,
-      ...portfolioModel.area_b_items,
-      ...portfolioModel.area_c_items
+      ...(eligiblePortfolio.area_a_items || []),
+      ...(eligiblePortfolio.area_b_items || []),
+      ...(eligiblePortfolio.area_c_items || [])
     ]
 
     const missingProof = allItems.filter(item => !hasValidPersonnelEvidence(item))

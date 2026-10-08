@@ -98,6 +98,21 @@ describe('Personnel Evaluation Track — Plan B — Phase B2 Test Suite: Unified
     expect(itemA.advisory_status).toBe('Advisory Record')
   })
 
+  it('uses backend eligibility decisions for live booklet previews and preserves reuse metadata', () => {
+    const portfolio = PersonnelPortfolioController.buildPortfolioFromAccomplishments('P1', [
+      { ...sampleAccomplishments[0], reuse: { is_consumed: false }, cycle_validity: { eligible: true } },
+      { ...sampleAccomplishments[1], reuse: { is_consumed: true }, cycle_validity: null },
+      { ...sampleAccomplishments[2], cycle_validity: null }
+    ])
+
+    const preview = PersonnelPortfolioController.eligiblePortfolioPreview(portfolio)
+
+    expect(portfolio.area_b_items[0].reuse.is_consumed).toBe(true)
+    expect(preview.area_a_items.map(item => item.id)).toEqual(['acc_001'])
+    expect(preview.area_b_items).toEqual([])
+    expect(preview.area_c_items.map(item => item.id)).toEqual(['acc_003'])
+  })
+
   // 23.3 Canonical edit path
   it('23.3 should preserve canonical achievement ID and route edits through canonical update service', async () => {
     vi.spyOn(personnelAccomplishmentService, 'updateAccomplishment').mockResolvedValue({

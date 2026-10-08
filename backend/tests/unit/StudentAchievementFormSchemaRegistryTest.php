@@ -107,6 +107,26 @@ final class StudentAchievementFormSchemaRegistryTest extends CIUnitTestCase
         );
     }
 
+    public function testLeadershipIntakeCapturesTheRoleLevelUsedByAwardScoring(): void
+    {
+        foreach ([
+            'S01-SSG',
+            'S01-COLLEGE_COUNCIL',
+            'S01-CLUB_ORGANIZATION',
+            'S01-YEAR_LEVEL',
+        ] as $code) {
+            $fields = array_column($this->registry->get($code)['fields'], null, 'key');
+
+            $this->assertSame('select', $fields['position_level']['control']);
+            $this->assertTrue($fields['position_level']['required']);
+            $this->assertSame(
+                ['executive', 'officer', 'committee_head', 'member'],
+                array_column($fields['position_level']['options'], 'value')
+            );
+            $this->assertArrayHasKey('position_held', $fields);
+        }
+    }
+
     public function testRegistryAcceptsItsExactActiveContractCatalog(): void
     {
         $rows = [];

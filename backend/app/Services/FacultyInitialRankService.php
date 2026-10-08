@@ -135,7 +135,15 @@ class FacultyInitialRankService
             ];
         }
 
-        $personnelGroup = $context['personnel_group'] ?? 'faculty';
+        $personnelGroup = strtolower(trim((string) ($context['personnel_group'] ?? '')));
+        if (!in_array($personnelGroup, ['faculty', 'non_teaching_faculty'], true)) {
+            return [
+                'status' => 'UNRESOLVED', 'seed_action' => 'no_action', 'reason_code' => 'personnel_type_not_recorded',
+                'resolved_initial_rank_code' => null, 'resolved_initial_rank_name' => null, 'qualification_group' => null,
+                'qualification_verified' => false, 'licensure_verified' => false, 'source_reference' => self::SOURCE_DOCUMENT_ID,
+                'requires_hr_review' => true, 'message' => 'HR must explicitly classify Personnel Type as Teaching or Non-Teaching before rank resolution.',
+            ];
+        }
         if ($personnelGroup !== 'faculty') {
             return [
                 'status' => 'INELIGIBLE',
@@ -280,7 +288,17 @@ class FacultyInitialRankService
             ];
         }
 
-        $personnelGroup = $context['personnel_group'] ?? 'faculty';
+        $personnelGroup = strtolower(trim((string) ($context['personnel_group'] ?? '')));
+        if (!in_array($personnelGroup, ['faculty', 'non_teaching_faculty'], true)) {
+            return [
+                'personnel_profile_id' => $profileId, 'current_rank_code' => $currentRankRaw ?: null,
+                'current_rank_name' => null, 'current_rank_status' => 'unresolved', 'resolved_initial_rank_code' => null,
+                'resolved_initial_rank_name' => null, 'qualification_group' => null, 'qualification_verified' => false,
+                'licensure_verified' => false, 'seed_action' => 'no_action', 'reason_code' => 'personnel_type_not_recorded',
+                'source_reference' => self::SOURCE_DOCUMENT_ID, 'requires_hr_review' => true,
+                'message' => 'HR must explicitly classify Personnel Type as Teaching or Non-Teaching before rank resolution.',
+            ];
+        }
         if ($personnelGroup !== 'faculty') {
             return [
                 'personnel_profile_id' => $profileId,

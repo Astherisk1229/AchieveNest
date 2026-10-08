@@ -33,7 +33,7 @@ Attempting to force identical layouts across both views creates cognitive fricti
 +-------------------------------------------------------------------------------------------------------+
 | [ TOP PAGE SCOREBOARD & NDMU CEILINGS LEDGER (Static Top Placement) ]                                 |
 |  - Status Pill: [ DRAFT ] | Total Capped Score: [ 120 / 160 PTS ]                                     |
-|  - Actions: [ Preview Booklet (Canva) ] | [ Submit Portfolio to DepSec (Primary Emerald Button) ]    |
+|  - Actions: [ Preview Booklet (Canva) ] | [ Submit Portfolio to Dean (Primary Emerald Button) ]    |
 |  +-----------------------+ +-----------------------+ +-----------------------+ +--------------------+ |
 |  | AREA A: 45 / 70 PTS   | | AREA B: 50 / 50 MAX   | | AREA C: 25 / 40 PTS   | | GRAND CAPPED TOTAL | |
 |  | [█████████░░░] 64%    | | [███████████] 100%  | | [██████░░░░░] 62%   | | 120 / 160 PTS    | |
@@ -88,7 +88,7 @@ Eliminates endless vertical scrolling by isolating accomplishment entries into 3
 
 ### E. Personnel Point Security Directive
 - **Auto-Derived Criteria Points**: Personnel CANNOT manually type, alter, or manipulate numeric points. Point values are derived automatically based on official NDMU Criteria category schedules (`RankingCriteriaModel.js`).
-- **Evaluator Verification**: Department Secretary and HR evaluators verify documentary proof and confirm final accepted points during audit review.
+- **Evaluator Verification**: Dean and HR evaluators verify documentary proof and confirm final accepted points during audit review.
 - **Scoreboard Transparency**: The NDMU Point Ceilings Ledger displays real-time score progress towards Area A (70 Max), Area B (50 Max), Area C (40 Max), and Grand Capped Total (160 Max).
 
 ---
@@ -118,4 +118,4 @@ Eliminates endless vertical scrolling by isolating accomplishment entries into 3
 3. **Tabbed Area Editing**: Personnel click Area A, B, or C tabs to review specific line-items without scrolling long pages.
 4. **Proof Completeness Audit**: Personnel scan for `⚠️ Missing Proof PDF!` badges and click `Upload Proof` to attach certificates.
 5. **Pre-Submission Booklet Check**: Personnel click `Preview Booklet` to inspect output slides.
-6. **Final Endorsement**: Personnel click `Submit Portfolio to DepSec` to lock and send the draft for evaluation.
+6. **Final Endorsement**: Personnel click `Submit Portfolio to Dean` to lock and send the draft for evaluation.

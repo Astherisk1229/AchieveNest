@@ -169,7 +169,7 @@ class PersonnelImportService
             '<dataValidation type="list" allowBlank="0" showErrorMessage="1" sqref="G2:G1000"><formula1>&quot;Faculty,Non-Teaching Faculty&quot;</formula1></dataValidation>' .
             '<dataValidation type="list" allowBlank="0" showErrorMessage="1" sqref="H2:H1000"><formula1>&quot;Permanent,Probationary&quot;</formula1></dataValidation>' .
             '<dataValidation type="list" allowBlank="0" showErrorMessage="1" sqref="I2:I1000"><formula1>&quot;Academic,Non-Academic&quot;</formula1></dataValidation>' .
-            '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="K2:K1000"><formula1>&quot;full_time_faculty,part_time_faculty&quot;</formula1></dataValidation>' .
+            '<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="K2:K1000"><formula1>&quot;full_time_faculty&quot;</formula1></dataValidation>' .
             '</dataValidations></worksheet>';
         $zip->addFromString('xl/worksheets/sheet1.xml', $sheet1Xml);
 
@@ -510,11 +510,14 @@ class PersonnelImportService
                 }
             }
 
-            // 7. Engagement & Rank Cross-over Validation
+            // 7. Workload validation: only Full-time Faculty remains an active classification.
             $normEngagement = match (strtolower($rawEngagement)) {
-                'part_time_faculty', 'part-time faculty', 'part time' => 'part_time_faculty',
-                default => 'full_time_faculty'
+                '', 'full_time_faculty', 'full-time faculty', 'full time', 'full_time' => 'full_time_faculty',
+                default => null
             };
+            if ($normEngagement === null) {
+                $errors[] = "Invalid Faculty Engagement '{$rawEngagement}'. Only 'full_time_faculty' is supported.";
+            }
 
             $isDuplicate = false;
             foreach ($errors as $err) {

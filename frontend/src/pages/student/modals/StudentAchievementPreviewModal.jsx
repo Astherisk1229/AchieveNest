@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { AlertCircle, Award, CheckCircle2, Clock, Download, ExternalLink, FileText, Pencil, RotateCcw, ShieldAlert, ShieldCheck, ShieldQuestion, X, XCircle } from 'lucide-react'
 import StudentCertificateSection from '../../../components/common/StudentCertificateSection'
 import EvidenceThumbnail, { evidenceMime, useEvidenceObjectUrl } from '../../../components/common/EvidenceThumbnail'
-import { detailRows } from '../../../utils/achievementDetails'
+import { detailRows, isConfiguredAchievement } from '../../../utils/achievementDetails'
+import useStudentAchievementSchema from '../../../hooks/useStudentAchievementSchema'
 import portfolioService from '../../../services/portfolioService'
 import { formatDateTime } from '../../../utils/achievementDates'
 
@@ -69,6 +70,7 @@ export { detailRows }
 export default function StudentAchievementPreviewModal({ achievement, isOpen, onClose, onEdit, onDownload, onResubmit }) {
   const [events, setEvents] = useState([])
   const [activeEvidenceId, setActiveEvidenceId] = useState(null)
+  const schemaCatalog = useStudentAchievementSchema(isOpen)
   const evidenceList = achievement?.evidence || []
   const activeEvidence = evidenceList.find(item => item.id === activeEvidenceId) || evidenceList[0] || null
   const { url: fullUrl } = useEvidenceObjectUrl(isOpen ? activeEvidence : null)
@@ -90,7 +92,8 @@ export default function StudentAchievementPreviewModal({ achievement, isOpen, on
   const style = STATUS_STYLE[status] || STATUS_STYLE.draft
   const StatusIcon = style.icon
   const editable = ['draft', 'revision_requested'].includes(status)
-  const details = detailRows(achievement.subcategory_id, achievement.structured_metadata)
+  const configured = isConfiguredAchievement(achievement.structured_metadata)
+  const details = detailRows(achievement.subcategory_id, achievement.structured_metadata, schemaCatalog)
   const classification = [achievement.category_name || achievement.category, achievement.subcategory].filter(Boolean).join(' › ')
   const history = events.filter(event => EVENT_LABELS[event.action])
 
@@ -143,11 +146,11 @@ export default function StudentAchievementPreviewModal({ achievement, isOpen, on
             </div>}
             {achievement.certificate && <StudentCertificateSection certificate={achievement.certificate}/>}
 
-            <dl className="grid gap-4 sm:grid-cols-2">
+            {!configured && <dl className="grid gap-4 sm:grid-cols-2">
               <Field label="Organizer / issuing body">{achievement.organizer_or_body || <span className="text-slate-500">Not provided</span>}</Field>
               <Field label="Activity date">{achievement.display_date}</Field>
-            </dl>
-            {achievement.description && <Field label="Description"><span className="whitespace-pre-line">{achievement.description}</span></Field>}
+            </dl>}
+            {!configured && achievement.description && <Field label="Description"><span className="whitespace-pre-line">{achievement.description}</span></Field>}
 
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Details</h3>

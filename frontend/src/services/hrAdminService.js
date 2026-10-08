@@ -10,6 +10,16 @@ export async function fetchOrganizationalStructure() {
   return response?.data || response
 }
 
+export async function createHRCollege(payload) {
+  const response = await apiClient.post('/hr/organizational-structure/colleges', payload)
+  return response?.data || response
+}
+
+export async function createHRDepartment(payload) {
+  const response = await apiClient.post('/hr/organizational-structure/departments', payload)
+  return response?.data || response
+}
+
 export async function fetchHRDashboard() {
   const response = await apiClient.get('/hr/dashboard')
   return response?.data || response

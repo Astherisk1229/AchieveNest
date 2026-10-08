@@ -11,13 +11,13 @@ const parser = read('backend/app/Services/AnnualReviewWorkbookParser.php')
 const page = read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')
 
 describe('Annual Review authority and eligibility', () => {
-  it('authorizes Dean, Department Head, or HR only through the central authority resolver', () => {
+  it('authorizes Dean or HR only through the central authority resolver', () => {
     expect(imports).toContain('OrganizationalAuthorityResolver')
-    expect(imports).toContain("in_array('department_head',$roles,true)")
+    expect(imports).not.toContain('department_head')
     expect(imports).toContain('$this->rosterService->list')
     expect(roster).toContain('resolveResponsibleAuthority')
     expect(roster).toContain('actorMayAct')
-    expect(roster).toContain("return ['DEPARTMENT_HEAD', 'department'")
+    expect(roster).not.toContain('DEPARTMENT_HEAD')
     expect(roster).toContain("return ['HR', 'institution', null]")
   })
 

@@ -17,10 +17,39 @@ const displayDate = (value) => {
 export const displayDateOrPeriod = (value) => String(value || '').split(' – ').map(displayDate).join(' – ').replace('Invalid Date', 'Ongoing')
 const number = (value, digits = 2) => (value === null || value === undefined || Number.isNaN(Number(value)) ? '—' : Number(value).toLocaleString('en-PH', { minimumFractionDigits: digits, maximumFractionDigits: 2 }))
 
-/** Page list: one page per area, then one Supporting Evidence page per attached proof. */
+const dateForSort = (row) => {
+  const source = row?.source || {}
+  const value = source.occurrence_date || source.date_achieved || source.date || row?.date_or_period_display
+  const timestamp = Date.parse(String(value || '').split(' – ')[0])
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+/** Pages follow the official Faculty form sequence and Appendix N's two-area structure. */
 export function buildBookletPages(format, rows) {
+  if (format.id === 'faculty_academic') {
+    const areaA = format.areas.find((area) => area.key === 'A')
+    const areaB = format.areas.find((area) => area.key === 'B')
+    const areaC = format.areas.find((area) => area.key === 'C')
+    const bCriteria = format.criteria.filter((criterion) => criterion.area === 'B')
+    const criteriaFor = (area, selected = null, anchor = true) => ({
+      ...area,
+      anchor,
+      criteria: format.criteria.filter((criterion) => criterion.area === area.key && (!selected || selected.includes(criterion.key)))
+    })
+    const contentPages = [
+      { type: 'content', key: 'faculty-form-page-1', contentAreas: [criteriaFor(areaA), criteriaFor(areaB, bCriteria.slice(0, 1).map((criterion) => criterion.key))] },
+      { type: 'content', key: 'faculty-form-page-2', contentAreas: [criteriaFor(areaB, bCriteria.slice(1).map((criterion) => criterion.key), false), criteriaFor(areaC)], signatureBlock: true }
+    ]
+    const proofs = rows.filter((row) => row.evidence).sort((a, b) => dateForSort(b) - dateForSort(a))
+    return [...contentPages, ...proofs.map((item) => ({ type: 'proof', key: `proof-${item.accomplishmentId}`, item }))]
+  }
+
   return [
-    ...format.areas.map((area) => ({ type: 'area', key: `area-${area.key}`, area })),
+    ...format.areas.map((area) => ({
+      type: 'content',
+      key: `area-${area.key}`,
+      contentAreas: [{ ...area, criteria: format.criteria.filter((criterion) => criterion.area === area.key) }]
+    })),
     ...rows.filter((row) => row.evidence).map((row) => ({ type: 'proof', key: `proof-${row.accomplishmentId}`, item: row }))
   ]
 }
@@ -28,9 +57,18 @@ export function buildBookletPages(format, rows) {
 function PageHeader({ format, user, portfolio }) {
   return (
     <header className="border-b-2 border-emerald-900 pb-5">
-      <p className="text-center font-serif text-xs font-bold tracking-[0.18em] text-emerald-900">NOTRE DAME OF MARBEL UNIVERSITY</p>
-      <h2 className="mt-3 text-center font-serif text-xl font-bold">{format.documentTitle}</h2>
-      <dl className="mt-6 grid grid-cols-[1fr_auto] gap-x-10 gap-y-0.5 font-serif text-sm">
+      {format.id === 'faculty_academic' ? (
+        <>
+          <p className="text-center font-serif text-lg font-bold tracking-wide text-slate-950">FACULTY DEVELOPMENT PROGRAM</p>
+          <h2 className="mt-1 text-center font-serif text-base font-semibold">Portfolio</h2>
+        </>
+      ) : (
+        <>
+          <p className="text-center font-serif text-xs font-bold tracking-[0.18em] text-emerald-900">NOTRE DAME OF MARBEL UNIVERSITY</p>
+          <h2 className="mt-3 text-center font-serif text-xl font-bold">{format.documentTitle}</h2>
+        </>
+      )}
+      <dl className={`${format.id === 'faculty_academic' ? 'mt-5 grid grid-cols-2 gap-x-10 gap-y-1' : 'mt-6 grid grid-cols-[1fr_auto] gap-x-10 gap-y-0.5'} font-serif text-sm`}>
         {format.headerFields(user, portfolio).map(([label, value]) => <div key={label}><dt className="inline">{`${label}: `}</dt><dd className="inline">{value}</dd></div>)}
       </dl>
     </header>
@@ -104,15 +142,18 @@ export default function BookletPage({
     )
   }
 
-  const { key, title } = page.area
-  const criteria = format.criteria.filter((criterion) => criterion.area === key)
-  let previousGroup = null
+  const contentAreas = page.contentAreas || [{ ...page.area, criteria: format.criteria.filter((criterion) => criterion.area === page.area.key) }]
+  const pageTitle = contentAreas.map((area) => area.title).join(' · ')
   return (
     <article className="booklet-page min-h-[1040px] w-[794px] bg-white px-14 py-12 text-slate-950 shadow-xl print:shadow-none">
       <PageHeader format={format} user={user} portfolio={portfolio} />
-      <h3 {...(interactive ? { id: areaAnchor(key), 'data-section-id': areaAnchor(key) } : {})} className="mt-7 scroll-mt-4 bg-emerald-900 px-4 py-3 font-serif text-sm font-bold tracking-wide text-white">{title}</h3>
-      <div className="mt-4 space-y-6">
-        {rows.length === 0 && key === format.areas.find((area) => format.criteria.some((criterion) => criterion.area === area.key && criterion.kind === 'records'))?.key && (
+      {contentAreas.map(({ key, title, criteria, anchor = true }) => {
+        let previousGroup = null
+        const hasRecordCriteria = criteria.some((criterion) => criterion.kind === 'records')
+        return <section key={key}>
+        <h3 {...(interactive && anchor ? { id: areaAnchor(key), 'data-section-id': areaAnchor(key) } : {})} className="mt-7 scroll-mt-4 bg-[#0f2537] px-4 py-3 font-serif text-sm font-bold tracking-wide text-white">{title}</h3>
+        <div className="mt-4 space-y-6">
+        {rows.length === 0 && hasRecordCriteria && (
           <div className="rounded-lg border border-dashed border-slate-400 px-5 py-8 text-center"><p className="font-serif text-sm font-bold">This Portfolio Booklet is currently empty.</p><p className="mt-1 text-xs text-slate-600">Accomplishments appear here once they are added.</p></div>
         )}
         {criteria.map((criterion) => {
@@ -148,7 +189,7 @@ export default function BookletPage({
               <h4 className="border-b border-slate-400 pb-2 font-serif text-sm font-bold">{criterion.label}</h4>
               <div className="mt-2 overflow-hidden border border-slate-400">
                 <table className="w-full table-fixed border-collapse text-left text-[10px]">
-                  <thead className="bg-slate-100"><tr>{columns.map((column) => <th key={column} className="border-r border-slate-400 p-2 last:border-r-0">{column}</th>)}</tr></thead>
+                  <thead className={format.id === 'faculty_academic' ? 'bg-[#e6f2ff]' : 'bg-slate-100'}><tr>{columns.map((column) => <th key={column} className={`border-r border-slate-400 p-2 last:border-r-0 ${format.id === 'faculty_academic' ? 'italic' : ''}`}>{column}</th>)}</tr></thead>
                   <tbody>
                     {criterionRows.length ? criterionRows.map((row) => (
                       <tr key={row.accomplishmentId} {...rowProps(row)}>
@@ -170,7 +211,10 @@ export default function BookletPage({
           )
         })}
       </div>
-      <footer className="mt-8 flex justify-between border-t border-slate-300 pt-3 text-[10px] text-slate-500"><span>Source: {Array.isArray(portfolio.items) ? 'submitted portfolio snapshot' : 'editable portfolio'} records</span><span>{title}</span></footer>
+      </section>
+      })}
+      {page.signatureBlock && <div className="mt-10 text-right font-serif text-sm">________________________________<br />Signature over Printed Name</div>}
+      <footer className="mt-8 flex justify-between border-t border-slate-300 pt-3 text-[10px] text-slate-500"><span>Source: {Array.isArray(portfolio.items) ? 'submitted portfolio snapshot' : 'editable portfolio'} records</span><span>{pageTitle}</span></footer>
     </article>
   )
 }

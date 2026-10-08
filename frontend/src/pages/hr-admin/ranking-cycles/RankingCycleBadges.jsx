@@ -18,7 +18,7 @@ export function LifecycleBadge({ status, wrap = false }) {
 export function CoverageBadges({ coverage }) {
   const groups = coverage?.groups || []
   if (!groups.length) return <span className="text-sm text-slate-500">Not set</span>
-  return <div className="flex flex-wrap gap-1.5">{groups.map(group => <span key={group} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${group === 'FACULTY' ? 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900' : 'bg-indigo-50 text-indigo-800 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-200 dark:ring-indigo-900'}`}>{group === 'FACULTY' ? 'Faculty' : 'Non-Teaching Faculty'}</span>)}</div>
+  return <div className="flex flex-wrap gap-1.5">{groups.map(group => <span key={group} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ring-inset ${group === 'FACULTY' ? 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900' : 'bg-indigo-50 text-indigo-800 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-200 dark:ring-indigo-900'}`}>{group === 'FACULTY' ? 'Teaching Faculty' : 'Non-Teaching Faculty'}</span>)}</div>
 }
 
 /** Four-step indicator for Annual Reviews → Submissions → Evaluation → Results. */

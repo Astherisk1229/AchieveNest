@@ -1,7 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import ExportPortfolioPreviewModal from '../student/modals/ExportPortfolioPreviewModal'
-import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import PersonnelPortfolioGallery from './PersonnelPortfolioGallery'
 import PersonnelEvaluationResultModal from './PersonnelEvaluationResultModal'
@@ -9,45 +7,24 @@ import campusBanner from '../../assets/ndmu_campus_banner.png'
 import { AchieveNestLogo } from '../../components/brand'
 
 import {
-  Trophy,
-  CheckCircle2,
-  Award,
-  MapPin,
   Calendar,
-  GraduationCap,
-  Mail,
-  Phone,
-  Users,
   BookOpen,
-  Heart,
-  Star,
-  FileText,
-  ArrowRight,
   ShieldCheck,
-  Check,
-  Share2,
-  Download,
-  Edit3,
-  Building2,
-  Sparkles,
-  ExternalLink,
-  Paperclip,
-  Clock,
   CreditCard,
-  User
 } from 'lucide-react'
 import { getCurrentUser } from '../../services/authService'
 import { fetchOwnLengthOfService, lengthOfServiceLabel } from '../../services/personnelProfileService'
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
-import { fetchOwnProfileFields } from '../../services/personnelProfileService'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
 import personnelEvaluationResultService from '../../services/PersonnelEvaluationResultService'
+import PersonnelPortfolioController from '../../controllers/PersonnelPortfolioController'
+import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
+import { getCurrentEligibility } from '../../services/personnelPortfolioService'
 
 export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
   const activeUser = currentUser || getCurrentUser()
-  const activeRoleContext = activeUser?.active_role_context || 'personnel'
 
   const {
     portfolio,
@@ -56,15 +33,60 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   } = usePersonnelPortfolio(activeUser?.employee_id || activeUser?.id || '')
 
   // Modals & Toast State
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isCanvaModalOpen, setIsCanvaModalOpen] = useState(false)
-  const [showCopiedToast, setShowCopiedToast] = useState(false)
   const [selectedSnapshot, setSelectedSnapshot] = useState(null)
   const [evaluationResult, setEvaluationResult] = useState(null)
   const [resultLoading, setResultLoading] = useState(false)
   const [resultError, setResultError] = useState('')
   const [resultOpen, setResultOpen] = useState(false)
+  const [evaluationPeriod, setEvaluationPeriod] = useState(null)
+  const [eligibility, setEligibility] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    getCurrentPersonnelEvaluationPeriod()
+      .then(async response => {
+        const period = response?.period || null
+        if (!active) return
+        setEvaluationPeriod(period)
+        const currentEligibility = period?.id && period.can_submit
+          ? await getCurrentEligibility(period.id).catch(() => null)
+          : null
+        if (active) setEligibility(currentEligibility)
+      })
+      .catch(() => {
+        if (active) { setEvaluationPeriod(null); setEligibility(null) }
+      })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!evaluationPeriod?.id || evaluationPeriod.can_submit) return undefined
+    const refreshScheduledPeriod = async () => {
+      try {
+        const response = await getCurrentPersonnelEvaluationPeriod()
+        const period = response?.period || null
+        setEvaluationPeriod(period)
+        const currentEligibility = period?.id && period.can_submit
+          ? await getCurrentEligibility(period.id).catch(() => null)
+          : null
+        setEligibility(currentEligibility)
+      } catch {
+        // Keep the last successfully loaded period visible during transient errors.
+      }
+    }
+    const timer = window.setInterval(() => { void refreshScheduledPeriod() }, 60_000)
+    return () => window.clearInterval(timer)
+  }, [evaluationPeriod?.id, evaluationPeriod?.can_submit])
+
+  const eligibleBookletPreview = useMemo(
+    () => PersonnelPortfolioController.eligiblePortfolioPreview(portfolio),
+    [portfolio]
+  )
+  const currentPeriodId = String(evaluationPeriod?.id || '')
+  const latestPeriodId = String(latestSubmission?.evaluation_period_id || latestSubmission?.evaluation_cycle_id || '')
+  const currentCycleSubmission = currentPeriodId && latestPeriodId === currentPeriodId ? latestSubmission : null
+  const currentCycleStatus = String(currentCycleSubmission?.status || '').toLowerCase()
 
   const openCompletedResult = async (card) => {
     setResultOpen(true)
@@ -90,29 +112,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   }, [])
 
   // Personnel Profile State
-  const [personnel, setPersonnel] = useState(activeUser || { program_affiliations: [] })
-
-  // Saved contact number, location and about-me come from the server so they survive a refresh.
-  useEffect(() => {
-    let active = true
-    fetchOwnProfileFields().then(fields => { if (active) setPersonnel(prev => ({ ...prev, ...fields })) }).catch(() => {})
-    return () => { active = false }
-  }, [])
-
-  // Share Profile Handler
-  const handleShareProfile = () => {
-    navigator.clipboard.writeText(window.location.href)
-    setShowCopiedToast(true)
-    setTimeout(() => setShowCopiedToast(false), 3000)
-  }
-
-  // Save Profile Handler
-  const handleSaveProfile = (updatedData) => {
-    setPersonnel(prev => ({
-      ...prev,
-      ...updatedData
-    }))
-  }
+  const personnel = activeUser || { program_affiliations: [] }
 
   const initials = PersonnelProfilePhotoService.getInitials(personnel.full_name)
 
@@ -124,17 +124,9 @@ export default function PersonnelPortfolioPage({ currentUser }) {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Personnel Portfolio</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-            Faculty Profile Showcase • Present your portfolio using Canva-Style Booklet Viewer with 1 Page per Accomplishment.
+            Review the current HR evaluation portfolio and your previous submitted evaluation snapshots.
           </p>
         </div>
-
-        {/* Copy Toast Alert */}
-        {showCopiedToast && (
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-[#245F42] text-xs font-bold rounded-2xl flex items-center gap-2 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Portfolio link copied to clipboard!</span>
-          </div>
-        )}
 
         {/* ================= 2. HERO PROFILE BANNER (COMPACT & SLEEK) ================= */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mb-6 relative">
@@ -233,62 +225,67 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 </div>
               </div>
 
-              {/* Primary Portfolio Actions */}
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                {/* Action: Portfolio Booklet View */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSnapshot(latestSubmission || portfolio)
-                    setIsCanvaModalOpen(true)
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-[#245F42] hover:bg-[#1B4731] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-xs cursor-pointer active:scale-[0.98]"
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Portfolio Booklet View</span>
-                  <Sparkles className="w-3 h-3 text-amber-300" />
-                </button>
-
-                {/* Action 1: Edit Profile */}
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DCE6DF] dark:border-slate-700 text-[#183B2A] dark:text-slate-200 hover:bg-[#F1F7F2] dark:hover:bg-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                >
-                  <Edit3 className="w-3.5 h-3.5 text-[#159552]" />
-                  <span>Edit Profile</span>
-                </button>
-
-                {/* Action 2: Manage Portfolio Draft */}
-                <button
-                  type="button"
-                  onClick={() => navigate('/personnel/portfolio/edit')}
-                  className="px-4 py-2 rounded-xl bg-[#159552] hover:bg-[#117A43] active:scale-[0.99] text-white text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4 text-white" />
-                  <span>Manage Portfolio Draft</span>
-                </button>
-
-                {/* Action 3: Share */}
-                <button
-                  type="button"
-                  onClick={handleShareProfile}
-                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-[#DCE6DF] dark:border-slate-700 text-[#183B2A] dark:text-slate-200 hover:bg-[#F1F7F2] dark:hover:bg-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-[#159552]" />
-                  <span>Share</span>
-                </button>
-              </div>
-
             </div>
 
           </div>
 
         </div>
 
-        {/* ================= 3. ACADEMIC-YEAR PORTFOLIO GALLERY (PACKAGE C) ================= */}
+        <section aria-labelledby="current-evaluation-heading" className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-5 dark:border-emerald-900 dark:bg-emerald-950/25">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">Current HR Evaluation</p>
+              <h2 id="current-evaluation-heading" className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">
+                {evaluationPeriod ? `${evaluationPeriod.period_name || 'Personnel Ranking & Promotion Evaluation'}${evaluationPeriod.academic_year_label ? ` · ${evaluationPeriod.academic_year_label}` : ''}` : 'No portfolio submission is currently open.'}
+              </h2>
+              {evaluationPeriod && (
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  {evaluationPeriod.can_submit
+                    ? 'Portfolio submission period opened by Human Resources.'
+                    : `HR has scheduled this period${evaluationPeriod.submission_open_at ? ` for ${new Date(evaluationPeriod.submission_open_at).toLocaleDateString()}` : ''}, but submissions are not open yet.`}
+                </p>
+              )}
+              {evaluationPeriod && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full border border-emerald-300 bg-white px-2.5 py-1 font-bold text-emerald-800 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-300">
+                    {currentCycleSubmission ? currentCycleStatus.replaceAll('_', ' ') : (evaluationPeriod.can_submit ? 'Open for submission' : 'Upcoming')}
+                  </span>
+                  {eligibility?.eligibility_label && <span className="text-slate-600 dark:text-slate-300">Eligibility: {eligibility.eligibility_label}</span>}
+                </div>
+              )}
+            </div>
+            {evaluationPeriod && (
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const frozenSnapshotStatuses = ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed']
+                    const hasCurrentFrozenSnapshot = currentCycleSubmission?.items?.length
+                      && frozenSnapshotStatuses.includes(currentCycleStatus)
+                    setSelectedSnapshot(hasCurrentFrozenSnapshot ? currentCycleSubmission : eligibleBookletPreview)
+                    setIsCanvaModalOpen(true)
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-white px-3.5 py-2 text-xs font-extrabold text-emerald-900 hover:bg-emerald-50 dark:border-emerald-700 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-emerald-950/50"
+                >
+                  <BookOpen className="h-4 w-4" /> Review Before Submission
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/personnel/portfolio/edit')}
+                  disabled={!evaluationPeriod.can_submit || ['submitted', 'in_evaluation', 'ready_for_finalization', 'completed'].includes(currentCycleStatus)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3.5 py-2 text-xs font-extrabold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {currentCycleStatus === 'returned_for_revision' || currentCycleStatus === 'returned_to_personnel' ? 'Revise and Resubmit' : 'Submit Portfolio'}
+                </button>
+              </div>
+            )}
+          </div>
+          {!evaluationPeriod && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Your permanent accomplishment repository remains available on Profile.</p>}
+        </section>
+
+        {/* Previous submissions are immutable evaluation snapshots, not living academic-year portfolios. */}
         <PersonnelPortfolioGallery
-          portfolio={portfolio}
           latestSubmission={latestSubmission}
           submissionHistory={submissionHistory}
           onOpenBooklet={(card) => {
@@ -304,21 +301,11 @@ export default function PersonnelPortfolioPage({ currentUser }) {
 
       </div>
 
-      {/* Edit Basic Info Modal */}
-      {isEditModalOpen && (
-        <EditBasicInfoModal
-          user={personnel}
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onSave={handleSaveProfile}
-        />
-      )}
-
       {/* Portfolio Booklet View Presenter Modal */}
       <PersonnelPortfolioBookletModal
         isOpen={isCanvaModalOpen}
         onClose={() => setIsCanvaModalOpen(false)}
-        portfolio={selectedSnapshot || portfolio}
+        portfolio={selectedSnapshot || eligibleBookletPreview}
         user={personnel}
       />
       {resultOpen && <PersonnelEvaluationResultModal result={evaluationResult} loading={resultLoading} error={resultError} onClose={() => setResultOpen(false)} />}

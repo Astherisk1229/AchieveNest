@@ -71,6 +71,24 @@ describe('PersonnelAchievementController — Phase A4 Structured Record Persiste
     expect(createdModel.ocr_metadata.confidence_score).toBe(95)
   })
 
+  it('preserves the selected HR criterion identity and backend snapshot on the accomplishment model', async () => {
+    const criterionSnapshot = { evaluation_scale_version_id: 'scale-v4', criterion: { id: 'leaf-1', name: 'Journal Article' } }
+    const createSpy = vi.spyOn(personnelAccomplishmentService, 'createAccomplishment').mockResolvedValue({
+      data: { id: 'acc-versioned', criterion_id: 'leaf-1', evaluation_scale_version_id: 'scale-v4', criterion_snapshot: criterionSnapshot }
+    })
+
+    const created = await PersonnelAchievementController.addAchievement({
+      title: 'Journal Article',
+      category: 'B.2 Publication',
+      criterion_id: 'leaf-1'
+    })
+
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ criterion_id: 'leaf-1' }))
+    expect(created.criterion_id).toBe('leaf-1')
+    expect(created.evaluation_scale_version_id).toBe('scale-v4')
+    expect(created.criterion_snapshot).toEqual(criterionSnapshot)
+  })
+
   // =========================================================================
   // 18.2: Refresh & Backend Hydration
   // =========================================================================

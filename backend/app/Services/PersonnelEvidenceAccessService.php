@@ -16,7 +16,7 @@ use RuntimeException;
  * 2. Personnel can only access their own evidence according to active lifecycle status.
  * 3. College Dean can only access evidence for assigned candidates within their authorized academic college.
  * 4. Self-review by Deans or Evaluators is strictly blocked from evaluator privileges.
- * 5. Department Secretary role is denied evaluator evidence access by default.
+ * 5. Evidence access is limited to explicitly authorized evaluator roles.
  * 6. HR actors must hold verified `hr_staff` or `hr_admin` roles from server-authenticated session.
  * 7. Storage paths are strictly resolved server-side within the protected evidence directory.
  * 8. Missing physical files yield a controlled 404 with reason `storage_object_missing` without exposing paths.
@@ -128,20 +128,6 @@ class PersonnelEvidenceAccessService
                 'reason_code' => self::REASON_OWNER_ALLOWED,
                 'message' => 'Access authorized as evidence owner.',
                 'scope_reference' => 'owner',
-            ];
-        }
-
-        // 3. Department Secretary Check (Denied evaluator preview by default)
-        if (in_array('department_secretary', $actorRoles, true) && !in_array('dean', $actorRoles, true) && !in_array('hr_staff', $actorRoles, true) && !in_array('hr_admin', $actorRoles, true)) {
-            return [
-                'evidence_id' => $evidenceId,
-                'actor_id' => $actorId,
-                'actor_roles' => $actorRoles,
-                'access_type' => $accessType,
-                'allowed' => false,
-                'reason_code' => self::REASON_FORBIDDEN,
-                'message' => 'Department Secretary role does not possess evaluator evidence access authority.',
-                'scope_reference' => 'department_secretary',
             ];
         }
 

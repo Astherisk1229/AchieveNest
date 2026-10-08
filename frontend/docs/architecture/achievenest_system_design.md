@@ -13,11 +13,11 @@ The technical architecture of **AchieveNest** is structured around **4 Dedicated
 1. **Dedicated Account Types (`user_type_enum`)**:
    - **`student`**: Student account for submitting achievements, managing portfolios, downloading event certificates, and scanning attendance.
    - **`personnel`**: Faculty and staff account for submitting professional accomplishments, training records, research outputs, and managing employee portfolios.
-   - **`hr_staff`**: **Dedicated standalone account** for Human Resource Office personnel to monitor university-wide staff accomplishments, generate accreditation reports, and **assign `department_secretary` roles to personnel**.
+   - **`hr_staff`**: **Dedicated standalone account** for Human Resource Office personnel to monitor university-wide staff accomplishments, generate accreditation reports, and **assign `dean` roles to personnel**.
    - **`osad_staff`**: **Dedicated standalone account** for Office of Student Affairs and Development staff to manage student accounts, add/archive student organizations, configure award criteria, run automated awardee identification, and assign `program_coordinator` and `organization_moderator` roles.
 
 2. **Assigned Personnel Roles (`personnel_role_enum`)**:
-   - **`department_secretary`**: Granted by **HR Staff** to a `personnel` user within a department to review and endorse department faculty achievements.
+   - **`dean`**: Granted by **HR Staff** to a `personnel` user within a department to review and endorse department faculty achievements.
    - **`program_coordinator`**: Granted by **OSAD Staff** to a `personnel` user to verify student achievement submissions for an academic degree program.
    - **`organization_moderator`**: Granted by **OSAD Staff** to a `personnel` user to manage organization events, barcode scanning sessions, and digital certificate generation.
 

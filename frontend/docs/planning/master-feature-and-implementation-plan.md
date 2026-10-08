@@ -18,7 +18,7 @@ Current project status is tracked authoritatively in [project-progress-roadmap.m
 |---|---|---|
 | Student Achievements & Portfolio | Student | Achievement entry, verified proof attachments, digital ID card, portfolio PDF preview |
 | Program Verification Queue | Program Coordinator | Department-scoped submission verification, approval/return actions |
-| Department Endorsement Workbench | Department Secretary | Department portfolio endorsement, faculty submission evaluation |
+| Department Endorsement Workbench | Dean | Department portfolio endorsement, faculty submission evaluation |
 | Student Org & Attendance | Organization Moderator | Event creation, QR code scanner, attendance tracking, certificate generation |
 | HR Personnel Directory & Ranking | HR Staff | Personnel directory, onboarding, evaluation studio, ranking assignment logs |
 | OSAD Honor Roll & Awardees | OSAD Staff | Category leaderboards, candidate evaluation, award confirmations, draft/official rosters |

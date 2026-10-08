@@ -1,7 +1,7 @@
 # Personnel Ranking Portfolio Workflow & System Architecture Specification
 **Document Version:** 1.0.0  
 **Target System:** AchieveNest Student & Personnel Achievement Management Platform  
-**Target Roles:** Personnel (Faculty/Staff), Department Secretary (`dep_sec`), Human Resources (`hr`)  
+**Target Roles:** Personnel (Faculty/Staff), Dean (`dean`), Human Resources (`hr`)
 **Reference Document:** NDMU Rating Sheet for Ranking (Notre Dame of Marbel University)
 
 ---
@@ -23,11 +23,11 @@ To balance personnel convenience with evaluator efficiency, AchieveNest utilizes
 [ Step 3: Area Ceiling Check ]    ---> System computes live Area Ceilings (A: 70, B: 50, C: 40)
            │                           showing Raw Earned vs Accepted Capped Scores
            ▼
-[ Step 4: Unified Batch Submit ]  ---> Personnel submits 1 CONSOLIDATED PORTFOLIO to Department Secretary
+[ Step 4: Unified Batch Submit ]  ---> Personnel submits 1 CONSOLIDATED PORTFOLIO to Dean
 ```
 
 * **Why this replaces noisy item-by-item reviews:**  
-  While personnel can record accomplishments individually in their personal vault as they happen, evaluators (Department Secretary & HR) do **not** review items one by one. Evaluators review **one consolidated NDMU Rating Sheet Portfolio** per personnel per evaluation period. This eliminates dozens of repetitive review notifications and enforces maximum area ceiling caps (70, 50, 40) seamlessly.
+  While personnel can record accomplishments individually in their personal vault as they happen, evaluators (Dean & HR) do **not** review items one by one. Evaluators review **one consolidated NDMU Rating Sheet Portfolio** per personnel per evaluation period. This eliminates dozens of repetitive review notifications and enforces maximum area ceiling caps (70, 50, 40) seamlessly.
 
 ### Personnel Homepage Redesign Specification (NDMU Ranking Metrics)
 > [!IMPORTANT]
@@ -45,14 +45,14 @@ To balance personnel convenience with evaluator efficiency, AchieveNest utilizes
  [ HR (Human Resources) ]  ---> Global Authority, Final Score Audit, Ranking Score Lock
            |
            v
- [ Department Secretary ] ---> First-Level Reviewer (Department-Scoped), Line-Item Point Verification
+ [ Dean ] ---> First-Level Reviewer (Department-Scoped), Line-Item Point Verification
            |
            v
  [ University Personnel ] ---> Vault Creator & Portfolio Submitter (Faculty & Staff)
 ```
 
-1. **Personnel (`Personnel`)**: Records individual accomplishments in their Vault throughout the year, auto-populates their NDMU Ranking Portfolio, reviews claimed scores, and submits the batch portfolio to their Department Secretary.
-2. **Department Secretary (`dep_sec`)**: Reviews portfolios of personnel assigned to their specific department/college. Verifies evidence files, validates claimed scores, inputs verified points per line item, writes remarks, and endorses the portfolio to HR.
+1. **Personnel (`Personnel`)**: Records individual accomplishments in their Vault throughout the year, auto-populates their NDMU Ranking Portfolio, reviews claimed scores, and submits the batch portfolio to their Dean.
+2. **Dean (`dean`)**: Reviews portfolios of personnel assigned to their specific department/college. Verifies evidence files, validates claimed scores, inputs verified points per line item, writes remarks, and endorses the portfolio to HR.
 3. **HR Administrator (`hr`)**: Receives endorsed portfolios from Department Secretaries across all university units. Conducts final audit, verifies score ceiling caps, approves ranking points, locks official rank status, or returns portfolios for revision.
 
 ---
@@ -181,53 +181,53 @@ The portfolio format strictly mirrors the 5-page **NDMU Rating Sheet for Ranking
 [DRAFT] (Personnel builds portfolio) 
    │
    ▼
-[SUBMITTED_TO_DEP_SEC] (Department Secretary reviews assigned dept personnel)
+[submitted] (Dean reviews assigned dept personnel)
    │
-   ├──────────► [RETURNED_TO_PERSONNEL] (Revisions requested)
+   ├──────────► [returned_for_revision] (Revisions requested)
    │                  │
    │                  └──────────► Resubmitted
    ▼
-[ENDORSED_TO_HR] (Department Secretary verifies & endorses to HR)
+[ready_for_finalization] (Dean verifies & endorses to HR)
    │
-   ├──────────► [RETURNED_TO_DEP_SEC] (HR flags Dep Sec evaluation error)
+   ├──────────► [returned_for_revision] (HR flags Dep Sec evaluation error)
    │
    ▼
-[HR_APPROVED] (HR performs final audit & locks ranking score)
+[completed] (HR performs final audit & locks ranking score)
 ```
 
 ### Detailed Lifecycle Steps
 
-#### Step 1: Personnel Portfolio Composition (`DRAFT` -> `SUBMITTED_TO_DEP_SEC`)
+#### Step 1: Personnel Portfolio Composition (`DRAFT` -> `submitted`)
 * Personnel opens the **Personnel Ranking Portfolio Form**.
 * Rather than logging individual items, the UI provides a tabbed/accordion view matching NDMU Rating Sheet Sections A, B, and C.
 * Personnel adds line items under each sub-category, uploads proof files (PDF/JPG), and inputs claimed points.
 * The system dynamic calculator computes live claimed sub-totals and area totals while enforcing ceiling caps (A: 70, B: 50, C: 40).
-* Personnel clicks **"Submit Portfolio for Department Evaluation"**. State updates to `SUBMITTED_TO_DEP_SEC`.
+* Personnel clicks **"Submit Portfolio for Department Evaluation"**. State updates to `submitted`.
 
-#### Step 2: Department Secretary Review & Verification (`SUBMITTED_TO_DEP_SEC` -> `ENDORSED_TO_HR`)
-* Department Secretary logs into AchieveNest and navigates to the **Department Personnel Portfolios** tab.
-* The system filters portfolios so the Department Secretary **only sees personnel belonging to their assigned department/college** (e.g., CEAC Secretary sees CEAC faculty).
-* Department Secretary opens the portfolio in a **Split-Screen Evaluator Workbench**:
+#### Step 2: Dean Review & Verification (`submitted` -> `ready_for_finalization`)
+* Dean logs into AchieveNest and navigates to the **Department Personnel Portfolios** tab.
+* The system filters portfolios so the Dean **only sees personnel belonging to their assigned department/college** (e.g., CEAC Secretary sees CEAC faculty).
+* Dean opens the portfolio in a **Split-Screen Evaluator Workbench**:
   * **Left Side:** Portfolio Entries with line-item verification controls (Claimed Points vs. Verified Points input, Checkboxes for Verified Proof).
   * **Right Side:** Document Proof Viewer (renders PDF/images attached to the specific item).
-* Department Secretary verifies each claim, adjusts points if proof is partial or non-compliant, adds evaluator notes per section, and signs with a Digital Signature Stamp.
-* Department Secretary selects **"Endorse to HR"**. State transitions to `ENDORSED_TO_HR`.
-* Alternatively, if proof is missing, Dep Sec clicks **"Return to Personnel with Remarks"** (`RETURNED_TO_PERSONNEL`).
+* Dean verifies each claim, adjusts points if proof is partial or non-compliant, adds evaluator notes per section, and signs with a Digital Signature Stamp.
+* Dean selects **"Endorse to HR"**. State transitions to `ready_for_finalization`.
+* Alternatively, if proof is missing, Dep Sec clicks **"Return to Personnel with Remarks"** (`returned_for_revision`).
 
-#### Step 3: HR Audit & Final Ranking Lock (`ENDORSED_TO_HR` -> `HR_APPROVED`)
+#### Step 3: HR Audit & Final Ranking Lock (`ready_for_finalization` -> `completed`)
 * HR Officer opens the **University Ranking Masterboard**.
 * HR sees endorsed portfolios from all departments, filtered by Department, College, or Status.
-* HR reviews the Department Secretary's verified scores and conducts a final institutional compliance audit.
-* HR can edit final verified points if an institutional rule was misapplied, or approve the Department Secretary's evaluation.
+* HR reviews the Dean's verified scores and conducts a final institutional compliance audit.
+* HR can edit final verified points if an institutional rule was misapplied, or approve the Dean's evaluation.
 * Upon confirmation, HR clicks **"Approve & Lock Official Ranking Score"**.
-* State transitions to `HR_APPROVED` (`LOCKED_RANKING_RECORD`). The final ranking score is permanently bound to the Personnel's record for promotion and ranking period reports.
+* State transitions to `completed` (`LOCKED_RANKING_RECORD`). The final ranking score is permanently bound to the Personnel's record for promotion and ranking period reports.
 
 ---
 
 ## 4. Key Considerations & Business Logic Rules
 
 ### 1. Department Scoping & Security Constraints
-* **Department Secretary Role Scoping:** A Department Secretary's token/session context contains `assigned_department_id` (e.g., `DEP-CEAC`). SQL/LocalStorage queries for pending portfolios MUST enforce `WHERE department_id = assigned_department_id`.
+* **Dean Role Scoping:** A Dean's token/session context contains `assigned_department_id` (e.g., `DEP-CEAC`). SQL/LocalStorage queries for pending portfolios MUST enforce `WHERE department_id = assigned_department_id`.
 * **HR Global Access:** HR users hold global permission scope (`department_id = *`), allowing them to assign department secretaries, view all university portfolios, and override evaluation scores if necessary.
 
 ### 2. HR Maximum Point Ceiling & Capping Rules (CRITICAL HR DIRECTIVE)
@@ -275,19 +275,19 @@ src/
 │   └── RankingCriteriaModel.js          # Encapsulates NDMU Point Schedule Matrices & Formulas
 ├── controllers/
 │   ├── PersonnelPortfolioController.js  # Business Logic for Creation, Submissions, & Calculations
-│   ├── DepSecVerificationController.js  # Department Secretary Filtering, Verification, & Endorsement
+│   ├── DeanVerificationController.js  # Dean Filtering, Verification, & Endorsement
 │   └── HRRankingController.js           # HR Global Audit, Secretary Assignments, & Ranking Lock
 ├── hooks/
 │   ├── usePersonnelPortfolio.js         # React Bridge Hook for Personnel UI
-│   ├── useDepSecVerification.js        # React Bridge Hook for Department Secretary Workbench
+│   ├── useDeanVerification.js        # React Bridge Hook for Dean Workbench
 │   └── useHRRanking.js                  # React Bridge Hook for HR Dashboard
 └── components/
     ├── personnel/
     │   ├── PersonnelPortfolioForm.jsx   # Tabbed NDMU Rating Sheet Entry View
     │   └── PortfolioSummaryCard.jsx     # Live Point Breakdown & Status Card
-    ├── depsec/
-    │   ├── DepSecPortfolioRoster.jsx    # Department Personnel Table with Status Badges
-    │   └── DepSecEvaluatorWorkbench.jsx # Split-screen Proof Viewer & Point Verification
+    ├── dean/
+    │   ├── DeanPortfolioRoster.jsx    # Department Personnel Table with Status Badges
+    │   └── DeanEvaluatorWorkbench.jsx # Split-screen Proof Viewer & Point Verification
     └── hr/
         ├── HRRankingMasterboard.jsx     # University-wide Endorsed Portfolios Table
         └── HRScoreAuditModal.jsx        # HR Final Audit & Ranking Lock Dialog
@@ -301,8 +301,8 @@ src/
 | :--- | :--- |
 | **`RankingCriteriaModel.js`** | Enforces NDMU scoring formulas, scope multipliers, and area ceiling caps (A: 70, B: 50, C: 40). |
 | **`PersonnelPortfolioModel.js`** | Encapsulates single portfolio document schema, line items, proof URLs, dual points (claimed vs verified), and state machine. |
-| **`DepSecVerificationController.js`** | Manages department-level personnel filtering, item point verification, remarks, and HR endorsement. |
-| **`HRRankingController.js`** | Manages university-wide ranking masterboard, department secretary assignments, score overrides, and ranking lock. |
+| **`DeanVerificationController.js`** | Manages department-level personnel filtering, item point verification, remarks, and HR endorsement. |
+| **`HRRankingController.js`** | Manages university-wide ranking masterboard, Dean assignments, score overrides, and ranking lock. |
 
 ---
 
@@ -317,7 +317,7 @@ To ensure modular execution, quality assurance, and zero disruption to existing 
 [ PHASE 2: Personnel Portfolio Template & Entry Form ]
                       │
                       ▼
-[ PHASE 3: Department Secretary Evaluator Workbench ]
+[ PHASE 3: Dean Evaluator Workbench ]
                       │
                       ▼
 [ PHASE 4: HR Global Ranking Masterboard & Score Lock ]
@@ -347,7 +347,7 @@ To ensure modular execution, quality assurance, and zero disruption to existing 
 * **[x] Task 2.1: Implement `src/controllers/PersonnelPortfolioController.js` & `src/hooks/usePersonnelPortfolio.js`**
   - Write controller logic for loading/saving draft portfolios to LocalStorage/API.
   - Integrate dynamic recalculation on item addition/deletion.
-  - Enforce proof file attachment guards before allowing submission (`SUBMITTED_TO_DEP_SEC`).
+  - Enforce proof file attachment guards before allowing submission (`submitted`).
 * **[x] Task 2.2: Build `src/components/personnel/PersonnelPortfolioForm.jsx`**
   - Create modern, tabbed/accordion rating sheet layout:
     - **Tab 1: Area A - Professional Development** (Degrees, Orgs, Seminars with venue/scope select).
@@ -357,19 +357,19 @@ To ensure modular execution, quality assurance, and zero disruption to existing 
   - Live floating/header summary showing:
     - Raw Earned Points vs Accepted Capped Points.
     - Area Progress Bars with max ceiling badges (70, 50, 40).
-    - Submission Status Indicator (`DRAFT`, `SUBMITTED_TO_DEP_SEC`, `ENDORSED_TO_HR`, `HR_APPROVED`).
+    - Submission Status Indicator (`DRAFT`, `submitted`, `ready_for_finalization`, `completed`).
 
 ---
 
-### Phase 3: Department Secretary Evaluator Workbench [x] COMPLETED
+### Phase 3: Dean Evaluator Workbench [x] COMPLETED
 **Primary Objective:** Build the department-scoped review workspace for Department Secretaries to inspect proofs, adjust verified points, write notes, and endorse to HR.
 
-* **[x] Task 3.1: Implement `src/controllers/DepSecVerificationController.js` & `src/hooks/useDepSecVerification.js`**
+* **[x] Task 3.1: Implement `src/controllers/DeanVerificationController.js` & `src/hooks/useDeanVerification.js`**
   - Implement department-scoped filtering (`WHERE department_id = assigned_department_id`).
   - Provide controller actions for updating verified line-item points, toggling proof verification checkboxes, appending section remarks, and endorsing to HR.
-* **[x] Task 3.2: Build `src/components/depsec/DepSecPortfolioRoster.jsx`**
+* **[x] Task 3.2: Build `src/components/dean/DeanPortfolioRoster.jsx`**
   - Department personnel portfolio table with search, status filters (`Submitted`, `Under Review`, `Endorsed`, `Returned`), and quick summary scores.
-* **[x] Task 3.3: Build `src/components/depsec/DepSecEvaluatorWorkbench.jsx`**
+* **[x] Task 3.3: Build `src/components/dean/DeanEvaluatorWorkbench.jsx`**
   - Split-screen workspace:
     - **Left Panel:** Portfolio entries with line-item verification controls (Claimed vs Verified points input, Proof Verified toggle).
     - **Right Panel:** Interactive Document/PDF Viewer for attached certificates and transcripts.
@@ -378,15 +378,15 @@ To ensure modular execution, quality assurance, and zero disruption to existing 
 ---
 
 ### Phase 4: HR Global Ranking Masterboard & Score Lock [x] COMPLETED
-**Primary Objective:** Build the university-wide HR dashboard for auditing Department Secretary endorsements, executing final overrides, and locking official ranking scores.
+**Primary Objective:** Build the university-wide HR dashboard for auditing Dean endorsements, executing final overrides, and locking official ranking scores.
 
 * **[x] Task 4.1: Implement `src/controllers/HRRankingController.js` & `src/hooks/useHRRanking.js`**
   - Global query engine across all university colleges/departments.
-  - Controller actions for Department Secretary assignment management, HR audit score overrides, and final ranking score locking (`HR_APPROVED`).
+  - Controller actions for Dean assignment management, HR audit score overrides, and final ranking score locking (`completed`).
 * **[x] Task 4.2: Build `src/components/hr/HRRankingMasterboard.jsx`**
   - Institution-wide masterboard with department filters, score summary cards, and rank distribution charts.
 * **[x] Task 4.3: Build `src/components/hr/HRScoreAuditModal.jsx`**
-  - Detailed audit modal presenting Department Secretary verified points, attached proof links, audit trail logs, and the "Approve & Lock Official Ranking Score" trigger.
+  - Detailed audit modal presenting Dean verified points, attached proof links, audit trail logs, and the "Approve & Lock Official Ranking Score" trigger.
 
 ---
 
@@ -394,7 +394,7 @@ To ensure modular execution, quality assurance, and zero disruption to existing 
 **Primary Objective:** Connect all components, add testing role-switchers, verify state transitions, and run build checks.
 
 * **[x] Task 5.1: Session Role Integration (`src/controllers/AuthController.js` / `authService.js`)**
-  - Add demo session support for `Personnel`, `dep_sec` (Department Secretary), and `hr` (HR Admin) with department context (`DEP-CEAC`, `DEP-CABM`, `DEP-CAS`).
+  - Add demo session support for `Personnel`, `dean` (Dean), and `hr` (HR Admin) with department context (`DEP-CEAC`, `DEP-CABM`, `DEP-CAS`).
   - Add a persistent testing role-switching toolbar for instant workflow switching.
 * **[x] Task 5.2: Verification & Build Audit**
   - Execute build check (`npx vite build`) to confirm zero compilation errors.

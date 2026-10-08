@@ -220,11 +220,6 @@ export default class PersonnelReviewerAssignmentService {
       ? reviewerActor.roles
       : (reviewerActor.role ? [reviewerActor.role] : [])
 
-    // 2. Department Secretary Exclusion
-    if (actorRoles.includes('department_secretary') && !actorRoles.includes('dean') && !actorRoles.includes('hr_staff') && !actorRoles.includes('hr_admin')) {
-      return false
-    }
-
     const assignedRole = evaluationRecord.assigned_reviewer_role || evaluationRecord.evaluator_role || null
     const targetCollegeId = evaluationRecord.evaluator_college_id || evaluationRecord.target_college_id || null
 
@@ -234,8 +229,8 @@ export default class PersonnelReviewerAssignmentService {
         return false
       }
       const actorCollegeId = reviewerActor.assigned_college_id || (reviewerActor.profile && reviewerActor.profile.college_id)
-      if (targetCollegeId && actorCollegeId !== targetCollegeId) {
-        return false // Cross-college access blocked
+      if (!String(targetCollegeId || '').trim() || !String(actorCollegeId || '').trim() || String(actorCollegeId) !== String(targetCollegeId)) {
+        return false // Missing and cross-college scopes are both denied
       }
       return true
     }

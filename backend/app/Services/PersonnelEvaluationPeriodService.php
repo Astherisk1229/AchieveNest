@@ -52,9 +52,60 @@ class PersonnelEvaluationPeriodService
     {
         if (! in_array($evaluationType, self::TYPES, true)) throw new InvalidArgumentException('UNKNOWN_EVALUATION_TYPE: Unsupported personnel evaluation type.');
         if (! in_array($personnelGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) throw new InvalidArgumentException('INVALID_PERSONNEL_GROUP: Select Faculty or Non-Teaching Faculty.');
-        $rows = $this->list(['evaluation_type' => $evaluationType, 'personnel_group' => $personnelGroup, 'status' => 'OPEN_FOR_SUBMISSION']);
-        if (count($rows) > 1) throw new RuntimeException('PERIOD_CONFIGURATION_CONFLICT: More than one submission period is open for this personnel group.');
-        return $rows[0] ?? null;
+        if ($evaluationType === 'RANKING_PROMOTION') $this->openDueScheduledSubmissions($personnelGroup);
+        $rows = $this->list(['evaluation_type' => $evaluationType, 'personnel_group' => $personnelGroup]);
+        $open = array_values(array_filter($rows, static fn (array $row): bool => ($row['status'] ?? '') === 'OPEN_FOR_SUBMISSION'));
+        if (count($open) > 1) throw new RuntimeException('PERIOD_CONFIGURATION_CONFLICT: More than one submission period is open for this personnel group.');
+        if ($open !== []) return $open[0];
+
+        // Keep the next HR-scheduled period visible on the Personnel Portfolio
+        // before HR opens submissions. The DTO's can_submit remains false for
+        // DRAFT periods, so visibility never grants submission access.
+        $now = time();
+        foreach ($rows as $row) {
+            $closeAt = strtotime((string) ($row['submission_close_at'] ?? ''));
+            if (($row['status'] ?? '') === 'DRAFT' && $closeAt !== false && $closeAt >= $now) return $row;
+        }
+
+        return null;
+    }
+
+    /**
+     * Apply the HR-configured submission schedule when an active window begins.
+     * This is invoked by both personnel current-period reads and HR cycle reads,
+     * so the persisted lifecycle, notifications, and submission guards agree.
+     */
+    public function openDueScheduledSubmissions(?string $personnelGroup = null): int
+    {
+        if (! $this->db->tableExists('personnel_evaluation_periods')) return 0;
+        $now = date('Y-m-d H:i:s');
+        $query = $this->db->table('personnel_evaluation_periods')
+            ->select('id, created_by, submission_open_at')
+            ->where('evaluation_type', 'RANKING_PROMOTION')
+            ->where('status', 'DRAFT')
+            ->where('submission_open_at <=', $now)
+            ->where('submission_close_at >=', $now);
+        if ($personnelGroup !== null) $query->where('personnel_group', $personnelGroup);
+
+        $opened = 0;
+        foreach ($query->get()->getResultArray() as $period) {
+            $actorId = trim((string) ($period['created_by'] ?? ''));
+            if ($actorId === '') {
+                log_message('error', 'Scheduled personnel evaluation period {periodId} has no creator to record its automatic opening.', ['periodId' => $period['id']]);
+                continue;
+            }
+            $requestId = 'scheduled-open:' . $period['id'] . ':' . str_replace(['-', ':', ' '], '', (string) $period['submission_open_at']);
+            try {
+                $result = $this->transition((string) $period['id'], 'open-submissions', $actorId, $requestId);
+                if (($result['status'] ?? '') === 'OPEN_FOR_SUBMISSION') $opened++;
+            } catch (Throwable $error) {
+                // Invalid configuration (for example, missing reviewer readiness
+                // or achievement coverage) must keep the track closed and visible
+                // to HR for correction; a later read retries the scheduled opening.
+                log_message('error', 'Scheduled personnel evaluation period {periodId} could not open: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
+            }
+        }
+        return $opened;
     }
 
     /**
@@ -67,6 +118,8 @@ class PersonnelEvaluationPeriodService
         if (! in_array($personnelGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) {
             throw new InvalidArgumentException('INVALID_PERSONNEL_GROUP: Select Faculty or Non-Teaching Faculty.');
         }
+
+        $this->openDueScheduledSubmissions($personnelGroup);
 
         $rows = $this->list(['evaluation_type' => 'RANKING_PROMOTION', 'personnel_group' => $personnelGroup]);
         $operational = array_values(array_filter(
@@ -319,13 +372,33 @@ class PersonnelEvaluationPeriodService
     private function event(string $periodId, string $type, string $actorId, ?array $old, array $new, string $requestId): void { $this->db->table('personnel_evaluation_period_events')->insert(['id'=>$this->uuid(),'evaluation_period_id'=>$periodId,'event_type'=>$type,'actor_profile_id'=>$actorId,'request_id'=>$requestId,'old_values'=>$old ? json_encode($old) : null,'new_values'=>json_encode($new),'created_at'=>date('Y-m-d H:i:s')]); }
     private function notifyPeriodOpened(array $period, string $actorId, string $requestId): void
     {
-        if (! $this->db->tableExists('notifications')) return;
-        $recipients = $this->db->table('profiles')->select('id')->where('account_type', 'personnel')->where('status', 'active')->get()->getResultArray();
+        if (! $this->db->tableExists('notifications') || ! $this->db->tableExists('personnel_profiles')) return;
+        $group = strtolower((string) ($period['personnel_group'] ?? ''));
+        if (! in_array($group, ['faculty', 'non_teaching_faculty'], true)) return;
+
+        $select = ['p.id', 'pp.personnel_group', 'pp.personnel_classification', 'pp.organizational_side'];
+        $hasCollegeAffiliations = $this->db->tableExists('personnel_college_affiliations');
+        $hasAdminAffiliations = $this->db->tableExists('personnel_administrative_unit_affiliations');
+        if ($hasCollegeAffiliations) $select[] = 'pca.college_id';
+        if ($hasAdminAffiliations) $select[] = 'pau.administrative_unit_id';
+        $recipientQuery = $this->db->table('profiles p')
+            ->select($select)
+            ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+            ->where('p.account_type', 'personnel')
+            ->where('p.status', 'active');
+        if ($hasCollegeAffiliations) $recipientQuery->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1', 'left');
+        if ($hasAdminAffiliations) $recipientQuery->join('personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id = p.id AND pau.is_active = 1', 'left');
+
+        $classification = new PersonnelClassificationService();
+        $recipients = array_values(array_filter(
+            $recipientQuery->get()->getResultArray(),
+            static fn (array $recipient): bool => ($classification->resolveFromRecord($recipient)['group'] ?? null) === $group
+        ));
         foreach ($recipients as $recipient) {
             $key = hash('sha256', "period-open:{$period['id']}:{$recipient['id']}:{$requestId}");
             $exists = $this->db->table('notifications')->where('idempotency_key', $key)->countAllResults();
             if ($exists) continue;
-            $this->db->table('notifications')->insert(['id'=>$this->uuid(),'recipient_profile_id'=>$recipient['id'],'actor_profile_id'=>$actorId,'notification_type'=>'personnel_evaluation_period_opened','title'=>$period['period_name'].' is open','message'=>'Portfolio submissions are open until '.date('M j, Y g:i A', strtotime($period['submission_close_at'])).'.','reference_type'=>'personnel_evaluation_period','reference_id'=>$period['id'],'idempotency_key'=>$key,'is_mandatory'=>1,'created_at'=>date('Y-m-d H:i:s')]);
+            $this->db->table('notifications')->insert(['id'=>$this->uuid(),'recipient_profile_id'=>$recipient['id'],'actor_profile_id'=>$actorId,'notification_type'=>'personnel_evaluation_period_opened','title'=>'Portfolio Submission is Now Open','message'=>'The scheduled submission period for '.$period['period_name'].' is now open until '.date('M j, Y g:i A', strtotime($period['submission_close_at'])).'.','reference_type'=>'personnel_evaluation_period','reference_id'=>$period['id'],'idempotency_key'=>$key,'is_mandatory'=>1,'created_at'=>date('Y-m-d H:i:s')]);
         }
     }
     private function requestId(?string $id): string { $id = trim((string) $id); return $id !== '' && preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $id) ? $id : $this->uuid(); }

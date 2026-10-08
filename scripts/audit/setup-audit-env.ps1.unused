@@ -1,0 +1,38 @@
+<#
+ Phase 0: create a DISPOSABLE audit database as a copy of a source database.
+ - The source (-Source) is only READ (mysqldump). It is never written to.
+ - Refuses to overwrite anything unless the target name starts with 'achievenest_audit'.
+ Usage: powershell -ExecutionPolicy Bypass -File .\setup-audit-env.ps1 [-Source achievenest_local]
+#>
+param(
+  [string]$Source = 'achievenest_local',
+  [string]$Target = 'achievenest_audit',
+  [string]$MysqlBin = 'C:\wamp64\bin\mysql\mysql8.4.7\bin',
+  [string]$MysqlUser = 'root'
+)
+if ($Target -notlike 'achievenest_audit*') { throw "Target must start with 'achievenest_audit'." }
+if ($Target -eq $Source) { throw 'Source and target must differ.' }
+$mysql = Join-Path $MysqlBin 'mysql.exe'; $dump = Join-Path $MysqlBin 'mysqldump.exe'
+foreach ($f in $mysql,$dump) { if (-not (Test-Path $f)) { throw "Not found: $f (adjust -MysqlBin)" } }
+$sp = Read-Host "MySQL password for '$MysqlUser' (blank if none)" -AsSecureString
+$env:MYSQL_PWD = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sp))
+try {
+  $exists = & $mysql -u $MysqlUser --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='$Target'"
+  if ([int]$exists -gt 0) { throw "Database '$Target' already exists. Drop it yourself or choose another -Target." }
+  & $mysql -u $MysqlUser -e "CREATE DATABASE ``$Target`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+  $tmp = Join-Path $env:TEMP "$Target.sql"
+  & $dump -u $MysqlUser --single-transaction --routines --triggers --default-character-set=utf8mb4 --result-file=$tmp $Source
+  if ($LASTEXITCODE -ne 0) { throw 'mysqldump failed' }
+  Get-Content -Raw $tmp | & $mysql -u $MysqlUser --default-character-set=utf8mb4 $Target
+  Remove-Item $tmp
+  $n = & $mysql -u $MysqlUser --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$Target'"
+  Write-Host "Created '$Target' with $n tables (copy of '$Source')."
+  Write-Host "Grant check:"; & $mysql -u $MysqlUser -e "SHOW GRANTS FOR 'achievenest_app'@'localhost'" 2>&1
+} finally { Remove-Item Env:MYSQL_PWD -ErrorAction SilentlyContinue }
+Write-Host @"
+
+NEXT (manual, 3 steps):
+ 1. GRANT the app user access:  GRANT ALL ON ``$Target``.* TO 'achievenest_app'@'localhost'; FLUSH PRIVILEGES;
+ 2. In backend\.env set:  database.local_defense.database = $Target   (note the old value to restore later)
+ 3. Restart the API:  scripts\start-achievenest-dev.ps1   then check  http://localhost:8080/api/v1/health
+"@

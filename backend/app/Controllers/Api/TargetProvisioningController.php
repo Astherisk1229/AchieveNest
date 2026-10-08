@@ -5,7 +5,6 @@ namespace App\Controllers\Api;
 use App\Helpers\ValidationHelper;
 use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
-use App\Services\DepartmentSecretaryOccupancyService;
 use App\Services\EmploymentServiceDurationService;
 use App\Services\PersonnelServiceHistoryService;
 use CodeIgniter\API\ResponseTrait;
@@ -19,13 +18,10 @@ class TargetProvisioningController extends Controller
 
     protected AuthenticatedActorService $actorService;
     protected ProvisioningValidation $provisioningConfig;
-    protected DepartmentSecretaryOccupancyService $secretaryOccupancyService;
-
-    public function __construct(?AuthenticatedActorService $actorService = null, ?DepartmentSecretaryOccupancyService $secretaryOccupancyService = null)
+    public function __construct(?AuthenticatedActorService $actorService = null)
     {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
         $this->provisioningConfig = config('ProvisioningValidation');
-        $this->secretaryOccupancyService = $secretaryOccupancyService ?? new DepartmentSecretaryOccupancyService();
     }
 
     public function options()
@@ -633,16 +629,6 @@ class TargetProvisioningController extends Controller
                 ], 422);
             }
 
-            if ($facultyEngagement === 'part_time_faculty') {
-                if (! $isPartTimeTitle) {
-                    return $this->respond([
-                        'error' => [
-                            'code'    => 'CATALOG_CROSSOVER_REJECTED',
-                            'message' => 'Full-Time academic rank cannot be assigned to Part-Time faculty. Only Part-Time titles are allowed.',
-                        ]
-                    ], 422);
-                }
-            }
         }
 
         $classification = $clsValidation['side'];
@@ -674,18 +660,19 @@ class TargetProvisioningController extends Controller
 
         $db = db_connect();
         if ($classification === 'academic') {
-            if ($collegeId === null || $programIds === []) {
-                return $this->respond(['error' => ['code' => 'MISSING_ACADEMIC_AFFILIATION', 'message' => 'Academic Personnel require college_id and at least one academic_program_id.']], 422);
+            if ($collegeId === null || $administrativeUnitId === null) {
+                return $this->respond(['error' => ['code' => 'MISSING_ACADEMIC_AFFILIATION', 'message' => 'Teaching Personnel require a college and department.']], 422);
             }
-            $validProgramCount = $db->table('academic_programs')
-                ->where('college_id', $collegeId)
-                ->where('status', 'active')
-                ->whereIn('id', $programIds)
-                ->countAllResults();
-            if ($validProgramCount !== count($programIds)) {
-                return $this->respond(['error' => ['code' => 'INVALID_PROGRAM_AFFILIATION', 'message' => 'Every Academic Program must be active and belong to the selected College.']], 422);
+            $unit = $db->table('administrative_units')->where('id', $administrativeUnitId)->where('status', 'active')->get()->getRowArray();
+            if ($unit === null || (string) ($unit['college_id'] ?? '') !== $collegeId) {
+                return $this->respond(['error' => ['code' => 'INVALID_DEPARTMENT', 'field' => 'department_id', 'message' => 'Select an active Department under the selected College.']], 422);
             }
-            $administrativeUnitId = null;
+            if ($programIds !== []) {
+                $validProgramCount = $db->table('academic_programs')->where('college_id', $collegeId)->where('status', 'active')->whereIn('id', $programIds)->countAllResults();
+                if ($validProgramCount !== count($programIds)) {
+                    return $this->respond(['error' => ['code' => 'INVALID_PROGRAM_AFFILIATION', 'message' => 'Every Academic Program must be active and belong to the selected College.']], 422);
+                }
+            }
         } else {
             if ($administrativeUnitId === null) {
                 return $this->respond(['error' => ['code' => 'MISSING_DEPARTMENT', 'field' => 'department_id', 'message' => 'Non-Academic Personnel require a Department.']], 422);
@@ -693,6 +680,9 @@ class TargetProvisioningController extends Controller
             $unit = $db->table('administrative_units')->where('id', $administrativeUnitId)->where('status', 'active')->get()->getRowArray();
             if ($unit === null) {
                 return $this->respond(['error' => ['code' => 'INVALID_DEPARTMENT', 'field' => 'department_id', 'message' => 'Select an active Department.']], 422);
+            }
+            if (! empty($unit['college_id'])) {
+                return $this->respond(['error' => ['code' => 'INVALID_DEPARTMENT', 'field' => 'department_id', 'message' => 'Non-Teaching Personnel must be assigned to an independent Department.']], 422);
             }
             $collegeId = null;
             $programIds = [];
@@ -721,15 +711,6 @@ class TargetProvisioningController extends Controller
         try {
             if ($this->identityConflict($db, $instId, $email) !== null) {
                 throw new \RuntimeException('IDENTITY_CONFLICT');
-            }
-            $secretaryConflict = $this->secretaryOccupancyService->findConflict(
-                $db,
-                $positionTitle,
-                $collegeId,
-                $administrativeUnitId
-            );
-            if ($secretaryConflict !== null) {
-                throw new \DomainException(json_encode($secretaryConflict));
             }
             $now = date('Y-m-d H:i:s');
             $db->table('profiles')->insert([
@@ -804,6 +785,10 @@ class TargetProvisioningController extends Controller
                         'is_active'            => 1,
                     ]);
                 }
+                $db->table('personnel_administrative_unit_affiliations')->insert([
+                    'id' => $this->genUuid(), 'personnel_profile_id' => $authUserId,
+                    'administrative_unit_id' => $administrativeUnitId, 'effective_from' => date('Y-m-d'), 'is_active' => 1,
+                ]);
             } else {
                 $db->table('personnel_administrative_unit_affiliations')->insert([
                     'id'                     => $this->genUuid(),
@@ -862,12 +847,6 @@ class TargetProvisioningController extends Controller
             $db->transComplete();
         } catch (Throwable $e) {
             $db->transRollback();
-            if ($e instanceof \DomainException) {
-                $details = json_decode($e->getMessage(), true);
-                if (is_array($details) && ($details['code'] ?? null) === 'POSITION_OCCUPIED') {
-                    return $this->respond(['error' => $details], 409);
-                }
-            }
             $this->logProvisioningFailure($db, $actor['profile']['id'], 'personnel', 'Personnel provisioning failed: ' . $e->getMessage());
             $conflict = $this->identityConflict($db, $instId, $email);
             if ($conflict !== null) return $conflict;

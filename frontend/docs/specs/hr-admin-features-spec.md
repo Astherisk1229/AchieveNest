@@ -97,7 +97,7 @@ The **Personnel Directory** serves as the central directory for viewing, managin
 4. **Onboard Personnel (`onOpenOnboarding`)**:
    - Create and register new faculty or administrative staff accounts with designated employee ID, college, department, initial rank, and status.
 5. **Manage Department Assignments (`onEditAssignment`)**:
-   - Edit department secretary, program coordinator, or department assignment roles for personnel members.
+   - Edit Dean, program coordinator, or department assignment roles for personnel members.
 
 ---
 

@@ -1,7 +1,7 @@
 # NDMU Personnel Accomplishment Logging UX & Detailed Implementation Plan
 **Document Version:** 2.0.0 (Category-Tailored Fields Revision)  
 **System:** AchieveNest Student & Personnel Achievement Management Platform  
-**Target Roles:** Personnel (Faculty & Staff), Department Secretary (`dep_sec`), Human Resources (`hr`)  
+**Target Roles:** Personnel (Faculty & Staff), Dean (`dean`), Human Resources (`hr`)
 **Reference Document:** NDMU Rating Sheet for Ranking (Notre Dame of Marbel University)
 
 ---

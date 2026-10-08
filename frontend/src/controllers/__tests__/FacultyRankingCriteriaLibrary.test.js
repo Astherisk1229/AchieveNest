@@ -34,6 +34,16 @@ describe('Faculty Ranking criteria library integration', () => {
     expect(sourceSeed).toContain('PUBLICATION_MATRIX')
   })
 
+  it('exposes the authenticated Faculty active-intake contract before the dynamic accomplishment route', () => {
+    const activeRoute = routes.indexOf("personnel/accomplishments/active-criteria")
+    const catchAllRoute = routes.indexOf("personnel/accomplishments/(:segment)")
+    expect(activeRoute).toBeGreaterThanOrEqual(0)
+    expect(activeRoute).toBeLessThan(catchAllRoute)
+    expect(controller).toContain('activePersonnelIntakeCriteria')
+    expect(rubric).toContain('buildActiveIntakeCriteriaContract')
+    for (const key of ['criterion_id', 'scale_version_id', 'field_schema', 'evidence_rules', 'scoring_rules', 'scoring_options']) expect(rubric).toContain(key)
+  })
+
   it('snapshots criteria and personnel context at first submission', () => {
     for (const field of ['criteria_snapshot', 'personnel_group_snapshot', 'position_title_snapshot', 'college_name_snapshot', 'department_name_snapshot']) expect(submission).toContain(`'${field}'`)
     expect(submission).toContain("? 'Dean'")

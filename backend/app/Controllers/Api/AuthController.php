@@ -282,7 +282,7 @@ class AuthController extends Controller
                     'roles'                    => array_values(array_unique(array_column($mappedRoles, 'role_key'))),
                     'role_assignments'         => $mappedRoles,
                     // Compatibility aliases
-                    'department_id'            => null,
+                    'department_id'            => $personnelAffiliation['administrative_unit_id'] ?? null,
                     'degree_program_id'        => $primaryProgramId,
                 ],
             ],
@@ -342,6 +342,24 @@ class AuthController extends Controller
         $ip = $this->request->getIPAddress();
         $userAgent = $this->request->getUserAgent()->getAgentString();
 
+        if ($currentPassword === '') {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'CURRENT_PASSWORD_REQUIRED',
+                    'message' => 'Current password is required.',
+                ],
+            ], 422);
+        }
+
+        if ($confirmPassword === '') {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'CONFIRM_PASSWORD_REQUIRED',
+                    'message' => 'Password confirmation is required.',
+                ],
+            ], 422);
+        }
+
         if (strlen($newPassword) < 8) {
             return $this->respond([
                 'error' => [
@@ -360,7 +378,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        if ($confirmPassword !== '' && $newPassword !== $confirmPassword) {
+        if ($newPassword !== $confirmPassword) {
             return $this->respond([
                 'error' => [
                     'code'    => 'PASSWORD_MISMATCH',

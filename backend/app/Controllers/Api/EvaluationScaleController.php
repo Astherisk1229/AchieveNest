@@ -4,8 +4,10 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Services\AuthenticatedActorService;
+use App\Services\AuthorizationService;
 use App\Services\PortfolioConfigurationService;
 use App\Services\PortfolioCriterionValidationService;
+use App\Services\RankingCriteriaPdfRendererService;
 use App\Services\RubricAdministrationService;
 use CodeIgniter\HTTP\ResponseInterface;
 use Throwable;
@@ -31,17 +33,20 @@ class EvaluationScaleController extends BaseController
     protected PortfolioConfigurationService $configService;
     protected PortfolioCriterionValidationService $validationService;
     protected RubricAdministrationService $adminService;
+    protected AuthorizationService $authorization;
 
     public function __construct(
         ?AuthenticatedActorService $actorService = null,
         ?PortfolioConfigurationService $configService = null,
         ?PortfolioCriterionValidationService $validationService = null,
-        ?RubricAdministrationService $adminService = null
+        ?RubricAdministrationService $adminService = null,
+        ?AuthorizationService $authorization = null
     ) {
         $this->actorService = $actorService ?? new AuthenticatedActorService();
         $this->configService = $configService ?? new PortfolioConfigurationService();
         $this->validationService = $validationService ?? new PortfolioCriterionValidationService();
         $this->adminService = $adminService ?? new RubricAdministrationService();
+        $this->authorization = $authorization ?? new AuthorizationService();
     }
 
     /** Use the same explicit bearer-header contract as the working HR controllers. */
@@ -275,11 +280,44 @@ class EvaluationScaleController extends BaseController
         }
     }
 
+    public function downloadScaleVersionPdf(string $versionId): ResponseInterface
+    {
+        try {
+            $actor = $this->resolveActor();
+            if ($actor === null) return $this->authenticationRequired();
+            $roles = $actor['roles'] ?? [];
+            if (!array_intersect(['hr_admin','hr_staff','super_admin','dean'], $roles)) {
+                return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'You are not authorized to download ranking criteria.']]);
+            }
+
+            $tree = $this->adminService->getScaleVersionHierarchy($versionId);
+            $pdf = (new RankingCriteriaPdfRendererService())->render($tree);
+            $sheet = $tree['sheet'] ?? [];
+            $version = $tree['version'] ?? [];
+            $filenameBase = trim((string)($sheet['name'] ?? 'Ranking-Criteria')) . '-' . trim((string)($sheet['applies_to'] ?? 'Personnel')) . '-v' . trim((string)($version['version_number'] ?? ''));
+            $filename = trim((string)preg_replace('/[^A-Za-z0-9._-]+/', '-', $filenameBase), '-.') ?: 'Ranking-Criteria';
+
+            return $this->response
+                ->setStatusCode(200)
+                ->setHeader('Content-Type', 'application/pdf')
+                ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '.pdf"')
+                ->setHeader('Cache-Control', 'private, no-store')
+                ->setBody($pdf);
+        } catch (Throwable $e) {
+            $status = in_array((int)$e->getCode(), [404], true) ? 404 : 500;
+            if ($status === 500) log_message('error', 'Ranking criteria PDF generation failed for version {version}: {message}', ['version'=>$versionId, 'message'=>$e->getMessage()]);
+            return $this->response->setStatusCode($status)->setJSON(['error'=>['code'=>$status===404?'CRITERIA_NOT_FOUND':'CRITERIA_PDF_GENERATION_FAILED','message'=>$status===404?$e->getMessage():'Unable to generate the ranking criteria PDF.']]);
+        }
+    }
+
     public function activeRankingCriteria(): ResponseInterface
     {
         try {
             $actor = $this->resolveActor();
             if ($actor === null) return $this->authenticationRequired();
+            if (! array_intersect(['hr_admin', 'super_admin', 'hr_staff'], $actor['roles'] ?? [])) {
+                return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'HR authorization is required to inspect criteria across personnel groups.']]);
+            }
             $group = (string)$this->request->getGet('personnel_group');
             return $this->response->setJSON(['success'=>true,'data'=>$this->adminService->findActiveCriteriaForPersonnelGroup($group)]);
         } catch (Throwable $e) {
@@ -287,6 +325,43 @@ class EvaluationScaleController extends BaseController
             $status = ['CRITERIA_NOT_CONFIGURED'=>404,'MULTIPLE_ACTIVE_CRITERIA'=>409,'INVALID_PERSONNEL_GROUP'=>422][$code] ?? 500;
             $message = ['CRITERIA_NOT_CONFIGURED'=>'No active ranking criteria is configured for this personnel group.','MULTIPLE_ACTIVE_CRITERIA'=>'More than one active criteria version is configured for this personnel group.','INVALID_PERSONNEL_GROUP'=>'Select a valid personnel group.'][$code] ?? 'Unable to load ranking criteria.';
             return $this->response->setStatusCode($status)->setJSON(['error'=>['code'=>$status===500?'CRITERIA_LOOKUP_FAILED':$code,'message'=>$message]]);
+        }
+    }
+
+    /**
+     * GET /api/v1/personnel/accomplishments/active-criteria
+     * Returns only the authenticated Faculty member's current, published HR intake contract.
+     */
+    public function activePersonnelIntakeCriteria(): ResponseInterface
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) return $this->authenticationRequired();
+        if (! $this->authorization->personnel()->canCreateAccomplishment($actor)) {
+            return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'Only active Faculty may load new-accomplishment criteria.']]);
+        }
+
+        $profileId = (string) ($actor['profile']['id'] ?? '');
+        if ($profileId === '') return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'A personnel profile is required.']]);
+        try {
+            return $this->response->setJSON(['success'=>true,'data'=>$this->adminService->findActiveIntakeCriteriaForPersonnelProfile($profileId)]);
+        } catch (Throwable $e) {
+            $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
+            $code = $e->getMessage();
+            $messages = [
+                'PERSONNEL_PROFILE_NOT_FOUND' => 'A personnel profile is required to load Faculty criteria.',
+                'FACULTY_INTAKE_CRITERIA_ONLY' => 'This endpoint provides Faculty accomplishment criteria only.',
+                'INVALID_PERSONNEL_GROUP' => 'The personnel group is not supported.',
+                'CRITERIA_NOT_CONFIGURED' => 'No published Faculty criteria are available.',
+                'MULTIPLE_ACTIVE_CRITERIA' => 'HR must resolve multiple published Faculty criteria versions before intake can continue.',
+                'INTAKE_CRITERIA_SCHEMA_NOT_READY' => 'HR intake criteria storage is not ready yet.',
+                'INTAKE_CRITERIA_NOT_CONFIGURED' => 'HR has not configured any active Faculty accomplishment criteria yet.',
+                'INTAKE_CRITERIA_VERSION_NOT_PUBLISHED' => 'The Faculty criteria version is not published.',
+            ];
+            $responseCode = preg_match('/^INTAKE_CRITERIA_DEFINITION_INCOMPLETE:/', $code) ? 'INTAKE_CRITERIA_DEFINITION_INCOMPLETE' : $code;
+            $message = $messages[$responseCode] ?? ($responseCode === 'INTAKE_CRITERIA_DEFINITION_INCOMPLETE'
+                ? 'HR must complete the required fields, accepted evidence, and scoring reference for every active criterion.'
+                : 'Unable to load current Faculty criteria.');
+            return $this->response->setStatusCode($status)->setJSON(['error'=>['code'=>$responseCode,'message'=>$message]]);
         }
     }
 

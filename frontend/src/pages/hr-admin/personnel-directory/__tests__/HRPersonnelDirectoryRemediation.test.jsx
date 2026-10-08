@@ -124,7 +124,7 @@ describe('HR Personnel Directory & Secure Provisioning Remediation Suite', () =>
       }
 
       expect(isAcademicPersonnel(academicPersonnel)).toBe(true)
-      expect(formatPersonnelClassification(academicPersonnel)).toBe('Faculty • Academic')
+      expect(formatPersonnelClassification(academicPersonnel)).toBe('Teaching • Academic')
       expect(formatPersonnelPlacement(academicPersonnel)).toBe('College of Engineering, Architecture, and Technology • BSCS')
     })
 
@@ -139,7 +139,7 @@ describe('HR Personnel Directory & Secure Provisioning Remediation Suite', () =>
       }
 
       expect(isAcademicPersonnel(nonAcademicPersonnel)).toBe(false)
-      expect(formatPersonnelClassification(nonAcademicPersonnel)).toBe('Non-Teaching Faculty • Non-Academic')
+      expect(formatPersonnelClassification(nonAcademicPersonnel)).toBe('Non-Teaching • Non-Academic')
       expect(formatPersonnelPlacement(nonAcademicPersonnel)).toBe('Human Resource Management Office')
     })
 

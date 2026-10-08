@@ -11,7 +11,7 @@
  * 2. Non-Teaching Faculty -> HR [CHU-01 Phase 2 Sections 2.5, 9.2, 14.1; UNIVERSITY_HR_SCOPE].
  * 3. Organizational side remains placement metadata and does not alter reviewer authority.
  * 4. Dean / VP -> HR [Plan G (G0/G1) & Plan K5 Final Routing Matrix; UNIVERSITY_HR_SCOPE].
- * 5. Department Secretary strictly excluded; Self-evaluation strictly prohibited [Plan G0].
+ * 5. Self-evaluation strictly prohibited [Plan G0].
  * 6. Unknown personnel groups strictly return status='unresolved' with zero silent fallback.
  */
 
@@ -29,7 +29,6 @@ export const ROUTING_REASON_CODES = Object.freeze({
   ROUTE_ASSIGNED: 'route_assigned',
   REVIEWER_ROUTE_UNRESOLVED: 'reviewer_route_unresolved',
   UNAUTHORIZED_EVALUATOR: 'unauthorized_evaluator',
-  DEPARTMENT_SECRETARY_EXCLUDED: 'department_secretary_excluded',
   SELF_EVALUATION_PROHIBITED: 'self_evaluation_prohibited'
 })
 
@@ -184,11 +183,6 @@ export default class PersonnelReviewerRoutingRegistry {
 
     const actorRoles = Array.isArray(actor.roles) ? actor.roles : (actor.role ? [actor.role] : [])
 
-    // Department Secretary is strictly excluded as evaluator
-    if (actorRoles.includes('department_secretary') && !actorRoles.includes('dean') && !actorRoles.includes('hr_staff') && !actorRoles.includes('hr_admin')) {
-      return false
-    }
-
     const assignedRole = evaluation.assigned_reviewer_role
     const targetCollegeId = evaluation.target_college_id
 
@@ -197,8 +191,8 @@ export default class PersonnelReviewerRoutingRegistry {
         return false
       }
       const actorCollegeId = actor.assigned_college_id || (actor.profile && actor.profile.college_id)
-      if (targetCollegeId && actorCollegeId !== targetCollegeId) {
-        return false // Cross-college evaluation prohibited
+      if (!String(targetCollegeId || '').trim() || !String(actorCollegeId || '').trim() || String(actorCollegeId) !== String(targetCollegeId)) {
+        return false // Missing and cross-college scopes are both prohibited
       }
       return true
     }

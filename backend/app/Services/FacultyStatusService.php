@@ -12,14 +12,14 @@ namespace App\Services;
 class FacultyStatusService
 {
     public const ENGAGEMENT_FULL_TIME = 'full_time_faculty';
-    public const ENGAGEMENT_PART_TIME = 'part_time_faculty';
+    public const LEGACY_ENGAGEMENT_PART_TIME = 'part_time_faculty';
+    public const ENGAGEMENT_PART_TIME = self::LEGACY_ENGAGEMENT_PART_TIME;
 
     public const EMPLOYMENT_PERMANENT   = 'permanent';
     public const EMPLOYMENT_PROBATIONARY = 'probationary';
 
     public const CANONICAL_ENGAGEMENTS = [
         self::ENGAGEMENT_FULL_TIME => 'Full-time Faculty',
-        self::ENGAGEMENT_PART_TIME => 'Part-time Faculty',
     ];
 
     public const CANONICAL_EMPLOYMENT_STATUSES = [
@@ -50,14 +50,12 @@ class FacultyStatusService
         // Accept user-friendly labels or canonical codes
         if ($normalized === 'full_time' || $normalized === 'full-time' || $normalized === 'full-time faculty' || $normalized === 'full_time_faculty') {
             $canonical = self::ENGAGEMENT_FULL_TIME;
-        } elseif ($normalized === 'part_time' || $normalized === 'part-time' || $normalized === 'part-time faculty' || $normalized === 'part_time_faculty') {
-            $canonical = self::ENGAGEMENT_PART_TIME;
         } else {
             return [
                 'valid' => false,
                 'error' => [
                     'code'    => 'INVALID_FACULTY_ENGAGEMENT',
-                    'message' => 'Faculty engagement must be either Full-time Faculty (full_time_faculty) or Part-time Faculty (part_time_faculty).',
+                    'message' => 'Faculty engagement must be Full-time Faculty (full_time_faculty).',
                 ],
             ];
         }
@@ -160,42 +158,6 @@ class FacultyStatusService
                     'message' => 'Rank title must not exceed 100 characters.',
                 ],
             ];
-        }
-
-        // Rank / Title Catalog Crossover Check
-        if ($rankTitle !== null && $rankTitle !== '' && $rankTitle !== 'Faculty Member') {
-            $ptTitles = [
-                'professorial lecturer',
-                'assistant professorial lecturer',
-                'senior lecturer',
-                'lecturer',
-                'pt_professorial_lecturer',
-                'pt_assistant_professorial_lecturer',
-                'pt_senior_lecturer',
-                'pt_lecturer'
-            ];
-            $normalizedRank = strtolower($rankTitle);
-            $isPartTimeTitle = in_array($normalizedRank, $ptTitles, true);
-
-            $effectiveEngagement = $engagementValidation['engagement'] ?? null;
-            if ($effectiveEngagement === self::ENGAGEMENT_FULL_TIME && $isPartTimeTitle) {
-                return [
-                    'valid' => false,
-                    'error' => [
-                        'code'    => 'CATALOG_CROSSOVER_REJECTED',
-                        'message' => 'Part-Time faculty title cannot be assigned to Full-Time faculty.',
-                    ],
-                ];
-            }
-            if ($effectiveEngagement === self::ENGAGEMENT_PART_TIME && ! $isPartTimeTitle) {
-                return [
-                    'valid' => false,
-                    'error' => [
-                        'code'    => 'CATALOG_CROSSOVER_REJECTED',
-                        'message' => 'Full-Time academic rank cannot be assigned to Part-Time faculty. Only Part-Time titles are allowed.',
-                    ],
-                ];
-            }
         }
 
         // 5. Qualification Summary

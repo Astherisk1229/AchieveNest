@@ -56,8 +56,18 @@ class AwardCandidateDiscoveryService
      */
     public static function describeAward($db, array $award): array
     {
-        $version = $db->table('award_scoring_model_versions')->where('award_definition_id', $award['id'])
-            ->where('status', 'published')->orderBy('version_number', 'DESC')->get()->getRowArray();
+        $versionQuery = $db->table('award_scoring_model_versions')->where('award_definition_id', $award['id'])->where('status', 'published');
+        $activeScoringVersion = trim((string) ($award['active_scoring_version'] ?? ''));
+        if ($activeScoringVersion !== '') {
+            $versionQuery->where('version_number', $activeScoringVersion);
+        } else {
+            $versionQuery->orderBy('version_number', 'DESC');
+        }
+        $version = $versionQuery->get()->getRowArray();
+        if ($version === null && $activeScoringVersion !== '') {
+            $version = $db->table('award_scoring_model_versions')->where('award_definition_id', $award['id'])
+                ->where('status', 'published')->orderBy('version_number', 'DESC')->get()->getRowArray();
+        }
         $criteria = $db->table('award_criteria')->where('award_definition_id', $award['id'])
             ->orderBy('sort_order', 'ASC')->get()->getResultArray();
         $computableMaximum = 0.0;
@@ -86,6 +96,31 @@ class AwardCandidateDiscoveryService
         $award['criteria'] = $criteria;
         $award['human_only_criteria'] = array_values(array_filter($criteria, static fn(array $criterion): bool => $criterion['human_only']));
         $award['computable_max_score'] = $computableMaximum;
+
+        // Hierarchy is a versioned intake/display contract. It remains separate from award-specific
+        // executable scoring rules until an official mapping is authored and reviewed.
+        $hierarchyVersionId = (string) ($award['active_hierarchy_version_id'] ?? '');
+        $hierarchyVersion = $hierarchyVersionId !== ''
+            ? $db->table('award_scoring_model_versions')->where('id', $hierarchyVersionId)->where('award_definition_id', $award['id'])->where('status', 'published')->get()->getRowArray()
+            : null;
+        $hierarchy = is_array($hierarchyVersion) ? json_decode((string) ($hierarchyVersion['hierarchy_config'] ?? ''), true) : null;
+        if (! is_array($hierarchy)) {
+            $hierarchy = ['categories' => array_map(static function (array $criterion): array {
+                return [
+                    'id' => $criterion['criterion_id'], 'code' => $criterion['criterion_code'],
+                    'name' => $criterion['criterion_name'], 'cut_off_points' => (float) ($criterion['max_points'] ?? 0),
+                    'active' => true, 'order' => 0,
+                    'subcategories' => array_map(static fn(array $component): array => [
+                        'id' => $component['component_id'] ?? null, 'code' => $component['criterion_code'] ?? null,
+                        'name' => $component['criterion_name'] ?? '', 'points' => (float) ($component['max_points'] ?? 0),
+                        'active' => true, 'order' => 0, 'levels' => [],
+                    ], $criterion['components'] ?? []),
+                ];
+            }, $criteria)];
+        }
+        $hierarchy = AwardCriteriaHierarchyAdministrationService::activeForNewChoices($hierarchy);
+        $award['criteria_hierarchy'] = $hierarchy;
+        $award['criteria_hierarchy_version_id'] = $hierarchyVersion['id'] ?? null;
 
         return AwardApiContractService::award($award, $version);
     }

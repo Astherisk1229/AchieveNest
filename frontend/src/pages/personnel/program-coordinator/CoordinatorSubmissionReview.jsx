@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { AlertTriangle, Download, ExternalLink, FileText, Scale, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import EvidenceThumbnail, { evidenceMime, useEvidenceObjectUrl } from '../../../components/common/EvidenceThumbnail'
 import portfolioService from '../../../services/portfolioService'
-import { detailRows, missingRequiredDetails } from '../../../utils/achievementDetails'
+import { detailRows, isConfiguredAchievement, missingRequiredDetails } from '../../../utils/achievementDetails'
+import useStudentAchievementSchema from '../../../hooks/useStudentAchievementSchema'
 import { formatDateRange } from '../../../utils/achievementDates'
 import { CoordinatorEventTimeline, useCoordinatorRecordDetail } from './CoordinatorReviewParts'
 
@@ -41,14 +42,16 @@ async function download(evidence) {
  */
 export default function CoordinatorSubmissionReview({ item, loadRecordDetail }) {
   const { detail, error } = useCoordinatorRecordDetail(item?.id, loadRecordDetail)
+  const schemaCatalog = useStudentAchievementSchema(Boolean(item))
   const [activeId, setActiveId] = useState(null)
   const evidence = detail?.evidence || item?.evidence || []
   const active = evidence.find(entry => entry.id === activeId) || evidence[0] || null
   const { url } = useEvidenceObjectUrl(active)
   if (!item) return null
 
-  const details = detailRows(item.subcategory_id, item.structured_metadata)
-  const missing = missingRequiredDetails(item.subcategory_id, item.structured_metadata)
+  const configured = isConfiguredAchievement(item.structured_metadata)
+  const details = detailRows(item.subcategory_id, item.structured_metadata, schemaCatalog)
+  const missing = missingRequiredDetails(item.subcategory_id, item.structured_metadata, schemaCatalog)
   const activityDate = formatDateRange(item.start_date || item.occurrence_date, item.end_date)
 
   return <div className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(22rem,1fr)]">
@@ -83,15 +86,15 @@ export default function CoordinatorSubmissionReview({ item, loadRecordDetail }) 
       <dl className="grid gap-3 sm:grid-cols-2">
         <Claim label="Category" flagged>{item.category_name || item.category || 'Not chosen'}</Claim>
         <Claim label="Subcategory" flagged>{item.subcategory_name || 'Not chosen'}</Claim>
-        <Claim label="Organizer / issuing body">{item.organizer_or_body || <span className="text-slate-500">Not provided</span>}</Claim>
-        <Claim label="Activity date">{activityDate || <span className="text-slate-500">Not provided</span>}</Claim>
+        {!configured && <Claim label="Organizer / issuing body">{item.organizer_or_body || <span className="text-slate-500">Not provided</span>}</Claim>}
+        {!configured && <Claim label="Activity date">{activityDate || <span className="text-slate-500">Not provided</span>}</Claim>}
         {details.map(row => <Claim key={row.key} label={row.label} flagged={row.affectsAwards}>{row.value}</Claim>)}
       </dl>
       {missing.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
         <p className="flex items-center gap-1.5 font-bold"><AlertTriangle className="h-4 w-4" aria-hidden="true"/>Required details left empty</p>
         <p className="mt-1">{missing.map(field => field.label + (field.affectsAwards ? ' (affects award evaluation)' : '')).join(', ')}</p>
       </div>}
-      {item.description && <div>
+      {!configured && item.description && <div>
         <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Description</p>
         <p className="mt-1 whitespace-pre-line text-sm text-slate-800">{item.description}</p>
       </div>}

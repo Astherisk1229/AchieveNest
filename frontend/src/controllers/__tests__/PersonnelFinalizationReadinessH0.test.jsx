@@ -40,9 +40,9 @@ describe('Personnel Evaluation Track — Plan H — Phase H0: Finalization Preco
     roles: ['hr_staff']
   }
 
-  const secretaryActor = {
+  const unassignedActor = {
     profile_id: 'usr_sec_001',
-    roles: ['department_secretary']
+    roles: ['unassigned_reviewer']
   }
 
   const deanActor = {
@@ -383,12 +383,12 @@ describe('Personnel Evaluation Track — Plan H — Phase H0: Finalization Preco
       expect(res.ready_for_finalization).toBe(true)
     })
 
-    it('denies Department Secretary from triggering finalization (403)', () => {
+    it('denies Unassigned reviewer from triggering finalization (403)', () => {
       const snapshot = createCompleteAdminSnapshot(35.0, 15.0)
       const res = PersonnelEvaluationFinalizationReadinessService.canFinalize({
         evaluationRecord: validAdminRecord,
         snapshotData: snapshot,
-        actor: secretaryActor
+        actor: unassignedActor
       })
       expect(res.ready_for_finalization).toBe(false)
       expect(res.reason_code).toBe(FINALIZATION_REASON_CODES.UNAUTHORIZED_ACTOR)

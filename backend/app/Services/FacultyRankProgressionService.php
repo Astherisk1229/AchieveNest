@@ -13,6 +13,13 @@ use Config\Database;
  */
 class FacultyRankProgressionService
 {
+    private const RETIRED_SENIOR_INSTRUCTOR_STEPS = [
+        'SENIOR_INSTRUCTOR_I',
+        'SENIOR_INSTRUCTOR_II',
+        'SENIOR_INSTRUCTOR_III',
+        'SENIOR_INSTRUCTOR_IV',
+    ];
+
     protected $db;
     protected FacultyRankCatalogService $catalogService;
 
@@ -52,6 +59,9 @@ class FacultyRankProgressionService
         }
 
         $code = $current['rank_code'];
+        if ($code === 'SENIOR_INSTRUCTOR' || in_array($code, self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
+            return true;
+        }
         $count = $this->db->table('faculty_rank_transitions')
             ->where('from_rank_code', $code)
             ->where('is_active', 1)
@@ -73,6 +83,15 @@ class FacultyRankProgressionService
             return null;
         }
 
+        if (in_array($current['rank_code'], ['SENIOR_INSTRUCTOR', ...self::RETIRED_SENIOR_INSTRUCTOR_STEPS], true)) {
+            return null;
+        }
+        // The only rank in the Board Licensure track is Senior Instructor. Older
+        // transition rows may still point to the retired I–IV ladder.
+        if ($current['rank_code'] === 'INSTRUCTOR_III') {
+            return $this->catalogService->getRankByCode('SENIOR_INSTRUCTOR');
+        }
+
         $transition = $this->db->table('faculty_rank_transitions')
             ->where('from_rank_code', $current['rank_code'])
             ->where('transition_type', 'normal_sequential')
@@ -81,6 +100,10 @@ class FacultyRankProgressionService
             ->getRowArray();
 
         if (!$transition) {
+            return null;
+        }
+
+        if (in_array($transition['to_rank_code'], self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
             return null;
         }
 
@@ -141,6 +164,7 @@ class FacultyRankProgressionService
 
         $normalNext = $this->getNextNormalRank($current['rank_code']);
         $hasVerifiedPhd = !empty($context['has_verified_phd']);
+        $hasVerifiedMasters = $this->hasVerifiedMasters((string) ($context['personnel_profile_id'] ?? ''));
 
         // Check for active exceptions from this rank
         $exceptionRows = $this->db->table('faculty_rank_transitions')
@@ -152,6 +176,9 @@ class FacultyRankProgressionService
 
         $allowedExceptions = [];
         foreach ($exceptionRows as $ex) {
+            if (in_array($ex['to_rank_code'], self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
+                continue;
+            }
             if ($ex['requires_verified_phd'] && !$hasVerifiedPhd) {
                 // Exception path exists in catalog but condition is not met in current context
                 continue;
@@ -163,6 +190,21 @@ class FacultyRankProgressionService
                     'transition_type' => $ex['transition_type'],
                     'rule_reference' => $ex['rule_reference'],
                     'requires_verified_phd' => (bool)$ex['requires_verified_phd'],
+                ];
+            }
+        }
+
+        // A Senior Instructor has no numbered sub-ranks. Movement into the
+        // Master's tier is available only when HR has a verified Master's
+        // credential on the actual Personnel record.
+        if ($current['rank_code'] === 'SENIOR_INSTRUCTOR' && $hasVerifiedMasters) {
+            $mastersTarget = $this->catalogService->getRankByCode('ASSISTANT_PROFESSOR_I');
+            if ($mastersTarget !== null) {
+                $allowedExceptions[] = [
+                    'rank' => $mastersTarget,
+                    'transition_type' => 'masters_qualification',
+                    'rule_reference' => 'NDMU-DOC-ACAD-RANKS-2026-V1/VERIFIED-MASTERS',
+                    'requires_verified_masters' => true,
                 ];
             }
         }
@@ -181,6 +223,7 @@ class FacultyRankProgressionService
                 'display_label' => $ex['rank']['display_label'],
                 'transition_type' => $ex['transition_type'],
                 'rule_reference' => $ex['rule_reference'],
+                'requires_verified_masters' => (bool) ($ex['requires_verified_masters'] ?? false),
             ];
         }
 
@@ -253,6 +296,54 @@ class FacultyRankProgressionService
         $from = $fromRank['rank_code'];
         $to = $toRank['rank_code'];
 
+        if (in_array($to, self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
+            return [
+                'allowed' => false,
+                'reason_code' => 'retired_senior_instructor_step',
+                'message' => 'Senior Instructor I–IV are not selectable ranks. The Board Licensure track has one rank: Senior Instructor.',
+            ];
+        }
+        if (in_array($from, self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
+            return [
+                'allowed' => false,
+                'reason_code' => 'legacy_rank_reconciliation_required',
+                'message' => 'This historical Senior Instructor step must be reconciled to a current rank before progression.',
+            ];
+        }
+
+        if ($from === 'INSTRUCTOR_III' && $to === 'SENIOR_INSTRUCTOR') {
+            return [
+                'allowed' => true,
+                'from_rank' => $fromRank,
+                'to_rank' => $toRank,
+                'target_rank' => $toRank,
+                'transition_type' => 'normal_sequential',
+                'rule_reference' => 'NDMU-DOC-ACAD-RANKS-2026-V1',
+                'reason_code' => null,
+                'message' => 'Valid progression to the single Senior Instructor rank.',
+            ];
+        }
+
+        if ($from === 'SENIOR_INSTRUCTOR' && $to === 'ASSISTANT_PROFESSOR_I') {
+            if (! $this->hasVerifiedMasters((string) ($context['personnel_profile_id'] ?? ''))) {
+                return [
+                    'allowed' => false,
+                    'reason_code' => 'verified_masters_required',
+                    'message' => 'Progression from Senior Instructor to the Assistant Professor tier requires a verified Master’s degree on the Personnel record.',
+                ];
+            }
+            return [
+                'allowed' => true,
+                'from_rank' => $fromRank,
+                'to_rank' => $toRank,
+                'target_rank' => $toRank,
+                'transition_type' => 'masters_qualification',
+                'rule_reference' => 'NDMU-DOC-ACAD-RANKS-2026-V1/VERIFIED-MASTERS',
+                'reason_code' => null,
+                'message' => 'Verified Master’s qualification permits entry to the Assistant Professor tier.',
+            ];
+        }
+
         // 3. Same Rank Check
         if ($from === $to) {
             return [
@@ -303,10 +394,26 @@ class FacultyRankProgressionService
             'allowed' => true,
             'from_rank' => $fromRank,
             'to_rank' => $toRank,
+            'target_rank' => $toRank,
             'transition_type' => $transition['transition_type'],
             'rule_reference' => $transition['rule_reference'],
             'reason_code' => null,
             'message' => 'Transition is valid and permitted by the authoritative progression rules.',
         ];
+    }
+
+    private function hasVerifiedMasters(string $personnelProfileId): bool
+    {
+        if ($personnelProfileId === '' || ! $this->db->tableExists('personnel_credentials')) {
+            return false;
+        }
+
+        return $this->db->table('personnel_credentials')
+            ->where('personnel_profile_id', $personnelProfileId)
+            ->where('credential_type', 'degree')
+            ->where('degree_level', 'masters')
+            ->where('verification_status', 'verified')
+            ->where('record_state', 'active')
+            ->countAllResults() > 0;
     }
 }

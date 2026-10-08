@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, ArrowUpRight, Check, CheckCircle2, GraduationCap, LoaderCircle, RefreshCw, UploadCloud, X } from 'lucide-react'
 import { DEGREE_LEVEL_LABELS, FACULTY_ACADEMIC_ENTRY_SCHEMA, facultyCategoryDisplayLabel, facultySchemaByCode, facultySubcategoryByCode } from '../../../config/facultyAcademicAccomplishmentSchema'
-import { EMPTY_ACCOMPLISHMENT_FORM, mapAccomplishmentToForm, validateAccomplishmentForm } from '../../../utils/personnelAccomplishmentForm'
+import { EMPTY_ACCOMPLISHMENT_FORM, localIsoDateToday, mapAccomplishmentToForm, validateAccomplishmentForm } from '../../../utils/personnelAccomplishmentForm'
 import personnelAccomplishmentService from '../../../services/personnelAccomplishmentService'
 import { ocrService } from '../../../services/ocrService'
 import OcrScanController from '../../../controllers/OcrScanController'
@@ -9,6 +9,7 @@ import FacultyDocumentViewer from './FacultyDocumentViewer'
 import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '../../../services/PersonnelEvidenceUploadService'
 import { confirmDialog } from '../../../components/ui/DialogProvider'
 import { CardHeading, StepProgress } from './AccomplishmentModalParts'
+import { useHelpGuide } from '../../../context/HelpGuideContext'
 
 const initialForm = () => ({ ...EMPTY_ACCOMPLISHMENT_FORM, area: '', categoryCode: '', subcategoryCode: '', details: {}, persistedEvidence: [], pendingEvidence: [] })
 const categoryCodeFromSuggestion = (value = '') => String(value).match(/^([ABC]\.[0-9](?:\.[0-9])?)/)?.[1] || ''
@@ -162,6 +163,7 @@ const friendlyUploadError = (error) => {
 }
 
 export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, editingItem = null, currentUser = {}, areaCode = 'A', areaName = '' }) {
+  const { openHelpGuide } = useHelpGuide()
   const [form, setForm] = useState(initialForm)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
@@ -427,8 +429,8 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   const describedBy = (key, error) => [provenance[key]?.status === 'verify' && `${fieldId(key)}-help`, error && `${fieldId(key)}-error`].filter(Boolean).join(' ') || undefined
   const renderDateInput = (key, label, extra = {}) => <div>
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><label htmlFor={fieldId(key)} className="text-sm font-bold text-slate-900">{label}</label>{renderPill(key, label)}</div>
-    <input id={fieldId(key)} data-form-error={Boolean(errors[key])} aria-invalid={Boolean(errors[key]) || undefined} aria-describedby={describedBy(key, errors[key])} type="date" max={new Date().toLocaleDateString('en-CA')} value={form[key] || ''} onFocus={() => verifyField(key)} onChange={(event) => { const value = event.target.value; editField(key, (old) => ({ ...old, [key]: value })) }} className={`${baseInput} ${inputTone(key)}`} {...extra} />
-    {renderHelp(key, errors[key])}
+    <input id={fieldId(key)} data-form-error={Boolean(liveValidationErrors[key] || errors[key])} aria-invalid={Boolean(liveValidationErrors[key] || errors[key]) || undefined} aria-describedby={describedBy(key, liveValidationErrors[key] || errors[key])} type="date" max={localIsoDateToday()} value={form[key] || ''} onFocus={() => verifyField(key)} onChange={(event) => { const value = event.target.value; editField(key, (old) => ({ ...old, [key]: value })) }} className={`${baseInput} ${inputTone(key)}`} {...extra} />
+    {renderHelp(key, liveValidationErrors[key] || errors[key])}
   </div>
 
   const isDuplicateDocument = documentError.startsWith(DUPLICATE_DOCUMENT_PREFIX)
@@ -485,7 +487,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
             </section>
 
             <section aria-labelledby="classification-heading" className="rounded-xl border border-slate-200 bg-white p-4">
-              <CardHeading id="classification-heading" number={2} title="Classification" aside={form.mode === 'edit' && form.subcategoryCode ? <button type="button" onClick={() => setClassificationEditing((value) => !value)} className="rounded-md px-2 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{classificationEditing ? 'Keep Saved Classification' : 'Change Classification'}</button> : null} />
+              <CardHeading id="classification-heading" number={2} title="Classification" aside={<div className="flex items-center gap-1">{form.categoryCode && <button type="button" onClick={() => openHelpGuide({ topicId: 'categories', categoryId: form.categoryCode, subcategoryId: form.subcategoryCode || undefined })} className="rounded-md px-2 py-1 text-xs font-bold text-emerald-900 underline underline-offset-2 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">What belongs here?</button>}{form.mode === 'edit' && form.subcategoryCode && <button type="button" onClick={() => setClassificationEditing((value) => !value)} className="rounded-md px-2 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{classificationEditing ? 'Keep Saved Classification' : 'Change Classification'}</button>}</div>} />
               {form.mode === 'edit' && !classificationEditing && form.subcategoryCode
                 ? <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"><p className="text-sm font-bold text-slate-950">{facultyCategoryDisplayLabel(form.categoryCode)}</p><p className="text-sm text-slate-600">{config?.label}</p></div>
                 : <div className="mt-3 grid gap-3 min-[820px]:grid-cols-2">
@@ -501,7 +503,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
               {!config ? <p className="mt-2 text-sm text-slate-600">{hasDocument ? 'Choose a subcategory to show its fields.' : 'Fields appear here once the document is read or a subcategory is chosen.'}</p> : <div className="mt-3 grid gap-3 min-[820px]:grid-cols-2">
                 {config.fields.filter((field) => !field.showWhen || form.details[field.showWhen.field] === field.showWhen.equals).map((field) => {
                   const key = `details.${field.name}`
-                  const error = errors[field.name]
+                  const error = liveValidationErrors[field.name] || errors[field.name]
                   const common = { id: fieldId(key), 'data-form-error': Boolean(error), 'aria-invalid': Boolean(error) || undefined, 'aria-describedby': describedBy(key, error), value: form.details[field.name] || '', onFocus: () => verifyField(key), onChange: (event) => { const value = event.target.value; editField(key, (old) => ({ ...old, details: { ...old.details, [field.name]: value } })) }, className: `${baseInput} ${inputTone(key)}` }
                   return <div key={field.name} className={field.max > 255 ? 'min-[820px]:col-span-2' : ''}>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1"><label htmlFor={fieldId(key)} className="text-sm font-bold text-slate-900">{field.label}{field.required === false && <span className="text-xs font-medium text-slate-600"> · optional</span>}</label>{renderPill(key, field.label)}</div>

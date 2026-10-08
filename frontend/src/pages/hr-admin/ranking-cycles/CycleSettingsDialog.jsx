@@ -148,7 +148,7 @@ function Coverage({ cycle, cycles, onSaved }) {
       {state.error && <Notice tone="error">{state.error}</Notice>}
       <div className="flex justify-end"><button type="button" onClick={save} disabled={!adding.length || !ready || state.saving} className={buttonStyles.primary}>{state.saving ? 'Saving…' : needsSchedule ? 'Complete Setup' : 'Add Personnel Group'}</button></div>
     </div>}
-    {!cycle.is_read_only && missing.length === 0 && <Notice>This period covers Faculty and Non-Teaching Faculty. Personnel groups with records stay attached to preserve their history.</Notice>}
+    {!cycle.is_read_only && missing.length === 0 && <Notice>This period covers Teaching Faculty and Non-Teaching Faculty. Personnel groups with records stay attached to preserve their history.</Notice>}
     {viewing && <CriteriaPreviewDialog versionId={viewing} onClose={() => setViewing(null)}/>}
   </div>
 }
@@ -164,7 +164,7 @@ function Criteria({ cycle }) {
         {track.criteria && <><button type="button" onClick={() => setViewing(track.criteria.version_id)} className={buttonStyles.link}>View Criteria</button><LockedBadge/></>}
       </li>)}
     </ul>
-    <p className="text-xs leading-5 text-slate-500">Each personnel group keeps the exact criteria version it was created with. Evaluations also store a snapshot of that version, so completed and archived cycles always show the criteria they used. <Link to="/hr/personnel-evaluation-setup" className="font-bold text-emerald-800 hover:underline dark:text-emerald-300">Manage criteria versions</Link></p>
+    <p className="text-xs leading-5 text-slate-500">Each personnel group keeps the exact criteria version it was created with. Evaluations also store a snapshot of that version, so completed and archived cycles always show the criteria they used. <Link to="/hr/ranking-cycles/criteria" className="font-bold text-emerald-800 hover:underline dark:text-emerald-300">Manage criteria versions</Link></p>
     {viewing && <CriteriaPreviewDialog versionId={viewing} onClose={() => setViewing(null)}/>}
   </div>
 }

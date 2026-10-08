@@ -18,7 +18,6 @@ export default function DeanAnnualReviewWorkspace({ showToast }) {
   // Filters
   const [search, setSearch] = useState('')
   const [decisionFilter, setDecisionFilter] = useState('ALL')
-  const [engagementFilter, setEngagementFilter] = useState('ALL')
   const [employmentFilter, setEmploymentFilter] = useState('ALL')
 
   // Modal State
@@ -97,19 +96,14 @@ export default function DeanAnnualReviewWorkspace({ showToast }) {
         if (decisionFilter === 'pending' && dec !== 'pending') return false
       }
 
-      // 3. Faculty Engagement Filter
-      if (engagementFilter !== 'ALL') {
-        if ((p.faculty_engagement || '').toLowerCase() !== engagementFilter) return false
-      }
-
-      // 4. Employment Status Filter
+      // 3. Employment Status Filter
       if (employmentFilter !== 'ALL') {
         if ((p.employment_status || '').toLowerCase() !== employmentFilter) return false
       }
 
       return true
     })
-  }, [records, search, decisionFilter, engagementFilter, employmentFilter])
+  }, [records, search, decisionFilter, employmentFilter])
 
   const renderDecisionBadge = (decisionStr) => {
     if (decisionStr === 'cleared') {
@@ -198,20 +192,13 @@ export default function DeanAnnualReviewWorkspace({ showToast }) {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-2 w-full sm:w-auto">
+          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
             {/* Decision Filter */}
             <Select value={decisionFilter} onValueChange={setDecisionFilter} ariaLabel="Filter by decision">
               <SelectItem value="ALL">All Decisions</SelectItem>
               <SelectItem value="cleared">Yes — Cleared</SelectItem>
               <SelectItem value="not_cleared">No — Not Cleared</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
-            </Select>
-
-            {/* Engagement Filter */}
-            <Select value={engagementFilter} onValueChange={setEngagementFilter} ariaLabel="Filter by engagement">
-              <SelectItem value="ALL">All Workload</SelectItem>
-              <SelectItem value="full_time_faculty">Full-time Faculty</SelectItem>
-              <SelectItem value="part_time_faculty">Part-time Faculty</SelectItem>
             </Select>
 
             {/* Employment Status Filter */}

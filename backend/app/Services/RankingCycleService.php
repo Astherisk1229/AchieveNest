@@ -55,12 +55,14 @@ class RankingCycleService
 
     public function list(): array
     {
+        $this->periods->openDueScheduledSubmissions();
         $cycles = $this->db->table('ranking_cycles')->orderBy('academic_year', 'DESC')->orderBy('created_at', 'DESC')->get()->getResultArray();
         return array_map(fn(array $cycle): array => $this->present($cycle), $cycles);
     }
 
     public function find(string $id): ?array
     {
+        $this->periods->openDueScheduledSubmissions();
         $cycle = $this->db->table('ranking_cycles')->where('id', $id)->get()->getRowArray();
         return $cycle ? $this->present($cycle) : null;
     }
@@ -384,7 +386,7 @@ class RankingCycleService
     {
         $prefix = 'AY ' . str_replace('-', '–', $year);
         $groups = array_values(array_intersect(self::GROUPS, $groups));
-        if ($groups === ['FACULTY']) return "{$prefix} Faculty Ranking";
+        if ($groups === ['FACULTY']) return "{$prefix} Teaching Faculty Ranking";
         if ($groups === ['NON_TEACHING_FACULTY']) return "{$prefix} Non-Teaching Faculty Ranking";
         if (count($groups) === 2) return "{$prefix} Personnel Ranking";
         return "{$prefix} Ranking Period";
@@ -394,7 +396,7 @@ class RankingCycleService
     {
         $groups = array_values(array_intersect(self::GROUPS, $groups));
         $key = count($groups) === 2 ? 'BOTH' : ($groups[0] ?? 'NONE');
-        $label = ['BOTH' => 'Faculty + Non-Teaching Faculty', 'FACULTY' => 'Faculty', 'NON_TEACHING_FACULTY' => 'Non-Teaching Faculty', 'NONE' => 'Not set'][$key];
+        $label = ['BOTH' => 'Teaching Faculty + Non-Teaching Faculty', 'FACULTY' => 'Teaching Faculty', 'NON_TEACHING_FACULTY' => 'Non-Teaching Faculty', 'NONE' => 'Not set'][$key];
         return ['key' => $key, 'label' => $label, 'groups' => $groups];
     }
 
@@ -464,7 +466,7 @@ class RankingCycleService
         ];
     }
 
-    private static function groupLabel(string $group): string { return $group === 'NON_TEACHING_FACULTY' ? 'Non-Teaching Faculty' : 'Faculty'; }
+    private static function groupLabel(string $group): string { return $group === 'NON_TEACHING_FACULTY' ? 'Non-Teaching Faculty' : 'Teaching Faculty'; }
 
     // ------------------------------------------------------------------ validation
 
@@ -472,9 +474,9 @@ class RankingCycleService
     {
         $raw = $input['personnel_coverage'] ?? ($input['personnel_groups'] ?? null);
         if (is_string($raw)) $raw = strtoupper(trim($raw)) === 'BOTH' ? self::GROUPS : [strtoupper(trim($raw))];
-        if (! is_array($raw) || $raw === []) throw new InvalidArgumentException('PERSONNEL_COVERAGE_REQUIRED: Select Faculty, Non-Teaching Faculty, or both.');
+        if (! is_array($raw) || $raw === []) throw new InvalidArgumentException('PERSONNEL_COVERAGE_REQUIRED: Select Teaching Faculty, Non-Teaching Faculty, or both.');
         $groups = array_values(array_unique(array_map(static fn($g): string => strtoupper(str_replace('-', '_', trim((string) $g))), $raw)));
-        if (array_diff($groups, self::GROUPS) !== []) throw new InvalidArgumentException('INVALID_PERSONNEL_GROUP: Select Faculty or Non-Teaching Faculty.');
+        if (array_diff($groups, self::GROUPS) !== []) throw new InvalidArgumentException('INVALID_PERSONNEL_GROUP: Select Teaching Faculty or Non-Teaching Faculty.');
         return array_values(array_intersect(self::GROUPS, $groups));
     }
 

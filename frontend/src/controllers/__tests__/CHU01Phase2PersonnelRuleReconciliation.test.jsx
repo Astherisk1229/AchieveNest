@@ -262,22 +262,22 @@ describe('CHU-01 Phase 2 — Personnel Rule Reconciliation Test Suite', () => {
       expect(formatPersonnelClassification({
         personnel_group: 'faculty',
         organizational_side: 'academic'
-      })).toBe('Faculty • Academic')
+      })).toBe('Teaching • Academic')
 
       expect(formatPersonnelClassification({
         personnel_group: 'faculty',
         organizational_side: 'non_academic'
-      })).toBe('Faculty • Non-Academic')
+      })).toBe('Teaching • Non-Academic')
 
       expect(formatPersonnelClassification({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'academic'
-      })).toBe('Non-Teaching Faculty • Academic')
+      })).toBe('Non-Teaching • Academic')
 
       expect(formatPersonnelClassification({
         personnel_group: 'non_teaching_faculty',
         organizational_side: 'non_academic'
-      })).toBe('Non-Teaching Faculty • Non-Academic')
+      })).toBe('Non-Teaching • Non-Academic')
     })
 
     it('maintains faculty engagement separate from employment status', () => {

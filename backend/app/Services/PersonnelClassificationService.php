@@ -230,48 +230,18 @@ class PersonnelClassificationService
             ];
         }
 
-        // Explicit legacy 'academic' classification mapping
-        if ($legacy === 'academic' || $group === 'teaching_faculty') {
-            return [
-                'valid'       => true,
-                'status'      => 'supported',
-                'unresolved'  => false,
-                'group'       => self::GROUP_FACULTY,
-                'side'        => self::SIDE_ACADEMIC,
-                'code'        => self::CODE_FACULTY_ACADEMIC,
-                'label'       => 'Faculty (Academic)',
-                'reason_code' => self::REASON_CANONICAL_ACTIVE,
-            ];
-        }
-
-        // Legacy third-group or legacy non_academic reconciliation through placement evidence
+        // Organizational placement and legacy side labels do not determine Teaching vs Non-Teaching.
         $legacyPlacement = $this->resolveLegacyPlacement($row);
-        if ($legacyPlacement['valid']) {
-            return [
-                'valid'                  => true,
-                'status'                 => 'supported',
-                'unresolved'             => false,
-                'group'                  => $legacyPlacement['personnel_group'],
-                'side'                   => $legacyPlacement['organizational_side'],
-                'code'                   => $legacyPlacement['code'],
-                'label'                  => $legacyPlacement['label'],
-                'reason_code'            => $legacyPlacement['reason_code'],
-                'college_id'             => $legacyPlacement['college_id'],
-                'administrative_unit_id' => $legacyPlacement['administrative_unit_id'],
-            ];
-        }
-
-        // Ambiguous / Conflicting legacy record stays unresolved
         return [
             'valid'                  => false,
-            'status'                 => $legacyPlacement['status'],
+            'status'                 => 'unresolved',
             'unresolved'             => true,
             'group'                  => null,
-            'side'                   => null,
+            'side'                   => in_array(strtolower(trim((string) $side)), [self::SIDE_ACADEMIC, self::SIDE_NON_ACADEMIC], true) ? strtolower(trim((string) $side)) : null,
             'code'                   => null,
-            'label'                  => $legacyPlacement['label'],
-            'reason_code'            => $legacyPlacement['reason_code'],
-            'message'                => $legacyPlacement['message'],
+            'label'                  => 'Needs HR Personnel Type classification',
+            'reason_code'            => 'personnel_type_not_recorded',
+            'message'                => 'HR must explicitly record Teaching or Non-Teaching Personnel Type; unit placement and legacy labels are insufficient.',
             'college_id'             => $legacyPlacement['college_id'],
             'administrative_unit_id' => $legacyPlacement['administrative_unit_id'],
         ];

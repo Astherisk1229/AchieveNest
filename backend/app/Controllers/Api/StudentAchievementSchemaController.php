@@ -41,9 +41,24 @@ final class StudentAchievementSchemaController extends Controller
         }
 
         try {
-            $this->assertTrustedCatalog();
+            $catalogRows = $this->assertTrustedCatalog();
+            $catalogByCode = [];
+            foreach ($catalogRows as $row) {
+                $catalogByCode[strtoupper((string) $row['contract_code'])] = $row;
+            }
+            $schema = $this->registry->all();
+            foreach ($schema['categories'] as &$category) {
+                foreach ($category['subcategories'] as &$contract) {
+                    $catalog = $catalogByCode[strtoupper($contract['contract_code'])] ?? [];
+                    $contract['legacy_category_id'] = $catalog['legacy_category_id'] ?? null;
+                    $contract['legacy_subcategory_id'] = $catalog['legacy_subcategory_id'] ?? null;
+                    $contract['schema_version'] = $schema['schema_version'];
+                }
+                unset($contract);
+            }
+            unset($category);
 
-            return $this->respond(['data' => $this->registry->all()], 200);
+            return $this->respond(['data' => $schema], 200);
         } catch (RuntimeException) {
             return $this->respond([
                 'error' => [
@@ -97,16 +112,17 @@ final class StudentAchievementSchemaController extends Controller
         }
     }
 
-    private function assertTrustedCatalog(): void
+    private function assertTrustedCatalog(): array
     {
         $rows = db_connect()
             ->table('achievement_contracts')
-            ->select('contract_code, display_name, category_code')
+            ->select('contract_code, display_name, category_code, legacy_category_id, legacy_subcategory_id')
             ->where('domain', 'STUDENT')
             ->where('is_active', 1)
             ->get()
             ->getResultArray();
 
         $this->registry->assertMatchesActiveContractRows($rows);
+        return $rows;
     }
 }

@@ -209,6 +209,43 @@ describe('Phase 16 — AuthService Local-Defense Test Suite', () => {
     expect(user.active_role_context).toBe('student')
   })
 
+  it('keeps the current session available until /auth/me validates its replacement', async () => {
+    localStorage.setItem('achievenest_access_token', 'previous.token')
+    localStorage.setItem('achievenest_current_user', JSON.stringify({
+      id: 'previous-user',
+      institutional_email: 'previous@ndmu.edu.ph',
+      account_type: 'student',
+      assigned_roles: ['student'],
+      active_role_context: 'student',
+      token: 'previous.token'
+    }))
+
+    let resolveProfile
+    apiClient.get.mockReturnValueOnce(new Promise(resolve => { resolveProfile = resolve }))
+
+    const revalidation = fetchProfileAndCreateSession('refreshed.token', 'previous@ndmu.edu.ph', true)
+
+    expect(JSON.parse(localStorage.getItem('achievenest_current_user')).id).toBe('previous-user')
+    expect(localStorage.getItem('achievenest_access_token')).toBe('previous.token')
+
+    resolveProfile({
+      data: {
+        user: {
+          id: 'previous-user',
+          institutional_email: 'previous@ndmu.edu.ph',
+          account_type: 'student',
+          status: 'active',
+          roles: ['student'],
+          must_change_password: false
+        }
+      }
+    })
+    await revalidation
+
+    expect(JSON.parse(localStorage.getItem('achievenest_current_user')).id).toBe('previous-user')
+    expect(localStorage.getItem('achievenest_access_token')).toBe('refreshed.token')
+  })
+
   it('AUTH-FE-008: Suspended account throws descriptive error and clears session', async () => {
     apiClient.get.mockResolvedValueOnce({
       data: {

@@ -25,11 +25,12 @@ final class PersonnelRankPlacementPhaseLTest extends CIUnitTestCase
         self::assertStringContainsString('PART_TIME_PLACEMENT_UNRESOLVED',$s);
     }
 
-    public function testMultipleCandidateGroupsAreExplicitlyAmbiguous():void
+    public function testVerifiedMastersTakesPrecedenceAndConflictingBoardStatusIsAmbiguous():void
     {
         $s=$this->source('app/Services/PersonnelRankPlacementService.php');
-        self::assertStringContainsString("count(\$tiers) > 1 ? 'ambiguous'",$s);
-        self::assertStringContainsString('HR policy precedence is required',$s);
+        self::assertStringContainsString("elseif (isset(\$candidates['masters'])) \$resolvedTier = 'masters'",$s);
+        self::assertStringContainsString("\$boardConflict = isset(\$candidates['board_licensure'], \$candidates['baccalaureate'])",$s);
+        self::assertStringContainsString('Verified board and non-board records conflict; HR verification is required.',$s);
         self::assertStringContainsString('PLACEMENT_SUGGESTION_NOT_CONFIRMABLE',$s);
     }
 
@@ -59,7 +60,7 @@ final class PersonnelRankPlacementPhaseLTest extends CIUnitTestCase
     {
         $c=$this->source('app/Controllers/Api/PersonnelRankPlacementController.php');
         self::assertStringContainsString("hasRole(\$a,'hr_staff')",$c);
-        self::assertStringContainsString("hasAnyRole(\$a,['dean','department_head'])",$c);
+        self::assertStringContainsString("hasAnyRole(\$a,['dean'])",$c);
         self::assertStringContainsString('actorMayAct',$c);
         self::assertStringContainsString('history($personnelId,true)',$c);
     }

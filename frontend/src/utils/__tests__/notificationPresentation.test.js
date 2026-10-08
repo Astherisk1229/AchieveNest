@@ -28,6 +28,13 @@ describe('notification presentation (Step 7)', () => {
     expect(notificationTarget({ reference_type: 'personnel_portfolio_submission' }, 'personnel').path).toBe('/personnel/portfolio/edit')
   })
 
+  it('routes HR-opened personnel evaluation notifications to the Portfolio page', () => {
+    expect(notificationTarget({
+      reference_type: 'personnel_evaluation_period',
+      reference_id: 'period-1'
+    }, 'personnel')).toEqual({ path: '/personnel/portfolio', state: null })
+  })
+
   it('maps the four achievement notification types to distinct tones', () => {
     expect(notificationTone('student_achievement_submitted')).toBe('submitted')
     expect(notificationTone('portfolio_verified')).toBe('success')

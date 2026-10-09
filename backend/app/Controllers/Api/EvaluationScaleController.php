@@ -280,6 +280,21 @@ class EvaluationScaleController extends BaseController
         }
     }
 
+    public function versionHistory(string $versionId): ResponseInterface
+    {
+        try {
+            $actor = $this->resolveActor();
+            if ($actor === null) return $this->authenticationRequired();
+            if (! array_intersect(['hr_admin', 'super_admin'], $actor['roles'] ?? [])) {
+                return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'Only HR Administrators may view criteria change history.']]);
+            }
+            return $this->response->setJSON(['success'=>true, 'data'=>$this->adminService->getVersionHistory($versionId)]);
+        } catch (Throwable $e) {
+            $status = in_array((int) $e->getCode(), [404], true) ? 404 : 500;
+            return $this->response->setStatusCode($status)->setJSON(['error'=>['code'=>$status === 404 ? 'CRITERIA_NOT_FOUND' : 'CRITERIA_HISTORY_LOAD_FAILED','message'=>$status === 404 ? $e->getMessage() : 'Unable to load criteria change history.']]);
+        }
+    }
+
     public function downloadScaleVersionPdf(string $versionId): ResponseInterface
     {
         try {
@@ -391,6 +406,9 @@ class EvaluationScaleController extends BaseController
     public function compareScaleVersions(string $versionId, string $otherVersionId): ResponseInterface
     { return $this->criteriaAdminAction(fn() => $this->adminService->compareVersions($versionId, $otherVersionId), 200); }
 
+    public function previewActivationImpact(string $versionId): ResponseInterface
+    { return $this->criteriaAdminAction(fn() => $this->adminService->previewActivationImpact($versionId), 200); }
+
     private function criteriaAdminAction(callable $action, int $successStatus): ResponseInterface
     {
         try {
@@ -422,7 +440,7 @@ class EvaluationScaleController extends BaseController
             $json = $this->request->getJSON(true) ?? [];
             $reason = trim($json['reason'] ?? 'Official rubric version approval');
 
-            $result = $this->adminService->approveVersion($versionId, $actor['profile']['id'], $reason);
+            $result = $this->adminService->approveVersion($versionId, $actor['profile']['id'], $reason, isset($json['impact_preview_token']) ? (string) $json['impact_preview_token'] : null);
 
             return $this->response->setStatusCode(200)->setJSON([
                 'success' => true,

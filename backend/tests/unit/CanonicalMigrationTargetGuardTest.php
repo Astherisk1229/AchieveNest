@@ -50,6 +50,8 @@ final class CanonicalMigrationTargetGuardTest extends TestCase
             '2026-08-31-000001_CreateCanonicalMySQLBaseline.php',
             '2026-09-15-000016_RestoreBridgeCompatibilityActor.php',
             '2026-09-15-000017_RestoreBridgeCompatibilityPeriods.php',
+            '2026-10-09-000005_AddEvaluationScaleAreaStatus.php',
+            '2026-10-09-000006_CreateEvaluationCriteriaRecalculationQueue.php',
         ] as $file) {
             $source = file_get_contents(APPPATH . 'Phase17Canonical/Database/Migrations/' . $file);
             self::assertStringContainsString('CanonicalMigrationTargetGuard::assertAllowed(', $source);

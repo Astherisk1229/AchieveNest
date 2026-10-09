@@ -21,6 +21,26 @@ class DeanWorkspaceController extends Controller
 
     public function options(): mixed { return $this->respond(null, 204); }
 
+    /** POST dean/reviews/{evaluationId}/criteria-reconfirmation */
+    public function criteriaReconfirmation(string $evaluationId = ''): mixed
+    {
+        $scope = $this->scope();
+        if ($scope === false) return $this->respond(['error'=>['code'=>'DEAN_ASSIGNMENT_REQUIRED','message'=>'An active Dean assignment is required.']], 403);
+        $body = $this->request->getJSON(true) ?? [];
+        try {
+            $result = (new \App\Services\PersonnelEvaluationCriteriaRecalculationService())->decideReconfirmation(
+                $evaluationId,
+                (string) $scope['actor']['profile']['id'],
+                (string) ($body['decision'] ?? ''),
+                isset($body['reason']) ? (string) $body['reason'] : null
+            );
+            return $this->respond(['data'=>$result]);
+        } catch (\RuntimeException $error) {
+            $status = $error->getCode() >= 400 && $error->getCode() <= 599 ? $error->getCode() : 409;
+            return $this->respond(['error'=>['code'=>'CRITERIA_RECONFIRMATION_FAILED','message'=>$error->getMessage()]], $status);
+        }
+    }
+
     private function scope(): array|false
     {
         $actor = $this->actors->resolveActor($this->request->getHeaderLine('Authorization'));
@@ -288,6 +308,7 @@ class DeanWorkspaceController extends Controller
         $items=$db->table('personnel_evaluation_items pei')->select('pei.*')->where('pei.evaluation_id',$id)->orderBy('pei.submission_order','ASC')->orderBy('pei.created_at','ASC')->get()->getResultArray();
         foreach ($items as &$item) foreach (['criterion_snapshot','evidence_snapshot','scoring_payload'] as $field) if(isset($item[$field])&&is_string($item[$field])) $item[$field]=json_decode($item[$field],true);
         foreach(['criteria_snapshot','eligibility_snapshot'] as $field) if(isset($review[$field])&&is_string($review[$field])) $review[$field]=json_decode($review[$field],true);
-        return $this->respond(['data'=>['review'=>$review,'items'=>$items,'eligibility'=>$eligibility]]);
+        $criteriaRecalculation = (new \App\Services\PersonnelEvaluationCriteriaRecalculationService($db))->statusForEvaluation($id);
+        return $this->respond(['data'=>['review'=>$review,'items'=>$items,'eligibility'=>$eligibility,'criteria_recalculation'=>$criteriaRecalculation]]);
     }
 }

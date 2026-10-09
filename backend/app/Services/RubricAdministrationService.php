@@ -45,6 +45,7 @@ class RubricAdministrationService
 
         $areas = $db->table('evaluation_scale_areas')->where('scale_version_id', $versionId)->orderBy('display_order')->get()->getResultArray();
         foreach ($areas as &$area) {
+            $area['is_active'] = (int) ($area['is_active'] ?? 1);
             $categories = $db->table('evaluation_scale_categories')->where('scale_area_id', $area['id'])->orderBy('display_order')->get()->getResultArray();
             foreach ($categories as &$category) {
                 foreach (['field_schema', 'evidence_rules'] as $jsonField) {
@@ -72,6 +73,10 @@ class RubricAdministrationService
                 }
                 unset($subcategory);
                 $category['criteria'] = $db->table('evaluation_scale_criteria')->where('scale_category_id', $category['id'])->orderBy('criterion_code')->get()->getResultArray();
+                foreach ($category['criteria'] as &$criterion) {
+                    $criterion['is_active'] = (int) ($criterion['is_active'] ?? 1);
+                }
+                unset($criterion);
                 $category['options'] = [];
                 if ($db->tableExists('evaluation_scale_criterion_options')) {
                     $optionQuery = $db->table('evaluation_scale_criterion_options')->where('scale_category_id', $category['id']);
@@ -89,6 +94,21 @@ class RubricAdministrationService
             'version' => $this->versionSummary($db, $version),
             'areas' => $areas,
         ];
+    }
+
+    public function getVersionHistory(string $versionId): array
+    {
+        $db = Database::connect();
+        $version = $db->table('evaluation_scale_versions')->select('id')->where('id', $versionId)->get()->getRowArray();
+        if (! $version) throw new RuntimeException('Ranking criteria version not found.', 404);
+        if (! $db->tableExists('evaluation_scale_change_events')) return [];
+
+        return $db->table('evaluation_scale_change_events e')
+            ->select('e.id, e.scale_version_id, e.action, e.actor_user_id, p.full_name AS actor_name, e.reason, e.before_state, e.after_state, e.created_at')
+            ->join('profiles p', 'p.id = e.actor_user_id', 'left')
+            ->where('e.scale_version_id', $versionId)
+            ->orderBy('e.created_at', 'DESC')->orderBy('e.id', 'DESC')
+            ->get()->getResultArray();
     }
 
     public function findActiveCriteriaForPersonnelGroup(string $personnelGroup): array
@@ -143,7 +163,7 @@ class RubricAdministrationService
         foreach (($hierarchy['areas'] ?? []) as $area) {
             $categories = [];
             foreach (($area['categories'] ?? []) as $category) {
-                if ((int) ($category['is_active'] ?? 1) !== 1) continue;
+                if ((int) ($area['is_active'] ?? 1) !== 1 || (int) ($category['is_active'] ?? 1) !== 1) continue;
                 $criteria = [];
                 if ((int) ($category['intake_active'] ?? 0) === 1) {
                     try {
@@ -316,7 +336,7 @@ class RubricAdministrationService
         $db = Database::connect();
         $db->transBegin();
         try {
-            $source = $db->query('SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$sourceVersionId])->getRowArray();
+            $source = $this->queryForUpdate($db, 'SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$sourceVersionId])->getRowArray();
             if (! $source) throw new RuntimeException('Source criteria version not found.', 404);
             $duplicate = $db->table('evaluation_scale_versions')->where('scale_id', $source['scale_id'])->where('version_number', $versionNumber)->countAllResults();
             if ($duplicate > 0) throw new RuntimeException('That version number already exists for this criteria sheet.', 409);
@@ -379,16 +399,26 @@ class RubricAdministrationService
         }
     }
 
-    public function approveVersion(string $versionId, string $actorUserId, string $reason): array
+    public function approveVersion(string $versionId, string $actorUserId, string $reason, ?string $impactPreviewToken = null): array
     {
         $db = Database::connect();
         $db->transBegin();
         try {
-            $version = $db->query('SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
+            $version = $this->queryForUpdate($db, 'SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
             if (! $version) throw new RuntimeException("Scale version [{$versionId}] not found.", 404);
             if ($version['status'] !== 'draft') throw new RuntimeException('Only a draft criteria version can be published.', 409);
-            $db->query('SELECT id FROM evaluation_scales WHERE id = ? FOR UPDATE', [$version['scale_id']]);
+            $this->queryForUpdate($db, 'SELECT id FROM evaluation_scales WHERE id = ? FOR UPDATE', [$version['scale_id']]);
             $this->validateDraft($db, $version);
+
+            // Recheck impact while the draft and scale are locked. The revision,
+            // active period references, and per-evaluation jobs commit together.
+            $impact = $this->buildActivationImpact($db, $version);
+            if (array_sum($impact['change_summary']) > 0 && (! $impactPreviewToken || ! hash_equals($impact['preview_token'], $impactPreviewToken))) {
+                throw new RuntimeException('CRITERIA_IMPACT_PREVIEW_STALE: Refresh the impact preview and confirm the latest criteria changes before publishing.', 409);
+            }
+            if (! $impact['activation_allowed']) {
+                throw new RuntimeException('CRITERIA_ACTIVATION_BLOCKED: ' . json_encode($impact['activation_blockers'], JSON_UNESCAPED_UNICODE), 409);
+            }
 
             $now = date('Y-m-d H:i:s');
             $activeVersions = $db->table('evaluation_scale_versions')->where('scale_id', $version['scale_id'])->where('status', 'approved')->get()->getResultArray();
@@ -401,9 +431,18 @@ class RubricAdministrationService
             $after = array_merge($version, ['status'=>'approved', 'approved_by_user_id'=>$actorUserId, 'approved_at'=>$now, 'updated_at'=>$now]);
             $db->table('evaluation_scale_versions')->where('id', $versionId)->update(['status'=>'approved', 'approved_by_user_id'=>$actorUserId, 'approved_at'=>$now, 'updated_at'=>$now]);
             $this->audit($db, $versionId, 'version_published', $actorUserId, $reason, $version, $after, $now);
+            $activationWork = ['queued_evaluation_count'=>0, 'updated_period_count'=>0];
+            if ($activeVersions !== []) {
+                $activationWork = (new PersonnelEvaluationCriteriaRecalculationService($db))->enqueueForActivatedVersion(
+                    (string) $activeVersions[0]['id'],
+                    $versionId,
+                    $actorUserId,
+                    (string) ($impact['personnel_group'] ?? '')
+                );
+            }
             if ($db->transStatus() === false) throw new RuntimeException('Unable to publish the criteria version.', 500);
             $db->transCommit();
-            return ['version_id'=>$versionId, 'status'=>'approved', 'approved_at'=>$now, 'superseded_version_ids'=>array_column($activeVersions, 'id'), 'message'=>'Criteria version published successfully.'];
+            return ['version_id'=>$versionId, 'status'=>'approved', 'approved_at'=>$now, 'superseded_version_ids'=>array_column($activeVersions, 'id'), 'activation_work'=>$activationWork, 'message'=>'Criteria version published and recalculation work registered.'];
         } catch (Throwable $error) {
             $db->transRollback();
             throw $error;
@@ -424,22 +463,32 @@ class RubricAdministrationService
     {
         $db = Database::connect(); $db->transBegin();
         try {
-            foreach (['evaluation_scale_categories' => ['is_active'], 'evaluation_scale_subcategories' => ['is_active'], 'evaluation_scale_criterion_options' => ['scale_subcategory_id', 'is_active']] as $table => $fields) {
+            foreach (['evaluation_scale_areas' => ['is_active'], 'evaluation_scale_categories' => ['is_active'], 'evaluation_scale_subcategories' => ['is_active'], 'evaluation_scale_criterion_options' => ['scale_subcategory_id', 'is_active']] as $table => $fields) {
                 if (! $db->tableExists($table)) throw new RuntimeException('CRITERIA_HIERARCHY_SCHEMA_NOT_READY', 503);
                 foreach ($fields as $field) if (! $db->fieldExists($field, $table)) throw new RuntimeException('CRITERIA_HIERARCHY_SCHEMA_NOT_READY', 503);
             }
-            $version = $db->query('SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
+            $version = $this->queryForUpdate($db, 'SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
             if (! $version) throw new RuntimeException('Criteria version not found.', 404);
             if ($version['status'] !== 'draft') throw new RuntimeException('Only draft criteria versions can be edited.', 409);
             $expected = (string)($input['expected_updated_at'] ?? '');
             if ($expected !== '' && $expected !== (string)$version['updated_at']) throw new RuntimeException('This draft has been updated by another user. Refresh and review the latest version before saving.', 409);
             $now = date('Y-m-d H:i:s');
             $versionPatch = ['updated_at'=>$now];
-            foreach (['total_max_points','passing_score'] as $field) if (array_key_exists($field, $input)) $versionPatch[$field] = max(0, (float)$input[$field]);
+            foreach (['total_max_points','passing_score'] as $field) if (array_key_exists($field, $input)) {
+                if (! is_numeric($input[$field]) || (float) $input[$field] < 0) throw new RuntimeException('Overall maximum and passing threshold must be non-negative numbers.', 422);
+                $versionPatch[$field] = (float) $input[$field];
+            }
             foreach (['effective_start_date','change_reason','change_summary'] as $field) if (array_key_exists($field, $input) && $db->fieldExists($field, 'evaluation_scale_versions')) $versionPatch[$field] = trim((string)$input[$field]) ?: null;
+            $areasBefore = $this->captureVersionState($db, $versionId);
+            $deletedNodes = $input['deleted_nodes'] ?? [];
+            if ($deletedNodes !== []) {
+                $this->assertDraftVersionUnused($db, $versionId);
+                $this->deleteDraftNodes($db, $versionId, $deletedNodes);
+            }
             $db->table('evaluation_scale_versions')->where('id', $versionId)->update($versionPatch);
 
-            $this->updateOwnedRows($db, 'evaluation_scale_areas', 'scale_version_id', $versionId, $input['areas'] ?? [], ['max_points','description'], $now);
+            $this->updateOwnedRows($db, 'evaluation_scale_areas', 'scale_version_id', $versionId, $input['areas'] ?? [], ['area_code','name','display_order','max_points','description','entry_policy','is_active'], $now);
+            $this->insertNewAreas($db, $versionId, $input['areas'] ?? [], $now);
             $areaIds = array_column($db->table('evaluation_scale_areas')->select('id')->where('scale_version_id', $versionId)->get()->getResultArray(), 'id');
             foreach ($areaIds as $areaId) {
                 $this->updateOwnedRows($db, 'evaluation_scale_categories', 'scale_area_id', $areaId, $input['categories'] ?? [], ['name','category_code','display_order','max_points','description','scoring_mode','requires_manual_hr_rule','is_active'], $now);
@@ -453,8 +502,8 @@ class RubricAdministrationService
                 $this->updateOwnedRows($db, 'evaluation_scale_criteria', 'scale_category_id', $categoryId, $input['criteria'] ?? [], ['max_points_per_entry','max_occurrences','description','field_schema','evidence_rules','formula_key','formula_params'], $now);
                 if ($db->tableExists('evaluation_scale_criterion_options')) $this->saveDraftOptions($db, $categoryId, $input['options'] ?? [], $now);
             }
-            $after = $db->table('evaluation_scale_versions')->where('id', $versionId)->get()->getRowArray();
-            $this->audit($db, $versionId, 'draft_edited', $actorUserId, trim((string)($input['change_reason'] ?? 'Draft criteria updated')), $version, $after, $now);
+            $this->assertUniqueCodesInVersion($db, $versionId);
+            $this->audit($db, $versionId, 'draft_edited', $actorUserId, trim((string)($input['change_reason'] ?? 'Draft criteria updated')), $areasBefore, $this->captureVersionState($db, $versionId), $now);
             if ($db->transStatus() === false) throw new RuntimeException('Draft could not be saved.', 500);
             $db->transCommit();
             return ['version_id'=>$versionId, 'updated_at'=>$now, 'message'=>'Draft criteria saved.'];
@@ -475,11 +524,127 @@ class RubricAdministrationService
         return ['from'=>$left['version'], 'to'=>$right['version'], 'summary'=>['added'=>count(array_filter($changes,fn($c)=>$c['type']==='ADDED')), 'removed'=>count(array_filter($changes,fn($c)=>$c['type']==='REMOVED')), 'changed'=>count(array_filter($changes,fn($c)=>$c['type']==='CHANGED'))], 'changes'=>$changes];
     }
 
+    /** Read-only, persisted-reference impact analysis for a draft criteria revision. */
+    public function previewActivationImpact(string $draftVersionId): array
+    {
+        $db = Database::connect();
+        $draft = $db->table('evaluation_scale_versions')->where('id', $draftVersionId)->get()->getRowArray();
+        if (! $draft) throw new RuntimeException('Criteria version not found.', 404);
+        if (($draft['status'] ?? null) !== 'draft') throw new RuntimeException('Impact preview requires a draft criteria version.', 409);
+        return $this->buildActivationImpact($db, $draft);
+    }
+
+    private function buildActivationImpact(BaseConnection $db, array $draft): array
+    {
+        $approved = $db->table('evaluation_scale_versions')->where('scale_id', $draft['scale_id'])->where('status', 'approved')->orderBy('approved_at', 'DESC')->orderBy('created_at', 'DESC')->get()->getResultArray();
+        if (count($approved) !== 1) throw new RuntimeException('CRITERIA_ACTIVE_VERSION_AMBIGUOUS: Impact preview requires exactly one currently approved source version.', 409);
+        $source = $approved[0];
+        $diff = $this->compareVersions((string) $draft['id'], (string) $source['id']);
+        $scale = $db->table('evaluation_scales')->select('personnel_group')->where('id', $draft['scale_id'])->get()->getRowArray();
+        $scope = strtoupper(trim((string) ($scale['personnel_group'] ?? '')));
+
+        $periodRows = [];
+        if ($db->tableExists('personnel_evaluation_periods') && $db->fieldExists('evaluation_scale_version_id', 'personnel_evaluation_periods')) {
+            $periodRows = $db->table('personnel_evaluation_periods')->where('evaluation_scale_version_id', $source['id'])->get()->getResultArray();
+        }
+        $operationalStatuses = ['DRAFT', 'OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'];
+        $operationalPeriods = array_values(array_filter($periodRows, static fn (array $row): bool => in_array(strtoupper((string) ($row['status'] ?? '')), $operationalStatuses, true)));
+        $knownPeriodStatuses = array_merge($operationalStatuses, ['CLOSED', 'ARCHIVED', 'CANCELLED']);
+        $unresolvedPeriodCount = count(array_filter($periodRows, static function (array $row) use ($knownPeriodStatuses, $scope): bool {
+            $statusUnknown = ! in_array(strtoupper((string) ($row['status'] ?? '')), $knownPeriodStatuses, true);
+            $group = strtoupper(trim((string) ($row['personnel_group'] ?? '')));
+            return $statusUnknown || ($group !== '' && $scope !== '' && $group !== $scope);
+        }));
+
+        $evaluationCount = 0;
+        $endorsedCount = 0;
+        $unresolvedEvaluationCount = 0;
+        $byStatus = [];
+        $terminalStatuses = ['completed', 'finalized', 'released'];
+        $mutableStatuses = ['draft', 'submitted', 'in_progress', 'under_review', 'under_evaluation', 'awaiting_review', 'in_evaluation', 'returned_for_revision', 'revision_requested', 'reviewed', 'scoring_completed', 'ready_for_finalization', 'endorsed_to_hr', 'under_hr_review'];
+        if ($db->tableExists('personnel_evaluations') && $db->fieldExists('id', 'personnel_evaluations')) {
+            $hasPeriod = $db->fieldExists('evaluation_period_id', 'personnel_evaluations') && $db->tableExists('personnel_evaluation_periods');
+            $hasDirectVersion = $db->fieldExists('evaluation_scale_version_id', 'personnel_evaluations');
+            if ($hasPeriod || $hasDirectVersion) {
+                $select = 'e.id, e.status';
+                if ($db->fieldExists('finalized_at', 'personnel_evaluations')) $select .= ', e.finalized_at';
+                if ($db->fieldExists('final_snapshot', 'personnel_evaluations')) $select .= ', e.final_snapshot';
+                if ($db->fieldExists('personnel_group_snapshot', 'personnel_evaluations')) $select .= ', e.personnel_group_snapshot AS evaluation_group';
+                if ($hasDirectVersion) $select .= ', e.evaluation_scale_version_id AS direct_version_id';
+                if ($hasPeriod) $select .= ', e.evaluation_period_id';
+                if ($hasPeriod && $db->fieldExists('evaluation_scale_version_id', 'personnel_evaluation_periods')) $select .= ', p.evaluation_scale_version_id AS period_version_id';
+                if ($hasPeriod && $db->fieldExists('personnel_group', 'personnel_evaluation_periods')) $select .= ', p.personnel_group AS period_group';
+                $builder = $db->table('personnel_evaluations e')->select($select);
+                if ($hasPeriod) $builder->join('personnel_evaluation_periods p', 'p.id = e.evaluation_period_id', 'left');
+                $builder->groupStart();
+                if ($hasDirectVersion) $builder->where('e.evaluation_scale_version_id', $source['id']);
+                if ($hasPeriod) $builder->orWhere('p.evaluation_scale_version_id', $source['id']);
+                $builder->groupEnd();
+                foreach ($builder->get()->getResultArray() as $evaluation) {
+                    $evalGroup = strtoupper(trim((string) ($evaluation['evaluation_group'] ?? '')));
+                    $periodGroup = strtoupper(trim((string) ($evaluation['period_group'] ?? '')));
+                    if ($evalGroup !== '' && $periodGroup !== '' && $evalGroup !== $periodGroup) {
+                        $unresolvedEvaluationCount++;
+                        continue;
+                    }
+                    if (($evalGroup !== '' && $evalGroup !== $scope) || ($periodGroup !== '' && $periodGroup !== $scope)) continue;
+                    if ($evalGroup === '' && $periodGroup === '' && $scope !== '') {
+                        $unresolvedEvaluationCount++;
+                        continue;
+                    }
+                    $status = strtolower(trim((string) ($evaluation['status'] ?? '')));
+                    $hasFinalSnapshot = ! empty($evaluation['finalized_at']) || ! empty($evaluation['final_snapshot']);
+                    if (in_array($status, $terminalStatuses, true) || $hasFinalSnapshot) continue;
+                    if (! in_array($status, $mutableStatuses, true)) {
+                        $unresolvedEvaluationCount++;
+                        continue;
+                    }
+                    $evaluationCount++;
+                    $byStatus[$status] = ($byStatus[$status] ?? 0) + 1;
+                    if (in_array($status, ['ready_for_finalization', 'endorsed_to_hr', 'under_hr_review'], true)) $endorsedCount++;
+                }
+            }
+        }
+
+        $blockers = [];
+        if ($scope === '') $blockers[] = ['code'=>'CRITERIA_PERSONNEL_GROUP_UNRESOLVED','count'=>1,'message'=>'The criteria sheet has no verified personnel-group classification.'];
+        if ($unresolvedPeriodCount > 0) $blockers[] = ['code'=>'PERIOD_STATUS_UNRESOLVED','count'=>$unresolvedPeriodCount,'message'=>'Some ranking periods reference the current revision but have an unrecognized lifecycle status.'];
+        if ($unresolvedEvaluationCount > 0) $blockers[] = ['code'=>'EVALUATION_SCOPE_OR_STATUS_UNRESOLVED','count'=>$unresolvedEvaluationCount,'message'=>'Some evaluations reference the current revision but their classification or lifecycle status could not be safely determined.'];
+
+        $preview = [
+            'source_version' => ['id'=>$source['id'], 'version_number'=>$source['version_number'], 'status'=>$source['status']],
+            'candidate_version' => ['id'=>$draft['id'], 'version_number'=>$draft['version_number'], 'status'=>$draft['status']],
+            'personnel_group' => $scope,
+            'changes' => $diff['changes'],
+            'change_summary' => $diff['summary'],
+            'affected_ranking_period_count' => count($periodRows),
+            'operational_ranking_period_count' => count($operationalPeriods),
+            'unresolved_ranking_period_count' => $unresolvedPeriodCount,
+            'affected_nonfinalized_evaluation_count' => $evaluationCount,
+            'affected_endorsed_evaluation_count' => $endorsedCount,
+            'evaluations_by_status' => $byStatus,
+            'unresolved_evaluation_count' => $unresolvedEvaluationCount,
+            'finalized_evaluations_modified' => 0,
+            'activation_allowed' => count($blockers) === 0,
+            'activation_blockers' => $blockers,
+        ];
+        $preview['preview_token'] = hash('sha256', json_encode([
+            'draft_id'=>$draft['id'], 'draft_updated_at'=>$draft['updated_at'] ?? null,
+            'source_id'=>$source['id'], 'source_updated_at'=>$source['updated_at'] ?? null,
+            'changes'=>$diff['changes'], 'period_count'=>$preview['affected_ranking_period_count'],
+            'operational_period_count'=>$preview['operational_ranking_period_count'],
+            'evaluation_count'=>$evaluationCount, 'endorsed_count'=>$endorsedCount,
+            'unresolved_evaluations'=>$unresolvedEvaluationCount, 'unresolved_periods'=>$unresolvedPeriodCount,
+            'evaluations_by_status'=>$byStatus,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return $preview;
+    }
+
     public function retireVersion(string $versionId, string $actorUserId, string $reason): array
     {
         $db = Database::connect(); $db->transBegin();
         try {
-            $version = $db->query('SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
+            $version = $this->queryForUpdate($db, 'SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$versionId])->getRowArray();
             if (! $version) throw new RuntimeException("Scale version [{$versionId}] not found.", 404);
             if ($version['status'] === 'retired') throw new RuntimeException("Scale version [{$versionId}] is already retired.", 409);
             $now = date('Y-m-d H:i:s'); $after = array_merge($version, ['status'=>'retired', 'updated_at'=>$now]);
@@ -671,6 +836,79 @@ class RubricAdministrationService
         }
     }
 
+    private function insertNewAreas(BaseConnection $db, string $versionId, array $areas, string $now): void
+    {
+        foreach ($areas as $area) {
+            $id = (string) ($area['id'] ?? '');
+            if (($area['scale_version_id'] ?? '') !== $versionId || $id === '' || $db->table('evaluation_scale_areas')->where('id', $id)->countAllResults() > 0) continue;
+            $code = strtoupper(trim((string) ($area['area_code'] ?? '')));
+            $name = trim((string) ($area['name'] ?? ''));
+            $points = $area['max_points'] ?? null;
+            if ($code === '' || ! preg_match('/^[A-Z0-9]{1,8}$/', $code) || $name === '' || ! is_numeric($points) || (float) $points < 0) {
+                throw new RuntimeException('Each section needs a valid code, name, and non-negative maximum.', 422);
+            }
+            $db->table('evaluation_scale_areas')->insert([
+                'id' => $id, 'scale_version_id' => $versionId, 'area_code' => $code, 'name' => $name,
+                'description' => $area['description'] ?? null,
+                'display_order' => max(1, (int) ($area['display_order'] ?? 1)),
+                'max_points' => (float) $points,
+                'entry_policy' => $area['entry_policy'] ?? 'personnel_entry_allowed',
+                'source_ref' => $area['source_ref'] ?? null,
+                'created_at' => $now, 'updated_at' => $now,
+                'is_active' => (int) ($area['is_active'] ?? 1),
+            ]);
+        }
+    }
+
+    private function assertUniqueCodesInVersion(BaseConnection $db, string $versionId): void
+    {
+        $areas = $db->table('evaluation_scale_areas')->where('scale_version_id', $versionId)->get()->getResultArray();
+        $this->assertUniqueField($areas, 'area_code', 'Section');
+        foreach ($areas as $area) {
+            if (trim((string) ($area['name'] ?? '')) === '' || ! preg_match('/^[A-Z0-9]{1,8}$/', strtoupper(trim((string) ($area['area_code'] ?? ''))))) throw new RuntimeException('Each section needs a valid code and name.', 422);
+            if (! is_numeric($area['max_points'] ?? null) || (float) $area['max_points'] < 0) throw new RuntimeException('Section maximums must be non-negative numbers.', 422);
+        }
+        foreach ($areas as $area) {
+            $categories = $db->table('evaluation_scale_categories')->where('scale_area_id', $area['id'])->get()->getResultArray();
+            $this->assertUniqueField($categories, 'category_code', 'Category');
+            foreach ($categories as $category) {
+                if (trim((string) ($category['name'] ?? '')) === '' || ! preg_match('/^[A-Z0-9][A-Z0-9._-]{0,15}$/', strtoupper(trim((string) ($category['category_code'] ?? ''))))) throw new RuntimeException('Each category needs a valid code and name.', 422);
+                if (! is_numeric($category['max_points'] ?? null) || (float) $category['max_points'] < 0) throw new RuntimeException('Category cutoffs must be non-negative numbers.', 422);
+            }
+            foreach ($categories as $category) {
+                $subcategories = $db->table('evaluation_scale_subcategories')->where('scale_category_id', $category['id'])->get()->getResultArray();
+                $this->assertUniqueField($subcategories, 'subcategory_code', 'Subcategory');
+                foreach ($subcategories as $subcategory) {
+                    if (trim((string) ($subcategory['name'] ?? '')) === '' || ! preg_match('/^[A-Z0-9][A-Z0-9._-]{0,23}$/', strtoupper(trim((string) ($subcategory['subcategory_code'] ?? ''))))) throw new RuntimeException('Each subcategory needs a valid code and name.', 422);
+                    if (! is_numeric($subcategory['default_points'] ?? null) || (float) $subcategory['default_points'] < 0) throw new RuntimeException('Subcategory points must be non-negative numbers.', 422);
+                }
+            }
+        }
+    }
+
+    private function assertUniqueField(array $rows, string $field, string $label): void
+    {
+        $values = array_map(static fn (array $row): string => strtoupper(trim((string) ($row[$field] ?? ''))), $rows);
+        $values = array_filter($values, static fn (string $value): bool => $value !== '');
+        if (count($values) !== count(array_unique($values))) throw new RuntimeException("{$label} codes must be unique within their parent.", 422);
+    }
+
+    private function captureVersionState(BaseConnection $db, string $versionId): array
+    {
+        $state = ['version' => $db->table('evaluation_scale_versions')->where('id', $versionId)->get()->getRowArray(), 'areas' => []];
+        foreach ($db->table('evaluation_scale_areas')->where('scale_version_id', $versionId)->orderBy('display_order')->get()->getResultArray() as $area) {
+            $area['categories'] = [];
+            foreach ($db->table('evaluation_scale_categories')->where('scale_area_id', $area['id'])->orderBy('display_order')->get()->getResultArray() as $category) {
+                $category['subcategories'] = $db->table('evaluation_scale_subcategories')->where('scale_category_id', $category['id'])->orderBy('display_order')->get()->getResultArray();
+                $category['criteria'] = $db->table('evaluation_scale_criteria')->where('scale_category_id', $category['id'])->orderBy('criterion_code')->get()->getResultArray();
+                $category['options'] = $db->table('evaluation_scale_criterion_options')->where('scale_category_id', $category['id'])->orderBy('option_group_code')->orderBy('display_order')->get()->getResultArray();
+                $area['categories'][] = $category;
+            }
+            $state['areas'][] = $area;
+        }
+        return $state;
+    }
+
     private function insertNewCategories(BaseConnection $db, string $areaId, array $categories, string $now): void
     {
         foreach ($categories as $category) {
@@ -679,7 +917,8 @@ class RubricAdministrationService
             $points = $category['max_points'] ?? null;
             if ($name === '' || ! is_numeric($points) || (float) $points < 0) throw new RuntimeException('Each category needs a name and non-negative cut-off points.', 422);
             $id = (string) $category['id'];
-            $code = trim((string) ($category['category_code'] ?? '')) ?: ('CAT-' . strtoupper(substr(hash('sha256', $id), 0, 12)));
+            $code = strtoupper(trim((string) ($category['category_code'] ?? '')));
+            if ($code === '' || ! preg_match('/^[A-Z0-9][A-Z0-9._-]{0,15}$/', $code)) throw new RuntimeException('Each category needs a valid code.', 422);
             $db->table('evaluation_scale_categories')->insert([
                 'id' => $id, 'scale_area_id' => $areaId, 'category_code' => $code, 'name' => $name,
                 'description' => $category['description'] ?? null, 'display_order' => max(1, (int) ($category['display_order'] ?? 1)),
@@ -701,11 +940,12 @@ class RubricAdministrationService
             $id = (string) $subcategory['id'];
             $row = [
                 'id' => $id, 'scale_category_id' => $categoryId,
-                'subcategory_code' => trim((string) ($subcategory['subcategory_code'] ?? '')) ?: ('SUB-' . strtoupper(substr(hash('sha256', $id), 0, 12))),
+                'subcategory_code' => strtoupper(trim((string) ($subcategory['subcategory_code'] ?? ''))),
                 'name' => $name, 'description' => $subcategory['description'] ?? null,
                 'display_order' => max(1, (int) ($subcategory['display_order'] ?? 1)), 'default_points' => (float) $points,
                 'source_ref' => $subcategory['source_ref'] ?? null, 'created_at' => $now, 'updated_at' => $now,
             ];
+            if ($row['subcategory_code'] === '' || ! preg_match('/^[A-Z0-9][A-Z0-9._-]{0,23}$/', $row['subcategory_code'])) throw new RuntimeException('Each subcategory needs a valid code.', 422);
             if ($db->fieldExists('is_active', 'evaluation_scale_subcategories')) $row['is_active'] = (int) ($subcategory['is_active'] ?? 1);
             foreach (['intake_active','intake_mode','field_schema','evidence_rules','scoring_rule_reference'] as $field) {
                 if ($db->fieldExists($field, 'evaluation_scale_subcategories') && array_key_exists($field, $subcategory)) {
@@ -727,8 +967,20 @@ class RubricAdministrationService
         $existing = $db->table($table)->where('scale_category_id', $categoryId)->get()->getResultArray();
         $existingById = array_column($existing, null, 'id');
         $submittedIds = [];
+        $category = $db->table('evaluation_scale_categories')->where('id', $categoryId)->get()->getRowArray() ?? [];
+        $allowedOptionGroups = [
+            'GUEST_LECTURER_MATRIX' => ['SPONSOR', 'EXTENT', 'PARTICIPANTS', 'ROLE'],
+            'PUBLICATION_MATRIX' => ['SCOPE', 'TYPE'],
+            'RECOGNITION_MATRIX' => ['NOMINEE', 'AWARDEE'],
+            'INSTRUCTIONAL_MATERIALS' => ['MATERIAL_TYPE'],
+        ][$category['renderer_key'] ?? ''] ?? [];
         foreach ($options as $option) {
             $id = (string) ($option['id'] ?? '');
+            $submittedCategoryId = trim((string) ($option['scale_category_id'] ?? ''));
+            if ($submittedCategoryId !== '' && $submittedCategoryId !== $categoryId) continue;
+            if ($submittedCategoryId === '' && ! isset($existingById[$id])) {
+                throw new RuntimeException('Each new scoring option must identify its owning category.', 422);
+            }
             if ($id === '') continue;
             $submittedIds[] = $id;
             $subcategoryId = trim((string) ($option['scale_subcategory_id'] ?? '')) ?: null;
@@ -737,6 +989,14 @@ class RubricAdministrationService
                 if (! $ownedSubcategory) throw new RuntimeException('A level must belong to a subcategory in this draft.', 422);
                 if (trim((string) ($option['label'] ?? '')) === '' || ! is_numeric($option['points'] ?? null) || (float) $option['points'] < 0) {
                     throw new RuntimeException('Each level needs a name and non-negative points.', 422);
+                }
+            } elseif (! isset($existingById[$id])) {
+                $group = strtoupper(trim((string) ($option['option_group_code'] ?? '')));
+                if (! in_array($group, $allowedOptionGroups, true)) {
+                    throw new RuntimeException('Scoring options can only be added to a verified scoring dimension for this criterion.', 422);
+                }
+                if (trim((string) ($option['label'] ?? '')) === '' || ! is_numeric($option['points'] ?? null) || (float) $option['points'] < 0) {
+                    throw new RuntimeException('Each scoring option needs a label and non-negative points.', 422);
                 }
             }
             $row = [
@@ -751,7 +1011,6 @@ class RubricAdministrationService
             if (isset($existingById[$id])) {
                 $db->table($table)->where('id', $id)->where('scale_category_id', $categoryId)->update($row);
             } else {
-                if ($subcategoryId === null) throw new RuntimeException('New scoring options must be attached to a subcategory.', 422);
                 $row['id'] = $id; $row['created_at'] = $now; $row['source_ref'] = $option['source_ref'] ?? null;
                 $db->table($table)->insert($row);
             }
@@ -759,11 +1018,77 @@ class RubricAdministrationService
 
         if ($db->fieldExists('scale_subcategory_id', $table)) {
             foreach ($existing as $row) {
-                if (($row['option_group_code'] ?? '') === 'LEVEL' && ! in_array((string) $row['id'], $submittedIds, true)) {
+                if (! in_array((string) $row['id'], $submittedIds, true)) {
                     $db->table($table)->where('id', $row['id'])->where('scale_category_id', $categoryId)->delete();
                 }
             }
         }
+    }
+
+    private function assertDraftVersionUnused(BaseConnection $db, string $versionId): void
+    {
+        $checks = [
+            ['personnel_evaluation_periods', 'evaluation_scale_version_id'],
+            ['personnel_evaluations', 'evaluation_scale_version_id'],
+            ['personnel_accomplishments', 'evaluation_scale_version_id'],
+        ];
+        foreach ($checks as [$table, $field]) {
+            if ($db->tableExists($table) && $db->fieldExists($field, $table)
+                && $db->table($table)->where($field, $versionId)->countAllResults() > 0) {
+                throw new RuntimeException('This draft is referenced by a ranking period, portfolio record, or evaluation and cannot be permanently deleted.', 409);
+            }
+        }
+    }
+
+    private function deleteDraftNodes(BaseConnection $db, string $versionId, array $nodes): void
+    {
+        foreach ($nodes as $node) {
+            $type = strtolower(trim((string) ($node['type'] ?? '')));
+            $id = trim((string) ($node['id'] ?? ''));
+            if ($id === '') continue;
+            if ($type === 'section') {
+                $row = $db->table('evaluation_scale_areas')->where(['id' => $id, 'scale_version_id' => $versionId])->get()->getRowArray();
+                if (! $row) throw new RuntimeException('The section does not belong to this draft.', 422);
+                $categoryIds = array_column($db->table('evaluation_scale_categories')->select('id')->where('scale_area_id', $id)->get()->getResultArray(), 'id');
+                foreach ($categoryIds as $categoryId) $this->deleteDraftCategory($db, $categoryId);
+                $db->table('evaluation_scale_areas')->where('id', $id)->delete();
+                continue;
+            }
+            if ($type === 'category') {
+                $row = $db->query('SELECT c.id FROM evaluation_scale_categories c JOIN evaluation_scale_areas a ON a.id=c.scale_area_id WHERE c.id=? AND a.scale_version_id=?', [$id, $versionId])->getRowArray();
+                if (! $row) throw new RuntimeException('The category does not belong to this draft.', 422);
+                $this->deleteDraftCategory($db, $id);
+                continue;
+            }
+            if ($type === 'subcategory') {
+                $row = $db->query('SELECT sc.id,c.id AS category_id FROM evaluation_scale_subcategories sc JOIN evaluation_scale_categories c ON c.id=sc.scale_category_id JOIN evaluation_scale_areas a ON a.id=c.scale_area_id WHERE sc.id=? AND a.scale_version_id=?', [$id, $versionId])->getRowArray();
+                if (! $row) throw new RuntimeException('The subcategory does not belong to this draft.', 422);
+                $db->table('evaluation_scale_criterion_options')->where('scale_category_id', $row['category_id'])->where('scale_subcategory_id', $id)->delete();
+                $db->table('evaluation_scale_subcategories')->where('id', $id)->delete();
+                continue;
+            }
+            if ($type === 'level' || $type === 'scoring_option') {
+                $row = $db->query('SELECT o.id FROM evaluation_scale_criterion_options o JOIN evaluation_scale_areas a ON a.scale_version_id=? JOIN evaluation_scale_categories c ON c.scale_area_id=a.id AND c.id=o.scale_category_id WHERE o.id=?', [$versionId, $id])->getRowArray();
+                if (! $row) throw new RuntimeException('The scoring option does not belong to this draft.', 422);
+                $db->table('evaluation_scale_criterion_options')->where('id', $id)->delete();
+                continue;
+            }
+            if ($type === 'criterion') {
+                $row = $db->query('SELECT r.id FROM evaluation_scale_criteria r JOIN evaluation_scale_categories c ON c.id=r.scale_category_id JOIN evaluation_scale_areas a ON a.id=c.scale_area_id WHERE r.id=? AND a.scale_version_id=?', [$id, $versionId])->getRowArray();
+                if (! $row) throw new RuntimeException('The scoring factor does not belong to this draft.', 422);
+                $db->table('evaluation_scale_criteria')->where('id', $id)->delete();
+                continue;
+            }
+            throw new RuntimeException('This item type cannot be deleted.', 422);
+        }
+    }
+
+    private function deleteDraftCategory(BaseConnection $db, string $categoryId): void
+    {
+        $db->table('evaluation_scale_criterion_options')->where('scale_category_id', $categoryId)->delete();
+        $db->table('evaluation_scale_criteria')->where('scale_category_id', $categoryId)->delete();
+        $db->table('evaluation_scale_subcategories')->where('scale_category_id', $categoryId)->delete();
+        $db->table('evaluation_scale_categories')->where('id', $categoryId)->delete();
     }
 
     private function audit(BaseConnection $db, string $versionId, string $action, string $actor, string $reason, ?array $before, ?array $after, string $now): void
@@ -773,4 +1098,14 @@ class RubricAdministrationService
 
     private function newId(string $prefix): string
     { return $prefix . '-' . bin2hex(random_bytes(12)); }
+
+    /** Keep row locking on production databases while allowing isolated SQLite integration tests. */
+    private function queryForUpdate(BaseConnection $db, string $sql, array $binds = []): mixed
+    {
+        if (strtolower($db->DBDriver) === 'sqlite3') {
+            $sql = preg_replace('/\\s+FOR UPDATE\\s*$/i', '', $sql) ?? $sql;
+        }
+
+        return $db->query($sql, $binds);
+    }
 }

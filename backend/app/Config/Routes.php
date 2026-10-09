@@ -289,6 +289,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('dean/reviews', 'Api\DeanWorkspaceController::options');
     $routes->get('dean/reviews/(:segment)', 'Api\DeanWorkspaceController::reviewDetail/$1');
     $routes->options('dean/reviews/(:segment)', 'Api\DeanWorkspaceController::options');
+    $routes->post('dean/reviews/(:segment)/criteria-reconfirmation', 'Api\DeanWorkspaceController::criteriaReconfirmation/$1');
+    $routes->options('dean/reviews/(:segment)/criteria-reconfirmation', 'Api\DeanWorkspaceController::options');
     $routes->get('dean/annual-reviews', 'Api\DeanAnnualReviewController::index');
     $routes->post('dean/annual-reviews', 'Api\DeanAnnualReviewController::create');
     $routes->options('dean/annual-reviews', 'Api\DeanAnnualReviewController::options');
@@ -337,14 +339,24 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('admin/evaluation-scales/versions/(:segment)/pdf', 'Api\EvaluationScaleController::options');
     $routes->get('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::showScaleVersion/$1');
     $routes->options('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::options');
+    $routes->get('admin/evaluation-scales/versions/(:segment)/history', 'Api\EvaluationScaleController::versionHistory/$1');
+    $routes->options('admin/evaluation-scales/versions/(:segment)/history', 'Api\EvaluationScaleController::options');
     $routes->post('admin/evaluation-scales/versions/(:segment)/clone', 'Api\EvaluationScaleController::cloneVersion/$1');
     $routes->options('admin/evaluation-scales/versions/(:segment)/clone', 'Api\EvaluationScaleController::options');
     $routes->put('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::updateVersion/$1');
     $routes->post('admin/evaluation-scales/versions/(:segment)/validate', 'Api\EvaluationScaleController::validateScaleVersion/$1');
+    $routes->get('admin/evaluation-scales/versions/(:segment)/impact-preview', 'Api\EvaluationScaleController::previewActivationImpact/$1');
+    $routes->options('admin/evaluation-scales/versions/(:segment)/impact-preview', 'Api\EvaluationScaleController::options');
     $routes->get('admin/evaluation-scales/versions/(:segment)/compare/(:segment)', 'Api\EvaluationScaleController::compareScaleVersions/$1/$2');
     $routes->options('admin/evaluation-scales', 'Api\EvaluationScaleController::options');
     $routes->post('admin/evaluation-scales/(:segment)/approve', 'Api\EvaluationScaleController::approveVersion/$1');
     $routes->options('admin/evaluation-scales/(:segment)/approve', 'Api\EvaluationScaleController::options');
+    $routes->post('admin/evaluation-criteria/recalculations/(:segment)/retry', 'Api\EvaluationCriteriaRecalculationController::retry/$1');
+    $routes->options('admin/evaluation-criteria/recalculations/(:segment)/retry', 'Api\EvaluationCriteriaRecalculationController::options');
+    $routes->get('admin/evaluation-criteria/recalculations/evaluations/(:segment)', 'Api\EvaluationCriteriaRecalculationController::status/$1');
+    $routes->options('admin/evaluation-criteria/recalculations/evaluations/(:segment)', 'Api\EvaluationCriteriaRecalculationController::options');
+    $routes->post('admin/evaluation-criteria/recalculations/(:segment)/reconfirmation', 'Api\EvaluationCriteriaRecalculationController::reconfirm/$1');
+    $routes->options('admin/evaluation-criteria/recalculations/(:segment)/reconfirmation', 'Api\EvaluationCriteriaRecalculationController::options');
     $routes->post('admin/evaluation-scales/(:segment)/retire', 'Api\EvaluationScaleController::retireVersion/$1');
     $routes->options('admin/evaluation-scales/(:segment)/retire', 'Api\EvaluationScaleController::options');
 

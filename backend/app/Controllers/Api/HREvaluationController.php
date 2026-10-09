@@ -528,6 +528,7 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
         if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
+        if (($criteriaBlocker = (new \App\Services\PersonnelEvaluationCriteriaRecalculationService($db))->finalizationBlocker($evaluation)) !== null) return $this->respond(['error'=>$criteriaBlocker], 409);
 
         // Decisions are mutable only inside the active Dean/HR evaluation stage.
         if ($evaluation['status'] !== 'in_evaluation') {
@@ -672,6 +673,7 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
         if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
+        if (($criteriaBlocker = (new \App\Services\PersonnelEvaluationCriteriaRecalculationService($db))->finalizationBlocker($evaluation)) !== null) return $this->respond(['error'=>$criteriaBlocker], 409);
 
         // Decisions are mutable only inside the active Dean/HR evaluation stage.
         if ($evaluation['status'] !== 'in_evaluation') {
@@ -820,6 +822,7 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         }
         if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
+        if (($criteriaBlocker = (new \App\Services\PersonnelEvaluationCriteriaRecalculationService($db))->finalizationBlocker($evaluation)) !== null) return $this->respond(['error'=>$criteriaBlocker], 409);
 
         $transitionError = $this->validateTransition($evaluation['status'], 'ready_for_finalization');
         if ($transitionError !== null) {

@@ -8,6 +8,12 @@ describe('Faculty accomplishment form contract', () => {
     expect(facultySubcategoryByCode('A1_PHD_UNITS').fields.map((field) => field.name)).toEqual(['units_completed', 'program', 'institution', 'semester', 'academic_year'])
   })
 
+  it('uses participant level without requiring a numeric participant count for B.1', () => {
+    const fields = facultySubcategoryByCode('B1_ACTIVITY').fields
+    expect(fields.map((field) => field.name)).toContain('scope')
+    expect(fields.map((field) => field.name)).not.toContain('participants')
+  })
+
   it('strictly rejects impossible calendar dates', () => {
     expect(isStrictIsoDate('2026-02-30')).toBe(false)
     expect(isStrictIsoDate('2026-09-10')).toBe(true)

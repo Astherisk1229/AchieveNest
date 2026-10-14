@@ -77,7 +77,7 @@ class PersonnelAccomplishmentController extends Controller
             'A1_PHD_UNITS','A1_MA_UNITS' => ['units_completed','program','institution','semester','academic_year'],
             'A2_MEMBERSHIP','A2_REGULAR_MEMBER' => ['organization','membership_role'],
             'A3_ATTENDANCE' => ['title','organizer','scope'],
-            'B1_ACTIVITY' => ['role','activity_title','organizer','extent','scope','participants'],
+            'B1_ACTIVITY' => ['role','activity_title','organizer','extent','scope'],
             'B2_PUBLICATION' => ['publication_title','publication_type','publisher_or_journal','scope'],
             'B3_RESEARCH' => ['research_title','granting_body'],
             'B4_AWARD' => ['award_title','granting_body','recognition_status','scope'],
@@ -100,9 +100,6 @@ class PersonnelAccomplishmentController extends Controller
             if (! in_array((string) ($details['semester'] ?? ''), self::GRADUATE_UNIT_SEMESTERS, true)) return 'Select the semester these units were earned in.';
             $year = (string) ($details['academic_year'] ?? '');
             if (preg_match('/^(\d{4})-(\d{4})$/D', $year, $m) !== 1 || (int) $m[2] !== (int) $m[1] + 1) return 'Academic year must be two consecutive years, for example 2025-2026.';
-        }
-        if ($subcategory === 'B1_ACTIVITY' && preg_match('/^[1-9]\d*$/D', (string) ($details['participants'] ?? '')) !== 1) {
-            return 'Number of participants must be a whole number greater than zero.';
         }
         if (in_array($subcategory, ['A2_MEMBERSHIP','A2_REGULAR_MEMBER'], true)
             && in_array((string) ($details['membership_role'] ?? ''), ['Officer', 'Officer / Board Member'], true)

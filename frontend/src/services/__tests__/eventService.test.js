@@ -69,6 +69,7 @@ describe('eventService', () => {
       title: 'NDMU Technology Summit',
       description: 'Official organization event.',
       event_type: 'Summit',
+      osad_template_id: 'OSAD-TPL-01',
       start_time: '2026-10-01 08:00:00',
       end_time: '2026-10-01 17:00:00',
       venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e'

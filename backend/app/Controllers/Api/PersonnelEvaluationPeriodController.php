@@ -72,7 +72,7 @@ class PersonnelEvaluationPeriodController extends Controller
         if (($actor = $this->hrActor()) instanceof \CodeIgniter\HTTP\ResponseInterface) return $actor;
         $body = (array) ($this->request->getJSON(true) ?? []);
         $expectedVersion = isset($body['expected_version']) ? (int) $body['expected_version'] : null;
-        return $this->execute(fn() => $this->respond(['data' => ['period' => $this->periods->transition($id, $action, $actor['profile']['id'], $this->requestId(), $expectedVersion)]]));
+        return $this->execute(fn() => $this->respond(['data' => ['period' => $this->periods->transition($id, $action, $actor['profile']['id'], $this->requestId(), $expectedVersion, $body['reason'] ?? null)]]));
     }
 
     private function hrActor(): array|\CodeIgniter\HTTP\ResponseInterface

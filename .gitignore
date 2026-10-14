@@ -66,3 +66,6 @@ frontend/vitest-results-*.json
 /.vercel/
 /frontend/.vercel/
 /.env.local
+
+scripts/audit/accounts.local.json
+scripts/audit/evidence/

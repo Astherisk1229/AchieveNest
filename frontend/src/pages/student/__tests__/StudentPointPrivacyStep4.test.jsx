@@ -14,8 +14,8 @@ vi.mock('../../../services/portfolioService', () => ({
   }
 }))
 
-import StudentPortfolioPage, { summarizePortfolio } from '../StudentPortfolioPage'
-import StudentDashboardPage, { toTimelineItem } from '../StudentDashboardPage'
+import StudentPortfolioPage, { portfolioAchievementPreviewState, summarizePortfolio } from '../StudentPortfolioPage'
+import StudentDashboardPage, { achievementPreviewState, toAchievementTimelineItems, toTimelineItem } from '../StudentDashboardPage'
 import StudentAchievementsPage from '../StudentAchievementsPage'
 import ExportPortfolioPreviewModal, { toExportItem } from '../modals/ExportPortfolioPreviewModal'
 
@@ -62,5 +62,11 @@ describe('Step 4: student pages show no point or score values', () => {
   it('maps dashboard timeline items from real record statuses', () => {
     expect(toTimelineItem(records[1])).toMatchObject({ status: 'Pending Review', statusType: 'pending', hasProof: true })
     expect(toTimelineItem(records[2])).toMatchObject({ status: 'Returned', statusType: 'returned' })
+    expect(achievementPreviewState('r1')).toEqual({ highlightId: 'r1' })
+    expect(portfolioAchievementPreviewState('r1')).toEqual({ highlightId: 'r1' })
+  })
+
+  it('shows only verified records in the achievements timeline', () => {
+    expect(toAchievementTimelineItems(records).map(item => item.id)).toEqual(['r1'])
   })
 })

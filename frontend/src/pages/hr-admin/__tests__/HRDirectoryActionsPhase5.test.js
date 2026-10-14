@@ -20,6 +20,16 @@ describe('Phase 5 item 3: HR directory actions', () => {
     expect(read('backend/app/Config/Routes.php')).toContain("hr/personnel/(:segment)/assignment")
     expect(read('backend/app/Controllers/Api/TargetHRPersonnelController.php')).toContain('public function updateAssignment')
   })
+  it('allows HR to edit and persist the personnel full name through master data', () => {
+    const modal = read('frontend/src/pages/hr-admin/personnel-directory/EditMasterDataModal.jsx')
+    const controller = read('backend/app/Controllers/Api/TargetHRPersonnelController.php')
+
+    expect(modal).toContain('fullName:')
+    expect(modal).toContain('full_name: fullName')
+    expect(controller).toContain("'full_name'         => $fullName")
+    expect(controller).toContain('INVALID_FULL_NAME')
+    expect(controller).toContain("'full_name'                => $fullName")
+  })
   it('assignment modal keeps open and shows the backend error on failure', () => {
     const m = read('frontend/src/pages/hr-admin/personnel-directory/EditAssignmentModal.jsx')
     expect(m).toContain('await onSave')

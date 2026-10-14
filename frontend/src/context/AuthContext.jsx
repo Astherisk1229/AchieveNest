@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import {
   getCurrentUser,
+  getStoredSession,
   authenticateUser,
   fetchProfileAndCreateSession,
   updateUserRoleContext,
@@ -26,12 +27,8 @@ export function AuthProvider({ children }) {
 
     async function initializeSession() {
       try {
-        const persistentToken = localStorage.getItem('achievenest_access_token')
-        const sessionToken = sessionStorage.getItem('achievenest_access_token')
-        const localToken = persistentToken ||
-          sessionToken ||
-          getCurrentUser()?.token ||
-          getCurrentUser()?.access_token
+        const storedSession = getStoredSession()
+        const localToken = storedSession.token
 
         // Restore a locally issued CodeIgniter session token.
         if (localToken) {
@@ -39,7 +36,7 @@ export function AuthProvider({ children }) {
             const resolvedUser = await fetchProfileAndCreateSession(
               localToken,
               getCurrentUser()?.institutional_email || getCurrentUser()?.email || '',
-              Boolean(persistentToken)
+              storedSession.persistence === 'local'
             )
             if (isMounted) {
               setUser(resolvedUser)

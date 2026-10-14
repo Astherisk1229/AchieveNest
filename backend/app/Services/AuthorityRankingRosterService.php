@@ -72,7 +72,7 @@ class AuthorityRankingRosterService
                 'can_manage'=>$canManage, 'responsible_authority'=>$this->authoritySummary($authority, $authorityIssue)];
         }
 
-        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED'], true)], 'total_personnel'=>count($items), 'personnel'=>$items];
+        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED','CANCELLED'], true)], 'total_personnel'=>count($items), 'personnel'=>$items];
     }
 
     private function authoritySummary(?array $authority, ?string $issue): array

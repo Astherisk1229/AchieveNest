@@ -34,11 +34,17 @@ final class AttendanceEndpointTest extends CIUnitTestCase
     private static string $cssOrgId         = '40000000-0000-0000-0000-000000000001';
 
     private static string $osadProfileId    = 'd0000000-0000-0000-0001-000000000006';
+    /** @var list<string> */
+    private array $generatedPortfolioRecordIds = [];
 
     protected function tearDown(): void
     {
         parent::tearDown();
         $db = $this->db();
+        if ($this->generatedPortfolioRecordIds !== []) {
+            $db->table('event_student_source_records')->whereIn('source_record_id', $this->generatedPortfolioRecordIds)->delete();
+            $db->table('student_portfolio_records')->whereIn('id', $this->generatedPortfolioRecordIds)->delete();
+        }
         $db->table('attendance_records')->like('id', 'test-', 'after')->delete();
         $db->table('attendance_sessions')->like('id', 'test-', 'after')->delete();
         $db->table('events')->like('id', 'test-', 'after')->delete();
@@ -502,6 +508,31 @@ final class AttendanceEndpointTest extends CIUnitTestCase
         $this->assertSame('INVALID_CHECKIN_WINDOW', $body['error']['code']);
     }
 
+    public function testCheckInWindowOutsideEventScheduleRejected(): void
+    {
+        $eventId = $this->insertTestEvent(self::$jpiaOrgId, 'published');
+
+        $actor = [
+            'profile' => ['id' => self::$modJpiaProfileId, 'status' => 'active'],
+            'roles'   => ['personnel', 'organization_moderator'],
+        ];
+
+        $controller = $this->makeController($actor, [self::$jpiaOrgId]);
+        $payload = [
+            'session_name'   => 'Too Early Check-in',
+            'session_type'   => 'general',
+            'check_in_start' => '2026-10-01 07:30:00',
+            'check_in_end'   => '2026-10-01 09:00:00',
+        ];
+        $request = $this->makeRequest('POST', "/api/v1/events/{$eventId}/attendance-sessions", $payload);
+        $controller->initController($request, service('response'), service('logger'));
+
+        $response = $controller->createSession($eventId);
+        $this->assertSame(422, $response->getStatusCode());
+        $body = json_decode($response->getBody(), true);
+        $this->assertSame('CHECKIN_WINDOW_OUTSIDE_EVENT', $body['error']['code']);
+    }
+
     public function testCrossOrgCreateSessionRejected(): void
     {
         $eventId = $this->insertTestEvent(self::$cssOrgId, 'published');
@@ -592,6 +623,48 @@ final class AttendanceEndpointTest extends CIUnitTestCase
         $this->assertSame(200, $response->getStatusCode());
         $body = json_decode($response->getBody(), true);
         $this->assertSame('closed', $body['data']['session']['status']);
+    }
+
+    public function testClosingSessionAutomaticallyStoresVerifiedAttendanceCertificateInStudentPortfolio(): void
+    {
+        $eventId = $this->insertTestEvent(self::$jpiaOrgId, 'published');
+        $sessionId = $this->insertTestSession($eventId, 'open');
+        $studentId = $this->insertTestStudent('TEST-2026-AUTO-CERT');
+        $this->db()->table('attendance_records')->insert([
+            'id' => $this->genUuid('test-ar-'),
+            'session_id' => $sessionId,
+            'attendee_profile_id' => $studentId,
+            'scanned_by' => self::$modJpiaProfileId,
+            'checked_in_at' => '2026-10-01 09:00:00',
+            'verification_method' => 'qr_scan',
+        ]);
+
+        $actor = [
+            'profile' => ['id' => self::$modJpiaProfileId, 'status' => 'active'],
+            'roles' => ['personnel', 'organization_moderator'],
+        ];
+        $controller = $this->makeController($actor, [self::$jpiaOrgId]);
+        $request = $this->makeRequest('PATCH', "/api/v1/attendance-sessions/{$sessionId}/status", ['status' => 'closed']);
+        $controller->initController($request, service('response'), service('logger'));
+
+        $response = $controller->transitionSessionStatus($sessionId);
+        $this->assertSame(200, $response->getStatusCode());
+
+        $source = $this->db()->table('event_student_source_records')
+            ->where(['event_id' => $eventId, 'student_profile_id' => $studentId])
+            ->get()
+            ->getRowArray();
+        $this->assertNotNull($source);
+        $this->assertSame('CREATED', $source['bridge_status']);
+        $this->assertNotEmpty($source['source_record_id']);
+        $this->generatedPortfolioRecordIds[] = $source['source_record_id'];
+
+        $portfolioRecord = $this->db()->table('student_portfolio_records')
+            ->where('id', $source['source_record_id'])
+            ->get()
+            ->getRowArray();
+        $this->assertSame('verified', $portfolioRecord['status']);
+        $this->assertStringStartsWith('Certificate of Participation', $portfolioRecord['title']);
     }
 
     public function testDraftEventCannotOpenSession(): void

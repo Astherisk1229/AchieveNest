@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS personnel_evaluation_periods (
     CONSTRAINT fk_personnel_period_updater FOREIGN KEY (updated_by) REFERENCES profiles(id),
     CONSTRAINT ck_personnel_period_academic_year CHECK (academic_year REGEXP '^[0-9]{4}-[0-9]{4}$'),
     CONSTRAINT ck_personnel_period_submission_dates CHECK (submission_open_at < submission_close_at),
-    CONSTRAINT ck_personnel_period_evaluation_dates CHECK (evaluation_start_at >= submission_close_at AND evaluation_start_at < evaluation_end_at)
+    CONSTRAINT ck_personnel_period_evaluation_dates CHECK (evaluation_start_at >= submission_open_at AND evaluation_start_at < evaluation_end_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL);
 

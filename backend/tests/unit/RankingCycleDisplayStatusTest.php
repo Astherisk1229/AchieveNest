@@ -42,6 +42,8 @@ final class RankingCycleDisplayStatusTest extends TestCase
             'mixed draft and open is ongoing' => [['DRAFT', 'OPEN_FOR_SUBMISSION'], 'ONGOING'],
             'all terminal is completed' => [['CLOSED', 'ARCHIVED'], 'COMPLETED'],
             'all archived is archived' => [['ARCHIVED', 'ARCHIVED'], 'ARCHIVED'],
+            'cancelled tracks are cancelled, not completed' => [['CANCELLED', 'CLOSED'], 'CANCELLED'],
+            'cancelled cycle preserves archived tracks' => [['CANCELLED', 'ARCHIVED'], 'CANCELLED'],
         ];
     }
 
@@ -60,6 +62,7 @@ final class RankingCycleDisplayStatusTest extends TestCase
             [['EVALUATION_ONGOING'], 'evaluation'],
             [['CLOSED'], 'results'],
             [['ARCHIVED'], 'results'],
+            [['CANCELLED'], 'results'],
             [['CLOSED', 'OPEN_FOR_SUBMISSION'], 'submissions'],
         ];
     }
@@ -90,7 +93,10 @@ final class RankingCycleDisplayStatusTest extends TestCase
     public function testActionsFollowLifecycle(): void
     {
         self::assertContains('open', RankingCycleService::allowedActions('ONGOING', 2));
+        self::assertContains('cancel', RankingCycleService::allowedActions('ONGOING', 2));
+        self::assertContains('delete', RankingCycleService::allowedActions('UPCOMING', 2, true));
         self::assertSame(['view', 'archive'], RankingCycleService::allowedActions('COMPLETED', 2));
-        self::assertSame(['view'], RankingCycleService::allowedActions('ARCHIVED', 2));
+        self::assertSame(['view', 'restore'], RankingCycleService::allowedActions('ARCHIVED', 2));
+        self::assertSame(['view'], RankingCycleService::allowedActions('CANCELLED', 2));
     }
 }

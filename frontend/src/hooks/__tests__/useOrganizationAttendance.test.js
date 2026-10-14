@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { refreshAttendanceSessionsAfterTransition } from '../useOrganization'
 
 const {
   listEventAttendanceSessions,
@@ -98,6 +99,16 @@ describe('useOrganization attendance session state & action wiring', () => {
     const updated = await transitionAttendanceSessionStatus('sess-1', 'closed')
     expect(updated).toEqual(closedSession)
     expect(transitionAttendanceSessionStatus).toHaveBeenCalledWith('sess-1', 'closed')
+  })
+
+  it('does not report a completed transition as failed when its session-list refresh is unavailable', async () => {
+    const refreshSessions = vi.fn().mockRejectedValue(new Error('Unable to connect to the AchieveNest server.'))
+
+    await expect(
+      refreshAttendanceSessionsAfterTransition(refreshSessions, 'ev-1')
+    ).resolves.toBe(false)
+
+    expect(refreshSessions).toHaveBeenCalledWith('ev-1')
   })
 
   it('verifies loading canonical records for an active session', async () => {

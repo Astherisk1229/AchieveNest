@@ -24,7 +24,7 @@ class OfficialEvaluationDocumentService
         if(!$recommended||$recommended['evaluation_id']!==$evaluation['id']||$recommended['status']!=='confirmed')throw new RuntimeException('FINAL_RECOMMENDED_RANK_DECISION_INVALID');
         $applied=$this->db->table('personnel_rank_applied_for_decisions')->where('id',$recommended['rank_applied_for_decision_id'])->get()->getRowArray();
         if(!$applied||$applied['status']!=='confirmed')throw new RuntimeException('FINAL_RANK_APPLIED_FOR_MISSING');
-        $track=$this->db->table('personnel_evaluation_periods')->where('id',$review['ranking_track_id'])->get()->getRowArray();$classification=strtoupper((string)($track['personnel_group']??$evaluation['personnel_group_snapshot']??''));
+        $track=$this->db->table('personnel_evaluation_periods')->where('id',$review['ranking_track_id'])->get()->getRowArray();if(!$track||in_array($track['status'],['CANCELLED','ARCHIVED'],true))throw new RuntimeException('RANKING_PERIOD_READ_ONLY');$classification=strtoupper((string)($track['personnel_group']??$evaluation['personnel_group_snapshot']??''));
         if(!in_array($classification,['FACULTY','NON_TEACHING_FACULTY'],true))throw new RuntimeException('SUMMARY_CLASSIFICATION_UNRESOLVED');
         $items=$this->db->table('personnel_evaluation_items')->where('evaluation_id',$evaluation['id'])->get()->getResultArray();$criteria=is_string($evaluation['criteria_snapshot']??null)?json_decode($evaluation['criteria_snapshot'],true):($evaluation['criteria_snapshot']??[]);
         $evaluation['personnel_group_snapshot']=$classification;$evaluation['rank_applied_for']=$this->rankLabel($applied['confirmed_rank_code']);

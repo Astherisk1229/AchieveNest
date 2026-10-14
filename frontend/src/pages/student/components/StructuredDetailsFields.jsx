@@ -4,6 +4,25 @@ import { AlertCircle, HelpCircle } from 'lucide-react'
 import { localToday } from '../../../utils/employmentDate'
 
 /**
+ * Writes schema defaults into metadata once so the value displayed by a form control is
+ * the same value that validation and the API receive. An explicit empty value remains
+ * empty, allowing required-field validation to do its job after a student clears it.
+ */
+export function applyStructuredFieldDefaults(metadata = {}, fields = []) {
+  let changed = metadata.schema_version !== '1.0'
+  const next = { ...metadata, schema_version: '1.0' }
+
+  fields.forEach(field => {
+    if (field.defaultValue !== undefined && next[field.key] === undefined) {
+      next[field.key] = field.defaultValue
+      changed = true
+    }
+  })
+
+  return changed ? next : metadata
+}
+
+/**
  * StructuredDetailsFields.jsx
  * Canonical Category-Specific Dynamic Form Renderer.
  * Renders structured metadata fields dynamically according to the selected Subcategory schema.
@@ -17,11 +36,12 @@ export default function StructuredDetailsFields({
 }) {
   const schema = getSubcategorySchema(subcategoryId)
 
-  // Ensure schema_version is set
+  // Persist schema defaults rather than only displaying them as a select fallback.
   useEffect(() => {
-    if (schema && (!structuredMetadata.schema_version || structuredMetadata.schema_version !== '1.0')) {
-      if (onChange) {
-        onChange({ ...structuredMetadata, schema_version: '1.0' })
+    if (schema) {
+      const normalized = applyStructuredFieldDefaults(structuredMetadata, schema.fields || [])
+      if (normalized !== structuredMetadata && onChange) {
+        onChange(normalized)
       }
     }
   }, [schema, structuredMetadata, onChange])

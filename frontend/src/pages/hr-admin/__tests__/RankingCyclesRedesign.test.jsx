@@ -55,7 +55,7 @@ describe('New Ranking Period validation', () => {
   it('is ready only when every required value is valid', () => {
     expect(validateCycleDraft(form, { criteria: ready }).ready).toBe(true)
     expect(validateCycleDraft({ ...form, coverage: '' }, { criteria: ready }).errors.coverage).toBeTruthy()
-    expect(validateCycleDraft({ ...form, evaluation_start_at: '2026-09-15' }, { criteria: ready }).errors.evaluation).toMatch(/after the submission period ends/)
+    expect(validateCycleDraft({ ...form, evaluation_start_at: '2026-09-15' }, { criteria: ready }).ready).toBe(true)
     expect(validateCycleDraft({ ...form, submission_close_at: '' }, { criteria: ready }).errors.submission).toBeTruthy()
     expect(validateCycleDraft(form, { criteria: { FACULTY: { phase: 'error', message: 'No active criteria' }, NON_TEACHING_FACULTY: { phase: 'ready' } } }).errors.criteria).toBe('No active criteria')
     expect(validateCycleDraft(form, { criteria: ready, today: '2026-10-05' }).errors.submission).toMatch(/already ended/)
@@ -147,6 +147,18 @@ describe('Personnel Ranking workspace header', () => {
 })
 
 describe('Backend contract reuse', () => {
+  it('allows evaluation to overlap an open submission period across every validation layer', () => {
+    const service = read('backend/app/Services/PersonnelEvaluationPeriodService.php')
+    const appMigration = read('backend/app/Database/Migrations/2026-09-11-000002_CreatePersonnelEvaluationPeriods.php')
+    const canonicalMigration = read('backend/app/Phase17Canonical/Database/Migrations/2026-09-11-000002_CreatePersonnelEvaluationPeriods.php')
+    expect(service).toContain("$data['submission_open_at'] <= $data['evaluation_start_at']")
+    expect(service).not.toContain("$data['submission_close_at'] <= $data['evaluation_start_at']")
+    for (const source of [appMigration, canonicalMigration]) {
+      expect(source).toContain('evaluation_start_at >= submission_open_at')
+      expect(source).not.toContain('evaluation_start_at >= submission_close_at')
+    }
+  })
+
   it('creates tracks only through the authoritative period service', () => {
     const service = read('backend/app/Services/RankingCycleService.php')
     expect(service).toContain('$this->periods->create(')
@@ -157,7 +169,17 @@ describe('Backend contract reuse', () => {
 
   it('exposes cycle-level lifecycle routes', () => {
     const routes = read('backend/app/Config/Routes.php')
-    for (const route of ["'hr/ranking-cycles/(:segment)/tracks'", "'hr/ranking-cycles/(:segment)/schedule'", "'hr/ranking-cycles/(:segment)/archive'"]) expect(routes).toContain(route)
+    for (const route of ["'hr/ranking-cycles/(:segment)/tracks'", "'hr/ranking-cycles/(:segment)/schedule'", "'hr/ranking-cycles/(:segment)/archive'", "'hr/ranking-cycles/(:segment)/cancel'", "'hr/ranking-cycles/(:segment)/restore'"]) expect(routes).toContain(route)
+  })
+
+  it('keeps cancellation and permanent deletion as separate safeguards', () => {
+    const service = read('backend/app/Services/RankingCycleService.php')
+    const dialog = read('frontend/src/pages/hr-admin/ranking-cycles/ArchiveCycleDialog.jsx')
+    expect(service).toContain("'ranking_cycle_cancelled'")
+    expect(service).toContain('RANKING_CYCLE_DELETE_BLOCKED')
+    expect(service).toContain("'CANCELLED'")
+    expect(dialog).toContain('Type the period name to confirm')
+    expect(dialog).toContain('Why is this period being cancelled?')
   })
 
   it('limits locked workspace rows to view actions', () => {

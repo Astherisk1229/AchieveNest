@@ -36,4 +36,9 @@ describe('Dean annual review and eligibility module', () => {
   it('shows current and superseded workbooks in an accessible history drawer', () => {
     for (const contract of ['AnnualReviewHistoryDrawer', 'Previous version', 'Used for current eligibility', 'Replaced {formatDate(row.superseded_at)}', 'View workbook']) expect(source).toContain(contract)
   })
+
+  it('preserves backend error details after the API client unwraps failures', () => {
+    expect(source).toContain("annualReviewRequestError(error, 'Annual reviews could not be loaded.').message")
+    expect(source).toContain("annualReviewRequestError(error, 'History could not be loaded.').message")
+  })
 })

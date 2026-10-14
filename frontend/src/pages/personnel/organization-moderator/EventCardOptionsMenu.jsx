@@ -17,7 +17,7 @@ export default function EventCardOptionsMenu({
   onMonitorAttendance,
   onLaunchScanner,
   onEditEvent,
-  onPreviewCertificates,
+  onViewCertificates,
   onExportCSV,
   onCancelEvent
 }) {
@@ -178,17 +178,17 @@ export default function EventCardOptionsMenu({
             <span>Edit Event Details</span>
           </button>
 
-          {/* Option 5: Preview Certificates & Auto-Dispatch Status */}
+          {/* Option 5: View automatic attendance certificates */}
           <button
             type="button"
             onClick={() => {
               setIsOpen(false)
-              if (onPreviewCertificates) onPreviewCertificates(event)
+              if (onViewCertificates) onViewCertificates(event)
             }}
             className="w-full px-3.5 py-2 text-left text-slate-700 hover:bg-emerald-50 hover:text-[#16834a] font-bold flex items-center gap-2.5 transition cursor-pointer"
           >
             <Award className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>Certificate & Auto-Dispatch</span>
+            <span>View Attendance Certificates</span>
           </button>
 
           {/* Option 6: Export Attendance CSV */}

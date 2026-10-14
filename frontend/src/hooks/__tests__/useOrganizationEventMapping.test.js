@@ -15,6 +15,7 @@ describe('Organization Event canonical mapping', () => {
       end_time: '2026-10-01 17:00:00',
       venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e',
       venue: 'BRC Convention Hall',
+      osad_template_id: 'OSAD-TPL-04',
       status: 'published'
     })
 
@@ -28,6 +29,7 @@ describe('Organization Event canonical mapping', () => {
       time: '9:00 AM - 5:00 PM',
       venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e',
       venue: 'BRC Convention Hall',
+      osad_template_id: 'OSAD-TPL-04',
       status: 'Upcoming',
       participants_count: 0,
       banner_type: 'target'
@@ -68,6 +70,7 @@ describe('Organization Event canonical mapping', () => {
       startTime: '09:00',
       endTime: '11:00',
       venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e',
+      osad_template_id: 'OSAD-TPL-04',
       description: 'Official technology event.'
     })
 
@@ -77,7 +80,8 @@ describe('Organization Event canonical mapping', () => {
       event_type: 'Summit',
       start_time: '2026-10-15 09:00:00',
       end_time: '2026-10-15 11:00:00',
-      venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e'
+      venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e',
+      osad_template_id: 'OSAD-TPL-04'
     })
     // Ensure no client authority fields
     expect(result).not.toHaveProperty('organization_id')

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getCurrentUser } from '../../services/authService'
 import apiClient from '../../services/apiClient'
@@ -34,6 +34,8 @@ export function summarizePortfolio(records = []) {
 }
 
 const initials = name => String(name || '').split(' ').filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase() || '?'
+
+export const portfolioAchievementPreviewState = recordId => ({ highlightId: recordId })
 
 export default function StudentPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
@@ -194,7 +196,13 @@ export default function StudentPortfolioPage({ currentUser }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {!loading && featuredAchievements.length === 0 && <p className="sm:col-span-2 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">Verified achievements will appear here after your Program Coordinator approves them.</p>}
                 {featuredAchievements.map(item => (
-                  <div key={item.id} className="rounded-3xl bg-white border border-slate-100 shadow-xs overflow-hidden flex flex-col justify-between">
+                  <Link
+                    key={item.id}
+                    to="/student/achievements"
+                    state={portfolioAchievementPreviewState(item.id)}
+                    aria-label={`View ${item.title || 'verified achievement'}`}
+                    className="group overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xs transition duration-200 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                  >
                     <div className="h-20 bg-[#16834a] flex items-center justify-center relative">
                       <Trophy className="w-8 h-8 text-white" />
                       <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-full bg-white/90 text-[#064e2b] text-[10px] font-extrabold">Verified</span>
@@ -204,8 +212,11 @@ export default function StudentPortfolioPage({ currentUser }) {
                       <h3 className="text-xs font-bold text-slate-900 leading-snug">{item.title}</h3>
                       {item.date && <p className="text-[11px] text-slate-400 font-medium">{item.date}</p>}
                       {item.certificate && <div className="pt-1"><StudentCertificateBadge certificate={item.certificate} /></div>}
+                      <span className="flex items-center gap-1 pt-1 text-[11px] font-bold text-[#16834a] transition group-hover:gap-1.5">
+                        View achievement <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                      </span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

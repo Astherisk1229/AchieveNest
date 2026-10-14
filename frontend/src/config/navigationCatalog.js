@@ -218,7 +218,7 @@ export const NAVIGATION_CATALOG = [
   },
   {
     id: 'moderator-certificates',
-    label: 'Digital Certificates',
+    label: 'Attendance Certificates',
     icon: Sparkles,
     path: '/personnel/dashboard?tab=certificates',
     tab: 'certificates',

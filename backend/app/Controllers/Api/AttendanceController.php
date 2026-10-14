@@ -59,6 +59,8 @@ class AttendanceController extends Controller
             'MISSING_SESSION_NAME'                   => [422, 'Session name is required.'],
             'INVALID_SESSION_TYPE'                   => [422, 'Invalid session type specified.'],
             'INVALID_CHECKIN_WINDOW'                 => [422, 'Check-in end time must be after check-in start time.'],
+            'INVALID_EVENT_SCHEDULE'                 => [422, 'The event must have a valid start and end schedule before check-in can be configured.'],
+            'CHECKIN_WINDOW_OUTSIDE_EVENT'           => [422, 'Check-in must start and end within the event schedule.'],
             'CLOSED_SESSION_IS_TERMINAL'             => [422, 'Closed attendance sessions cannot be modified or re-opened.'],
             'CANNOT_OPEN_SESSION_FOR_INACTIVE_EVENT' => [422, 'Cannot open attendance session for an inactive event.'],
             'INVALID_STATUS_TRANSITION'              => [422, 'Invalid session status transition requested.'],

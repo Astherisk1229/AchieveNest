@@ -34,6 +34,23 @@ describe('Phase 16 — ApiClient Local-Defense Interceptors', () => {
     expect(resultConfig.headers.Authorization).toBe('Bearer jwt.test.session.token')
   })
 
+  it('API-FE-001: Keeps an active sessionStorage login paired when localStorage is stale', async () => {
+    localStorage.setItem('achievenest_access_token', 'jwt.stale.local.token')
+    sessionStorage.setItem('achievenest_access_token', 'jwt.active.session.token')
+    sessionStorage.setItem('achievenest_current_user', JSON.stringify({
+      id: 'dean-1',
+      token: 'jwt.active.session.token',
+      logged_in_at: '2026-10-05T04:00:00.000Z',
+      rememberMe: false
+    }))
+
+    const config = { headers: {} }
+    const interceptor = apiClient.interceptors.request.handlers[0].fulfilled
+    const resultConfig = await interceptor(config)
+
+    expect(resultConfig.headers.Authorization).toBe('Bearer jwt.active.session.token')
+  })
+
   it('API-FE-002: Does not attach Authorization header when no local token exists in local-defense mode', async () => {
     const config = { headers: {} }
     const interceptor = apiClient.interceptors.request.handlers[0].fulfilled

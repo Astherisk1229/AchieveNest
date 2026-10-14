@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle2, Eye, FileText, LoaderCircle, RefreshCw, RotateCcw, Save, Send, ShieldCheck, Trash2, Upload, X } from 'lucide-react'
 import SharedAchievementFields from '../components/SharedAchievementFields'
-import StructuredDetailsFields from '../components/StructuredDetailsFields'
+import StructuredDetailsFields, { applyStructuredFieldDefaults } from '../components/StructuredDetailsFields'
 import { getSubcategorySchema } from '../../../config/portfolioFormSchemaRegistry'
 import portfolioService from '../../../services/portfolioService'
 import StudentAchievementDraftSession, {
@@ -144,7 +144,8 @@ export default function PortfolioAchievementSubmissionModal({ isOpen, onClose, o
   }
 
   const chooseSubcategory = value => {
-    setSubcategoryId(value); setStructuredMetadata({ schema_version: '1.0' }); setDetailsFromDocument({})
+    const fields = getSubcategorySchema(value)?.fields || []
+    setSubcategoryId(value); setStructuredMetadata(applyStructuredFieldDefaults({ schema_version: '1.0' }, fields)); setDetailsFromDocument({})
     setErrors(previous => { const next = { ...previous }; delete next.subcategory_id; return next })
   }
 

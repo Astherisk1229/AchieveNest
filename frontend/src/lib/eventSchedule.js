@@ -122,6 +122,30 @@ export function getSmartDefaultEndTime(startDate, startTime) {
   }
 }
 
+/** Returns the next half-hour slot and its one-hour default duration in local wall-clock time. */
+export function getDefaultEventSchedule(now = new Date()) {
+  const start = new Date(now)
+  start.setSeconds(0, 0)
+  start.setMinutes(Math.floor(start.getMinutes() / 30) * 30 + 30)
+
+  const startDate = formatDateToYMD(start)
+  const startTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
+  const end = getSmartDefaultEndTime(startDate, startTime)
+
+  return { startDate, startTime, ...end }
+}
+
+/** True when a local date/time is not a future event start. */
+export function isDateTimeInPastOrNow(dateStr, timeStr, now = new Date()) {
+  const date = parseDateString(dateStr)
+  const time = parseTo24Hour(timeStr, '')
+  if (!date || !time) return false
+
+  const [hours, minutes] = time.split(':').map(Number)
+  date.setHours(hours, minutes, 0, 0)
+  return date.getTime() <= now.getTime()
+}
+
 export function calculateDuration(startDate, startTime, endDate, endTime) {
   if (!startDate || !startTime || !endDate || !endTime) {
     return {

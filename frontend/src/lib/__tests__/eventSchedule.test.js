@@ -6,8 +6,10 @@ import {
   formatDateHeading,
   formatDisplaySchedule,
   formatScheduleDuration,
+  getDefaultEventSchedule,
   getNextDayDate,
   getSmartDefaultEndTime,
+  isDateTimeInPastOrNow,
   parseTo24Hour,
   validateSchedule
 } from '../eventSchedule'
@@ -77,7 +79,19 @@ describe('eventSchedule utilities', () => {
     })
   })
 
-  it('9. simulates untouched vs touched state for automatic End shifting', () => {
+  it('9. defaults a new event to the next available local time slot', () => {
+    const now = new Date(2026, 9, 5, 10, 7, 15)
+    expect(getDefaultEventSchedule(now)).toEqual({
+      startDate: '2026-10-05',
+      startTime: '10:30',
+      endDate: '2026-10-05',
+      endTime: '11:30'
+    })
+    expect(isDateTimeInPastOrNow('2026-10-05', '10:00', now)).toBe(true)
+    expect(isDateTimeInPastOrNow('2026-10-05', '10:30', now)).toBe(false)
+  })
+
+  it('10. simulates untouched vs touched state for automatic End shifting', () => {
     let endScheduleTouched = false
     let schedule = {
       startDate: '2026-06-24',
@@ -99,7 +113,7 @@ describe('eventSchedule utilities', () => {
     onStartChange('10:00')
     expect(schedule.endTime).toBe('11:00')
 
-    // 10. When touched, changing Start preserves manually chosen End
+    // When touched, changing Start preserves manually chosen End
     endScheduleTouched = true
     schedule.endTime = '14:00'
 

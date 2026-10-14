@@ -64,6 +64,13 @@ final class AttendanceServiceTest extends CIUnitTestCase
                 ?callable $clock,
                 bool $simulateUniqueRace
             ) {
+                foreach ($events as &$event) {
+                    $event += [
+                        'start_time' => '2026-10-01 00:00:00',
+                        'end_time' => '2026-10-01 23:59:59',
+                    ];
+                }
+                unset($event);
                 $this->eventsData = $events;
                 $this->sessionsData = $sessions;
                 $this->recordsData = $records;
@@ -198,6 +205,12 @@ final class AttendanceServiceTest extends CIUnitTestCase
                     throw new RuntimeException('FORBIDDEN');
                 }
                 return $event;
+            }
+
+            protected function recordClosedSessionAttendance(string $sessionId, string $actorId): void
+            {
+                // The production bridge is covered by AttendanceEndpointTest;
+                // this unit suite keeps persistence isolated in memory.
             }
 
             public function checkIn(string $sessionId, array $input, array $actor): array

@@ -54,6 +54,12 @@ export function toTimelineItem(record) {
   }
 }
 
+export const toAchievementTimelineItems = (records = []) => records
+  .filter(record => String(record.status || '').toLowerCase() === 'verified')
+  .map(toTimelineItem)
+
+export const achievementPreviewState = (recordId) => ({ highlightId: recordId })
+
 export default function StudentDashboardPage({ currentUser }) {
   const navigate = useNavigate()
   const outletCtx = useOutletContext()
@@ -70,8 +76,7 @@ export default function StudentDashboardPage({ currentUser }) {
     avatar_url: activeUser?.avatar_url || null
   }
 
-  // All Timeline Items Data
-  // Timeline items come from the student's own /portfolio records (no sample data).
+  // Timeline items are accomplishments: only verified portfolio records belong here.
   const [records, setRecords] = useState([])
   const [loadError, setLoadError] = useState('')
   useEffect(() => {
@@ -82,15 +87,13 @@ export default function StudentDashboardPage({ currentUser }) {
     return () => { active = false }
   }, [])
 
-  const allTimelineItems = useMemo(() => records
-    .filter(record => String(record.status || '').toLowerCase() !== 'draft')
-    .map(record => toTimelineItem(record)), [records])
+  const allTimelineItems = useMemo(() => toAchievementTimelineItems(records), [records])
 
   // 5 Interactive Stat Cards Header Configuration
   const stats = [
     {
       key: 'all',
-      label: 'Total Records',
+      label: 'Total Achievements',
       value: allTimelineItems.length,
       icon: Trophy
     },
@@ -99,18 +102,6 @@ export default function StudentDashboardPage({ currentUser }) {
       label: 'Verified',
       value: allTimelineItems.filter(i => i.statusType === 'verified').length,
       icon: CheckCircle2
-    },
-    {
-      key: 'pending',
-      label: 'Pending Review',
-      value: allTimelineItems.filter(i => i.statusType === 'pending').length,
-      icon: Clock
-    },
-    {
-      key: 'returned',
-      label: 'Returned',
-      value: allTimelineItems.filter(i => i.statusType === 'returned').length,
-      icon: RotateCcw
     },
     {
       key: 'proofs',
@@ -125,8 +116,6 @@ export default function StudentDashboardPage({ currentUser }) {
     // 1. Stat Filter
     let matchesStat = true
     if (activeStatFilter === 'verified') matchesStat = item.statusType === 'verified'
-    if (activeStatFilter === 'pending') matchesStat = item.statusType === 'pending'
-    if (activeStatFilter === 'returned') matchesStat = item.statusType === 'returned'
     if (activeStatFilter === 'proofs') matchesStat = item.hasProof === true
 
     // 2. Category Filter
@@ -279,14 +268,14 @@ export default function StudentDashboardPage({ currentUser }) {
 
         {loadError && <div role="alert" className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold rounded-2xl">{loadError}</div>}
 
-        {/* ================= ACCOMPLISHMENTS TIMELINE SECTION ================= */}
+        {/* ================= ACHIEVEMENTS TIMELINE SECTION ================= */}
         <div id="achievements-timeline" className="scroll-mt-6 space-y-3">
 
           {/* Header & Record Counter */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="text-xs font-extrabold text-[#123D2A] dark:text-white uppercase tracking-wider">
-                Accomplishments Timeline
+                Achievements Timeline
               </h2>
               {activeStatFilter !== 'all' && (
                 <Badge variant="success">
@@ -324,7 +313,7 @@ export default function StudentDashboardPage({ currentUser }) {
           {/* Timeline Card Items */}
           {filteredTimeline.length === 0 ? (
             <Card className="p-8 text-center text-[#3F6B52] text-xs space-y-2">
-              <p className="font-medium">No accomplishment entries found under the selected category filter.</p>
+              <p className="font-medium">No verified achievements found under the selected category filter.</p>
               <button
                 onClick={() => { setActiveStatFilter('all'); setSelectedCategoryFilter('All'); }}
                 className="text-xs font-extrabold text-[#16834a] dark:text-emerald-400 hover:underline cursor-pointer"
@@ -337,51 +326,53 @@ export default function StudentDashboardPage({ currentUser }) {
               {filteredTimeline.map((item) => {
                 const IconComp = item.icon
                 return (
-                  <Card
+                  <Link
                     key={item.id}
-                    className="p-4 border-[#dde3dd] hover:border-slate-300 dark:hover:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs hover:shadow-md"
+                    to="/student/achievements"
+                    state={achievementPreviewState(item.id)}
+                    aria-label={`Open ${item.title} certificate preview`}
+                    className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16834a] focus-visible:ring-offset-2"
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-10 h-10 rounded-xl bg-[#eef4eb] dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-[#dde3dd] dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
-                        <IconComp className="w-5 h-5" />
-                      </div>
+                    <Card className="p-4 border-[#dde3dd] hover:border-[#16834a] dark:hover:border-emerald-500 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs hover:shadow-md transition cursor-pointer">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-10 h-10 rounded-xl bg-[#eef4eb] dark:bg-emerald-950/50 text-[#16834a] dark:text-emerald-400 border border-[#dde3dd] dark:border-emerald-800/50 flex items-center justify-center shrink-0 font-bold">
+                          <IconComp className="w-5 h-5" />
+                        </div>
 
-                      <div className="space-y-0.5">
-                        <h3 className="text-xs sm:text-sm font-extrabold text-[#123D2A] dark:text-white leading-tight">{item.title}</h3>
-                        <p className="text-xs text-[#3F6B52] dark:text-slate-400 font-medium line-clamp-1">{item.description}</p>
+                        <div className="space-y-0.5">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-[#123D2A] dark:text-white leading-tight">{item.title}</h3>
+                          <p className="text-xs text-[#3F6B52] dark:text-slate-400 font-medium line-clamp-1">{item.description}</p>
 
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-[11px] text-[#3F6B52] font-semibold">📅 {item.date}</span>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <Badge variant={
-                            item.statusType === 'verified' ? 'success' : item.statusType === 'pending' ? 'warning' : 'destructive'
-                          }>
-                            {item.status}
-                          </Badge>
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
-                          <span className="text-[11px] text-[#3F6B52] dark:text-slate-400 font-medium">{item.issuer}</span>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-[11px] text-[#3F6B52] font-semibold">📅 {item.date}</span>
+                            <span className="text-slate-300 dark:text-slate-700">•</span>
+                            <Badge variant={
+                              item.statusType === 'verified' ? 'success' : item.statusType === 'pending' ? 'warning' : 'destructive'
+                            }>
+                              {item.status}
+                            </Badge>
+                            <span className="text-slate-300 dark:text-slate-700">•</span>
+                            <span className="text-[11px] text-[#3F6B52] dark:text-slate-400 font-medium">{item.issuer}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right Side: Proof Pill & Category Badge */}
-                    <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
-                      {item.hasProof && (
-                        <Link
-                          to="/student/achievements"
-                          className="px-3 py-1.5 rounded-xl bg-[#f7f8f6] dark:bg-slate-800 hover:bg-[#eef4eb] dark:hover:bg-emerald-950/60 text-[#123D2A] dark:text-slate-200 hover:text-[#16834a] dark:hover:text-emerald-300 border border-[#dde3dd] dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                        >
+                      {/* The entire card opens this record's preview in Achievements. */}
+                      <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                        {item.hasProof && (
+                          <span className="px-3 py-1.5 rounded-xl bg-[#f7f8f6] dark:bg-slate-800 text-[#123D2A] dark:text-slate-200 border border-[#dde3dd] dark:border-slate-700 text-xs font-extrabold flex items-center gap-1.5 shadow-2xs">
                           <FileCheck2 className="w-3.5 h-3.5 text-[#16834a] dark:text-emerald-400" />
                           <span>Proof</span>
-                        </Link>
-                      )}
+                          </span>
+                        )}
 
-                      <Badge variant="outline" className="normal-case font-bold">
-                        {item.category}
-                      </Badge>
-                    </div>
+                        <Badge variant="outline" className="normal-case font-bold">
+                          {item.category}
+                        </Badge>
+                      </div>
+                    </Card>
 
-                  </Card>
+                  </Link>
                 )
               })}
             </div>

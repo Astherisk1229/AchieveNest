@@ -1,0 +1,8 @@
+{
+  "student":   { "email": "student-test@ndmu.edu.ph" },
+  "osad":      { "email": "" },
+  "moderator": { "email": "" },
+  "personnel": { "email": "" },
+  "dean":      { "email": "" },
+  "hr":        { "email": "" }
+}

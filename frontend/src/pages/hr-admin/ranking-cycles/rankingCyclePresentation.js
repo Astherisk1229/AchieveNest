@@ -22,6 +22,7 @@ export const LIFECYCLE_OPTIONS = [
   { value: 'ONGOING', label: 'Ongoing' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'ARCHIVED', label: 'Archived' },
+  { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'INCOMPLETE', label: 'Incomplete Configuration' },
 ]
 
@@ -111,8 +112,8 @@ export function validateCycleDraft(form, { criteria = {}, conflicts = new Set(),
   else if (form.submission_close_at < form.submission_open_at) errors.submission = 'The submission period must end after it starts.'
   else if (today && form.submission_close_at < today) errors.submission = 'The submission period has already ended. Choose current or future dates.'
   if (!form.evaluation_start_at || !form.evaluation_end_at) errors.evaluation = 'Enter the evaluation start and end dates.'
-  else if (form.evaluation_end_at <= form.evaluation_start_at) errors.evaluation = 'The evaluation period must end after it starts.'
-  else if (form.submission_close_at && form.evaluation_start_at <= form.submission_close_at) errors.evaluation = 'The evaluation period must start after the submission period ends.'
+  else if (form.evaluation_end_at < form.evaluation_start_at) errors.evaluation = 'The evaluation period cannot end before it starts.'
+  else if (form.submission_open_at && form.evaluation_start_at < form.submission_open_at) errors.evaluation = 'The evaluation period cannot start before submissions open.'
   for (const group of groups) {
     const entry = criteria[group]
     if (!entry || entry.phase === 'loading') errors.criteria = 'Loading the applicable criteria…'

@@ -36,6 +36,7 @@ class RankingCycleService
         'EVALUATION_ONGOING' => 2,
         'CLOSED' => 3,
         'ARCHIVED' => 3,
+        'CANCELLED' => 3,
     ];
     private const LIFECYCLE_LABELS = [
         'INCOMPLETE' => 'Incomplete Configuration',
@@ -43,6 +44,7 @@ class RankingCycleService
         'ONGOING' => 'Ongoing',
         'COMPLETED' => 'Completed',
         'ARCHIVED' => 'Archived',
+        'CANCELLED' => 'Cancelled',
     ];
 
     public function __construct(private ?BaseConnection $db = null, private ?PersonnelEvaluationPeriodService $periods = null)
@@ -114,7 +116,7 @@ class RankingCycleService
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
         $existing = $this->tracks($id);
         $lifecycle = self::lifecycle($existing);
-        if (in_array($lifecycle['key'], ['COMPLETED', 'ARCHIVED'], true)) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed and archived cycles cannot change personnel coverage.');
+        if (in_array($lifecycle['key'], ['COMPLETED', 'ARCHIVED', 'CANCELLED'], true)) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed, archived, and cancelled cycles cannot change personnel coverage.');
 
         $present = array_column($existing, 'personnel_group');
         $groups = array_values(array_diff(self::coverageGroups($input), $present));
@@ -150,7 +152,7 @@ class RankingCycleService
     {
         $cycle = $this->find($id);
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
-        if ($cycle['is_read_only']) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed and archived cycles are read-only.');
+        if ($cycle['is_read_only']) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed, archived, and cancelled cycles are read-only.');
         $schedule = $this->schedule($input);
         $reason = trim((string) ($input['reason'] ?? ''));
         $this->db->transBegin();
@@ -177,7 +179,7 @@ class RankingCycleService
     {
         $cycle = $this->find($id);
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
-        if ($cycle['is_read_only']) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed and archived cycles are read-only.');
+        if ($cycle['is_read_only']) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed, archived, and cancelled cycles are read-only.');
         if (! $cycle['coverage_editable']) throw new RuntimeException('COVERAGE_LOCKED: Achievement coverage cannot change after portfolios have been submitted for this cycle.');
         $coverage = $this->coverageInput($input, true);
         $this->db->table('ranking_cycles')->where('id', $id)->update($coverage + ['updated_by' => $actorId, 'updated_at' => date('Y-m-d H:i:s')]);
@@ -190,6 +192,7 @@ class RankingCycleService
     {
         $existing = $this->db->table('ranking_cycles')->where('id', $id)->get()->getRowArray();
         if (! $existing) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
+        if (in_array(self::lifecycle($this->tracks($id))['key'], ['COMPLETED', 'ARCHIVED', 'CANCELLED'], true)) throw new RuntimeException('RANKING_CYCLE_READ_ONLY: Completed, archived, and cancelled cycles are read-only.');
         $year = $this->academicYear($input['academic_year'] ?? $existing['academic_year']);
         if ($year !== $existing['academic_year'] && $this->db->table('personnel_evaluation_periods')->where('ranking_cycle_id', $id)->countAllResults() > 0) throw new RuntimeException('RANKING_CYCLE_YEAR_LOCKED: Academic year cannot change after personnel coverage is configured.');
         $groups = array_column($this->tracks($id), 'personnel_group');
@@ -227,16 +230,85 @@ class RankingCycleService
         return $this->find($id);
     }
 
-    /** Only cycles without any track (and therefore without any operational data) may be deleted. */
-    public function delete(string $id, ?string $actorId = null): void
+    /**
+     * Stops active work while preserving all submissions, evaluations, and results.
+     * A cancellation reason is deliberately recorded in every affected track event
+     * as well as in the aggregate audit entry.
+     */
+    public function cancel(string $id, array $input, string $actorId, ?string $requestId = null): array
+    {
+        $reason = trim((string) ($input['reason'] ?? ''));
+        if ($reason === '') throw new InvalidArgumentException('CANCELLATION_REASON_REQUIRED: Enter a reason for cancelling this ranking period.');
+        if (mb_strlen($reason) > 500) throw new InvalidArgumentException('CANCELLATION_REASON_TOO_LONG: The cancellation reason must be 500 characters or fewer.');
+        $cycle = $this->find($id);
+        if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
+        if ($cycle['lifecycle_status']['key'] === 'CANCELLED') return $cycle;
+        if (in_array($cycle['lifecycle_status']['key'], ['COMPLETED', 'ARCHIVED'], true)) throw new RuntimeException('RANKING_CYCLE_CANNOT_CANCEL: Completed and archived ranking periods cannot be cancelled.');
+        if ($cycle['tracks'] === []) throw new RuntimeException('RANKING_CYCLE_CANNOT_CANCEL: Configure personnel coverage before cancelling this ranking period.');
+
+        $requestId = $this->requestKey($requestId);
+        $cancellable = ['DRAFT', 'OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'];
+        $preservedHistorical = ['CLOSED', 'ARCHIVED'];
+        foreach ($cycle['tracks'] as $track) {
+            if (! in_array($track['status'], array_merge($cancellable, $preservedHistorical), true)) throw new RuntimeException('RANKING_CYCLE_CANNOT_CANCEL: This ranking period has a track in an unsupported lifecycle state.');
+        }
+        $this->db->transBegin();
+        try {
+            foreach ($cycle['tracks'] as $track) {
+                if (in_array($track['status'], $cancellable, true)) $this->periods->transition($track['id'], 'cancel', $actorId, "{$requestId}:{$track['personnel_group']}", (int) $track['version'], $reason);
+            }
+            $this->audit($actorId, 'ranking_cycle_cancelled', $id, ['reason' => $reason, 'track_ids' => array_column($cycle['tracks'], 'id')]);
+            $this->db->transCommit();
+        } catch (Throwable $error) {
+            $this->db->transRollback();
+            throw $error;
+        }
+        return $this->find($id);
+    }
+
+    /** Restoring an archive makes records viewable as completed, never operational again. */
+    public function restore(string $id, array $input, string $actorId, ?string $requestId = null): array
+    {
+        if (($input['confirm'] ?? false) !== true) throw new InvalidArgumentException('RESTORE_CONFIRMATION_REQUIRED: Confirm that restore returns this period to completed historical records.');
+        $cycle = $this->find($id);
+        if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
+        if ($cycle['lifecycle_status']['key'] !== 'ARCHIVED') throw new RuntimeException('RANKING_CYCLE_NOT_ARCHIVED: Only archived ranking periods can be restored.');
+
+        $requestId = $this->requestKey($requestId);
+        $this->db->transBegin();
+        try {
+            foreach ($cycle['tracks'] as $track) $this->periods->transition($track['id'], 'restore', $actorId, "{$requestId}:{$track['personnel_group']}", (int) $track['version']);
+            $this->audit($actorId, 'ranking_cycle_restored', $id, ['track_ids' => array_column($cycle['tracks'], 'id')]);
+            $this->db->transCommit();
+        } catch (Throwable $error) {
+            $this->db->transRollback();
+            throw $error;
+        }
+        return $this->find($id);
+    }
+
+    /** Permanently removes only an unused draft and never cascades operational history. */
+    public function delete(string $id, array $input = [], ?string $actorId = null): void
     {
         $cycle = $this->db->table('ranking_cycles')->where('id', $id)->get()->getRowArray();
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
-        if ($this->db->table('personnel_evaluation_periods')->where('ranking_cycle_id', $id)->countAllResults() > 0) throw new RuntimeException('RANKING_CYCLE_NOT_EMPTY: Cycles with personnel coverage keep their records and cannot be deleted.');
+        $tracks = $this->tracks($id);
+        $expectedName = self::generatedName($cycle['academic_year'], array_column($tracks, 'personnel_group'));
+        if (trim((string) ($input['confirm_name'] ?? '')) !== $expectedName) throw new InvalidArgumentException('DELETE_CONFIRMATION_REQUIRED: Type the exact ranking period name to permanently delete this unused draft.');
+        $eligibility = $this->deletionEligibility($tracks);
+        if (! $eligibility['allowed']) throw new RuntimeException('RANKING_CYCLE_DELETE_BLOCKED: ' . $eligibility['reason']);
         $this->db->transBegin();
         try {
+            $trackIds = array_column($tracks, 'id');
+            // Draft lifecycle events and idempotency keys describe configuration only.
+            // They are removed with the unused draft; operational dependencies above are never deleted.
+            if ($trackIds !== []) {
+                $this->db->table('personnel_evaluation_period_events')->whereIn('evaluation_period_id', $trackIds)->delete();
+                if ($this->db->tableExists('personnel_evaluation_idempotency')) $this->db->table('personnel_evaluation_idempotency')->whereIn('resource_id', $trackIds)->delete();
+                $this->db->table('personnel_evaluation_periods')->whereIn('id', $trackIds)->delete();
+            }
             $this->db->table('ranking_cycles')->where('id', $id)->delete();
-            if ($actorId) $this->audit($actorId, 'ranking_cycle_deleted', $id, ['academic_year' => $cycle['academic_year'], 'cycle_code' => $cycle['cycle_code']]);
+            if ($actorId) $this->audit($actorId, 'ranking_cycle_deleted', $id, ['academic_year' => $cycle['academic_year'], 'cycle_code' => $cycle['cycle_code'], 'track_ids' => $trackIds]);
             $this->db->transCommit();
         } catch (Throwable $error) {
             $this->db->transRollback();
@@ -252,8 +324,9 @@ class RankingCycleService
         $groups = array_column($tracks, 'personnel_group');
         $lifecycle = self::lifecycle($tracks);
         $stage = self::currentStage($tracks);
+        $deletion = $this->deletionEligibility($tracks);
         $isLegacy = ! empty($cycle['legacy_source_period_id']) || str_starts_with((string) $cycle['cycle_code'], 'LEGACY-');
-        $readOnly = in_array($lifecycle['key'], ['COMPLETED', 'ARCHIVED'], true);
+        $readOnly = in_array($lifecycle['key'], ['COMPLETED', 'ARCHIVED', 'CANCELLED'], true);
         $creator = $cycle['created_by'] ? $this->db->table('profiles')->select('account_type')->where('id', $cycle['created_by'])->get()->getRowArray() : null;
 
         return $cycle + [
@@ -268,7 +341,9 @@ class RankingCycleService
             'configuration_issues' => self::configurationIssues($tracks),
             'is_read_only' => $readOnly,
             'is_archived' => $lifecycle['key'] === 'ARCHIVED',
-            'allowed_actions' => self::allowedActions($lifecycle['key'], count($tracks)),
+            'is_cancelled' => $lifecycle['key'] === 'CANCELLED',
+            'deletion_eligibility' => $deletion,
+            'allowed_actions' => self::allowedActions($lifecycle['key'], count($tracks), $deletion['allowed']),
             'tracks' => $tracks,
             'track_count' => count($tracks),
             'achievement_coverage' => ($cycle['coverage_start'] ?? null) && ($cycle['coverage_end'] ?? null) ? ['start' => $cycle['coverage_start'], 'end' => $cycle['coverage_end']] : null,
@@ -292,7 +367,7 @@ class RankingCycleService
             $track['track_key'] = $track['personnel_group'] === 'NON_TEACHING_FACULTY' ? 'non-teaching-faculty' : 'faculty';
             $track['personnel_group_label'] = self::groupLabel($track['personnel_group']);
             $track['current_stage'] = self::STAGES[$stageIndex] + ['index' => $stageIndex];
-            $track['is_locked'] = in_array($track['status'], ['CLOSED', 'ARCHIVED'], true);
+            $track['is_locked'] = in_array($track['status'], ['CLOSED', 'ARCHIVED', 'CANCELLED'], true);
             $track['criteria'] = $track['evaluation_scale_version_id'] ? [
                 'version_id' => $track['evaluation_scale_version_id'],
                 'title' => $track['scale_title'],
@@ -334,8 +409,10 @@ class RankingCycleService
     public static function lifecycle(array $tracks): array
     {
         $statuses = array_map(static fn(array $t): string => (string) ($t['status'] ?? ''), $tracks);
-        if ($tracks === [] || self::configurationIssues($tracks) !== []) $key = 'INCOMPLETE';
+        if ($tracks === []) $key = 'INCOMPLETE';
         elseif (array_diff($statuses, ['ARCHIVED']) === []) $key = 'ARCHIVED';
+        elseif (array_diff($statuses, ['CLOSED', 'ARCHIVED', 'CANCELLED']) === [] && in_array('CANCELLED', $statuses, true)) $key = 'CANCELLED';
+        elseif (self::configurationIssues($tracks) !== []) $key = 'INCOMPLETE';
         elseif (array_diff($statuses, ['CLOSED', 'ARCHIVED']) === []) $key = 'COMPLETED';
         elseif (array_diff($statuses, ['DRAFT']) === []) $key = 'UPCOMING';
         else $key = 'ONGOING';
@@ -358,13 +435,15 @@ class RankingCycleService
         return $issues;
     }
 
-    public static function allowedActions(string $lifecycle, int $trackCount): array
+    public static function allowedActions(string $lifecycle, int $trackCount, bool $canDelete = false): array
     {
         return match ($lifecycle) {
-            'INCOMPLETE' => $trackCount === 0 ? ['complete_setup', 'delete'] : ['complete_setup', 'open'],
-            'UPCOMING', 'ONGOING' => ['open', 'settings'],
+            'INCOMPLETE' => array_values(array_filter(['complete_setup', ($canDelete || $trackCount === 0) ? 'delete' : null, $trackCount > 0 ? 'cancel' : null])),
+            'UPCOMING' => array_values(array_filter(['open', 'settings', $canDelete ? 'delete' : null, 'cancel'])),
+            'ONGOING' => ['open', 'settings', 'cancel'],
             'COMPLETED' => ['view', 'archive'],
-            'ARCHIVED' => ['view'],
+            'ARCHIVED' => ['view', 'restore'],
+            'CANCELLED' => ['view'],
             default => ['view'],
         };
     }
@@ -420,7 +499,7 @@ class RankingCycleService
             $schedule[$field] = date('Y-m-d H:i:s', $timestamp);
         }
         if ($schedule['submission_open_at'] >= $schedule['submission_close_at']) throw new InvalidArgumentException('INVALID_SUBMISSION_PERIOD: The submission period must end after it starts.');
-        if ($schedule['evaluation_start_at'] < $schedule['submission_close_at']) throw new InvalidArgumentException('SCHEDULE_OVERLAP: The evaluation period must start after the submission period ends.');
+        if ($schedule['evaluation_start_at'] < $schedule['submission_open_at']) throw new InvalidArgumentException('SCHEDULE_ORDER: The evaluation period cannot start before submissions open.');
         if ($schedule['evaluation_start_at'] >= $schedule['evaluation_end_at']) throw new InvalidArgumentException('INVALID_EVALUATION_PERIOD: The evaluation period must end after it starts.');
         return $schedule;
     }
@@ -445,6 +524,44 @@ class RankingCycleService
         $ids = array_values(array_filter(array_column($tracks, 'id')));
         if ($ids === [] || ! $this->db->tableExists('personnel_evaluations')) return false;
         return $this->db->table('personnel_evaluations')->whereIn('evaluation_period_id', $ids)->countAllResults() > 0;
+    }
+
+    /**
+     * A delete is permitted only for draft configuration that has no dependent
+     * workflow, snapshot, review, recommendation, or official-record data.
+     * Tables are checked defensively because older installations may not yet
+     * have every ranking extension.
+     */
+    private function deletionEligibility(array $tracks): array
+    {
+        if ($tracks !== [] && array_diff(array_column($tracks, 'status'), ['DRAFT']) !== []) {
+            return ['allowed' => false, 'reason' => 'Only unused draft ranking periods can be permanently deleted.', 'dependencies' => []];
+        }
+        $trackIds = array_values(array_filter(array_column($tracks, 'id')));
+        $cycleIds = array_values(array_unique(array_filter(array_column($tracks, 'ranking_cycle_id'))));
+        $dependencies = [];
+        foreach ([
+            ['personnel_evaluations', 'evaluation_period_id', $trackIds, 'portfolio submissions or evaluations'],
+            ['personnel_evaluation_roots', 'evaluation_period_id', $trackIds, 'portfolio snapshots'],
+            ['personnel_annual_reviews', 'evaluation_period_id', $trackIds, 'annual-review records'],
+            ['personnel_qualification_reviews', 'evaluation_period_id', $trackIds, 'qualification reviews'],
+            ['personnel_rank_applied_for_decisions', 'ranking_track_id', $trackIds, 'rank-applied decisions'],
+            ['personnel_recommended_rank_decisions', 'ranking_track_id', $trackIds, 'recommended-rank decisions'],
+            ['personnel_hr_final_rank_reviews', 'ranking_track_id', $trackIds, 'HR final-rank reviews'],
+            ['personnel_official_evaluation_documents', 'ranking_track_id', $trackIds, 'official evaluation documents'],
+            ['personnel_offline_approved_ranks', 'ranking_track_id', $trackIds, 'approved rank records'],
+            ['personnel_rank_applied_for_decisions', 'ranking_cycle_id', $cycleIds, 'rank-applied decisions'],
+            ['personnel_recommended_rank_decisions', 'ranking_cycle_id', $cycleIds, 'recommended-rank decisions'],
+            ['personnel_hr_final_rank_reviews', 'ranking_cycle_id', $cycleIds, 'HR final-rank reviews'],
+            ['personnel_official_evaluation_documents', 'ranking_cycle_id', $cycleIds, 'official evaluation documents'],
+            ['personnel_offline_approved_ranks', 'ranking_cycle_id', $cycleIds, 'approved rank records'],
+        ] as [$table, $column, $ids, $label]) {
+            if ($ids === [] || ! $this->db->tableExists($table) || ! $this->db->fieldExists($column, $table)) continue;
+            $count = $this->db->table($table)->whereIn($column, $ids)->countAllResults();
+            if ($count > 0) $dependencies[$label] = ($dependencies[$label] ?? 0) + $count;
+        }
+        if ($dependencies !== []) return ['allowed' => false, 'reason' => 'Deletion is blocked because this draft already has ' . implode(', ', array_map(static fn(string $label, int $count): string => "{$count} {$label}", array_keys($dependencies), $dependencies)) . '.', 'dependencies' => $dependencies];
+        return ['allowed' => true, 'reason' => null, 'dependencies' => []];
     }
 
     /** A new schedule whose submission window has already ended could never be opened. */

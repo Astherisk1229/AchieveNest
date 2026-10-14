@@ -11,6 +11,7 @@ vi.mock('../../../../services/portfolioService', () => ({
 
 import portfolioService from '../../../../services/portfolioService'
 import PortfolioAchievementSubmissionModal from '../PortfolioAchievementSubmissionModal'
+import { applyStructuredFieldDefaults } from '../../components/StructuredDetailsFields'
 
 const taxonomy = [{ id: '8461c4f3-3f7d-4e1a-a5ff-c4c5941ef646', name: 'Leadership Position', subcategories: [{ id: '40000001-0001-0000-0000-000000000001', name: 'SSG / University Student Government' }] }]
 
@@ -40,5 +41,14 @@ describe('PortfolioAchievementSubmissionModal', () => {
   it('shows no point or score wording', () => {
     const html = renderToStaticMarkup(<PortfolioAchievementSubmissionModal isOpen onClose={vi.fn()} taxonomy={taxonomy} />)
     expect(html).not.toMatch(/\bpoints?\b|\bscore\b/i)
+  })
+
+  it('persists displayed schema defaults so required semester validation receives a value', () => {
+    const metadata = applyStructuredFieldDefaults(
+      { schema_version: '1.0' },
+      [{ key: 'semester', defaultValue: '1st_semester' }, { key: 'academic_year', defaultValue: '2025-2026' }]
+    )
+
+    expect(metadata).toMatchObject({ semester: '1st_semester', academic_year: '2025-2026' })
   })
 })

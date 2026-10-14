@@ -5,6 +5,7 @@
 
 import apiClient from './apiClient'
 import AuthController from '../controllers/AuthController'
+import { resolveStoredAuthSession } from '../utils/authStorage'
 import {
   normalizeAccountType,
   normalizeRoleContext,
@@ -51,6 +52,25 @@ export async function authenticateUser(email, password, rememberMe = true) {
   const accessToken = res?.data?.access_token || res?.access_token
   if (!accessToken) {
     throw new Error('Login succeeded but no access token was returned.')
+  }
+
+  return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
+}
+
+/**
+ * Starts a one-click session for a synthetic demo persona. The backend exposes
+ * this flow only in local-defense mode, so no shared password is shipped to the client.
+ */
+export async function authenticateDemoUser(email, rememberMe = true) {
+  const cleanEmail = String(email || '').trim().toLowerCase()
+  const res = await apiClient.post('/auth/demo-login', {
+    institutional_email: cleanEmail,
+    remember_me: rememberMe
+  })
+
+  const accessToken = res?.data?.access_token || res?.access_token
+  if (!accessToken) {
+    throw new Error('Demo login succeeded but no access token was returned.')
   }
 
   return await fetchProfileAndCreateSession(accessToken, cleanEmail, rememberMe)
@@ -188,14 +208,8 @@ export function fetchProfileAndCreateSession(accessToken, emailFallback = '', re
  * Retrieves the currently saved user session from storage with validation and restoration.
  */
 export function getCurrentUser() {
-  const local = localStorage.getItem(STORAGE_KEY_USER)
-  const session = sessionStorage.getItem(STORAGE_KEY_USER)
-  let raw = null
-  if (local) {
-    try { raw = JSON.parse(local) } catch { raw = null }
-  } else if (session) {
-    try { raw = JSON.parse(session) } catch { raw = null }
-  }
+  const { user: storedUser } = resolveStoredAuthSession()
+  const raw = storedUser ? { ...storedUser } : null
 
   if (!raw) {
     return null
@@ -312,7 +326,11 @@ export async function requestPasswordReset(email) {
  * Retrieves the stored access token from storage.
  */
 export function getStoredToken() {
-  return localStorage.getItem(STORAGE_KEY_TOKEN) || sessionStorage.getItem(STORAGE_KEY_TOKEN) || null
+  return resolveStoredAuthSession().token
+}
+
+export function getStoredSession() {
+  return resolveStoredAuthSession()
 }
 
 /**

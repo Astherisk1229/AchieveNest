@@ -10,8 +10,8 @@ const TYPE = 'RANKING_PROMOTION'
 const year = new Date().getFullYear()
 const blankForm = () => ({ ranking_cycle_id: '', evaluation_type: TYPE, personnel_group: 'FACULTY', academic_year: `${year}-${year + 1}`, semester: 'FULL_ACADEMIC_YEAR', coverage_label: '', period_name: `Faculty Ranking — AY ${year}–${year + 1}`, evaluation_scale_version_id: '', submission_open_at: '', submission_close_at: '', evaluation_start_at: '', evaluation_end_at: '', reason: '' })
 const actions = { DRAFT: ['open-submissions','Open Submissions'], OPEN_FOR_SUBMISSION: ['close-submissions','Close Submissions'], SUBMISSION_CLOSED: ['start-evaluation','Start Evaluation'], EVALUATION_ONGOING: ['close','Complete Period'], CLOSED: ['archive','Archive'] }
-const statusLabels = { DRAFT:'Draft', OPEN_FOR_SUBMISSION:'Open for Submission', SUBMISSION_CLOSED:'Submission Closed', EVALUATION_ONGOING:'Dean/HR Evaluation', CLOSED:'Completed', ARCHIVED:'Archived' }
-const statusTone = { DRAFT:'bg-slate-100 text-slate-700', OPEN_FOR_SUBMISSION:'bg-emerald-100 text-emerald-800', SUBMISSION_CLOSED:'bg-amber-100 text-amber-800', EVALUATION_ONGOING:'bg-blue-100 text-blue-800', CLOSED:'bg-violet-100 text-violet-800', ARCHIVED:'bg-slate-200 text-slate-600' }
+const statusLabels = { DRAFT:'Draft', OPEN_FOR_SUBMISSION:'Open for Submission', SUBMISSION_CLOSED:'Submission Closed', EVALUATION_ONGOING:'Dean/HR Evaluation', CLOSED:'Completed', ARCHIVED:'Archived', CANCELLED:'Cancelled' }
+const statusTone = { DRAFT:'bg-slate-100 text-slate-700', OPEN_FOR_SUBMISSION:'bg-emerald-100 text-emerald-800', SUBMISSION_CLOSED:'bg-amber-100 text-amber-800', EVALUATION_ONGOING:'bg-blue-100 text-blue-800', CLOSED:'bg-violet-100 text-violet-800', ARCHIVED:'bg-slate-200 text-slate-600', CANCELLED:'bg-rose-100 text-rose-800' }
 const versionLabels = { draft:'Draft', approved:'Active', retired:'Superseded' }
 const fmt = value => value ? new Intl.DateTimeFormat('en-PH', { dateStyle:'medium', timeStyle:'short' }).format(new Date(value)) : '—'
 const localValue = value => value ? String(value).replace(' ', 'T').slice(0, 16) : ''
@@ -71,7 +71,7 @@ export default function PersonnelEvaluationSetupPage() {
     event.preventDefault(); setError('')
     if (!form.ranking_cycle_id) { setError('Select a ranking period for this track.'); return }
     if (!boundVersion) { setError('An active compatible criteria version is required.'); return }
-    if (form.submission_open_at && (!(form.submission_open_at < form.submission_close_at) || !(form.submission_close_at <= form.evaluation_start_at) || !(form.evaluation_start_at < form.evaluation_end_at))) { setError('Use the schedule order: submission opens, submission closes, evaluation opens, evaluation closes.'); return }
+    if (form.submission_open_at && (!(form.submission_open_at < form.submission_close_at) || !(form.submission_open_at <= form.evaluation_start_at) || !(form.evaluation_start_at < form.evaluation_end_at))) { setError('Use a valid schedule: submissions open before they close, and evaluation starts on or after submissions open and before it closes.'); return }
     setSaving(true)
     try { const payload = { ...form, evaluation_scale_version_id:boundVersion.id, ...(editing ? { expected_version:editing.version } : {}) }; editing ? await periodService.updatePersonnelEvaluationPeriod(editing.id, payload) : await periodService.createPersonnelEvaluationPeriod(payload); setShowForm(false); await load() }
     catch (requestError) { setError(requestError?.response?.data?.error?.message || 'The ranking period could not be saved.') }

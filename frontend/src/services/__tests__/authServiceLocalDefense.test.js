@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   authenticateUser,
+  authenticateDemoUser,
   fetchProfileAndCreateSession,
   getCurrentUser,
   updateUserRoleContext,
@@ -87,6 +88,31 @@ describe('Phase 16 — AuthService Local-Defense Test Suite', () => {
     await expect(authenticateUser('student.a@ndmu.edu.ph', 'Secret123!')).rejects.toThrow(
       'Login succeeded but no access token was returned.'
     )
+  })
+
+  it('AUTH-FE-003b: Demo login uses the local-only endpoint without sending a password', async () => {
+    apiClient.post.mockResolvedValueOnce({ data: { access_token: 'mock.demo.token' } })
+    apiClient.get.mockResolvedValueOnce({
+      data: {
+        user: {
+          id: 'demo-001',
+          institutional_email: 'demo.student.a@ndmu.edu.ph',
+          account_type: 'student',
+          status: 'active',
+          roles: ['student'],
+          must_change_password: false
+        }
+      }
+    })
+
+    const session = await authenticateDemoUser('demo.student.a@ndmu.edu.ph', true)
+
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/demo-login', {
+      institutional_email: 'demo.student.a@ndmu.edu.ph',
+      remember_me: true
+    })
+    expect(apiClient.post.mock.calls[0][1]).not.toHaveProperty('password')
+    expect(session.token).toBe('mock.demo.token')
   })
 
   it('AUTH-FE-004: /auth/me resolution sets authoritative account_type, roles, and context', async () => {

@@ -10,6 +10,7 @@ vi.mock('react-router-dom', () => ({
 }))
 
 vi.mock('../../../services/authService', () => ({
+  authenticateDemoUser: vi.fn(),
   authenticateUser: vi.fn(),
   requestPasswordReset: vi.fn(),
   getCurrentUser: vi.fn().mockResolvedValue(null),
@@ -63,6 +64,7 @@ describe('LoginPage Defense Demo Access Shortcuts', () => {
     // Verify input password value is empty on initial render
     expect(html).toContain('name="password"')
     expect(html).toContain('placeholder="Enter your password"')
+    expect(html).toContain('Choose a persona to sign in instantly on this local demo.')
   })
 
   it('RouteAccessController correctly resolves routes for student, personnel, hr_admin, and osad_admin', () => {

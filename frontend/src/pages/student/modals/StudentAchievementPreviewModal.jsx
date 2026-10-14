@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { AlertCircle, CheckCircle2, Clock, Download, ExternalLink, FileText, Pencil, RotateCcw, ShieldAlert, ShieldCheck, ShieldQuestion, X, XCircle } from 'lucide-react'
+import { AlertCircle, Award, CheckCircle2, Clock, Download, ExternalLink, FileText, Pencil, RotateCcw, ShieldAlert, ShieldCheck, ShieldQuestion, X, XCircle } from 'lucide-react'
 import StudentCertificateSection from '../../../components/common/StudentCertificateSection'
 import EvidenceThumbnail, { evidenceMime, useEvidenceObjectUrl } from '../../../components/common/EvidenceThumbnail'
 import { detailRows } from '../../../utils/achievementDetails'
@@ -25,6 +25,41 @@ function Field({ label, children }) {
   return <div><dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-0.5 text-sm font-medium text-slate-900 dark:text-slate-100">{children}</dd></div>
 }
 
+export function automaticAttendanceCertificateMetadata(achievement) {
+  const metadata = typeof achievement?.structured_metadata === 'string'
+    ? (() => { try { return JSON.parse(achievement.structured_metadata) } catch { return {} } })()
+    : (achievement?.structured_metadata || {})
+
+  return metadata.automatic_attendance_certificate === true || metadata.automatic_attendance_certificate === 'true'
+    ? metadata
+    : null
+}
+
+function AutomaticAttendanceCertificatePreview({ achievement }) {
+  const metadata = automaticAttendanceCertificateMetadata(achievement)
+  if (!metadata) return null
+
+  const eventTitle = String(achievement.title || '').replace(/^Certificate of Participation\s*[—-]\s*/i, '') || 'the event'
+
+  return (
+    <div className="flex h-[48vh] min-h-72 items-center justify-center overflow-auto rounded-2xl border border-amber-200 bg-[#fbfaf6] p-4 shadow-inner sm:p-6">
+      <article className="w-full max-w-xl border-4 border-double border-amber-500 bg-white px-5 py-7 text-center text-slate-800 shadow-md sm:px-9 sm:py-10">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-emerald-800">Notre Dame of Marbel University</p>
+        <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-500">AchieveNest Student Portfolio</p>
+        <Award className="mx-auto my-5 h-11 w-11 text-amber-600" aria-hidden="true" />
+        <h3 className="font-serif text-2xl font-bold tracking-wide text-slate-900">Certificate of Participation</h3>
+        <p className="mt-5 text-xs italic text-slate-500">This certifies that</p>
+        <p className="mt-2 border-b border-amber-300 pb-1 text-xl font-extrabold text-emerald-800">{achievement.student_name || 'Verified attendee'}</p>
+        <p className="mt-5 text-sm leading-6 text-slate-700">has completed verified attendance for</p>
+        <p className="mt-1 text-base font-bold text-slate-900">{eventTitle}</p>
+        <p className="mt-5 text-xs text-slate-600">{achievement.display_date}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-700">{achievement.organizer_or_body || 'Event organizer'}</p>
+        <div className="mt-7 border-t border-amber-200 pt-3 text-[10px] font-medium text-slate-500">Automatically added to the student portfolio after the attendance session closed.</div>
+      </article>
+    </div>
+  )
+}
+
 /**
  * Document-first achievement preview: the real uploaded document on the left, the student's
  * entered details on the right. Shows only data that exists; nothing is defaulted or invented.
@@ -37,6 +72,7 @@ export default function StudentAchievementPreviewModal({ achievement, isOpen, on
   const evidenceList = achievement?.evidence || []
   const activeEvidence = evidenceList.find(item => item.id === activeEvidenceId) || evidenceList[0] || null
   const { url: fullUrl } = useEvidenceObjectUrl(isOpen ? activeEvidence : null)
+  const automaticCertificate = automaticAttendanceCertificateMetadata(achievement)
 
   useEffect(() => {
     if (!isOpen || !achievement?.id) { setEvents([]); return undefined }
@@ -74,8 +110,13 @@ export default function StudentAchievementPreviewModal({ achievement, isOpen, on
 
         <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div className="border-b border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 lg:border-b-0 lg:border-r sm:p-5">
-            <EvidenceThumbnail evidence={activeEvidence} className="h-[48vh] min-h-72 rounded-2xl border border-slate-200 bg-white dark:border-slate-800" fit="object-contain"/>
-            {activeEvidence && (() => {
+            {automaticCertificate ? (
+              <>
+                <AutomaticAttendanceCertificatePreview achievement={achievement} />
+                <p className="mt-3 text-center text-xs font-medium text-slate-500">This automatic attendance certificate is stored directly in your portfolio, so no separate document attachment is needed.</p>
+              </>
+            ) : <EvidenceThumbnail evidence={activeEvidence} className="h-[48vh] min-h-72 rounded-2xl border border-slate-200 bg-white dark:border-slate-800" fit="object-contain"/>}
+            {!automaticCertificate && activeEvidence && (() => {
               const security = securityLabel(activeEvidence)
               const SecurityIcon = security.icon
               return <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -89,10 +130,10 @@ export default function StudentAchievementPreviewModal({ achievement, isOpen, on
                 </div>
               </div>
             })()}
-            {evidenceList.length > 1 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Documents">
+            {!automaticCertificate && evidenceList.length > 1 && <div className="mt-3 flex flex-wrap gap-2" aria-label="Documents">
               {evidenceList.map(item => <button key={item.id} type="button" onClick={() => setActiveEvidenceId(item.id)} className={`max-w-[12rem] truncate rounded-lg border px-2.5 py-1 text-xs ${item.id === activeEvidence?.id ? 'border-[#16834a] bg-emerald-50 font-bold text-emerald-900' : 'border-slate-300 text-slate-700'}`}>{item.original_filename}</button>)}
             </div>}
-            {activeEvidence && evidenceMime(activeEvidence) === 'application/pdf' && <p className="mt-2 text-[11px] text-slate-500">PDF previews show the first page. Use "Open full size" to read every page.</p>}
+            {!automaticCertificate && activeEvidence && evidenceMime(activeEvidence) === 'application/pdf' && <p className="mt-2 text-[11px] text-slate-500">PDF previews show the first page. Use "Open full size" to read every page.</p>}
           </div>
 
           <div className="space-y-5 p-5 sm:p-6">

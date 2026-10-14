@@ -217,11 +217,17 @@ class EventController extends Controller
         $db = $this->getDb();
         $roles = $actor['roles'] ?? [];
 
+        $eventSelect = 'e.*, p.full_name AS organizer_name, o.name AS organization_name, o.code AS organization_code,
+            (SELECT COUNT(DISTINCT ar.attendee_profile_id)
+             FROM attendance_records ar
+             INNER JOIN attendance_sessions ats ON ats.id = ar.session_id
+             WHERE ats.event_id = e.id) AS participants_count';
+
         // Organization Moderator without OSAD/global admin role is scoped to their moderated organizations
         if (in_array('organization_moderator', $roles, true) && ! in_array('osad_staff', $roles, true)) {
             $modOrgIds = $this->authz->getModeratedOrganizationIds($actor);
             $builder = $db->table('events e')
-                ->select('e.*, p.full_name AS organizer_name, o.name AS organization_name, o.code AS organization_code')
+                ->select($eventSelect, false)
                 ->join('profiles p', 'p.id = e.organizer_profile_id', 'left')
                 ->join('organizations o', 'o.id = e.organization_id', 'left');
 
@@ -235,7 +241,7 @@ class EventController extends Controller
         } else {
             // Unscoped listing for global roles (OSAD, etc.)
             $events = $db->table('events e')
-                ->select('e.*, p.full_name AS organizer_name, o.name AS organization_name, o.code AS organization_code')
+                ->select($eventSelect, false)
                 ->join('profiles p', 'p.id = e.organizer_profile_id', 'left')
                 ->join('organizations o', 'o.id = e.organization_id', 'left')
                 ->orderBy('e.start_time', 'DESC')
@@ -296,6 +302,15 @@ class EventController extends Controller
                 'error' => [
                     'code'    => 'INVALID_EVENT_WINDOW',
                     'message' => 'Event end time must be later than its start time.',
+                ],
+            ], 422);
+        }
+
+        if ($startTimestamp <= time()) {
+            return $this->respond([
+                'error' => [
+                    'code'    => 'EVENT_START_IN_PAST',
+                    'message' => 'Event start date and time must be in the future.',
                 ],
             ], 422);
         }
@@ -380,6 +395,7 @@ class EventController extends Controller
                 'venue_id'        => $venueRes['venue_id'],
                 'organization_id' => $organizationId,
                 'status'          => 'published',
+                'osad_template_id' => $osadTemplateId,
             ],
         ]);
     }

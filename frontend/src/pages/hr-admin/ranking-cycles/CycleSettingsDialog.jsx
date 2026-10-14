@@ -27,6 +27,7 @@ const TRACK_STATUS = {
   EVALUATION_ONGOING: 'Evaluation in progress',
   CLOSED: 'Completed',
   ARCHIVED: 'Archived',
+  CANCELLED: 'Cancelled',
 }
 // The existing period lifecycle, unchanged: one forward step at a time.
 const NEXT_ACTION = {
@@ -168,7 +169,7 @@ function Criteria({ cycle }) {
   </div>
 }
 
-function Lifecycle({ cycle, onSaved, onArchive }) {
+function Lifecycle({ cycle, onSaved, onArchive, onCancel, onRestore, onDelete }) {
   const [pending, setPending] = useState(null)
   const [state, setState] = useState({ saving: false, error: '' })
   const run = async (track, action) => {
@@ -191,11 +192,15 @@ function Lifecycle({ cycle, onSaved, onArchive }) {
     {state.error && <Notice tone="error">{state.error}</Notice>}
     <p className="text-xs leading-5 text-slate-500">Lifecycle steps follow the existing ranking rules: submissions open only inside the submission window with an approved criteria version and valid reviewer assignments, and evaluation starts on its scheduled date.</p>
     {cycle.allowed_actions?.includes('archive') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"><p className="text-sm text-slate-600 dark:text-slate-300">This period is completed. Archiving keeps every record and makes the period historical.</p><button type="button" onClick={onArchive} className={buttonStyles.secondary}>Archive Period</button></div>}
+    {cycle.allowed_actions?.includes('cancel') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-900 dark:bg-rose-950/20"><p className="text-sm text-slate-700 dark:text-slate-200">Need to stop this period? Cancellation preserves its records, blocks new activity, and requires a reason.</p><button type="button" onClick={onCancel} className={buttonStyles.danger}>Cancel Period</button></div>}
+    {cycle.allowed_actions?.includes('delete') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-900 dark:bg-rose-950/20"><p className="text-sm text-slate-700 dark:text-slate-200">This unused draft can be permanently deleted after you type its name. The server will check again for dependent records.</p><button type="button" onClick={onDelete} className={buttonStyles.danger}>Delete Unused Draft</button></div>}
+    {cycle.allowed_actions?.includes('restore') && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 dark:border-slate-800"><p className="text-sm text-slate-600 dark:text-slate-300">This period is archived. Restoring makes it a completed historical record only; it will not reopen work.</p><button type="button" onClick={onRestore} className={buttonStyles.secondary}>Restore as Completed</button></div>}
+    {cycle.is_cancelled && <Notice>This period was cancelled. Its existing records are preserved and read-only, and no new activity can begin.</Notice>}
     {cycle.is_archived && <Notice>This period is archived. It stays searchable and viewable, and its records cannot change.</Notice>}
   </div>
 }
 
-export default function CycleSettingsDialog({ cycle: initial, cycles = [], section = 'general', onClose, onChanged, onArchive }) {
+export default function CycleSettingsDialog({ cycle: initial, cycles = [], section = 'general', onClose, onChanged, onArchive, onCancel, onRestore, onDelete }) {
   const [cycle, setCycle] = useState(initial)
   const [active, setActive] = useState(section)
   const refresh = async () => {
@@ -210,7 +215,7 @@ export default function CycleSettingsDialog({ cycle: initial, cycles = [], secti
     'achievement-coverage': <AchievementCoverage key={`achievement-coverage-${cycle.updated_at}`} cycle={cycle} onSaved={refresh}/>,
     coverage: <Coverage key={`coverage-${cycle.track_count}`} cycle={cycle} cycles={cycles} onSaved={refresh}/>,
     criteria: <Criteria cycle={cycle}/>,
-    lifecycle: <Lifecycle cycle={cycle} onSaved={refresh} onArchive={() => onArchive?.(cycle)}/>,
+    lifecycle: <Lifecycle cycle={cycle} onSaved={refresh} onArchive={() => onArchive?.(cycle)} onCancel={() => onCancel?.(cycle)} onRestore={() => onRestore?.(cycle)} onDelete={() => onDelete?.(cycle)}/>,
   }
   return <RankingCycleDialog width="max-w-4xl" title="Period Settings" description={cycle.display_name} onClose={onClose} footer={<button type="button" onClick={onClose} className={buttonStyles.secondary}>Close</button>}>
     <div className="grid min-h-[26rem] md:grid-cols-[12rem_1fr]">

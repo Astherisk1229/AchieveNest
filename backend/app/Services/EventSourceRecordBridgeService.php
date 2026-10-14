@@ -57,6 +57,56 @@ final class EventSourceRecordBridgeService
         return $results;
     }
 
+    /**
+     * Persist confirmed check-ins from a closed session as verified student
+     * portfolio records. This is deliberately idempotent: a retried session
+     * closure resolves the same event-participation fact instead of adding a
+     * second certificate entry for the student.
+     */
+    public function recordClosedSessionAttendance(string $sessionId, string $actorId): array
+    {
+        $this->assertSchema();
+
+        $session = $this->db->table('attendance_sessions s')
+            ->select('s.id, s.event_id, s.status, e.title, e.venue, e.start_time, e.end_time')
+            ->join('events e', 'e.id = s.event_id')
+            ->where('s.id', $sessionId)
+            ->get()
+            ->getRowArray();
+
+        if (! $session) {
+            throw new RuntimeException('SESSION_NOT_FOUND');
+        }
+        if (($session['status'] ?? '') !== 'closed') {
+            throw new RuntimeException('SESSION_NOT_CLOSED');
+        }
+
+        $attendeeIds = array_column(
+            $this->db->table('attendance_records')
+                ->select('DISTINCT attendee_profile_id', false)
+                ->where('session_id', $sessionId)
+                ->get()
+                ->getResultArray(),
+            'attendee_profile_id'
+        );
+
+        if ($attendeeIds === []) {
+            return [];
+        }
+
+        $facts = $this->recordFacts((string) $session['event_id'], array_map(static fn (string $studentId): array => [
+            'student_id'                    => $studentId,
+            'category_code'                 => 'ORG_MEMBERSHIP_PARTICIPATION',
+            'subcategory_code'              => 'ACTIVITY_PARTICIPANT',
+            'participation_role'            => 'activity_participant',
+            'facts_finalized'               => true,
+            'verification_status'           => 'verified',
+            'structured_attributes'         => ['automatic_attendance_certificate' => true],
+        ], $attendeeIds), $actorId);
+
+        return $this->resolve((string) $session['event_id'], $attendeeIds, $actorId);
+    }
+
     public function candidates(string $eventId): array
     {
         $this->assertSchema();
@@ -123,8 +173,10 @@ final class EventSourceRecordBridgeService
         $this->db->table('event_student_source_records')->where('id', $fact['id'])->update(['attendance_verified' => $attendanceVerified ? 1 : 0]);
         $fact['attendance_verified'] = $attendanceVerified ? 1 : 0;
 
+        $attributes=json_decode((string)($fact['structured_attributes']??'{}'),true) ?: [];
+        $isAutomaticAttendanceCertificate = !empty($attributes['automatic_attendance_certificate']);
         $reasons=[];
-        if (($event['status']??'')!=='completed') $reasons[]='EVENT_NOT_FINALIZED';
+        if (($event['status']??'')!=='completed' && !$isAutomaticAttendanceCertificate) $reasons[]='EVENT_NOT_FINALIZED';
         if (($fact['account_type']??'')!=='student') $reasons[]='INVALID_STUDENT_RECIPIENT';
         if (!$attendanceVerified) $reasons[]='ATTENDANCE_NOT_VERIFIED';
         if (!(bool)$fact['facts_finalized']) $reasons[]='ROLE_NOT_FINALIZED';
@@ -132,7 +184,7 @@ final class EventSourceRecordBridgeService
         $reasons=array_values(array_unique([...$reasons,...$this->mappers->validate($fact)]));
         if ($reasons) return $this->blocked($fact,$reasons,$actorId);
 
-        $metadata=json_decode((string)($fact['structured_attributes']??'{}'),true) ?: [];
+        $metadata=$attributes;
         $metadata=array_filter($metadata+['role'=>$fact['participation_role'],'verified_engagement_outcome'=>$fact['verified_engagement_outcome'],'placement'=>$fact['placement'],'origin_type'=>'event','origin_event_id'=>$fact['event_id'],'origin_event_participation_id'=>$fact['id'],'origin_created_by'=>$actorId,'origin_created_at'=>date('c')],fn($v)=>$v!==null&&$v!=='');
         $matches=$this->db->table('student_portfolio_records')->where('student_profile_id',$fact['student_profile_id'])->where("JSON_UNQUOTE(JSON_EXTRACT(structured_metadata, '$.origin_event_participation_id')) = ".$this->db->escape($fact['id']),null,false)->get()->getResultArray();
         if(!empty($fact['source_record_id'])) {
@@ -147,7 +199,7 @@ final class EventSourceRecordBridgeService
             if (count($matches)===1) { $source=$matches[0]; $status='LINKED_EXISTING'; }
             else {
                 $id=$this->uuid(); $now=date('Y-m-d H:i:s');
-                $this->db->table('student_portfolio_records')->insert(['id'=>$id,'student_profile_id'=>$fact['student_profile_id'],'category_id'=>$fact['category_id'],'subcategory_id'=>$fact['subcategory_id'],'title'=>$event['title'],'organizer_or_body'=>$event['venue'],'occurrence_date'=>substr($event['start_time'],0,10),'start_date'=>substr($event['start_time'],0,10),'end_date'=>substr($event['end_time'],0,10),'description'=>'Verified event-derived student participation fact.','structured_metadata'=>json_encode($metadata),'status'=>'verified','submitted_at'=>$now,'verified_at'=>$now,'created_at'=>$now,'updated_at'=>$now]);
+                $this->db->table('student_portfolio_records')->insert(['id'=>$id,'student_profile_id'=>$fact['student_profile_id'],'category_id'=>$fact['category_id'],'subcategory_id'=>$fact['subcategory_id'],'title'=>$isAutomaticAttendanceCertificate ? 'Certificate of Participation — ' . $event['title'] : $event['title'],'organizer_or_body'=>$event['venue'],'occurrence_date'=>substr($event['start_time'],0,10),'start_date'=>substr($event['start_time'],0,10),'end_date'=>substr($event['end_time'],0,10),'description'=>$isAutomaticAttendanceCertificate ? 'Automatically issued after verified attendance in a closed event session.' : 'Verified event-derived student participation fact.','structured_metadata'=>json_encode($metadata),'status'=>'verified','submitted_at'=>$now,'verified_at'=>$now,'created_at'=>$now,'updated_at'=>$now]);
                 $source=['id'=>$id]; $status='CREATED';
             }
             $this->db->table('event_student_source_records')->where('id',$fact['id'])->update(['source_record_id'=>$source['id'],'bridge_status'=>$status,'reason_codes'=>json_encode([])]);

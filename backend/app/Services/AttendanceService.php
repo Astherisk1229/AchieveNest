@@ -32,6 +32,7 @@ class AttendanceService
     protected AuthorizationService $authz;
     protected AttendanceSessionModel $sessionModel;
     protected AttendanceRecordModel $recordModel;
+    protected EventSourceRecordBridgeService $eventSourceBridge;
     /** @var callable|null */
     protected $clock;
 
@@ -40,13 +41,15 @@ class AttendanceService
         ?AuthorizationService $authz = null,
         ?AttendanceSessionModel $sessionModel = null,
         ?AttendanceRecordModel $recordModel = null,
-        ?callable $clock = null
+        ?callable $clock = null,
+        ?EventSourceRecordBridgeService $eventSourceBridge = null
     ) {
         $this->db = $db ?? db_connect('default');
         $this->authz = $authz ?? new AuthorizationService();
         $this->sessionModel = $sessionModel ?? new AttendanceSessionModel($this->db);
         $this->recordModel = $recordModel ?? new AttendanceRecordModel($this->db);
         $this->clock = $clock;
+        $this->eventSourceBridge = $eventSourceBridge ?? new EventSourceRecordBridgeService($this->db);
     }
 
     public function getTimezone(): \DateTimeZone
@@ -194,6 +197,21 @@ class AttendanceService
             throw new RuntimeException('INVALID_CHECKIN_WINDOW');
         }
 
+        $eventStartStr = substr(trim((string) ($event['start_time'] ?? '')), 0, 19);
+        $eventEndStr = substr(trim((string) ($event['end_time'] ?? '')), 0, 19);
+        $eventStartObj = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $eventStartStr, $tz)
+            ?: (strtotime($eventStartStr) !== false ? new \DateTimeImmutable($eventStartStr, $tz) : false);
+        $eventEndObj = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $eventEndStr, $tz)
+            ?: (strtotime($eventEndStr) !== false ? new \DateTimeImmutable($eventEndStr, $tz) : false);
+
+        if (! $eventStartObj || ! $eventEndObj || $eventEndObj <= $eventStartObj) {
+            throw new RuntimeException('INVALID_EVENT_SCHEDULE');
+        }
+
+        if ($startObj < $eventStartObj || $endObj > $eventEndObj) {
+            throw new RuntimeException('CHECKIN_WINDOW_OUTSIDE_EVENT');
+        }
+
         $now = $this->now();
         $sessionId = $this->uuid();
 
@@ -257,7 +275,19 @@ class AttendanceService
             'updated_at' => $now,
         ]);
 
+        if ($newStatus === 'closed') {
+            $this->recordClosedSessionAttendance(
+                $sessionId,
+                (string) ($actor['profile']['id'] ?? '')
+            );
+        }
+
         return $this->sessionModel->findWithEvent($sessionId);
+    }
+
+    protected function recordClosedSessionAttendance(string $sessionId, string $actorId): void
+    {
+        $this->eventSourceBridge->recordClosedSessionAttendance($sessionId, $actorId);
     }
 
     /**

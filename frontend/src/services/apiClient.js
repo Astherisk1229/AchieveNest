@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { resolveStoredAuthSession } from '../utils/authStorage'
 
 const performanceLoggingEnabled = import.meta.env.DEV || import.meta.env.VITE_PERFORMANCE_LOGGING === 'true'
 
@@ -64,20 +65,7 @@ apiClient.interceptors.request.use(
       }
     }
     try {
-      // 1. Direct local token check (local-defense mode or authenticated session)
-      let token = localStorage.getItem('achievenest_access_token') || sessionStorage.getItem('achievenest_access_token')
-
-      if (!token) {
-        const rawUser = localStorage.getItem('achievenest_current_user') || sessionStorage.getItem('achievenest_current_user')
-        if (rawUser) {
-          try {
-            const parsed = JSON.parse(rawUser)
-            token = parsed?.token || parsed?.access_token
-          } catch {
-            token = null
-          }
-        }
-      }
+      const { token } = resolveStoredAuthSession()
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`

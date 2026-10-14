@@ -17,6 +17,13 @@ class PersonnelEvaluationPeriodService
         'start-evaluation' => ['from' => 'SUBMISSION_CLOSED', 'to' => 'EVALUATION_ONGOING'],
         'close' => ['from' => 'EVALUATION_ONGOING', 'to' => 'CLOSED'],
         'archive' => ['from' => 'CLOSED', 'to' => 'ARCHIVED'],
+        // Cancellation is terminal for an active track.  It deliberately has a
+        // separate state from ARCHIVED so a cancelled period is not presented as
+        // a completed historical result.
+        'cancel' => ['from' => ['DRAFT', 'OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'], 'to' => 'CANCELLED'],
+        // Restoring an archive never re-opens work; it returns to the completed,
+        // historical state only.
+        'restore' => ['from' => 'ARCHIVED', 'to' => 'CLOSED'],
     ];
     private const WRITABLE = ['ranking_cycle_id','period_name','evaluation_type','personnel_group','academic_year','semester','coverage_label','submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at','evaluation_scale_version_id','expected_version','reason'];
 
@@ -146,7 +153,7 @@ class PersonnelEvaluationPeriodService
         return $this->find($id);
     }
 
-    public function transition(string $id, string $action, string $actorId, ?string $requestId = null, ?int $expectedVersion = null): array
+    public function transition(string $id, string $action, string $actorId, ?string $requestId = null, ?int $expectedVersion = null, ?string $reason = null): array
     {
         if (! isset(self::TRANSITIONS[$action])) throw new InvalidArgumentException('INVALID_PERIOD_ACTION: Unsupported lifecycle action.');
         $requestId = $this->requestId($requestId);
@@ -157,7 +164,11 @@ class PersonnelEvaluationPeriodService
             $rule = self::TRANSITIONS[$action];
             if ($row['status'] === $rule['to']) { $this->db->transCommit(); return $this->find($id); }
             if ($expectedVersion !== null && $expectedVersion !== (int) $row['version']) throw new RuntimeException('PERIOD_MODIFIED: This evaluation period was updated by another administrator.');
-            if ($row['status'] !== $rule['from']) throw new RuntimeException('INVALID_STATUS_TRANSITION: The requested lifecycle transition is not allowed.');
+            $from = (array) $rule['from'];
+            if (! in_array($row['status'], $from, true)) throw new RuntimeException('INVALID_STATUS_TRANSITION: The requested lifecycle transition is not allowed.');
+            $reason = trim((string) $reason);
+            if ($action === 'cancel' && $reason === '') throw new InvalidArgumentException('CANCELLATION_REASON_REQUIRED: Enter a reason for cancelling this ranking period.');
+            if ($action === 'cancel' && mb_strlen($reason) > 500) throw new InvalidArgumentException('CANCELLATION_REASON_TOO_LONG: The cancellation reason must be 500 characters or fewer.');
             if ($action === 'open-submissions') $this->validateOperational($row, $id);
             if ($action === 'open-submissions') $this->assertAchievementCoverage($row);
             if ($action === 'start-evaluation' && time() < strtotime($row['evaluation_start_at'])) throw new RuntimeException('EVALUATION_WINDOW_NOT_OPEN: Evaluation cannot start before its scheduled time.');
@@ -167,7 +178,11 @@ class PersonnelEvaluationPeriodService
             if ($action === 'close') $updates += ['closed_by'=>$actorId,'closed_at'=>date('Y-m-d H:i:s')];
             if ($action === 'archive') $updates['archived_at'] = date('Y-m-d H:i:s');
             $this->db->table('personnel_evaluation_periods')->where('id', $id)->update($updates);
-            $this->event($id, str_replace('-', '_', $action), $actorId, ['status'=>$row['status']], ['status'=>$rule['to']], $requestId);
+            $persisted = $this->db->table('personnel_evaluation_periods')->select('status')->where('id', $id)->get()->getRowArray();
+            if (($persisted['status'] ?? null) !== $rule['to']) throw new RuntimeException('PERIOD_STATUS_WRITE_FAILED: The evaluation-period status could not be saved. No lifecycle change was recorded.');
+            $eventValues = ['status'=>$rule['to']];
+            if ($action === 'cancel') $eventValues['cancellation_reason'] = $reason;
+            $this->event($id, str_replace('-', '_', $action), $actorId, ['status'=>$row['status']], $eventValues, $requestId);
             if ($action === 'open-submissions') $this->notifyPeriodOpened($row, $actorId, $requestId);
             $this->db->transCommit();
             return $this->find($id);
@@ -202,7 +217,7 @@ class PersonnelEvaluationPeriodService
         if (!$data['evaluation_scale_version_id']) $data['evaluation_scale_version_id'] = $this->resolveActiveScaleForGroup($personnelGroup);
         $providedDates = array_filter(array_intersect_key($data, array_flip(['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'])));
         if ($providedDates && count($providedDates) !== 4) throw new InvalidArgumentException('INCOMPLETE_SCHEDULE: Either provide the complete schedule or leave all dates empty while drafting.');
-        if (count($providedDates) === 4 && ! ($data['submission_open_at'] < $data['submission_close_at'] && $data['submission_close_at'] <= $data['evaluation_start_at'] && $data['evaluation_start_at'] < $data['evaluation_end_at'])) throw new InvalidArgumentException('INVALID_DATE_ORDER: Required order is submission open < close <= evaluation start < end.');
+        if (count($providedDates) === 4 && ! ($data['submission_open_at'] < $data['submission_close_at'] && $data['submission_open_at'] <= $data['evaluation_start_at'] && $data['evaluation_start_at'] < $data['evaluation_end_at'])) throw new InvalidArgumentException('INVALID_DATE_ORDER: Required order is submission open < close, and submission open <= evaluation start < evaluation end. Evaluation may overlap submissions.');
         if ($data['evaluation_scale_version_id']) $this->validateScale($data['evaluation_scale_version_id'], $year, false, $personnelGroup);
         return $data;
     }

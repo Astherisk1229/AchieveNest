@@ -123,7 +123,7 @@ describe('permissionResolver', () => {
       expect(labels).not.toContain('Portfolio')
     })
 
-    it('returns strictly 5 operational items for organization_moderator context including Digital Certificates', () => {
+    it('returns strictly 5 operational items for organization_moderator context including Attendance Certificates', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
@@ -137,7 +137,7 @@ describe('permissionResolver', () => {
         'Dashboard Overview',
         'Events & Activities',
         'Attendance Management',
-        'Digital Certificates',
+        'Attendance Certificates',
         'Organization Profile'
       ])
       expect(labels).not.toContain('Edit Portfolio')

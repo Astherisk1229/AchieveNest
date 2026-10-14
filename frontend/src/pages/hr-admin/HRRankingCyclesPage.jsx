@@ -10,7 +10,7 @@ import ResultsStage from './ranking-cycle-stages/ResultsStage'
 import NewRankingCycleDialog from './ranking-cycles/NewRankingCycleDialog'
 import CycleSettingsDialog from './ranking-cycles/CycleSettingsDialog'
 import CriteriaPreviewDialog from './ranking-cycles/CriteriaPreviewDialog'
-import { ArchiveCycleDialog, DeleteEmptyCycleDialog } from './ranking-cycles/ArchiveCycleDialog'
+import { ArchiveCycleDialog, CancelCycleDialog, DeleteEmptyCycleDialog, RestoreCycleDialog } from './ranking-cycles/ArchiveCycleDialog'
 import { CoverageBadges, LifecycleBadge, StageSteps } from './ranking-cycles/RankingCycleBadges'
 import { errorMessage } from './ranking-cycles/RankingCycleDialog'
 import {
@@ -39,12 +39,14 @@ function RowMenu({ cycle, onSelect }) {
     actions.includes('complete_setup') ? null : ['settings', 'Period Settings'],
     cycle.tracks?.length ? ['criteria', 'View Criteria'] : null,
     actions.includes('archive') ? ['archive', 'Archive Period'] : null,
-    actions.includes('delete') ? ['delete', 'Delete Empty Period'] : null,
+    actions.includes('restore') ? ['restore', 'Restore as Completed'] : null,
+    actions.includes('cancel') ? ['cancel', 'Cancel Period'] : null,
+    actions.includes('delete') ? ['delete', 'Delete Unused Draft'] : null,
   ].filter(Boolean)
   return <div ref={ref} className="relative">
     <button type="button" aria-label={`More actions for ${cycle.display_name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)} className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-800 dark:hover:bg-slate-900 dark:hover:text-white"><MoreVertical className="h-4 w-4"/></button>
     {open && <div role="menu" className="absolute right-0 z-30 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-slate-800 dark:bg-slate-950">
-      {items.map(([key, label]) => <button key={key} type="button" role="menuitem" onClick={() => { setOpen(false); onSelect(key, cycle) }} className={`block w-full px-3 py-2 text-left text-sm font-semibold hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-900 ${key === 'archive' || key === 'delete' ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'}`}>{label}</button>)}
+      {items.map(([key, label]) => <button key={key} type="button" role="menuitem" onClick={() => { setOpen(false); onSelect(key, cycle) }} className={`block w-full px-3 py-2 text-left text-sm font-semibold hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none dark:hover:bg-slate-900 ${key === 'archive' || key === 'delete' || key === 'cancel' ? 'text-rose-700 dark:text-rose-300' : 'text-slate-800 dark:text-slate-100'}`}>{label}</button>)}
     </div>}
   </div>
 }
@@ -137,14 +139,18 @@ export default function HRRankingCyclesPage() {
     else if (kind === 'settings') setDialog({ kind: 'settings', cycle: target, section: 'general' })
     else if (kind === 'criteria') setDialog({ kind: 'criteria', versionId: target.tracks[0]?.criteria?.version_id, cycle: target })
     else if (kind === 'archive') setDialog({ kind: 'archive', cycle: target })
+    else if (kind === 'cancel') setDialog({ kind: 'cancel', cycle: target })
+    else if (kind === 'restore') setDialog({ kind: 'restore', cycle: target })
     else if (kind === 'delete') setDialog({ kind: 'delete', cycle: target })
   }
 
   const dialogs = <>
     {dialog?.kind === 'create' && <NewRankingCycleDialog cycles={cycles} onClose={closeDialog} onCreated={async created => { setDialog(null); await load({ quiet: true }); navigate(workspacePath(created)) }}/>}
-    {dialog?.kind === 'settings' && <CycleSettingsDialog cycle={dialog.cycle} cycles={cycles} section={dialog.section} onClose={() => { setDialog(null); load({ quiet: true }) }} onChanged={() => load({ quiet: true })} onArchive={target => setDialog({ kind: 'archive', cycle: target })}/>}
+    {dialog?.kind === 'settings' && <CycleSettingsDialog cycle={dialog.cycle} cycles={cycles} section={dialog.section} onClose={() => { setDialog(null); load({ quiet: true }) }} onChanged={() => load({ quiet: true })} onArchive={target => setDialog({ kind: 'archive', cycle: target })} onCancel={target => setDialog({ kind: 'cancel', cycle: target })} onRestore={target => setDialog({ kind: 'restore', cycle: target })} onDelete={target => setDialog({ kind: 'delete', cycle: target })}/>}
     {dialog?.kind === 'criteria' && dialog.versionId && <CriteriaPreviewDialog versionId={dialog.versionId} onClose={closeDialog}/>}
     {dialog?.kind === 'archive' && <ArchiveCycleDialog cycle={dialog.cycle} onClose={closeDialog} onArchived={async () => { setDialog(null); await load({ quiet: true }) }}/>}
+    {dialog?.kind === 'cancel' && <CancelCycleDialog cycle={dialog.cycle} onClose={closeDialog} onCancelled={async () => { setDialog(null); await load({ quiet: true }) }}/>}
+    {dialog?.kind === 'restore' && <RestoreCycleDialog cycle={dialog.cycle} onClose={closeDialog} onRestored={async () => { setDialog(null); await load({ quiet: true }) }}/>}
     {dialog?.kind === 'delete' && <DeleteEmptyCycleDialog cycle={dialog.cycle} onClose={closeDialog} onDeleted={async () => { setDialog(null); await load({ quiet: true }); if (cycleId) navigate('/hr/ranking-cycles') }}/>}
   </>
 

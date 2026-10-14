@@ -3,21 +3,13 @@ import { createPortal } from 'react-dom'
 import { 
   X, 
   FileText, 
-  Download, 
   Printer, 
-  CheckCircle2, 
   QrCode, 
   ShieldCheck, 
   Award,
   ChevronLeft,
   ChevronRight,
-  Sliders,
-  CheckSquare,
-  Square,
-  BookOpen,
-  GraduationCap,
-  Layers,
-  Layout
+  FileCheck
 } from 'lucide-react'
 import { generatePortfolioPdf } from '../../../services/portfolioPdfGenerator'
 
@@ -50,8 +42,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
     .filter(record => String(record.status || '').toLowerCase() === 'verified')
     .map(toExportItem), [achievements])
 
-  // Structure Toggles
-  const [template, setTemplate] = useState('ndmu_dossier') // 'ndmu_dossier' | 'modern_clean' | 'executive_1page'
+  // Simple document choices students can understand before saving.
   const [includeCoverPage, setIncludeCoverPage] = useState(true)
   const [includeTableOfContents, setIncludeTableOfContents] = useState(true)
   const [includeCategorySeparators, setIncludeCategorySeparators] = useState(true)
@@ -103,7 +94,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
 
     // 2. Table of Contents Page
     if (includeTableOfContents) {
-      pages.push({ type: 'toc', title: 'Table of Contents & Executive Summary' })
+      pages.push({ type: 'toc', title: 'Contents & Summary' })
     }
 
     // 3. Categories & Achievement Pages
@@ -170,7 +161,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                         Official Academic Record
                       </div>
                       <h1 className="text-xl font-black text-slate-900 leading-tight tracking-tight uppercase">
-                        STUDENT ACCOMPLISHMENT PORTFOLIO DOSSIER
+                        STUDENT ACHIEVEMENT PORTFOLIO
                       </h1>
                       <div className="w-20 h-1 bg-[#16834a] mx-auto rounded-full"></div>
                     </div>
@@ -190,13 +181,13 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                     <div>
                       <div className="flex items-center justify-between border-b-2 border-[#A9C6B1] pb-2 mb-3">
                         <div>
-                          <h2 className="text-sm font-black text-[#064e2b] uppercase">Table of Contents & Executive Summary</h2>
-                          <p className="text-[10px] text-slate-500 font-medium">Dynamically calculated from selected portfolio items</p>
+                          <h2 className="text-sm font-black text-[#064e2b] uppercase">Contents & Summary</h2>
+                        <p className="text-[10px] text-slate-500 font-medium">Your selected verified achievements</p>
                         </div>
                         <FileText className="w-5 h-5 text-[#16834a]" />
                       </div>
 
-                      {/* Recalculated Executive Metrics Box */}
+                      {/* Selected portfolio summary */}
                       <div className="grid grid-cols-2 gap-2 bg-[#eef7f0] p-2.5 rounded-xl border border-[#cbe6d2] mb-3 text-center">
                         <div>
                           <p className="text-sm font-black text-[#064e2b]">{dynamicTotal}</p>
@@ -258,7 +249,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                         <div className="w-5 h-5 rounded-md bg-[#DCEBDD] text-amber-400 flex items-center justify-center font-black text-[10px]">
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </div>
-                        <span className="text-[9px] font-black text-slate-800 uppercase tracking-wide">NDMU ACHIEVENEST VERIFIED DOSSIER</span>
+                        <span className="text-[9px] font-black text-slate-800 uppercase tracking-wide">NDMU ACHIEVENEST VERIFIED PORTFOLIO</span>
                       </div>
                       <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-[#064e2b] border border-emerald-200">
                         {page.item.category}
@@ -307,7 +298,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
 
                     {/* FOOTER */}
                     <div className="flex items-center justify-between text-[8.5px] text-slate-400 font-semibold border-t pt-1">
-                      <span>NDMU AchieveNest Official Dossier</span>
+                      <span>NDMU AchieveNest Verified Portfolio</span>
                       <span>Page {page.pageNum} of {totalPagesCount}</span>
                     </div>
 
@@ -319,24 +310,24 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200 font-sans">
-      <div className="relative w-full max-w-6xl h-[88vh] bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-3 sm:p-6 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
+      <div className="relative flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
         
         {/* TOP MODAL HEADER */}
-        <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#DCEBDD] text-emerald-400 border border-emerald-600/40 shadow-xs">
-              <Layers className="w-5 h-5" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e8f5eb] text-[#16834a]">
+              <FileCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-lg font-extrabold text-white tracking-tight">Portfolio PDF Export</h3>
-              <p className="text-xs text-slate-400 font-medium">Preview your verified achievements, then save as PDF from the print dialog</p>
+              <h3 className="text-lg font-extrabold tracking-tight text-slate-900">Save your portfolio</h3>
+              <p className="text-xs font-medium text-slate-600">Choose verified achievements, check the preview, then save as a PDF.</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
+            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -346,17 +337,17 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
           
           {/* ================= LEFT PANEL (65%): LIVE MULTI-PAGE PREVIEW RENDERER ================= */}
-          <div className="lg:col-span-8 bg-slate-950/70 p-4 sm:p-6 flex flex-col justify-between overflow-y-auto border-r border-slate-800">
+          <div className="lg:col-span-8 flex flex-col justify-between overflow-y-auto border-r border-slate-200 bg-[#f6f8f5] p-4 sm:p-6">
             
             {/* TOP PAGINATION CONTROLS BAR */}
-            <div className="flex items-center justify-between bg-slate-900 p-2.5 rounded-2xl border border-slate-800 mb-4 shrink-0 shadow-sm">
+            <div className="mb-4 flex shrink-0 items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm">
               
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCurrentPageIndex(Math.max(0, safePageIndex - 1))}
                   disabled={safePageIndex === 0}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  className="flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span className="hidden sm:inline">Prev</span>
@@ -365,7 +356,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                 <select
                   value={safePageIndex}
                   onChange={(e) => setCurrentPageIndex(Number(e.target.value))}
-                  className="bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 px-3 py-1.5 rounded-xl outline-none focus:border-[#16834a] transition"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none transition focus:border-[#16834a] focus:ring-2 focus:ring-emerald-100"
                 >
                   {pagesList.map((p, idx) => (
                     <option key={idx} value={idx}>
@@ -378,14 +369,14 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
                   type="button"
                   onClick={() => setCurrentPageIndex(Math.min(totalPagesCount - 1, safePageIndex + 1))}
                   disabled={safePageIndex === totalPagesCount - 1}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                  className="flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="hidden sm:inline">Next</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
 
-              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-[#DCEBDD] text-emerald-300 border border-emerald-600/40">
+              <span className="rounded-full bg-[#e8f5eb] px-3 py-1 text-xs font-extrabold text-[#17663b]">
                 Page {safePageIndex + 1} / {totalPagesCount}
               </span>
             </div>
@@ -393,9 +384,9 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
             {/* LIVE PAPER PREVIEW CANVAS (FIXED HEIGHT 580px FOR GUARANTEED VISIBILITY) */}
             <div className="flex-1 overflow-y-auto flex items-center justify-center p-2 min-h-[580px]">
               
-              <div 
+              <div
                 id="printable-portfolio-canvas"
-                className="w-full max-w-[540px] h-[570px] bg-white text-slate-900 shadow-2xl rounded-2xl p-6 sm:p-7 flex flex-col justify-between relative overflow-hidden font-sans border border-slate-200 shrink-0"
+                className="relative flex h-[570px] w-full max-w-[540px] shrink-0 flex-col justify-between overflow-hidden rounded-xl border border-slate-200 bg-white p-6 font-sans text-slate-900 shadow-lg sm:p-7"
               >
                 
                 {renderPageBody(activePage)}
@@ -407,111 +398,54 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
           </div>
 
           {/* ================= RIGHT PANEL (35%): CUSTOMIZATION & CHECKLIST WORKSPACE ================= */}
-          <div className="lg:col-span-4 bg-slate-900 p-5 flex flex-col justify-between overflow-y-auto space-y-6">
+          <div className="lg:col-span-4 flex flex-col justify-between space-y-6 overflow-y-auto bg-white p-5">
             
             <div className="space-y-6">
-              
-              {/* 1. TEMPLATE SELECTION DROPDOWN */}
-              <div className="space-y-2">
-                <label className="text-xs font-extrabold text-slate-300 flex items-center gap-2">
-                  <Layout className="w-4 h-4 text-emerald-400" />
-                  <span>Dossier Template Style</span>
-                </label>
-                <select
-                  value={template}
-                  onChange={(e) => setTemplate(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-[#16834a] transition"
-                >
-                  <option value="ndmu_dossier">Official NDMU Dossier (Standard)</option>
-                  <option value="modern_clean">Modern Clean Executive</option>
-                  <option value="executive_1page">Executive Brief 1-Pager</option>
-                </select>
-              </div>
-
-              {/* 2. DOCUMENT STRUCTURE TOGGLES */}
-              <div className="space-y-3 pt-2 border-t border-slate-800">
-                <label className="text-xs font-extrabold text-slate-300 flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-emerald-400" />
-                  <span>Document Structure Options</span>
-                </label>
-
-                <div className="space-y-2 text-xs font-semibold text-slate-300">
-                  
-                  <button
-                    type="button"
-                    onClick={() => setIncludeCoverPage(!includeCoverPage)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 transition text-left cursor-pointer"
-                  >
-                    <span>Include Cover Page</span>
-                    {includeCoverPage ? <CheckSquare className="w-4 h-4 text-emerald-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIncludeTableOfContents(!includeTableOfContents)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 transition text-left cursor-pointer"
-                  >
-                    <span>Include Table of Contents</span>
-                    {includeTableOfContents ? <CheckSquare className="w-4 h-4 text-emerald-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIncludeCategorySeparators(!includeCategorySeparators)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 transition text-left cursor-pointer"
-                  >
-                    <span>Include Category Separators</span>
-                    {includeCategorySeparators ? <CheckSquare className="w-4 h-4 text-emerald-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSortNewestFirst(!sortNewestFirst)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 transition text-left cursor-pointer"
-                  >
-                    <span>Sort Chronologically (Newest First)</span>
-                    {sortNewestFirst ? <CheckSquare className="w-4 h-4 text-emerald-400" /> : <Square className="w-4 h-4 text-slate-500" />}
-                  </button>
-
+              <fieldset className="space-y-3">
+                <legend className="text-sm font-extrabold text-slate-900">Choose what to include</legend>
+                <p className="text-xs leading-5 text-slate-600">These options change the pages in your saved portfolio.</p>
+                <div className="space-y-2 text-sm text-slate-700">
+                  {[
+                    ['cover', 'Add a cover page', includeCoverPage, setIncludeCoverPage],
+                    ['contents', 'Add a contents page', includeTableOfContents, setIncludeTableOfContents],
+                    ['categories', 'Group achievements by category', includeCategorySeparators, setIncludeCategorySeparators],
+                    ['newest', 'Show newest achievements first', sortNewestFirst, setSortNewestFirst]
+                  ].map(([id, label, checked, setChecked]) => (
+                    <label key={id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-slate-50">
+                      <input type="checkbox" checked={checked} onChange={(event) => setChecked(event.target.checked)} className="h-4 w-4 rounded border-slate-300 text-[#16834a] focus:ring-[#16834a]" />
+                      <span className="font-semibold">{label}</span>
+                    </label>
+                  ))}
                 </div>
-              </div>
+              </fieldset>
 
-              {/* 3. SELECTABLE ACHIEVEMENTS CHECKLIST */}
-              <div className="space-y-3 pt-2 border-t border-slate-800">
+              <div className="space-y-3 border-t border-slate-200 pt-5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-slate-300 flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4 text-emerald-400" />
-                    <span>Select Achievements to Include</span>
-                  </label>
-                  <span className="text-[10px] font-bold text-emerald-400">
-                    {selectedIds.length} of {initialAchievements.length}
-                  </span>
+                  <div>
+                    <h4 className="text-sm font-extrabold text-slate-900">Verified achievements</h4>
+                    <p className="mt-0.5 text-xs text-slate-600">Select the records you want to save.</p>
+                  </div>
+                  <span className="text-xs font-bold text-[#17663b]">{selectedIds.length} selected</span>
                 </div>
 
-                <div className="space-y-2 text-xs max-h-48 overflow-y-auto pr-1">
+                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
                   {initialAchievements.map((item) => {
                     const isChecked = selectedIds.includes(item.id)
                     return (
-                      <button
+                      <label
                         key={item.id}
-                        type="button"
-                        onClick={() => toggleItemSelection(item.id)}
-                        className={`w-full p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition cursor-pointer ${
+                        className={`flex w-full cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition ${
                           isChecked 
-                            ? 'bg-slate-800/90 border-emerald-600/50 text-white' 
-                            : 'bg-slate-950/40 border-slate-800 text-slate-400'
+                            ? 'border-emerald-300 bg-emerald-50/70 text-slate-900'
+                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        {isChecked ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-                        )}
+                        <input type="checkbox" checked={isChecked} onChange={() => toggleItemSelection(item.id)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-[#16834a] focus:ring-[#16834a]" />
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-xs truncate leading-tight">{item.title}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{item.category} • {item.date}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-500">{item.category} • {item.date}</p>
                         </div>
-                      </button>
+                      </label>
                     )
                   })}
                 </div>
@@ -520,22 +454,24 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
             </div>
 
             {/* DYNAMIC ACTION BUTTON FOOTER */}
-            <div className="pt-4 border-t border-slate-800 space-y-2">
+            <div className="space-y-2 border-t border-slate-200 pt-4">
               <button
                 type="button"
                 onClick={handlePrintPDF}
-                className="w-full py-3 px-4 rounded-2xl bg-[#16834a] hover:bg-[#236e3e] text-white font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-lg cursor-pointer"
+                disabled={activeAchievements.length === 0}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#16834a] px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#126b3c] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Printer className="w-4 h-4" />
-                <span>Download Portfolio PDF ({totalPagesCount} Pages)</span>
+                <span>Save as PDF</span>
               </button>
+              <p className="text-center text-[11px] text-slate-500">Your browser’s print window will open. Choose “Save as PDF.”</p>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full py-2 px-4 rounded-xl text-slate-400 hover:text-white font-semibold text-xs transition text-center cursor-pointer"
+                className="w-full rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
               >
-                Cancel
+                Close
               </button>
             </div>
 
@@ -545,7 +481,7 @@ export default function ExportPortfolioPreviewModal({ isOpen, onClose, student, 
 
       </div>
       {typeof document !== 'undefined' && createPortal(
-        <div className="print-area print-show student-portfolio-print" style={{ display: 'none' }} aria-hidden="true">
+        <div className="print-area print-show student-portfolio-print" aria-hidden="true">
           <style>{`@media print { @page { size: A4; margin: 12mm; } .student-portfolio-print-page { break-after: page; page-break-after: always; min-height: 260mm; display: flex; flex-direction: column; justify-content: space-between; } .student-portfolio-print-page:last-child { break-after: auto; page-break-after: auto; } }`}</style>
           {pagesList.map((page, idx) => (
             <div key={`${page.type}-${idx}`} className="student-portfolio-print-page bg-white text-slate-900 font-sans">

@@ -24,4 +24,10 @@ final class RankingCycleEndpointTest extends CIUnitTestCase
     {
         $this->get('/api/v1/hr/ranking-cycles/cycle-1')->assertStatus(401);
     }
+
+    public function testCancellationAndRestoreRemainHrOnly(): void
+    {
+        $this->post('/api/v1/hr/ranking-cycles/cycle-1/cancel', ['reason' => 'Test safety check'])->assertStatus(401);
+        $this->post('/api/v1/hr/ranking-cycles/cycle-1/restore', ['confirm' => true])->assertStatus(401);
+    }
 }

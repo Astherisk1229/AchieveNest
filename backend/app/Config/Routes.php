@@ -9,6 +9,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('health', 'Api\HealthController::index', ['as' => 'health.index']);
     $routes->post('auth/login', 'Api\AuthController::login', ['as' => 'auth.login']);
     $routes->options('auth/login', 'Api\AuthController::options');
+    $routes->post('auth/demo-login', 'Api\AuthController::demoLogin', ['as' => 'auth.demo_login']);
+    $routes->options('auth/demo-login', 'Api\AuthController::options');
     $routes->post('auth/logout', 'Api\AuthController::logout', ['as' => 'auth.logout']);
     $routes->options('auth/logout', 'Api\AuthController::options');
     $routes->get('auth/me', 'Api\AuthController::me', ['as' => 'auth.me']);
@@ -157,6 +159,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->patch('hr/ranking-cycles/(:segment)/coverage', 'Api\RankingCycleController::coverage/$1');
     $routes->options('hr/ranking-cycles/(:segment)/coverage', 'Api\RankingCycleController::options');
     $routes->post('hr/ranking-cycles/(:segment)/archive', 'Api\RankingCycleController::archive/$1');
+      $routes->post('hr/ranking-cycles/(:segment)/cancel', 'Api\RankingCycleController::cancel/$1');
+      $routes->post('hr/ranking-cycles/(:segment)/restore', 'Api\RankingCycleController::restore/$1');
     $routes->options('hr/ranking-cycles/(:segment)/(:segment)', 'Api\RankingCycleController::options');
     $routes->options('hr/ranking-cycles', 'Api\RankingCycleController::options');
     $routes->options('hr/ranking-cycles/(:segment)', 'Api\RankingCycleController::options');
@@ -219,6 +223,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->post('events/(:segment)/certificate-source-records/resolve', 'Api\EventCertificateCandidateController::resolve/$1');
     $routes->options('events/(:segment)/certificate-candidates', 'Api\EventCertificateCandidateController::options');
     $routes->options('events/(:segment)/certificate-source-records/resolve', 'Api\EventCertificateCandidateController::options');
+    $routes->get('attendance-certificates', 'Api\AutomaticAttendanceCertificateController::index');
+    $routes->options('attendance-certificates', 'Api\AutomaticAttendanceCertificateController::options');
 
     // Attendance Domain (R4 Step 2B)
     $routes->get('events/(:segment)/attendance-sessions', 'Api\AttendanceController::listSessionsForEvent/$1');

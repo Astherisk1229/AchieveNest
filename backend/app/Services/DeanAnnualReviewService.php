@@ -50,7 +50,7 @@ class DeanAnnualReviewService
 
     private function assertOpen(array $period): void
     {
-        if(in_array($period['status']??'', ['CLOSED','ARCHIVED'],true)) throw new RuntimeException('EVALUATION_PERIOD_LOCKED: This evaluation period is closed and remains read-only.');
+        if(in_array($period['status']??'', ['CLOSED','ARCHIVED','CANCELLED'],true)) throw new RuntimeException('EVALUATION_PERIOD_LOCKED: This evaluation period is historical or cancelled and remains read-only.');
     }
 
     private function rating(array $payload,bool $required=false): ?string
@@ -122,7 +122,7 @@ class DeanAnnualReviewService
             $count=$this->db->table('personnel_annual_reviews')->where('personnel_profile_id',$person['id'])->where('evaluation_period_id',$period['id'])->where('superseded_at !=',null)->countAllResults();
             $items[]=['personnel'=>$person,'evaluation_period_id'=>$period['id'],'annual_review'=>$review,'superseded_count'=>$count,'eligibility'=>$this->eligibilityService->evaluateEligibility($person['id'],$period['id'])];
         }
-        return ['ranking_cycle_id'=>$period['ranking_cycle_id']??null,'evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'evaluation_period'=>['id'=>$period['id'],'name'=>$period['period_name'],'status'=>$period['status'],'status_label'=>$period['status_label']??$period['status'],'evaluation_end_at'=>$period['evaluation_end_at'],'is_locked'=>in_array($period['status'],['CLOSED','ARCHIVED'],true)],'college_id'=>$college,'total_personnel'=>count($items),'personnel'=>$items];
+        return ['ranking_cycle_id'=>$period['ranking_cycle_id']??null,'evaluation_period_id'=>$period['id'],'evaluation_cycle_id'=>$period['academic_year'],'evaluation_period'=>['id'=>$period['id'],'name'=>$period['period_name'],'status'=>$period['status'],'status_label'=>$period['status_label']??$period['status'],'evaluation_end_at'=>$period['evaluation_end_at'],'is_locked'=>in_array($period['status'],['CLOSED','ARCHIVED','CANCELLED'],true)],'college_id'=>$college,'total_personnel'=>count($items),'personnel'=>$items];
     }
 
     public function getReviewById(string $id): array

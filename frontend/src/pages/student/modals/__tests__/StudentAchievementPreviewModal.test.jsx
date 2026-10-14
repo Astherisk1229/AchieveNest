@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('../../../../services/portfolioService', () => ({ default: { fetchRecord: vi.fn(() => Promise.resolve({ events: [] })), downloadEvidence: vi.fn() } }))
 
 import StudentAchievementController from '../../../../controllers/StudentAchievementController'
-import StudentAchievementPreviewModal, { detailRows } from '../StudentAchievementPreviewModal'
+import StudentAchievementPreviewModal, { automaticAttendanceCertificateMetadata, detailRows } from '../StudentAchievementPreviewModal'
 
 const CLUB = '40000001-0001-0000-0000-000000000003'
 const record = (overrides = {}) => StudentAchievementController.normalize({
@@ -42,6 +42,25 @@ describe('StudentAchievementPreviewModal (document-first)', () => {
 
   it('maps detail values to the form labels', () => {
     expect(detailRows(CLUB, { academic_year: '2025-2026' })).toEqual([expect.objectContaining({ value: 'AY 2025-2026' })])
+  })
+
+  it('renders automatic attendance as a certificate instead of an empty evidence attachment', () => {
+    const automatic = record({
+      title: 'Certificate of Participation — TEST CASE 1',
+      status: 'verified',
+      student_name: 'Demo Student A',
+      start_date: '2026-10-05',
+      organizer_or_body: 'Reviewing Stand',
+      structured_metadata: JSON.stringify({ automatic_attendance_certificate: true, origin_event_id: 'event-1' }),
+      evidence: []
+    })
+    const html = renderToStaticMarkup(<StudentAchievementPreviewModal isOpen achievement={automatic} onClose={vi.fn()} />)
+    expect(automaticAttendanceCertificateMetadata(automatic)).toMatchObject({ origin_event_id: 'event-1' })
+    expect(html).toContain('Certificate of Participation')
+    expect(html).toContain('Demo Student A')
+    expect(html).toContain('TEST CASE 1')
+    expect(html).toContain('no separate document attachment is needed')
+    expect(html).not.toContain('No document attached')
   })
 })
 

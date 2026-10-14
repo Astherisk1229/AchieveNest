@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
-import { authenticateUser, getCurrentUser, requestPasswordReset } from '../../services/authService'
+import { authenticateDemoUser, authenticateUser, getCurrentUser, requestPasswordReset } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import RouteAccessController from '../../controllers/RouteAccessController'
 import campusBanner from '../../assets/ndmu_login_bg.jpg'
@@ -74,10 +74,34 @@ export default function LoginPage() {
     setIsForgotModalOpen(true)
   }
 
-  const handleSelectDemo = (demoEmail) => {
+  const finishLogin = (session) => {
+    login?.(session)
+
+    const accountType = session.account_type || session.user_type
+    const destinations = {
+      student: '/student/dashboard',
+      personnel: '/personnel/dashboard',
+      hr_admin: '/hr/dashboard',
+      osad_admin: '/osad/dashboard',
+    }
+
+    navigate(destinations[accountType] || RouteAccessController.resolveRedirect(session))
+  }
+
+  const handleSelectDemo = async (demoEmail) => {
     setEmail(demoEmail)
     setPassword('')
     setError('')
+
+    try {
+      setIsSubmitting(true)
+      const session = await authenticateDemoUser(demoEmail, keepSignedIn)
+      finishLogin(session)
+    } catch (err) {
+      setError(err.message || 'We could not start the demo session. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleSubmit = async (event) => {
@@ -92,17 +116,7 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true)
       const session = await authenticateUser(email, password, keepSignedIn)
-      login?.(session)
-
-      const accountType = session.account_type || session.user_type
-      const destinations = {
-        student: '/student/dashboard',
-        personnel: '/personnel/dashboard',
-        hr_admin: '/hr/dashboard',
-        osad_admin: '/osad/dashboard',
-      }
-
-      navigate(destinations[accountType] || RouteAccessController.resolveRedirect(session))
+      finishLogin(session)
     } catch (err) {
       setError(err.message || 'We could not sign you in. Check your credentials and try again.')
     } finally {
@@ -280,18 +294,23 @@ export default function LoginPage() {
               <div className="h-px flex-1 bg-slate-200" />
             </div>
 
+            <p className="mb-3 text-xs leading-5 text-slate-500">
+              Choose a persona to sign in instantly on this local demo.
+            </p>
+
             <div className="grid grid-cols-2 gap-2.5" aria-label="Demo accounts">
               {demoAccounts.map((demo) => (
                 <button
                   key={demo.email}
                   type="button"
                   onClick={() => handleSelectDemo(demo.email)}
+                  disabled={isSubmitting}
                   className={`min-h-12 rounded-[12px] px-3 py-2 text-left ring-1 ring-inset transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#147a4c] ${
                     email === demo.email
                       ? 'bg-emerald-50 text-emerald-950 ring-emerald-300'
                       : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-50 hover:ring-slate-300'
                   }`}
-                  title={demo.description}
+                  title={`Sign in as ${demo.label}`}
                   aria-pressed={email === demo.email}
                 >
                   <span className="block text-xs font-bold">{demo.label}</span>

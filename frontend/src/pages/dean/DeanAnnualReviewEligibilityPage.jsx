@@ -228,7 +228,7 @@ function AnnualReviewHistoryDrawer({ person, periodId, refreshKey, onClose, retu
   const dialogRef = useRef(null)
   const [state, setState] = useState({ loading: true, rows: [], error: '' })
   const close = useCallback(() => { onClose(); requestAnimationFrame(() => returnFocusRef.current?.focus()) }, [onClose, returnFocusRef])
-  useEffect(() => { let live = true; setState(value => ({ ...value, loading: true, error: '' })); fetchAnnualReviewHistory(person.id, periodId).then(rows => live && setState({ loading: false, rows: rows || [], error: '' })).catch(error => live && setState({ loading: false, rows: [], error: error?.response?.data?.error?.message || 'History could not be loaded.' })); return () => { live = false } }, [person.id, periodId, refreshKey])
+  useEffect(() => { let live = true; setState(value => ({ ...value, loading: true, error: '' })); fetchAnnualReviewHistory(person.id, periodId).then(rows => live && setState({ loading: false, rows: rows || [], error: '' })).catch(error => live && setState({ loading: false, rows: [], error: annualReviewRequestError(error, 'History could not be loaded.').message })); return () => { live = false } }, [person.id, periodId, refreshKey])
   useEffect(() => {
     const dialog = dialogRef.current
     dialog?.focus()
@@ -261,7 +261,7 @@ export default function DeanAnnualReviewEligibilityPage({ cycleId: suppliedCycle
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0)
   const uploadReturnFocusRef = useRef(null)
   const historyReturnFocusRef = useRef(null)
-  const load = useCallback(async () => { setState(v => ({ ...v, phase: 'loading', error: '' })); try { const response = cycleId && trackKey ? await fetchReviewerTrackRoster(cycleId, trackKey) : await fetchDeanAnnualReviews(); const data = response?.data || response; setState({ phase: 'success', data, error: '' }); return data } catch (e) { setState({ phase: 'error', data: null, error: e?.response?.data?.error?.message || 'Annual reviews could not be loaded.' }); throw e } }, [cycleId, trackKey])
+  const load = useCallback(async () => { setState(v => ({ ...v, phase: 'loading', error: '' })); try { const response = cycleId && trackKey ? await fetchReviewerTrackRoster(cycleId, trackKey) : await fetchDeanAnnualReviews(); const data = response?.data || response; setState({ phase: 'success', data, error: '' }); return data } catch (error) { setState({ phase: 'error', data: null, error: annualReviewRequestError(error, 'Annual reviews could not be loaded.').message }); throw error } }, [cycleId, trackKey])
   useEffect(() => { load() }, [load])
   const allRows = useMemo(() => state.data?.personnel || [], [state.data?.personnel])
   const positions = useMemo(() => [...new Set(allRows.map(item => item.personnel.position_title).filter(Boolean))].sort(), [allRows])

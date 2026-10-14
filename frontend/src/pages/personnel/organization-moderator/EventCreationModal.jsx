@@ -20,12 +20,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/
 import { Calendar } from '../../../components/ui/calendar'
 import {
   calculateDuration,
+  getDefaultEventSchedule,
   format12HourTime,
   formatDateHeading,
   formatDateToYMD,
   formatScheduleDuration,
   getNextDayDate,
   getSmartDefaultEndTime,
+  isDateTimeInPastOrNow,
   parseDateString,
   parseTo24Hour,
   validateSchedule
@@ -48,7 +50,7 @@ const TIME_OPTIONS = [
   '02:00', '02:30', '03:00', '03:30', '04:00', '04:30', '05:00', '05:30'
 ]
 
-function TimePicker({ value, onChange, placeholder = 'Select time', className = '', id }) {
+function TimePicker({ value, onChange, placeholder = 'Select time', className = '', id, isOptionDisabled }) {
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState(() => format12HourTime(value))
 
@@ -61,7 +63,7 @@ function TimePicker({ value, onChange, placeholder = 'Select time', className = 
     setInputValue(text)
     try {
       const parsed = parseTo24Hour(text, null)
-      if (parsed) {
+      if (parsed && !isOptionDisabled?.(parsed)) {
         onChange(parsed)
       }
     } catch {
@@ -72,7 +74,7 @@ function TimePicker({ value, onChange, placeholder = 'Select time', className = 
   const handleInputBlur = () => {
     try {
       const parsed = parseTo24Hour(inputValue, null)
-      if (parsed) {
+      if (parsed && !isOptionDisabled?.(parsed)) {
         onChange(parsed)
         setInputValue(format12HourTime(parsed))
       } else {
@@ -112,12 +114,16 @@ function TimePicker({ value, onChange, placeholder = 'Select time', className = 
           {TIME_OPTIONS.map((time24) => {
             const label = format12HourTime(time24)
             const isSelected = value === time24
+            const isDisabled = isOptionDisabled?.(time24) ?? false
             return (
               <button
                 key={time24}
                 type="button"
+                disabled={isDisabled}
                 onClick={() => handleSelectOption(time24)}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-between ${
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center justify-between ${
+                  isDisabled ? 'text-slate-300 cursor-not-allowed' : 'cursor-pointer'
+                } ${
                   isSelected
                     ? 'bg-emerald-50 text-[#16834a] font-bold'
                     : 'text-slate-700 hover:bg-slate-50'
@@ -195,6 +201,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
   const [fieldErrors, setFieldErrors] = useState({})
   const [submitError, setSubmitError] = useState(null)
   const [endScheduleTouched, setEndScheduleTouched] = useState(false)
+  const todayYmd = useMemo(() => formatDateToYMD(new Date()), [isOpen])
 
   // Canonical Venues state
   const [venues, setVenues] = useState([])
@@ -279,13 +286,14 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
       })
       setEndScheduleTouched(true)
     } else {
+      const defaultSchedule = getDefaultEventSchedule()
       setFormData({
         title: '',
         category: 'Workshop',
-        startDate: '',
-        startTime: '09:00',
-        endDate: '',
-        endTime: '10:00',
+        startDate: defaultSchedule.startDate,
+        startTime: defaultSchedule.startTime,
+        endDate: defaultSchedule.endDate,
+        endTime: defaultSchedule.endTime,
         venue_id: '',
         historicalVenue: '',
         description: '',
@@ -461,7 +469,13 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
       errors.endTime = 'Select an end time.'
     }
 
-    if (formData.startDate && formData.startTime && formData.endDate && formData.endTime) {
+    const now = new Date()
+    const currentDate = formatDateToYMD(now)
+    if (!editingEvent && formData.startDate && formData.startDate < currentDate) {
+      errors.startDate = 'Event start date cannot be in the past.'
+    } else if (!editingEvent && formData.startDate && formData.startTime && isDateTimeInPastOrNow(formData.startDate, formData.startTime, now)) {
+      errors.schedule = 'Event start time must be in the future.'
+    } else if (formData.startDate && formData.startTime && formData.endDate && formData.endTime) {
       const dur = calculateDuration(formData.startDate, formData.startTime, formData.endDate, formData.endTime)
       if (!dur.isValid) {
         errors.schedule = dur.error
@@ -722,6 +736,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                           value={formData.startDate}
                           onChange={handleStartDateSelect}
                           placeholder="Select start date"
+                          disabledBefore={editingEvent ? undefined : todayYmd}
                           error={fieldErrors.startDate}
                         />
                       </div>
@@ -731,6 +746,9 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                           value={formData.startTime}
                           onChange={handleStartTimeChange}
                           placeholder="Start time"
+                          isOptionDisabled={editingEvent || formData.startDate !== todayYmd
+                            ? undefined
+                            : (time) => isDateTimeInPastOrNow(formData.startDate, time)}
                         />
                       </div>
                     </div>
@@ -751,7 +769,7 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                           value={formData.endDate}
                           onChange={handleEndDateSelect}
                           placeholder="Select end date"
-                          disabledBefore={formData.startDate}
+                          disabledBefore={!editingEvent && todayYmd > formData.startDate ? todayYmd : formData.startDate}
                           error={fieldErrors.endDate}
                         />
                       </div>
@@ -761,6 +779,9 @@ export default function EventCreationModal({ isOpen, onClose, onCreateEvent, onU
                           value={formData.endTime}
                           onChange={handleEndTimeChange}
                           placeholder="End time"
+                          isOptionDisabled={formData.endDate === formData.startDate && formData.startTime
+                            ? (time) => time <= parseTo24Hour(formData.startTime)
+                            : undefined}
                         />
                       </div>
                     </div>

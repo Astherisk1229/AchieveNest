@@ -39,6 +39,21 @@ export function mapApiEventStatusToUi(status) {
   )
 }
 
+// A status transition is already durable once its API call has resolved. A
+// follow-up list refresh is useful, but must not turn that completed mutation
+// into a failure in the UI when the refresh has a transient problem.
+export async function refreshAttendanceSessionsAfterTransition(loadSessions, eventId) {
+  if (!eventId) return true
+
+  try {
+    await loadSessions(eventId)
+    return true
+  } catch {
+    // loadAttendanceSessions records the retryable error in its own state.
+    return false
+  }
+}
+
 function normalizeCategory(value) {
   const raw = String(value ?? '').trim()
 
@@ -201,6 +216,7 @@ export function mapApiEventToUi(event = {}) {
     participants_count: Number(
       event.participants_count ?? 0
     ),
+    osad_template_id: event.osad_template_id ?? null,
     banner_type: (
       event.banner_type
       ?? bannerTypeForCategory(category)
@@ -301,6 +317,11 @@ export function mapUiEventToApi(event = {}, isUpdate = false) {
     event_type: category,
     start_time,
     end_time
+  }
+
+  const osadTemplateId = String(event.osad_template_id ?? '').trim()
+  if (osadTemplateId) {
+    payload.osad_template_id = osadTemplateId
   }
 
   // Canonical venue_id integration
@@ -431,18 +452,14 @@ export default function useOrganization() {
   const openAttendanceSession = useCallback(async (sessionId, eventId) => {
     const updated = await attendanceService.transitionAttendanceSessionStatus(sessionId, 'open')
     setActiveAttendanceSession(updated)
-    if (eventId) {
-      await loadAttendanceSessions(eventId)
-    }
+    await refreshAttendanceSessionsAfterTransition(loadAttendanceSessions, eventId)
     return updated
   }, [loadAttendanceSessions])
 
   const closeAttendanceSession = useCallback(async (sessionId, eventId) => {
     const updated = await attendanceService.transitionAttendanceSessionStatus(sessionId, 'closed')
     setActiveAttendanceSession(updated)
-    if (eventId) {
-      await loadAttendanceSessions(eventId)
-    }
+    await refreshAttendanceSessionsAfterTransition(loadAttendanceSessions, eventId)
     return updated
   }, [loadAttendanceSessions])
 

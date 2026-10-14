@@ -154,6 +154,13 @@ export default function CoordinatorDashboardPage({ currentUser }) {
 
   const averageReviewTime = calculateAverageReviewTime(allSubmissions)
 
+  // Recent activity click: jump to the Verification Workspace with that submission selected.
+  // The linkedRecordId effect above selects the record and clears the param.
+  const openInWorkspace = (recordId) => {
+    setSelectedReviewItem(null)
+    setSearchParams({ tab: 'workspace', record: recordId })
+  }
+
   const handleMetricStatusSelect = (status) => {
     const validStatus = ['Pending', 'Verified', 'Returned', 'Rejected'].includes(status) ? status : 'All'
     setStatusFilter(validStatus)
@@ -277,7 +284,17 @@ export default function CoordinatorDashboardPage({ currentUser }) {
                     return (
                       <div
                         key={act.id}
-                        className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 hover:border-emerald-300 hover:bg-white transition flex items-start justify-between gap-4 group"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Open in Verification Workspace: ${act.detail}`}
+                        onClick={() => openInWorkspace(act.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openInWorkspace(act.id)
+                          }
+                        }}
+                        className="p-4 rounded-2xl bg-slate-50/70 border border-slate-200/80 hover:border-emerald-300 hover:bg-white transition flex items-start justify-between gap-4 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                       >
                         <div className="flex items-start gap-3.5">
                           <div className="p-2.5 rounded-xl bg-white text-[#16834a] border border-slate-200 shadow-2xs group-hover:bg-[#E7F3E9] transition shrink-0 mt-0.5">

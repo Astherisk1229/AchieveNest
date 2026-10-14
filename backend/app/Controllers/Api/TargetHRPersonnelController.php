@@ -509,6 +509,16 @@ class TargetHRPersonnelController extends Controller
             return $this->respond(['error' => ['code' => 'PERSONNEL_NOT_FOUND', 'message' => 'Active personnel profile not found.']], 404);
         }
 
+        $fullName = array_key_exists('full_name', $json)
+            ? trim((string) preg_replace('/\s+/u', ' ', trim((string) $json['full_name'])))
+            : (string) ($targetProfile['full_name'] ?? '');
+        if ($fullName === '' || mb_strlen($fullName) > 255) {
+            return $this->respond(['error' => [
+                'code' => 'INVALID_FULL_NAME',
+                'message' => 'Full name is required and must not exceed 255 characters.',
+            ]], 422);
+        }
+
         $currentPersonnel = $db->table('personnel_profiles')->where('profile_id', $profileId)->get()->getRowArray();
         if ($currentPersonnel === null) {
             return $this->respond(['error' => ['code' => 'PERSONNEL_PROFILE_NOT_FOUND', 'message' => 'Personnel profile record missing.']], 404);
@@ -520,6 +530,7 @@ class TargetHRPersonnelController extends Controller
         $priorEmploymentStartDate = $currentPersonnel['employment_start_date'] ?? null;
         $priorPosition   = $currentPersonnel['position_title'] ?? ($targetProfile['designation_title'] ?? '');
         $priorRank       = $currentPersonnel['current_rank_title'] ?? ($currentPersonnel['rank_level'] ?? '');
+        $priorFullName   = (string) ($targetProfile['full_name'] ?? '');
 
         $db->transBegin();
         try {
@@ -553,8 +564,9 @@ class TargetHRPersonnelController extends Controller
 
             $db->table('personnel_profiles')->where('profile_id', $profileId)->update($updateData);
 
-            // Sync profiles designation_title
+            // Keep the canonical account identity and display title in sync with HR's official record.
             $db->table('profiles')->where('id', $profileId)->update([
+                'full_name'         => $fullName,
                 'designation_title' => $validation['position_title'],
                 'updated_at'        => $now,
             ]);
@@ -579,6 +591,9 @@ class TargetHRPersonnelController extends Controller
                         'new_position'     => $validation['position_title'],
                         'prior_rank'       => $priorRank,
                         'new_rank'         => $validation['current_rank_title'],
+                        'prior_full_name'  => $priorFullName,
+                        'new_full_name'    => $fullName,
+                        'full_name_changed' => $priorFullName !== $fullName,
                         'justification'    => trim((string) ($json['reason'] ?? 'HR Admin updated faculty status and master data.')),
                     ],
                     $now
@@ -601,6 +616,7 @@ class TargetHRPersonnelController extends Controller
             'data' => [
                 'message'                  => 'Personnel master data updated successfully.',
                 'profile_id'               => $profileId,
+                'full_name'                => $fullName,
                 'faculty_engagement'       => $validation['faculty_engagement'],
                 'faculty_engagement_label' => $validation['faculty_engagement_label'],
                 'employment_status'        => $validation['employment_status'],

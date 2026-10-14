@@ -39,7 +39,6 @@ import OrganizationController from '../../../controllers/OrganizationController'
 import useOrganization from '../../../hooks/useOrganization'
 import EventCreationModal from './EventCreationModal'
 import AttendanceScannerModal from './AttendanceScannerModal'
-import DigitalCertificateModal from './DigitalCertificateModal'
 import EventCardOptionsMenu from './EventCardOptionsMenu'
 import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
 import DigitalCertificatesWorkspace from './certificates/DigitalCertificatesWorkspace'
@@ -136,11 +135,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState(null)
   const [isScannerOpen, setIsScannerOpen] = useState(false)
-  const [isCertModalOpen, setIsCertModalOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
 
   // Attendance Safeguards & Monitoring States
-  const [confirmModalAction, setConfirmModalAction] = useState(null) // null | 'Closed' | 'Locked' | 'Active'
+  const [confirmModalAction, setConfirmModalAction] = useState(null) // null | 'Closed'
   const [_liveStreamSearchTerm, _setLiveStreamSearchTerm] = useState('')
   const [_autoLockGuard, _setAutoLockGuard] = useState(true)
   const [_isEventPickerOpen, _setIsEventPickerOpen] = useState(false)
@@ -269,9 +267,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     setIsScannerOpen(true)
   }
 
-  const handleOpenCertificates = (evt) => {
-    setSelectedEvent(evt || events[0])
-    setIsCertModalOpen(true)
+  const handleOpenCertificates = () => {
+    setSearchParams({ tab: 'certificates' })
   }
 
   // Signature Vault state & Handler
@@ -303,15 +300,26 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
   }
 
 
+  const eventCheckInBounds = (() => {
+    const toDateTimeLocal = (dateTime) => {
+      const match = String(dateTime ?? '').trim().match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/)
+      return match ? `${match[1]}T${match[2]}` : ''
+    }
+
+    return {
+      start: toDateTimeLocal(activeEvt?.start_time) || (activeEvt?.startDate && activeEvt?.startTime ? `${activeEvt.startDate}T${activeEvt.startTime}` : ''),
+      end: toDateTimeLocal(activeEvt?.end_time) || (activeEvt?.endDate && activeEvt?.endTime ? `${activeEvt.endDate}T${activeEvt.endTime}` : '')
+    }
+  })()
+
   // Canonical Session Handlers (R4 Step 2C-A)
   const handleOpenCreateSessionModal = () => {
     setSessionFormError(null)
-    const eventDate = activeEvt?.date || activeEvt?.start_time?.slice(0, 10) || new Date().toISOString().slice(0, 10)
     setSessionFormData({
       session_name: '',
       session_type: 'general',
-      check_in_start: `${eventDate}T08:00`,
-      check_in_end: `${eventDate}T12:00`
+      check_in_start: eventCheckInBounds.start,
+      check_in_end: eventCheckInBounds.end
     })
     setIsCreateSessionModalOpen(true)
   }
@@ -326,7 +334,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
     }
 
     if (!sessionFormData.check_in_start || !sessionFormData.check_in_end) {
-      setSessionFormError('Check-in start and end times are required.')
+      setSessionFormError('This event needs a valid start and end schedule before configuring check-in.')
       return
     }
 
@@ -335,6 +343,13 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
     if (isNaN(startTs) || isNaN(endTs) || endTs <= startTs) {
       setSessionFormError('Check-in end time must be later than start time.')
+      return
+    }
+
+    if (!eventCheckInBounds.start || !eventCheckInBounds.end
+      || sessionFormData.check_in_start < eventCheckInBounds.start
+      || sessionFormData.check_in_end > eventCheckInBounds.end) {
+      setSessionFormError('Check-in must start and end within the event schedule.')
       return
     }
 
@@ -645,7 +660,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     {selectedEventDetail.participants_count} Checked-In
                   </p>
                   <p className="text-[10px] text-slate-500 mt-1 font-medium">
-                    Open event scope • Auto-certified on close
+                    Unique students in canonical attendance sessions
                   </p>
                 </div>
 
@@ -756,10 +771,10 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-slate-700 font-medium space-y-1">
                     <span className="font-extrabold text-emerald-900 block flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      Certificate Issuance Is Manual
+                      Attendance Certificates Are Automatic
                     </span>
                     <p className="text-[11px] text-slate-600">
-                      Certificates are not sent automatically when attendance closes. OSAD issues them after attendance is finalized, and they then appear in each attending student's portfolio.
+                      When an attendance session closes, every verified attendee automatically receives a Certificate of Participation record in their portfolio. No OSAD review or manual issuance is required.
                     </p>
                   </div>
                 </div>
@@ -1104,7 +1119,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         onMonitorAttendance={(id) => handleGoToAttendanceSession(id)}
                         onLaunchScanner={(e) => handleOpenScanner(e)}
                         onEditEvent={(e) => handleOpenEditModal(e)}
-                        onPreviewCertificates={(e) => handleOpenCertificates(e)}
+                        onViewCertificates={handleOpenCertificates}
                         onExportCSV={(e) => handleGoToAttendanceSession(e.id)}
                         onCancelEvent={(id) => handleCancelEvent(id)}
                       />
@@ -1570,6 +1585,8 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         type="datetime-local"
                         value={sessionFormData.check_in_start}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, check_in_start: e.target.value })}
+                        min={eventCheckInBounds.start || undefined}
+                        max={eventCheckInBounds.end || undefined}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] focus:bg-white transition"
                         required
                       />
@@ -1581,11 +1598,17 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                         type="datetime-local"
                         value={sessionFormData.check_in_end}
                         onChange={(e) => setSessionFormData({ ...sessionFormData, check_in_end: e.target.value })}
+                        min={sessionFormData.check_in_start || eventCheckInBounds.start || undefined}
+                        max={eventCheckInBounds.end || undefined}
                         className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#16834a] focus:bg-white transition"
                         required
                       />
                     </div>
                   </div>
+
+                  <p className="text-[11px] text-slate-500 -mt-1">
+                    Check-in must remain within the event schedule shown above.
+                  </p>
 
                   <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                     <button
@@ -1611,47 +1634,6 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                     </button>
                   </div>
                 </form>
-              </div>
-            </div>
-          )}
-
-          {/* Close Session Confirmation Modal */}
-          {confirmModalAction === 'Closed' && activeAttendanceSession && (
-            <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-slate-900">
-                      Confirm Session Closure
-                    </h3>
-                    <p className="text-xs text-slate-500 font-medium">Terminal Lifecycle Transition</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium leading-relaxed">
-                  Are you sure you want to <strong>permanently close</strong> attendance session <strong>{activeAttendanceSession.session_name}</strong>? Closed sessions cannot be re-opened for new check-ins.
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => setConfirmModalAction(null)}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={() => handleCloseSession(activeAttendanceSession.id)}
-                    disabled={attendanceActionLoading}
-                    className="px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Close</span>
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -2031,16 +2013,16 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
 
               <button
                 type="button"
-                onClick={() => handleOpenCertificates()}
+                onClick={handleOpenCertificates}
                 className="bg-white hover:bg-emerald-50/50 rounded-2xl p-4 text-slate-900 shadow-md border border-transparent hover:border-emerald-200 flex items-center gap-4 text-left transition cursor-pointer group"
-                title="Click to Preview & Issue Digital Certificates"
+                title="View automatic attendance certificates"
               >
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#16834a] group-hover:bg-[#16834a] group-hover:text-white flex items-center justify-center shrink-0 transition">
                   <Award className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">DIGITAL CERTS ISSUED</p>
-                  <p className="text-xl font-extrabold text-slate-900">{metrics.certs_issued}</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-[#16834a] transition">ATTENDANCE CERTIFICATES</p>
+                  <p className="text-sm font-extrabold text-slate-900">View portfolio records</p>
                 </div>
               </button>
 
@@ -2080,11 +2062,11 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                   <span>Live Attendance Scanner</span>
                 </button>
                 <button
-                  onClick={() => handleOpenCertificates()}
+                  onClick={handleOpenCertificates}
                   className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <Award className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Digital Certificates</span>
+                  <span>Attendance Certificates</span>
                 </button>
               </div>
             </div>
@@ -2127,7 +2109,7 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
                           onMonitorAttendance={(id) => handleGoToAttendanceSession(id)}
                           onLaunchScanner={(e) => handleOpenScanner(e)}
                           onEditEvent={(e) => handleOpenEditModal(e)}
-                          onPreviewCertificates={(e) => handleOpenCertificates(e)}
+                          onViewCertificates={handleOpenCertificates}
                           onExportCSV={(e) => handleGoToAttendanceSession(e.id)}
                           onCancelEvent={(id) => handleCancelEvent(id)}
                         />
@@ -2228,67 +2210,52 @@ export default function OrganizationModeratorDashboardPage({ _currentUser }) {
             }}
           />
 
-          <DigitalCertificateModal
-            isOpen={isCertModalOpen}
-            onClose={() => setIsCertModalOpen(false)}
-            activeEvent={selectedEvent}
-          />
-
-          {/* Safety Confirmation Guard Modal for High-Risk Session Overrides */}
-          {confirmModalAction && (
+          {/* The single terminal close confirmation for the active attendance session. */}
+          {confirmModalAction === 'Closed' && activeAttendanceSession && (
             <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
               <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 space-y-5">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${confirmModalAction === 'Closed' ? 'bg-rose-100 text-rose-600 border border-rose-200' : 'bg-amber-100 text-amber-700 border border-amber-200'
-                    }`}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-rose-100 text-rose-600 border border-rose-200">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-base text-slate-900">
-                      {confirmModalAction === 'Closed' ? 'Confirm Session Closure' :
-                        confirmModalAction === 'Locked' ? 'Confirm Locking Session' : 'Confirm Unlocking Session'}
+                      Confirm Session Closure
                     </h3>
-                    <p className="text-xs text-slate-500 font-medium">Safety Override Safeguard</p>
+                    <p className="text-xs text-slate-500 font-medium">Terminal Lifecycle Transition</p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium leading-relaxed">
-                  {confirmModalAction === 'Closed' ? (
-                    <span>
-                      Are you sure you want to <strong>permanently close</strong> attendance scanning for <strong>{activeEvt.title}</strong>? All student officer scanner links will be locked and checked-in attendees will be eligible for digital certificate delivery.
-                    </span>
-                  ) : confirmModalAction === 'Locked' ? (
-                    <span>
-                      Are you sure you want to <strong>pause/lock</strong> scanning duty? Officers will be temporarily blocked from scanning student barcodes until re-opened.
-                    </span>
-                  ) : (
-                    <span>
-                      Are you sure you want to <strong>force open</strong> live attendance scanning for <strong>{activeEvt.title}</strong>?
-                    </span>
-                  )}
+                  Are you sure you want to <strong>permanently close</strong> attendance session <strong>{activeAttendanceSession.session_name}</strong>? Closed sessions cannot be re-opened for new check-ins.
                 </div>
+
+                {attendanceActionError && (
+                  <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-800">
+                    {attendanceActionError}
+                  </p>
+                )}
 
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-100">
                   <button
+                    type="button"
                     onClick={() => setConfirmModalAction(null)}
-                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition cursor-pointer"
+                    disabled={attendanceActionLoading}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 font-bold text-xs transition cursor-pointer"
                   >
                     Cancel
                   </button>
 
                   <button
+                    type="button"
                     onClick={async () => {
-                      if (confirmModalAction === 'Closed' && activeAttendanceSession?.id) {
-                        await handleCloseSession(activeAttendanceSession.id)
-                      } else {
-                        setConfirmModalAction(null)
-                      }
+                      await handleCloseSession(activeAttendanceSession.id)
                     }}
-                    className={`px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white ${confirmModalAction === 'Closed' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#16834a] hover:bg-[#236e3e]'
-                      }`}
+                    disabled={attendanceActionLoading}
+                    className="px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-md flex items-center gap-2 cursor-pointer text-white bg-rose-600 hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Confirm & Execute</span>
+                    <span>{attendanceActionLoading ? 'Closing…' : 'Confirm & Close'}</span>
                   </button>
                 </div>
               </div>

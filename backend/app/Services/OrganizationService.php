@@ -86,7 +86,7 @@ class OrganizationService
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
                  LIMIT 1) AS moderator_profile_id,
-                (SELECT CONCAT_WS(" ", p.first_name, p.last_name)
+                (SELECT COALESCE(NULLIF(TRIM(p.full_name), ""), NULLIF(TRIM(CONCAT_WS(" ", p.first_name, p.last_name)), ""))
                  FROM organization_moderator_assignments oma
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
@@ -204,7 +204,7 @@ class OrganizationService
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
                  LIMIT 1) AS moderator_profile_id,
-                (SELECT CONCAT_WS(" ", p.first_name, p.last_name)
+                (SELECT COALESCE(NULLIF(TRIM(p.full_name), ""), NULLIF(TRIM(CONCAT_WS(" ", p.first_name, p.last_name)), ""))
                  FROM organization_moderator_assignments oma
                  JOIN profiles p ON p.id = oma.personnel_profile_id
                  WHERE oma.organization_id = o.id AND oma.is_active = 1
@@ -268,7 +268,7 @@ class OrganizationService
         }
 
         $history = $this->db->table('organization_moderator_assignments oma')
-            ->select('oma.id, oma.personnel_profile_id, oma.effective_from, oma.effective_until, oma.is_active, oma.assigned_at, p.first_name, p.last_name, p.email, p.institutional_id, p.designation_title')
+            ->select('oma.id, oma.personnel_profile_id, oma.effective_from, oma.effective_until, oma.is_active, oma.assigned_at, p.full_name, p.first_name, p.last_name, p.email, p.institutional_id, p.designation_title')
             ->join('profiles p', 'p.id = oma.personnel_profile_id')
             ->where('oma.organization_id', $id)
             ->orderBy('oma.is_active', 'DESC')
@@ -280,7 +280,7 @@ class OrganizationService
             return [
                 'assignment_id'  => $h['id'],
                 'profile_id'     => $h['personnel_profile_id'],
-                'full_name'      => trim(($h['first_name'] ?? '') . ' ' . ($h['last_name'] ?? '')) ?: 'Unknown Personnel',
+                'full_name'      => trim((string) ($h['full_name'] ?? '')) ?: (trim(($h['first_name'] ?? '') . ' ' . ($h['last_name'] ?? '')) ?: 'Unknown Personnel'),
                 'email'          => $h['email'],
                 'employee_id'    => $h['institutional_id'],
                 'designation'    => $h['designation_title'],

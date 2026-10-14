@@ -52,14 +52,15 @@ class HREvaluationController extends Controller
         $this->completedResultService = $completedResultService ?? new PersonnelCompletedEvaluationResultService();
     }
 
-    /** Archived ranking tracks are historical and read-only for every evaluation mutation. */
+    /** Archived and cancelled ranking tracks are historical and read-only for every evaluation mutation. */
     private function archivedPeriodResponse(array $evaluation): mixed
     {
         $periodId = (string) ($evaluation['evaluation_period_id'] ?? '');
         if ($periodId === '') return null;
         $status = db_connect()->table('personnel_evaluation_periods')->select('status')->where('id', $periodId)->get()->getRowArray()['status'] ?? null;
-        if ($status !== 'ARCHIVED') return null;
-        return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_ARCHIVED', 'message' => 'This ranking period is archived and read-only.']], 409);
+        if ($status === 'ARCHIVED') return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_ARCHIVED', 'message' => 'This ranking period is archived and read-only.']], 409);
+        if ($status === 'CANCELLED') return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_CANCELLED', 'message' => 'This ranking period was cancelled and no longer accepts changes.']], 409);
+        return null;
     }
 
     public function options(): mixed

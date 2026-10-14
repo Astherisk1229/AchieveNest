@@ -5,14 +5,29 @@ namespace App\Controllers\Api;
 use App\Helpers\ValidationHelper;
 use App\Services\AccountLifecycleResolver;
 use App\Services\AuthenticatedActorService;
+use App\Services\DefenseDemoConfigService;
 use App\Services\LocalAuthService;
 use App\Services\LocalTokenService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
+use RuntimeException;
 
 class AuthController extends Controller
 {
     use ResponseTrait;
+
+    private const DEMO_EMAILS = [
+        'demo.student.a@ndmu.edu.ph',
+        'demo.student.b@ndmu.edu.ph',
+        'demo.academic.personnel@ndmu.edu.ph',
+        'demo.nonacademic.personnel@ndmu.edu.ph',
+        'demo.hr.admin@ndmu.edu.ph',
+        'demo.osad.admin@ndmu.edu.ph',
+        'demo.dean@ndmu.edu.ph',
+        'demo.coordinator.a@ndmu.edu.ph',
+        'demo.coordinator.b@ndmu.edu.ph',
+        'demo.moderator@ndmu.edu.ph',
+    ];
 
     protected AuthenticatedActorService $actorService;
     protected LocalAuthService $localAuthService;
@@ -43,6 +58,61 @@ class AuthController extends Controller
         $userAgent = $this->request->getUserAgent()->getAgentString();
 
         $result = $this->localAuthService->login($email, $password, $rememberMe, $ip, $userAgent);
+        if (! $result['success']) {
+            return $this->respond(['error' => $result['error']], $result['status']);
+        }
+
+        return $this->respond(['data' => $result['data']], 200);
+    }
+
+    /**
+     * POST /api/v1/auth/demo-login
+     *
+     * Passwordless convenience for the synthetic accounts on the loopback-only
+     * local-defense server. The configured demo password never reaches the browser.
+     */
+    public function demoLogin()
+    {
+        $runtimeTarget = (string) (getenv('ACHIEVENEST_ENV') ?: env('ACHIEVENEST_ENV'));
+        if ($runtimeTarget !== 'local-defense' || ENVIRONMENT === 'production') {
+            return $this->respond([
+                'error' => [
+                    'code' => 'NOT_FOUND',
+                    'message' => 'The requested resource was not found.',
+                ],
+            ], 404);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $email = strtolower(trim((string) ($json['institutional_email'] ?? ($json['email'] ?? ''))));
+        if (! in_array($email, self::DEMO_EMAILS, true)) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'INVALID_DEMO_ACCOUNT',
+                    'message' => 'Select one of the available local demo accounts.',
+                ],
+            ], 422);
+        }
+
+        try {
+            $password = (new DefenseDemoConfigService())->requirePassword();
+        } catch (RuntimeException) {
+            return $this->respond([
+                'error' => [
+                    'code' => 'DEMO_LOGIN_UNAVAILABLE',
+                    'message' => 'Local demo access is not configured.',
+                ],
+            ], 503);
+        }
+
+        $result = $this->localAuthService->login(
+            $email,
+            $password,
+            (bool) ($json['remember_me'] ?? true),
+            $this->request->getIPAddress(),
+            $this->request->getUserAgent()->getAgentString()
+        );
+
         if (! $result['success']) {
             return $this->respond(['error' => $result['error']], $result['status']);
         }

@@ -451,6 +451,10 @@
 
 
 
+/* Keep the portfolio export out of the regular page, then explicitly restore it for print.
+   Do not use an inline `display: none`: Chromium may retain that state in print preview. */
+.student-portfolio-print { display: none; }
+
 /* Print / Save as PDF for OSAD documents: only the element marked .print-area is printed. */
 @media print {
   @page { size: A4; margin: 12mm; }
@@ -462,8 +466,33 @@
     width: 100% !important; min-height: 0 !important;
     padding: 0 !important; box-shadow: none !important;
   }
+  /* Evaluation summaries: un-clip every app-shell ancestor (fixed heights, overflow, transforms,
+     flex/grid layout) so the absolutely positioned summary can paginate instead of printing blank. */
+  html:has([data-evaluation-summary]),
+  body:has([data-evaluation-summary]),
+  *:has([data-evaluation-summary]) {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
   .print-hide { display: none !important; }
   .print-show { display: block !important; }
+  .student-portfolio-print,
+  .student-portfolio-print * { visibility: visible !important; }
+  .student-portfolio-print {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
 }
 
 /* Faculty "Add Accomplishment" modal — document scan affordances */

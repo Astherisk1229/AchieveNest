@@ -13,6 +13,7 @@ export default function EditMasterDataModal({
   placementOptions = { colleges: [], academicPrograms: [], administrativeUnits: [] }
 }) {
   const [form, setForm] = useState({
+    fullName: '',
     facultyEngagement: 'full_time_faculty',
     employmentStatus: 'permanent',
     employmentStartDate: '',
@@ -96,6 +97,7 @@ export default function EditMasterDataModal({
     setRankWasManuallyChanged(false)
     setRankSelectionSource('saved')
     setForm({
+      fullName: personnel.full_name || '',
       facultyEngagement: engagement,
       employmentStatus: personnel.employment_status || 'permanent',
       employmentStartDate: personnel.employment_start_date || '',
@@ -245,6 +247,13 @@ export default function EditMasterDataModal({
   const submit = async (e) => {
     e.preventDefault()
     const nextErrors = {}
+    const fullName = form.fullName.replace(/\s+/g, ' ').trim()
+
+    if (!fullName) {
+      nextErrors.fullName = 'Full name is required.'
+    } else if (fullName.length > 255) {
+      nextErrors.fullName = 'Full name must be 255 characters or fewer.'
+    }
 
     const mdValidation = validatePersonnelMasterData({
       facultyEngagement: form.facultyEngagement,
@@ -270,6 +279,7 @@ export default function EditMasterDataModal({
     setSaving(true)
     try {
       const payload = {
+        full_name: fullName,
         faculty_engagement: form.facultyEngagement,
         employment_status: form.employmentStatus,
         employment_start_date: form.employmentStartDate || null,
@@ -348,7 +358,7 @@ export default function EditMasterDataModal({
             </div>
           )}
 
-          {/* Section A: Account Information (Read-Only Summary) */}
+          {/* Section A: Account identity */}
           <section className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800 space-y-1">
             <h3 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
               A. Account Identity
@@ -356,7 +366,15 @@ export default function EditMasterDataModal({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Full Name</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{personnel.full_name}</span>
+                <input
+                  type="text"
+                  value={form.fullName}
+                  onChange={event => update('fullName', event.target.value)}
+                  aria-invalid={Boolean(errors.fullName)}
+                  aria-describedby={errors.fullName ? 'full-name-error' : undefined}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                />
+                {errors.fullName && <span id="full-name-error" className="mt-1 block text-xs font-bold text-rose-600">{errors.fullName}</span>}
               </div>
               <div>
                 <span className="text-slate-400 block text-[10px] uppercase font-bold">Institutional ID</span>

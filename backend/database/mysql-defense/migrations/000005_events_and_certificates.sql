@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS events (
     title VARCHAR(255) NOT NULL,
     description TEXT NULL,
     event_type VARCHAR(50) NOT NULL,
+    osad_template_id VARCHAR(32) NULL,
     start_time DATETIME(6) NOT NULL,
     end_time DATETIME(6) NOT NULL,
     venue VARCHAR(255) NULL,

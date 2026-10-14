@@ -149,7 +149,13 @@ export function HRPersonnelDirectoryPage(props) {
 
   const handleSaveMasterData = async (profileId, payload) => {
     try {
-      await updatePersonnelMasterData(profileId, payload)
+      const result = await updatePersonnelMasterData(profileId, payload)
+      const saved = result?.data || result
+      setSelectedFaculty(current => (
+        current && (current.id === profileId || current.profile_id === profileId)
+          ? { ...current, full_name: saved?.full_name || payload.full_name }
+          : current
+      ))
       showToast('HR Master Data updated successfully with audit trail.')
       setEditingMasterDataPersonnel(null)
       await hrHook.refreshData?.()

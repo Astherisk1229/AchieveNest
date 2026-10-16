@@ -186,7 +186,7 @@ describe('HR Personnel Directory & Secure Provisioning Remediation Suite', () =>
       }, options)
 
       expect(invalidNonAcademic.isValid).toBe(false)
-      expect(invalidNonAcademic.errors.administrativeUnitId).toBeDefined()
+      expect(invalidNonAcademic.errors.departmentId).toBeDefined()
 
       // Valid Non-Academic
       const validNonAcademic = validatePersonnelPlacement({

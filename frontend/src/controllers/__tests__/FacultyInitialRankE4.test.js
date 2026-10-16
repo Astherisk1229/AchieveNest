@@ -270,8 +270,8 @@ describe('Plan E — Phase E4: Full-Time Faculty Qualification-Based Initial Ran
   })
 
   describe('24.14 — E1 / E2 / E3 Regression Integrity', () => {
-    it('preserves exactly 26 Full-Time ranks in catalog', () => {
-      expect(facultyRankCatalogService.getRankCount()).toBe(26)
+    it('preserves exactly 22 Full-Time ranks in catalog', () => {
+      expect(facultyRankCatalogService.getRankCount()).toBe(22)
     })
 
     it('preserves exactly 4 Part-Time titles in catalog', () => {

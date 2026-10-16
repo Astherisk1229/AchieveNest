@@ -93,7 +93,7 @@ describe('submitted Version 2 read-only inspection', () => {
     const html = renderToStaticMarkup(<DeanPortfolioEvaluationWorkspace data={submittedV2} onReload={() => {}} />)
     expect(html).toContain('Submitted Portfolio · Version 2')
     // Default view: the personnel's own Portfolio Booklet (same pages as their PDF).
-    expect(html).toContain('FACULTY PORTFOLIO')
+    expect(html).toContain('FACULTY DEVELOPMENT PROGRAM')
     expect(html).toContain('R7BP_259C6B51884E Academic FAC-A3 Seminar Attendance')
     expect(html).toContain('controlled-fac-a3.pdf')
     // The item list (with revised details such as the venue) stays one click away.

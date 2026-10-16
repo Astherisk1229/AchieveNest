@@ -20,8 +20,8 @@ describe('Plan E — Phase E5: End-to-End Validation, Cross-Phase Reconciliation
   })
 
   describe('E5.1 — Authoritative Source Freeze & Catalog Counts', () => {
-    it('verifies exactly 26 Full-Time academic ranks in canonical catalog', () => {
-      expect(facultyRankCatalogService.getRankCount()).toBe(26)
+    it('verifies exactly 22 Full-Time academic ranks in canonical catalog', () => {
+      expect(facultyRankCatalogService.getRankCount()).toBe(22)
       expect(facultyRankCatalogService.SOURCE_DOCUMENT_ID).toBe('NDMU-DOC-ACAD-RANKS-2026-V1')
       expect(facultyRankCatalogService.SEED_VERSION).toBe('2026.1')
     })

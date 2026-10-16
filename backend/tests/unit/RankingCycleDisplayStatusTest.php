@@ -25,7 +25,7 @@ final class RankingCycleDisplayStatusTest extends TestCase
     {
         $tracks = [self::track('DRAFT', 'FACULTY', ['submission_open_at' => null])];
         self::assertSame('INCOMPLETE', RankingCycleService::lifecycle($tracks)['key']);
-        self::assertSame(['Faculty schedule is incomplete.'], RankingCycleService::configurationIssues($tracks));
+        self::assertSame(['Teaching Faculty schedule is incomplete.'], RankingCycleService::configurationIssues($tracks));
     }
 
     #[DataProvider('lifecycleCases')]

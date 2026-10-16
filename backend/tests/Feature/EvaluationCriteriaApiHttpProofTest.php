@@ -17,10 +17,14 @@ final class EvaluationCriteriaApiHttpProofTest extends CIUnitTestCase
 
     protected $db;
     private bool $transactionOpen = false;
+    private string|false $previousJwtSecret;
+    private array $previousConnections = [];
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->previousJwtSecret = getenv('LOCAL_AUTH_JWT_SECRET');
+        putenv('LOCAL_AUTH_JWT_SECRET=criteria-api-proof-test-only-secret');
         $config = new Database();
         $config->default = $config->tests;
         $config->default['DBPrefix'] = '';
@@ -28,9 +32,13 @@ final class EvaluationCriteriaApiHttpProofTest extends CIUnitTestCase
         $config->defaultGroup = 'tests';
         Database::enableTestIsolation();
         \CodeIgniter\Config\Factories::injectMock('config', 'Database', $config);
-        $this->db = Database::connect('tests');
         $instances = new \ReflectionProperty(Database::class, 'instances');
         $instances->setAccessible(true);
+        $this->previousConnections = $instances->getValue();
+        $this->db = Database::connect('tests', false);
+        // The test group defaults to db_ to exercise prefix handling elsewhere.
+        // This fixture creates unprefixed SQLite tables for the routed API proof.
+        $this->db->setPrefix('');
         $connections = $instances->getValue();
         $connections['default'] = $this->db;
         $connections['tests'] = $this->db;
@@ -47,6 +55,12 @@ final class EvaluationCriteriaApiHttpProofTest extends CIUnitTestCase
             $this->db->transRollback();
             $this->transactionOpen = false;
         }
+        $instances = new \ReflectionProperty(Database::class, 'instances');
+        $instances->setAccessible(true);
+        $instances->setValue(null, $this->previousConnections);
+        putenv($this->previousJwtSecret === false
+            ? 'LOCAL_AUTH_JWT_SECRET'
+            : 'LOCAL_AUTH_JWT_SECRET=' . $this->previousJwtSecret);
         parent::tearDown();
     }
 

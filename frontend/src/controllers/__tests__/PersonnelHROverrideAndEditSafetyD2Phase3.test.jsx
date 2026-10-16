@@ -221,7 +221,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-3: HR Override, Ex
         facultyEngagement: 'part_time_faculty'
       })
 
-      expect(rec.recommendedLabel).toBe('Lecturer')
+      expect(rec.recommendedLabel).toBe('Assistant Instructor')
       expect(savedTitle).toBe('Professorial Lecturer')
     })
   })
@@ -302,16 +302,16 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-3: HR Override, Ex
       expect(isCompatible).toBe(true)
     })
 
-    it('22. HR can choose another valid Part-Time title', () => {
-      const ptCatalog = personnelMasterDataService.getPartTimeFacultyTitles()
-      const chosenTitle = 'Senior Lecturer'
-      const isValid = ptCatalog.some(t => t.label === chosenTitle)
+    it('22. HR can choose another valid active rank', () => {
+      const catalog = personnelMasterDataService.getFullTimeFacultyRanks()
+      const chosenTitle = 'Senior Instructor'
+      const isValid = catalog.some(t => t.label === chosenTitle)
       expect(isValid).toBe(true)
 
       const isCompatible = personnelRankRecommendationService.isRankCompatible({
         rankTitle: chosenTitle,
-        facultyEngagement: 'part_time_faculty',
-        catalog: ptCatalog
+        facultyEngagement: 'full_time_faculty',
+        catalog
       })
       expect(isCompatible).toBe(true)
     })
@@ -385,7 +385,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-3: HR Override, Ex
       let currentFormRank = legacyRank
 
       // HR explicitly selects valid seeded rank
-      currentFormRank = 'Senior Instructor I'
+      currentFormRank = 'Senior Instructor'
       const ftCatalog = personnelMasterDataService.getFullTimeFacultyRanks()
       const inCatalog = ftCatalog.some(r => r.label === currentFormRank)
       expect(inCatalog).toBe(true)

@@ -65,10 +65,10 @@ final class PersonnelEvaluationPeriodNotificationPhase4Test extends TestCase
         ], 'HR-1', 'request-phase4-1');
 
         $notifications = $db->table('notifications')->orderBy('recipient_profile_id')->get()->getResultArray();
-        self::assertSame(['FACULTY-1', 'TEACHING-LEGACY'], array_column($notifications, 'recipient_profile_id'));
-        self::assertSame(['personnel_evaluation_period', 'personnel_evaluation_period'], array_column($notifications, 'reference_type'));
-        self::assertSame(['PERIOD-1', 'PERIOD-1'], array_column($notifications, 'reference_id'));
-        self::assertSame(['Portfolio Submission is Now Open', 'Portfolio Submission is Now Open'], array_column($notifications, 'title'));
+        self::assertSame(['FACULTY-1'], array_column($notifications, 'recipient_profile_id'));
+        self::assertSame(['personnel_evaluation_period'], array_column($notifications, 'reference_type'));
+        self::assertSame(['PERIOD-1'], array_column($notifications, 'reference_id'));
+        self::assertSame(['Portfolio Submission is Now Open'], array_column($notifications, 'title'));
         $db->close();
     }
 }

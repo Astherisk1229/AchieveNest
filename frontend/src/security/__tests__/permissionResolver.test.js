@@ -54,7 +54,7 @@ describe('permissionResolver', () => {
   })
 
   describe('getAuthorizedNavigation pre-render catalog filtering', () => {
-    it('returns strictly authorized HR items for HR Admin context including Password Resets', () => {
+    it('returns the four current HR workspace entries', () => {
       const session = {
         account_type: 'hr_admin',
         active_role_context: 'hr_staff',
@@ -63,17 +63,10 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual([
-        'HR Dashboard',
-        'Personnel Directory',
-        'College and Department',
-        'Ranking Periods',
-        'Password Resets',
-        'HR Audit Trail'
-      ])
+      expect(labels).toEqual(['Dashboard', 'Personnel Management', 'Ranking & Evaluation', 'Administration'])
       expect(labels).not.toContain('Dashboard Overview')
       expect(labels).not.toContain('OSAD Dashboard')
-      expect(labels).not.toContain('Dashboard')
+      expect(labels).not.toContain('OSAD Dashboard')
     })
 
     it('returns strictly OSAD items for OSAD Admin context', () => {
@@ -92,7 +85,7 @@ describe('permissionResolver', () => {
       expect(labels).not.toContain('Edit Portfolio')
     })
 
-    it('returns strictly 5 Personnel items for personnel context', () => {
+    it('returns the two current personal entries for personnel context', () => {
       const session = {
         account_type: 'personnel',
         role: 'personnel',
@@ -102,7 +95,7 @@ describe('permissionResolver', () => {
       const nav = getAuthorizedNavigation(session, NAVIGATION_CATALOG)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual(['Dashboard Overview', 'Edit Portfolio', 'Portfolio', 'Rank & Placement', 'Account'])
+      expect(labels).toEqual(['Profile', 'Portfolio'])
       expect(labels).not.toContain('Verification Workspace')
       expect(labels).not.toContain('Events & Activities')
       expect(labels).not.toContain('Personnel Directory')

@@ -89,18 +89,8 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-5: End-to-End Vali
       expect(codes).not.toContain('PT_PROFESSORIAL_LECTURER')
     })
 
-    it('2. Part-Time title catalog loads only Part-Time titles', async () => {
-      const titles = await personnelMasterDataService.getPartTimeTitles()
-      expect(Array.isArray(titles)).toBe(true)
-      expect(titles.length).toBeGreaterThanOrEqual(4)
-      const titleNames = titles.map(t => t.title_name || t.name || t.label)
-      expect(titleNames).toContain('Lecturer')
-      expect(titleNames).toContain('Senior Lecturer')
-      expect(titleNames).toContain('Assistant Professorial Lecturer')
-      expect(titleNames).toContain('Professorial Lecturer')
-      // Ensure full-time ranks are absent
-      expect(titleNames).not.toContain('Professor III')
-      expect(titleNames).not.toContain('Instructor I')
+    it('2. retired Part-Time title catalog is unavailable', () => {
+      expect(personnelMasterDataService.getPartTimeTitles).toBeUndefined()
     })
 
     it('3. College loads from institutional source', async () => {
@@ -291,7 +281,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-5: End-to-End Vali
       expect(rec.isCompatibleWithCatalog).toBe(true)
     })
 
-    it('11. new Part-Time qualification recommendation works', async () => {
+    it('11. retired Part-Time catalog is incompatible with the active recommendation', async () => {
       vi.spyOn(partTimeFacultyTitleService, 'resolveTitleFromQualification').mockResolvedValueOnce({
         status: 'RESOLVED',
         resolved_title: {
@@ -308,8 +298,8 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-5: End-to-End Vali
       })
       expect(rec).toBeDefined()
       expect(rec.status).toBe('resolved')
-      expect(rec.recommendedLabel).toBe('Professorial Lecturer')
-      expect(rec.isCompatibleWithCatalog).toBe(true)
+      expect(rec.recommendedLabel).toBe('Professor I')
+      expect(rec.isCompatibleWithCatalog).toBe(false)
     })
 
     it('12. recommendation comes from Plan E resolver', async () => {
@@ -515,7 +505,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-5: End-to-End Vali
         personnelGroup: 'faculty',
         activeCatalog: mockPartTimeCatalog
       })
-      expect(recommendation.recommendedLabel).toBe('Lecturer')
+      expect(recommendation.recommendedLabel).toBe('Assistant Instructor')
       const effectiveTitle = savedTitle
       expect(effectiveTitle).toBe('Professorial Lecturer')
     })

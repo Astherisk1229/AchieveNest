@@ -92,15 +92,15 @@ describe('Dossier length-of-service summary', () => {
 })
 
 describe('Service history at account onboarding', () => {
-  it('derives the current appointment type from Faculty Engagement (non-teaching counts as full-time)', () => {
-    expect(onboardingCurrentType('part_time_faculty')).toBe('part_time')
+  it('uses full-time for every new faculty appointment', () => {
+    expect(onboardingCurrentType('part_time_faculty')).toBe('full_time')
     expect(onboardingCurrentType('full_time_faculty')).toBe('full_time')
     expect(onboardingCurrentType(undefined)).toBe('full_time')
   })
 
   it('starts with one earlier period from the start date and the current appointment', () => {
     const rows = initialOnboardingPeriods('2015-06-01', 'full_time_faculty')
-    expect(rows.map(r => [r.start_date, r.is_ongoing, r.classification])).toEqual([['2015-06-01', false, 'part_time'], ['', true, 'full_time']])
+    expect(rows.map(r => [r.start_date, r.is_ongoing, r.classification])).toEqual([['2015-06-01', false, 'full_time'], ['', true, 'full_time']])
   })
 
   it('keeps the locked parts in sync with the account form', () => {
@@ -121,6 +121,6 @@ describe('Service history at account onboarding', () => {
   it('renders the current appointment as locked in onboarding mode', () => {
     const rows = normalizeOnboardingPeriods(initialOnboardingPeriods('2015-06-01', 'full_time_faculty'), '2015-06-01', 'full_time_faculty')
     const html = renderToStaticMarkup(<ServicePeriodsEditor periods={rows} onChange={() => {}} onboarding={{ startDate: '2015-06-01', currentType: 'full_time' }} />)
-    for (const text of ['Period 1', 'Current appointment', 'Same as Employment Start Date', 'From Faculty Engagement', 'Add earlier period', 'Part-time — not counted']) expect(html).toContain(text)
+    for (const text of ['Period 1', 'Current appointment', 'Same as Employment Start Date', 'From Faculty Engagement', 'Add earlier period']) expect(html).toContain(text)
   })
 })

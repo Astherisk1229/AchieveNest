@@ -48,7 +48,7 @@ describe('CHU-02 — HR, Personnel Management & College Dean Workflows', () => {
         administrativeUnitId: ''
       })
       expect(missingUnit.isValid).toBe(false)
-      expect(missingUnit.errors.administrativeUnitId).toBeDefined()
+      expect(missingUnit.errors.departmentId).toBeDefined()
     })
   })
 

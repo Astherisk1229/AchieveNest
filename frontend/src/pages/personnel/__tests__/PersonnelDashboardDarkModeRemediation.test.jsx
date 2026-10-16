@@ -95,7 +95,7 @@ describe('Personnel Profile and accomplishment repository', () => {
     expect(html).toContain('dark:border-emerald-800')
 
     // Proof button styling
-    expect(html).toContain('dark:bg-slate-800')
+    expect(html).toContain('dark:bg-slate-900')
     expect(html).toContain('dark:text-slate-200')
   })
 

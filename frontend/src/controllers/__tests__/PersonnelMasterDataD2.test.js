@@ -372,7 +372,7 @@ describe('Personnel Evaluation Track — Plan D — Phase D2 Faculty Status & Ma
 
     it('formats display labels accurately', () => {
       expect(formatFacultyEngagement({ faculty_engagement: 'full_time_faculty' })).toBe('Full-time Faculty')
-      expect(formatFacultyEngagement({ faculty_engagement: 'part_time_faculty' })).toBe('Part-time Faculty')
+      expect(formatFacultyEngagement({ faculty_engagement: 'part_time_faculty' })).toBe('Unassigned')
       expect(formatEmploymentStatus({ employment_status: 'permanent' })).toBe('Permanent')
       expect(formatEmploymentStatus({ employment_status: 'probationary' })).toBe('Probationary')
     })

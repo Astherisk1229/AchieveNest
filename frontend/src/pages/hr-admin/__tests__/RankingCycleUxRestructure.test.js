@@ -8,7 +8,7 @@ const read = relative => fs.readFileSync(path.join(frontendRoot, relative), 'utf
 describe('Ranking Period UX restructure', () => {
   it('exposes one cycle-centric HR navigation entry', () => {
     const navigation = read('config/navigationCatalog.js')
-    expect(navigation).toContain("label: 'Ranking Periods'")
+    expect(navigation).toContain("label: 'Ranking & Evaluation'")
     expect(navigation).toContain("path: '/hr/ranking-cycles'")
     expect(navigation).not.toContain("label: 'Portfolio Evaluations'")
     expect(navigation).not.toContain("label: 'Rank Assignment Logs'")

@@ -17,7 +17,7 @@ describe('Personnel placement rules', () => {
     const multi = { ...options, academicPrograms: [...options.academicPrograms, { id: 'program-3', collegeId: 'college-1', code: 'BSIT', name: 'Information Technology' }] }
     expect(validatePersonnelPlacement({ classification: 'academic', collegeId: 'college-1', academicProgramIds: ['program-1', 'program-3'] }, multi).isValid).toBe(true)
   })
-  it('requires an Administrative Unit for Non-Academic Personnel', () => expect(validatePersonnelPlacement({ classification: 'non_academic' }, options).errors.administrativeUnitId).toBeTruthy())
+  it('requires a Department for Non-Academic Personnel', () => expect(validatePersonnelPlacement({ classification: 'non_academic' }, options).errors.departmentId).toBeTruthy())
   it('does not require College or Programs for Non-Academic Personnel', () => expect(validatePersonnelPlacement({ classification: 'non_academic', administrativeUnitId: 'unit-1' }, options).isValid).toBe(true))
   it('formats Academic affiliation without a Department fallback', () => expect(formatPersonnelPlacement({ personnel_classification: 'academic', college_code: 'CEAC', program_affiliations: [{ code: 'BSCS' }] })).toBe('CEAC • BSCS'))
   it('formats Non-Academic affiliation as its Administrative Unit', () => expect(formatPersonnelPlacement({ personnel_classification: 'non_academic', administrative_unit_name: 'Human Resources Office' })).toBe('Human Resources Office'))

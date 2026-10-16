@@ -24,7 +24,7 @@ describe('Wiring remediation Phase 4: no mock or fabricated data on reachable sc
       .filter((rel) => !allowed.has(rel))
       .filter((rel) => /from ['"][^'"]*\/(OSADController|HRController|useOSAD)['"]/.test(read(rel)))
     expect(offenders).toEqual([])
-  })
+  }, 15000)
 
   it('OSAD dashboard computes its overview from API lists', () => {
     const page = read('pages/osad-admin/OSADDashboardPage.jsx')

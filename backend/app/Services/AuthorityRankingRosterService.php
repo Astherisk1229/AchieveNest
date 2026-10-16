@@ -59,6 +59,23 @@ class AuthorityRankingRosterService
             if (in_array($employment, ['permanent', 'probationary'], true)) $builder->where('pp.employment_status', $employment);
             $assignment = (string) ($pageQuery['assignment'] ?? 'all');
             if ($assignment !== 'all') $builder->where('pp.position_title', $assignment);
+
+            // Annual-review filters are SQL predicates so the database filters
+            // before LIMIT/OFFSET instead of hydrating the full roster in PHP.
+            $annual = (string) ($pageQuery['annual'] ?? 'all');
+            $result = (string) ($pageQuery['result'] ?? 'all');
+            $periodId = $this->db->escape($track['id']);
+            $importBase = "SELECT 1 FROM personnel_annual_review_imports ari WHERE ari.personnel_profile_id=pp.profile_id AND ari.evaluation_period_id={$periodId} AND ari.confirmed_at IS NOT NULL AND ari.superseded_at IS NULL";
+            if ($annual === 'not_uploaded' || $result === 'not_passed') {
+                // These predicates are independent and are applied below.
+            }
+            if ($annual === 'not_uploaded') $builder->where("NOT EXISTS ({$importBase})", null, false);
+            elseif ($annual === 'incomplete') $builder->where("EXISTS ({$importBase} AND (ari.two_review_status='pending' OR ari.two_review_status IS NULL))", null, false);
+            elseif ($annual === 'uploaded') $builder->where("EXISTS ({$importBase} AND ari.two_review_status IS NOT NULL AND ari.two_review_status <> 'pending')", null, false);
+
+            if ($result === 'passed') $builder->where("EXISTS ({$importBase} AND ari.two_review_status='passed')", null, false);
+            elseif ($result === 'not_passed') $builder->where("EXISTS ({$importBase} AND ari.two_review_status='not_passed')", null, false);
+            elseif ($result === 'pending') $builder->groupStart()->where("NOT EXISTS ({$importBase})", null, false)->orWhere("EXISTS ({$importBase} AND (ari.two_review_status='pending' OR ari.two_review_status IS NULL))", null, false)->groupEnd();
         }
         $candidateCount = $pageQuery === null ? null : (clone $builder)->countAllResults(false);
         $builder->orderBy('p.full_name');

@@ -1,12 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import hrEvaluationService from '../../../services/hrEvaluationService'
+import { resolveStoredAuthSession } from '../../../utils/authStorage'
 
 const stageCache = new Map()
 const CACHE_LIFETIME_MS = 30_000
 
+function getSessionCacheScope() {
+  try {
+    const session = resolveStoredAuthSession()
+    const roles = [...(session.user?.roles || [])].sort().join(',')
+    // Keep cached ranking data isolated by authenticated identity and token.
+    // The token is only held in this in-memory cache key; it is never persisted.
+    return [session.user?.profile?.id || session.user?.id || 'anonymous', roles, session.token || ''].join(':')
+  } catch {
+    return 'anonymous'
+  }
+}
+
 export default function useRankingWorkspaceStage(cycleId, trackKey, stage, params = null) {
   const paramsKey = JSON.stringify(params)
-  const cacheKey = `${cycleId}:${trackKey}:${stage}:${paramsKey}`
+  const cacheKey = `${getSessionCacheScope()}:${cycleId}:${trackKey}:${stage}:${paramsKey}`
   const requestId = useRef(0)
   const [state, setState] = useState(() => {
     const cached = stageCache.get(cacheKey)

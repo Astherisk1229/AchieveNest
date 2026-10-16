@@ -184,6 +184,7 @@ class HROrganizationalStructureController extends Controller
 
         try {
             $db = db_connect();
+            $mode = (string) ($this->request->getGet('mode') ?? 'all');
             $colleges = $db->table('colleges')
                 ->select('id, code, name, status, logo_storage_key, logo_updated_at')
                 ->orderBy('name', 'ASC')->get()->getResultArray();
@@ -203,14 +204,67 @@ class HROrganizationalStructureController extends Controller
                 ->join('profiles p', 'p.id = da.personnel_profile_id')
                 ->where('da.is_active', 1)->where('p.status', 'active')->get()->getResultArray();
 
-            $rows = $db->table('profiles p')
+            if ($mode === 'summary') {
+                $collegeCounts = $db->table('personnel_college_affiliations pca')
+                    ->select('pca.college_id AS id, pp.personnel_group, COUNT(DISTINCT p.id) AS total', false)
+                    ->join('profiles p', 'p.id = pca.personnel_profile_id')
+                    ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+                    ->where('pca.is_active', 1)->where('p.account_type', 'personnel')
+                    ->groupBy('pca.college_id, pp.personnel_group')->get()->getResultArray();
+                $departmentCounts = $db->table('personnel_administrative_unit_affiliations pau')
+                    ->select('pau.administrative_unit_id AS id, pp.personnel_group, COUNT(DISTINCT p.id) AS total', false)
+                    ->join('profiles p', 'p.id = pau.personnel_profile_id')
+                    ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+                    ->where('pau.is_active', 1)->where('p.account_type', 'personnel')
+                    ->groupBy('pau.administrative_unit_id, pp.personnel_group')->get()->getResultArray();
+                $deanHistory = $db->table('dean_assignments da')
+                    ->select('da.id AS assignment_id, da.college_id, da.personnel_profile_id AS profile_id, p.full_name, p.institutional_id, da.effective_from, da.effective_until, da.is_active, da.end_reason')
+                    ->join('profiles p', 'p.id = da.personnel_profile_id')
+                    ->orderBy('da.effective_from', 'DESC')->get()->getResultArray();
+                $issueCount = $db->table('profiles p')
+                    ->select('COUNT(DISTINCT p.id) AS total', false)
+                    ->join('personnel_profiles pp', 'pp.profile_id = p.id')
+                    ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1', 'left')
+                    ->join('personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id = p.id AND pau.is_active = 1', 'left')
+                    ->where('p.account_type', 'personnel')
+                    ->groupStart()->where('pp.personnel_group', null)
+                    ->orWhereNotIn('pp.personnel_group', ['FACULTY', 'NON_TEACHING_FACULTY'])
+                    ->orGroupStart()->where('pca.college_id', null)->where('pau.administrative_unit_id', null)->groupEnd()
+                    ->groupEnd()->get()->getRowArray();
+                return $this->respond(['data' => [
+                    'colleges' => $colleges, 'departments' => $departments,
+                    'dean_assignments' => $deans, 'dean_assignment_history' => $deanHistory,
+                    'college_counts' => $collegeCounts, 'department_counts' => $departmentCounts,
+                    'issue_count' => (int) ($issueCount['total'] ?? 0),
+                ]], 200);
+            }
+
+            $builder = $db->table('profiles p')
                 ->select('p.id, p.full_name, p.institutional_id, p.email, p.status, p.designation_title, pp.personnel_classification, pp.personnel_group, pp.organizational_side, pp.employment_status, pp.position_title, pp.current_rank_title, pca.college_id, c.name AS college_name, c.code AS college_code, c.status AS college_status, pau.administrative_unit_id AS department_id, au.name AS department_name, au.code AS department_code, au.status AS department_status')
                 ->join('personnel_profiles pp', 'pp.profile_id = p.id')
                 ->join('personnel_college_affiliations pca', 'pca.personnel_profile_id = p.id AND pca.is_active = 1', 'left')
                 ->join('colleges c', 'c.id = pca.college_id', 'left')
                 ->join('personnel_administrative_unit_affiliations pau', 'pau.personnel_profile_id = p.id AND pau.is_active = 1', 'left')
                 ->join('administrative_units au', 'au.id = pau.administrative_unit_id', 'left')
-                ->where('p.account_type', 'personnel')->orderBy('p.full_name', 'ASC')->get()->getResultArray();
+                ->where('p.account_type', 'personnel');
+            if ($mode === 'personnel') {
+                $kind = (string) ($this->request->getGet('kind') ?? '');
+                $organizationId = trim((string) ($this->request->getGet('organization_id') ?? ''));
+                if ($organizationId === '' || !in_array($kind, ['college', 'department'], true)) {
+                    return $this->respond(['error' => ['code' => 'INVALID_SCOPE', 'message' => 'A college or department is required.']], 422);
+                }
+                $builder->where($kind === 'college' ? 'pca.college_id' : 'pau.administrative_unit_id', $organizationId);
+                $search = trim((string) ($this->request->getGet('search') ?? ''));
+                if ($search !== '') $builder->groupStart()->like('p.full_name', $search)->orLike('p.institutional_id', $search)->groupEnd();
+                $classification = (string) ($this->request->getGet('classification') ?? 'all');
+                if ($classification === 'teaching') $builder->where('pp.personnel_group', 'FACULTY');
+                elseif ($classification === 'non_teaching') $builder->where('pp.personnel_group', 'NON_TEACHING_FACULTY');
+                $total = (clone $builder)->countAllResults(false);
+                $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+                $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? 20)));
+                $builder->limit($perPage, ($page - 1) * $perPage);
+            }
+            $rows = $builder->orderBy('p.full_name', 'ASC')->get()->getResultArray();
 
             $deanHistory = $db->table('dean_assignments da')
                 ->select('da.id AS assignment_id, da.college_id, da.personnel_profile_id AS profile_id, p.full_name, p.institutional_id, da.effective_from, da.effective_until, da.is_active, da.end_reason')
@@ -238,6 +292,9 @@ class HROrganizationalStructureController extends Controller
                 ];
             }
 
+            if ($mode === 'personnel') {
+                return $this->respond(['data' => ['personnel' => $personnel, 'total' => (int) $total, 'page' => $page, 'per_page' => $perPage]], 200);
+            }
             return $this->respond(['data' => [
                 'colleges' => $colleges,
                 'departments' => $departments,

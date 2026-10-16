@@ -79,7 +79,11 @@ export default function PersonnelDirectoryTable({
   onResetPassword,
   onDeletePersonnel,
   onManageRole,
-  showToast
+  showToast,
+  serverTotal = null,
+  onServerQueryChange,
+  directoryCollegeOptions = [],
+  directoryDepartmentOptions = []
 }) {
   const handleSelect = onSelectPersonnel || onSelectFaculty
 
@@ -125,19 +129,38 @@ export default function PersonnelDirectoryTable({
     return personnelList.find(p => p.id === activeMenuId) || null
   }, [personnelList, activeMenuId])
 
-  const collegeOptions = useMemo(() => Array.from(new Map(personnelList
+  const derivedCollegeOptions = useMemo(() => Array.from(new Map(personnelList
     .filter(person => person?.college_id && person?.college_name)
     .map(person => [person.college_id, { id: person.college_id, code: person.college_code, name: person.college_name }])).values())
     .sort((a, b) => a.name.localeCompare(b.name)), [personnelList])
-  const departmentOptions = useMemo(() => Array.from(new Map(personnelList
+  const derivedDepartmentOptions = useMemo(() => Array.from(new Map(personnelList
     .filter(person => person?.administrative_unit_id && person?.administrative_unit_name)
     .map(person => [person.administrative_unit_id, { id: person.administrative_unit_id, code: person.administrative_unit_code, name: person.administrative_unit_name }])).values())
     .sort((a, b) => a.name.localeCompare(b.name)), [personnelList])
+  const collegeOptions = directoryCollegeOptions.length ? directoryCollegeOptions : derivedCollegeOptions
+  const departmentOptions = directoryDepartmentOptions.length ? directoryDepartmentOptions : derivedDepartmentOptions
 
   useEffect(() => {
     setCurrentPage(1)
     setActiveMenuId(null)
   }, [search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection, rowsPerPage])
+
+  useEffect(() => {
+    if (!onServerQueryChange) return undefined
+    const timer = window.setTimeout(() => onServerQueryChange({
+      search: search.trim(),
+      personnel_group: groupFilter === 'ALL' ? '' : groupFilter,
+      organizational_side: sideFilter === 'ALL' ? '' : sideFilter,
+      employment_status: employmentStatusFilter === 'ALL' ? '' : employmentStatusFilter,
+      college_id: collegeFilter === 'ALL' ? '' : collegeFilter,
+      administrative_unit_id: unitFilter === 'ALL' ? '' : unitFilter,
+      status: statusFilter === 'ALL' ? '' : statusFilter,
+      sort_dir: sortDirection,
+      page: currentPage,
+      per_page: rowsPerPage
+    }), 250)
+    return () => window.clearTimeout(timer)
+  }, [onServerQueryChange, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortDirection, currentPage, rowsPerPage])
 
   useEffect(() => {
     if (revealRequestKey) {
@@ -162,6 +185,7 @@ export default function PersonnelDirectoryTable({
 
   // Filter & Sort Pipeline
   const filteredSortedList = useMemo(() => {
+    if (serverTotal != null) return personnelList
     let list = [...personnelList]
 
     // 1. Search Query
@@ -205,16 +229,17 @@ export default function PersonnelDirectoryTable({
     })
 
     return list
-  }, [personnelList, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection])
+  }, [personnelList, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection, serverTotal])
 
-  const totalItems = filteredSortedList.length
+  const totalItems = serverTotal == null ? filteredSortedList.length : serverTotal
   const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   
   const paginatedList = useMemo(() => {
+    if (serverTotal != null) return filteredSortedList
     const startIndex = (safeCurrentPage - 1) * rowsPerPage
     return filteredSortedList.slice(startIndex, startIndex + rowsPerPage)
-  }, [filteredSortedList, safeCurrentPage, rowsPerPage])
+  }, [filteredSortedList, safeCurrentPage, rowsPerPage, serverTotal])
 
   const currentPageIds = useMemo(() => paginatedList.map(p => p.id), [paginatedList])
   const isAllPageSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.has(id))
@@ -314,7 +339,7 @@ export default function PersonnelDirectoryTable({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, ID, assignment, or position"
+              placeholder="Search name, email, or ID"
               className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43] dark:focus:border-emerald-600 transition"
             />
             {search && (

@@ -25,7 +25,7 @@ class AuthorityRankingRosterService
      *                              Annual Reviews roster endpoint opts in; every authorization
      *                              caller (imports, templates, workspace stages) keeps the default.
      */
-    public function list(array $actor, string $cycleId, string $trackKey, bool $includeReadOnly = false): array
+    public function list(array $actor, string $cycleId, string $trackKey, bool $includeReadOnly = false, ?array $pageQuery = null): array
     {
         $cycle = $this->db->table('ranking_cycles')->where('id', $cycleId)->get()->getRowArray();
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle was not found.');
@@ -44,9 +44,59 @@ class AuthorityRankingRosterService
             ->join('administrative_units au', "au.id=pau.administrative_unit_id AND au.status='active'", 'left')
             ->join('colleges c', 'c.id=COALESCE(pca.college_id,au.college_id)', 'left')
             ->where('p.status', 'active')->where('pp.personnel_group', $group)->where('p.id !=', $actorId);
-        if ($scopeType === 'college') $builder->groupStart()->where('pca.college_id', $scopeId)->orWhere('au.college_id', $scopeId)->groupEnd();
+        if ($scopeType === 'college') {
+            $builder->groupStart()->where('pca.college_id', $scopeId)->orWhere('au.college_id', $scopeId)->groupEnd();
+            if ($authorityType === 'DEAN') {
+                $actorIdSql = $this->db->escape($actorId);
+                $collegeIdSql = $this->db->escape($scopeId);
+                // Dean-routed pages must exclude active Deans (their reviews route
+                // to HR) and candidates whose college has an ambiguous Dean roster.
+                $builder->where("NOT EXISTS (SELECT 1 FROM dean_assignments target_dean WHERE target_dean.personnel_profile_id=p.id AND target_dean.is_active=1)", null, false);
+                $builder->where("EXISTS (
+                    SELECT 1 FROM dean_assignments assigned_dean
+                    INNER JOIN profiles dean_profile ON dean_profile.id=assigned_dean.personnel_profile_id AND dean_profile.status='active'
+                    WHERE assigned_dean.personnel_profile_id={$actorIdSql}
+                      AND assigned_dean.college_id={$collegeIdSql}
+                      AND assigned_dean.is_active=1
+                      AND (SELECT COUNT(*) FROM dean_assignments current_deans
+                           INNER JOIN profiles active_dean ON active_dean.id=current_deans.personnel_profile_id AND active_dean.status='active'
+                           WHERE current_deans.college_id={$collegeIdSql} AND current_deans.is_active=1)=1
+                )", null, false);
+            }
+        }
         if ($scopeType === 'department') $builder->where('au.id', $scopeId)->where('au.college_id', null);
-        $rows = $builder->orderBy('p.full_name')->get()->getResultArray();
+        if ($pageQuery !== null) {
+            if (array_key_exists('ids', $pageQuery)) {
+                $ids = array_values(array_filter((array) $pageQuery['ids']));
+                $builder->whereIn('p.id', $ids ?: ['00000000-0000-0000-0000-000000000000']);
+            }
+            $search = trim((string) ($pageQuery['search'] ?? ''));
+            if ($search !== '') {
+                $builder->groupStart()->like('p.full_name', $search)->orLike('p.institutional_id', $search)->groupEnd();
+            }
+            $employment = (string) ($pageQuery['employment'] ?? 'all');
+            if (in_array($employment, ['permanent', 'probationary'], true)) $builder->where('pp.employment_status', $employment);
+            $assignment = (string) ($pageQuery['assignment'] ?? 'all');
+            if ($assignment !== 'all') $builder->where('pp.position_title', $assignment);
+
+            // Annual-review filters are SQL predicates so the database filters
+            // before LIMIT/OFFSET instead of hydrating the full roster in PHP.
+            $annual = (string) ($pageQuery['annual'] ?? 'all');
+            $result = (string) ($pageQuery['result'] ?? 'all');
+            $periodId = $this->db->escape($track['id']);
+            $importBase = "SELECT 1 FROM personnel_annual_review_imports ari WHERE ari.personnel_profile_id=pp.profile_id AND ari.evaluation_period_id={$periodId} AND ari.confirmed_at IS NOT NULL AND ari.superseded_at IS NULL";
+            if ($annual === 'not_uploaded') $builder->where("NOT EXISTS ({$importBase})", null, false);
+            elseif ($annual === 'incomplete') $builder->where("EXISTS ({$importBase} AND (ari.two_review_status='pending' OR ari.two_review_status IS NULL))", null, false);
+            elseif ($annual === 'uploaded') $builder->where("EXISTS ({$importBase} AND ari.two_review_status IS NOT NULL AND ari.two_review_status <> 'pending')", null, false);
+
+            if ($result === 'passed') $builder->where("EXISTS ({$importBase} AND ari.two_review_status='passed')", null, false);
+            elseif ($result === 'not_passed') $builder->where("EXISTS ({$importBase} AND ari.two_review_status='not_passed')", null, false);
+            elseif ($result === 'pending') $builder->groupStart()->where("NOT EXISTS ({$importBase})", null, false)->orWhere("EXISTS ({$importBase} AND (ari.two_review_status='pending' OR ari.two_review_status IS NULL))", null, false)->groupEnd();
+        }
+        $candidateCount = $pageQuery === null ? null : (clone $builder)->countAllResults(false);
+        $builder->orderBy('p.full_name');
+        if ($pageQuery !== null && isset($pageQuery['per_page'], $pageQuery['offset'])) $builder->limit($pageQuery['per_page'], $pageQuery['offset']);
+        $rows = $builder->get()->getResultArray();
 
         $readOnlyView = $includeReadOnly && $authorityType === 'HR';
         $items = [];
@@ -72,7 +122,7 @@ class AuthorityRankingRosterService
                 'can_manage'=>$canManage, 'responsible_authority'=>$this->authoritySummary($authority, $authorityIssue)];
         }
 
-        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED','CANCELLED'], true)], 'total_personnel'=>count($items), 'personnel'=>$items];
+        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED','CANCELLED'], true)], 'total_personnel'=>$candidateCount ?? count($items), 'personnel'=>$items];
     }
 
     private function authoritySummary(?array $authority, ?string $issue): array

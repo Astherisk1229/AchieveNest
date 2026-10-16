@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowRight, CalendarDays, Eye, RefreshCw, Search, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -52,23 +52,18 @@ function PersonnelDetails({ person, onClose }) {
   </div>
 }
 
-function RosterView({ data }) {
+function RosterView({ data, loading }) {
   const [params, setParams] = useSearchParams()
   const [selectedPerson, setSelectedPerson] = useState(null)
   const personnel = useMemo(() => data.personnel || [], [data.personnel])
   const filters = { search: params.get('search') || '', classification: params.get('classification') || 'all', assignment: params.get('assignment') || 'all', route: params.get('route') || 'all', status: params.get('status') || 'all' }
-  const setFilter = (key, value) => setParams(current => { const next = new URLSearchParams(current); if (!value || value === 'all') next.delete(key); else next.set(key, value); return next }, { replace: true })
+  const setFilter = (key, value) => setParams(current => { const next = new URLSearchParams(current); if (!value || value === 'all') next.delete(key); else next.set(key, value); next.delete('page'); return next }, { replace: true })
   const clearFilters = () => setParams({}, { replace: true })
-  const options = useMemo(() => ({
-    classifications: [...new Set(personnel.map(person => person.classification_label).filter(Boolean))].sort(),
-    assignments: [...new Map(personnel.map(person => [person.program_id || person.department_name || person.college_id, person.program_name || person.department_name || person.college_name]).filter(([id]) => id)).entries()],
-    statuses: [...new Map(personnel.map(person => [person.evaluation_status, person.evaluation_status_label]).filter(([key]) => key)).entries()]
-  }), [personnel])
-  const filtered = useMemo(() => personnel.filter(person => {
-    const identity = `${person.full_name} ${person.institutional_id}`.toLowerCase()
-    const assignmentKey = person.program_id || person.department_name || person.college_id
-    return (!filters.search || identity.includes(filters.search.toLowerCase())) && (filters.classification === 'all' || person.classification_label === filters.classification) && (filters.assignment === 'all' || assignmentKey === filters.assignment) && (filters.route === 'all' || person.evaluation_route === filters.route) && (filters.status === 'all' || person.evaluation_status === filters.status)
-  }).sort((a, b) => a.full_name.localeCompare(b.full_name)), [personnel, filters.search, filters.classification, filters.assignment, filters.route, filters.status])
+  const options = data.filter_options || { classifications: [], assignments: [], statuses: [] }
+  const filtered = personnel
+  const currentPage = Number(data.page || 1)
+  const totalPages = Math.max(1, Math.ceil((data.total || 0) / (data.per_page || 25)))
+  const setPage = page => setParams(current => { const next = new URLSearchParams(current); next.set('page', String(page)); return next }, { replace: true })
   const activeFilters = Object.entries(filters).filter(([, value]) => value && value !== 'all')
   const filterLabel = (key, value) => key === 'route' ? (value === 'DEAN_THEN_HR' ? 'Dean' : 'HR') : key === 'status' ? options.statuses.find(([option]) => option === value)?.[1] : key === 'assignment' ? options.assignments.find(([option]) => option === value)?.[1] : value
 
@@ -76,7 +71,7 @@ function RosterView({ data }) {
     ? <Link to={deanReviewDetailRoute(person.evaluation.id)} className="inline-flex items-center justify-center rounded-lg bg-emerald-800 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2">Review Portfolio</Link>
     : <button type="button" onClick={() => setSelectedPerson(person)} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Eye className="h-3.5 w-3.5" />View</button>
 
-  return <main className="mx-auto max-w-[1500px] space-y-6 py-4">
+  return <main className="mx-auto max-w-[1500px] space-y-6 py-4" aria-busy={loading}>
     <header><h1 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">College Personnel Roster</h1><p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">View personnel assigned to your college and monitor review responsibility and status.</p><p className="mt-3 text-sm font-bold text-emerald-800 dark:text-emerald-300">{data.college?.name} <span className="font-normal text-slate-400">·</span> {data.total || 0} personnel</p></header>
     <section aria-label="Roster summary" className="flex flex-wrap divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-white px-5 py-4 dark:divide-slate-700 dark:border-slate-800 dark:bg-slate-900">{[[data.summary?.total ?? data.total, 'Personnel'], [data.summary?.dean_then_hr, 'Dean responsibility'], [data.summary?.hr_direct, 'HR responsibility']].map(([value, label]) => <div key={label} className="min-w-36 px-5 first:pl-0"><span className="text-xl font-black tabular-nums text-slate-950 dark:text-white">{value ?? 0}</span><span className="ml-2 text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</span></div>)}</section>
     {!data.evaluation_period && <div role="status" className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200"><strong>No active evaluation period.</strong> Evaluation statuses will become available when HR opens a period.</div>}
@@ -87,10 +82,10 @@ function RosterView({ data }) {
       <Select value={filters.route} onValueChange={value => setFilter('route', value)} aria-label="Filter by review responsibility"><SelectItem value="all">All responsibilities</SelectItem><SelectItem value="DEAN_THEN_HR">Dean</SelectItem><SelectItem value="HR_DIRECT">HR</SelectItem></Select>
       <Select value={filters.status} onValueChange={value => setFilter('status', value)} disabled={!data.evaluation_period} aria-label="Filter by evaluation status"><SelectItem value="all">All statuses</SelectItem>{options.statuses.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</Select>
     </div>{activeFilters.length > 0 && <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-slate-500">Active filters:</span>{activeFilters.map(([key, value]) => <button key={key} type="button" onClick={() => setFilter(key, 'all')} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:ring-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-slate-950 dark:text-slate-200 dark:ring-slate-700">{filterLabel(key, value)}<X className="h-3 w-3" /></button>)}<button type="button" onClick={clearFilters} className="text-xs font-bold text-emerald-800 underline decoration-emerald-300 underline-offset-4 hover:text-emerald-950 dark:text-emerald-300">Clear filters</button></div>}</section>
-    {!personnel.length ? <div className="rounded-2xl border border-slate-200 py-16 text-center dark:border-slate-800"><p className="font-bold text-slate-900 dark:text-white">No personnel are currently assigned to this college.</p></div> : !filtered.length ? <div className="rounded-2xl border border-slate-200 py-16 text-center dark:border-slate-800"><p className="font-bold text-slate-900 dark:text-white">No personnel match the current filters.</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-bold text-emerald-800 underline underline-offset-4 dark:text-emerald-300">Clear filters</button></div> : <>
+    {!data.summary?.total ? <div className="rounded-2xl border border-slate-200 py-16 text-center dark:border-slate-800"><p className="font-bold text-slate-900 dark:text-white">No personnel are currently assigned to this college.</p></div> : !filtered.length ? <div className="rounded-2xl border border-slate-200 py-16 text-center dark:border-slate-800"><p className="font-bold text-slate-900 dark:text-white">No personnel match the current filters.</p><button type="button" onClick={clearFilters} className="mt-3 text-sm font-bold text-emerald-800 underline underline-offset-4 dark:text-emerald-300">Clear filters</button></div> : <>
       <div className="hidden overflow-visible rounded-2xl border border-slate-200 lg:block dark:border-slate-800"><table className="w-full table-fixed border-collapse"><thead><tr className="bg-slate-50 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">{[['Personnel','19%'],['Classification','14%'],['Assignment','20%'],['Role','12%'],['Review Responsibility','15%'],['Status','12%'],['Action','8%']].map(([label, width]) => <th key={label} scope="col" style={{ width }} className="px-4 py-2.5">{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-200 dark:divide-slate-800">{filtered.map(person => <tr key={person.id} className="align-top hover:bg-slate-50/70 dark:hover:bg-slate-900/60"><td className="px-4 py-3"><p className="font-bold leading-5 text-slate-950 dark:text-white">{person.full_name}</p><p className="mt-0.5 text-xs leading-4 text-slate-500">{person.institutional_id}</p></td><td className="px-4 py-3 text-sm font-semibold leading-5 text-slate-700 dark:text-slate-200"><span className="whitespace-nowrap">{person.classification_label}</span></td><td className="px-4 py-3"><p className="text-sm font-semibold leading-5 text-slate-800 dark:text-slate-200">{person.program_name || person.department_name || 'College assignment'}</p></td><td className="px-4 py-3 text-sm leading-5 text-slate-700 dark:text-slate-300">{roleLabel(person)}</td><td className="px-4 py-3"><p className="whitespace-nowrap text-sm font-bold leading-5 text-slate-800 dark:text-slate-200">{person.review_responsibility === 'dean' ? 'Dean' : 'HR'}</p>{person.is_self && <p className="mt-0.5 text-xs leading-4 text-slate-500">Self-review unavailable</p>}</td><td className="px-4 py-3">{data.evaluation_period ? <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold leading-5 ${statusStyles[person.evaluation_status] || statusStyles.hr_managed}`}>{person.evaluation_status_label}</span> : <span aria-label="Status unavailable" className="text-slate-400">—</span>}</td><td className="px-4 py-3">{action(person)}</td></tr>)}</tbody></table></div>
       <div className="grid gap-3 lg:hidden">{filtered.map(person => { const roles = meaningfulRoles(person); return <article key={person.id} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><div><h2 className="font-black leading-5 text-slate-950 dark:text-white">{person.full_name}</h2><p className="mt-0.5 text-xs text-slate-500">{person.institutional_id}</p></div>{data.evaluation_period && <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-bold leading-5 ${statusStyles[person.evaluation_status] || statusStyles.hr_managed}`}>{person.evaluation_status_label}</span>}</div><dl className="mt-3 grid gap-2.5 text-sm sm:grid-cols-2"><div><dt className="text-xs font-semibold text-slate-500">Classification</dt><dd className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">{person.classification_label}</dd></div><div><dt className="text-xs font-semibold text-slate-500">Assignment</dt><dd className="mt-0.5 font-semibold leading-5 text-slate-800 dark:text-slate-200">{person.program_name || person.department_name || person.college_name}</dd></div>{roles.length > 0 && <div><dt className="text-xs font-semibold text-slate-500">Role</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-300">{roles.map(role => role.display_name).join(', ')}</dd></div>}<div><dt className="text-xs font-semibold text-slate-500">Review responsibility</dt><dd className="mt-0.5 font-bold text-slate-800 dark:text-slate-200">{person.review_responsibility === 'dean' ? 'Dean' : 'HR'}</dd>{person.is_self && <p className="mt-0.5 text-xs text-slate-500">Self-review unavailable</p>}</div></dl><div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">{action(person)}</div></article> })}</div>
-      <footer className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500"><p>Showing <strong className="text-slate-800 dark:text-slate-200">{filtered.length}</strong> of <strong className="text-slate-800 dark:text-slate-200">{data.total}</strong> personnel</p><p>Sorted by personnel name A–Z</p></footer>
+      <footer className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500"><p>Showing <strong className="text-slate-800 dark:text-slate-200">{(currentPage - 1) * (data.per_page || 25) + 1}–{Math.min(currentPage * (data.per_page || 25), data.total)}</strong> of <strong className="text-slate-800 dark:text-slate-200">{data.total}</strong> personnel</p><div className="flex items-center gap-3"><button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border px-3 py-1.5 font-semibold disabled:opacity-40">Previous</button><span>Page {currentPage} of {totalPages}</span><button type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className="rounded-lg border px-3 py-1.5 font-semibold disabled:opacity-40">Next</button></div></footer>
     </>}
     <PersonnelDetails person={selectedPerson} onClose={() => setSelectedPerson(null)} />
   </main>
@@ -98,12 +93,17 @@ function RosterView({ data }) {
 
 export default function DeanWorkspacePage({ view = 'dashboard' }) {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const rosterQuery = view === 'roster' ? searchParams.toString() : ''
   const [state, setState] = useState({ loading: true, data: null, error: '' })
+  const requestSequence = useRef(0)
   const load = () => {
+    const sequence = ++requestSequence.current
     setState(current => ({ ...current, loading: true, error: '' }))
-    const request = view === 'roster' ? getDeanRoster() : getDeanDashboard()
-    request.then(data => setState({ loading: false, data, error: '' }))
+    const request = view === 'roster' ? getDeanRoster(Object.fromEntries(new URLSearchParams(rosterQuery))) : getDeanDashboard()
+    request.then(data => { if (sequence === requestSequence.current) setState({ loading: false, data, error: '' }) })
       .catch(error => {
+        if (sequence !== requestSequence.current) return
         const apiError = error?.error || error?.response?.data?.error || {}
         const messages = {
           DEAN_ASSIGNMENT_NOT_FOUND: 'No active Dean assignment was found.',
@@ -114,14 +114,17 @@ export default function DeanWorkspacePage({ view = 'dashboard' }) {
         setState({ loading: false, data: null, error: messages[apiError.code] || apiError.message || error?.message || 'Unable to load Dean workspace data.' })
       })
   }
-  useEffect(load, [view])
+  useEffect(() => {
+    const timer = window.setTimeout(load, view === 'roster' ? 250 : 0)
+    return () => { window.clearTimeout(timer); requestSequence.current += 1 }
+  }, [view, rosterQuery])
 
-  if (state.loading) return view === 'roster' ? <RosterSkeleton /> : <main className="mx-auto max-w-6xl space-y-4 py-4" aria-busy="true"><div className="h-9 w-64 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" /><div className="h-32 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900" /></main>
+  if (state.loading && !state.data) return view === 'roster' ? <RosterSkeleton /> : <main className="mx-auto max-w-6xl space-y-4 py-4" aria-busy="true"><div className="h-9 w-64 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" /><div className="h-32 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900" /></main>
   if (state.error) return <main className="mx-auto max-w-3xl py-12"><div className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-900 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-100"><AlertCircle className="h-5 w-5" /><p className="mt-2 font-bold">{view === 'roster' ? 'Unable to load College Personnel Roster.' : 'Dean workspace unavailable'}</p><p className="mt-1 text-sm">{state.error}</p><button type="button" onClick={load} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-rose-900 px-3 py-2 text-xs font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700 focus-visible:ring-offset-2"><RefreshCw className="h-3.5 w-3.5" />Try Again</button></div></main>
 
   const data = state.data || {}; const metrics = data.metrics || {}; const period = data.evaluation_period
   const firstName = String(user?.full_name || 'Dean').trim().split(/\s+/)[0]
-  if (view === 'roster') return <RosterView data={data} />
+  if (view === 'roster') return <RosterView data={data} loading={state.loading} />
 
   return <main className="mx-auto max-w-6xl space-y-9 py-4 font-sans">
     <header><h1 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">Hi, Dean {firstName}!</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Here’s what needs your attention in {data.college?.name}.</p></header>

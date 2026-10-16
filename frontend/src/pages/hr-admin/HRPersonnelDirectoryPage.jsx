@@ -20,10 +20,11 @@ import { personnelMasterDataService } from '../../services/personnelMasterDataSe
 export function HRPersonnelDirectoryPage(props) {
   // This route needs directory and reset data only. Dashboard and audit data
   // have their own routes and must not block the personnel table.
-  const hrHook = useHR({ resources: ['directory', 'passwordResets'] })
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const directorySearchQuery = searchParams.get('search') || ''
+  const [directoryQuery, setDirectoryQuery] = useState({ page: 1, per_page: 10, search: directorySearchQuery })
+  const hrHook = useHR({ resources: ['directory', 'passwordResets'], directoryQuery })
 
   const personnelList = props.personnelList || hrHook.personnelList
   const passwordResets = props.passwordResets || hrHook.passwordResets
@@ -275,7 +276,7 @@ export function HRPersonnelDirectoryPage(props) {
       <PersonnelDirectoryHeader
         summary={props.directorySummary || hrHook.directorySummary}
         summaryLoading={!props.personnelList && hrHook.isLoading}
-        totalCount={personnelList.length}
+        totalCount={props.personnelList ? personnelList.length : hrHook.directoryTotal}
         pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         onOpenBatchImport={() => setIsBatchImportOpen(true)}
@@ -285,7 +286,7 @@ export function HRPersonnelDirectoryPage(props) {
       <GovernanceTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        personnelCount={personnelList.length}
+        personnelCount={props.personnelList ? personnelList.length : hrHook.directoryTotal}
         pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
       />
 
@@ -297,13 +298,14 @@ export function HRPersonnelDirectoryPage(props) {
         </div>
       )}
 
-      {activeTab === 'directory' && hrHook.isLoading && (
+      {activeTab === 'directory' && hrHook.isLoading && !hrHook.hasLoadedDirectory && !props.personnelList && (
         <div aria-label="Loading Personnel Directory" className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
           {[1, 2, 3, 4, 5].map(row => <div key={row} className="h-16 animate-pulse bg-slate-50/80 dark:bg-slate-800/30" />)}
         </div>
       )}
 
-      {activeTab === 'directory' && !hrHook.isLoading && (
+      {activeTab === 'directory' && hrHook.isLoading && hrHook.hasLoadedDirectory && <p role="status" className="text-sm text-slate-500">Updating personnel…</p>}
+      {activeTab === 'directory' && (props.personnelList || hrHook.hasLoadedDirectory) && (
         <PersonnelDirectoryTable
           personnelList={personnelList}
           initialSearch={directorySearchQuery}
@@ -319,6 +321,10 @@ export function HRPersonnelDirectoryPage(props) {
           onDeletePersonnel={handleDeletePersonnel}
           onManageRole={handleManageRole}
           showToast={showToast}
+          serverTotal={props.personnelList ? null : hrHook.directoryTotal}
+          onServerQueryChange={props.personnelList ? undefined : setDirectoryQuery}
+          directoryCollegeOptions={institutionalMasterData.colleges}
+          directoryDepartmentOptions={institutionalMasterData.administrativeUnits}
         />
       )}
 

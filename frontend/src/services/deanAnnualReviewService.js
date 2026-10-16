@@ -5,8 +5,8 @@ export async function fetchDeanAnnualReviews(params = {}) {
   return response?.data?.data || response?.data || response
 }
 
-export async function fetchReviewerTrackRoster(cycleId, trackKey) {
-  const response = await apiClient.get(`/reviewer/ranking-cycles/${encodeURIComponent(cycleId)}/tracks/${encodeURIComponent(trackKey)}/personnel`)
+export async function fetchReviewerTrackRoster(cycleId, trackKey, params = {}) {
+  const response = await apiClient.get(`/reviewer/ranking-cycles/${encodeURIComponent(cycleId)}/tracks/${encodeURIComponent(trackKey)}/personnel`, { params })
   return response?.data?.data || response?.data || response
 }
 

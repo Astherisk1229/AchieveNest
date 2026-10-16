@@ -71,7 +71,7 @@ export default function OSADDashboardPage({ currentUser }) {
   const [moderatorCandidates, setModeratorCandidates] = useState([])
   const [persistentColleges, setPersistentColleges] = useState([])
   const [persistentPrograms, setPersistentPrograms] = useState([])
-  const [students, setStudents] = useState([])
+  const [studentSummary, setStudentSummary] = useState({ total: 0, active: 0, by_college: [] })
   const [loadErrors, setLoadErrors] = useState({})
   const noteLoad = React.useCallback((key, err) => {
     setLoadErrors((prev) => {
@@ -114,8 +114,8 @@ export default function OSADDashboardPage({ currentUser }) {
 
   const loadStudents = React.useCallback(async () => {
     try {
-      const list = await provisioningService.fetchStudents()
-      if (Array.isArray(list)) setStudents(list)
+      const summary = await provisioningService.fetchStudentSummary()
+      setStudentSummary(summary)
       noteLoad('student accounts', null)
     } catch (err) {
       noteLoad('student accounts', err)
@@ -136,24 +136,23 @@ export default function OSADDashboardPage({ currentUser }) {
     return {
       collegesCount: persistentColleges.filter((c) => !c.status || c.status === 'active').length,
       programsCount: persistentPrograms.length,
-      activeStudentsCount: students.filter((s) => (s.status || 'active') === 'active').length,
+      activeStudentsCount: studentSummary.active,
       activeOrganizationsCount: activeOrgs.length,
       organizationsWithModeratorCount: withModerator,
       pendingAssignmentsCount: activeOrgs.length - withModerator
     }
-  }, [persistentColleges, persistentPrograms, persistentOrgs, students])
+  }, [persistentColleges, persistentPrograms, persistentOrgs, studentSummary])
 
   const studentsByCollege = React.useMemo(() => {
     const counts = new Map()
-    students.forEach((s) => {
-      if (!s.college_name && !s.college) return
-      const label = s.college_name ? `${s.college ? `${s.college} — ` : ''}${s.college_name}` : s.college
-      counts.set(label, (counts.get(label) || 0) + 1)
+    studentSummary.by_college.forEach((college) => {
+      const label = college.college_name ? `${college.college ? `${college.college} — ` : ''}${college.college_name}` : college.college
+      counts.set(label, (counts.get(label) || 0) + college.count)
     })
     const total = Array.from(counts.values()).reduce((a, n) => a + n, 0)
     return Array.from(counts, ([label, count]) => ({ label, count, percent: total ? Math.round((count / total) * 1000) / 10 : 0 }))
       .sort((a, b) => b.count - a.count)
-  }, [students])
+  }, [studentSummary])
 
   React.useEffect(() => {
     const organizationId = personnelSelectorTarget?.roleType === 'moderator'

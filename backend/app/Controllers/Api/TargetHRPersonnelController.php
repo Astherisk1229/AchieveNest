@@ -214,13 +214,17 @@ class TargetHRPersonnelController extends Controller
         }
         if (in_array($employmentStatus, ['permanent', 'probationary'], true)) {
             $builder->where('pp.employment_status', $employmentStatus);
+        } elseif ($employmentStatus === '__not_recorded') {
+            $builder->groupStart()->where('pp.employment_status', null)->orWhere('pp.employment_status', '')->groupEnd();
         }
         if (in_array($status, ['active', 'suspended', 'inactive', 'archived'], true)) {
             $builder->where('p.status', $status);
         }
 
         $total = (clone $builder)->countAllResults(false);
-        $rows = $builder->orderBy('p.full_name', 'ASC')
+        $sortDirection = strtoupper(trim((string) ($this->request->getGet('sort_dir') ?? 'ASC')));
+        $rows = $builder->orderBy('p.full_name', $sortDirection === 'DESC' ? 'DESC' : 'ASC')
+            ->orderBy('p.id', 'ASC')
             ->limit($pagination['per_page'], $pagination['offset'])
             ->get()->getResultArray();
 

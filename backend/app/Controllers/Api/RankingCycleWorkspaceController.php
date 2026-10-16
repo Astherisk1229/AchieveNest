@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 
 use App\Services\AuthorizationService;
 use App\Services\RankingCycleWorkspaceReadService;
+use App\Helpers\ValidationHelper;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use InvalidArgumentException;
@@ -47,7 +48,16 @@ final class RankingCycleWorkspaceController extends Controller
         }
 
         try {
-            return $this->respond(['data'=>$this->workspace->{$method}($actor, $cycleId, $trackKey)]);
+            $filters = null;
+            if (in_array($method, ['evaluation', 'results'], true) && $this->request->getGet('page') !== null) {
+                $filters = ValidationHelper::validatePagination($this->request->getGet('page'), $this->request->getGet('per_page') ?? 25);
+                $filters['search'] = trim((string) ($this->request->getGet('search') ?? ''));
+                $filters['status'] = trim((string) ($this->request->getGet('status') ?? 'all'));
+            }
+            $data = $filters === null
+                ? $this->workspace->{$method}($actor, $cycleId, $trackKey)
+                : $this->workspace->{$method}($actor, $cycleId, $trackKey, $filters);
+            return $this->respond(['data'=>$data]);
         } catch (InvalidArgumentException $error) {
             return $this->error($error, 404);
         } catch (RuntimeException $error) {

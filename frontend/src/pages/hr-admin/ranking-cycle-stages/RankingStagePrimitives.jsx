@@ -38,7 +38,7 @@ export function StageTable({ columns, rows, emptyTitle, emptyDescription, render
 export function StageState({ phase, error, onRetry, children }) {
   if (phase === 'loading') return <div aria-busy="true" className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900"/>
   if (phase === 'error') return <div role="alert" className="flex items-start justify-between gap-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-900 dark:bg-rose-950/30 dark:text-rose-100"><span className="flex gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0"/>{error}</span><button type="button" onClick={onRetry} className="shrink-0 font-bold underline underline-offset-4">Try again</button></div>
-  return children
+  return <>{error && <div role="alert" className="mb-3 flex items-center justify-between rounded-xl bg-amber-50 p-3 text-sm text-amber-900"><span>{error} Showing the last loaded data.</span><button type="button" onClick={onRetry} className="font-bold underline">Try again</button></div>}{children}</>
 }
 
 export function DetailDrawer({ title, subtitle, onClose, children }) {

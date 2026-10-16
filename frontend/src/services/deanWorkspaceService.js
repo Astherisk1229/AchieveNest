@@ -5,8 +5,8 @@ export async function getDeanDashboard() {
   return response?.data?.data || response?.data || null
 }
 
-export async function getDeanRoster() {
-  const response = await apiClient.get('/dean/roster')
+export async function getDeanRoster(params = {}) {
+  const response = await apiClient.get('/dean/roster', { params })
   return response?.data?.data || response?.data || null
 }
 

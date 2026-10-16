@@ -52,6 +52,6 @@ describe('authority-neutral Ranking Period track roster', () => {
   it('reuses the same roster for Annual Review imports and the shared page', () => {
     expect(read('backend/app/Services/AnnualReviewImportService.php')).toContain('$this->rosterService->list')
     expect(read('frontend/src/services/deanAnnualReviewService.js')).toContain('fetchReviewerTrackRoster')
-    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain('fetchReviewerTrackRoster(cycleId, trackKey)')
+    expect(read('frontend/src/pages/dean/DeanAnnualReviewEligibilityPage.jsx')).toContain('fetchReviewerTrackRoster(cycleId, trackKey, isPaged')
   })
 })

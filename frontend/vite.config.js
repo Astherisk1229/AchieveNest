@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => {
         '/api': 'http://127.0.0.1:8080',
       },
     },
+    preview: {
+      host: '0.0.0.0',
+      allowedHosts: ['achievenest-frontend-production.up.railway.app'],
+    },
     test: {
       testTimeout: 15000,
     },

@@ -44,7 +44,26 @@ class AuthorityRankingRosterService
             ->join('administrative_units au', "au.id=pau.administrative_unit_id AND au.status='active'", 'left')
             ->join('colleges c', 'c.id=COALESCE(pca.college_id,au.college_id)', 'left')
             ->where('p.status', 'active')->where('pp.personnel_group', $group)->where('p.id !=', $actorId);
-        if ($scopeType === 'college') $builder->groupStart()->where('pca.college_id', $scopeId)->orWhere('au.college_id', $scopeId)->groupEnd();
+        if ($scopeType === 'college') {
+            $builder->groupStart()->where('pca.college_id', $scopeId)->orWhere('au.college_id', $scopeId)->groupEnd();
+            if ($authorityType === 'DEAN') {
+                $actorIdSql = $this->db->escape($actorId);
+                $collegeIdSql = $this->db->escape($scopeId);
+                // Dean-routed pages must exclude active Deans (their reviews route
+                // to HR) and candidates whose college has an ambiguous Dean roster.
+                $builder->where("NOT EXISTS (SELECT 1 FROM dean_assignments target_dean WHERE target_dean.personnel_profile_id=p.id AND target_dean.is_active=1)", null, false);
+                $builder->where("EXISTS (
+                    SELECT 1 FROM dean_assignments assigned_dean
+                    INNER JOIN profiles dean_profile ON dean_profile.id=assigned_dean.personnel_profile_id AND dean_profile.status='active'
+                    WHERE assigned_dean.personnel_profile_id={$actorIdSql}
+                      AND assigned_dean.college_id={$collegeIdSql}
+                      AND assigned_dean.is_active=1
+                      AND (SELECT COUNT(*) FROM dean_assignments current_deans
+                           INNER JOIN profiles active_dean ON active_dean.id=current_deans.personnel_profile_id AND active_dean.status='active'
+                           WHERE current_deans.college_id={$collegeIdSql} AND current_deans.is_active=1)=1
+                )", null, false);
+            }
+        }
         if ($scopeType === 'department') $builder->where('au.id', $scopeId)->where('au.college_id', null);
         if ($pageQuery !== null) {
             if (array_key_exists('ids', $pageQuery)) {

@@ -34,7 +34,8 @@ class Cors extends BaseConfig
          *   - ['http://localhost:8080']
          *   - ['https://www.example.com']
          */
-        'allowedOrigins' => ['http://localhost:5173'],
+        // Reserve index 1 for the Railway cors_default_allowedOrigins_1 environment override.
+        'allowedOrigins' => ['http://localhost:5173', ''],
 
         /**
          * Origin regex patterns for the `Access-Control-Allow-Origin` header.
@@ -42,10 +43,10 @@ class Cors extends BaseConfig
          * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
          *
          * NOTE: A pattern specified here is part of a regular expression. It will
-         *       be actually `#\A<pattern>\z#`.
+         *       be actually `#\\A<pattern>\\z#`.
          *
          * E.g.:
-         *   - ['https://\w+\.example\.com']
+         *   - ['https://\\w+\\.example\\.com']
          */
         'allowedOriginsPatterns' => [],
 
@@ -82,16 +83,12 @@ class Cors extends BaseConfig
         'exposedHeaders' => [],
 
         /**
-         * Set methods to allow.
-         *
          * The Access-Control-Allow-Methods response header specifies one or more
          * methods allowed when accessing a resource in response to a preflight
          * request.
          *
          * E.g.:
          *   - ['GET', 'POST', 'PUT', 'DELETE']
-         *
-         * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Methods
          */
         'allowedMethods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 

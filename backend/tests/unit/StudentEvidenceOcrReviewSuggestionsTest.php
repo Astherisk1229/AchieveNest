@@ -44,6 +44,6 @@ final class StudentEvidenceOcrReviewSuggestionsTest extends CIUnitTestCase
     public function testBridgeReadsTheNewLabels(): void
     {
         $bridge = (string) file_get_contents(dirname(__DIR__, 2) . '/ocr/student_ocr_bridge.py');
-        self::assertStringContainsString('|Role|Position|Organization|Academic Year)', $bridge);
+        self::assertStringContainsString('Academic Year|Publication|Category|Type|Duration|Level|Service Location|Total Service Hours|Rank', $bridge);
     }
 }

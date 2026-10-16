@@ -6,7 +6,7 @@ set -eu
 OCR_PYTHON_PACKAGES_DIR="${OCR_PYTHON_PACKAGES_DIR:-/app/.runtime/python-packages}"
 PADDLE_PDX_CACHE_HOME="${PADDLE_PDX_CACHE_HOME:-/app/.runtime/paddlex-cache}"
 mkdir -p "$OCR_PYTHON_PACKAGES_DIR" "$PADDLE_PDX_CACHE_HOME"
-python -m pip install --disable-pip-version-check --no-compile \
+python -m pip install --disable-pip-version-check --no-compile --no-deps \
   --target "$OCR_PYTHON_PACKAGES_DIR" --requirement ocr/requirements.lock
 PYTHONPATH="$OCR_PYTHON_PACKAGES_DIR${PYTHONPATH:+:$PYTHONPATH}" \
 PADDLE_PDX_CACHE_HOME="$PADDLE_PDX_CACHE_HOME" \

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import useRankingWorkspaceStage from './useRankingWorkspaceStage'
 import { PersonnelCell, StageBadge, StageHeader, StageState, StageTable, StageToolbar } from './RankingStagePrimitives'
@@ -7,9 +7,13 @@ import { formatDate } from './rankingStageFormatters'
 const score = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function ResultsStage({ cycleId, trackKey }) {
-  const workspace = useRankingWorkspaceStage(cycleId, trackKey, 'results')
   const [searchParams, setSearchParams] = useSearchParams()
   const search = searchParams.get('search') || ''
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+  const [page, setPage] = useState(1)
+  useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(search), 250); return () => clearTimeout(timer) }, [search])
+  const workspace = useRankingWorkspaceStage(cycleId, trackKey, 'results', { page, per_page: 25, search: debouncedSearch })
+  const totalPages = Math.max(1, Math.ceil((workspace.data?.total_rows || 0) / 25))
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams)
@@ -21,17 +25,14 @@ export default function ResultsStage({ cycleId, trackKey }) {
   }, [searchParams, setSearchParams, trackKey])
 
   const setSearch = value => {
+    setPage(1)
     const next = new URLSearchParams(searchParams)
     if (value) next.set('search', value)
     else next.delete('search')
     setSearchParams(next, { replace: true })
   }
 
-  const rows = useMemo(() => (workspace.data?.rows || []).filter(row => {
-    const query = search.trim().toLowerCase()
-    const person = row.personnel || {}
-    return !query || `${person.full_name || ''} ${person.institutional_id || ''}`.toLowerCase().includes(query)
-  }), [workspace.data?.rows, search])
+  const rows = workspace.data?.rows || []
 
   const summaryPath = row => `/hr/ranking-cycles/${encodeURIComponent(cycleId)}/${encodeURIComponent(trackKey)}/results/${encodeURIComponent(row.evaluation.id)}/summary?${searchParams.toString()}`
 
@@ -47,5 +48,6 @@ export default function ResultsStage({ cycleId, trackKey }) {
         <td className="px-4 py-4 text-right">{row.allowed_actions?.includes('view_report') && <Link to={summaryPath(row)} className="inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-800 px-3 text-xs font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2">Evaluation Summary</Link>}</td>
       </tr>}/>
     </StageState>
+    {workspace.data && totalPages > 1 && <nav aria-label="Results pages" className="flex items-center justify-end gap-3 text-sm"><button type="button" disabled={page <= 1} onClick={() => setPage(value => value - 1)} className="rounded-lg border px-3 py-2 disabled:opacity-50">Previous</button><span>Page {page} of {totalPages}</span><button type="button" disabled={page >= totalPages} onClick={() => setPage(value => value + 1)} className="rounded-lg border px-3 py-2 disabled:opacity-50">Next</button></nav>}
   </main>
 }

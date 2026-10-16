@@ -135,12 +135,34 @@ class DeanWorkspaceController extends Controller
             ->join('personnel_program_affiliations ppa','ppa.personnel_profile_id=pp.profile_id AND ppa.is_active=1','left')->join('academic_programs ap','ap.id=ppa.academic_program_id','left')
             ->join('personnel_administrative_unit_affiliations pau','pau.personnel_profile_id=pp.profile_id AND pau.is_active=1','left')->join('administrative_units au','au.id=pau.administrative_unit_id','left')
             ->where('pca.college_id',$scope['college_id'])->orderBy('p.full_name')->get()->getResultArray();
+        $ids = array_values(array_unique(array_column($rows, 'id')));
+        $evaluationsByPerson = [];
+        $rolesByPerson = [];
+        if ($ids !== []) {
+            if ($period) {
+                $evaluationRows = $db->table('personnel_evaluations')
+                    ->select('id,personnel_profile_id,status,version_number,submitted_at')
+                    ->where('evaluation_period_id', $period['id'])->whereIn('personnel_profile_id', $ids)
+                    ->orderBy('version_number', 'DESC')->get()->getResultArray();
+                foreach ($evaluationRows as $evaluationRow) {
+                    $evaluationsByPerson[(string) $evaluationRow['personnel_profile_id']] ??= $evaluationRow;
+                }
+            }
+            $roleRows = $db->table('profile_roles pr')->select('pr.profile_id,r.role_key,r.display_name')
+                ->join('roles r', 'r.id=pr.role_id')->whereIn('pr.profile_id', $ids)
+                ->where('pr.is_active', 1)->orderBy('r.display_name')->get()->getResultArray();
+            foreach ($roleRows as $roleRow) {
+                $rolesByPerson[(string) $roleRow['profile_id']][] = [
+                    'role_key' => $roleRow['role_key'], 'display_name' => $roleRow['display_name'],
+                ];
+            }
+        }
         $seen=[]; $result=[]; $eligibilityService=new \App\Services\PersonnelEligibilityService($db);
         foreach($rows as $row){ if(isset($seen[$row['id']])) continue; $seen[$row['id']]=true;
             $isSelf=$row['id']===($scope['actor']['profile']['id']??null);
             $eligible=($row['personnel_group']==='faculty' && !$isSelf);
-            $evaluation=$period ? $db->table('personnel_evaluations')->select('id,status,version_number,submitted_at')->where('personnel_profile_id',$row['id'])->where('evaluation_period_id',$period['id'])->orderBy('version_number','DESC')->get()->getRowArray() : null;
-            $roles=$db->table('profile_roles pr')->select('r.role_key,r.display_name')->join('roles r','r.id=pr.role_id')->where('pr.profile_id',$row['id'])->where('pr.is_active',1)->orderBy('r.display_name')->get()->getResultArray();
+            $evaluation=$evaluationsByPerson[(string) $row['id']] ?? null;
+            $roles=$rolesByPerson[(string) $row['id']] ?? [];
             $classificationLabel=($row['personnel_group']??'') === 'faculty' ? 'Faculty' : 'Non-Teaching Faculty';
             $statusKey=null; $statusLabel=null;
             if ($period) {
@@ -156,19 +178,60 @@ class DeanWorkspaceController extends Controller
                     };
                 }
             }
-            $eligibilityResult=$period ? $eligibilityService->evaluateEligibility($row['id'],$period['id']) : ['eligibility_status'=>'pending','eligibility_label'=>'Pending','eligibility_reasons'=>['No active evaluation period.']];
             $result[]=$row+[
                 'college_id'=>$scope['college_id'],'college_name'=>$scope['college_name'],
                 'classification_label'=>$classificationLabel,'functional_roles'=>$roles,
                 'is_dean_evaluable'=>$eligible,'evaluation_route'=>$eligible?'DEAN_THEN_HR':'HR_DIRECT','review_responsibility'=>$eligible?'dean':'hr',
-                'eligibility_status'=>$eligibilityResult['eligibility_status'],'eligibility'=>$eligibilityResult,
+                'eligibility_status'=>'pending','eligibility'=>null,
                 'evaluation_status'=>$statusKey,'evaluation_status_label'=>$statusLabel,
-                'is_review_actionable'=>$eligible && $eligibilityResult['eligibility_status']==='eligible' && $evaluation && in_array($evaluation['status'],['submitted','in_evaluation'],true),
+                'is_review_actionable'=>false,
                 'evaluation'=>$evaluation,'is_self'=>$isSelf,
             ];
         }
         $deanRouteCount=count(array_filter($result,static fn($person)=>$person['evaluation_route']==='DEAN_THEN_HR'));
-        return $this->respond(['data'=>['college'=>['id'=>$scope['college_id'],'name'=>$scope['college_name']],'ranking_cycle'=>self::cycleSummary($cycle),'evaluation_period'=>$period,'summary'=>['total'=>count($result),'dean_then_hr'=>$deanRouteCount,'hr_direct'=>count($result)-$deanRouteCount],'personnel'=>$result,'total'=>count($result)]]);
+        $filterOptions = [
+            'classifications' => array_values(array_unique(array_column($result, 'classification_label'))),
+            'assignments' => [], 'statuses' => [],
+        ];
+        foreach ($result as $person) {
+            $assignmentKey = (string) ($person['program_id'] ?: ($person['department_name'] ?: $person['college_id']));
+            $filterOptions['assignments'][$assignmentKey] = $person['program_name'] ?: ($person['department_name'] ?: $person['college_name']);
+            if ($person['evaluation_status']) {
+                $filterOptions['statuses'][$person['evaluation_status']] = $person['evaluation_status_label'];
+            }
+        }
+        $filterOptions['assignments'] = array_map(static fn($key, $label) => [$key, $label], array_keys($filterOptions['assignments']), array_values($filterOptions['assignments']));
+        $filterOptions['statuses'] = array_map(static fn($key, $label) => [$key, $label], array_keys($filterOptions['statuses']), array_values($filterOptions['statuses']));
+        $search = mb_strtolower(trim((string) ($this->request->getGet('search') ?? '')));
+        $classification = (string) ($this->request->getGet('classification') ?? 'all');
+        $assignment = (string) ($this->request->getGet('assignment') ?? 'all');
+        $route = (string) ($this->request->getGet('route') ?? 'all');
+        $status = (string) ($this->request->getGet('status') ?? 'all');
+        $filtered = array_values(array_filter($result, static function (array $person) use ($search, $classification, $assignment, $route, $status): bool {
+            $identity = mb_strtolower((string) $person['full_name'] . ' ' . (string) $person['institutional_id']);
+            $assignmentKey = (string) ($person['program_id'] ?: ($person['department_name'] ?: $person['college_id']));
+            return ($search === '' || str_contains($identity, $search))
+                && ($classification === 'all' || $person['classification_label'] === $classification)
+                && ($assignment === 'all' || $assignmentKey === $assignment)
+                && ($route === 'all' || $person['evaluation_route'] === $route)
+                && ($status === 'all' || $person['evaluation_status'] === $status);
+        }));
+        $pagination = \App\Helpers\ValidationHelper::validatePagination($this->request->getGet('page') ?? 1, $this->request->getGet('per_page') ?? 25);
+        $total = count($filtered);
+        $pageRows = array_slice($filtered, $pagination['offset'], $pagination['per_page']);
+        foreach ($pageRows as &$person) {
+            $eligibilityResult = $period
+                ? $eligibilityService->evaluateEligibility($person['id'], $period['id'])
+                : ['eligibility_status'=>'pending','eligibility_label'=>'Pending','eligibility_reasons'=>['No active evaluation period.']];
+            $person['eligibility_status'] = $eligibilityResult['eligibility_status'];
+            $person['eligibility'] = $eligibilityResult;
+            $person['is_review_actionable'] = $person['is_dean_evaluable']
+                && $eligibilityResult['eligibility_status'] === 'eligible'
+                && $person['evaluation']
+                && in_array($person['evaluation']['status'], ['submitted', 'in_evaluation'], true);
+        }
+        unset($person);
+        return $this->respond(['data'=>['college'=>['id'=>$scope['college_id'],'name'=>$scope['college_name']],'ranking_cycle'=>self::cycleSummary($cycle),'evaluation_period'=>$period,'summary'=>['total'=>count($result),'dean_then_hr'=>$deanRouteCount,'hr_direct'=>count($result)-$deanRouteCount],'filter_options'=>$filterOptions,'personnel'=>$pageRows,'total'=>$total,'page'=>$pagination['page'],'per_page'=>$pagination['per_page']]]);
     }
 
     public function reviews(): mixed

@@ -3,7 +3,7 @@
  * Custom React Hook bridging View components to live target HR endpoints.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { provisioningService } from '../services/provisioningService'
 import { fetchPasswordResetRequests, executePasswordReset } from '../services/passwordResetAdminService'
 import { fetchHRAudit, fetchHRDashboard, fetchPersonnelDirectory, assignDeanRole, revokeDeanRole } from '../services/hrAdminService'
@@ -31,16 +31,21 @@ export async function fetchAllPersonnelDirectoryPages() {
   return { data: { ...firstData, personnel } }
 }
 
-export function useHR({ resources = ALL_RESOURCES } = {}) {
+export function useHR({ resources = ALL_RESOURCES, directoryQuery = null } = {}) {
   const resourceKey = [...resources].sort().join('|')
+  const directoryQueryKey = JSON.stringify(directoryQuery)
   const [activeTab, setActiveTab] = useState('overview')
   const [personnelList, setPersonnelList] = useState([])
   const [directorySummary, setDirectorySummary] = useState(null)
+  const [directoryTotal, setDirectoryTotal] = useState(0)
+  const [hasLoadedDirectory, setHasLoadedDirectory] = useState(false)
   const [auditLogs, setAuditLogs] = useState([])
   const [passwordResets, setPasswordResets] = useState([])
   const [dashboardMetrics, setDashboardMetrics] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const requestSequence = useRef(0)
+  const resetCache = useRef(null)
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,7 +55,8 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
   const [selectedPersonnel, setSelectedPersonnel] = useState(null)
 
   // Refresh All Data
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (force = true) => {
+    const sequence = ++requestSequence.current
     setIsLoading(true)
     setError(null)
 
@@ -58,12 +64,13 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
       const enabled = new Set(resourceKey.split('|').filter(Boolean))
       const requests = []
       const names = []
-      if (enabled.has('directory')) { names.push('directory'); requests.push(fetchAllPersonnelDirectoryPages()) }
+      if (enabled.has('directory')) { names.push('directory'); requests.push(directoryQueryKey === 'null' ? fetchAllPersonnelDirectoryPages() : fetchPersonnelDirectory({ page: 1, per_page: 25, ...JSON.parse(directoryQueryKey) })) }
       if (enabled.has('dashboard')) { names.push('dashboard'); requests.push(fetchHRDashboard()) }
-      if (enabled.has('passwordResets')) { names.push('passwordResets'); requests.push(fetchPasswordResetRequests('all')) }
+      if (enabled.has('passwordResets')) { names.push('passwordResets'); requests.push(!force && resetCache.current ? Promise.resolve(resetCache.current) : fetchPasswordResetRequests('all')) }
       if (enabled.has('audit')) { names.push('audit'); requests.push(fetchHRAudit({ per_page: 50 })) }
 
       const settled = await Promise.allSettled(requests)
+      if (sequence !== requestSequence.current) return
       const results = Object.fromEntries(names.map((name, index) => [name, settled[index]]))
       const dirResult = results.directory
       const dashResult = results.dashboard
@@ -71,8 +78,10 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
       const auditResult = results.audit
 
       if (dirResult?.status === 'fulfilled') {
+        setHasLoadedDirectory(true)
         const directory = dirResult.value?.data || dirResult.value || {}
         const list = Array.isArray(directory.personnel) ? directory.personnel : []
+        setDirectoryTotal(Number(directory.total) || 0)
         setDirectorySummary(directory.summary || null)
         setPersonnelList(uniquePersonnel(list).map(person => ({
           ...person,
@@ -95,6 +104,7 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
       }
 
       if (resetsResult?.status === 'fulfilled') {
+        resetCache.current = resetsResult.value
         setPasswordResets(resetsResult.value?.data || resetsResult.value || [])
       }
 
@@ -103,14 +113,14 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
         setAuditLogs(auditData.events || auditData || [])
       }
     } catch (requestError) {
-      setError(requestError?.error?.message || requestError?.message || 'Unable to load HR data.')
+      if (sequence === requestSequence.current) setError(requestError?.error?.message || requestError?.message || 'Unable to load HR data.')
     } finally {
-      setIsLoading(false)
+      if (sequence === requestSequence.current) setIsLoading(false)
     }
-  }, [resourceKey])
+  }, [resourceKey, directoryQueryKey])
 
   useEffect(() => {
-    void refreshData()
+    void refreshData(false)
     const handleResetEvent = () => refreshData()
     window.addEventListener('achievenest_reset_request_submitted', handleResetEvent)
     window.addEventListener('storage', handleResetEvent)
@@ -153,7 +163,7 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
   })
 
   const stats = {
-    totalPersonnel: dashboardMetrics?.total_personnel ?? personnelList.length,
+    totalPersonnel: dashboardMetrics?.total_personnel ?? directoryTotal,
     pendingResets: dashboardMetrics?.pending_password_resets ?? passwordResets.filter(r => r.status === 'pending').length,
     pendingQualifications: dashboardMetrics?.pending_qualification_reviews ?? 0,
     evaluationCounts: dashboardMetrics?.evaluations || {}
@@ -164,6 +174,8 @@ export function useHR({ resources = ALL_RESOURCES } = {}) {
     setActiveTab,
     personnelList,
     directorySummary,
+    directoryTotal,
+    hasLoadedDirectory,
     filteredPersonnel,
     auditLogs,
     passwordResets,

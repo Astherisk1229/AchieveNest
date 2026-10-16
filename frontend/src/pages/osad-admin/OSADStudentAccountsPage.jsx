@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import {
   Users,
   Search,
@@ -64,6 +64,7 @@ export default function OSADStudentAccountsPage({
   degreePrograms = []
 }) {
   const [serverStudents, setServerStudents] = useState([])
+  const [totalStudents, setTotalStudents] = useState(0)
   const [isLoadingStudents, setIsLoadingStudents] = useState(true)
   const [studentsError, setStudentsError] = useState(null)
   const [refreshFailedAfterCreate, setRefreshFailedAfterCreate] = useState(false)
@@ -101,7 +102,7 @@ export default function OSADStudentAccountsPage({
   }, [userSearchTerm, selectedCollege, selectedProgram, selectedYearLevel, selectedSex, selectedStatus])
 
   // Check if newly created student is hidden by active search/filters
-  const evaluateCreatedStudentExclusion = (created) => {
+  const evaluateCreatedStudentExclusion = useCallback((created) => {
     if (!created) return
     const term = (userSearchTerm || '').trim().toLowerCase()
     const matchesSearch = !term || (
@@ -145,10 +146,10 @@ export default function OSADStudentAccountsPage({
     } else {
       setCreatedExclusionNotice(null)
     }
-  }
+  }, [userSearchTerm, selectedCollege, selectedProgram, selectedYearLevel, selectedSex, selectedStatus])
 
   // Authoritative Server List Fetch
-  const fetchStudentAccounts = async (isPostCreate = false, newlyCreated = null) => {
+  const fetchStudentAccounts = useCallback(async (isPostCreate = false, newlyCreated = null) => {
     const seq = ++fetchSequenceRef.current
     setIsLoadingStudents(true)
     setStudentsError(null)
@@ -157,12 +158,23 @@ export default function OSADStudentAccountsPage({
     }
 
     try {
-      const result = await provisioningService.fetchStudents()
+      const result = await provisioningService.fetchStudentsPage({
+        search: userSearchTerm?.trim() || undefined,
+        college_id: selectedCollege !== 'all' ? selectedCollege : undefined,
+        program_id: selectedProgram !== 'all' ? selectedProgram : undefined,
+        year_level: selectedYearLevel !== 'all' ? selectedYearLevel : undefined,
+        sex: selectedSex !== 'all' ? selectedSex : undefined,
+        status: selectedStatus !== 'all' ? selectedStatus : undefined,
+        sort: selectedSort,
+        sort_dir: sortDirection,
+        page: currentPage,
+        per_page: PAGE_SIZE
+      })
       // Stale response protection
       if (seq !== fetchSequenceRef.current) return
 
-      const list = Array.isArray(result) ? result : (result?.students || [])
-      setServerStudents(list)
+      setServerStudents(result?.students || [])
+      setTotalStudents(Number(result?.total || 0))
       setIsLoadingStudents(false)
       setRefreshFailedAfterCreate(false)
 
@@ -177,12 +189,13 @@ export default function OSADStudentAccountsPage({
         setRefreshFailedAfterCreate(true)
       }
     }
-  }
+  }, [userSearchTerm, selectedCollege, selectedProgram, selectedYearLevel, selectedSex, selectedStatus, selectedSort, sortDirection, currentPage, evaluateCreatedStudentExclusion])
 
   // Initial Load from Authoritative Server
   useEffect(() => {
-    fetchStudentAccounts()
-  }, [])
+    const timer = setTimeout(() => fetchStudentAccounts(), 250)
+    return () => { clearTimeout(timer); fetchSequenceRef.current += 1 }
+  }, [fetchStudentAccounts])
 
   // Portfolio Inspector Escape Handler
   useEffect(() => {
@@ -273,88 +286,17 @@ export default function OSADStudentAccountsPage({
     return serverStudents
   }, [serverStudents])
 
-  // Enhanced combined filtering with AND semantics
-  const filteredUsersList = useMemo(() => {
-    let list = rawUsersList.filter(u => {
-      // Search term filter
-      if (userSearchTerm && userSearchTerm.trim() !== '') {
-        const term = userSearchTerm.trim().toLowerCase()
-        const matchSearch = (
-          (u.full_name && u.full_name.toLowerCase().includes(term)) ||
-          (u.institutional_id && u.institutional_id.includes(term)) ||
-          (u.student_id && u.student_id.includes(term)) ||
-          (u.email && u.email.toLowerCase().includes(term)) ||
-          (u.program && u.program.toLowerCase().includes(term)) ||
-          (u.program_name && u.program_name.toLowerCase().includes(term)) ||
-          (u.program_code && u.program_code.toLowerCase().includes(term))
-        )
-        if (!matchSearch) return false
-      }
-
-      // College filter
-      if (selectedCollege && selectedCollege !== 'all') {
-        const uCol = (u.college || u.college_code || '').toUpperCase()
-        if (uCol !== selectedCollege.toUpperCase()) return false
-      }
-
-      // Program filter
-      if (selectedProgram !== 'all') {
-        const progMatch = (u.program && u.program.toLowerCase().includes(selectedProgram.toLowerCase())) ||
-          (u.program_name && u.program_name.toLowerCase().includes(selectedProgram.toLowerCase())) ||
-          (u.program_code && u.program_code.toLowerCase().includes(selectedProgram.toLowerCase())) ||
-          (u.academic_program_id && u.academic_program_id === selectedProgram)
-        if (!progMatch) return false
-      }
-
-      // Year level filter
-      if (selectedYearLevel !== 'all') {
-        if (u.year_level !== selectedYearLevel) return false
-      }
-
-      // Sex filter
-      if (selectedSex !== 'all') {
-        if (u.sex !== selectedSex) return false
-      }
-
-      // Status filter
-      if (selectedStatus !== 'all') {
-        const uStatus = (u.status || 'active').toLowerCase()
-        if (uStatus !== selectedStatus.toLowerCase()) return false
-      }
-      return true
-    })
-
-    // Sorting
-    list = [...list].sort((a, b) => {
-      if (selectedSort === 'id') {
-        const idA = String(a.student_id || a.institutional_id || '')
-        const idB = String(b.student_id || b.institutional_id || '')
-        return idA.localeCompare(idB)
-      }
-      // Default: sort by Name
-      const nameA = String(a.last_name || a.full_name || '')
-      const nameB = String(b.last_name || b.full_name || '')
-      return nameA.localeCompare(nameB)
-    })
-
-    if (sortDirection === 'desc') {
-      list = [...list].reverse()
-    }
-    return list
-  }, [rawUsersList, userSearchTerm, selectedCollege, selectedProgram, selectedYearLevel, selectedSex, selectedStatus, selectedSort, sortDirection])
+  const filteredUsersList = rawUsersList
 
   // Pagination calculation
-  const totalPages = Math.max(1, Math.ceil(filteredUsersList.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(totalStudents / PAGE_SIZE))
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(1)
     }
   }, [currentPage, totalPages])
 
-  const paginatedUsersList = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return filteredUsersList.slice(start, start + PAGE_SIZE)
-  }, [filteredUsersList, currentPage])
+  const paginatedUsersList = filteredUsersList
 
   const handleSortColumnClick = (colKey) => {
     if (selectedSort === colKey) {
@@ -547,7 +489,7 @@ export default function OSADStudentAccountsPage({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Student Directory ({filteredUsersList.length})
+              Student Directory ({totalStudents})
             </button>
           </div>
 
@@ -631,7 +573,7 @@ export default function OSADStudentAccountsPage({
               >
                 <option value="all">All Programs</option>
                 {availablePrograms.map(p => (
-                  <option key={p.id} value={p.name}>[{p.code}] {p.name}</option>
+                  <option key={p.id} value={p.id}>[{p.code}] {p.name}</option>
                 ))}
               </select>
             </div>
@@ -710,7 +652,7 @@ export default function OSADStudentAccountsPage({
             )}
             {selectedProgram && selectedProgram !== 'all' && (
               <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-[#16834a] dark:text-emerald-300 text-[11px] font-semibold flex items-center gap-1">
-                Program: {selectedProgram}
+                Program: {degreePrograms.find(p => p.id === selectedProgram)?.name || selectedProgram}
                 <button type="button" onClick={() => setSelectedProgram('all')} className="hover:text-emerald-800 cursor-pointer"><X className="w-3 h-3" /></button>
               </span>
             )}
@@ -1115,12 +1057,9 @@ export default function OSADStudentAccountsPage({
           {/* Table Footer with Pagination & Result Count */}
           <div className="p-3.5 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
             <div className="font-semibold">
-              Showing <span className="font-bold text-slate-900 dark:text-white">{filteredUsersList.length > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0}</span> to{' '}
-              <span className="font-bold text-slate-900 dark:text-white">{Math.min(currentPage * PAGE_SIZE, filteredUsersList.length)}</span> of{' '}
-              <span className="font-bold text-slate-900 dark:text-white">{filteredUsersList.length}</span> matching students
-              {rawUsersList.length > filteredUsersList.length && (
-                <span className="text-slate-400 ml-1">({rawUsersList.length} total)</span>
-              )}
+              Showing <span className="font-bold text-slate-900 dark:text-white">{totalStudents > 0 ? (currentPage - 1) * PAGE_SIZE + 1 : 0}</span> to{' '}
+              <span className="font-bold text-slate-900 dark:text-white">{Math.min(currentPage * PAGE_SIZE, totalStudents)}</span> of{' '}
+              <span className="font-bold text-slate-900 dark:text-white">{totalStudents}</span> matching students
             </div>
 
             {totalPages > 1 && (

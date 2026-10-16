@@ -71,13 +71,16 @@ final class RankingCycleWorkspaceReadService
         return $this->envelope('submissions', $context, $rows);
     }
 
-    public function evaluation(array $actor, string $cycleId, string $trackKey): array
+    public function evaluation(array $actor, string $cycleId, string $trackKey, ?array $filters = null): array
     {
-        $context = $this->context($actor, $cycleId, $trackKey);
+        $page = $filters === null ? null : $this->pageEvaluations($actor, $cycleId, $trackKey, self::EVALUATION_STATUSES, $filters);
+        $context = $this->context($actor, $cycleId, $trackKey, $page === null ? null : array_column($page['rows'], 'personnel_profile_id'));
         $people = $this->personnelById($context);
         $rows = [];
+        $selectedIds = $page === null ? null : array_fill_keys(array_column($page['rows'], 'id'), true);
 
         foreach ($this->evaluationRows($context['evaluation_period_id'], array_keys($people), self::EVALUATION_STATUSES) as $evaluation) {
+            if ($selectedIds !== null && !isset($selectedIds[$evaluation['id']])) continue;
             $personnelId = (string) $evaluation['personnel_profile_id'];
             $entry = $people[$personnelId] ?? null;
             if (! $entry) continue;
@@ -106,31 +109,44 @@ final class RankingCycleWorkspaceReadService
             ];
         }
 
-        return $this->envelope('evaluation', $context, $rows);
+        $response = $this->envelope('evaluation', $context, $rows);
+        return $page === null ? $response : array_replace($response, ['total_rows'=>$page['total'], 'page'=>$filters['page'], 'per_page'=>$filters['per_page']]);
     }
 
-    public function results(array $actor, string $cycleId, string $trackKey): array
+    public function results(array $actor, string $cycleId, string $trackKey, ?array $filters = null): array
     {
-        $context = $this->context($actor, $cycleId, $trackKey);
+        $page = $filters === null ? null : $this->pageEvaluations($actor, $cycleId, $trackKey, ['completed'], $filters, true);
+        $context = $this->context($actor, $cycleId, $trackKey, $page === null ? null : array_column($page['rows'], 'personnel_profile_id'));
         $people = $this->personnelById($context);
         $rows = [];
+        $evaluations = $this->evaluationRows($context['evaluation_period_id'], array_keys($people), ['completed']);
+        if ($page !== null) {
+            $selectedIds = array_fill_keys(array_column($page['rows'], 'id'), true);
+            $evaluations = array_values(array_filter($evaluations, static fn(array $evaluation): bool => isset($selectedIds[$evaluation['id']])));
+        }
+        $reports = [];
+        $evaluationIds = array_column($evaluations, 'id');
+        if ($evaluationIds !== []) {
+            $reportRows = $this->db->table('personnel_evaluation_reports')
+                ->select('evaluation_id, summary_score, generated_at')
+                ->whereIn('evaluation_id', $evaluationIds)
+                ->orderBy('generated_at', 'DESC')->get()->getResultArray();
+            foreach ($reportRows as $report) {
+                $reports[(string) $report['evaluation_id']] ??= $report;
+            }
+        }
 
-        foreach ($this->evaluationRows($context['evaluation_period_id'], array_keys($people), ['completed']) as $evaluation) {
+        foreach ($evaluations as $evaluation) {
             $personnelId = (string) $evaluation['personnel_profile_id'];
             $entry = $people[$personnelId] ?? null;
             if (! $entry) continue;
-            try {
-                $result = $this->completedResultService->get($actor, (string) $evaluation['id']);
-            } catch (RuntimeException $error) {
-                if ($error->getMessage() === 'RESULT_REPORT_NOT_FOUND') continue;
-                throw $error;
-            }
-            if (($result['result_snapshot']['immutable'] ?? false) !== true) continue;
+            $report = $reports[(string) $evaluation['id']] ?? null;
+            if ($report === null) continue;
             $rows[] = $entry + [
                 'evaluation' => $evaluation,
-                'result' => $result,
+                'result' => ['evaluation' => ['completed_at' => $evaluation['finalized_at'] ?? null]],
                 'result_status' => 'completed',
-                'report_score' => $result['scores']['total'],
+                'report_score' => (float) ($report['summary_score'] ?? 0),
                 'allowed_actions' => self::allowedActions(
                     'results',
                     'completed',
@@ -143,12 +159,49 @@ final class RankingCycleWorkspaceReadService
             ];
         }
 
-        return $this->envelope('results', $context, $rows);
+        $response = $this->envelope('results', $context, $rows);
+        return $page === null ? $response : array_replace($response, ['total_rows'=>$page['total'], 'page'=>$filters['page'], 'per_page'=>$filters['per_page']]);
     }
 
-    private function context(array $actor, string $cycleId, string $trackKey): array
+    private function context(array $actor, string $cycleId, string $trackKey, ?array $personnelIds = null): array
     {
-        return $this->rosterService->list($actor, $cycleId, $trackKey);
+        return $this->rosterService->list($actor, $cycleId, $trackKey, false, $personnelIds === null ? null : ['ids'=>$personnelIds]);
+    }
+
+    private function pageEvaluations(array $actor, string $cycleId, string $trackKey, array $statuses, array $filters, bool $requireReport = false): array
+    {
+        $group = strtoupper(str_replace('-', '_', trim($trackKey)));
+        $period = $this->db->table('personnel_evaluation_periods')->select('id')
+            ->where('ranking_cycle_id', $cycleId)->where('personnel_group', $group)->get()->getRowArray();
+        if (!$period) return ['total'=>0, 'rows'=>[]];
+        $builder = $this->db->table('personnel_evaluations pe')
+            ->select('pe.id,pe.personnel_profile_id')
+            ->join('profiles p', 'p.id=pe.personnel_profile_id')
+            ->join('personnel_profiles pp', 'pp.profile_id=pe.personnel_profile_id')
+            ->where('pe.evaluation_period_id', $period['id'])
+            ->where('p.status', 'active')
+            ->where('pp.personnel_group', $group)
+            ->where('p.id !=', (string) ($actor['profile']['id'] ?? ''))
+            ->whereIn('pe.status', $statuses);
+        if ($group === 'FACULTY') {
+            $builder->where('EXISTS (SELECT 1 FROM dean_assignments da WHERE da.personnel_profile_id=pe.personnel_profile_id AND da.is_active=1)', null, false);
+        }
+        if ($requireReport) {
+            $builder->where('EXISTS (SELECT 1 FROM personnel_evaluation_reports r WHERE r.evaluation_id=pe.id)', null, false);
+        }
+        $search = trim((string) ($filters['search'] ?? ''));
+        if ($search !== '') $builder->groupStart()->like('p.full_name', $search)->orLike('p.institutional_id', $search)->groupEnd();
+        $status = (string) ($filters['status'] ?? 'all');
+        $mappedStatus = match ($status) {
+            'ready_for_evaluation' => 'submitted', 'in_progress' => 'in_evaluation',
+            'returned_for_revision' => 'returned_for_revision', 'completed' => 'ready_for_finalization',
+            default => null,
+        };
+        if ($mappedStatus !== null && !$requireReport) $builder->where('pe.status', $mappedStatus);
+        $total = (clone $builder)->countAllResults(false);
+        $rows = $builder->orderBy('pe.submitted_at', 'DESC')->orderBy('pe.id', 'ASC')
+            ->limit($filters['per_page'], $filters['offset'])->get()->getResultArray();
+        return ['total'=>$total, 'rows'=>$rows];
     }
 
     private function envelope(string $stage, array $context, array $rows): array
@@ -192,7 +245,7 @@ final class RankingCycleWorkspaceReadService
         if ($personnelIds === []) return [];
         $builder = $this->db->table('personnel_evaluations pe')->select([
             'pe.id', 'pe.evaluation_root_id', 'pe.personnel_profile_id', 'pe.evaluation_period_id',
-            'pe.academic_year', 'pe.status', 'pe.version_number', 'pe.submitted_at', 'pe.updated_at',
+            'pe.academic_year', 'pe.status', 'pe.version_number', 'pe.submitted_at', 'pe.updated_at', 'pe.finalized_at',
             'pe.evaluator_profile_id', 'pe.originating_evaluator_profile_id', 'pe.personnel_group_snapshot',
             'pe.position_title_snapshot', 'pe.department_name_snapshot', 'pe.college_name_snapshot',
         ])->where('pe.evaluation_period_id', $periodId)->whereIn('pe.personnel_profile_id', $personnelIds);

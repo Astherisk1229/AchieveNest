@@ -5,8 +5,8 @@ export async function fetchPersonnelDirectory(params = {}) {
   return response?.data || response
 }
 
-export async function fetchOrganizationalStructure() {
-  const response = await apiClient.get('/hr/organizational-structure')
+export async function fetchOrganizationalStructure(params = {}) {
+  const response = await apiClient.get('/hr/organizational-structure', { params })
   return response?.data || response
 }
 

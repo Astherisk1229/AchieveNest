@@ -376,6 +376,29 @@ class TargetProvisioningController extends Controller
         }
 
         $db = db_connect();
+        if ((string) $this->request->getGet('summary') === '1') {
+            $base = $db->table('profiles p')
+                ->join('student_profiles sp', 'sp.profile_id = p.id')
+                ->where('p.account_type', 'student');
+            $total = (clone $base)->countAllResults(false);
+            $active = (clone $base)->where('p.status', 'active')->countAllResults(false);
+            $collegeCounts = $db->table('profiles p')
+                ->select('c.id AS college_id, c.code AS college_code, c.name AS college_name, COUNT(DISTINCT p.id) AS student_count', false)
+                ->join('student_profiles sp', 'sp.profile_id = p.id')
+                ->join('student_program_enrollments spe', 'spe.student_profile_id = sp.profile_id AND spe.is_active = 1', 'left')
+                ->join('academic_programs ap', 'ap.id = spe.academic_program_id', 'left')
+                ->join('colleges c', 'c.id = ap.college_id', 'left')
+                ->where('p.account_type', 'student')->where('c.id IS NOT NULL', null, false)
+                ->groupBy('c.id, c.code, c.name')->orderBy('c.name', 'ASC')->get()->getResultArray();
+            return $this->respond(['data' => ['summary' => [
+                'total' => (int) $total,
+                'active' => (int) $active,
+                'by_college' => array_map(static fn(array $row): array => [
+                    'college_id' => $row['college_id'], 'college' => $row['college_code'],
+                    'college_name' => $row['college_name'], 'count' => (int) $row['student_count'],
+                ], $collegeCounts),
+            ]]]);
+        }
         $builder = $db->table('profiles p')
             ->select('
                 p.id,
@@ -417,13 +440,15 @@ class TargetProvisioningController extends Controller
                 ->like('p.full_name', $search)
                 ->orLike('p.institutional_id', $search)
                 ->orLike('p.email', $search)
+                ->orLike('ap.name', $search)
+                ->orLike('ap.code', $search)
                 ->groupEnd();
         }
 
         // Apply College Filter
         $collegeId = trim((string) ($this->request->getGet('college_id') ?? ''));
         if ($collegeId !== '') {
-            $builder->where('c.id', $collegeId);
+            $builder->groupStart()->where('c.id', $collegeId)->orWhere('c.code', $collegeId)->groupEnd();
         }
 
         // Apply Program Filter
@@ -448,9 +473,24 @@ class TargetProvisioningController extends Controller
             $builder->where('p.status', $status);
         }
 
-        $rows = $builder->orderBy('p.last_name', 'ASC')
+        $sex = trim((string) ($this->request->getGet('sex') ?? ''));
+        if ($sex !== '' && $sex !== 'all') {
+            if (! ValidationHelper::validateSex($sex, $this->provisioningConfig->canonicalSexValues)) {
+                return $this->validationError(['sex' => 'Invalid sex filter.']);
+            }
+            $builder->where('p.sex', $sex);
+        }
+        $sort = trim((string) ($this->request->getGet('sort') ?? 'name'));
+        $direction = strtoupper(trim((string) ($this->request->getGet('sort_dir') ?? 'ASC')));
+        if (! in_array($direction, ['ASC', 'DESC'], true)) $direction = 'ASC';
+        $sortColumn = $sort === 'id' ? 'p.institutional_id' : 'p.last_name';
+        $pagination = ValidationHelper::validatePagination($this->request->getGet('page') ?? 1, $this->request->getGet('per_page') ?? 25);
+        $total = (clone $builder)->countAllResults(false);
+
+        $rows = $builder->orderBy($sortColumn, $direction)
             ->orderBy('p.first_name', 'ASC')
             ->orderBy('p.id', 'ASC')
+            ->limit($pagination['per_page'], $pagination['offset'])
             ->get()->getResultArray();
 
         $students = array_map(static function (array $r): array {
@@ -489,7 +529,8 @@ class TargetProvisioningController extends Controller
             ];
         }, $rows);
 
-        return $this->respond(['data' => ['students' => $students]]);
+        return $this->respond(['data' => ['students' => $students, 'total' => (int) $total,
+            'page' => (int) $pagination['page'], 'per_page' => (int) $pagination['per_page']]]);
     }
 
     public function manualPersonnel()

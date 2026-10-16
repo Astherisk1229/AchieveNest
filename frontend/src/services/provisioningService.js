@@ -11,6 +11,16 @@ export const provisioningService = {
     return res?.data?.students || res?.students || []
   },
 
+  async fetchStudentsPage(params = {}, { signal } = {}) {
+    const res = await apiClient.get('/osad/students', { params, signal })
+    return res?.data || res || { students: [], total: 0, page: 1, per_page: 25 }
+  },
+
+  async fetchStudentSummary({ signal } = {}) {
+    const res = await apiClient.get('/osad/students', { params: { summary: 1 }, signal })
+    return res?.data?.summary || res?.summary || { total: 0, active: 0, by_college: [] }
+  },
+
   async fetchAuditEvents(params = {}, { signal } = {}) {
     const res = await apiClient.get('/osad/audit', { params, signal })
     return res?.data?.events || []

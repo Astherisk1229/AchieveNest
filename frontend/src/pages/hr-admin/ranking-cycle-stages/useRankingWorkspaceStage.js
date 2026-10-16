@@ -1,20 +1,37 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import hrEvaluationService from '../../../services/hrEvaluationService'
 
-export default function useRankingWorkspaceStage(cycleId, trackKey, stage) {
-  const [state, setState] = useState({ phase: 'loading', data: null, error: '' })
-  const load = useCallback(async () => {
-    setState(current => ({ ...current, phase: 'loading', error: '' }))
+const stageCache = new Map()
+const CACHE_LIFETIME_MS = 30_000
+
+export default function useRankingWorkspaceStage(cycleId, trackKey, stage, params = null) {
+  const paramsKey = JSON.stringify(params)
+  const cacheKey = `${cycleId}:${trackKey}:${stage}:${paramsKey}`
+  const requestId = useRef(0)
+  const [state, setState] = useState(() => {
+    const cached = stageCache.get(cacheKey)
+    return cached ? { key: cacheKey, phase: 'ready', data: cached.data, error: '' } : { key: cacheKey, phase: 'loading', data: null, error: '' }
+  })
+  const load = useCallback(async (force = true) => {
+    const sequence = ++requestId.current
+    const cached = stageCache.get(cacheKey)
+    if (!force && cached && Date.now() - cached.updatedAt < CACHE_LIFETIME_MS) {
+      setState({ key: cacheKey, phase: 'ready', data: cached.data, error: '' })
+      return cached.data
+    }
+    setState(current => ({ key: cacheKey, phase: current.key === cacheKey && current.data ? 'ready' : 'loading', data: current.key === cacheKey ? current.data : null, error: '' }))
     try {
-      const data = await hrEvaluationService.workspace(cycleId, trackKey, stage)
-      setState({ phase: 'ready', data, error: '' })
+      const data = await hrEvaluationService.workspace(cycleId, trackKey, stage, paramsKey === 'null' ? {} : JSON.parse(paramsKey))
+      stageCache.set(cacheKey, { data, updatedAt: Date.now() })
+      if (stageCache.size > 24) stageCache.delete(stageCache.keys().next().value)
+      if (sequence === requestId.current) setState({ key: cacheKey, phase: 'ready', data, error: '' })
       return data
     } catch (error) {
-      setState({ phase: 'error', data: null, error: error?.error?.message || error?.message || 'This stage could not be loaded.' })
+      if (sequence === requestId.current) setState(current => ({ key: cacheKey, phase: current.key === cacheKey && current.data ? 'ready' : 'error', data: current.key === cacheKey ? current.data : null, error: error?.error?.message || error?.message || 'This stage could not be loaded.' }))
       return null
     }
-  }, [cycleId, trackKey, stage])
+  }, [cacheKey, cycleId, trackKey, stage, paramsKey])
 
-  useEffect(() => { load() }, [load])
-  return { ...state, reload: load }
+  useEffect(() => { load(false) }, [load])
+  return { ...state, reload: () => load(true) }
 }

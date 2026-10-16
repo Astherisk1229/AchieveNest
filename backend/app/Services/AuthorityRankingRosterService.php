@@ -25,7 +25,7 @@ class AuthorityRankingRosterService
      *                              Annual Reviews roster endpoint opts in; every authorization
      *                              caller (imports, templates, workspace stages) keeps the default.
      */
-    public function list(array $actor, string $cycleId, string $trackKey, bool $includeReadOnly = false): array
+    public function list(array $actor, string $cycleId, string $trackKey, bool $includeReadOnly = false, ?array $pageQuery = null): array
     {
         $cycle = $this->db->table('ranking_cycles')->where('id', $cycleId)->get()->getRowArray();
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle was not found.');
@@ -46,7 +46,24 @@ class AuthorityRankingRosterService
             ->where('p.status', 'active')->where('pp.personnel_group', $group)->where('p.id !=', $actorId);
         if ($scopeType === 'college') $builder->groupStart()->where('pca.college_id', $scopeId)->orWhere('au.college_id', $scopeId)->groupEnd();
         if ($scopeType === 'department') $builder->where('au.id', $scopeId)->where('au.college_id', null);
-        $rows = $builder->orderBy('p.full_name')->get()->getResultArray();
+        if ($pageQuery !== null) {
+            if (array_key_exists('ids', $pageQuery)) {
+                $ids = array_values(array_filter((array) $pageQuery['ids']));
+                $builder->whereIn('p.id', $ids ?: ['00000000-0000-0000-0000-000000000000']);
+            }
+            $search = trim((string) ($pageQuery['search'] ?? ''));
+            if ($search !== '') {
+                $builder->groupStart()->like('p.full_name', $search)->orLike('p.institutional_id', $search)->groupEnd();
+            }
+            $employment = (string) ($pageQuery['employment'] ?? 'all');
+            if (in_array($employment, ['permanent', 'probationary'], true)) $builder->where('pp.employment_status', $employment);
+            $assignment = (string) ($pageQuery['assignment'] ?? 'all');
+            if ($assignment !== 'all') $builder->where('pp.position_title', $assignment);
+        }
+        $candidateCount = $pageQuery === null ? null : (clone $builder)->countAllResults(false);
+        $builder->orderBy('p.full_name');
+        if ($pageQuery !== null && isset($pageQuery['per_page'], $pageQuery['offset'])) $builder->limit($pageQuery['per_page'], $pageQuery['offset']);
+        $rows = $builder->get()->getResultArray();
 
         $readOnlyView = $includeReadOnly && $authorityType === 'HR';
         $items = [];
@@ -72,7 +89,7 @@ class AuthorityRankingRosterService
                 'can_manage'=>$canManage, 'responsible_authority'=>$this->authoritySummary($authority, $authorityIssue)];
         }
 
-        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED','CANCELLED'], true)], 'total_personnel'=>count($items), 'personnel'=>$items];
+        return ['ranking_cycle_id'=>$cycleId, 'ranking_track_id'=>$track['id'], 'evaluation_period_id'=>$track['id'], 'evaluation_cycle_id'=>$track['academic_year'], 'authority_type'=>$authorityType, 'scope_type'=>$scopeType, 'scope_id'=>$scopeId, 'evaluation_period'=>['id'=>$track['id'], 'name'=>RankingCycleService::generatedName((string) $track['academic_year'], [(string) $track['personnel_group']]), 'status'=>$track['status'], 'evaluation_end_at'=>$track['evaluation_end_at'], 'is_locked'=>in_array($track['status'], ['CLOSED','ARCHIVED','CANCELLED'], true)], 'total_personnel'=>$candidateCount ?? count($items), 'personnel'=>$items];
     }
 
     private function authoritySummary(?array $authority, ?string $issue): array

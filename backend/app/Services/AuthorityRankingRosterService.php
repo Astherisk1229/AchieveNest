@@ -66,9 +66,6 @@ class AuthorityRankingRosterService
             $result = (string) ($pageQuery['result'] ?? 'all');
             $periodId = $this->db->escape($track['id']);
             $importBase = "SELECT 1 FROM personnel_annual_review_imports ari WHERE ari.personnel_profile_id=pp.profile_id AND ari.evaluation_period_id={$periodId} AND ari.confirmed_at IS NOT NULL AND ari.superseded_at IS NULL";
-            if ($annual === 'not_uploaded' || $result === 'not_passed') {
-                // These predicates are independent and are applied below.
-            }
             if ($annual === 'not_uploaded') $builder->where("NOT EXISTS ({$importBase})", null, false);
             elseif ($annual === 'incomplete') $builder->where("EXISTS ({$importBase} AND (ari.two_review_status='pending' OR ari.two_review_status IS NULL))", null, false);
             elseif ($annual === 'uploaded') $builder->where("EXISTS ({$importBase} AND ari.two_review_status IS NOT NULL AND ari.two_review_status <> 'pending')", null, false);

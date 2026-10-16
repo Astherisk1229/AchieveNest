@@ -47,32 +47,44 @@ class ReviewerRankingRosterController extends Controller
                 $pageQuery = $pagination + [
                     'search'=>$this->request->getGet('search'), 'employment'=>$this->request->getGet('employment'),
                     'assignment'=>$this->request->getGet('assignment'),
+                    'annual'=>(string) ($this->request->getGet('annual') ?? 'all'),
+                    'result'=>(string) ($this->request->getGet('result') ?? 'all'),
                 ];
             }
-            $annual = (string) ($this->request->getGet('annual') ?? 'all');
-            $result = (string) ($this->request->getGet('result') ?? 'all');
             $eligibility = (string) ($this->request->getGet('eligibility') ?? 'all');
-            $needsDerivedFilter = $pageQuery !== null && ($annual !== 'all' || $result !== 'all' || $eligibility !== 'all');
-            $roster = $this->roster->list($actor, $cycleId, $trackKey, true, $needsDerivedFilter ? null : $pageQuery);
-            if ($needsDerivedFilter) {
-                $search = mb_strtolower(trim((string) ($pageQuery['search'] ?? '')));
-                $employment = (string) ($pageQuery['employment'] ?? 'all');
-                $assignment = (string) ($pageQuery['assignment'] ?? 'all');
-                $filtered = array_values(array_filter($roster['personnel'], static function (array $entry) use ($search, $employment, $assignment, $annual, $result, $eligibility): bool {
-                    $person = $entry['personnel'];
-                    $decision = $entry['eligibility'];
-                    $review = $decision['annual_review_requirement'] ?? [];
-                    $annualKey = empty($review['import_id']) ? 'not_uploaded' : (($review['status'] ?? '') === 'pending' ? 'incomplete' : 'uploaded');
-                    $identity = mb_strtolower((string) ($person['full_name'] ?? '') . ' ' . (string) ($person['institutional_id'] ?? ''));
-                    return ($search === '' || str_contains($identity, $search))
-                        && ($employment === 'all' || ($person['employment_status'] ?? '') === $employment)
-                        && ($assignment === 'all' || ($person['position_title'] ?? '') === $assignment)
-                        && ($annual === 'all' || $annualKey === $annual)
-                        && ($result === 'all' || ($review['status'] ?? 'pending') === $result)
-                        && ($eligibility === 'all' || ($decision['eligibility_status'] ?? 'pending') === $eligibility);
-                }));
-                $roster['total_personnel'] = count($filtered);
-                $roster['personnel'] = array_slice($filtered, $pageQuery['offset'], $pageQuery['per_page']);
+            if ($pageQuery === null || $eligibility === 'all') {
+                // Search and annual-review status filters are applied by SQL before
+                // LIMIT/OFFSET in AuthorityRankingRosterService.
+                $roster = $this->roster->list($actor, $cycleId, $trackKey, true, $pageQuery);
+            } else {
+                // Eligibility is computed from service history and evidence, so scan
+                // bounded pages and retain only the requested page in memory.
+                $chunkSize = 100;
+                $candidateTotal = null;
+                $matchedTotal = 0;
+                $selectedRows = [];
+                $requestedStart = $pageQuery['offset'];
+                $requestedEnd = $requestedStart + $pageQuery['per_page'];
+                $scanPage = 1;
+                do {
+                    $chunkQuery = array_replace($pageQuery, [
+                        'page'=>$scanPage,
+                        'per_page'=>$chunkSize,
+                        'offset'=>($scanPage - 1) * $chunkSize,
+                    ]);
+                    $batch = $this->roster->list($actor, $cycleId, $trackKey, true, $chunkQuery);
+                    $candidateTotal = (int) ($batch['total_personnel'] ?? 0);
+                    foreach ($batch['personnel'] as $entry) {
+                        if (($entry['eligibility']['eligibility_status'] ?? 'pending') !== $eligibility) continue;
+                        if ($matchedTotal >= $requestedStart && $matchedTotal < $requestedEnd) $selectedRows[] = $entry;
+                        $matchedTotal++;
+                    }
+                    $scanPage++;
+                } while (($scanPage - 1) * $chunkSize < $candidateTotal && !empty($batch['personnel']));
+
+                $roster = $batch;
+                $roster['total_personnel'] = $matchedTotal;
+                $roster['personnel'] = $selectedRows;
             }
             if ($pageQuery !== null) $roster += ['page'=>$pageQuery['page'], 'per_page'=>$pageQuery['per_page']];
             return $this->respond(['data'=>$roster]);

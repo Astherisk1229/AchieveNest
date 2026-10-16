@@ -26,10 +26,10 @@ describe('Wiring remediation Phase 4: no mock or fabricated data on reachable sc
     expect(offenders).toEqual([])
   })
 
-  it('OSAD dashboard computes its overview from API lists', () => {
+  it('OSAD dashboard computes its overview from API summary data', () => {
     const page = read('pages/osad-admin/OSADDashboardPage.jsx')
     expect(page).not.toContain('useOSAD')
-    expect(page).toContain('provisioningService.fetchStudents()')
+    expect(page).toContain('provisioningService.fetchStudentSummary()')
     expect(page).toContain('const metrics = React.useMemo')
     const summary = read('components/osad/OSADOperationalSummary.jsx')
     expect(summary).not.toMatch(/3840|activeOrganizationsCount = 24/)

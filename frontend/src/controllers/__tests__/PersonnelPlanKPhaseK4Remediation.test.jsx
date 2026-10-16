@@ -154,7 +154,7 @@ describe('Personnel Evaluation Track — Plan K — Phase K4: Legacy Classificat
     const pLegSupported = PLAN_K_PERSONAS.P_LEG_SUPPORTED;
     expect(pLegSupported.current_rank).toBeUndefined();
     // Verify high ranks in catalogs remain unmodified
-    expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(26);
+    expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(22);
     expect(partTimeFacultyTitleService.PART_TIME_TITLES.length).toBe(4);
   });
 

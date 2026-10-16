@@ -118,7 +118,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-0: Current-State A
     });
 
     it('6. verifies Plan E Full-Time rank catalog endpoints and service availability', async () => {
-      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(26);
+      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(22);
       expect(facultyRankCatalogService.TIERS.DOCTORAL).toBe('doctoral');
 
       vi.spyOn(apiClient, 'get').mockResolvedValue({
@@ -127,7 +127,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-0: Current-State A
 
       const res = await facultyRankCatalogService.fetchFullTimeFacultyRanks();
       expect(apiClient.get).toHaveBeenCalledWith('/faculty-ranks', { params: {} });
-      expect(res.data.length).toBe(26);
+      expect(res.data.length).toBe(22);
     });
 
     it('7. verifies Plan E Part-Time title catalog endpoint and canonical 4 titles', async () => {

@@ -67,7 +67,7 @@ describe('HR review shows the personnel Portfolio Booklet', () => {
 
   it('shows Faculty the Faculty booklet', () => {
     const html = render({ personnel_group: 'faculty', faculty_name: 'Demo Faculty' })
-    expect(html).toContain('FACULTY PORTFOLIO')
+    expect(html).toContain('FACULTY DEVELOPMENT PROGRAM')
     expect(html).toContain('A. PROFESSIONAL DEVELOPMENT')
     expect(html).not.toContain('NON-TEACHING PERSONNEL PORTFOLIO')
   })

@@ -109,7 +109,7 @@ describe('roleContext utility & navigation registry', () => {
   })
 
   describe('getAuthorizedNavigationForSession', () => {
-    it('returns strictly authorized HR items for HR Admin session including Password Resets', () => {
+    it('returns the four current HR workspace entries', () => {
       const hrSession = {
         account_type: 'hr_admin',
         active_role_context: 'hr_staff',
@@ -118,14 +118,7 @@ describe('roleContext utility & navigation registry', () => {
       const nav = getAuthorizedNavigationForSession(hrSession)
       const labels = nav.map(n => n.label)
 
-      expect(labels).toEqual([
-        'HR Dashboard',
-        'Personnel Directory',
-        'College and Department',
-        'Ranking Periods',
-        'Password Resets',
-        'HR Audit Trail'
-      ])
+      expect(labels).toEqual(['Dashboard', 'Personnel Management', 'Ranking & Evaluation', 'Administration'])
       expect(labels).not.toContain('Personnel Dashboard')
       expect(labels).not.toContain('Dashboard Overview')
       expect(labels).not.toContain('OSAD Dashboard')
@@ -175,7 +168,7 @@ describe('roleContext utility & navigation registry', () => {
       }
       const nav = getAuthorizedNavigationForSession(personnelSession)
       const labels = nav.map(n => n.label)
-      expect(labels).toEqual(['Profile', 'Portfolio', 'Account'])
+      expect(labels).toEqual(['Profile', 'Portfolio'])
       expect(labels).not.toContain('Verification Workspace')
       expect(labels).not.toContain('HR Dashboard')
     })

@@ -32,6 +32,6 @@ describe('ranking track lifecycle concurrency', () => {
     expect(service).toContain("'personnel_group' => $personnelGroup")
     expect(controller).toContain("in_array($personnelGroup, ['FACULTY', 'NON_TEACHING_FACULTY'], true)")
     expect(controller).toContain('$personnelGroup')
-    expect(service).toContain('return $rows[0] ?? null')
+    expect(service).toContain("return $rows[0]['id'] ?? null")
   })
 })

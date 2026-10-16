@@ -144,8 +144,8 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
     });
   });
 
-  describe('2. Part-Time Title Resolution via Plan E (Req 6–10)', () => {
-    it('6. doctoral Part-Time path resolves through Plan E Part-Time mapping to Professorial Lecturer', async () => {
+  describe('2. Retired Part-Time input uses the active rank resolver', () => {
+    it('6. doctoral qualification resolves to Professor I', async () => {
       vi.spyOn(partTimeFacultyTitleService, 'resolveTitleFromQualification').mockResolvedValue({
         status: 'RESOLVED',
         resolved_title: {
@@ -163,11 +163,11 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       });
 
       expect(res.status).toBe('resolved');
-      expect(res.recommendedCode).toBe('PT_PROFESSORIAL_LECTURER');
-      expect(res.recommendedLabel).toBe('Professorial Lecturer');
+      expect(res.recommendedCode).toBe('PROFESSOR_I');
+      expect(res.recommendedLabel).toBe('Professor I');
     });
 
-    it('7. master\'s/professional graduate Part-Time path resolves correct title (Assistant Professorial Lecturer)', async () => {
+    it('7. master\'s qualification resolves to Assistant Professor', async () => {
       vi.spyOn(partTimeFacultyTitleService, 'resolveTitleFromQualification').mockResolvedValue({
         status: 'RESOLVED',
         resolved_title: {
@@ -185,11 +185,11 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       });
 
       expect(res.status).toBe('resolved');
-      expect(res.recommendedCode).toBe('PT_ASSISTANT_PROFESSORIAL_LECTURER');
-      expect(res.recommendedLabel).toBe('Assistant Professorial Lecturer');
+      expect(res.recommendedCode).toBe('ASSISTANT_PROFESSOR');
+      expect(res.recommendedLabel).toBe('Assistant Professor');
     });
 
-    it('8. professional-board Part-Time path respects Plan E and resolves Senior Lecturer', async () => {
+    it('8. professional-board qualification resolves to Senior Instructor', async () => {
       vi.spyOn(partTimeFacultyTitleService, 'resolveTitleFromQualification').mockResolvedValue({
         status: 'RESOLVED',
         resolved_title: {
@@ -208,11 +208,11 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       });
 
       expect(res.status).toBe('resolved');
-      expect(res.recommendedCode).toBe('PT_SENIOR_LECTURER');
-      expect(res.recommendedLabel).toBe('Senior Lecturer');
+      expect(res.recommendedCode).toBe('SENIOR_INSTRUCTOR');
+      expect(res.recommendedLabel).toBe('Senior Instructor');
     });
 
-    it('9. baccalaureate Part-Time path resolves Lecturer', async () => {
+    it('9. baccalaureate qualification resolves to Assistant Instructor', async () => {
       vi.spyOn(partTimeFacultyTitleService, 'resolveTitleFromQualification').mockResolvedValue({
         status: 'RESOLVED',
         resolved_title: {
@@ -230,11 +230,11 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       });
 
       expect(res.status).toBe('resolved');
-      expect(res.recommendedCode).toBe('PT_LECTURER');
-      expect(res.recommendedLabel).toBe('Lecturer');
+      expect(res.recommendedCode).toBe('ASSISTANT_INSTRUCTOR');
+      expect(res.recommendedLabel).toBe('Assistant Instructor');
     });
 
-    it('10. Part-Time recommendation exists in Part-Time catalog', async () => {
+    it('10. retired Part-Time recommendation does not use the Part-Time catalog', async () => {
       const res = await personnelRankRecommendationService.resolveRecommendation({
         qualificationText: 'PhD in Educational Leadership',
         facultyEngagement: 'part_time_faculty',
@@ -244,7 +244,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
 
       expect(res.status).toBe('resolved');
       const inCatalog = mockPartTimeCatalog.some(t => t.label === res.recommendedLabel);
-      expect(inCatalog).toBe(true);
+      expect(inCatalog).toBe(false);
     });
   });
 
@@ -430,7 +430,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       expect(res.recommendedCode).toBeNull();
     });
 
-    it('24. Faculty Status change reruns recommendation in correct catalog', async () => {
+    it('24. retired engagement input keeps the active rank recommendation', async () => {
       // Full-time -> Professor I
       const ftRes = await personnelRankRecommendationService.resolveRecommendation({
         qualificationText: 'PhD in Computer Science',
@@ -440,14 +440,14 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       });
       expect(ftRes.recommendedLabel).toBe('Professor I');
 
-      // Switched to Part-time -> Professorial Lecturer
+      // Retired Part-Time input still uses the active rank resolver.
       const ptRes = await personnelRankRecommendationService.resolveRecommendation({
         qualificationText: 'PhD in Computer Science',
         facultyEngagement: 'part_time_faculty',
         personnelGroup: 'faculty',
         activeCatalog: mockPartTimeCatalog
       });
-      expect(ptRes.recommendedLabel).toBe('Professorial Lecturer');
+      expect(ptRes.recommendedLabel).toBe('Professor I');
     });
   });
 
@@ -464,7 +464,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       expect(isPtTitle).toBe(false);
     });
 
-    it('26. Part-Time resolver cannot populate Full-Time rank', async () => {
+    it('26. retired Part-Time resolver now uses the active Full-Time rank', async () => {
       const ptRes = await personnelRankRecommendationService.resolveRecommendation({
         qualificationText: 'PhD in Computer Science',
         facultyEngagement: 'part_time_faculty',
@@ -473,8 +473,8 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
       });
 
       const isPtTitle = partTimeFacultyTitleService.isValidPartTimeTitleLabel(ptRes.recommendedLabel);
-      expect(isPtTitle).toBe(true);
-      expect(ptRes.recommendedLabel).not.toBe('Professor I');
+      expect(isPtTitle).toBe(false);
+      expect(ptRes.recommendedLabel).toBe('Professor I');
     });
 
     it('27. resolver/catalog mismatch is detected and rejected', async () => {
@@ -576,7 +576,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-2: Qualification-D
 
   describe('8. Regressions Baseline Protection (Req 36–40)', () => {
     it('36. D2-0 audit suite invariants pass', () => {
-      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(26);
+      expect(facultyRankCatalogService.FULL_TIME_RANKS.length).toBe(22);
       expect(partTimeFacultyTitleService.PART_TIME_TITLES.length).toBe(4);
     });
 

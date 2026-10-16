@@ -550,7 +550,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-4: Institutional A
     it('37. D2-1 master data dropdown bindings remain verified', async () => {
       const ranks = await personnelMasterDataService.getFacultyRanks()
       expect(ranks).toBeInstanceOf(Array)
-      expect(ranks.length).toBe(26)
+      expect(ranks.length).toBe(22)
     })
 
     it('38. D2-2 recommendation sequence and resolution remain verified', async () => {

@@ -43,7 +43,7 @@ describe('Personnel Evaluation Setup authentication integration', () => {
     expect(page).toContain('Loading ranking setup…')
     expect(page).toContain('The server could not load ranking periods.')
     expect(page).toContain('No ranking period is open for submission.')
-    expect(page).toContain('if (periodError) return')
+    expect(page).toContain('if (periodError && !criteriaOnly) return')
   })
 
   it('keeps period data usable while independently disabling create on scale failure', () => {

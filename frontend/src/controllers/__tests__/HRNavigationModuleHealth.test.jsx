@@ -129,7 +129,7 @@ describe('AchieveNest — HR Navigation & Module Health Check Verification Suite
       expect(formatFacultyEngagement(null)).toBe('Unassigned')
       expect(formatFacultyEngagement(undefined)).toBe('Unassigned')
       expect(formatFacultyEngagement({ faculty_engagement: 'full_time_faculty' })).toBe('Full-time Faculty')
-      expect(formatFacultyEngagement({ faculty_engagement: 'part_time_faculty' })).toBe('Part-time Faculty')
+      expect(formatFacultyEngagement({ faculty_engagement: 'part_time_faculty' })).toBe('Unassigned')
 
       expect(formatEmploymentStatus(null)).toBe('Unassigned')
       expect(formatEmploymentStatus(undefined)).toBe('Unassigned')

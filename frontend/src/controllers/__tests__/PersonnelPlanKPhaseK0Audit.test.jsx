@@ -173,11 +173,11 @@ describe('Personnel Evaluation Track — Plan K — Phase K0: Final Acceptance M
   // 4. Master Data, Resolver & Projection Freeze (Req 17–22)
   // =========================================================================
   describe('4. Master Data, Resolver & Projection Freeze (Req 17–22)', () => {
-    it('17. Full-Time rank catalog source exists with 26 canonical ranks', async () => {
+    it('17. Full-Time rank catalog source exists with 22 canonical ranks', async () => {
       const ranks = facultyRankCatalogService.FULL_TIME_RANKS
-      expect(ranks).toHaveLength(26)
+      expect(ranks).toHaveLength(22)
       expect(ranks[0].code).toBe('UNIVERSITY_PROFESSOR')
-      expect(ranks[25].code).toBe('ASSISTANT_INSTRUCTOR')
+      expect(ranks.at(-1).code).toBe('ASSISTANT_INSTRUCTOR')
     })
 
     it('18. Part-Time title catalog source exists with 4 canonical titles', async () => {

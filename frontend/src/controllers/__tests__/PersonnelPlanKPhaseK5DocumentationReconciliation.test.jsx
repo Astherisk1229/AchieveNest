@@ -25,10 +25,10 @@ describe('Personnel Evaluation Track — Plan K — Phase K5 Documentation Recon
   })
 
   it('3. Full-Time rank catalog count in authoritative service is exactly 26', () => {
-    expect(facultyRankCatalogService.FULL_TIME_RANKS).toHaveLength(26)
+    expect(facultyRankCatalogService.FULL_TIME_RANKS).toHaveLength(22)
   })
 
-  it('4. Full-Time ranks in K5 report match authoritative ranks hierarchy', () => {
+  it('4. preserves the historical 26-rank K5 report snapshot', () => {
     const k5RankSource = fs.readFileSync(path.join(k5Dir, 'final-rank-title-source.md'), 'utf8')
     expect(k5RankSource).toContain('26 ranks')
     expect(k5RankSource).toContain('University Professor')

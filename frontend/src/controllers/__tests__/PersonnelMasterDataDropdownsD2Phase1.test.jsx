@@ -97,30 +97,12 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
   });
 
   describe('2. Part-Time Title Catalog Integration & Isolation (Req 5–8)', () => {
-    it('5. Part-Time title dropdown loads only Part-Time titles', async () => {
-      vi.spyOn(partTimeFacultyTitleService, 'fetchPartTimeTitles').mockResolvedValue({
-        titles: partTimeFacultyTitleService.PART_TIME_TITLES
-      });
-
-      const titles = await personnelMasterDataService.getPartTimeTitles();
-      expect(titles.length).toBe(4);
-      const labels = titles.map(t => t.label);
-      expect(labels).toEqual([
-        'Professorial Lecturer',
-        'Assistant Professorial Lecturer',
-        'Senior Lecturer',
-        'Lecturer'
-      ]);
+    it('5. retired Part-Time title dropdown is unavailable', () => {
+      expect(personnelMasterDataService.getPartTimeTitles).toBeUndefined();
     });
 
-    it('6. Full-Time ranks absent in Part-Time mode', async () => {
-      const ptTitles = await personnelMasterDataService.getPartTimeTitles();
-      const ptLabels = ptTitles.map(t => t.label.toLowerCase());
-
-      expect(ptLabels).not.toContain('instructor i');
-      expect(ptLabels).not.toContain('assistant professor i');
-      expect(ptLabels).not.toContain('professor i');
-      expect(ptLabels).not.toContain('university professor');
+    it('6. active catalog has no Part-Time faculty title helper', () => {
+      expect(personnelMasterDataService.getPartTimeFacultyTitles).toBeUndefined();
     });
 
     it('7. Part-Time titles absent in Full-Time mode', async () => {
@@ -141,13 +123,10 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
   });
 
   describe('3. Full-Time / Part-Time Catalog Switching & Incompatible Selection Clearing (Req 9–11)', () => {
-    it('9. switching Full-Time → Part-Time changes catalog', async () => {
+    it('9. only the active Full-Time catalog is available', async () => {
       const ftRanks = await personnelMasterDataService.getFacultyRanks();
-      const ptTitles = await personnelMasterDataService.getPartTimeTitles();
-
       expect(ftRanks.length).toBe(22);
-      expect(ptTitles.length).toBe(4);
-      expect(ftRanks).not.toEqual(ptTitles);
+      expect(personnelMasterDataService.getPartTimeTitles).toBeUndefined();
     });
 
     it('10. incompatible unsaved selection clears when switching engagement', () => {
@@ -288,7 +267,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
       }, defaultPlacementOptions);
 
       expect(validation.isValid).toBe(false);
-      expect(validation.errors.administrativeUnitId).toBe('Select a Department.');
+      expect(validation.errors.departmentId).toBe('Select a Department.');
     });
   });
 
@@ -312,7 +291,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
       }, defaultPlacementOptions);
 
       expect(validation.isValid).toBe(false);
-      expect(validation.errors.administrativeUnitId).toBe('Select a Department.');
+      expect(validation.errors.departmentId).toBe('Select a Department.');
     });
 
     it('24. Faculty + Academic accepted', () => {
@@ -500,7 +479,7 @@ describe('Personnel Evaluation Track — Plan D2 — Phase D2-1: Authoritative M
 
     it('39. faculty engagement and employment status formatters remain accurate', () => {
       expect(formatFacultyEngagement({ faculty_engagement: 'full_time_faculty' })).toBe('Full-time Faculty');
-      expect(formatFacultyEngagement({ faculty_engagement: 'part_time_faculty' })).toBe('Part-time Faculty');
+      expect(formatFacultyEngagement({ faculty_engagement: 'part_time_faculty' })).toBe('Unassigned');
       expect(formatEmploymentStatus({ employment_status: 'permanent' })).toBe('Permanent');
       expect(formatEmploymentStatus({ employment_status: 'probationary' })).toBe('Probationary');
     });

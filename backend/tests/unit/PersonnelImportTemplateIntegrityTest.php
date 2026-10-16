@@ -131,7 +131,7 @@ final class PersonnelImportTemplateIntegrityTest extends CIUnitTestCase
             '"Faculty,Non-Teaching Faculty"',
             '"Permanent,Probationary"',
             '"Academic,Non-Academic"',
-            '"full_time_faculty,part_time_faculty"',
+            '"full_time_faculty"',
         ], array_map(static fn (SimpleXMLElement $validation): string => (string) $validation->formula1, $validations));
 
         $zip->close();

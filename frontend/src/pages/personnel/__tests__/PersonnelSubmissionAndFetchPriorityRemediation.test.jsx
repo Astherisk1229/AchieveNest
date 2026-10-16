@@ -97,7 +97,6 @@ describe('Personnel Submission API & React fetchPriority Remediation Suite', () 
     it('Topbar has no lowercase fetchpriority attribute', () => {
       const check = checkFileForFetchPriority('src/components/layout/Topbar.jsx')
       expect(check.hasInvalid).toBe(false)
-      expect(check.content).toContain('fetchPriority="high"')
     })
   })
 

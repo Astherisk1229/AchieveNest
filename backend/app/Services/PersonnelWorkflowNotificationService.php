@@ -85,8 +85,9 @@ class PersonnelWorkflowNotificationService
             );
 
             // Check if notification with this idempotency key or event/recipient combination already exists
-            if ($this->hasExistingNotification($eventId, $recipientProfileId, $content['notification_type'])) {
-                $existing = $this->getExistingNotification($eventId, $recipientProfileId, $content['notification_type']);
+            $evaluationId = (string) ($eventRow['evaluation_id'] ?? '');
+            if ($this->hasExistingNotification($eventId, $recipientProfileId, $content['notification_type'], $evaluationId)) {
+                $existing = $this->getExistingNotification($eventId, $recipientProfileId, $content['notification_type'], $evaluationId);
                 if ($existing !== null) {
                     $notifications[] = $existing;
                 }
@@ -110,6 +111,9 @@ class PersonnelWorkflowNotificationService
             ];
             if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) {
                 $notifRow['workflow_event_id'] = $eventId;
+            }
+            if ($this->db->fieldExists('idempotency_key', $this->notificationsTable)) {
+                $notifRow['idempotency_key'] = $idempotencyKey;
             }
 
             $this->db->table($this->notificationsTable)->insert($notifRow);
@@ -188,14 +192,32 @@ class PersonnelWorkflowNotificationService
     /**
      * Checks if a notification already exists for this event, recipient, and notification type.
      */
-    public function hasExistingNotification(string $eventId, string $recipientProfileId, string $notificationType): bool
+    public function hasExistingNotification(string $eventId, string $recipientProfileId, string $notificationType, string $evaluationId = ''): bool
     {
         // Query by reference and recipient
         $builder = $this->db->table($this->notificationsTable)
             ->where('recipient_profile_id', $recipientProfileId)
             ->where('notification_type', $notificationType);
 
-        if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) $builder->where('workflow_event_id', $eventId);
+        if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) {
+            $builder->where('workflow_event_id', $eventId);
+        } elseif ($this->db->fieldExists('idempotency_key', $this->notificationsTable)) {
+            $idempotencyKey = PersonnelWorkflowNotificationRegistry::generateNotificationIdempotencyKey($eventId, $recipientProfileId, $notificationType);
+            $builder->groupStart()->where('idempotency_key', $idempotencyKey);
+            if ($evaluationId !== '') {
+                $builder->orGroupStart()
+                    ->where('reference_type', 'personnel_evaluations')
+                    ->where('reference_id', $evaluationId)
+                    ->groupEnd();
+            }
+            $builder->groupEnd();
+        } elseif ($evaluationId !== '') {
+            // Older MySQL deployments may not have workflow_event_id yet. Scope
+            // the fallback to the evaluation so a prior portfolio version does
+            // not suppress a new notification of the same type.
+            $builder->where('reference_type', 'personnel_evaluations')
+                ->where('reference_id', $evaluationId);
+        }
         $results = $builder->get()->getResultArray();
         return !empty($results);
     }
@@ -203,12 +225,27 @@ class PersonnelWorkflowNotificationService
     /**
      * Retrieves an existing notification record.
      */
-    public function getExistingNotification(string $eventId, string $recipientProfileId, string $notificationType): ?array
+    public function getExistingNotification(string $eventId, string $recipientProfileId, string $notificationType, string $evaluationId = ''): ?array
     {
         $builder = $this->db->table($this->notificationsTable)
             ->where('recipient_profile_id', $recipientProfileId)
             ->where('notification_type', $notificationType);
-        if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) $builder->where('workflow_event_id', $eventId);
+        if ($this->db->fieldExists('workflow_event_id', $this->notificationsTable)) {
+            $builder->where('workflow_event_id', $eventId);
+        } elseif ($this->db->fieldExists('idempotency_key', $this->notificationsTable)) {
+            $idempotencyKey = PersonnelWorkflowNotificationRegistry::generateNotificationIdempotencyKey($eventId, $recipientProfileId, $notificationType);
+            $builder->groupStart()->where('idempotency_key', $idempotencyKey);
+            if ($evaluationId !== '') {
+                $builder->orGroupStart()
+                    ->where('reference_type', 'personnel_evaluations')
+                    ->where('reference_id', $evaluationId)
+                    ->groupEnd();
+            }
+            $builder->groupEnd();
+        } elseif ($evaluationId !== '') {
+            $builder->where('reference_type', 'personnel_evaluations')
+                ->where('reference_id', $evaluationId);
+        }
         return $builder->get()->getRowArray();
     }
 

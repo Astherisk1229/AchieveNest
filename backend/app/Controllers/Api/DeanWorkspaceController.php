@@ -369,7 +369,26 @@ class DeanWorkspaceController extends Controller
         $eligibility=(new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($review['personnel_profile_id'],$review['evaluation_period_id']);
         if(($eligibility['annual_review_requirement']['status']??'pending')!=='passed' || ($eligibility['eligibility_status']??'')!=='eligible') return $this->respond(['error'=>['code'=>'PORTFOLIO_NOT_ELIGIBLE','message'=>'The current Annual Review and ranking eligibility requirements are not satisfied.','reasons'=>$eligibility['eligibility_reasons']??[]]],422);
         $items=$db->table('personnel_evaluation_items pei')->select('pei.*')->where('pei.evaluation_id',$id)->orderBy('pei.submission_order','ASC')->orderBy('pei.created_at','ASC')->get()->getResultArray();
-        foreach ($items as &$item) foreach (['criterion_snapshot','evidence_snapshot','scoring_payload'] as $field) if(isset($item[$field])&&is_string($item[$field])) $item[$field]=json_decode($item[$field],true);
+        foreach ($items as &$item) {
+            foreach (['criterion_snapshot','evidence_snapshot','scoring_payload'] as $field) {
+                if (isset($item[$field]) && is_string($item[$field])) {
+                    $item[$field] = json_decode($item[$field], true);
+                }
+            }
+
+            // The immutable accomplishment fields used by the submitted booklet
+            // live inside scoring_payload. Expose that snapshot explicitly so a
+            // missing/empty top-level field cannot hide Education details such as
+            // Ph.D. units from the Dean's read-only portfolio.
+            $submittedMetadata = is_array($item['scoring_payload'] ?? null)
+                ? ($item['scoring_payload']['category_metadata'] ?? null)
+                : null;
+            if (is_array($submittedMetadata) && $submittedMetadata !== []) {
+                $item['category_metadata'] = $submittedMetadata;
+                $item['subcategory_code'] = $submittedMetadata['subcategory_code'] ?? null;
+            }
+        }
+        unset($item);
         foreach(['criteria_snapshot','eligibility_snapshot'] as $field) if(isset($review[$field])&&is_string($review[$field])) $review[$field]=json_decode($review[$field],true);
         $criteriaRecalculation = (new \App\Services\PersonnelEvaluationCriteriaRecalculationService($db))->statusForEvaluation($id);
         return $this->respond(['data'=>['review'=>$review,'items'=>$items,'eligibility'=>$eligibility,'criteria_recalculation'=>$criteriaRecalculation]]);

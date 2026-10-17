@@ -33,12 +33,85 @@ const CATEGORY_ALIASES = [
   [/^C\.2\.3\b|^C\.2\.c\b|charity/i, 'C.2.3'], [/^C\.3\b|years of service/i, 'C.3']
 ]
 
+function parseObject(value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value || '{}')
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+    } catch { return {} }
+  }
+  return {}
+}
+
+// Submitted evaluation items keep the original accomplishment classification
+// inside scoring_payload. Merge that frozen data with any top-level metadata so
+// an empty API field cannot hide the submitted snapshot.
+function facultyMetadata(item = {}, payload = null) {
+  const scoringPayload = payload || parseObject(item.scoring_payload)
+  const payloadMetadata = parseObject(scoringPayload.category_metadata)
+  const itemMetadata = parseObject(item.category_metadata)
+  const isSubmittedItem = item.item_description !== undefined || item.submission_order !== undefined || item.criterion_snapshot !== undefined
+  if (isSubmittedItem && Object.keys(payloadMetadata).length) {
+    return {
+      ...itemMetadata,
+      ...payloadMetadata,
+      details: {
+        ...parseObject(itemMetadata.details),
+        ...parseObject(payloadMetadata.details)
+      }
+    }
+  }
+  return {
+    ...payloadMetadata,
+    ...itemMetadata,
+    details: {
+      ...parseObject(payloadMetadata.details),
+      ...parseObject(itemMetadata.details)
+    }
+  }
+}
+
 export function resolveFacultyCriterion(item = {}) {
-  if (item.is_unclassified || item.advisory_status === 'Needs Classification') return null
-  const explicit = String(item.criterion_code || item.criterion_key || item.category_code || '').trim()
+  const payload = parseObject(item.scoring_payload)
+  const metadata = facultyMetadata(item, payload)
+  const payloadMetadata = parseObject(payload.category_metadata)
+  const snapshot = parseObject(item.criterion_snapshot || item.criterionSnapshot)
+  const subcategory = String(
+    payloadMetadata.subcategory_code || item.subcategory_code || metadata.subcategory_code || item.criterion_key || item.criterionKey ||
+    snapshot.subcategory?.subcategory_code || snapshot.subcategory?.code ||
+    snapshot.criterion?.code || snapshot.category?.subcategory_code || ''
+  ).trim().toUpperCase()
+  const subcategoryAliases = {
+    A1_PHD_HOLDER: 'A.1', A1_PHD_UNITS: 'A.1', A1_MA_HOLDER: 'A.1', A1_MA_UNITS: 'A.1',
+    'A.1.1': 'A.1', 'A.1.2': 'A.1', 'A.1.3': 'A.1', 'A.1.4': 'A.1',
+    'A.1.A': 'A.1', 'A.1.B': 'A.1', 'A.1.C': 'A.1', 'A.1.D': 'A.1',
+    A2_MEMBERSHIP: 'A.2', A3_ATTENDANCE: 'A.3',
+    B1_ACTIVITY: 'B.1', B2_PUBLICATION: 'B.2', B3_RESEARCH: 'B.3', B4_AWARD: 'B.4',
+    B5_MATERIAL: 'B.5', B6_CREATIVE_WORK: 'B.6',
+    C1_MODERATOR: 'C.1.1', C1_COACH: 'C.1.2', C1_COMMITTEE: 'C.1.3', C1_SERVICE: 'C.1.4',
+    C2_CHURCH: 'C.2.1', C2_CIVIC: 'C.2.2', C2_CHARITY: 'C.2.3'
+  }
+  if (subcategoryAliases[subcategory]) return subcategoryAliases[subcategory]
+
+  const educationDetails = parseObject(metadata.details)
+  const educationText = [item.item_description, item.title, item.evidence_title, educationDetails.degree_title, educationDetails.program]
+    .filter(Boolean).join(' ')
+  if (/\bdoctor|ph\.?\s*d|master/i.test(educationText)
+      && (educationDetails.units_completed !== undefined || /\bunits?\b/i.test(educationText))) return 'A.1'
+
+  const explicit = String(
+    item.criterion_code || item.criterion_key || item.criterionKey || item.category_code ||
+    metadata.criterion_code || snapshot.category?.code || snapshot.criterion?.code || ''
+  ).trim()
   const exact = FACULTY_ACADEMIC_CRITERIA.find((criterion) => explicit === criterion.key)
   if (exact) return exact.key
-  const category = String(item.category || item.criterion_title || '').trim()
+  if (item.is_unclassified || item.advisory_status === 'Needs Classification') return null
+  const category = String(
+    item.category || item.criterion_title || snapshot.subcategory?.name || snapshot.criterion?.name ||
+    snapshot.category?.name || educationDetails.degree_title || educationDetails.program ||
+    item.item_description || item.title || ''
+  ).trim()
   return CATEGORY_ALIASES.find(([pattern]) => pattern.test(category))?.[1] || null
 }
 
@@ -48,14 +121,8 @@ export function normalizeFacultyBookletItems(portfolio = {}) {
     : [...(portfolio.area_a_items || []), ...(portfolio.area_b_items || []), ...(portfolio.area_c_items || [])]
   const seen = new Set()
   const normalized = source.flatMap((item) => {
-    let payload = item.scoring_payload || {}
-    if (typeof payload === 'string') {
-      try { payload = JSON.parse(payload || '{}') } catch { payload = {} }
-    }
-    let metadata = item.category_metadata || payload.category_metadata || {}
-    if (typeof metadata === 'string') {
-      try { metadata = JSON.parse(metadata || '{}') } catch { metadata = {} }
-    }
+    const payload = parseObject(item.scoring_payload)
+    const metadata = facultyMetadata(item, payload)
     const accomplishmentId = item.accomplishment_id || item.canonical_id || item.id
     const criterionKey = resolveFacultyCriterion(item)
     if (!accomplishmentId || !criterionKey || seen.has(accomplishmentId)) return []
@@ -65,11 +132,18 @@ export function normalizeFacultyBookletItems(portfolio = {}) {
     const fileName = evidence?.original_filename || item.file_name || item.proof_file_name || ''
     const subcategoryCode = metadata.subcategory_code || ''
     const subcategory = facultySubcategoryByCode(subcategoryCode)
-    const details = metadata.details && typeof metadata.details === 'object' ? metadata.details : metadata
+    const details = { ...metadata, ...parseObject(metadata.details) }
     const start = metadata.start_date || ''
     const end = metadata.end_date || ''
     const dateOrPeriod = metadata.ongoing && start ? `${start} – Ongoing` : (start && end ? `${start} – ${end}` : (item.occurrence_date || item.date_achieved || item.date || payload.occurrence_date || ''))
     const classifications = [subcategory?.label]
+    if (['A1_PHD_UNITS', 'A1_MA_UNITS'].includes(subcategoryCode)) {
+      classifications.push(
+        details.semester,
+        details.academic_year ? `AY ${details.academic_year}` : '',
+        details.units_completed !== undefined && details.units_completed !== '' ? `${details.units_completed} units completed` : ''
+      )
+    }
     if (details.membership_role) classifications.push(details.membership_role, details.position)
     if (details.role && !classifications.includes(details.role)) classifications.push(details.role)
     classifications.push(details.recognition_status, details.publication_type, details.material_type, details.creative_work_type, details.scope, details.extent, details.support_type)

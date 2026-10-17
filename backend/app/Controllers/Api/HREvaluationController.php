@@ -792,14 +792,41 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'REASON_REQUIRED', 'message' => 'A return reason (1-500 characters) is required.']], 422);
         }
 
-        $db->table('personnel_evaluations')->where('id', $id)->update([
-            'status'        => 'returned_for_revision',
-            'return_reason' => $reason,
-            'returned_at'   => date('Y-m-d H:i:s'),
-            'updated_at'    => date('Y-m-d H:i:s'),
-        ]);
+        $db->transBegin();
+        try {
+            $now = date('Y-m-d H:i:s');
+            $db->table('personnel_evaluations')->where('id', $id)->update([
+                'status'        => 'returned_for_revision',
+                'return_reason' => $reason,
+                'returned_at'   => $now,
+                'updated_at'    => $now,
+            ]);
 
-        $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'returned_for_revision', $evaluation['status'], 'returned_for_revision', $reason, ['reason' => $reason]);
+            $event = $this->recordEvaluationEvent(
+                $db,
+                $id,
+                $actor['profile']['id'],
+                'returned_for_revision',
+                $evaluation['status'],
+                'returned_for_revision',
+                $reason,
+                ['reason' => $reason, 'version_number' => (int) ($evaluation['version_number'] ?? 1)]
+            );
+            $event['event_type'] = \App\Services\PersonnelWorkflowEventRegistry::EVENT_REVISION_REQUESTED;
+            (new \App\Services\PersonnelWorkflowNotificationService($db))->handleWorkflowEvent($event, [
+                'personnel_profile_id' => $evaluation['personnel_profile_id'],
+                'version_number' => (int) ($evaluation['version_number'] ?? 1),
+            ]);
+
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('The return or notification could not be saved.');
+            }
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'Portfolio return notification failed: ' . $e->getMessage());
+            return $this->respond(['error' => ['code' => 'RETURN_FAILED', 'message' => 'The portfolio could not be returned. Please try again.']], 500);
+        }
 
         return $this->respond(['data' => ['message' => 'Evaluation returned for revision.']], 200);
     }

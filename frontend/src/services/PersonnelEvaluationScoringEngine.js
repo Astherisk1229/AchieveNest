@@ -320,7 +320,7 @@ export default class PersonnelEvaluationScoringEngine {
       }
     }
 
-    return { raw_points: 5.0, criterion_cap: null, rule_applied: 'Standard Configured Points', source_ref: 'Manual', formula_key: 'STANDARD_POINT', evidence_required: true }
+    throw new Error(`No verified scoring rule is configured for [${scaleCode}] Area [${areaCode}] criterion [${category}] / subcategory [${subCategory}]. Scoring is unresolved.`)
   }
 
   /**
@@ -355,6 +355,9 @@ export default class PersonnelEvaluationScoringEngine {
    * Calculates complete evaluation totals across all areas.
    */
   static calculateEvaluationTotals(scaleCode = EVALUATION_SCALE_CODES.ADMINISTRATORS, itemsByArea = {}) {
+    if (![EVALUATION_SCALE_CODES.ADMINISTRATORS, EVALUATION_SCALE_CODES.NON_TEACHING].includes(scaleCode)) {
+      throw new Error(`Unknown scale code [${scaleCode}]. Evaluation totals are unresolved.`)
+    }
     const isNonTeaching = scaleCode === EVALUATION_SCALE_CODES.NON_TEACHING
     const scaleMax = isNonTeaching ? 150.0 : 160.0
     const passingScore = isNonTeaching ? 75.0 : 120.0

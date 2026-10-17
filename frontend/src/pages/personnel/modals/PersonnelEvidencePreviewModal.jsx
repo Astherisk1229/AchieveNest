@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Download, ExternalLink, FileWarning, LoaderCircle, X } from 'lucide-react'
 import personnelAccomplishmentService from '../../../services/personnelAccomplishmentService'
+import PersonnelPdfEvidenceViewer from './PersonnelPdfEvidenceViewer'
 
 export default function PersonnelEvidencePreviewModal({ evidence, onClose }) {
   const [blobUrl, setBlobUrl] = useState('')
@@ -51,11 +52,11 @@ export default function PersonnelEvidencePreviewModal({ evidence, onClose }) {
             <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600" aria-label="Close evidence preview"><X className="h-5 w-5" /></button>
           </div>
         </header>
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-slate-100 p-2 sm:p-4">
+        <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden bg-slate-100 p-2 sm:p-4">
           {!blobUrl && !error && <div className="flex items-center gap-2 text-sm font-semibold text-slate-600"><LoaderCircle className="h-5 w-5 animate-spin" /> Loading protected evidence…</div>}
           {error && <div className="max-w-md rounded-xl bg-white p-6 text-center shadow-sm"><FileWarning className="mx-auto mb-3 h-8 w-8 text-amber-700" /><p className="text-sm font-extrabold text-slate-900">Unable to preview this document.</p><p className="mt-2 text-sm text-slate-600">{evidence.original_filename} remains securely stored.</p><div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={() => setReloadKey((value) => value + 1)} className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-600">Retry Preview</button><button type="button" onClick={() => personnelAccomplishmentService.downloadEvidenceBlob(evidence.id, evidence.original_filename)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-600">Open Document</button></div></div>}
           {blobUrl && isImage && <img src={blobUrl} alt={`Evidence: ${evidence.original_filename}`} className="max-h-full max-w-full object-contain" />}
-          {blobUrl && !isImage && <iframe src={blobUrl} title={`Evidence: ${evidence.original_filename}`} className="h-full w-full rounded-lg bg-white" />}
+          {blobUrl && !isImage && <PersonnelPdfEvidenceViewer blobUrl={blobUrl} fileName={evidence.original_filename} />}
         </div>
       </section>
     </div>

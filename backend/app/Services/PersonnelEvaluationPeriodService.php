@@ -32,7 +32,8 @@ class PersonnelEvaluationPeriodService
     public function list(array $filters = []): array
     {
         $builder = $this->db->table('personnel_evaluation_periods p')
-            ->select('p.*, sv.version_number AS scale_version_number, sv.status AS scale_version_status, sv.evaluation_cycle_id AS scale_cycle_id, s.title AS scale_title')
+            ->select('p.*, c.operational_enabled AS cycle_operational_enabled, sv.version_number AS scale_version_number, sv.status AS scale_version_status, sv.evaluation_cycle_id AS scale_cycle_id, s.title AS scale_title')
+            ->join('ranking_cycles c', 'c.id = p.ranking_cycle_id', 'left')
             ->join('evaluation_scale_versions sv', 'sv.id = p.evaluation_scale_version_id', 'left')
             ->join('evaluation_scales s', 's.id = sv.scale_id', 'left');
         foreach (['ranking_cycle_id', 'evaluation_type', 'personnel_group', 'academic_year', 'status'] as $field) if (! empty($filters[$field])) $builder->where("p.{$field}", $filters[$field]);
@@ -42,7 +43,8 @@ class PersonnelEvaluationPeriodService
     public function find(string $id): ?array
     {
         $row = $this->db->table('personnel_evaluation_periods p')
-            ->select('p.*, sv.version_number AS scale_version_number, sv.status AS scale_version_status, sv.evaluation_cycle_id AS scale_cycle_id, s.title AS scale_title')
+            ->select('p.*, c.operational_enabled AS cycle_operational_enabled, sv.version_number AS scale_version_number, sv.status AS scale_version_status, sv.evaluation_cycle_id AS scale_cycle_id, s.title AS scale_title')
+            ->join('ranking_cycles c', 'c.id = p.ranking_cycle_id', 'left')
             ->join('evaluation_scale_versions sv', 'sv.id = p.evaluation_scale_version_id', 'left')
             ->join('evaluation_scales s', 's.id = sv.scale_id', 'left')->where('p.id', $id)->get()->getRowArray();
         return $row ? $this->dto($row) : null;
@@ -61,10 +63,10 @@ class PersonnelEvaluationPeriodService
         // Keep the next HR-scheduled period visible on the Personnel Portfolio
         // before HR opens submissions. The DTO's can_submit remains false for
         // DRAFT periods, so visibility never grants submission access.
-        $now = time();
+        $now = self::manilaNow();
         foreach ($rows as $row) {
-            $closeAt = strtotime((string) ($row['submission_close_at'] ?? ''));
-            if (($row['status'] ?? '') === 'DRAFT' && $closeAt !== false && $closeAt >= $now) return $row;
+            $closeAt = (string) ($row['submission_close_at'] ?? '');
+            if (($row['status'] ?? '') === 'DRAFT' && $closeAt !== '' && $closeAt >= $now) return $row;
         }
 
         return null;
@@ -78,7 +80,21 @@ class PersonnelEvaluationPeriodService
     public function openDueScheduledSubmissions(?string $personnelGroup = null): int
     {
         if (! $this->db->tableExists('personnel_evaluation_periods')) return 0;
-        $now = date('Y-m-d H:i:s');
+        $now = self::manilaNow();
+        // Closing is also driven by reads; backend write guards check the same dates.
+        $closing = $this->db->table('personnel_evaluation_periods')
+            ->select('id, created_by, submission_close_at')
+            ->where('evaluation_type', 'RANKING_PROMOTION')
+            ->where('status', 'OPEN_FOR_SUBMISSION')
+            ->where('submission_close_at <', $now);
+        if ($personnelGroup !== null) $closing->where('personnel_group', $personnelGroup);
+        foreach ($closing->get()->getResultArray() as $period) {
+            try {
+                $this->transition((string) $period['id'], 'close-submissions', (string) $period['created_by'], 'scheduled-close:' . $period['id']);
+            } catch (Throwable $error) {
+                log_message('error', 'Scheduled personnel evaluation period {periodId} could not close: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
+            }
+        }
         $query = $this->db->table('personnel_evaluation_periods')
             ->select('id, created_by, submission_open_at')
             ->where('evaluation_type', 'RANKING_PROMOTION')
@@ -103,6 +119,20 @@ class PersonnelEvaluationPeriodService
                 // or achievement coverage) must keep the track closed and visible
                 // to HR for correction; a later read retries the scheduled opening.
                 log_message('error', 'Scheduled personnel evaluation period {periodId} could not open: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
+            }
+        }
+        $evaluating = $this->db->table('personnel_evaluation_periods')
+            ->select('id, created_by')
+            ->where('evaluation_type', 'RANKING_PROMOTION')
+            ->where('status', 'SUBMISSION_CLOSED')
+            ->where('evaluation_start_at <=', $now)
+            ->where('evaluation_end_at >=', $now);
+        if ($personnelGroup !== null) $evaluating->where('personnel_group', $personnelGroup);
+        foreach ($evaluating->get()->getResultArray() as $period) {
+            try {
+                $this->transition((string) $period['id'], 'start-evaluation', (string) $period['created_by'], 'scheduled-evaluation:' . $period['id']);
+            } catch (Throwable $error) {
+                log_message('error', 'Scheduled personnel evaluation period {periodId} could not start evaluation: {message}', ['periodId' => $period['id'], 'message' => $error->getMessage()]);
             }
         }
         return $opened;
@@ -139,13 +169,14 @@ class PersonnelEvaluationPeriodService
 
     public function resolveForSubmission(string $id, string $evaluationType = 'RANKING_PROMOTION'): array
     {
+        if ($evaluationType === 'RANKING_PROMOTION') $this->openDueScheduledSubmissions();
         $period = $this->find($id);
         if (! $period) throw new InvalidArgumentException('EVALUATION_PERIOD_NOT_FOUND: The selected personnel evaluation period does not exist.');
         if ($period['evaluation_type'] !== $evaluationType) throw new InvalidArgumentException('EVALUATION_PERIOD_TYPE_MISMATCH: This portfolio is not valid for the selected evaluation type.');
         if ($period['status'] !== 'OPEN_FOR_SUBMISSION') throw new InvalidArgumentException('EVALUATION_PERIOD_NOT_OPEN: This evaluation period is not open for Faculty submissions.');
-        $now = time();
-        if ($now < strtotime($period['submission_open_at'])) throw new InvalidArgumentException('SUBMISSION_WINDOW_NOT_OPEN: The Faculty submission window has not opened yet.');
-        if ($now > strtotime($period['submission_close_at'])) throw new InvalidArgumentException('SUBMISSION_WINDOW_CLOSED: The Faculty submission deadline has passed.');
+        $now = self::manilaNow();
+        if ($now < $period['submission_open_at']) throw new InvalidArgumentException('SUBMISSION_WINDOW_NOT_OPEN: The Faculty submission window has not opened yet.');
+        if ($now > $period['submission_close_at']) throw new InvalidArgumentException('SUBMISSION_WINDOW_CLOSED: The Faculty submission deadline has passed.');
         return $period;
     }
 
@@ -188,7 +219,7 @@ class PersonnelEvaluationPeriodService
         foreach (['ranking_cycle_id','evaluation_type','personnel_group','academic_year','semester','coverage_label','evaluation_scale_version_id'] as $field) {
             if ($submissionCount > 0 && array_key_exists($field, $input) && ($input[$field] ?? null) !== ($existing[$field] ?? null)) throw new RuntimeException("PERIOD_FIELD_LOCKED: {$field} cannot change after submissions exist.");
         }
-        $sensitive = array_filter(['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'], fn (string $field): bool => array_key_exists($field, $input) && $this->mysqlDate($input[$field]) !== ($existing[$field] ?? null));
+        $sensitive = array_filter(['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'], fn (string $field): bool => array_key_exists($field, $input) && $this->mysqlDate($input[$field], in_array($field, ['submission_close_at', 'evaluation_end_at'], true)) !== ($existing[$field] ?? null));
         $reason = $this->cleanText($input['reason'] ?? '', 500, 'reason', true);
         if ($existing['status'] !== 'DRAFT' && $sensitive && mb_strlen($reason) < 10) throw new InvalidArgumentException('CHANGE_REASON_REQUIRED: Explain this schedule change in 10–500 characters.');
 
@@ -223,9 +254,10 @@ class PersonnelEvaluationPeriodService
             if ($action === 'cancel' && $reason === '') throw new InvalidArgumentException('CANCELLATION_REASON_REQUIRED: Enter a reason for cancelling this ranking period.');
             if ($action === 'cancel' && mb_strlen($reason) > 500) throw new InvalidArgumentException('CANCELLATION_REASON_TOO_LONG: The cancellation reason must be 500 characters or fewer.');
             if ($action === 'open-submissions') $this->validateOperational($row, $id);
-            if ($action === 'open-submissions') $this->assertAchievementCoverage($row);
-            if ($action === 'start-evaluation' && time() < strtotime($row['evaluation_start_at'])) throw new RuntimeException('EVALUATION_WINDOW_NOT_OPEN: Evaluation cannot start before its scheduled time.');
-            if ($action === 'open-submissions' && time() > strtotime($row['submission_close_at'])) throw new RuntimeException('SUBMISSION_WINDOW_EXPIRED: An expired submission window cannot be opened.');
+            if ($action === 'start-evaluation' && self::manilaNow() < $row['evaluation_start_at']) throw new RuntimeException('EVALUATION_WINDOW_NOT_OPEN: Evaluation cannot start before its scheduled time.');
+            if ($action === 'close-submissions' && self::manilaNow() <= $row['submission_close_at']) throw new RuntimeException('SUBMISSION_WINDOW_OPEN: Submissions close automatically after their configured end time.');
+            if ($action === 'open-submissions' && self::manilaNow() < $row['submission_open_at']) throw new RuntimeException('SUBMISSION_WINDOW_NOT_OPEN: Submissions cannot open before their scheduled time.');
+            if ($action === 'open-submissions' && self::manilaNow() > $row['submission_close_at']) throw new RuntimeException('SUBMISSION_WINDOW_EXPIRED: An expired submission window cannot be opened.');
 
             $updates = ['status'=>$rule['to'],'version'=>(int)$row['version']+1,'updated_by'=>$actorId,'updated_at'=>date('Y-m-d H:i:s')];
             if ($action === 'close') $updates += ['closed_by'=>$actorId,'closed_at'=>date('Y-m-d H:i:s')];
@@ -265,12 +297,12 @@ class PersonnelEvaluationPeriodService
         if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: The selected ranking period does not exist.');
         if ($cycle['academic_year'] !== $year) throw new InvalidArgumentException('RANKING_CYCLE_YEAR_MISMATCH: Track and ranking period must use the same academic year.');
         $data = ['ranking_cycle_id'=>$cycleId,'period_name'=>$name,'evaluation_type'=>$type,'personnel_group'=>$personnelGroup,'academic_year'=>$year,'semester'=>$semester,'coverage_label'=>$coverage ?: null];
-        foreach (['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'] as $field) $data[$field] = $this->mysqlDate($input[$field] ?? null);
+        foreach (['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'] as $field) $data[$field] = $this->mysqlDate($input[$field] ?? null, in_array($field, ['submission_close_at', 'evaluation_end_at'], true));
         $data['evaluation_scale_version_id'] = trim((string) ($input['evaluation_scale_version_id'] ?? '')) ?: null;
         if (!$data['evaluation_scale_version_id']) $data['evaluation_scale_version_id'] = $this->resolveActiveScaleForGroup($personnelGroup);
         $providedDates = array_filter(array_intersect_key($data, array_flip(['submission_open_at','submission_close_at','evaluation_start_at','evaluation_end_at'])));
         if ($providedDates && count($providedDates) !== 4) throw new InvalidArgumentException('INCOMPLETE_SCHEDULE: Either provide the complete schedule or leave all dates empty while drafting.');
-        if (count($providedDates) === 4 && ! ($data['submission_open_at'] < $data['submission_close_at'] && $data['submission_open_at'] <= $data['evaluation_start_at'] && $data['evaluation_start_at'] < $data['evaluation_end_at'])) throw new InvalidArgumentException('INVALID_DATE_ORDER: Required order is submission open < close, and submission open <= evaluation start < evaluation end. Evaluation may overlap submissions.');
+        if (count($providedDates) === 4 && ! ($data['submission_open_at'] < $data['submission_close_at'] && $data['evaluation_start_at'] < $data['evaluation_end_at'])) throw new InvalidArgumentException('INVALID_DATE_ORDER: Each period must end after it starts. Submission and evaluation dates may overlap.');
         if ($data['evaluation_scale_version_id']) $this->validateScale($data['evaluation_scale_version_id'], $year, false, $personnelGroup);
         return $data;
     }
@@ -336,10 +368,12 @@ class PersonnelEvaluationPeriodService
         return $value;
     }
 
-    private function mysqlDate(mixed $value): ?string
+    private function mysqlDate(mixed $value, bool $endOfDay = false): ?string
     {
         if ($value === null || trim((string) $value) === '') return null;
-        $timestamp = strtotime((string) $value);
+        $date = trim((string) $value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) $date .= $endOfDay ? ' 23:59:59' : ' 00:00:00';
+        $timestamp = strtotime($date);
         if ($timestamp === false) throw new InvalidArgumentException('INVALID_TIMESTAMP: Enter a valid date and time.');
         return date('Y-m-d H:i:s', $timestamp);
     }
@@ -347,8 +381,15 @@ class PersonnelEvaluationPeriodService
     private function dto(array $row): array
     {
         $semesterLabels = ['1ST_SEMESTER'=>'1st Semester','2ND_SEMESTER'=>'2nd Semester','FULL_ACADEMIC_YEAR'=>'Full Academic Year','CUSTOM_COVERAGE'=>'Custom Coverage'];
-        $now = time(); $open = $row['submission_open_at'] ? strtotime($row['submission_open_at']) : null; $close = $row['submission_close_at'] ? strtotime($row['submission_close_at']) : null;
-        return $row + ['evaluation_type_label'=>$this->typeLabel($row['evaluation_type']),'academic_year_label'=>'AY '.str_replace('-', '–', $row['academic_year']),'semester_label'=>$semesterLabels[$row['semester']] ?? 'Not configured','status_label'=>ucwords(strtolower(str_replace('_', ' ', $row['status']))),'can_submit'=>$row['status']==='OPEN_FOR_SUBMISSION' && $open !== null && $close !== null && $now >= $open && $now <= $close,'can_evaluate'=>$row['status']==='EVALUATION_ONGOING','submission_count'=>$this->submissionCount($row['id']),'reviewer_readiness'=>$this->reviewerReadiness(),'evaluation_scale_version'=>['id'=>$row['evaluation_scale_version_id'],'version_number'=>$row['scale_version_number'] ?? null,'title'=>$row['scale_title'] ?? null,'status'=>$row['scale_version_status'] ?? null]];
+        $now = self::manilaNow(); $open = $row['submission_open_at'] ?: null; $close = $row['submission_close_at'] ?: null;
+        $evaluationOpen = $row['evaluation_start_at'] ?: null; $evaluationClose = $row['evaluation_end_at'] ?: null;
+        $operationalEnabled = ! array_key_exists('cycle_operational_enabled', $row) || $row['cycle_operational_enabled'] === null || (int) $row['cycle_operational_enabled'] === 1;
+        return $row + ['operational_enabled' => $operationalEnabled, 'evaluation_type_label'=>$this->typeLabel($row['evaluation_type']),'academic_year_label'=>'AY '.str_replace('-', '–', $row['academic_year']),'semester_label'=>$semesterLabels[$row['semester']] ?? 'Not configured','status_label'=>ucwords(strtolower(str_replace('_', ' ', $row['status']))),'can_submit'=>$operationalEnabled && $row['status']==='OPEN_FOR_SUBMISSION' && $open !== null && $close !== null && $now >= $open && $now <= $close,'can_evaluate'=>$operationalEnabled && in_array($row['status'], ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'], true) && $evaluationOpen !== null && $evaluationClose !== null && $now >= $evaluationOpen && $now <= $evaluationClose,'submission_count'=>$this->submissionCount($row['id']),'reviewer_readiness'=>$this->reviewerReadiness(),'evaluation_scale_version'=>['id'=>$row['evaluation_scale_version_id'],'version_number'=>$row['scale_version_number'] ?? null,'title'=>$row['scale_title'] ?? null,'status'=>$row['scale_version_status'] ?? null]];
+    }
+
+    private static function manilaNow(): string
+    {
+        return (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
     }
 
     private function reviewerReadiness(): array
@@ -407,10 +448,4 @@ class PersonnelEvaluationPeriodService
     private function periodCode(array $data): string { return 'PEP-'.substr($data['evaluation_type'],0,4).'-'.str_replace('-','',$data['academic_year']).'-'.strtoupper(substr($data['semester'] ?: 'DR',0,2)).'-'.strtoupper(substr(bin2hex(random_bytes(3)),0,6)); }
     private function uuid(): string { $h=bin2hex(random_bytes(16)); return substr($h,0,8).'-'.substr($h,8,4).'-4'.substr($h,13,3).'-'.dechex((hexdec($h[16])&3)|8).substr($h,17,3).'-'.substr($h,20,12); }
 
-    /** A track may only accept portfolios once its ranking period defines which achievements belong to it. */
-    private function assertAchievementCoverage(array $period): void
-    {
-        if (! $this->db->fieldExists('coverage_start', 'ranking_cycles') || empty($period['ranking_cycle_id'])) return;
-        if ((new EvaluationValidityService($this->db))->coverageForPeriod($period) === null) throw new RuntimeException('ACHIEVEMENT_COVERAGE_REQUIRED: Set the ranking period\'s achievement coverage dates before opening submissions.');
-    }
 }

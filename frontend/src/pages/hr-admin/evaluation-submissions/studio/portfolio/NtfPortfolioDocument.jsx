@@ -53,22 +53,23 @@ const dsOf = (item) => {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null
 }
 const formatDs = value => Number(value).toLocaleString('en-PH', { maximumFractionDigits: 2 })
+const editableDs = value => value === null ? '' : String(Number(value))
 
 // Inline DS cell: saves on Enter or when focus leaves, only if the value changed.
 export function DsInput({ code, title, value, onCommit }) {
-  const [draft, setDraft] = useState(value === null ? '' : String(Math.round(value * 100) / 100))
+  const [draft, setDraft] = useState(editableDs(value))
   const [state, setState] = useState({ saving: false, error: '' })
-  useEffect(() => { setDraft(value === null ? '' : String(Math.round(value * 100) / 100)) }, [value])
+  useEffect(() => { setDraft(editableDs(value)) }, [value])
 
   const commit = async () => {
     const text = draft.trim()
-    if (text === '' || (value !== null && Math.abs(Number(text) - value) < 0.005)) { setState({ saving: false, error: '' }); if (text === '') setDraft(value === null ? '' : String(Math.round(value * 100) / 100)); return }
+    if (text === '' || (value !== null && Number(text) === value)) { setState({ saving: false, error: '' }); if (text === '') setDraft(editableDs(value)); return }
     const next = Number(text)
-    if (!Number.isFinite(next) || next < 0 || next > 100) { setState({ saving: false, error: 'Enter 0–100' }); return }
+    if (!Number.isInteger(next) || next < 0 || next > 100) { setState({ saving: false, error: 'Enter a whole number from 0 to 100' }); return }
     setState({ saving: true, error: '' })
     try {
       const saved = await onCommit(code, next)
-      if (saved === false) setDraft(value === null ? '' : String(Math.round(value * 100) / 100))
+      if (saved === false) setDraft(editableDs(value))
       setState({ saving: false, error: '' })
     } catch (error) {
       setState({ saving: false, error: error?.error?.message || error?.message || 'Not saved' })
@@ -77,10 +78,10 @@ export function DsInput({ code, title, value, onCommit }) {
 
   return <span className="inline-flex flex-col gap-0.5 font-sans">
     <span className="inline-flex items-center gap-1">
-      <input type="number" inputMode="decimal" min="0" max="100" step="0.01" value={draft} disabled={state.saving}
-        onChange={event => setDraft(event.target.value)}
+      <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} value={draft} disabled={state.saving}
+        onChange={event => { if (/^\d{0,3}$/.test(event.target.value)) setDraft(event.target.value) }}
         onBlur={commit}
-        onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() } if (event.key === 'Escape') { setDraft(value === null ? '' : String(Math.round(value * 100) / 100)); setState({ saving: false, error: '' }) } }}
+        onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur() } if (event.key === 'Escape') { setDraft(editableDs(value)); setState({ saving: false, error: '' }) } }}
         aria-label={`DS for ${code} ${title}`} aria-invalid={Boolean(state.error) || undefined}
         className={`w-20 rounded-md border px-2 py-1 text-right text-xs tabular-nums outline-none focus:ring-2 focus:ring-emerald-600/30 dark:bg-slate-900 ${state.error ? 'border-rose-500' : 'border-slate-300 focus:border-emerald-700 dark:border-slate-600'}`}/>
       {state.saving && <LoaderCircle className="h-3.5 w-3.5 animate-spin text-slate-500" aria-label="Saving"/>}
@@ -125,7 +126,7 @@ export default function NtfPortfolioDocument({ submission, evidenceItems, select
     <section className="border-2 border-slate-900 text-xs dark:border-slate-500">
       <SectionTitle>A. PERFORMANCE AND PERSONAL INDICATORS <span className="float-right">Maximum: 90</span></SectionTitle>
       <table className="w-full border-collapse">
-        <thead><tr className="border-b border-slate-900 bg-slate-100 dark:border-slate-500 dark:bg-slate-800"><Th>Item</Th><Th>Weight</Th><Th>DS</Th><Th>Points earned</Th><Th>Status</Th></tr></thead>
+        <thead><tr className="border-b border-slate-900 bg-slate-100 dark:border-slate-500 dark:bg-slate-800"><Th>Item</Th><Th>Weight</Th><Th>%</Th><Th>DS</Th><Th>Points earned</Th><Th>Status</Th></tr></thead>
         <tbody>{A_ROWS.map(([code, title, max]) => {
           const item = areaA.find(entry => itemCode(entry) === code)
           const value = item?.awardedPoints
@@ -135,13 +136,14 @@ export default function NtfPortfolioDocument({ submission, evidenceItems, select
           return <tr key={code} className="border-b border-slate-300 dark:border-slate-700">
             <Td><strong>{code}</strong> {title}</Td>
             <Td>{max} pts</Td>
+            <Td>{(max / 100).toFixed(2).replace(/^0/, '')}</Td>
             <Td>{onUpdateAreaADs ? <DsInput code={code} title={title} value={ds} onCommit={onUpdateAreaADs}/> : (ds === null ? '—' : formatDs(ds))}</Td>
             <Td>{available ? Number(value).toFixed(2) : '—'}</Td>
             <Td>{!available
-              ? <span className="text-amber-700 dark:text-amber-300">{onUpdateAreaADs ? 'Enter DS' : 'Pending annual review'}</span>
+              ? <span className="text-amber-700 dark:text-amber-300">{onUpdateAreaADs ? 'Enter DS' : 'Awaiting HR score'}</span>
               : hrSet
                 ? <span className="inline-flex items-center gap-1 font-semibold text-sky-800 dark:text-sky-300"><PencilLine className="h-3 w-3"/>Set by HR</span>
-                : <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300"><LockKeyhole className="h-3 w-3"/>Annual review</span>}</Td>
+                : <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 dark:text-emerald-300"><LockKeyhole className="h-3 w-3"/>Legacy workbook</span>}</Td>
           </tr>
         })}</tbody>
       </table>

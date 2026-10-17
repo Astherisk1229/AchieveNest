@@ -107,13 +107,20 @@ export function HREvaluationSubmissionsPage(props) {
         showToast('Open completed evaluation summaries from Ranking Periods → Results.')
         return
       }
-      if (sub.status === 'submitted') await hrEvaluationService.start(sub.id)
       const detail = await hrEvaluationService.get(sub.id)
-      setEvaluatingSubmission({ ...sub, ...(detail?.evaluation || detail) })
-      await loadSubmissions()
+      setEvaluatingSubmission({ ...sub, ...(detail?.evaluation || detail), items: detail?.items || [], scores: detail?.scores || {} })
     } catch (error) {
       showToast(error?.response?.data?.error?.message || error?.message || 'Unable to open evaluation.')
     }
+  }
+
+  const handleStartEvaluation = async () => {
+    const id = evaluatingSubmission?.id
+    if (!id) return
+    await hrEvaluationService.start(id)
+    const detail = await hrEvaluationService.get(id)
+    setEvaluatingSubmission(current => ({ ...current, ...(detail?.evaluation || detail), status: detail?.evaluation?.status || 'in_evaluation', items: detail?.items || [], scores: detail?.scores || {} }))
+    await loadSubmissions()
   }
 
   const handleSaveProgress = () => {
@@ -198,7 +205,9 @@ export function HREvaluationSubmissionsPage(props) {
       {/* Full-Screen Dual-Pane Evaluation Studio */}
       {evaluatingSubmission && (
         <PortfolioEvaluationStudio
+          key={`${evaluatingSubmission.id}:${evaluatingSubmission.status}`}
           submission={evaluatingSubmission}
+          onStartEvaluation={evaluatingSubmission.status === 'submitted' ? handleStartEvaluation : undefined}
           onClose={() => setEvaluatingSubmission(null)}
           onSaveProgress={handleSaveProgress}
           onOpenReturnModal={() => setReturningSubmission(evaluatingSubmission)}

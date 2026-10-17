@@ -590,16 +590,10 @@ class PersonnelEvaluationScoringService
             }
         }
 
-        // Generic fallback
-        $pts = (float)($entry['points'] ?? 5.0);
-        return [
-            'raw_points' => $pts,
-            'criterion_cap' => null,
-            'rule_applied' => 'Configured Standard Points',
-            'source_ref' => 'Official Ranking Scale Manual',
-            'formula_key' => 'STANDARD_POINT',
-            'evidence_required' => true,
-        ];
+        throw new RuntimeException(
+            "No verified scoring rule is configured for [{$scaleCode}] Area [{$areaCode}] criterion [{$category}] / subcategory [{$subcategory}]. Scoring is unresolved.",
+            422
+        );
     }
 
     /**
@@ -656,7 +650,10 @@ class PersonnelEvaluationScoringService
      */
     public function calculateEvaluationTotals(string $scaleCode, array $itemsByArea): array
     {
-        $scaleConfig = self::SCALE_CONFIGS[$scaleCode] ?? self::SCALE_CONFIGS[self::SCALE_ADMINISTRATORS];
+        $scaleConfig = self::SCALE_CONFIGS[$scaleCode] ?? null;
+        if ($scaleConfig === null) {
+            throw new RuntimeException("Unsupported personnel evaluation scale [{$scaleCode}]. Totals cannot be calculated.", 422);
+        }
         $areaCaps = $scaleConfig['area_caps'];
         $scaleMax = $scaleConfig['total_max'];
         $passingScore = $scaleConfig['passing_score'];

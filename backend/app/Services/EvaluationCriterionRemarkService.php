@@ -29,6 +29,10 @@ final class EvaluationCriterionRemarkService
         $label = $this->label($level) ?: $this->label($subcategory) ?: trim((string) ($category['name'] ?? ''));
         if ($label === '') return '';
 
+        if (! empty($criterion['award_maximum_after_evidence_verification']) && $cap > 0) {
+            return $label . ' — up to ' . $this->number($cap) . ' points; full criterion maximum is awarded after qualifying evidence is verified.';
+        }
+
         if ($manual) {
             return $label . ' — manual evaluator scoring. Maximum: ' . $this->number($cap) . ' points.';
         }

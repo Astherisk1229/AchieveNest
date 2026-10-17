@@ -2,6 +2,7 @@ import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import PortfolioNavigator from '../PortfolioNavigator'
+import { DsInput } from '../NtfPortfolioDocument'
 import { calculateNTFScores } from '../../../evaluation/rating/NTFRatingEngine'
 
 vi.mock('../../../../../../services/personnelAccomplishmentService', () => ({
@@ -37,7 +38,7 @@ describe('HR review shows the personnel Portfolio Booklet', () => {
     expect(html).toContain('Staff Association')
     expect(html).toContain('Officer · HR Office')
     expect(html).toContain('Lecturer · DepEd')
-    expect(html).toContain('4 / 10')
+    expect(html).toContain('9 years')
     expect(html.indexOf('Staff Association')).toBeLessThan(html.indexOf('Records seminar'))
   })
 
@@ -56,6 +57,14 @@ describe('HR review shows the personnel Portfolio Booklet', () => {
   it('renders DS inputs only when HR may edit them', () => {
     const html = render(ntp(), [], { onUpdateAreaADs: () => true })
     expect(html).toContain('aria-label="DS for A.1 Job Performance"')
+  })
+
+  it('shows a whole-number DS and uses a numeric-only input', () => {
+    const html = renderToStaticMarkup(<DsInput code="A.3" title="Efficiency" value={30.0} onCommit={() => true} />)
+    expect(html).toContain('inputMode="numeric"')
+    expect(html).toContain('pattern="[0-9]*"')
+    expect(html).toContain('value="30"')
+    expect(html).not.toContain('value="30.0"')
   })
 
   it('keeps missing Area A pending and does not coerce it to zero', () => {

@@ -52,19 +52,86 @@ final class LockedCriterionResolverService
             if ($cap <= 0) throw new RuntimeException("CRITERION_POINTS_UNRESOLVED: {$categoryCode} has no locked maximum.");
             return ['criterion_reference' => $contractMapping['criterion_code'], 'category' => $category, 'subcategory' => null, 'level' => null, 'configured_points' => $cap, 'criterion_cap' => $cap, 'evaluator_judgment_required' => true];
         }
+        $personnelGroup = strtoupper(trim((string) ($snapshot['sheet']['applies_to'] ?? '')));
+        // The official faculty B.3 and B.6 criteria have a maximum but no
+        // automatic breakdown. Submit the evidence for evaluator scoring.
+        if ($personnelGroup === 'FACULTY'
+            && in_array(strtoupper($categoryCode), ['B.3', 'B.6'], true)
+            && (int) ($category['requires_manual_hr_rule'] ?? 0) === 1
+            && empty($category['subcategories']) && empty($category['options'])) {
+            $maximum = (float) ($category['max_points'] ?? 0);
+            if ($maximum <= 0) throw new RuntimeException("CRITERION_POINTS_UNRESOLVED: {$categoryCode} has no locked maximum.");
+            return [
+                'criterion_reference' => strtoupper($categoryCode),
+                'category' => $category,
+                'subcategory' => null,
+                'level' => null,
+                'configured_points' => $maximum,
+                'criterion_cap' => $maximum,
+                'evaluator_judgment_required' => true,
+                'scoring_rule' => 'EVALUATOR_JUDGMENT_MAX_ONLY',
+            ];
+        }
+        // Teaching Faculty B.2 and B.5 use verified-evidence full-maximum scoring.
+        // The amount comes from this item's immutable approved-version category cap.
+        // NTF rows are handled by their Appendix N contract mappings above.
+        if ($personnelGroup === 'FACULTY' && in_array(strtoupper($categoryCode), ['B.2', 'B.5'], true)) {
+            $maximum = (float) ($category['max_points'] ?? 0);
+            if ($maximum <= 0) throw new RuntimeException("CRITERION_POINTS_UNRESOLVED: {$categoryCode} has no locked maximum.");
+            return [
+                'criterion_reference' => strtoupper($categoryCode),
+                'category' => $category,
+                'subcategory' => null,
+                'level' => null,
+                'configured_points' => $maximum,
+                'criterion_cap' => $maximum,
+                'evaluator_judgment_required' => false,
+                'award_maximum_after_evidence_verification' => true,
+                'scoring_rule' => 'VERIFIED_EVIDENCE_FULL_CRITERION_MAXIMUM',
+            ];
+        }
         if ((int) ($category['requires_manual_hr_rule'] ?? 0) === 1 && empty($category['subcategories']) && empty($category['options'])) {
             throw new RuntimeException("CRITERION_CONFIGURATION_INCOMPLETE: {$categoryCode} has no locked automatic point rule.");
         }
         $details = is_array($metadata['details'] ?? null) ? $metadata['details'] : [];
         $submittedSubtype = strtoupper(trim((string) ($metadata['subcategory_code'] ?? '')));
         $subcategoryCode = $forcedSubcategoryCode ?? self::SUBCATEGORY_MAP[$submittedSubtype] ?? null;
+        if ($subcategoryCode === null) {
+            foreach ($category['subcategories'] ?? [] as $row) {
+                if (strcasecmp((string) ($row['subcategory_code'] ?? ''), $submittedSubtype) === 0) {
+                    $subcategoryCode = (string) $row['subcategory_code'];
+                    break;
+                }
+            }
+        }
         if ($categoryCode === 'A.2' && preg_match('/officer|president|chair|director/i', (string) ($details['membership_role'] ?? ''))) $subcategoryCode = 'A.2.2';
         if ($subcategoryCode !== null) {
             foreach ($category['subcategories'] ?? [] as $row) {
                 if (strcasecmp((string) ($row['subcategory_code'] ?? ''), $subcategoryCode) === 0) {
                     $selectedLevel = $this->selectedLevel($row, $metadata, $details);
-                    $points = $selectedLevel === null ? (float) ($row['default_points'] ?? 0) : (float) ($selectedLevel['points'] ?? 0);
-                    return $this->result($category, $row, $points, $subcategoryCode, [], $selectedLevel);
+                    $graduateCode = strtoupper((string) $subcategoryCode);
+                    $isPhdUnits = in_array($graduateCode, ['A.1.2', 'A1_PHD_UNITS'], true);
+                    $isGraduateUnits = $isPhdUnits || in_array($graduateCode, ['A.1.4', 'A1_MA_UNITS'], true);
+                    $units = $isGraduateUnits ? (int) ($details['units_completed'] ?? 0) : 0;
+                    $points = $selectedLevel !== null
+                        ? (float) ($selectedLevel['points'] ?? 0)
+                        : ($isGraduateUnits
+                            ? GraduateUnitScoringService::pointsFor($isPhdUnits ? GraduateUnitScoringService::PHD : GraduateUnitScoringService::MA, $units)
+                            : (float) ($row['default_points'] ?? 0));
+                    $resolved = $this->result($category, $row, $points, $subcategoryCode, [], $selectedLevel, $isGraduateUnits);
+                    // Appendix N B.1/B.2/B.4 assign fixed points to each qualifying
+                    // accomplishment. Only B.5 calls for evaluator judgment.
+                    if ($contractMapping !== null && ! ($contractMapping['evaluator_judgment'] ?? false)) {
+                        $resolved['evaluator_judgment_required'] = false;
+                        $resolved['criterion_cap'] = (float) ($category['max_points'] ?? $points);
+                    } elseif (empty($row['levels']) && ! $isGraduateUnits) {
+                        $resolved['evaluator_judgment_required'] = true;
+                        $resolved['criterion_cap'] = min(
+                            (float) ($category['max_points'] ?? $row['default_points'] ?? 0),
+                            (float) ($row['default_points'] ?? 0)
+                        );
+                    }
+                    return $resolved;
                 }
             }
         }
@@ -73,10 +140,10 @@ final class LockedCriterionResolverService
             'A.3' => $this->option($category, 'LEVEL', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')),
             'B.1' => $this->option($category, 'ROLE', preg_match('/judge|evaluator/i', (string) ($details['role'] ?? '')) ? 'JUDGE' : 'LECTURER')
                 + $this->option($category, 'EXTENT', $this->extentCode($details['extent'] ?? ''))
-                + $this->option($category, 'PARTICIPANTS', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? ''))
+                + $this->option($category, 'PARTICIPANTS', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '', 'LOCAL'))
                 + $this->option($category, 'SPONSOR', preg_match('/ndmu|notre dame/i', (string) ($details['organizer'] ?? $metadata['organizer'] ?? '')) ? 'NDMU' : 'EXTERNAL'),
             'B.2' => $this->option($category, 'TYPE', $this->publicationType($details['publication_type'] ?? ''))
-                + $this->option($category, 'SCOPE', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')),
+                + $this->option($category, 'SCOPE', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '', 'LOCAL')),
             'B.4' => $this->option($category, preg_match('/nomin/i', (string) ($details['recognition_status'] ?? '')) ? 'NOMINEE' : 'AWARDEE', $this->awardScope($details['scope'] ?? $metadata['scope_level'] ?? '')),
             'B.5' => $this->option($category, 'MATERIAL_TYPE', $this->materialType($details['material_type'] ?? '')),
             default => throw new RuntimeException("CRITERION_LEVEL_REQUIRED: {$categoryCode} claim does not identify a resolvable locked level or subtype."),
@@ -84,14 +151,23 @@ final class LockedCriterionResolverService
         return $this->result($category, null, $points, $submittedSubtype ?: $categoryCode, $this->matchedOptions($category, $categoryCode, $details, $metadata));
     }
 
-    private function result(array $category, ?array $level, float $points, string $reference, array $matchedOptions = [], ?array $selectedLevel = null): array
+    private function result(array $category, ?array $level, float $points, string $reference, array $matchedOptions = [], ?array $selectedLevel = null, bool $allowZero = false): array
     {
-        if ($points <= 0) throw new RuntimeException('CRITERION_POINTS_UNRESOLVED: Locked configured points could not be determined.');
-        return ['criterion_reference' => $reference, 'category' => $category, 'subcategory' => $level, 'level' => $level, 'selected_level' => $selectedLevel, 'matched_options' => $matchedOptions, 'configured_points' => $points, 'criterion_cap' => (float) ($category['max_points'] ?? $points)];
+        if ($points < 0 || ($points === 0.0 && ! $allowZero)) throw new RuntimeException('CRITERION_POINTS_UNRESOLVED: Locked configured points could not be determined.');
+        $cap = (float) ($category['max_points'] ?? $points);
+        if ($allowZero && $level !== null) $cap = min($cap, (float) ($level['default_points'] ?? $cap));
+        return ['criterion_reference' => $reference, 'category' => $category, 'subcategory' => $level, 'level' => $level, 'selected_level' => $selectedLevel, 'matched_options' => $matchedOptions, 'configured_points' => $points, 'criterion_cap' => $cap];
     }
     private function selectedLevel(array $subcategory, array $metadata, array $details): ?array
     {
         $selection = trim((string) ($metadata['selected_level_id'] ?? $metadata['level_id'] ?? $metadata['selected_level_code'] ?? $metadata['level_code'] ?? $details['selected_level_id'] ?? $details['level_id'] ?? $details['selected_level_code'] ?? $details['level_code'] ?? ''));
+        if ($selection === '' && in_array(strtoupper((string) ($subcategory['subcategory_code'] ?? '')), ['A.1.2', 'A.1.4', 'A1_PHD_UNITS', 'A1_MA_UNITS'], true)) {
+            $units = $details['units_completed'] ?? null;
+            if (! is_scalar($units) || preg_match('/^\d+$/D', trim((string) $units)) !== 1) {
+                throw new RuntimeException('CRITERION_LEVEL_REQUIRED: Graduate units must be a whole number.');
+            }
+            return GraduateUnitScoringService::configuredLevel($subcategory['levels'] ?? [], (int) $units);
+        }
         if ($selection === '') return null;
         foreach ($subcategory['levels'] ?? [] as $level) {
             if ((int) ($level['is_active'] ?? 1) !== 1) continue;
@@ -108,10 +184,10 @@ final class LockedCriterionResolverService
             'B.1' => [
                 ['ROLE', preg_match('/judge|evaluator/i', (string) ($details['role'] ?? '')) ? 'JUDGE' : 'LECTURER'],
                 ['EXTENT', $this->extentCode($details['extent'] ?? '')],
-                ['PARTICIPANTS', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')],
+                ['PARTICIPANTS', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '', 'LOCAL')],
                 ['SPONSOR', preg_match('/ndmu|notre dame/i', (string) ($details['organizer'] ?? $metadata['organizer'] ?? '')) ? 'NDMU' : 'EXTERNAL'],
             ],
-            'B.2' => [['TYPE', $this->publicationType($details['publication_type'] ?? '')], ['SCOPE', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '')]],
+            'B.2' => [['TYPE', $this->publicationType($details['publication_type'] ?? '')], ['SCOPE', $this->scopeCode($details['scope'] ?? $metadata['scope_level'] ?? '', 'LOCAL')]],
             'B.4' => [[preg_match('/nomin/i', (string) ($details['recognition_status'] ?? '')) ? 'NOMINEE' : 'AWARDEE', $this->awardScope($details['scope'] ?? $metadata['scope_level'] ?? '')]],
             'B.5' => [['MATERIAL_TYPE', $this->materialType($details['material_type'] ?? '')]],
             default => [],
@@ -129,7 +205,7 @@ final class LockedCriterionResolverService
     }
     private function findCategory(array $snapshot, string $code): ?array { foreach ($snapshot['areas'] ?? [] as $area) foreach ($area['categories'] ?? [] as $category) if (strcasecmp((string) ($category['category_code'] ?? ''), $code) === 0) return $category + ['area_code' => $area['area_code'] ?? null, 'area_max_points' => $area['max_points'] ?? null]; return null; }
     private function option(array $category, string $group, string $code): float { foreach ($category['options'] ?? [] as $row) if (strcasecmp((string) ($row['option_group_code'] ?? ''), $group) === 0 && strcasecmp((string) ($row['option_code'] ?? ''), $code) === 0) return (float) ($row['points'] ?? 0); throw new RuntimeException("CRITERION_OPTION_INVALID: {$group}/{$code} is not configured in the locked criterion."); }
-    private function scopeCode(mixed $value): string { $v=strtoupper((string)$value); return str_contains($v,'INTERNATIONAL')?'INTERNATIONAL':(str_contains($v,'NATIONAL')?'NATIONAL':(str_contains($v,'REGION')?'REGIONAL':(preg_match('/CITY|PROV/', $v)?'CITY_PROV':'IN_HOUSE'))); }
+    private function scopeCode(mixed $value, string $localCode = 'IN_HOUSE'): string { $v=strtoupper((string)$value); return str_contains($v,'INTERNATIONAL')?'INTERNATIONAL':(str_contains($v,'NATIONAL')?'NATIONAL':(str_contains($v,'REGION')?'REGIONAL':(preg_match('/CITY|PROV/', $v)?'CITY_PROV':$localCode))); }
     private function awardScope(mixed $value): string { $v=$this->scopeCode($value); return in_array($v,['INTERNATIONAL','NATIONAL'],true)?$v:(in_array($v,['REGIONAL','CITY_PROV'],true)?'PROV_REGIONAL':'LOCAL'); }
     private function extentCode(mixed $value): string { $v=strtoupper((string)$value); return preg_match('/>\s*2|MORE THAN 2|3 DAY/', $v)?'GT_2_DAYS':(str_contains($v,'2 DAY')?'2_DAYS':(str_contains($v,'1 DAY')||str_contains($v,'WHOLE')?'1_DAY':(str_contains($v,'HALF')?'HALF_DAY':'1_HOUR'))); }
     private function publicationType(mixed $value): string { $v=strtoupper(str_replace([' ','-'],'_',trim((string)$value))); foreach(['RESEARCH_OUTPUT','SCHOLARLY_PAPER','COMMENTARY','COMPILATION','MONOGRAPH','REVIEWS','ARTICLE','BOOK'] as $code) if(str_contains($v,$code))return $code; throw new RuntimeException('CRITERION_LEVEL_REQUIRED: Publication type is not recognized by the locked criterion.'); }

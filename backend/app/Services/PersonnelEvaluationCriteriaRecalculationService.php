@@ -18,7 +18,7 @@ final class PersonnelEvaluationCriteriaRecalculationService
     }
 
     /** Called inside the criteria activation transaction; versions, periods, and jobs commit together. */
-    public function enqueueForActivatedVersion(string $sourceVersionId, string $targetVersionId, string $actorProfileId, string $personnelGroup): array
+    public function enqueueForActivatedVersion(string $sourceVersionId, string $targetVersionId, string $actorProfileId, string $personnelGroup, bool $recalculateScores = true): array
     {
         foreach (['evaluation_criteria_recalculation_jobs', 'evaluation_criteria_recalculation_events', 'personnel_evaluation_periods', 'personnel_evaluations'] as $table) {
             if (! $this->db->tableExists($table)) throw new RuntimeException('CRITERIA_RECALCULATION_SCHEMA_NOT_READY', 503);
@@ -51,6 +51,11 @@ final class PersonnelEvaluationCriteriaRecalculationService
             }
         }
 
+        // Cosmetic/documentation-only revisions still become the version used by
+        // operational periods, but retain existing evaluation snapshots and do
+        // not create recalculation work.
+        if (! $recalculateScores) return ['queued_evaluation_count'=>0,'updated_period_count'=>count(array_filter($periods, static fn(array $period): bool => in_array(strtoupper((string)($period['status'] ?? '')), $operational, true)))];
+
         $hasPeriod = $this->db->fieldExists('evaluation_period_id', 'personnel_evaluations');
         $hasSnapshotGroup = $this->db->fieldExists('personnel_group_snapshot', 'personnel_evaluations');
         $builder = $this->db->table('personnel_evaluations pe')->select('pe.*');
@@ -80,7 +85,7 @@ final class PersonnelEvaluationCriteriaRecalculationService
             $period = $periodById[$periodId] ?? ($periodId !== '' ? $this->db->table('personnel_evaluation_periods')->where('id', $periodId)->get()->getRowArray() : null);
             $reconfirmationStatus = 'not_required';
             $reviewerId = null;
-            if ($scope === 'FACULTY' && $status === 'ready_for_finalization') {
+            if ($status === 'ready_for_finalization') {
                 $authority = (new OrganizationalAuthorityResolver($this->db))->resolveResponsibleAuthority((string) $evaluation['personnel_profile_id'], $period ?: null);
                 $reviewerId = (string) ($authority['authority_profile_id'] ?? '');
                 if ($reviewerId === '' || $reviewerId === (string) $evaluation['personnel_profile_id']) throw new RuntimeException('CRITERIA_RECONFIRMATION_REVIEWER_UNRESOLVED: Cannot resolve an authorized, non-self reviewer for an endorsed evaluation.', 409);
@@ -112,9 +117,11 @@ final class PersonnelEvaluationCriteriaRecalculationService
     public function finalizationBlocker(array $evaluation): ?array
     {
         if (in_array(strtolower((string) ($evaluation['status'] ?? '')), self::FINAL_STATUSES, true)) return null;
-        if (! $this->db->tableExists('evaluation_criteria_recalculation_jobs')) return ['code'=>'CRITERIA_RECALCULATION_SCHEMA_NOT_READY','message'=>'Criteria synchronization is unavailable; finalization is blocked.'];
         $versionId = (string) ($evaluation['evaluation_scale_version_id'] ?? '');
-        $job = $this->db->table('evaluation_criteria_recalculation_jobs')->where('evaluation_id', (string) $evaluation['id'])->where('target_version_id', $versionId)->orderBy('created_at', 'DESC')->get()->getRowArray();
+        $jobsAvailable = $this->db->tableExists('evaluation_criteria_recalculation_jobs');
+        $job = $jobsAvailable
+            ? $this->db->table('evaluation_criteria_recalculation_jobs')->where('evaluation_id', (string) $evaluation['id'])->where('target_version_id', $versionId)->orderBy('created_at', 'DESC')->get()->getRowArray()
+            : null;
         if ($job) {
             if (($job['status'] ?? '') !== 'completed') return ['code'=>'CRITERIA_RECALCULATION_' . strtoupper((string) ($job['status'] ?? 'unknown')), 'message'=>'The evaluation must finish criteria recalculation before finalization.'];
             if (($job['reconfirmation_status'] ?? 'not_required') === 'pending') return ['code'=>'CRITERIA_RECONFIRMATION_REQUIRED','message'=>'The responsible reviewer must reconfirm the endorsement after the criteria change.'];
@@ -125,7 +132,12 @@ final class PersonnelEvaluationCriteriaRecalculationService
         if ($periodId !== '' && $this->db->tableExists('personnel_evaluation_periods')) {
             $period = $this->db->table('personnel_evaluation_periods')->select('evaluation_scale_version_id')->where('id', $periodId)->get()->getRowArray();
             if ($period && (string) ($period['evaluation_scale_version_id'] ?? '') !== $versionId) return ['code'=>'CRITERIA_VERSION_STALE','message'=>'Evaluation criteria do not match the version assigned to its ranking period.'];
+            // Legacy installations may lack the recalculation queue. Criteria activation
+            // cannot enqueue changes without that schema, so matching locked versions
+            // can still be reviewed and finalized safely.
+            if (! $jobsAvailable && $period && $versionId !== '') return null;
         }
+        if (! $jobsAvailable) return ['code'=>'CRITERIA_RECALCULATION_SCHEMA_NOT_READY','message'=>'Criteria synchronization is unavailable; finalization is blocked.'];
         return null;
     }
 
@@ -178,7 +190,7 @@ final class PersonnelEvaluationCriteriaRecalculationService
             $criteria = (new RubricAdministrationService())->getScaleVersionHierarchy((string) $job['target_version_id']);
             $items = $this->db->table('personnel_evaluation_items')->where('evaluation_id', $evaluation['id'])->get()->getResultArray();
             $updatedItems = $this->recalculateItems($items, $criteria, (string) $job['target_version_id']);
-            $totals = $this->snapshotTotals($updatedItems);
+            $totals = $this->snapshotTotals($updatedItems, (int) ($evaluation['tenure_years'] ?? 0), $criteria);
             $now = date('Y-m-d H:i:s');
             if ($updatedItems !== []) $this->db->table('personnel_evaluation_items')->updateBatch($updatedItems, 'id');
             $evaluationUpdate = [
@@ -340,22 +352,9 @@ final class PersonnelEvaluationCriteriaRecalculationService
     }
 
     /** Uses the same catalog snapshot caps and Graduate Unit aggregation as HR evaluation totals. */
-    private function snapshotTotals(array $items): array
+    private function snapshotTotals(array $items, int $tenureYears = 0, array $criteriaSnapshot = []): array
     {
-        $categories=[]; $categoryAreas=[]; $categoryCaps=[]; $areaCaps=[];
-        $graduateUnits = GraduateUnitScoringService::aggregate($items);
-        foreach ($items as $item) {
-            if (($item['verification_status'] ?? '') !== 'verified' || ($item['rating_status'] ?? '') !== 'rated') continue;
-            $snapshot=$this->decode($item['criterion_snapshot']??null); $category=$snapshot['category']??[]; $isUnit=GraduateUnitScoringService::isUnitItem($item);
-            $code=(string)($category['category_code']??$item['criterion_code']??'UNMAPPED'); $area=strtoupper((string)($category['area_code']??substr($code,0,1)));
-            $categories[$code]=($categories[$code]??0.0)+($isUnit?0.0:(float)($item['awarded_points']??0)); $categoryAreas[$code]=$area;
-            $categoryCaps[$code]=(float)($snapshot['criterion_cap']??$category['max_points']??PHP_FLOAT_MAX); $areaCaps[$area]=(float)($category['area_max_points']??$areaCaps[$area]??PHP_FLOAT_MAX);
-        }
-        foreach ($graduateUnits as $level) $categories[$level['category_code']]=($categories[$level['category_code']]??0.0)+$level['points'];
-        $areas=['A'=>0.0,'B'=>0.0,'C'=>0.0];
-        foreach ($categories as $code=>$points) if (isset($categoryAreas[$code])) $areas[$categoryAreas[$code]]=($areas[$categoryAreas[$code]]??0)+min($points,$categoryCaps[$code]);
-        foreach ($areas as $area=>$points) $areas[$area]=min($points,$areaCaps[$area]??PHP_FLOAT_MAX);
-        return ['areaA_score'=>$areas['A'],'areaB_score'=>$areas['B'],'areaC_score'=>$areas['C'],'total_score'=>array_sum($areas),'category_scores'=>$categories,'graduate_units'=>array_values($graduateUnits)];
+        return (new PersonnelEvaluationItemScorePreviewService())->totals($items, $tenureYears, $criteriaSnapshot);
     }
 
     private function notifyReviewer(array $job, array $evaluation, array $criteria, string $now): void

@@ -2,8 +2,6 @@ import React from 'react'
 import { RotateCcw, CheckCircle2 } from 'lucide-react'
 
 export default function StudioDecisionBar({
-  reviewedCount = 0,
-  totalCount = 0,
   isReadyForFinalize = false,
   onOpenReturnModal,
   onOpenFinalizeModal,
@@ -11,14 +9,7 @@ export default function StudioDecisionBar({
   finalizeLabel = 'Finalize Evaluation'
 }) {
   return (
-    <div className="px-6 py-3 bg-white dark:bg-[#131e2e] border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 font-sans shrink-0">
-      <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-        <CheckCircle2 className={`w-4 h-4 shrink-0 ${isReadyForFinalize ? 'text-[#176B43] dark:text-emerald-400' : 'text-amber-500'}`} />
-        <span>
-          <strong className="text-slate-900 dark:text-white">{reviewedCount} / {totalCount}</strong> Evidence Decisions Completed
-        </span>
-      </div>
-
+    <div className="px-6 py-3 bg-white dark:bg-[#131e2e] border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-end gap-3 font-sans shrink-0">
       <div className="flex items-center gap-2">
         {onOpenRankPreparation && <button
           type="button"
@@ -28,6 +19,7 @@ export default function StudioDecisionBar({
         >
           Prepare Faculty Rank
         </button>}
+
         {onOpenReturnModal && <button
           type="button"
           onClick={onOpenReturnModal}

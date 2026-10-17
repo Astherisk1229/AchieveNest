@@ -17,6 +17,9 @@ export const hrEvaluationService = {
   async getReport(id) {
     return unwrap(await apiClient.get(`/reviewer/evaluations/${id}/report`))
   },
+  async downloadSummaryPdf(id) {
+    return (await apiClient.get(`/reviewer/evaluations/${encodeURIComponent(id)}/summary.pdf`, { responseType: 'blob', timeout: 60_000 }))
+  },
   async start(id) {
     return unwrap(await apiClient.post(`/reviewer/evaluations/${id}/start`))
   },
@@ -29,8 +32,8 @@ export const hrEvaluationService = {
   async finalize(id, payload = {}) {
     return unwrap(await apiClient.post(`/reviewer/evaluations/${id}/finalize`, payload))
   },
-  async verifyItem(id, itemId, status = 'verified', remarks = '') {
-    return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}/verify`, { verification_status: status, evaluator_remarks: remarks }))
+  async verifyItem(id, itemId, status = 'verified', remarks = '', classificationCode = '') {
+    return unwrap(await apiClient.patch(`/reviewer/evaluations/${encodeURIComponent(id)}/items/${encodeURIComponent(itemId)}/verify`, { verification_status: status, evaluator_remarks: remarks, ...(classificationCode ? { classification_code: classificationCode } : {}) }))
   },
   async rateItem(id, itemId, remarks = '', awardedPoints = null) {
     const payload = { evaluator_remarks: remarks }

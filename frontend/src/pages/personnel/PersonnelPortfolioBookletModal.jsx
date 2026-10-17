@@ -5,9 +5,13 @@ import BookletPage, { areaAnchor, buildBookletPages, criterionAnchor, proofAncho
 import { BookletPrintPortal, useBookletPrint } from '../../components/portfolio-booklet/BookletPrint'
 import { resolveBookletFormat } from '../../components/portfolio-booklet/bookletFormats'
 import { nonTeachingAreaARows } from '../../utils/nonTeachingBooklet'
+import { facultyBookletIncompleteItems, facultyBookletUnmappedItems } from '../../utils/facultyAcademicBooklet'
 
-// A4 at 96dpi — the existing booklet page width.
-const PAGE_WIDTH = 794
+// Legal portrait at 96dpi for the Faculty Development Program template; A4 for NTP.
+const FACULTY_PAGE_WIDTH = 816
+const NTP_PAGE_WIDTH = 794
+const FACULTY_PRINTABLE_HEIGHT = 1118
+const FACULTY_SCREEN_PAGE_HEIGHT = 1248
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 2
 const ZOOM_STEP = 0.1
@@ -29,6 +33,8 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   const [zoomMode, setZoomMode] = useState('fit')
   const [manualZoom, setManualZoom] = useState(1)
   const [fitZoom, setFitZoom] = useState(1)
+  const [facultyContentPageCount, setFacultyContentPageCount] = useState(1)
+  const facultyDocumentRef = useRef(null)
 
   const scrollRef = useRef(null)
   const outlineRef = useRef(null)
@@ -41,6 +47,8 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   // Faculty and Non-Teaching share this booklet; the format picks the title, areas and criteria.
   const format = useMemo(() => resolveBookletFormat(user, portfolio), [user, portfolio])
   const items = useMemo(() => format.normalize(portfolio), [format, portfolio])
+  const unmapped = useMemo(() => format.id === 'faculty_academic' ? facultyBookletUnmappedItems(portfolio, items) : [], [format.id, portfolio, items])
+  const incomplete = useMemo(() => format.id === 'faculty_academic' ? facultyBookletIncompleteItems(items) : [], [format.id, items])
   const proofItems = useMemo(() => items.filter((item) => item.evidence), [items])
   const areaARows = useMemo(() => (format.id === 'non_teaching' ? nonTeachingAreaARows(portfolio) : []), [format.id, portfolio])
   const criterionLabelByKey = useMemo(() => Object.fromEntries(format.criteria.map((criterion) => [criterion.key, criterion.label])), [format])
@@ -49,6 +57,22 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
   // Page order is unchanged from the previous paginated viewer and the print output:
   // Area A, Area B, Area C, then one Supporting Evidence page per attached proof.
   const pages = useMemo(() => buildBookletPages(format, items), [format, items])
+  const isFaculty = format.id === 'faculty_academic'
+  const pageWidth = isFaculty ? FACULTY_PAGE_WIDTH : NTP_PAGE_WIDTH
+  const contentPageCount = isFaculty ? facultyContentPageCount : pages.filter((page) => page.type === 'content').length
+  const totalPages = contentPageCount + pages.filter((page) => page.type === 'proof').length
+
+  useEffect(() => {
+    if (!isOpen || !isFaculty) return undefined
+    const flow = facultyDocumentRef.current
+    if (!flow) return undefined
+    const measure = () => setFacultyContentPageCount(Math.max(1, Math.ceil(flow.offsetHeight / FACULTY_PRINTABLE_HEIGHT)))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(measure)
+    observer.observe(flow)
+    return () => observer.disconnect()
+  }, [isOpen, isFaculty, pages])
 
   const outline = useMemo(() => format.areas.map((area) => ({
     id: areaAnchor(area.key),
@@ -67,10 +91,10 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
     return [
       ...format.areas.filter((area) => matches(area.title)).map((area) => ({ id: areaAnchor(area.key), kind: 'Section', label: area.title })),
       ...format.criteria.filter((criterion) => matches(criterion.label)).map((criterion) => ({ id: criterionAnchor(criterion.key), kind: 'Subsection', label: criterion.label })),
-      ...items.filter((item) => matches(item.reference, item.accomplishment_display, item.organization_display, item.remarks_classification_display, item.date_or_period_display))
-        .map((item) => ({ id: rowAnchor(item.accomplishmentId), kind: 'Accomplishment', label: `${item.reference} · ${item.accomplishment_display || '—'}` })),
-      ...proofItems.filter((item) => matches(item.reference, item.accomplishment_display, item.evidence.original_filename, item.evidence.id))
-        .map((item) => ({ id: proofAnchor(item.accomplishmentId), kind: 'Evidence', label: `${item.reference} · ${item.evidence.original_filename || 'Persisted evidence'}` }))
+      ...items.filter((item) => matches(format.id === 'non_teaching' ? '' : item.reference, item.accomplishment_display, item.organization_display, item.remarks_classification_display, item.date_or_period_display))
+        .map((item) => ({ id: rowAnchor(item.accomplishmentId), kind: 'Accomplishment', label: format.id === 'non_teaching' ? (item.accomplishment_display || '—') : `${item.reference} · ${item.accomplishment_display || '—'}` })),
+      ...proofItems.filter((item) => matches(format.id === 'non_teaching' ? '' : item.reference, item.accomplishment_display, item.evidence.original_filename, item.evidence.id))
+        .map((item) => ({ id: proofAnchor(item.accomplishmentId), kind: 'Evidence', label: format.id === 'non_teaching' ? (item.evidence.original_filename || 'Persisted evidence') : `${item.reference} · ${item.evidence.original_filename || 'Persisted evidence'}` }))
     ]
   }, [query, items, proofItems, format])
 
@@ -85,7 +109,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
       const width = element.clientWidth
       if (!width) return
       const gutter = width >= 640 ? 48 : 16
-      setFitZoom(Math.min(MAX_FIT_ZOOM, Math.max(0.3, (width - gutter) / PAGE_WIDTH)))
+      setFitZoom(Math.min(MAX_FIT_ZOOM, Math.max(0.3, (width - gutter) / pageWidth)))
     }
     measure()
     if (typeof ResizeObserver === 'undefined') {
@@ -95,7 +119,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
     const observer = new ResizeObserver(measure)
     observer.observe(element)
     return () => observer.disconnect()
-  }, [isOpen])
+  }, [isOpen, pageWidth])
 
   // Keep the reader at the same place in the document when the scale changes
   // (zoom controls, fit-width recalculation, opening/closing the evidence drawer).
@@ -130,7 +154,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
     }, { root, threshold: [0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] })
     root.querySelectorAll('[data-page-index]').forEach((element) => observer.observe(element))
     return () => observer.disconnect()
-  }, [isOpen, pages])
+  }, [isOpen, pages, totalPages])
 
   // Active outline item: the last section heading that has reached the top quarter of the viewer.
   useEffect(() => {
@@ -292,7 +316,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
                 return (
                   <li key={id}>
                     <button type="button" data-outline-id={id} aria-current={activeSection === id ? 'location' : undefined} onClick={() => scrollToId(id)} className={outlineButtonClass(id, 1)}>
-                      <span><span className="mr-1 font-bold text-emerald-900">{item.reference}</span>{item.accomplishment_display || item.evidence.original_filename}</span>
+                      <span>{format.id !== 'non_teaching' && <span className="mr-1 font-bold text-emerald-900">{item.reference}</span>}{item.accomplishment_display || item.evidence.original_filename}</span>
                     </button>
                   </li>
                 )
@@ -322,8 +346,8 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
           </div>
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <button type="button" onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className={toolButton} aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="min-w-[3.5rem] text-center text-xs font-bold tabular-nums" aria-live="polite" aria-label={`Page ${currentPage} of ${pages.length}`}>{currentPage} / {pages.length}</span>
-            <button type="button" onClick={() => scrollToPage(Math.min(pages.length, currentPage + 1))} disabled={currentPage === pages.length} className={toolButton} aria-label="Next page"><ChevronRight className="h-4 w-4" /></button>
+            <span className="min-w-[3.5rem] text-center text-xs font-bold tabular-nums" aria-live="polite" aria-label={`Page ${currentPage} of ${totalPages}`}>{currentPage} / {totalPages}</span>
+            <button type="button" onClick={() => scrollToPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className={toolButton} aria-label="Next page"><ChevronRight className="h-4 w-4" /></button>
             <span className="mx-1 hidden h-5 w-px bg-slate-200 md:block" aria-hidden="true" />
             <button type="button" onClick={() => zoomBy(-ZOOM_STEP)} disabled={zoom <= MIN_ZOOM} className={`${toolButton} hidden md:inline-flex`} aria-label="Zoom out"><ZoomOut className="h-4 w-4" /></button>
             <span className="hidden min-w-[3rem] text-center text-xs font-bold tabular-nums text-slate-700 md:inline" aria-live="polite" aria-label={`Zoom ${Math.round(zoom * 100)} percent`}>{Math.round(zoom * 100)}%</span>
@@ -336,6 +360,13 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
           </div>
         </header>
 
+        {unmapped.length > 0 && <div role="alert" className="shrink-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-950 print:hidden">
+          <strong>{unmapped.length} saved accomplishment{unmapped.length === 1 ? '' : 's'} could not be placed in this booklet.</strong>
+          <span className="ml-1">{unmapped.map((item) => item.title).join('; ')}. Refresh your portfolio and review the record classification.</span>
+        </div>}
+        {incomplete.length > 0 && <div role="alert" className="shrink-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-950 print:hidden">
+          <strong>Some booklet fields are missing.</strong> <span>{incomplete.map((item) => item.title).join('; ')}. Refresh your portfolio and check each record's date and institution details.</span>
+        </div>}
         <div className="relative flex min-h-0 flex-1 print:hidden">
           {/* Desktop outline (collapsible to a slim rail) */}
           {outlineCollapsed ? (
@@ -357,11 +388,16 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
           {/* Continuous document canvas */}
           <main ref={scrollRef} tabIndex={0} aria-label="Portfolio document" className="min-w-0 flex-1 overflow-auto bg-slate-200 px-2 py-4 focus:outline-none sm:px-6 sm:py-6">
             <div className="mx-auto w-fit space-y-6" style={{ zoom }}>
-              {pages.map((page, index) => (
-                <div key={page.key} data-page-index={index} aria-label={`Page ${index + 1} of ${pages.length}`} role="group">
-                  {renderPage(page, true)}
-                </div>
-              ))}
+              {pages.map((page, index) => {
+                if (isFaculty && page.type === 'content') return (
+                  <div key={page.key} className="relative" style={{ minHeight: Math.max(FACULTY_SCREEN_PAGE_HEIGHT, facultyContentPageCount * FACULTY_SCREEN_PAGE_HEIGHT) }}>
+                    <div ref={(element) => { facultyDocumentRef.current = element?.querySelector('[data-faculty-flow="true"]') || null }}>{renderPage(page, true)}</div>
+                    {Array.from({ length: facultyContentPageCount }, (_, pageIndex) => <div key={`faculty-page-marker-${pageIndex}`} data-page-index={pageIndex} aria-label={`Page ${pageIndex + 1} of ${totalPages}`} role="group" style={{ position: 'absolute', top: pageIndex * FACULTY_SCREEN_PAGE_HEIGHT, left: 0, width: 2, height: FACULTY_SCREEN_PAGE_HEIGHT, pointerEvents: 'none' }} />)}
+                  </div>
+                )
+                const pageIndex = isFaculty ? contentPageCount + index - 1 : index
+                return <div key={page.key} data-page-index={pageIndex} aria-label={`Page ${pageIndex + 1} of ${totalPages}`} role="group">{renderPage(page, true)}</div>
+              })}
             </div>
           </main>
 
@@ -374,7 +410,7 @@ export default function PersonnelPortfolioBookletModal({ isOpen, onClose, portfo
         </div>
 
       </div>
-      <BookletPrintPortal printing={print.printing} prepared={print.prepared} total={proofItems.length} pages={pages} label={format.viewerTitle}
+      <BookletPrintPortal printing={print.printing} prepared={print.prepared} total={proofItems.length} pages={pages} label={format.viewerTitle} formatId={format.id}
         renderPage={(page) => <BookletPage {...pageProps} page={page} eagerEvidence onEvidenceSettled={print.onEvidenceSettled} />} />
     </div>
   )

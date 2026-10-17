@@ -88,37 +88,56 @@ class HREvaluationController extends Controller
             'previous_status' => $previousStatus,
             'new_status' => $newStatus,
             'remarks' => $remarks === null ? null : ($payload === [] ? $remarks : $remarks . "\n" . json_encode($payload, JSON_UNESCAPED_UNICODE)),
-            'occurred_at' => date('Y-m-d H:i:s'),
+            'occurred_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s.u'),
         ];
         $db->table('personnel_evaluation_events')->insert($event);
         return $event + ['event_type' => $action, 'performed_by' => $actorId, 'notes' => $remarks, 'payload' => json_encode($payload)];
     }
 
-    private function snapshotTotals(array $items): array
+    private function snapshotTotals(array $items, array $evaluation = []): array
     {
-        $categories = [];
-        $categoryAreas = [];
-        $categoryCaps = [];
-        $areaCaps = [];
-        // Graduate units: summed per level, official table applied once (never per semester).
-        $graduateUnits = \App\Services\GraduateUnitScoringService::aggregate($items);
-        foreach ($items as $item) {
-            if (($item['verification_status'] ?? '') !== 'verified' || ($item['rating_status'] ?? '') !== 'rated') continue;
-            $snapshot = is_string($item['criterion_snapshot'] ?? null) ? json_decode($item['criterion_snapshot'], true) : ($item['criterion_snapshot'] ?? []);
-            $isUnitItem = \App\Services\GraduateUnitScoringService::isUnitItem($item);
-            $category = $snapshot['category'] ?? [];
-            $code = (string) ($category['category_code'] ?? $item['criterion_code'] ?? 'UNMAPPED');
-            $area = strtoupper((string) ($category['area_code'] ?? substr($code, 0, 1)));
-            $categories[$code] = ($categories[$code] ?? 0.0) + ($isUnitItem ? 0.0 : (float) ($item['awarded_points'] ?? 0));
-            $categoryAreas[$code] = $area;
-            $categoryCaps[$code] = (float) ($snapshot['criterion_cap'] ?? $category['max_points'] ?? PHP_FLOAT_MAX);
-            $areaCaps[$area] = (float) ($category['area_max_points'] ?? $areaCaps[$area] ?? PHP_FLOAT_MAX);
+        $criteriaSnapshot = $evaluation['criteria_snapshot'] ?? [];
+        if (is_string($criteriaSnapshot)) $criteriaSnapshot = json_decode($criteriaSnapshot, true) ?: [];
+        return (new \App\Services\PersonnelEvaluationItemScorePreviewService())->totals(
+            $items,
+            (int) ($evaluation['tenure_years'] ?? 0),
+            is_array($criteriaSnapshot) ? $criteriaSnapshot : []
+        );
+    }
+
+    /** Mirror evaluator decisions onto the canonical portfolio record without trusting client input. */
+    private function syncAccomplishmentScoringSnapshot($db, array $evaluationItem, ?float $verifiedPoints, string $decision, string $evaluatorId): void
+    {
+        $accomplishmentId = trim((string) ($evaluationItem['accomplishment_id'] ?? ''));
+        if ($accomplishmentId === '' || ! $db->fieldExists('criterion_snapshot', 'personnel_accomplishments')) return;
+        $record = $db->table('personnel_accomplishments')->select('id,criterion_snapshot')->where('id', $accomplishmentId)->get()->getRowArray();
+        if (! $record) return;
+        $snapshot = is_string($record['criterion_snapshot'] ?? null)
+            ? (json_decode($record['criterion_snapshot'], true) ?: [])
+            : (is_array($record['criterion_snapshot'] ?? null) ? $record['criterion_snapshot'] : []);
+        if ($snapshot === []) return;
+
+        $scoring = is_array($snapshot['provisional_scoring'] ?? null) ? $snapshot['provisional_scoring'] : [];
+        $scoring['evidence_verified'] = $decision === 'verified';
+        $scoring['verified_points'] = $decision === 'verified' && $verifiedPoints !== null ? $verifiedPoints : null;
+        $scoring['verified_by'] = $decision === 'verified' ? $evaluatorId : null;
+        $scoring['verified_at'] = $decision === 'verified' ? date('Y-m-d H:i:s') : null;
+        if ($decision === 'verified' && $verifiedPoints !== null) {
+            $scoring['status'] = 'verified';
+        } elseif ($decision === 'verified') {
+            $scoring['status'] = 'verified_pending_rating';
+        } else {
+            $scoring['status'] = match ($decision) {
+                'needs_revision' => 'returned',
+                'ineligible' => 'not_eligible',
+                default => 'pending_verification',
+            };
         }
-        foreach ($graduateUnits as $level) $categories[$level['category_code']] = ($categories[$level['category_code']] ?? 0.0) + $level['points'];
-        $areas = ['A' => 0.0, 'B' => 0.0, 'C' => 0.0];
-        foreach ($categories as $code => $points) $areas[$categoryAreas[$code]] = ($areas[$categoryAreas[$code]] ?? 0) + min($points, $categoryCaps[$code]);
-        foreach ($areas as $area => $points) $areas[$area] = min($points, $areaCaps[$area] ?? PHP_FLOAT_MAX);
-        return ['areaA_score' => $areas['A'], 'areaB_score' => $areas['B'], 'areaC_score' => $areas['C'], 'total_score' => array_sum($areas), 'category_scores' => $categories, 'graduate_units' => array_values($graduateUnits)];
+        $snapshot['provisional_scoring'] = $scoring;
+        $db->table('personnel_accomplishments')->where('id', $accomplishmentId)->update([
+            'criterion_snapshot' => json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     private function createDeanSummary($db, array $evaluation, array $items, array $actor, array $totals, string $status): array
@@ -227,6 +246,20 @@ class HREvaluationController extends Controller
     {
         $snapshot = $evaluation['eligibility_snapshot'] ?? null;
         if (is_string($snapshot) && $snapshot !== '') $snapshot = json_decode($snapshot, true);
+        $personnelGroup = strtoupper((string) ($evaluation['personnel_group_snapshot'] ?? ''));
+        if ($personnelGroup === 'NON_TEACHING_FACULTY') {
+            // NTF portfolios are submitted before Area A is rated. For older
+            // snapshots, recompute the submission-specific decision because
+            // their stored ranking eligibility may still be pending solely
+            // due to Area A scores that HR enters during evaluation.
+            if (is_array($snapshot) && isset($snapshot['submission_readiness_status'])) {
+                return $snapshot['submission_readiness_status'] === 'eligible';
+            }
+            if (! empty($evaluation['evaluation_period_id'])) {
+                $current = (new \App\Services\PersonnelEligibilityService())->evaluateEligibility((string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
+                return ($current['submission_readiness_status'] ?? '') === 'eligible';
+            }
+        }
         if (is_array($snapshot) && array_key_exists('eligibility_status', $snapshot)) return ($snapshot['eligibility_status'] ?? '') === 'eligible';
         if (!empty($evaluation['evaluation_period_id'])) {
             $current = (new \App\Services\PersonnelEligibilityService())->evaluateEligibility((string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
@@ -346,11 +379,16 @@ class HREvaluationController extends Controller
                 'evaluator.full_name AS evaluator_name',
                 'pp.personnel_group',
                 'pp.employment_start_date',
+                'pp.current_rank_title',
+                'pp.faculty_engagement',
+                'pp.employment_status',
+                'period.academic_year AS period_academic_year',
             ])
             // tenure_years comes from pe.* — the server-derived value frozen at submission.
             ->select('NULL AS email', false)
             ->join('profiles p', 'p.id = pe.personnel_profile_id')
             ->join('personnel_profiles pp', 'pp.profile_id = pe.personnel_profile_id')
+            ->join('personnel_evaluation_periods period', 'period.id = pe.evaluation_period_id', 'left')
             ->join('profiles evaluator', 'evaluator.id = pe.evaluator_profile_id', 'left')
             ->where('pe.id', $id)
             ->get()
@@ -377,7 +415,7 @@ class HREvaluationController extends Controller
             ->get()
             ->getResultArray();
 
-        $scores = $this->snapshotTotals($items);
+        $scores = $this->snapshotTotals($items, $evaluation);
 
         $deficiencies = $db->table('personnel_evaluation_deficiency_requests')
             ->where('evaluation_id', $id)
@@ -437,14 +475,11 @@ class HREvaluationController extends Controller
         $academicYear       = $evaluation['academic_year'] ?? '';
 
         if (! empty($evaluation['evaluation_period_id'])) {
-            $period = $db->table('personnel_evaluation_periods')->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
-            if (! $period || $period['status'] !== 'EVALUATION_ONGOING') {
-                return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_NOT_ONGOING', 'message' => 'Evaluation can begin only after HR starts evaluation for this period.']], 422);
+            $period = (new \App\Services\PersonnelEvaluationPeriodService($db))->find((string) $evaluation['evaluation_period_id']);
+            if (! $period || ! $period['can_evaluate']) {
+                return $this->respond(['error' => ['code' => 'EVALUATION_WINDOW_NOT_OPEN', 'message' => 'Evaluation can begin only during its configured evaluation period.']], 422);
             }
         }
-
-        // Non-Teaching Faculty submissions made before the NTF workbook existed get their locked Area A items now.
-        (new \App\Services\NtfAnnualReviewAreaAService($db))->attach($id);
 
         // Phase 8: Qualification Gate — must be cleared before evaluation can start
         if (! $this->isSubmissionEligibilityCleared($evaluation)) {
@@ -482,12 +517,19 @@ class HREvaluationController extends Controller
 
         $db->transBegin();
         try {
-            $db->table('personnel_evaluations')->where('id', $id)->update([
+            $db->table('personnel_evaluations')->where('id', $id)->where('status', 'submitted')->update([
                 'status'                => 'in_evaluation',
                 'evaluator_profile_id'  => $activeEvaluatorId,
                 'evaluation_started_at' => date('Y-m-d H:i:s'),
                 'updated_at'            => date('Y-m-d H:i:s'),
             ]);
+            if ($db->affectedRows() !== 1) throw new RuntimeException('SUBMISSION_STATE_CHANGED: This portfolio changed before evaluation could begin. Refresh and try again.');
+            if (! empty($evaluation['evaluation_root_id']) && $db->table('personnel_evaluations')
+                ->where('evaluation_root_id', $evaluation['evaluation_root_id'])
+                ->where('version_number >', (int) ($evaluation['version_number'] ?? 1))
+                ->countAllResults() > 0) {
+                throw new RuntimeException('SUBMISSION_STATE_CHANGED: A newer portfolio version is available. Refresh before starting evaluation.');
+            }
 
             $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'evaluation_started', $evaluation['status'], 'in_evaluation', "Evaluation started by {$actor['profile']['full_name']} (role: {$resolved['evaluator_role']})", [
                     'evaluator_profile_id' => $activeEvaluatorId,
@@ -498,6 +540,7 @@ class HREvaluationController extends Controller
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
+            if (str_starts_with($e->getMessage(), 'SUBMISSION_STATE_CHANGED:')) return $this->respond(['error' => ['code' => 'SUBMISSION_STATE_CHANGED', 'message' => $e->getMessage()]], 409);
             return $this->respond(['error' => ['code' => 'START_FAILED', 'message' => 'Failed to start evaluation: ' . $e->getMessage()]], 500);
         }
 
@@ -541,6 +584,9 @@ class HREvaluationController extends Controller
         }
 
         $json   = $this->request->getJSON(true) ?? [];
+        if (array_key_exists('awarded_points', $json)) {
+            return $this->respond(['error' => ['code' => 'SCORE_OVERRIDE_NOT_ALLOWED', 'message' => 'Evidence verification does not accept a score; the locked criterion determines how points are awarded.']], 422);
+        }
         $status  = trim((string) ($json['verification_status'] ?? 'verified'));
         $remarks = trim((string) ($json['evaluator_remarks'] ?? ''));
 
@@ -565,11 +611,75 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
         }
         if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This Area A item comes from the confirmed NTF annual-review workbook and cannot be changed here.']], 409);
+        $classification = trim((string) ($json['classification_code'] ?? ''));
+        $classifiedItem = null;
+        if ($status === 'verified' && $classification === ''
+            && strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? ''))) === 'NON_TEACHING_FACULTY'
+            && strtoupper(trim((string) ($item['criterion_code'] ?? ''))) === 'B.2') {
+            return $this->respond(['error' => ['code' => 'CLASSIFICATION_REQUIRED', 'message' => 'Select the applicable B.2 classification before scoring this item.']], 422);
+        }
+        if ($classification !== '' && $status === 'verified') {
+            $oldSnapshot = is_string($item['criterion_snapshot'] ?? null) ? (json_decode($item['criterion_snapshot'], true) ?: []) : ($item['criterion_snapshot'] ?? []);
+            $oldCategory = $oldSnapshot['category'] ?? [];
+            $oldSubcategory = $oldSnapshot['subcategory'] ?? null;
+            $personnelGroup = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
+            if ($personnelGroup !== 'NON_TEACHING_FACULTY'
+                || strtoupper(trim((string) ($item['criterion_code'] ?? ''))) !== 'B.2'
+                || strtoupper(trim((string) ($item['criterion_key'] ?? ''))) !== 'B.2'
+                || strtoupper(trim((string) ($oldCategory['category_code'] ?? ''))) !== 'B.2'
+                || ! empty($oldSubcategory)
+                || ! in_array(strtoupper($classification), ['B.2.A', 'B.2.B', 'B.2.C'], true)) {
+                return $this->respond(['error' => ['code' => 'CLASSIFICATION_NOT_ALLOWED', 'message' => 'Only an unclassified Non-Teaching B.2 item can be classified here.']], 422);
+            }
+            $criteria = is_string($evaluation['criteria_snapshot'] ?? null) ? (json_decode($evaluation['criteria_snapshot'], true) ?: []) : ($evaluation['criteria_snapshot'] ?? []);
+            $letter = strtoupper(substr($classification, -1));
+            try {
+                $resolved = (new \App\Services\LockedCriterionResolverService())->resolve($criteria, 'B.2.' . strtolower($letter), ['contract_code' => 'NTF-B2' . $letter]);
+            } catch (RuntimeException $error) {
+                return $this->respond(['error' => ['code' => 'CRITERION_MAPPING_INVALID', 'message' => $error->getMessage()]], 422);
+            }
+            $resolved = (new \App\Services\EvaluationCriterionRemarkService())->snapshot($resolved);
+            $payload = is_string($item['scoring_payload'] ?? null) ? (json_decode($item['scoring_payload'], true) ?: []) : ($item['scoring_payload'] ?? []);
+            $metadata = is_array($payload['category_metadata'] ?? null) ? $payload['category_metadata'] : [];
+            $metadata['portfolio_format'] = 'non_teaching_faculty';
+            $metadata['criterion_code'] = 'B.2.' . strtolower($letter);
+            $metadata['contract_code'] = 'NTF-B2' . $letter;
+            $payload['category_metadata'] = $metadata;
+            $changes = [
+                'criterion_code' => $metadata['criterion_code'],
+                'criterion_key' => $resolved['criterion_reference'],
+                'criterion_snapshot' => json_encode($resolved, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'configured_points_snapshot' => $resolved['configured_points'],
+                'max_allowed_points' => $resolved['criterion_cap'],
+                'evaluator_judgment_required' => ! empty($resolved['evaluator_judgment_required']) ? 1 : 0,
+                'scoring_payload' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+            $item = array_merge($item, $changes);
+            if ((new \App\Services\PersonnelEvaluationItemScorePreviewService())->mappingIssue($item) !== null) {
+                return $this->respond(['error' => ['code' => 'CRITERION_MAPPING_INVALID', 'message' => 'The selected B.2 classification does not match the locked criteria version.']], 422);
+            }
+            $db->table('personnel_evaluation_items')->where('id', $itemId)->update($changes);
+            $classifiedItem = $item;
+            $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'item_classified', $evaluation['status'], $evaluation['status'], "Item {$itemId} classified as {$metadata['criterion_code']}", ['item_id' => $itemId, 'previous_code' => 'B.2', 'classification_code' => $metadata['criterion_code']]);
+        }
+        if ($status === 'verified' && ($mappingIssue = (new \App\Services\PersonnelEvaluationItemScorePreviewService())->mappingIssue($item))) {
+            return $this->respond(['error' => ['code' => 'CRITERION_MAPPING_INVALID', 'message' => $mappingIssue]], 422);
+        }
 
+        $personnelGroup = strtoupper(trim((string) ($db->table('personnel_profiles')
+            ->select('personnel_group')->where('profile_id', $evaluation['personnel_profile_id'])->get()->getRowArray()['personnel_group'] ?? '')));
+        $verifiedEvidenceScoring = new \App\Services\VerifiedEvidenceScoringService();
+        if ($status === 'verified' && $verifiedEvidenceScoring->isApplicable($item, $personnelGroup) && ! $verifiedEvidenceScoring->hasAttachedEvidence($item)) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_REQUIRED_FOR_AUTOMATIC_SCORE', 'message' => 'Attach the supporting document before verifying this publication or instructional material.']], 422);
+        }
+        $automaticPoints = $status === 'verified'
+            ? $verifiedEvidenceScoring->scoreOnVerification($item, $personnelGroup)
+            : null;
         $db->table('personnel_evaluation_items')->where('id', $itemId)->update([
             'verification_status' => $status,
-            'rating_status'       => $status === 'ineligible' ? 'not_applicable' : 'unrated',
-            'awarded_points'      => $status === 'ineligible' ? 0.0 : null,
+            'rating_status'       => $status === 'ineligible' ? 'not_applicable' : ($automaticPoints !== null ? 'rated' : 'unrated'),
+            'awarded_points'      => $status === 'ineligible' ? 0.0 : $automaticPoints,
             'evaluator_remarks'   => $remarks,
             'rejection_reason'    => in_array($status, ['ineligible', 'needs_revision'], true) ? $remarks : null,
             'evaluated_by'        => $actor['profile']['id'],
@@ -577,9 +687,34 @@ class HREvaluationController extends Controller
             'updated_at'          => date('Y-m-d H:i:s'),
         ]);
 
-        $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'item_verified', $evaluation['status'], $evaluation['status'], "Item {$itemId} verification status: {$status}", ['item_id' => $itemId, 'verification_status' => $status]);
+        $eventPayload = ['item_id' => $itemId, 'verification_status' => $status];
+        if ($automaticPoints !== null) {
+            $eventPayload['scoring_rule'] = 'VERIFIED_EVIDENCE_FULL_CRITERION_MAXIMUM';
+            $eventPayload['awarded_points'] = $automaticPoints;
+            $eventPayload['criterion_version_id'] = $item['criterion_version_id'] ?? null;
+        }
+        $this->syncAccomplishmentScoringSnapshot($db, $item, $status === 'verified' ? $automaticPoints : null, $status, (string) $actor['profile']['id']);
+        $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'item_verified', $evaluation['status'], $evaluation['status'], "Item {$itemId} verification status: {$status}", $eventPayload);
 
-        return $this->respond(['data' => ['message' => 'Evidence verification recorded.', 'verification_status' => $status]], 200);
+        // A changed verification decision can remove points or add an automatic score.
+        // Keep the persisted total in sync with the items, including aggregated graduate units.
+        $allItems = $db->table('personnel_evaluation_items')->where('evaluation_id', $id)->get()->getResultArray();
+        $totals = $this->snapshotTotals($allItems, $evaluation);
+        $db->table('personnel_evaluations')->where('id', $id)->update([
+            'total_score' => $totals['total_score'],
+            'area_a_score' => $totals['areaA_score'],
+            'area_b_score' => $totals['areaB_score'],
+            'area_c_score' => $totals['areaC_score'],
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->respond(['data' => [
+            'message' => 'Evidence verification recorded.',
+            'verification_status' => $status,
+            'rating_status' => $status === 'ineligible' ? 'not_applicable' : ($automaticPoints !== null ? 'rated' : 'unrated'),
+            'awarded_points' => $status === 'ineligible' ? 0.0 : $automaticPoints,
+            'classified_item' => $classifiedItem,
+        ]], 200);
     }
 
     /** Save explanatory evaluator text without changing verification or scoring fields. */
@@ -612,7 +747,7 @@ class HREvaluationController extends Controller
     // =========================================================================
     // PATCH /api/v1/hr/evaluations/{id}/area-a/{code}
     // HR enters or corrects the DS of a Non-Teaching Area A criterion (A.1–A.3).
-    // Body: { "ds": 0-100, "reason": "required when changing an existing DS" }
+    // Body: { "ds": 0-100, "reason": "optional note" }
     // =========================================================================
     public function updateAreaADs(string $id, string $code): mixed
     {
@@ -636,7 +771,7 @@ class HREvaluationController extends Controller
 
         $json = $this->request->getJSON(true) ?? [];
         if (! isset($json['ds']) || ! is_numeric($json['ds'])) {
-            return $this->respond(['error' => ['code' => 'DS_REQUIRED', 'message' => 'Enter a DS from 0 to 100.']], 422);
+            return $this->respond(['error' => ['code' => 'DS_REQUIRED', 'message' => 'Enter a whole-number DS from 0 to 100.']], 422);
         }
 
         try {
@@ -695,6 +830,13 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
         }
         if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This Area A item comes from the confirmed NTF annual-review workbook and cannot be changed here.']], 409);
+        if (strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? ''))) === 'NON_TEACHING_FACULTY'
+            && strtoupper(trim((string) ($item['criterion_code'] ?? ''))) === 'B.2') {
+            return $this->respond(['error' => ['code' => 'CLASSIFICATION_REQUIRED', 'message' => 'Select the applicable B.2 classification before scoring this item.']], 422);
+        }
+        if ($mappingIssue = (new \App\Services\PersonnelEvaluationItemScorePreviewService())->mappingIssue($item)) {
+            return $this->respond(['error' => ['code' => 'CRITERION_MAPPING_INVALID', 'message' => $mappingIssue]], 422);
+        }
 
         // Enforce: item must be verified before rating
         if ($item['verification_status'] !== 'verified') {
@@ -709,17 +851,33 @@ class HREvaluationController extends Controller
         }
 
         $awardedPoints = (float) ($item['configured_points_snapshot'] ?? 0);
+        $personnelGroup = strtoupper(trim((string) ($db->table('personnel_profiles')
+            ->select('personnel_group')->where('profile_id', $evaluation['personnel_profile_id'])->get()->getRowArray()['personnel_group'] ?? '')));
+        $verifiedEvidenceScoring = new \App\Services\VerifiedEvidenceScoringService();
+        $isGraduateUnit = \App\Services\GraduateUnitScoringService::isUnitItem($item);
+        $isAutomatic = $verifiedEvidenceScoring->isApplicable($item, $personnelGroup);
+        $fixedNtf = (new \App\Services\PersonnelEvaluationItemScorePreviewService())->nonTeachingFixedCriterion($item);
+        $allowsManualPoints = ! $isGraduateUnit && ! $isAutomatic && $fixedNtf === null && ! empty($item['evaluator_judgment_required']);
+        if (array_key_exists('awarded_points', $json) && ! $allowsManualPoints) {
+            return $this->respond(['error' => ['code' => 'SCORE_OVERRIDE_NOT_ALLOWED', 'message' => 'This criterion is scored from its locked HR rule; its points cannot be entered manually.']], 422);
+        }
+        if ($isAutomatic) {
+            if (! $verifiedEvidenceScoring->hasAttachedEvidence($item)) return $this->respond(['error' => ['code' => 'EVIDENCE_REQUIRED_FOR_AUTOMATIC_SCORE', 'message' => 'Supporting evidence is required for this automatic score.']], 422);
+            $awardedPoints = (float) $verifiedEvidenceScoring->scoreOnVerification($item, $personnelGroup);
+        }
+        // A semester's graduate units earn no points of their own; the level's summed units are scored once in the totals.
+        // This takes precedence over stale snapshots that incorrectly marked a units item for manual scoring.
+        elseif ($isGraduateUnit) $awardedPoints = 0.0;
+        elseif ($fixedNtf !== null) $awardedPoints = $fixedNtf['points'];
         // Criteria without an official point breakdown (e.g. NTP B.5): the evaluator enters the points, up to the cap.
-        if (! empty($item['evaluator_judgment_required'])) {
+        elseif ($allowsManualPoints) {
             $cap = (float) ($item['max_allowed_points'] ?? $item['configured_points_snapshot'] ?? 0);
             $entered = $json['awarded_points'] ?? null;
-            if (! is_numeric($entered) || (float) $entered <= 0 || (float) $entered > $cap) {
-                return $this->respond(['error' => ['code' => 'JUDGMENT_POINTS_REQUIRED', 'message' => "Enter the points to award (more than 0, up to {$cap})."]], 422);
+            if (! is_numeric($entered) || (float) $entered <= 0 || (float) $entered > $cap || round((float) $entered, 2) !== (float) $entered) {
+                return $this->respond(['error' => ['code' => 'JUDGMENT_POINTS_REQUIRED', 'message' => "Enter the points to award (more than 0, up to {$cap}, with at most two decimal places)."]], 422);
             }
             $awardedPoints = round((float) $entered, 2);
         }
-        // A semester's graduate units earn no points of their own; the level's summed units are scored once in the totals.
-        elseif (\App\Services\GraduateUnitScoringService::isUnitItem($item)) $awardedPoints = 0.0;
         elseif ($awardedPoints <= 0) return $this->respond(['error' => ['code' => 'CRITERION_POINTS_UNRESOLVED', 'message' => 'The submitted claim has no configured points in its locked criteria snapshot.']], 422);
 
         $db->table('personnel_evaluation_items')->where('id', $itemId)->update([
@@ -730,6 +888,7 @@ class HREvaluationController extends Controller
             'evaluated_at'    => date('Y-m-d H:i:s'),
             'updated_at'      => date('Y-m-d H:i:s'),
         ]);
+        $this->syncAccomplishmentScoringSnapshot($db, $item, $awardedPoints, 'verified', (string) $actor['profile']['id']);
 
         // Recalculate totals after every rating
         $allItems = $db->table('personnel_evaluation_items')
@@ -737,7 +896,7 @@ class HREvaluationController extends Controller
             ->get()
             ->getResultArray();
 
-        $totals = $this->snapshotTotals($allItems);
+        $totals = $this->snapshotTotals($allItems, $evaluation);
 
         $db->table('personnel_evaluations')->where('id', $id)->update([
             'total_score'  => $totals['total_score'],
@@ -802,22 +961,13 @@ class HREvaluationController extends Controller
                 'updated_at'    => $now,
             ]);
 
-            $event = $this->recordEvaluationEvent(
-                $db,
-                $id,
-                $actor['profile']['id'],
-                'returned_for_revision',
-                $evaluation['status'],
-                'returned_for_revision',
-                $reason,
-                ['reason' => $reason, 'version_number' => (int) ($evaluation['version_number'] ?? 1)]
-            );
-            $event['event_type'] = \App\Services\PersonnelWorkflowEventRegistry::EVENT_REVISION_REQUESTED;
-            (new \App\Services\PersonnelWorkflowNotificationService($db))->handleWorkflowEvent($event, [
+            $event = $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], 'returned_for_revision', $evaluation['status'], 'returned_for_revision', $reason, ['reason' => $reason, 'version_number' => (int) ($evaluation['version_number'] ?? 1)]);
+            $notificationEvent = $event;
+            $notificationEvent['event_type'] = \App\Services\PersonnelWorkflowEventRegistry::EVENT_REVISION_REQUESTED;
+            (new \App\Services\PersonnelWorkflowNotificationService($db))->handleWorkflowEvent($notificationEvent, [
                 'personnel_profile_id' => $evaluation['personnel_profile_id'],
                 'version_number' => (int) ($evaluation['version_number'] ?? 1),
             ]);
-
             if ($db->transStatus() === false) {
                 throw new \RuntimeException('The return or notification could not be saved.');
             }
@@ -861,6 +1011,31 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator or HR Admin may mark an evaluation as ready.']], 403);
         }
 
+        $personnel = $db->table('personnel_profiles')->select('personnel_group')->where('profile_id', $evaluation['personnel_profile_id'])->get()->getRowArray();
+        if (strtoupper((string) ($personnel['personnel_group'] ?? '')) === 'FACULTY') {
+            $appliedRank = $db->table('personnel_rank_applied_for_decisions')
+                ->where('personnel_profile_id', $evaluation['personnel_profile_id'])
+                ->where('ranking_track_id', $evaluation['evaluation_period_id'])
+                ->where('status', 'confirmed')->orderBy('confirmed_at', 'DESC')->get()->getRowArray();
+            $recommendedRank = $db->table('personnel_recommended_rank_decisions')
+                ->where('evaluation_id', $id)->orderBy('created_at', 'DESC')->get()->getRowArray();
+            if (! $appliedRank || ! $recommendedRank || ($recommendedRank['status'] ?? '') !== 'confirmed'
+                || (string) ($recommendedRank['rank_applied_for_decision_id'] ?? '') !== (string) $appliedRank['id']) {
+                return $this->respond(['error' => [
+                    'code' => 'FACULTY_PHASE_O_INCOMPLETE',
+                    'message' => 'Confirm the Rank Applied For and Recommended Rank in Faculty Phase O before endorsing this evaluation to HR.',
+                ]], 409);
+            }
+            try {
+                (new \App\Services\RecommendedRankService($db))->assertFreshConfirmedDecision((string) $recommendedRank['id']);
+            } catch (Throwable $phaseOError) {
+                return $this->respond(['error' => [
+                    'code' => 'FACULTY_PHASE_O_STALE',
+                    'message' => 'The Faculty Phase O rank decision is no longer current. Refresh Phase O and confirm the recommendation again before endorsing to HR.',
+                ]], 409);
+            }
+        }
+
         // Check for unresolved deficiencies
         $unresolvedCount = $this->countUnresolvedDeficiencies($id);
         if ($unresolvedCount > 0) {
@@ -877,36 +1052,6 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'EVALUATION_INCOMPLETE', 'message' => "{$remaining} submitted achievement(s) still require a final decision.", 'remaining' => $remaining]], 422);
         }
 
-        $personnelGroup = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
-        if ($personnelGroup === '') {
-            $personnelGroup = strtoupper(trim((string) ($db->table('personnel_profiles')
-                ->select('personnel_group')->where('profile_id', $evaluation['personnel_profile_id'])
-                ->get()->getRowArray()['personnel_group'] ?? '')));
-        }
-        if ($personnelGroup === 'FACULTY') {
-            $track = $db->table('personnel_evaluation_periods')
-                ->select('id, ranking_cycle_id')->where('id', $evaluation['evaluation_period_id'])
-                ->where('personnel_group', 'FACULTY')->get()->getRowArray();
-            $applied = $track ? $db->table('personnel_rank_applied_for_decisions')->where([
-                'personnel_profile_id' => $evaluation['personnel_profile_id'],
-                'ranking_cycle_id' => $track['ranking_cycle_id'],
-                'ranking_track_id' => $track['id'],
-                'status' => 'confirmed',
-            ])->orderBy('confirmed_at', 'DESC')->get()->getRowArray() : null;
-            $recommended = $db->table('personnel_recommended_rank_decisions')->where([
-                'evaluation_id' => $id,
-                'status' => 'confirmed',
-            ])->orderBy('confirmed_at', 'DESC')->get()->getRowArray();
-            if (! $track || ! $applied || ! $recommended || ($recommended['rank_applied_for_decision_id'] ?? null) !== $applied['id']) {
-                return $this->respond(['error' => ['code' => 'FACULTY_PHASE_O_INCOMPLETE', 'message' => 'Confirm Rank Applied For and Recommended Rank before endorsing this faculty evaluation to HR.']], 409);
-            }
-            try {
-                (new \App\Services\RecommendedRankService($db))->assertFreshConfirmedDecision((string) $recommended['id']);
-            } catch (Throwable $error) {
-                return $this->respond(['error' => ['code' => 'FACULTY_PHASE_O_STALE', 'message' => 'The confirmed faculty rank recommendation is stale. Refresh Phase O and confirm the current recommendation before endorsing to HR.']], 409);
-            }
-        }
-
         $db->transBegin();
         try {
             $now = date('Y-m-d H:i:s');
@@ -917,7 +1062,7 @@ class HREvaluationController extends Controller
             $update = ['status' => 'ready_for_finalization', 'updated_at' => $now];
             if ($nextEvaluator !== null) $update['evaluator_profile_id'] = $nextEvaluator['evaluator_profile_id'];
             $db->table('personnel_evaluations')->where('id', $id)->update($update);
-            $totals = $this->snapshotTotals($items);
+            $totals = $this->snapshotTotals($items, $evaluation);
             $this->createDeanSummary($db, $evaluation, $items, $actor, $totals, 'endorsed_to_hr');
             $handoffSource = $nextEvaluator ? 'dean_endorsement' : 'hr_direct';
             $event = $this->recordEvaluationEvent($db, $id, $actor['profile']['id'], \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION, $evaluation['status'], 'ready_for_finalization', "Endorsed to HR by {$actor['profile']['full_name']}", ['version_number' => (int) ($evaluation['version_number'] ?? 1), 'handoff_source' => $handoffSource]);
@@ -1054,7 +1199,7 @@ class HREvaluationController extends Controller
         }
 
         // Authoritative recalculation
-        $totals = $this->snapshotTotals($items);
+        $totals = $this->snapshotTotals($items, $evaluation);
 
         // Load qualification record for snapshot
         $qualReview = $db->table('personnel_qualification_reviews')
@@ -1186,7 +1331,7 @@ class HREvaluationController extends Controller
                     $reviewerReport['snapshot'] = is_string($reviewerReport['report_payload'] ?? null)
                         ? json_decode($reviewerReport['report_payload'], true)
                         : ($reviewerReport['report_payload'] ?? null);
-                    return $this->respond(['data' => ['report' => $reviewerReport, 'result' => $result]], 200);
+return $this->respond(['data' => ['report' => $reviewerReport, 'result' => $result]], 200);
                 }
             }
             // Keep the established `report` envelope while making its payload a

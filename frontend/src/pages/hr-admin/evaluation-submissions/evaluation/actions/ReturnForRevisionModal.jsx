@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { X, RotateCcw, ShieldAlert, Check } from 'lucide-react'
+import { X, RotateCcw, ShieldAlert } from 'lucide-react'
+import { usesFacultyAcademicPortfolio } from '../../../../../utils/personnelPortfolioFormat'
 
 export default function ReturnForRevisionModal({ submission, isOpen, onClose, onConfirmReturn }) {
   const [reasons, setReasons] = useState({
@@ -12,9 +13,8 @@ export default function ReturnForRevisionModal({ submission, isOpen, onClose, on
 
   if (!isOpen || !submission) return null
 
-  const handleToggle = (key) => {
-    setReasons(prev => ({ ...prev, [key]: !prev[key] }))
-  }
+  const isFaculty = usesFacultyAcademicPortfolio(submission)
+  const recipient = isFaculty ? 'faculty member' : 'non-teaching personnel member'
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -47,7 +47,7 @@ export default function ReturnForRevisionModal({ submission, isOpen, onClose, on
 
           <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-start gap-2">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <span>Select the specific reasons for returning this portfolio to {submission.faculty_name}. The faculty member will receive these details.</span>
+            <span>Select the specific reasons for returning this portfolio to {submission.faculty_name || submission.full_name}. The {recipient} will receive these details.</span>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -65,13 +65,12 @@ export default function ReturnForRevisionModal({ submission, isOpen, onClose, on
               ].map(item => (
                 <label
                   key={item.key}
-                  onClick={() => handleToggle(item.key)}
                   className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition cursor-pointer text-xs font-semibold text-slate-800 dark:text-slate-200"
                 >
                   <input
                     type="checkbox"
                     checked={reasons[item.key]}
-                    onChange={() => {}}
+                    onChange={event => setReasons(prev => ({ ...prev, [item.key]: event.target.checked }))}
                     className="w-4 h-4 rounded text-[#064e2b] focus:ring-[#064e2b]"
                   />
                   <span>{item.label}</span>
@@ -82,14 +81,16 @@ export default function ReturnForRevisionModal({ submission, isOpen, onClose, on
             {/* HR Remarks */}
             <div>
               <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-1">
-                HR Evaluation Remarks / Instructions for Faculty
+                HR Evaluation Remarks / Instructions for {isFaculty ? 'Faculty' : 'Non-Teaching Personnel'}
               </label>
               <textarea
                 required
                 rows={3}
                 value={remarks}
                 onChange={e => setRemarks(e.target.value)}
-                placeholder="Specify exact instructions (e.g., 'Please re-upload a clear copy of your Ph.D. diploma and official transcript...')"
+                placeholder={isFaculty
+                  ? "Specify exact instructions (e.g., 'Please re-upload a clear copy of your Ph.D. diploma and official transcript...')"
+                  : "Specify exact instructions (e.g., 'Please re-upload a clear copy of the supporting document for this accomplishment...')"}
                 className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:border-[#69A97C]"
               />
             </div>

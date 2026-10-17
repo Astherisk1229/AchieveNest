@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { CheckCircle2, AlertCircle, HelpCircle, ChevronRight, ExternalLink, FileText, ShieldAlert, Check } from 'lucide-react'
+import { CheckCircle2, AlertCircle, HelpCircle, FileText, ShieldAlert, Check } from 'lucide-react'
 import {
   NDMU_PERSONNEL_RATING_RULES,
   SOURCE_CONFIDENCE,
@@ -17,11 +17,11 @@ import { getEvaluationCriterionContext } from '../../../../../utils/evaluationCr
 
 export default function CriterionEvaluation({
   selectedEvidence,
+  evidence = [],
   onVerifyAndNext,
-  onVerify,
   onReject,
+  onOpenEvidence,
   onRemarksChange,
-  hasNextItem = false,
   workspaceMode = 'split',
   onWorkspaceModeChange,
   tenureYears = 0
@@ -119,6 +119,15 @@ export default function CriterionEvaluation({
   }
 
   const isManual = scoringMode === SCORING_MODES.MANUAL_BOUNDED
+  const criterionSnapshot = (() => {
+    const value = selectedEvidence.criterionSnapshot || selectedEvidence.criterion_snapshot
+    if (typeof value === 'string') { try { return JSON.parse(value) } catch { return {} } }
+    return value && typeof value === 'object' ? value : {}
+  })()
+  const autoAwardMaximum = criterionSnapshot.award_maximum_after_evidence_verification === true
+  const effectiveMaximum = autoAwardMaximum
+    ? Number(criterionSnapshot.criterion_cap || criterionSnapshot.category?.max_points || selectedEvidence.configuredPoints || selectedEvidence.configured_points_snapshot || maxPoints)
+    : maxPoints
   const manualJustification = scoringPayload.justification || scoringPayload.manualJustification || ''
   const isConfirmDisabled = savingDecision || (isManual && (manualJustification.trim().length < 10 || calculatedPoints < 0))
 
@@ -131,11 +140,12 @@ export default function CriterionEvaluation({
     finally { setSavingDecision(false) }
   }
 
-  const handleConfirmCurrent = () => saveDecision(() => onVerify?.(selectedEvidence.id, calculatedPoints, scoringPayload, remarks))
-
   const handleConfirmNextCurrent = () => saveDecision(() => onVerifyAndNext?.(selectedEvidence.id, calculatedPoints, scoringPayload, remarks))
 
-  const handleMarkIneligible = () => saveDecision(() => onReject?.(selectedEvidence.id, remarks))
+  const handleMarkIneligible = () => {
+    if (!remarks.trim()) { setActionError('Enter a reason before rejecting this accomplishment.'); return }
+    saveDecision(() => onReject?.(selectedEvidence.id, remarks))
+  }
 
   // Area A items of Non-Teaching Faculty come from the confirmed NTF annual-review workbook and are read-only.
   const lockedPayload = (() => { const raw = selectedEvidence.scoring_payload ?? selectedEvidence.scoringPayload; if (!raw) return {}; if (typeof raw === 'string') { try { return JSON.parse(raw) } catch { return {} } } return raw })()
@@ -155,6 +165,7 @@ export default function CriterionEvaluation({
   }
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
+      {(selectedEvidence.ratingStatus === 'rated' || selectedEvidence.rating_status === 'rated') && selectedEvidence.verificationStatus === 'verified' && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">{['A1_PHD_UNITS', 'A1_MA_UNITS', 'A.1.2', 'A.1.4'].includes(String(selectedEvidence.criterionKey || selectedEvidence.criterion_key || '').toUpperCase()) ? 'Graduate units already approved; their points are counted in the level total.' : `Already approved: ${Number(selectedEvidence.awardedPoints ?? selectedEvidence.awarded_points ?? 0).toFixed(2)} pts.`} The saved decision is loaded; no re-entry is needed.</div>}
       {/* Criterion Header & Source-of-Truth Confidence Badge */}
       <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-2">
         <div className="flex items-start justify-between gap-3">
@@ -170,10 +181,10 @@ export default function CriterionEvaluation({
           {workspaceMode === 'scoring' && onWorkspaceModeChange && (
             <button
               type="button"
-              onClick={() => onWorkspaceModeChange('split')}
+            onClick={() => onWorkspaceModeChange('preview')}
               className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-700 dark:text-slate-300 text-[11px] font-bold shrink-0 transition cursor-pointer"
             >
-              Show Preview
+            Show portfolio
             </button>
           )}
         </div>
@@ -198,40 +209,20 @@ export default function CriterionEvaluation({
         </div>
       </div>
 
-      {/* Document Proof Preview Shell */}
-      <div className="rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xs">
-        <div className="p-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-            <FileText className="w-4 h-4 text-[#176B43] dark:text-emerald-400" />
-            <span className="truncate">{selectedEvidence.fileName || `${selectedEvidence.title || 'Evidence'}_Proof.pdf`}</span>
-          </div>
-          <a
-            href={selectedEvidence.fileUrl || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={e => { if (!selectedEvidence.fileUrl) e.preventDefault() }}
-            className="text-[11px] font-bold text-[#176B43] dark:text-emerald-400 hover:underline flex items-center gap-1"
-          >
-            <span>Open Original</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-
-        <div className="h-40 p-4 bg-white dark:bg-slate-950 flex flex-col items-center justify-center text-center space-y-2">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-[#176B43] dark:text-emerald-400 flex items-center justify-center font-bold">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Official Institutional Evidence Document</p>
-            <p className="text-[10px] text-slate-400 font-mono">Authenticated Attachment</p>
-          </div>
-        </div>
-      </div>
+      <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+        <h4 className="text-sm font-bold">Supporting evidence</h4>
+        {evidence.length ? <div className="mt-2 space-y-2">{evidence.map((proof, index) => <button key={proof.id || index} type="button" onClick={() => onOpenEvidence?.(proof)} className="flex w-full items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-left text-sm font-semibold text-emerald-900 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:text-emerald-200 dark:hover:bg-emerald-950/20"><FileText className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{proof.original_filename}</span></button>)}</div> : <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No supporting document is attached to this item.</p>}
+      </section>
 
       {/* Dynamic Criterion Rating Control */}
       <div className="p-4 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200/80 dark:border-slate-800 space-y-4">
         {/* Special A.1 Degrees vs Units Multi-Path Selector */}
-        {criterionCode === 'A.1' ? (
+        {autoAwardMaximum ? (
+          <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+            <p className="font-bold">Automatic full-maximum scoring</p>
+            <p className="mt-1">If you verify this evidence as qualifying, the system awards <strong>{effectiveMaximum.toFixed(2)} points</strong> from the locked criteria version. The category and Area caps still apply.</p>
+          </div>
+        ) : criterionCode === 'A.1' ? (
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -310,7 +301,7 @@ export default function CriterionEvaluation({
           </div>
         ) : scoringMode === SCORING_MODES.SINGLE_CATEGORY ? (
           <SingleCategoryControl
-            title={criterionCode === 'A.2' ? 'Organization Role' : (criterionCode === 'A.3' ? 'Seminar / Training Level' : 'Instructional Material Type')}
+            title={criterionRule?.inputLabel || criterionRule?.input_label || criterionRule?.classificationLabel || criterionRule?.classification_label || 'Applicable classification'}
             options={criterionRule?.options || []}
             value={scoringPayload}
             onChange={handlePayloadChange}
@@ -344,50 +335,20 @@ export default function CriterionEvaluation({
         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
           <span>Points Earned for Criterion</span>
           <span className="text-sm font-extrabold text-[#176B43] dark:text-emerald-400">
-            {calculatedPoints.toFixed(2)} / {maxPoints}.00 Points Max
+            {autoAwardMaximum ? `${effectiveMaximum.toFixed(2)} / ${effectiveMaximum.toFixed(2)} Points after verification` : `${calculatedPoints.toFixed(2)} / ${maxPoints}.00 Points Max`}
           </span>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 pt-2">
-          {hasNextItem ? (
-            <button
-              type="button"
-              disabled={isConfirmDisabled}
-              onClick={handleConfirmNextCurrent}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-[#176B43] hover:bg-[#125334] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Confirm Rating &amp; Next</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={isConfirmDisabled}
-              onClick={handleConfirmCurrent}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-[#176B43] hover:bg-[#125334] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Confirm Rating (+{calculatedPoints} pts)</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            disabled={savingDecision}
-            onClick={handleMarkIneligible}
-            className="py-2.5 px-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 disabled:opacity-50 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer border border-rose-200 dark:border-rose-800"
-          >
-            <AlertCircle className="w-4 h-4" />
-            <span>Mark Evidence Ineligible</span>
-          </button>
         </div>
 
         {/* This context is frozen on the submitted item. Editable remarks never drive scoring. */}
         {actionError && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{actionError}</p>}
         <div className="space-y-3 pt-2">
-          <dl className="grid grid-cols-2 gap-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-[11px] dark:border-emerald-900/50 dark:bg-emerald-950/20">
+          <details className="group rounded-xl border border-slate-200 dark:border-slate-800">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-xs font-bold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-200">
+              <span>Criterion details</span>
+              <span className="text-[11px] font-semibold text-slate-500 group-open:hidden dark:text-slate-400">Show</span>
+              <span className="hidden text-[11px] font-semibold text-slate-500 group-open:inline dark:text-slate-400">Hide</span>
+            </summary>
+            <dl className="grid grid-cols-2 gap-2 border-t border-slate-200 bg-slate-50/70 p-3 text-[11px] dark:border-slate-800 dark:bg-slate-900/60">
             {[
               ['Category', criterionContext.category],
               ['Subcategory', criterionContext.subcategory],
@@ -396,9 +357,11 @@ export default function CriterionEvaluation({
               ['Category cut-off', criterionContext.categoryCutoff],
               ['Criteria version ID', criterionContext.criteriaVersionId],
             ].filter(([, value]) => value !== '').map(([label, value]) => <div key={label} className="min-w-0"><dt className="font-bold text-slate-500">{label}</dt><dd className="mt-0.5 truncate font-semibold text-slate-800 dark:text-slate-200">{value}{['Configured points', 'Category cut-off'].includes(label) ? ' pts' : ''}</dd></div>)}
-          </dl>
+            </dl>
+          </details>
           <div className="space-y-1.5">
             <label className="block text-[11px] font-bold text-slate-500">Evaluator Item Remarks</label>
+            <p className="text-[11px] text-slate-500">A reason is required when rejecting.</p>
             {criterionContext.generatedRemark && <p className="text-[11px] leading-5 text-slate-500">Initial suggestion from the locked criteria version. Edit freely; it does not change scoring.</p>}
             <textarea
               rows={3}
@@ -407,6 +370,14 @@ export default function CriterionEvaluation({
               placeholder="Add an evaluator observation for this evidence item..."
               className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43]"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" disabled={savingDecision} onClick={handleMarkIneligible} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-rose-300 px-3 py-2.5 text-sm font-bold text-rose-800 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 disabled:opacity-50 dark:border-rose-800 dark:text-rose-200">
+              <AlertCircle className="h-4 w-4" /><span>Reject</span>
+            </button>
+            <button type="button" disabled={isConfirmDisabled} onClick={handleConfirmNextCurrent} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-2.5 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:opacity-50">
+              <CheckCircle2 className="h-4 w-4" /><span>Approve</span>
+            </button>
           </div>
         </div>
       </div>

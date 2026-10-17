@@ -109,6 +109,18 @@ class PersonnelEvaluationFinalizationReadinessService
             );
         }
 
+        $criteriaBlocker = (new PersonnelEvaluationCriteriaRecalculationService())->finalizationBlocker(
+            array_merge($evaluationRecord, ['id' => $evaluationId])
+        );
+        if ($criteriaBlocker !== null) {
+            return $this->buildFailureResponse(
+                self::REASON_RESULT_PENDING,
+                $criteriaBlocker['message'],
+                $evaluationRecord,
+                $snapshotData
+            );
+        }
+
         $personnelProfileId = $evaluationRecord['personnel_profile_id'] ?? null;
         if (empty($personnelProfileId)) {
             return $this->buildFailureResponse(

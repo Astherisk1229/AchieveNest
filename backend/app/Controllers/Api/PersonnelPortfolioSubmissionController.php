@@ -28,6 +28,16 @@ class PersonnelPortfolioSubmissionController extends Controller
             return $row;
         }
         foreach (array_keys($row) as $key) {
+            // Submitted snapshots keep the applicant's accomplishment fields
+            // inside scoring_payload.category_metadata. Remove score values
+            // from that payload recursively, but never drop the payload itself.
+            // The broad key match below intentionally hides evaluator fields
+            // such as accepted_points and evaluator_scoring while preserving
+            // the submitted dates, institution, and other booklet details.
+            if (strcasecmp((string) $key, 'scoring_payload') === 0) {
+                $row[$key] = $this->withoutPersonnelScoring($row[$key]);
+                continue;
+            }
             if (preg_match('/(?:points?|score|scoring|cap|ceiling)/i', (string) $key)) {
                 unset($row[$key]);
                 continue;
@@ -37,6 +47,68 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
         }
         return $row;
+    }
+
+    /** Return only the applicant-safe provisional score, never evaluator award data. */
+    private function canonicalProvisionalScoringByItem(object $db, array $items): array
+    {
+        if (! $db->tableExists('personnel_accomplishments') || ! $db->fieldExists('criterion_snapshot', 'personnel_accomplishments')) return [];
+        $ids = array_values(array_unique(array_filter(array_map(
+            static fn (array $item): string => trim((string) ($item['accomplishment_id'] ?? '')),
+            $items
+        ))));
+        if ($ids === []) return [];
+        $rows = $db->table('personnel_accomplishments')->select('id,criterion_snapshot')->whereIn('id', $ids)->get()->getResultArray();
+        $scoringById = [];
+        foreach ($rows as $row) {
+            $snapshot = is_string($row['criterion_snapshot'] ?? null)
+                ? (json_decode($row['criterion_snapshot'], true) ?: [])
+                : ($row['criterion_snapshot'] ?? []);
+            $scoring = is_array($snapshot) ? ($snapshot['provisional_scoring'] ?? null) : null;
+            if (is_array($scoring)) $scoringById[(string) $row['id']] = $scoring;
+        }
+        return $scoringById;
+    }
+
+    private function personnelVisibleProvisionalScoring(array $item, ?array $canonicalScoring = null): ?array
+    {
+        $snapshot = $item['criterion_snapshot'] ?? [];
+        if (is_string($snapshot)) $snapshot = json_decode($snapshot, true) ?: [];
+        if (! is_array($snapshot)) $snapshot = [];
+        $scoring = $snapshot['provisional_scoring'] ?? $canonicalScoring ?? [];
+        if (! is_array($scoring)) $scoring = [];
+
+        $status = (string) ($scoring['status'] ?? '');
+        $points = $scoring['points'] ?? null;
+        $maximum = $scoring['maximum_points'] ?? null;
+        $explanation = $scoring['explanation'] ?? null;
+        $missing = $scoring['missing_information'] ?? [];
+
+        // Existing evaluation snapshots predate provisional scoring in the
+        // owner response. Their locked resolver value is still safe to show
+        // when evidence exists and the criterion is automatically scored.
+        if (($points === null || $points === '') && $status === '') {
+            $manual = ! empty($snapshot['evaluator_judgment_required']) || ! empty($item['evaluator_judgment_required']);
+            $evidence = $item['evidence_snapshot'] ?? [];
+            if (is_string($evidence)) $evidence = json_decode($evidence, true) ?: [];
+            $hasEvidence = ! empty($item['evidence_id']) || ! empty($item['file_name']) || (is_array($evidence) && $evidence !== []);
+            $lockedPoints = $snapshot['configured_points'] ?? $item['configured_points_snapshot'] ?? null;
+            if (! $manual && $hasEvidence && is_numeric($lockedPoints) && (float) $lockedPoints > 0) {
+                $points = (float) $lockedPoints;
+                $maximum = $snapshot['criterion_cap'] ?? $item['max_allowed_points'] ?? null;
+                $status = 'pending_verification';
+                $explanation = 'Provisional points from the locked criteria; final points require evaluator verification.';
+            }
+        }
+
+        $safe = ['status' => $status ?: 'pending_verification'];
+        if (is_numeric($points)) $safe['points'] = (float) $points;
+        if (is_numeric($maximum)) $safe['maximum_points'] = (float) $maximum;
+        if (is_string($explanation) && $explanation !== '') $safe['explanation'] = $explanation;
+        if (is_array($missing)) $safe['missing_information'] = array_values(array_filter($missing, 'is_string'));
+        $safe['portfolio_submission_status'] = 'submitted';
+
+        return array_key_exists('points', $safe) || $status !== '' ? $safe : null;
     }
 
     private function existingFieldsOnly(object $db, string $table, array $data): array
@@ -285,10 +357,13 @@ class PersonnelPortfolioSubmissionController extends Controller
 
         $db = db_connect();
         $eligibility = (new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($personnelProfileId, $period['id']);
-        if (($eligibility['eligibility_status'] ?? 'pending') !== 'eligible') {
+        if (($eligibility['submission_readiness_status'] ?? 'pending') !== 'eligible') {
             $annual = $eligibility['annual_review_requirement']['status'] ?? 'pending';
             $service = $eligibility['service_requirement']['status'] ?? 'pending';
-            $code = $annual === 'pending' ? 'ANNUAL_REVIEW_PENDING' : ($annual === 'not_passed' ? 'ANNUAL_REVIEW_NOT_PASSED' : ($service === 'pending' ? 'SERVICE_REQUIREMENT_PENDING' : ($service === 'not_passed' ? 'SERVICE_REQUIREMENT_NOT_MET' : 'PORTFOLIO_NOT_ELIGIBLE')));
+            $nonTeaching = strtoupper((string) ($eligibility['personnel_type_requirement']['personnel_group'] ?? '')) === 'NON_TEACHING_FACULTY';
+            $code = $nonTeaching
+                ? ($service === 'pending' ? 'SERVICE_REQUIREMENT_PENDING' : ($service === 'not_passed' ? 'SERVICE_REQUIREMENT_NOT_MET' : 'PORTFOLIO_NOT_ELIGIBLE'))
+                : ($annual === 'pending' ? 'ANNUAL_REVIEW_PENDING' : ($annual === 'not_passed' ? 'ANNUAL_REVIEW_NOT_PASSED' : ($service === 'pending' ? 'SERVICE_REQUIREMENT_PENDING' : ($service === 'not_passed' ? 'SERVICE_REQUIREMENT_NOT_MET' : 'PORTFOLIO_NOT_ELIGIBLE'))));
             return $this->respond(['error'=>['code'=>$code,'message'=>'Portfolio submission is unavailable until eligibility is confirmed.','reasons'=>$eligibility['eligibility_reasons']]],422);
         }
         $rootsTable = $this->getRootsTable($db);
@@ -456,6 +531,7 @@ class PersonnelPortfolioSubmissionController extends Controller
         $accomplishments = $db->table('personnel_accomplishments pa')
             ->select('pa.*')
             ->where('pa.personnel_profile_id', $personnelProfileId)
+            ->where('pa.deleted_at', null)
             ->orderBy('pa.created_at', 'DESC')
             ->get()
             ->getResultArray();
@@ -495,6 +571,13 @@ class PersonnelPortfolioSubmissionController extends Controller
             foreach ($evRows as $ev) {
                 $evidenceMap[$ev['accomplishment_id']][] = $ev;
             }
+        }
+
+        if ($actualGroup === 'FACULTY' && !\App\Services\PersonnelEligibilityService::submissionIncludesResearchOutput($accomplishments, $evidenceMap)) {
+            return $this->respond(['error' => [
+                'code' => 'RESEARCH_OUTPUT_REQUIRED',
+                'message' => 'Add a B.3 Conduct of Research record, or a B.2 Publication marked Research Output, with attached proof valid for this ranking period before submitting.',
+            ]], 422);
         }
 
         // Guard: Verify all items have proof attachments
@@ -604,9 +687,11 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'evaluation_period_id' => $period['id'],
                     'personnel_id' => $personnelProfileId,
                     'eligibility_status' => $eligibilitySnapshot['eligibility_status'],
+                    'submission_readiness_status' => $eligibilitySnapshot['submission_readiness_status'] ?? $eligibilitySnapshot['eligibility_status'],
                     'eligibility_reasons' => $eligibilitySnapshot['eligibility_reasons'],
                     'annual_review_requirement' => $eligibilitySnapshot['annual_review_requirement'],
                     'service_requirement' => $eligibilitySnapshot['service_requirement'],
+                    'research_output_requirement' => $eligibilitySnapshot['research_output_requirement'],
                     'employment_status' => $eligibilitySnapshot['employment_status'],
                     'service_years' => $eligibilitySnapshot['service_years'],
                     'decision_timestamp' => $now,
@@ -655,11 +740,26 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $categoryArea = 'areaC';
                 }
 
-                $criterionCode = trim((string) ($acc['category_code'] ?? ''));
-                if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
                 $metadata = is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? []);
+                $criterionCode = trim((string) ($acc['category_code'] ?? ''));
+                if (($metadata['portfolio_format'] ?? '') === 'non_teaching_faculty' && ! empty($metadata['contract_code'])) {
+                    // NTF records persist the broad category (for example B.2)
+                    // separately from the Appendix N contract criterion (B.2.b).
+                    // The locked resolver verifies that this criterion matches the contract.
+                    $criterionCode = trim((string) ($metadata['criterion_code'] ?? ''));
+                }
+                if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
                 $criterionSnapshot = (new \App\Services\LockedCriterionResolverService())->resolve($criteriaSnapshot, $criterionCode, $metadata + ['scope_level' => $acc['scope_level'] ?? null, 'organizer' => $acc['organizer_or_publisher'] ?? null]);
                 $criterionSnapshot = (new \App\Services\EvaluationCriterionRemarkService())->snapshot($criterionSnapshot);
+                $sourceCriterionSnapshot = is_string($acc['criterion_snapshot'] ?? null)
+                    ? (json_decode($acc['criterion_snapshot'], true) ?: [])
+                    : (is_array($acc['criterion_snapshot'] ?? null) ? $acc['criterion_snapshot'] : []);
+                if (is_array($sourceCriterionSnapshot['provisional_scoring'] ?? null)) {
+                    // Preserve the safe provisional result with the submitted,
+                    // locked criteria snapshot so reviewer and owner booklets
+                    // render the same calculated points.
+                    $criterionSnapshot['provisional_scoring'] = $sourceCriterionSnapshot['provisional_scoring'];
+                }
 
                 $itemData = [
                     'id'                  => $this->genUuid(),
@@ -705,10 +805,29 @@ class PersonnelPortfolioSubmissionController extends Controller
 
                 $db->table($itemsTable)->insert($this->existingFieldsOnly($db, $itemsTable, $itemData));
 
-            }
+                // Keep the personnel portfolio's remarks state aligned with the
+                // submitted evaluation package; provisional points remain unverified.
+                if ($db->fieldExists('criterion_snapshot', 'personnel_accomplishments')) {
+                    $accomplishmentSnapshot = is_string($acc['criterion_snapshot'] ?? null)
+                        ? (json_decode($acc['criterion_snapshot'], true) ?: [])
+                        : (is_array($acc['criterion_snapshot'] ?? null) ? $acc['criterion_snapshot'] : []);
+                    if (is_array($accomplishmentSnapshot['provisional_scoring'] ?? null)) {
+                        $accomplishmentSnapshot['provisional_scoring']['portfolio_submission_status'] = 'submitted';
+                        $accomplishmentSnapshot['provisional_scoring']['submission_id'] = $evaluationId;
+                        $accomplishmentSnapshot['provisional_scoring']['submitted_at'] = $now;
+                        $scoringStatus = (string) ($accomplishmentSnapshot['provisional_scoring']['status'] ?? '');
+                        if (($accomplishmentSnapshot['provisional_scoring']['verified_points'] ?? null) === null
+                            && ! in_array($scoringStatus, ['evaluator_rating_required', 'hr_data_required'], true)) {
+                            $accomplishmentSnapshot['provisional_scoring']['status'] = 'pending_verification';
+                        }
+                        $db->table('personnel_accomplishments')->where('id', $acc['id'])->update([
+                            'criterion_snapshot' => json_encode($accomplishmentSnapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            'updated_at' => $now,
+                        ]);
+                    }
+                }
 
-            // Non-Teaching Faculty: Area A comes from the confirmed NTF annual-review workbook as locked items.
-            (new \App\Services\NtfAnnualReviewAreaAService($db))->attach($evaluationId, $now);
+            }
 
             // 4. Record submission audit event
             $eventRow = [
@@ -757,6 +876,13 @@ class PersonnelPortfolioSubmissionController extends Controller
                         'message' => 'A portfolio submission already exists for this evaluation period.',
                     ],
                 ], 409);
+            }
+
+            if (preg_match('/^(CRITERION_(?:CONFIGURATION_INCOMPLETE|POINTS_UNRESOLVED|LEVEL_REQUIRED|OPTION_INVALID|MAPPING_INVALID)):\s*(.+)$/', $e->getMessage(), $criterionError)) {
+                return $this->respond(['error' => [
+                    'code' => $criterionError[1],
+                    'message' => $criterionError[2],
+                ]], 422);
             }
 
             return $this->respond([
@@ -857,8 +983,8 @@ class PersonnelPortfolioSubmissionController extends Controller
 
         $latestStatus = strtolower((string) ($latestSubmission['status'] ?? ''));
 
-        // Guard: Check if an active submission is already submitted or under review
-        if (in_array($latestStatus, ['submitted', 'in_evaluation', 'ready_for_finalization'], true)) {
+        // Once an individual evaluation begins, its saved submission cannot be replaced.
+        if (in_array($latestStatus, ['in_evaluation', 'ready_for_finalization'], true)) {
             return $this->respond([
                 'error' => [
                     'code' => 'RESUBMISSION_NOT_ALLOWED',
@@ -869,8 +995,17 @@ class PersonnelPortfolioSubmissionController extends Controller
             ], 409);
         }
 
-        // Guard: Must be in returned_for_revision state
-        if ($latestStatus !== 'returned_for_revision' && $latestStatus !== 'returned_to_personnel') {
+        // A submitted portfolio may be revised as a new version until its own evaluation begins.
+        if ($latestStatus === 'submitted') {
+            try {
+                $openPeriod = (new \App\Services\PersonnelEvaluationPeriodService($db))->resolveForSubmission((string) ($latestSubmission['evaluation_period_id'] ?? ''), 'RANKING_PROMOTION');
+                $eligibility = (new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($personnelProfileId, (string) $openPeriod['id']);
+                if (($eligibility['submission_readiness_status'] ?? '') !== 'eligible') throw new \RuntimeException('PORTFOLIO_NOT_ELIGIBLE: Current ranking-period and service requirements are not satisfied.');
+            } catch (\Throwable $error) {
+                return $this->respond(['error' => ['code' => strtok($error->getMessage(), ':') ?: 'RESUBMISSION_NOT_ALLOWED', 'message' => $error->getMessage()]], 409);
+            }
+        }
+        if (! in_array($latestStatus, ['submitted', 'returned_for_revision', 'returned_to_personnel'], true)) {
             return $this->respond([
                 'error' => [
                     'code' => 'INVALID_TRANSITION',
@@ -883,6 +1018,7 @@ class PersonnelPortfolioSubmissionController extends Controller
         $accomplishments = $db->table('personnel_accomplishments pa')
             ->select('pa.*')
             ->where('pa.personnel_profile_id', $personnelProfileId)
+            ->where('pa.deleted_at', null)
             ->orderBy('pa.created_at', 'DESC')
             ->get()
             ->getResultArray();
@@ -900,6 +1036,9 @@ class PersonnelPortfolioSubmissionController extends Controller
         $resolvedCycleId = $existingRoot['evaluation_cycle_id'] ?? $latestSubmission['evaluation_cycle_id'] ?? $academicYear;
         $resolvedPeriodId = $existingRoot['evaluation_period_id'] ?? $latestSubmission['evaluation_period_id'] ?? null;
         $periodSnapshot = $resolvedPeriodId ? $db->table('personnel_evaluation_periods')->where('id', $resolvedPeriodId)->get()->getRowArray() : null;
+        $resubmissionEligibility = $resolvedPeriodId
+            ? (new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($personnelProfileId, (string) $resolvedPeriodId)
+            : null;
         // The revised snapshot uses the same canonical eligible set as the live booklet preview.
         $cycleValidity = (new \App\Services\EvaluationValidityService($db))->partitionForPersonnel($accomplishments, $periodSnapshot, $personnelProfileId);
         if ($cycleValidity['eligible'] === []) {
@@ -925,6 +1064,14 @@ class PersonnelPortfolioSubmissionController extends Controller
             foreach ($evRows as $ev) {
                 $evidenceMap[$ev['accomplishment_id']][] = $ev;
             }
+        }
+
+        if (strtoupper((string) ($periodSnapshot['personnel_group'] ?? $latestSubmission['personnel_group_snapshot'] ?? '')) === 'FACULTY'
+            && !\App\Services\PersonnelEligibilityService::submissionIncludesResearchOutput($accomplishments, $evidenceMap)) {
+            return $this->respond(['error' => [
+                'code' => 'RESEARCH_OUTPUT_REQUIRED',
+                'message' => 'Keep at least one B.3 Conduct of Research record, or a B.2 Publication marked Research Output, with attached proof in this revised submission.',
+            ]], 422);
         }
 
         // Guard: Verify all items have proof attachments
@@ -970,6 +1117,10 @@ class PersonnelPortfolioSubmissionController extends Controller
         // Atomic transaction to create Version N header + fresh item snapshots
         $db->transBegin();
         try {
+            $latestLocked = $db->query('SELECT status FROM personnel_evaluations WHERE id = ? FOR UPDATE', [$latestSubmission['id']])->getRowArray();
+            if (! $latestLocked || strtolower((string) $latestLocked['status']) !== $latestStatus) {
+                throw new \RuntimeException('SUBMISSION_STATE_CHANGED: This portfolio changed while you were revising it. Refresh and try again.');
+            }
             // Guard: Check for concurrent resubmission race condition
             if ($rootId !== null && $db->fieldExists('evaluation_root_id', $evalsTable)) {
                 $concurrentCheck = $db->table($evalsTable)
@@ -989,6 +1140,15 @@ class PersonnelPortfolioSubmissionController extends Controller
                 }
             }
 
+            $previousItems = $db->table($itemsTable)
+                ->where('evaluation_id', $latestSubmission['id'])
+                ->get()->getResultArray();
+            $previousByAccomplishment = [];
+            foreach ($previousItems as $previousItem) {
+                $previousByAccomplishment[(string) ($previousItem['accomplishment_id'] ?? '')] = $previousItem;
+            }
+            $carriedDecisionCount = 0;
+
             // 1. Create new immutable submission version header
             $headerData = [
                 'id'                  => $newEvaluationId,
@@ -1004,7 +1164,9 @@ class PersonnelPortfolioSubmissionController extends Controller
                 'coverage_label_snapshot'=> $latestSubmission['coverage_label_snapshot'] ?? ($periodSnapshot['coverage_label'] ?? null),
                 'evaluation_scale_version_id'=> $latestSubmission['evaluation_scale_version_id'] ?? ($periodSnapshot['evaluation_scale_version_id'] ?? null),
                 'criteria_snapshot'     => $latestSubmission['criteria_snapshot'] ?? json_encode((new \App\Services\RubricAdministrationService())->getScaleVersionHierarchy($periodSnapshot['evaluation_scale_version_id']), JSON_UNESCAPED_UNICODE),
-                'eligibility_snapshot'  => $latestSubmission['eligibility_snapshot'] ?? json_encode((new \App\Services\PersonnelEligibilityService($db))->evaluateEligibility($personnelProfileId, (string) $resolvedPeriodId), JSON_UNESCAPED_UNICODE),
+                'eligibility_snapshot'  => $latestStatus === 'submitted'
+                    ? json_encode($resubmissionEligibility, JSON_UNESCAPED_UNICODE)
+                    : ($latestSubmission['eligibility_snapshot'] ?? json_encode($resubmissionEligibility, JSON_UNESCAPED_UNICODE)),
                 'personnel_group_snapshot' => $latestSubmission['personnel_group_snapshot'] ?? null,
                 'position_title_snapshot' => $latestSubmission['position_title_snapshot'] ?? null,
                 'college_id_snapshot' => $latestSubmission['college_id_snapshot'] ?? null,
@@ -1045,11 +1207,20 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $categoryArea = 'areaC';
                 }
 
-                $criterionCode = trim((string) ($acc['category_code'] ?? ''));
-                if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
                 $metadata = is_string($acc['category_metadata'] ?? null) ? json_decode($acc['category_metadata'], true) : ($acc['category_metadata'] ?? []);
+                $criterionCode = trim((string) ($acc['category_code'] ?? ''));
+                if (($metadata['portfolio_format'] ?? '') === 'non_teaching_faculty' && ! empty($metadata['contract_code'])) {
+                    $criterionCode = trim((string) ($metadata['criterion_code'] ?? ''));
+                }
+                if ($criterionCode === '') throw new RuntimeException("CRITERION_MAPPING_REQUIRED: {$acc['title']} has no criterion mapping.");
                 $criterionSnapshot = (new \App\Services\LockedCriterionResolverService())->resolve($resubmissionCriteria, $criterionCode, $metadata + ['scope_level' => $acc['scope_level'] ?? null, 'organizer' => $acc['organizer_or_publisher'] ?? null]);
                 $criterionSnapshot = (new \App\Services\EvaluationCriterionRemarkService())->snapshot($criterionSnapshot);
+                $sourceCriterionSnapshot = is_string($acc['criterion_snapshot'] ?? null)
+                    ? (json_decode($acc['criterion_snapshot'], true) ?: [])
+                    : (is_array($acc['criterion_snapshot'] ?? null) ? $acc['criterion_snapshot'] : []);
+                if (is_array($sourceCriterionSnapshot['provisional_scoring'] ?? null)) {
+                    $criterionSnapshot['provisional_scoring'] = $sourceCriterionSnapshot['provisional_scoring'];
+                }
 
                 $itemData = [
                     'id'                  => $this->genUuid(),
@@ -1093,12 +1264,69 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $itemData['evidence_id'] = $primaryEv['id'];
                 }
 
+                $priorDecision = \App\Services\PersonnelEvaluationDecisionCarryForward::approvedDecision(
+                    $previousByAccomplishment[(string) $acc['id']] ?? null,
+                    $itemData
+                );
+                $itemSnapshot = json_decode($itemData['criterion_snapshot'], true) ?: [];
+                $submissionScoring = is_array($itemSnapshot['provisional_scoring'] ?? null)
+                    ? $itemSnapshot['provisional_scoring'] : [];
+                if ($priorDecision !== null) {
+                    $itemData = array_merge($itemData, $priorDecision);
+                    $submissionScoring['status'] = 'verified';
+                    $submissionScoring['verified_points'] = $priorDecision['awarded_points'];
+                    $submissionScoring['evidence_verified'] = true;
+                    $submissionScoring['verified_by'] = $priorDecision['evaluated_by'];
+                    $submissionScoring['verified_at'] = $priorDecision['evaluated_at'];
+                    $carriedDecisionCount++;
+                } else {
+                    if (! in_array($submissionScoring['status'] ?? '', ['evaluator_rating_required', 'hr_data_required'], true)) {
+                        $submissionScoring['status'] = 'pending_verification';
+                    }
+                    $submissionScoring['verified_points'] = null;
+                    $submissionScoring['evidence_verified'] = false;
+                    $submissionScoring['verified_by'] = null;
+                    $submissionScoring['verified_at'] = null;
+                }
+                $itemSnapshot['provisional_scoring'] = $submissionScoring;
+                $itemData['criterion_snapshot'] = json_encode($itemSnapshot, JSON_UNESCAPED_UNICODE);
+
                 $db->table($itemsTable)->insert($this->existingFieldsOnly($db, $itemsTable, $itemData));
+
+                if ($db->fieldExists('criterion_snapshot', 'personnel_accomplishments')) {
+                    $accomplishmentSnapshot = is_string($acc['criterion_snapshot'] ?? null)
+                        ? (json_decode($acc['criterion_snapshot'], true) ?: [])
+                        : (is_array($acc['criterion_snapshot'] ?? null) ? $acc['criterion_snapshot'] : []);
+                    if (is_array($accomplishmentSnapshot['provisional_scoring'] ?? null)) {
+                        $accomplishmentSnapshot['provisional_scoring']['portfolio_submission_status'] = 'submitted';
+                        $accomplishmentSnapshot['provisional_scoring']['submission_id'] = $newEvaluationId;
+                        $accomplishmentSnapshot['provisional_scoring']['submitted_at'] = $now;
+                        $accomplishmentSnapshot['provisional_scoring']['status'] = $submissionScoring['status'];
+                        $accomplishmentSnapshot['provisional_scoring']['verified_points'] = $submissionScoring['verified_points'];
+                        $accomplishmentSnapshot['provisional_scoring']['evidence_verified'] = $submissionScoring['evidence_verified'];
+                        $accomplishmentSnapshot['provisional_scoring']['verified_by'] = $submissionScoring['verified_by'];
+                        $accomplishmentSnapshot['provisional_scoring']['verified_at'] = $submissionScoring['verified_at'];
+                        $db->table('personnel_accomplishments')->where('id', $acc['id'])->update([
+                            'criterion_snapshot' => json_encode($accomplishmentSnapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            'updated_at' => $now,
+                        ]);
+                    }
+                }
 
             }
 
-            // Non-Teaching Faculty: Area A comes from the confirmed NTF annual-review workbook as locked items.
-            (new \App\Services\NtfAnnualReviewAreaAService($db))->attach($newEvaluationId, $now);
+            $submittedItems = $db->table($itemsTable)->where('evaluation_id', $newEvaluationId)->get()->getResultArray();
+            $totals = (new \App\Services\PersonnelEvaluationItemScorePreviewService())->totals(
+                $submittedItems,
+                $tenureYears,
+                is_array($resubmissionCriteria) ? $resubmissionCriteria : []
+            );
+            $db->table($evalsTable)->where('id', $newEvaluationId)->update([
+                'total_score' => $totals['total_score'],
+                'area_a_score' => $totals['areaA_score'],
+                'area_b_score' => $totals['areaB_score'],
+                'area_c_score' => $totals['areaC_score'],
+            ]);
 
             // 3. Record resubmission audit event linking Version N to Version N-1 and Root
             $eventRow = [
@@ -1112,6 +1340,7 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'previous_version_number' => $previousVersionNumber,
                     'new_version_number'      => $newVersionNumber,
                     'total_items'             => count($accomplishments),
+                    'carried_approved_decisions' => $carriedDecisionCount,
                     'academic_year'           => $academicYear,
                     'evaluation_cycle_id'     => $resolvedCycleId,
                     'evaluation_period_id'    => $resolvedPeriodId,
@@ -1136,6 +1365,8 @@ class PersonnelPortfolioSubmissionController extends Controller
             $db->transCommit();
         } catch (Throwable $e) {
             $db->transRollback();
+
+            if (str_starts_with($e->getMessage(), 'SUBMISSION_STATE_CHANGED:')) return $this->respond(['error' => ['code' => 'SUBMISSION_STATE_CHANGED', 'message' => $e->getMessage()]], 409);
 
             if (str_contains($e->getMessage(), 'uq_personnel_eval_root_version') || str_contains($e->getMessage(), 'Duplicate entry')) {
                 return $this->respond([
@@ -1295,7 +1526,21 @@ class PersonnelPortfolioSubmissionController extends Controller
                     $this->getPersonnelVisibleDeficiencies($db, (string) $sub['id'], $versionItems)
                 );
                 if ($targetProfileId === $actorProfileId) {
+                    // The Portfolio page opens historical booklets from this
+                    // endpoint (not getLatest). Preserve only the safe
+                    // provisional score projection after removing evaluator data.
+                    $canonicalScoring = $this->canonicalProvisionalScoringByItem($db, $versionItems);
+                    $visibleScoring = array_map(fn (array $item): ?array => $this->personnelVisibleProvisionalScoring(
+                        $item,
+                        $canonicalScoring[(string) ($item['accomplishment_id'] ?? '')] ?? null
+                    ), $versionItems);
                     $versionItems = array_map(fn (array $item): array => $this->withoutPersonnelScoring($item), $versionItems);
+                    foreach ($versionItems as $itemIndex => &$versionItem) {
+                        if ($visibleScoring[$itemIndex] !== null) {
+                            $versionItem['provisional_scoring'] = $visibleScoring[$itemIndex];
+                        }
+                    }
+                    unset($versionItem);
                 }
 
                 $versionList[] = [
@@ -1304,6 +1549,9 @@ class PersonnelPortfolioSubmissionController extends Controller
                     'version_number'      => $vNum,
                     'status'              => $sub['status'] ?? 'submitted',
                     'academic_year'       => $sub['academic_year'] ?? '2025-2026',
+                    'evaluation_period_id' => $sub['evaluation_period_id'] ?? null,
+                    'evaluation_cycle_id' => $sub['evaluation_cycle_id'] ?? null,
+                    'period_name_snapshot' => $sub['period_name_snapshot'] ?? null,
                     'previous_version_id' => $sub['previous_version_id'] ?? null,
                     'submitted_at'        => $sub['submitted_at'] ?? ($sub['created_at'] ?? null),
                     'returned_at'         => $sub['returned_at'] ?? null,
@@ -1425,8 +1673,17 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
             unset($item);
 
+            $canonicalScoring = $this->canonicalProvisionalScoringByItem($db, $items);
+            $visibleScoring = array_map(fn (array $item): ?array => $this->personnelVisibleProvisionalScoring(
+                $item,
+                $canonicalScoring[(string) ($item['accomplishment_id'] ?? '')] ?? null
+            ), $items);
             $submission = $this->withoutPersonnelScoring($submission);
             $items = array_map(fn (array $item): array => $this->withoutPersonnelScoring($item), $items);
+            foreach ($items as $index => &$item) {
+                if ($visibleScoring[$index] !== null) $item['provisional_scoring'] = $visibleScoring[$index];
+            }
+            unset($item);
 
             // Parse return feedback if present
             $returnFeedback = null;
@@ -1638,7 +1895,11 @@ class PersonnelPortfolioSubmissionController extends Controller
 
             try {
                 $notifService = new \App\Services\PersonnelWorkflowNotificationService($db);
-                $notifService->handleWorkflowEvent($eventRow, [
+                // Translate the resulting status event to the canonical action key expected by the notification registry.
+                // Keep the persisted audit event as returned_for_revision.
+                $notificationEvent = $eventRow;
+                $notificationEvent['event_type'] = \App\Services\PersonnelWorkflowEventRegistry::EVENT_REVISION_REQUESTED;
+                $notifService->handleWorkflowEvent($notificationEvent, [
                     'personnel_profile_id' => $evaluation['personnel_profile_id'],
                     'version_number'       => (int) ($evaluation['version_number'] ?? 1),
                 ]);

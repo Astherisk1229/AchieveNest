@@ -114,12 +114,14 @@ class NtfAnnualReviewAreaAService
         $code = strtoupper(trim($code));
         $reason = trim($reason);
         if (! is_finite($ds) || $ds < 0 || $ds > 100) throw new InvalidArgumentException('DS_OUT_OF_RANGE: DS must be a number from 0 to 100.');
+        if (floor($ds) !== $ds) throw new InvalidArgumentException('DS_WHOLE_NUMBER_REQUIRED: DS must be a whole number from 0 to 100.');
         if (mb_strlen($reason) > 500) throw new InvalidArgumentException('DS_REASON_TOO_LONG: Keep the reason under 500 characters.');
 
         $period = $this->db->table('personnel_evaluation_periods')->where('id', (string) ($evaluation['evaluation_period_id'] ?? ''))->get()->getRowArray();
         if (! $period || strtoupper((string) ($period['personnel_group'] ?? '')) !== NtfAnnualReviewSettingsService::GROUP) {
             throw new InvalidArgumentException('AREA_A_NOT_APPLICABLE: DS ratings apply only to Non-Teaching Personnel evaluations.');
         }
+        RankingCycleOperationalAvailability::assertEnabled($this->db, (string) ($evaluation['evaluation_period_id'] ?? ''));
         $criteria = (new NtfAnnualReviewTemplateService($this->db))->criteria($period);
         $criterion = null;
         foreach ($criteria['items'] as $item) if (strtoupper((string) $item['code']) === $code) $criterion = $item;
@@ -139,7 +141,6 @@ class NtfAnnualReviewAreaAService
             $values = array_values(array_filter((array) ($payload['ds'] ?? []), 'is_numeric'));
             $previousDs = $values === [] ? null : round(array_sum($values) / count($values), 2);
             if ($previousDs !== null && abs($previousDs - $ds) < 0.005) return $existing;
-            if ($previousDs !== null && $reason === '') throw new InvalidArgumentException('DS_REASON_REQUIRED: Give a reason for changing this DS.');
             if (! array_key_exists('imported_ds', $payload)) {
                 $payload['imported_ds'] = $payload['ds'] ?? null;
                 $payload['imported_points'] = $payload['points'] ?? null;

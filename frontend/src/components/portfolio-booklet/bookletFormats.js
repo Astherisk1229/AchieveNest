@@ -8,14 +8,15 @@ import { NTP_OTHER_KEY, normalizeNonTeachingBookletItems } from '../../utils/non
  * — the personnel view, the Dean / HR review view and the printed PDF — is identical.
  */
 
-const ENGAGEMENT_LABELS = { full_time_faculty: 'Full-Time' }
+const ENGAGEMENT_LABELS = { full_time_faculty: 'Full-Time', part_time_faculty: 'Part-Time' }
 const titleCase = (value) => String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 const formatSchoolYear = (value) => String(value || '').replace(/^\s*(AY|A\.Y\.|S\.?Y\.?)\s*/i, '')
 
 const facultyStatus = (user = {}, portfolio = {}) => {
   const engagementKey = String(user.faculty_engagement || portfolio.faculty_engagement || '').toLowerCase()
+  const engagement = ENGAGEMENT_LABELS[engagementKey] || (engagementKey ? titleCase(engagementKey) : '')
   const status = titleCase(user.employment_status_label || portfolio.employment_status_label || user.employment_status || portfolio.employment_status || '')
-  return [ENGAGEMENT_LABELS[engagementKey] || '', status].filter(Boolean).join(' - ')
+  return [engagement, status].filter(Boolean).join(' - ')
 }
 
 const nameOf = (user = {}, portfolio = {}) => user.full_name || portfolio.personnel_name || portfolio.faculty_name || portfolio.full_name || ''
@@ -29,7 +30,36 @@ export const FACULTY_BOOKLET_FORMAT = Object.freeze({
     { key: 'B', title: 'B. PRODUCTIVITY AND CREATIVE WORK' },
     { key: 'C', title: 'C. SERVICE AND LEADERSHIP' }
   ],
-  criteria: FACULTY_ACADEMIC_CRITERIA.map((criterion) => ({ ...criterion, kind: 'records' })),
+  // Display names mirror the supplied Faculty Development Program booklet.
+  // The canonical keys stay unchanged for data lookup, evaluation and history.
+  criteria: FACULTY_ACADEMIC_CRITERIA.map((criterion) => ({
+    ...criterion,
+    kind: 'records',
+    label: ({
+      'A.1': 'EDUCATION',
+      'A.2': 'ACTIVE MEMBERSHIP TO PROFESSIONAL ORGANIZATIONS',
+      'A.3': 'ATTENDANCE TO SEMINAR-WORKSHOP/TRAININGS',
+      'B.1': 'INVITED AS GUEST LECTURER/CONSULTANT/JUDGE/RESOURCE PERSON',
+      'B.2': 'PUBLICATION (scholarly paper/article/research output/book)',
+      'B.3': 'CONDUCT OF RESEARCH',
+      'B.4': 'RECOGNITION/AWARDS',
+      'B.5': 'PRODUCTION OF INSTRUCTIONAL MATERIALS',
+      'B.6': 'CREATIVE WORK',
+      'C.1.1': 'Moderator of clubs/org.',
+      'C.1.2': 'Coach/Trainer',
+      'C.1.3': 'Membership in Working Committees',
+      'C.1.4': 'Rendered service in School Activities',
+      'C.2.1': 'Active involvement in church activities',
+      'C.2.2': 'Active involvement in community/civic activities',
+      'C.2.3': 'Support to charity and community projects',
+      'C.3': 'NO. OF YEARS OF SERVICE AT NDMU'
+    })[criterion.key] || criterion.label,
+    group: ({
+      'C.1.1': 'INVOLVEMENT IN EXTRA-CURRICULAR ACTIVITIES/RECOGNIZED SCHOOL ORGS.',
+      'C.2.1': 'COMMUNITY INVOLVEMENT'
+    })[criterion.key],
+    headingType: criterion.key.startsWith('C.1.') || criterion.key.startsWith('C.2.') ? 'subcriterion' : 'criterion'
+  })),
   normalize: normalizeFacultyBookletItems,
   headerFields: (user, portfolio) => [
     ['Name', nameOf(user, portfolio)],

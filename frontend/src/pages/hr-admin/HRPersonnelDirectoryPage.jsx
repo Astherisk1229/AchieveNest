@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { CheckCircle2, Trash2 } from 'lucide-react'
 import { useHR } from '../../hooks/useHR'
@@ -13,7 +13,7 @@ import OnboardPersonnelModal from './personnel-directory/OnboardPersonnelModal'
 import BatchImportPersonnelModal from './personnel-directory/BatchImportPersonnelModal'
 import ResetPersonnelPasswordModal from './personnel-directory/ResetPersonnelPasswordModal'
 import { collectPersonnelPlacementOptions, mergePlacementMasterData } from '../../utils/personnelPlacement'
-import { updatePersonnelMasterData, updatePersonnelAssignment } from '../../services/hrAdminService'
+import { updatePersonnelClassification, updatePersonnelMasterData, updatePersonnelAssignment } from '../../services/hrAdminService'
 import lifecycleService from '../../services/lifecycleService'
 import { personnelMasterDataService } from '../../services/personnelMasterDataService'
 
@@ -23,8 +23,16 @@ export function HRPersonnelDirectoryPage(props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const directorySearchQuery = searchParams.get('search') || ''
-  const [directoryQuery, setDirectoryQuery] = useState({ page: 1, per_page: 10, search: directorySearchQuery })
+  const [directoryQuery, setDirectoryQuery] = useState({ page: 1, per_page: 10 })
+  const updateDirectoryQuery = useCallback(query => {
+    setDirectoryQuery(current => JSON.stringify(current) === JSON.stringify(query) ? current : query)
+  }, [])
   const hrHook = useHR({ resources: ['directory', 'passwordResets'], directoryQuery })
+  const [hasLoadedDirectory, setHasLoadedDirectory] = useState(false)
+
+  useEffect(() => {
+    if (!hrHook.isLoading) setHasLoadedDirectory(true)
+  }, [hrHook.isLoading])
 
   const personnelList = props.personnelList || hrHook.personnelList
   const passwordResets = props.passwordResets || hrHook.passwordResets
@@ -41,9 +49,11 @@ export function HRPersonnelDirectoryPage(props) {
   useEffect(() => {
     let isMounted = true
     Promise.all([
-      personnelMasterDataService.getColleges(),
+      personnelMasterDataService.refreshColleges(),
       personnelMasterDataService.getAcademicPrograms(),
-      personnelMasterDataService.getDepartments()
+      // Refresh when entering the directory: HR may have added or reassigned
+      // departments after a previous route populated the in-memory cache.
+      personnelMasterDataService.refreshDepartments()
     ]).then(([colleges, programs, departments]) => {
       if (isMounted) {
         setInstitutionalMasterData({
@@ -60,6 +70,13 @@ export function HRPersonnelDirectoryPage(props) {
       isMounted = false
     }
   }, [])
+
+  const refreshDirectoryColleges = async () => {
+    const colleges = await personnelMasterDataService.refreshColleges()
+    if (Array.isArray(colleges) && colleges.length > 0) {
+      setInstitutionalMasterData(current => ({ ...current, colleges }))
+    }
+  }
 
   const placementOptions = useMemo(() => {
     const scraped = collectPersonnelPlacementOptions(personnelList)
@@ -87,6 +104,16 @@ export function HRPersonnelDirectoryPage(props) {
   const [isDossierOpen, setIsDossierOpen] = useState(false)
   const [editingAssignmentPersonnel, setEditingAssignmentPersonnel] = useState(null)
   const [editingMasterDataPersonnel, setEditingMasterDataPersonnel] = useState(null)
+  const requestedMasterDataEditId = searchParams.get('edit_master_data')
+  useEffect(() => {
+    if (!requestedMasterDataEditId) return
+    const person = personnelList.find(item => String(item.id || item.profile_id) === requestedMasterDataEditId)
+    if (!person) return
+    setEditingMasterDataPersonnel(person)
+    const next = new URLSearchParams(searchParams)
+    next.delete('edit_master_data')
+    setSearchParams(next, { replace: true })
+  }, [requestedMasterDataEditId, personnelList, searchParams, setSearchParams])
   const [resetPasswordPersonnel, setResetPasswordPersonnel] = useState(null)
   const [deletePersonnel, setDeletePersonnel] = useState(null)
   const [isDeletingPersonnel, setIsDeletingPersonnel] = useState(false)
@@ -133,12 +160,19 @@ export function HRPersonnelDirectoryPage(props) {
     setIsDossierOpen(true)
   }
 
-  const handleOpenEditAssignment = (p) => {
+  const handleOpenEditAssignment = async (p) => {
+    await refreshDirectoryColleges()
     setEditingAssignmentPersonnel(p)
   }
 
-  const handleOpenEditMasterData = (p) => {
+  const handleOpenEditMasterData = async (p) => {
+    await refreshDirectoryColleges()
     setEditingMasterDataPersonnel(p)
+  }
+
+  const handleOpenOnboarding = async () => {
+    await refreshDirectoryColleges()
+    setIsOnboardingOpen(true)
   }
 
   const handleSaveAssignment = async (updatedData) => {
@@ -154,14 +188,30 @@ export function HRPersonnelDirectoryPage(props) {
   }
 
   const handleSaveMasterData = async (profileId, payload) => {
+    let savedClassification = false
+    let savedAssignment = false
+    let savedMasterData = false
     try {
+      const current = personnelList.find(item => String(item.id || item.profile_id) === String(profileId))
+      const classificationChanged = String(current?.personnel_group || '').toLowerCase() !== String(payload.personnel_group || '').toLowerCase()
+        || String(current?.organizational_side || current?.personnel_classification || '').toLowerCase() !== String(payload.organizational_side || '').toLowerCase()
+      if (classificationChanged) {
+        await updatePersonnelClassification(profileId, {
+          personnel_group: payload.personnel_group,
+          organizational_side: payload.organizational_side,
+          reason: payload.reason
+        })
+        savedClassification = true
+      }
       await updatePersonnelAssignment(profileId, {
         college_id: payload.college_id,
         academic_program_ids: payload.academic_program_ids || [],
         department_id: payload.department_id,
         administrative_unit_id: payload.administrative_unit_id
       })
+      savedAssignment = true
       const result = await updatePersonnelMasterData(profileId, payload)
+      savedMasterData = true
       const saved = result?.data || result
       setSelectedFaculty(current => (
         current && (current.id === profileId || current.profile_id === profileId)
@@ -174,11 +224,26 @@ export function HRPersonnelDirectoryPage(props) {
       ))
       showToast('HR Master Data updated successfully with audit trail.')
       setEditingMasterDataPersonnel(null)
-      await hrHook.refreshData?.()
     } catch (err) {
       console.error('Failed to update master data:', err)
-      showToast('Failed to update master data. Please check authorization.')
+      if (savedClassification || savedAssignment || savedMasterData) {
+        try {
+          await hrHook.refreshData?.()
+        } catch (refreshError) {
+          console.warn('A partial personnel update was saved, but the directory could not refresh:', refreshError)
+        }
+        showToast('Some changes were saved before a later update failed. Review the personnel record and retry the remaining changes.')
+      } else {
+        showToast('Failed to update master data. Please check authorization.')
+      }
       throw err
+    }
+
+    try {
+      await hrHook.refreshData?.()
+    } catch (refreshError) {
+      console.warn('Personnel master data was saved, but the directory could not refresh:', refreshError)
+      showToast('Personnel master data saved. Refresh the directory to see the updated record.')
     }
   }
 
@@ -278,7 +343,7 @@ export function HRPersonnelDirectoryPage(props) {
         summaryLoading={!props.personnelList && hrHook.isLoading}
         totalCount={props.personnelList ? personnelList.length : hrHook.directoryTotal}
         pendingResetsCount={passwordResets.filter(r => r.status === 'pending').length}
-        onOpenOnboarding={() => setIsOnboardingOpen(true)}
+        onOpenOnboarding={handleOpenOnboarding}
         onOpenBatchImport={() => setIsBatchImportOpen(true)}
       />
 
@@ -298,14 +363,13 @@ export function HRPersonnelDirectoryPage(props) {
         </div>
       )}
 
-      {activeTab === 'directory' && hrHook.isLoading && !hrHook.hasLoadedDirectory && !props.personnelList && (
+      {activeTab === 'directory' && hrHook.isLoading && !hasLoadedDirectory && !props.personnelList && (
         <div aria-label="Loading Personnel Directory" className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
           {[1, 2, 3, 4, 5].map(row => <div key={row} className="h-16 animate-pulse bg-slate-50/80 dark:bg-slate-800/30" />)}
         </div>
       )}
 
-      {activeTab === 'directory' && hrHook.isLoading && hrHook.hasLoadedDirectory && <p role="status" className="text-sm text-slate-500">Updating personnel…</p>}
-      {activeTab === 'directory' && (props.personnelList || hrHook.hasLoadedDirectory) && (
+      {activeTab === 'directory' && (hasLoadedDirectory || props.personnelList) && (
         <PersonnelDirectoryTable
           personnelList={personnelList}
           initialSearch={directorySearchQuery}
@@ -320,9 +384,11 @@ export function HRPersonnelDirectoryPage(props) {
           onResetPassword={handleResetPassword}
           onDeletePersonnel={handleDeletePersonnel}
           onManageRole={handleManageRole}
+          onRefresh={hrHook.refreshData}
           showToast={showToast}
           serverTotal={props.personnelList ? null : hrHook.directoryTotal}
-          onServerQueryChange={props.personnelList ? undefined : setDirectoryQuery}
+          onServerQueryChange={props.personnelList ? undefined : updateDirectoryQuery}
+          isLoading={!props.personnelList && hrHook.isLoading}
           directoryCollegeOptions={institutionalMasterData.colleges}
           directoryDepartmentOptions={institutionalMasterData.administrativeUnits}
         />

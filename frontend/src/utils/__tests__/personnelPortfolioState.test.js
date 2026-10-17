@@ -28,15 +28,15 @@ describe('personnel portfolio authoritative submission state', () => {
     })).toBeNull()
   })
 
-  it('gives submitted V1 precedence over a rebuilt draft and locks editing', () => {
+  it('keeps a submitted portfolio editable until its own evaluation begins', () => {
     expect(derivePersonnelPortfolioState(
       { status: 'draft' },
       { id: 'evaluation-v1', status: 'submitted', version_number: 1 }
     )).toEqual({
       status: 'submitted',
       isReturnedForRevision: false,
-      isLocked: true,
-      isEditable: false
+      isLocked: false,
+      isEditable: true
     })
   })
 

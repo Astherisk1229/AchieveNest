@@ -1,5 +1,4 @@
 const LOCKED_SUBMISSION_STATUSES = new Set([
-  'submitted',
   'in_evaluation',
   'endorsed_to_hr',
   'ready_for_finalization',
@@ -45,9 +44,27 @@ export function derivePersonnelPortfolioState(portfolio, latestSubmission) {
   const status = submissionStatus || workingStatus
   const isReturnedForRevision = RETURNED_SUBMISSION_STATUSES.has(status)
   const isLocked = !isReturnedForRevision && LOCKED_SUBMISSION_STATUSES.has(status)
-  const isEditable = !isLocked && (status === 'draft' || isReturnedForRevision)
+  const isEditable = !isLocked && (status === 'draft' || status === 'submitted' || isReturnedForRevision)
 
   return { status, isReturnedForRevision, isLocked, isEditable }
+}
+
+/** Keep a previous period's locked snapshot from hiding a newly open period. */
+export function derivePersonnelSubmissionContext(portfolio, latestSubmission, evaluationPeriod) {
+  const currentPeriodId = String(evaluationPeriod?.id || '')
+  const latestPeriodId = String(latestSubmission?.evaluation_period_id || latestSubmission?.evaluation_cycle_id || '')
+  const currentCycleSubmission = currentPeriodId && latestPeriodId === currentPeriodId ? latestSubmission : null
+  const isReturned = RETURNED_SUBMISSION_STATUSES.has(normalizeStatus(latestSubmission?.status))
+  const actionSubmission = currentCycleSubmission || (isReturned ? latestSubmission : null)
+  const hasNewOpenPeriod = Boolean(evaluationPeriod?.can_submit && !currentCycleSubmission && !isReturned)
+  return {
+    currentCycleSubmission,
+    isReturned,
+    actionSubmission,
+    actionState: hasNewOpenPeriod
+      ? { status: 'draft', isReturnedForRevision: false, isEditable: true }
+      : derivePersonnelPortfolioState(portfolio, actionSubmission || latestSubmission)
+  }
 }
 
 /**
@@ -62,20 +79,21 @@ export function derivePersonnelSubmissionActionGate({
   isSubmitting = false
 }) {
   const isReturnedForRevision = Boolean(portfolioState?.isReturnedForRevision)
+  const isPreEvaluationRevision = normalizeStatus(portfolioState?.status) === 'submitted'
   const periodUnavailableReason = isReturnedForRevision
     ? ''
     : !evaluationPeriod
       ? 'No personnel evaluation period is currently open for submission.'
       : !evaluationPeriod.can_submit
         ? evaluationPeriod.status === 'DRAFT'
-          ? 'HR has scheduled this evaluation but has not opened submissions yet.'
+          ? 'The scheduled submission period has not opened yet.'
           : 'The current personnel evaluation period is outside its submission window.'
         : ''
   const eligibilityBlocked = !isReturnedForRevision && eligibilityStatus !== 'eligible'
   const visible = Boolean(portfolioState?.isEditable)
 
   return {
-    action: isReturnedForRevision ? 'resubmit' : 'submit',
+    action: isReturnedForRevision || isPreEvaluationRevision ? 'resubmit' : 'submit',
     visible,
     periodUnavailableReason,
     eligibilityBlocked,

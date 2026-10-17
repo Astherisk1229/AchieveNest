@@ -103,15 +103,6 @@ final class PersonnelReviewerEvaluationRevisionIntegrationTest extends TestCase
         $db->query("DELETE FROM personnel_evaluation_deficiency_requests WHERE requested_by LIKE '{$prefix}%' OR evaluation_id IN (SELECT id FROM personnel_evaluations WHERE personnel_profile_id LIKE '{$prefix}%')");
         $db->query("DELETE FROM personnel_evaluation_reports WHERE evaluation_id IN (SELECT id FROM personnel_evaluations WHERE personnel_profile_id LIKE '{$prefix}%')");
         $db->query("DELETE FROM personnel_evaluation_items WHERE evaluation_id IN (SELECT id FROM personnel_evaluations WHERE personnel_profile_id LIKE '{$prefix}%')");
-        if ($db->tableExists('personnel_portfolio_submission_items')) {
-            $db->query("DELETE FROM personnel_portfolio_submission_items WHERE submission_version_id IN (SELECT id FROM personnel_portfolio_submission_versions WHERE submission_id IN (SELECT id FROM personnel_portfolio_submissions WHERE personnel_profile_id LIKE '{$prefix}%'))");
-        }
-        if ($db->tableExists('personnel_portfolio_submission_versions')) {
-            $db->query("DELETE FROM personnel_portfolio_submission_versions WHERE submission_id IN (SELECT id FROM personnel_portfolio_submissions WHERE personnel_profile_id LIKE '{$prefix}%')");
-        }
-        if ($db->tableExists('personnel_portfolio_submissions')) {
-            $db->query("DELETE FROM personnel_portfolio_submissions WHERE personnel_profile_id LIKE '{$prefix}%'");
-        }
         $db->query("DELETE FROM personnel_evaluations WHERE personnel_profile_id LIKE '{$prefix}%'");
         $db->query("DELETE FROM personnel_accomplishment_evidence WHERE uploaded_by LIKE '{$prefix}%' OR accomplishment_id IN (SELECT id FROM personnel_accomplishments WHERE personnel_profile_id LIKE '{$prefix}%')");
         $db->query("DELETE FROM personnel_accomplishments WHERE personnel_profile_id LIKE '{$prefix}%'");
@@ -441,6 +432,12 @@ final class PersonnelReviewerEvaluationRevisionIntegrationTest extends TestCase
         $invalidStatusResp = $hrCtrlDeanCas->verifyItem($submissionIdV1, $itemV1['id']);
         $this->assertSame(422, $invalidStatusResp->getStatusCode(), 'Invalid verification_status must return 422');
 
+        $verifyOverrideReq = $this->createMockRequest('PATCH', ['verification_status' => 'verified', 'awarded_points' => 9999], ['Authorization' => 'Bearer fake-token']);
+        $this->initController($hrCtrlDeanCas, $verifyOverrideReq);
+        $verifyOverrideResp = $hrCtrlDeanCas->verifyItem($submissionIdV1, $itemV1['id']);
+        $this->assertSame(422, $verifyOverrideResp->getStatusCode());
+        $this->assertSame('SCORE_OVERRIDE_NOT_ALLOWED', json_decode((string) $verifyOverrideResp->getBody(), true)['error']['code'] ?? null);
+
         // Verify item legitimately
         $verifyReq = $this->createMockRequest('PATCH', ['verification_status' => 'verified', 'evaluator_remarks' => 'Valid Scopus evidence verified'], ['Authorization' => 'Bearer fake-token']);
         $this->initController($hrCtrlDeanCas, $verifyReq);
@@ -453,17 +450,24 @@ final class PersonnelReviewerEvaluationRevisionIntegrationTest extends TestCase
         $crossRateResp = $hrCtrlDeanCed->rateItem($submissionIdV1, $itemV1['id']);
         $this->assertSame(403, $crossRateResp->getStatusCode(), 'Unauthorized reviewer rating must be blocked with 403');
 
-        // Remarks and a forged points payload must not mutate the locked criterion or its points.
+        // A fixed criterion rejects a forged score before mutating the item.
         $lockedCriterionBeforeRate = $db->table('personnel_evaluation_items')->where('id', $itemV1['id'])->get()->getRowArray();
         $lockedSnapshotBeforeRate = $lockedCriterionBeforeRate['criterion_snapshot'];
         $lockedPointsBeforeRate = (float) $lockedCriterionBeforeRate['configured_points_snapshot'];
         $rateReq = $this->createMockRequest('PATCH', ['evaluator_remarks' => 'Full points awarded per rubric', 'awarded_points' => 9999], ['Authorization' => 'Bearer fake-token']);
         $this->initController($hrCtrlDeanCas, $rateReq);
         $rateResp = $hrCtrlDeanCas->rateItem($submissionIdV1, $itemV1['id']);
+        $this->assertSame(422, $rateResp->getStatusCode());
+        $this->assertSame('SCORE_OVERRIDE_NOT_ALLOWED', json_decode((string) $rateResp->getBody(), true)['error']['code'] ?? null);
+        $this->assertSame($lockedCriterionBeforeRate['rating_status'], $db->table('personnel_evaluation_items')->where('id', $itemV1['id'])->get()->getRowArray()['rating_status']);
+
+        $rateReq = $this->createMockRequest('PATCH', ['evaluator_remarks' => 'Full points awarded per rubric'], ['Authorization' => 'Bearer fake-token']);
+        $this->initController($hrCtrlDeanCas, $rateReq);
+        $rateResp = $hrCtrlDeanCas->rateItem($submissionIdV1, $itemV1['id']);
         $this->assertSame(200, $rateResp->getStatusCode());
         $rateBody = json_decode((string)$rateResp->getBody(), true);
         $awardedPoints = $rateBody['data']['awarded_points'] ?? 0;
-        $this->assertSame($lockedPointsBeforeRate, (float) $awardedPoints, 'Server must calculate points from the locked criterion snapshot and ignore client-supplied points for configured criteria');
+        $this->assertSame($lockedPointsBeforeRate, (float) $awardedPoints, 'Server must calculate points from the locked criterion snapshot for configured criteria');
         $lockedCriterionAfterRate = $db->table('personnel_evaluation_items')->where('id', $itemV1['id'])->get()->getRowArray();
         $this->assertSame($lockedSnapshotBeforeRate, $lockedCriterionAfterRate['criterion_snapshot'], 'Editing evaluator remarks must not change the matched category, subcategory, level, or criteria version.');
         $this->assertSame('Full points awarded per rubric', $lockedCriterionAfterRate['evaluator_remarks'], 'Edited evaluator remarks must persist independently from the criterion snapshot.');
@@ -640,9 +644,9 @@ final class PersonnelReviewerEvaluationRevisionIntegrationTest extends TestCase
         $this->assertCount(1, $evalItemsV2);
         $itemV2 = $evalItemsV2[0];
         $this->assertStringContainsString('Corrected with DOI', $itemV2['item_description']);
-        $this->assertSame('unrated', $itemV2['rating_status'], 'V2 items must be unrated initially (Score Version Isolation)');
+        $this->assertSame('unrated', $itemV2['rating_status'], 'A corrected V2 item requires a new rating.');
         $this->assertSame('pending', $itemV2['verification_status']);
-        $this->assertNull($itemV2['awarded_points'], 'Version 1 score must not be inherited by Version 2');
+        $this->assertNull($itemV2['awarded_points'], 'A changed item must not inherit its Version 1 score.');
         $this->assertSame($evidenceId, $itemV2['evidence_id'], 'Version 2 must reuse the existing active evidence');
 
         $v1AfterResubmit = $db->table('personnel_evaluations')->where('id', $submissionIdV1)->get()->getRowArray();

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Search, ArrowUp, ArrowDown, ArrowUpDown, MoreVertical,
   Copy, Check, X, ChevronLeft, ChevronRight, User, RefreshCw,
-  ShieldCheck, KeyRound
+  Filter, ChevronDown, AlertTriangle
 } from 'lucide-react'
 import PersonnelActionsMenu from './PersonnelActionsMenu'
 import { Select, SelectItem } from '../../../components/ui/select'
@@ -79,9 +79,11 @@ export default function PersonnelDirectoryTable({
   onResetPassword,
   onDeletePersonnel,
   onManageRole,
+  onRefresh,
   showToast,
   serverTotal = null,
   onServerQueryChange,
+  isLoading = false,
   directoryCollegeOptions = [],
   directoryDepartmentOptions = []
 }) {
@@ -95,6 +97,7 @@ export default function PersonnelDirectoryTable({
   const [collegeFilter, setCollegeFilter] = useState('ALL')
   const [unitFilter, setUnitFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const searchInputRef = useRef(null)
 
@@ -147,20 +150,24 @@ export default function PersonnelDirectoryTable({
 
   useEffect(() => {
     if (!onServerQueryChange) return undefined
-    const timer = window.setTimeout(() => onServerQueryChange({
-      search: search.trim(),
-      personnel_group: groupFilter === 'ALL' ? '' : groupFilter,
-      organizational_side: sideFilter === 'ALL' ? '' : sideFilter,
-      employment_status: employmentStatusFilter === 'ALL' ? '' : employmentStatusFilter,
-      college_id: collegeFilter === 'ALL' ? '' : collegeFilter,
-      administrative_unit_id: unitFilter === 'ALL' ? '' : unitFilter,
-      status: statusFilter === 'ALL' ? '' : statusFilter,
-      sort_dir: sortDirection,
-      page: currentPage,
-      per_page: rowsPerPage
-    }), 250)
+    const timer = window.setTimeout(() => {
+      const query = {
+        search,
+        sort_by: sortColumn === 'classification' ? 'full_name' : sortColumn,
+        sort_dir: sortDirection,
+        page: currentPage,
+        per_page: rowsPerPage
+      }
+      if (groupFilter !== 'ALL') query.personnel_group = groupFilter
+      if (sideFilter !== 'ALL') query.personnel_classification = sideFilter
+      if (employmentStatusFilter !== 'ALL') query.employment_status = employmentStatusFilter
+      if (collegeFilter !== 'ALL') query.college_id = collegeFilter
+      if (unitFilter !== 'ALL') query.administrative_unit_id = unitFilter
+      if (statusFilter !== 'ALL') query.status = statusFilter
+      onServerQueryChange(query)
+    }, 220)
     return () => window.clearTimeout(timer)
-  }, [onServerQueryChange, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortDirection, currentPage, rowsPerPage])
+  }, [onServerQueryChange, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection, currentPage, rowsPerPage])
 
   useEffect(() => {
     if (revealRequestKey) {
@@ -185,24 +192,25 @@ export default function PersonnelDirectoryTable({
 
   // Filter & Sort Pipeline
   const filteredSortedList = useMemo(() => {
-    if (serverTotal != null) return personnelList
     let list = [...personnelList]
 
     // 1. Search Query
-    if (search.trim()) {
+    if (!onServerQueryChange && search.trim()) {
       list = list.filter(p => matchesPersonnelSearch(p, search))
     }
 
     // 2–9. Structured filters (see utils/personnelDirectoryFilters.js)
-    list = applyPersonnelFilters(list, {
-      group: groupFilter,
-      appointment: employmentStatusFilter,
-      college: collegeFilter,
-      department: unitFilter,
-      status: statusFilter
-    })
-    if (sideFilter !== 'ALL') {
-      list = list.filter(p => (p.organizational_side || p.personnel_classification || '').toLowerCase() === sideFilter)
+    if (!onServerQueryChange) {
+      list = applyPersonnelFilters(list, {
+        group: groupFilter,
+        appointment: employmentStatusFilter,
+        college: collegeFilter,
+        department: unitFilter,
+        status: statusFilter
+      })
+      if (sideFilter !== 'ALL') {
+        list = list.filter(p => (p.organizational_side || p.personnel_classification || '').toLowerCase() === sideFilter)
+      }
     }
 
     // 10. Sorting
@@ -229,7 +237,7 @@ export default function PersonnelDirectoryTable({
     })
 
     return list
-  }, [personnelList, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection, serverTotal])
+  }, [personnelList, search, groupFilter, sideFilter, employmentStatusFilter, collegeFilter, unitFilter, statusFilter, sortColumn, sortDirection, onServerQueryChange])
 
   const totalItems = serverTotal == null ? filteredSortedList.length : serverTotal
   const totalPages = Math.max(1, Math.ceil(totalItems / rowsPerPage))
@@ -276,85 +284,70 @@ export default function PersonnelDirectoryTable({
     setCurrentPage(1)
   }
 
-  const hasActiveFilters = Boolean(
-    search || groupFilter !== 'ALL' || sideFilter !== 'ALL' ||
-    employmentStatusFilter !== 'ALL' ||
-    collegeFilter !== 'ALL' || unitFilter !== 'ALL' || statusFilter !== 'ALL'
-  )
+  const activeFilterItems = [
+    groupFilter !== 'ALL' && { label: groupFilter === 'faculty' ? 'Teaching Faculty' : 'Non-Teaching Faculty', clear: () => setGroupFilter('ALL') },
+    employmentStatusFilter !== 'ALL' && { label: employmentStatusFilter === NOT_RECORDED ? 'Appointment: Not recorded' : `Appointment: ${employmentStatusFilter}`, clear: () => setEmploymentStatusFilter('ALL') },
+    collegeFilter !== 'ALL' && { label: `College: ${collegeOptions.find(item => String(item.id) === String(collegeFilter))?.code || collegeOptions.find(item => String(item.id) === String(collegeFilter))?.name || 'Selected'}`, clear: () => setCollegeFilter('ALL') },
+    unitFilter !== 'ALL' && { label: `Department: ${departmentOptions.find(item => String(item.id) === String(unitFilter))?.code || departmentOptions.find(item => String(item.id) === String(unitFilter))?.name || 'Selected'}`, clear: () => setUnitFilter('ALL') },
+    statusFilter !== 'ALL' && { label: `Status: ${statusFilter}`, clear: () => setStatusFilter('ALL') }
+  ].filter(Boolean)
+  const hasActiveFilters = activeFilterItems.length > 0 || Boolean(search)
 
-  const renderStatusBadge = (statusStr = 'active') => {
-    const s = String(statusStr).toLowerCase()
-    let badgeStyle = 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-    let dotStyle = 'bg-emerald-500'
-
-    if (s === 'suspended') {
-      badgeStyle = 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'
-      dotStyle = 'bg-red-500'
-    } else if (s === 'archived') {
-      badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-      dotStyle = 'bg-slate-400'
-    }
-
-    return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${badgeStyle}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${dotStyle}`} />
-        <span>{statusStr || 'Active'}</span>
-      </span>
-    )
-  }
-
-  const renderLoginReadiness = (readiness) => {
+  const loginReadiness = (readiness) => {
     const status = readiness?.status || 'UNKNOWN'
     const config = {
-      READY: ['Login Ready', 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'],
-      NEEDS_PASSWORD_CHANGE: ['Password Change Required', 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'],
-      DISABLED: ['Login Disabled', 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'],
-      IDENTITY_CONFLICT: ['Account Conflict', 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'],
-      NOT_READY: ['Login Not Ready', 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'],
-      UNKNOWN: ['Readiness Unknown', 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'],
-    }[status] || ['Readiness Unknown', 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700']
+      READY: ['Login ready', false],
+      NEEDS_PASSWORD_CHANGE: ['Password change required', true],
+      DISABLED: ['Login disabled', false],
+      IDENTITY_CONFLICT: ['Account conflict', true],
+      NOT_READY: ['Login not ready', true],
+      UNKNOWN: ['Readiness unknown', false]
+    }[status] || ['Readiness unknown', false]
     const reasons = (readiness?.reason_codes || []).map(reason => reason.toLowerCase().replace(/_/g, ' ')).join(', ')
-
-    return (
-      <span
-        className={`mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${config[1]}`}
-        title={reasons ? `${config[0]}: ${reasons}` : config[0]}
-      >
-        <KeyRound className="h-2.5 w-2.5" aria-hidden="true" />
-        {config[0]}
-      </span>
-    )
+    return { label: config[0], needsAttention: config[1], title: reasons ? `${config[0]}: ${reasons}` : config[0] }
   }
 
   return (
     <div className="space-y-4 font-sans text-slate-900 dark:text-slate-100">
-      <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="relative flex-1 w-full min-w-0">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Search className="w-4 h-4 text-slate-400" />
-            </div>
+      <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               ref={searchInputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, or ID"
-              className="w-full pl-10 pr-9 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-normal text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-[#176B43] dark:focus:border-emerald-600 transition"
+              aria-label="Search personnel"
+              placeholder="Search personnel by name, email, ID, assignment, or position"
+              className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-400"
             />
             {search && (
               <button
                 type="button"
+                aria-label="Clear search"
                 onClick={() => setSearch('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:hover:bg-slate-800 dark:hover:text-white"
               >
-                <X className="w-4 h-4" />
+                <X aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
           </div>
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="personnel-directory-filters"
+            onClick={() => setFiltersOpen(open => !open)}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800"
+          >
+            <Filter aria-hidden="true" className="h-4 w-4" />
+            Filters
+            {activeFilterItems.length > 0 && <span className="rounded-full bg-emerald-100 px-1.5 text-xs font-bold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">{activeFilterItems.length}</span>}
+            <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+        <div id="personnel-directory-filters" role="region" aria-label="Personnel filters" className={`${filtersOpen ? 'grid' : 'hidden'} grid-cols-1 gap-3 border-t border-slate-200 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 dark:border-slate-800`}>
           {/* Personnel Group Filter */}
           <Select
             value={groupFilter}
@@ -421,26 +414,33 @@ export default function PersonnelDirectoryTable({
             <SelectItem value="archived">Archived</SelectItem>
           </Select>
 
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Clear filters
-            </button>
-          )}
         </div>
+
+        {hasActiveFilters && <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-3 py-2.5 dark:border-slate-800">
+          <span className="mr-1 text-xs font-semibold text-slate-500 dark:text-slate-400">Applied</span>
+          {search && <button type="button" onClick={() => setSearch('')} aria-label={`Remove search ${search}`} className="inline-flex max-w-full items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><span className="max-w-56 truncate">Search: {search}</span><X aria-hidden="true" className="h-3 w-3 shrink-0" /></button>}
+          {activeFilterItems.map((item, index) => <button key={`${item.label}-${index}`} type="button" onClick={item.clear} aria-label={`Remove ${item.label} filter`} className="inline-flex max-w-full items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"><span className="max-w-56 truncate">{item.label}</span><X aria-hidden="true" className="h-3 w-3 shrink-0" /></button>)}
+          <button type="button" onClick={handleResetFilters} className="ml-auto inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"><RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />Reset filters</button>
+        </div>}
       </div>
 
       {/* Primary Directory Table Shell */}
-      <section className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <section aria-busy={isLoading} className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+        {isLoading && paginatedList.length > 0 && <p role="status" className="border-b border-slate-200 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">Updating personnel records…</p>}
         <div className="overflow-x-auto min-w-full max-h-[70vh]">
-          <table className="w-full min-w-[760px] text-left text-xs border-collapse">
+          <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col className="w-10" />
+              <col className="w-[23%]" />
+              <col className="w-[15%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+              <col className="w-[22%]" />
+              <col className="w-14" />
+            </colgroup>
             <thead className="sticky top-0 z-10">
-              <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 font-semibold text-xs select-none">
-                <th className="p-4 w-12 text-center">
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-600 select-none dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+                <th className="px-3 py-3 text-center">
                   <input
                     type="checkbox"
                     checked={isAllPageSelected}
@@ -460,7 +460,7 @@ export default function PersonnelDirectoryTable({
                   />
                 </th>
 
-                <th className="p-4 text-left">
+                <th className="px-3 py-3 text-left">
                   <button
                     type="button"
                     onClick={() => handleSort('full_name')}
@@ -475,33 +475,33 @@ export default function PersonnelDirectoryTable({
                   </button>
                 </th>
 
-                <th className="p-4 text-left">Assignment</th>
-                <th className="hidden md:table-cell p-4 text-left">Job Title</th>
-                <th className="hidden md:table-cell p-4 text-left">Academic Rank</th>
-                <th className="p-4 text-left">Status &amp; Responsibilities</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="px-3 py-3 text-left">Assignment</th>
+                <th className="px-3 py-3 text-left">Job Title</th>
+                <th className="px-3 py-3 text-left">Academic Rank</th>
+                <th className="px-3 py-3 text-left">Status &amp; Responsibilities</th>
+                <th className="px-3 py-3 text-right">Actions</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300">
+            <tbody className="divide-y divide-slate-200 font-normal text-slate-700 dark:divide-slate-800 dark:text-slate-300">
               {paginatedList.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-12 text-center">
-                    <div className="space-y-3 max-w-md mx-auto">
+                    {isLoading ? <span role="status" className="text-sm text-slate-600 dark:text-slate-300">Updating personnel records…</span> : <div className="space-y-3 max-w-md mx-auto">
                       <User className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
                       <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No personnel records found</h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        No records match your active search or filter criteria.
+                        {hasActiveFilters ? 'No records match your active search or filter criteria.' : 'No personnel records were returned. Refresh the directory to try again.'}
                       </p>
                       <button
                         type="button"
-                        onClick={handleResetFilters}
+                        onClick={hasActiveFilters ? handleResetFilters : (onRefresh || handleResetFilters)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Clear filters</span>
+                        <span>{hasActiveFilters ? 'Clear filters' : 'Refresh directory'}</span>
                       </button>
-                    </div>
+                    </div>}
                   </td>
                 </tr>
               ) : (
@@ -509,14 +509,30 @@ export default function PersonnelDirectoryTable({
                   const isSelected = selectedIds.has(p.id)
                   const isNewlyCreated = p.id === newlyCreatedId
                   const isAcademic = isAcademicPersonnel(p)
+                  const organizationName = isAcademic
+                    ? (p.college_name || p.college || '')
+                    : (p.administrative_unit_name || '')
+                  const organizationCode = isAcademic
+                    ? (p.college_code || '')
+                    : (p.administrative_unit_code || '')
+                  const personnelStatus = p.status || p.account_status || 'active'
+                  const normalizedStatus = String(personnelStatus).toLowerCase()
+                  const readiness = loginReadiness(p.login_readiness)
+                  const responsibilities = (p.assigned_roles || []).filter(role => {
+                    const key = typeof role === 'object' ? (role?.role_key || role?.name || '') : String(role || '')
+                    return ['program_coordinator', 'organization_moderator'].includes(key)
+                  }).map(role => {
+                    const key = typeof role === 'object' ? (role?.role_key || role?.name || '') : String(role || '')
+                    return key.replace(/_/g, ' ')
+                  })
 
                   return (
                     <tr
                       key={p.id}
                       onClick={() => typeof handleSelect === 'function' && handleSelect(p)}
-                      className={`transition-colors duration-200 cursor-pointer ${
+                      className={`cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60 ${
                         isNewlyCreated
-                          ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-l-4 border-l-emerald-500'
+                          ? 'bg-emerald-50/90 dark:bg-emerald-950/50'
                           : isSelected
                           ? 'bg-emerald-50/60 dark:bg-emerald-950/20'
                           : 'hover:bg-slate-50/80 dark:hover:bg-slate-900/60'
@@ -542,18 +558,18 @@ export default function PersonnelDirectoryTable({
                       {/* Personnel Identity */}
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-xs shrink-0 border border-slate-200 dark:border-slate-700">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             {p.full_name ? p.full_name.charAt(0) : 'P'}
                           </div>
                           <div className="min-w-0 flex-1">
                             <button
                               type="button"
                               onClick={(event) => { event.stopPropagation(); handleSelect?.(p) }}
-                              className="block max-w-full truncate text-left font-bold text-slate-900 hover:text-emerald-800 hover:underline hover:underline-offset-4 dark:text-white dark:hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded"
+                              className="block max-w-full truncate rounded text-left text-sm font-semibold text-slate-900 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 dark:text-white dark:hover:text-emerald-300"
                             >
                               {p.full_name}
                             </button>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                               <span className="truncate">{p.institutional_email || p.email}</span>
                               {(p.institutional_email || p.email) && (
                                 <button
@@ -566,7 +582,7 @@ export default function PersonnelDirectoryTable({
                                 </button>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
                               {p.institutional_id || p.employee_id || 'ID Pending'}
                             </p>
                           </div>
@@ -574,58 +590,39 @@ export default function PersonnelDirectoryTable({
                       </td>
 
                       {/* Assignment */}
-                      <td className="p-4">
-                        <div className="max-w-[240px] space-y-1">
-                          <p className="font-bold text-slate-800 dark:text-slate-100">{isAcademic ? (p.college_code || 'College') : (p.administrative_unit_code || 'Unit')}</p>
-                          <p className="truncate text-slate-600 dark:text-slate-300" title={isAcademic ? (p.college_name || p.college) : p.administrative_unit_name}>
-                            {isAcademic ? (p.college_name || p.college || 'Unassigned') : (p.administrative_unit_name || 'Unassigned')}
-                          </p>
-                          <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400">{formatPersonnelClassification(p)}</p>
+                      <td className="px-3 py-3 align-top">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100" title={organizationName || 'Unassigned'} aria-label={organizationCode ? `${organizationCode}, ${organizationName}` : organizationName || 'Unassigned'}>{organizationCode || organizationName || 'Unassigned'}</p>
+                          <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">{formatPersonnelClassification(p)}</p>
                         </div>
                       </td>
 
                       {/* Job title */}
-                      <td className="hidden md:table-cell p-4">
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                      <td className="px-3 py-3 align-top">
+                        <p className="break-words text-sm leading-5 text-slate-700 dark:text-slate-300" title={p.position_title || p.designation || 'Personnel'}>
                           {p.position_title || p.designation || 'Personnel'}
                         </p>
                       </td>
 
-                      <td className="hidden md:table-cell p-4 font-semibold text-slate-800 dark:text-slate-200">{p.current_rank_title || p.academic_rank || 'Unassigned'}</td>
+                      <td className="px-3 py-3 align-top">
+                        <p className="break-words text-sm leading-5 text-slate-700 dark:text-slate-300">{p.academic_rank_applicable === false ? 'Not applicable' : (p.current_rank_title || p.academic_rank || 'Unassigned')}</p>
+                        {p.academic_rank_review_required && <p className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-300" title="Academic rank needs HR review"><AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />HR review required</p>}
+                      </td>
 
                       {/* Status & Governance Roles */}
-                      <td className="p-4">
-                        <div>{renderStatusBadge(p.status || p.account_status || 'active')}</div>
-                        <div>{renderLoginReadiness(p.login_readiness)}</div>
-                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                          {(p.assigned_roles || []).filter(r => {
-                            const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
-                            return ['program_coordinator', 'organization_moderator'].includes(key)
-                          }).slice(0, 1).map((r, idx) => {
-                            const roleKey = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
-                            if (!roleKey) return null
-                            const roleDisplay = roleKey.replace(/_/g, ' ')
-                            return (
-                              <span
-                                key={roleKey || idx}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
-                              >
-                                <ShieldCheck className="w-2.5 h-2.5" />
-                                <span className="capitalize">{roleDisplay}</span>
-                              </span>
-                            )
-                          })}
-                          {(p.assigned_roles || []).filter(r => {
-                            const key = typeof r === 'object' ? (r?.role_key || r?.name || '') : String(r || '')
-                            return ['program_coordinator', 'organization_moderator'].includes(key)
-                          }).length > 1 && (
-                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">+1 responsibility</span>
-                          )}
+                      <td className="px-3 py-3 align-top">
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm leading-5">
+                          <span className={`h-2 w-2 shrink-0 rounded-full ${normalizedStatus === 'active' ? 'bg-emerald-600' : normalizedStatus === 'suspended' ? 'bg-rose-600' : normalizedStatus === 'archived' || normalizedStatus === 'inactive' ? 'bg-slate-400' : 'bg-amber-500'}`} aria-hidden="true" />
+                          <span className="font-medium capitalize text-slate-800 dark:text-slate-100">{personnelStatus}</span>
+                          <span className="text-slate-400" aria-hidden="true">·</span>
+                          {readiness.needsAttention && <AlertTriangle aria-label="Attention required" title={readiness.title} className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />}
+                          <span className={readiness.needsAttention ? 'font-medium text-amber-800 dark:text-amber-300' : 'text-slate-600 dark:text-slate-400'} title={readiness.title}>{readiness.label}</span>
                         </div>
+                        {responsibilities.length > 0 && <p className="mt-1 break-words text-xs capitalize leading-4 text-slate-600 dark:text-slate-400" title={responsibilities.join(' · ')}>{responsibilities.join(' · ')}</p>}
                       </td>
 
                       {/* Row Actions */}
-                      <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
+                      <td className="px-3 py-3 text-right align-top" onClick={e => e.stopPropagation()}>
                         <button
                           ref={el => { triggerRefs.current[p.id] = el }}
                           type="button"

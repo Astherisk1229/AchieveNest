@@ -8,7 +8,7 @@ const MAX_PDF_PAGES = 12
 const RENDER_WIDTH = 1240 // px — about 150 dpi on an A4 page
 
 let pdfjsPromise = null
-const loadPdfjs = async () => {
+export const loadPdfjs = async () => {
   if (!pdfjsPromise) {
     pdfjsPromise = Promise.all([
       // Legacy build: works in older browsers (the modern build needs very recent JS features).

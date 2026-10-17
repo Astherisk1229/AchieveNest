@@ -1,5 +1,6 @@
 import { resolvePersonnelEvidence } from './personnelEvidence'
 import { NTP_AREA_A_ITEMS, ntpCriterionByCode, ntpDetailText, resolveNtpCriterion } from '../config/nonTeachingPortfolioSchema'
+import { personnelScoringRemark } from './personnelScoringRemarks'
 
 const parse = (value) => {
   if (!value) return {}
@@ -49,7 +50,9 @@ export function normalizeNonTeachingBookletItems(portfolio = {}) {
       organization_display: organization,
       title,
       institution: organization,
-      remarks_classification_display: criterion ? text(item.description || payload.original_remarks || '') : text(item.category || item.criterion_title),
+      remarks_classification_display: criterion
+        ? [text(item.description || payload.original_remarks || ''), portfolio.scoreAudience === 'evaluator' ? personnelScoringRemark(item) : ''].filter(Boolean).join(' · ')
+        : text(item.category || item.criterion_title),
       status: item.rating_status === 'rated' ? 'Evaluated' : item.verification_status || item.status || 'Pending review',
       evidence: evidence ? { id: evidence.id, original_filename: evidence.original_filename || item.file_name || '', mime_type: evidence.mime_type || 'application/pdf', status: evidence.status || 'active', previewable: evidence.previewable !== false } : null,
       source: item

@@ -175,3 +175,25 @@ export function normalizeFacultyBookletItems(portfolio = {}) {
 export function isFacultyAcademicFormat(user = {}, portfolio = {}) {
   return usesFacultyAcademicPortfolio(user, portfolio)
 }
+
+/** Keep records without a booklet placement visible to reviewers. */
+export function facultyBookletUnmappedItems(portfolio = {}, rows = []) {
+  const source = Array.isArray(portfolio.items)
+    ? portfolio.items
+    : [...(portfolio.area_a_items || []), ...(portfolio.area_b_items || []), ...(portfolio.area_c_items || [])]
+  const displayed = new Set(rows.map((row) => String(row.accomplishmentId)))
+  return source.filter((item) => {
+    const id = item?.accomplishment_id || item?.canonical_id || item?.id
+    return id && resolveFacultyCriterion(item) !== 'C.3' && !displayed.has(String(id))
+  }).map((item) => ({
+    id: item.accomplishment_id || item.canonical_id || item.id,
+    title: item.item_description || item.evidence_title || item.title || 'Untitled accomplishment'
+  }))
+}
+
+export function facultyBookletIncompleteItems(rows = []) {
+  return rows.filter((row) => row.source && (
+    !String(row.date_or_period_display || '').trim() ||
+    (row.criterionKey === 'A.1' && !String(row.organization_display || '').trim())
+  ))
+}

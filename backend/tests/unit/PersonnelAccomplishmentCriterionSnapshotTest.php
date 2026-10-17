@@ -40,6 +40,7 @@ class PersonnelAccomplishmentCriterionSnapshotTest extends TestCase
         $this->assertSame('productivity_creative_work', $resolved['domain']);
         $this->assertSame('Published article', $resolved['criterion_snapshot']['criterion']['evidence_rules']['accepted'][0]);
         $this->assertSame('HR-approved publication rule', $resolved['criterion_snapshot']['criterion']['scoring_rule_reference']);
+        $this->assertSame('B.2', $resolved['criterion_snapshot']['scoring_configuration']['areas'][0]['categories'][0]['category_code']);
     }
 
     public function test_rejects_a_leaf_that_is_not_in_the_published_hierarchy(): void
@@ -58,6 +59,34 @@ class PersonnelAccomplishmentCriterionSnapshotTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
         PersonnelAccomplishmentCriterionService::snapshotFromPublishedHierarchy($this->hierarchy([], 'draft'), 'leaf-publication');
+    }
+
+    public function test_rejects_a_published_criterion_for_the_wrong_personnel_group(): void
+    {
+        $hierarchy = $this->hierarchy();
+        $hierarchy['sheet'] = ['applies_to' => 'FACULTY'];
+        $this->expectException(RuntimeException::class);
+        PersonnelAccomplishmentCriterionService::snapshotFromPublishedHierarchy($hierarchy, 'leaf-publication', 'NON_TEACHING_FACULTY');
+    }
+
+    public function test_validates_submitted_fields_against_the_server_snapshot(): void
+    {
+        $resolved = PersonnelAccomplishmentCriterionService::snapshotFromPublishedHierarchy($this->hierarchy(), 'leaf-publication');
+        $this->assertSame('Title is required for this criterion.', PersonnelAccomplishmentCriterionService::validateSubmissionFields($resolved, ['details' => []]));
+        $this->assertNull(PersonnelAccomplishmentCriterionService::validateSubmissionFields($resolved, ['details' => ['title' => 'Published work']]));
+    }
+
+    public function test_faculty_b1_does_not_require_legacy_numeric_participant_count(): void
+    {
+        $association = ['criterion_snapshot' => [
+            'personnel_group' => 'FACULTY',
+            'category' => ['code' => 'B.1'],
+            'criterion' => ['field_schema' => [[
+                'key' => 'participants', 'label' => 'Number of Participants', 'type' => 'number', 'required' => true,
+            ]]],
+        ]];
+
+        $this->assertNull(PersonnelAccomplishmentCriterionService::validateSubmissionFields($association, ['details' => []]));
     }
 
     public function test_snapshots_category_level_manual_rule_for_official_categories_without_leaf_breakdowns(): void

@@ -10,6 +10,10 @@ export default function PortfolioNavigator({
   evidenceItems = [],
   selectedEvidence,
   onSelectEvidence,
+  onSelectAreaARow,
+  selectedAreaACode,
+  onOpenEvidence,
+  bookletOnly = false,
   workspaceMode = 'split',
   onWorkspaceModeChange,
   onUpdateAreaADs
@@ -25,11 +29,14 @@ export default function PortfolioNavigator({
     department_name: submission.college || submission.department || submission.administrative_unit_name || '',
     faculty_engagement: submission.faculty_engagement,
     employment_status: submission.employment_status,
-    current_rank_title: submission.current_rank_title || submission.present_rank || ''
+    employment_status_label: submission.employment_status_label,
+    current_rank_title: submission.current_rank_title || submission.present_rank || submission.academic_rank || ''
   }), [submission])
   const bookletPortfolio = useMemo(() => ({
     items: evidenceItems,
-    academic_year: submission.academic_year || submission.period_academic_year || '',
+    scoreAudience: 'evaluator',
+    academic_year: submission.academic_year || submission.period_academic_year || submission.evaluation_period?.academic_year || submission.ranking_period?.academic_year || '',
+    current_rank_title: submission.current_rank_title || submission.present_rank || submission.academic_rank || '',
     tenure_years: submission.tenure_years
   }), [evidenceItems, submission])
 
@@ -37,17 +44,25 @@ export default function PortfolioNavigator({
   const areaBItems = evidenceItems.filter(i => i.categoryArea === 'areaB')
   const areaCItems = evidenceItems.filter(i => i.categoryArea === 'areaC')
 
-  // Reverse chronological sorting for attached proof certificates
-  const sortedProofItems = [...evidenceItems].sort((a, b) => {
-    const dateA = new Date(a.submittedDate || '2026-08-01')
-    const dateB = new Date(b.submittedDate || '2026-08-01')
+  const sortedProofItems = evidenceItems.flatMap(item => {
+    const proofs = Array.isArray(item.evidence_snapshot) ? item.evidence_snapshot : item.evidence_id ? [{ id: item.evidence_id, original_filename: item.file_name }] : []
+    return proofs.map((proof, index) => ({
+      ...item,
+      id: proof.id || proof.evidence_id || `${item.id}-${index}`,
+      title: proof.original_filename || proof.file_name || 'Supporting document',
+      source: item,
+      proof: { ...proof, id: proof.id || proof.evidence_id, original_filename: proof.original_filename || proof.file_name || 'Supporting document', mime_type: proof.mime_type || proof.detected_mime_type || 'application/pdf' }
+    }))
+  }).sort((a, b) => {
+    const dateA = Date.parse(a.source.submitted_at || a.source.submittedDate || '') || 0
+    const dateB = Date.parse(b.source.submitted_at || b.source.submittedDate || '') || 0
     return dateB - dateA
   })
 
   return (
     <div className="h-full flex flex-col font-sans overflow-hidden bg-slate-50 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800">
       {/* View Mode Switcher Header */}
-      <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] flex flex-wrap items-center justify-between gap-2 shrink-0">
+      {!bookletOnly && <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131e2e] flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
           <button
             type="button"
@@ -98,7 +113,7 @@ export default function PortfolioNavigator({
             Back to Split View
           </button>
         )}
-      </div>
+      </div>}
 
       {/* TAB 1: PORTFOLIO BOOKLET — the exact pages the personnel see and print */}
       {tab === 'hr_form' && (
@@ -107,29 +122,33 @@ export default function PortfolioNavigator({
           user={bookletUser}
           portfolio={bookletPortfolio}
           selectedSourceId={selectedEvidence?.id}
-          onSelectRow={(row) => onSelectEvidence?.(row.source)}
-          onOpenProof={(row) => onSelectEvidence?.(row.source)}
+          onSelectRow={onSelectEvidence ? (row) => onSelectEvidence(row.source) : undefined}
+          onSelectAreaARow={onSelectAreaARow}
+          selectedAreaACode={selectedAreaACode}
+          onOpenProof={(row) => onOpenEvidence?.(row.source)}
           renderAreaADs={onUpdateAreaADs ? (row) => <DsInput code={row.code} title={row.title} value={row.ds} onCommit={onUpdateAreaADs} /> : undefined}
         />
       )}
 
-      {/* TAB 2: ATTACHED PROOF CERTIFICATES (Pages 3+) */}
-      {tab === 'attached_proofs' && (
+      {/* TAB 2: SUBMITTED SUPPORTING DOCUMENTS */}
+      {!bookletOnly && tab === 'attached_proofs' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="p-3 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-extrabold flex items-center justify-between">
-            <span>📷 Pages 3+: Attached Proof Certificates (Reverse Chronological Order)</span>
+            <span>Submitted supporting documents</span>
             <span className="text-[10px] bg-[#176B43] text-white px-2 py-0.5 rounded-full font-black">
               {sortedProofItems.length} Attachments
             </span>
           </div>
 
+          {sortedProofItems.length === 0 && <p className="text-sm text-slate-600 dark:text-slate-300">No supporting documents were submitted.</p>}
           {sortedProofItems.map((item, idx) => {
-            const isSelected = selectedEvidence?.id === item.id
+            const isSelected = selectedEvidence?.id === item.source.id
             return (
-              <div
+              <button
                 key={item.id}
-                onClick={() => onSelectEvidence(item)}
-                className={`p-3.5 rounded-2xl border transition cursor-pointer flex items-start justify-between gap-3 ${
+                type="button"
+                onClick={() => { onSelectEvidence?.(item.source); onOpenEvidence?.(item.source, item.proof) }}
+                className={`flex w-full cursor-pointer items-start justify-between gap-3 rounded-xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                   isSelected
                     ? 'bg-[#EFF7F0]/10 dark:bg-emerald-950/40 border-[#69A97C] dark:border-emerald-600 shadow-sm ring-1 ring-inset ring-[#69A97C]/30'
                     : 'bg-white dark:bg-[#131e2e] border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
@@ -142,7 +161,7 @@ export default function PortfolioNavigator({
                   <div className="space-y-0.5">
                     <h5 className="text-xs font-extrabold text-slate-900 dark:text-white leading-snug">{item.title}</h5>
                     <p className="text-[11px] text-slate-500 font-medium">{item.criterionTitle}</p>
-                    <p className="text-[10px] text-slate-400 font-mono">Date: {item.submittedDate || 'Aug 2026'}</p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300">{item.submittedDate || item.submitted_at || 'Submission date not recorded'}</p>
                   </div>
                 </div>
 
@@ -163,33 +182,33 @@ export default function PortfolioNavigator({
                     </span>
                   )}
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
       )}
 
       {/* TAB 3: COMPACT EVIDENCE LIST */}
-      {tab === 'list' && (
+      {!bookletOnly && tab === 'list' && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="space-y-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">{isFaculty ? 'Area A: Professional Development' : 'Area A: Performance and Personal Indicators'}</h4>
             {areaAItems.map(item => (
-              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
+              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence?.(item)} />
             ))}
           </div>
 
           <div className="space-y-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">{isFaculty ? 'Area B: Productivity & Creative Work' : 'Area B: Service and Leadership'}</h4>
             {areaBItems.map(item => (
-              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
+              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence?.(item)} />
             ))}
           </div>
 
           {isFaculty && <div className="space-y-2">
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Area C: Service &amp; Leadership</h4>
             {areaCItems.map(item => (
-              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence(item)} />
+              <EvidenceListRow key={item.id} item={item} isSelected={selectedEvidence?.id === item.id} onSelect={() => onSelectEvidence?.(item)} />
             ))}
           </div>}
         </div>

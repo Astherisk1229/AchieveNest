@@ -1,14 +1,17 @@
 import React from 'react'
-import { AlertCircle, RefreshCw, Search, X } from 'lucide-react'
+import { AlertCircle, ChevronDown, Filter, RefreshCw, Search, X } from 'lucide-react'
 
 const tones = {
   not_submitted: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
   draft: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
   submitted: 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
+  resubmitted: 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
   ready_for_evaluation: 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
   in_progress: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
   returned_for_revision: 'bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200',
   completed: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
+  endorsed_to_hr: 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
+  awaiting_finalization: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200',
   eligible: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
   not_eligible: 'bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200',
   pending: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
@@ -27,8 +30,9 @@ export function StageHeader({ title, description, phase, onRefresh }) {
   return <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">{title}</h1><p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p></div><button type="button" onClick={onRefresh} disabled={phase === 'loading'} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 text-sm font-bold hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-900"><RefreshCw className={`h-4 w-4 ${phase === 'loading' ? 'animate-spin' : ''}`}/>Refresh</button></header>
 }
 
-export function StageToolbar({ search, onSearch, status, onStatus, options }) {
-  return <div className={`grid gap-3 ${options.length ? 'sm:grid-cols-[minmax(0,1fr)_220px]' : 'max-w-xl'}`}><label className="relative"><span className="sr-only">Search personnel</span><Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400"/><input value={search} onChange={event => onSearch(event.target.value)} placeholder="Search personnel or ID" className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-950"/></label>{options.length > 0 && <label><span className="sr-only">Filter by status</span><select value={status} onChange={event => onStatus(event.target.value)} className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-950"><option value="all">All statuses</option>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>}</div>
+export function StageToolbar({ search, onSearch, status, onStatus, options, className, categories = [], category = 'all', onCategory, allLabel = 'All statuses' }) {
+  const activeFilters = Number(status !== 'all') + Number(category !== 'all')
+  return <div className={className || 'flex flex-col gap-3 sm:flex-row'}><label className="relative min-w-0 flex-1"><span className="sr-only">Search personnel</span><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400"/><input value={search} onChange={event => onSearch(event.target.value)} placeholder="Search personnel or ID" className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-950"/></label>{options.length > 0 && <details className="relative shrink-0"><summary className="flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"><Filter aria-hidden="true" className="h-4 w-4"/>Filter{activeFilters > 0 && <span className="rounded-full bg-emerald-100 px-1.5 text-xs text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">{activeFilters}</span>}<ChevronDown aria-hidden="true" className="h-4 w-4"/></summary><div className="absolute right-0 z-30 mt-2 grid w-[min(18rem,calc(100vw-2rem))] gap-2 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-950"><label className="grid gap-1 text-xs font-bold text-slate-700 dark:text-slate-200">Evaluation status<select aria-label="Filter by status" value={status} onChange={event => onStatus(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900"><option value="all">{allLabel}</option>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>{categories.length > 0 && <label className="grid gap-1 text-xs font-bold text-slate-700 dark:text-slate-200">Personnel category<select aria-label="Filter by personnel category" value={category} onChange={event => onCategory(event.target.value)} className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-700 dark:bg-slate-900"><option value="all">All HR-assigned personnel</option>{categories.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>}</div></details>}</div>
 }
 
 export function StageTable({ columns, rows, emptyTitle, emptyDescription, renderRow }) {
@@ -38,7 +42,7 @@ export function StageTable({ columns, rows, emptyTitle, emptyDescription, render
 export function StageState({ phase, error, onRetry, children }) {
   if (phase === 'loading') return <div aria-busy="true" className="h-64 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900"/>
   if (phase === 'error') return <div role="alert" className="flex items-start justify-between gap-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-900 dark:bg-rose-950/30 dark:text-rose-100"><span className="flex gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0"/>{error}</span><button type="button" onClick={onRetry} className="shrink-0 font-bold underline underline-offset-4">Try again</button></div>
-  return <>{error && <div role="alert" className="mb-3 flex items-center justify-between rounded-xl bg-amber-50 p-3 text-sm text-amber-900"><span>{error} Showing the last loaded data.</span><button type="button" onClick={onRetry} className="font-bold underline">Try again</button></div>}{children}</>
+  return children
 }
 
 export function DetailDrawer({ title, subtitle, onClose, children }) {

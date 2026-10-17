@@ -23,7 +23,7 @@ class NonTeachingFacultyEvaluationSummaryStrategy implements EvaluationSummarySt
             'period_covered'=>$evaluation['period_name_snapshot']??$evaluation['academic_year']??null,
             'performance_personal_indicators'=>['title'=>'Performance and Personal Indicators','columns'=>['indicator','weight','percentage','ds','points_earned'],'items'=>$performance,'points_earned'=>array_sum(array_column($performance,'points_earned'))],
             'service_leadership'=>['title'=>'Service and Leadership','columns'=>['document','points_earned'],'items'=>$service,'points_earned'=>array_sum(array_column($service,'points_earned'))],
-            'total'=>$total,'passing_score'=>$passing,'result'=>$total >= $passing ? 'Passed' : 'Retained',
+            'total'=>$total,'passing_score'=>$passing,'result'=>$passing <= 0 ? 'Pending' : ($total >= $passing ? 'Passed' : 'Retained'),
             'comments'=>$evaluation['reviewer_remarks']??null,
             'unresolved_fields'=>$unresolved,
         ];

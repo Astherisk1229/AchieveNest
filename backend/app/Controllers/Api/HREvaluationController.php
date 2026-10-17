@@ -94,6 +94,19 @@ class HREvaluationController extends Controller
         return $event + ['event_type' => $action, 'performed_by' => $actorId, 'notes' => $remarks, 'payload' => json_encode($payload)];
     }
 
+    private function summaryComments($db, string $evaluationId, array $evaluation, string $fallback = ''): string
+    {
+        $latest = $db->table('personnel_evaluation_events')
+            ->select('remarks')->where('evaluation_id', $evaluationId)
+            ->where('action', 'evaluation_summary_comments_updated')
+            ->orderBy('occurred_at', 'DESC')->orderBy('id', 'DESC')->get()->getRowArray();
+
+        // An empty remark is an intentional deletion of the previous comment.
+        return $latest !== null
+            ? (string) ($latest['remarks'] ?? '')
+            : (string) ($evaluation['reviewer_remarks'] ?? $fallback);
+    }
+
     private function snapshotTotals(array $items, array $evaluation = []): array
     {
         $criteriaSnapshot = $evaluation['criteria_snapshot'] ?? [];
@@ -160,6 +173,9 @@ class HREvaluationController extends Controller
         ];
         $passingScore = (float) ($criteria['version']['passing_score'] ?? $criteria['sheet']['passing_score'] ?? 0);
         $snapshot['official_summary'] = (new \App\Services\PersonnelEvaluationSummaryService())->build($evaluation, $items, $criteria, $totals);
+        if (strtoupper((string) ($evaluation['personnel_group_snapshot'] ?? '')) === 'NON_TEACHING_FACULTY') {
+            $snapshot['official_summary'] += $this->nonTeachingRankContext($db, (string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
+        }
         $row=['id'=>$this->genUuid(),'evaluation_id'=>$evaluation['id'],'generated_by'=>$actor['profile']['id'],'report_payload'=>json_encode($snapshot,JSON_UNESCAPED_UNICODE),'summary_score'=>$totals['total_score'],'passing_status'=>$passingScore > 0 && $totals['total_score'] >= $passingScore ? 'passed' : 'not_passed','generated_at'=>date('Y-m-d H:i:s')];
         $db->table('personnel_evaluation_reports')->insert($row);
         return $row + ['snapshot'=>$snapshot];
@@ -1052,6 +1068,27 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'EVALUATION_INCOMPLETE', 'message' => "{$remaining} submitted achievement(s) still require a final decision.", 'remaining' => $remaining]], 422);
         }
 
+        if (strtoupper((string) ($personnel['personnel_group'] ?? '')) === 'NON_TEACHING_FACULTY') {
+            $criteria = $evaluation['criteria_snapshot'] ?? [];
+            if (is_string($criteria)) $criteria = json_decode($criteria, true) ?: [];
+            $totals = $this->snapshotTotals($items, $evaluation);
+            $recommendation = (new \App\Services\NonTeachingRankRecommendationService($db))->decide(
+                (string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id'],
+                (float) $totals['total_score'], is_array($criteria) ? $criteria : []
+            );
+            if ($recommendation['recommended_rank'] === null) {
+                return $this->respond(['error' => [
+                    'code' => 'RANK_RECOMMENDATION_UNRESOLVED',
+                    'message' => match ($recommendation['recommended_rank_status']) {
+                        'pending_rank_application_confirmation' => 'Confirm an eligible Rank Applied For before completing this passing evaluation.',
+                        'passing_score_unavailable' => 'The locked passing score must be resolved before completing this evaluation.',
+                        'present_rank_unresolved' => 'The saved present rank must be resolved before completing this evaluation.',
+                        default => 'The rank application or progression rule must be resolved before completing this evaluation.',
+                    },
+                ]], 409);
+            }
+        }
+
         $db->transBegin();
         try {
             $now = date('Y-m-d H:i:s');
@@ -1076,7 +1113,10 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'ENDORSEMENT_FAILED', 'message' => 'Portfolio endorsement and HR notification could not be completed: ' . $e->getMessage()]], 500);
         }
 
-        return $this->respond(['data' => ['message' => 'Personnel portfolio endorsed to HR for finalization.', 'status' => 'ready_for_finalization']], 200);
+        $message = strtoupper((string) ($personnel['personnel_group'] ?? '')) === 'NON_TEACHING_FACULTY'
+            ? 'Non-teaching review saved.'
+            : 'Personnel portfolio endorsed to HR for finalization.';
+        return $this->respond(['data' => ['message' => $message, 'status' => 'ready_for_finalization']], 200);
     }
 
     // =========================================================================
@@ -1211,7 +1251,7 @@ class HREvaluationController extends Controller
             ->getRowArray();
 
         $json            = $this->request->getJSON(true) ?? [];
-        $reviewerRemarks = trim((string) ($json['reviewer_remarks'] ?? ''));
+        $reviewerRemarks = trim((string) ($json['reviewer_remarks'] ?? $this->summaryComments($db, $id, $evaluation)));
 
         $nowTs           = date('Y-m-d H:i:s');
         $nowDate         = date('Y-m-d');
@@ -1331,7 +1371,11 @@ class HREvaluationController extends Controller
                     $reviewerReport['snapshot'] = is_string($reviewerReport['report_payload'] ?? null)
                         ? json_decode($reviewerReport['report_payload'], true)
                         : ($reviewerReport['report_payload'] ?? null);
-return $this->respond(['data' => ['report' => $reviewerReport, 'result' => $result]], 200);
+                    return $this->respond(['data' => [
+                        'report' => $reviewerReport,
+                        'result' => $result,
+                        'summary_context' => $this->facultySummaryContext($id, $reviewerReport, $actor),
+                    ]], 200);
                 }
             }
             // Keep the established `report` envelope while making its payload a
@@ -1356,6 +1400,228 @@ return $this->respond(['data' => ['report' => $reviewerReport, 'result' => $resu
                 ? 'Evaluation results are released to Personnel only after completion.'
                 : 'Evaluation result is unavailable.']], $status);
         }
+    }
+
+    /** Download the same saved faculty ranking scale shown in the Dean summary. */
+    public function downloadFacultySummaryPdf(string $id): mixed
+    {
+        $reportResponse = $this->getReport($id);
+        if ($reportResponse->getStatusCode() !== 200) return $reportResponse;
+
+        $data = json_decode($reportResponse->getBody(), true)['data'] ?? [];
+        $report = $data['report']['snapshot'] ?? null;
+        if (! is_array($report) || ($report['official_summary']['format_key'] ?? '') !== 'FACULTY_EVALUATION_SUMMARY') {
+            return $this->respond(['error' => ['code' => 'FACULTY_SUMMARY_UNAVAILABLE', 'message' => 'The faculty evaluation summary is unavailable.']], 422);
+        }
+
+        try {
+            $pdf = (new \App\Services\FacultyEvaluationSummaryPdfRenderer())->render($report, $data['summary_context'] ?? []);
+            return $this->response->setStatusCode(200)
+                ->setHeader('Content-Type', 'application/pdf')
+                ->setHeader('Content-Disposition', 'attachment; filename="faculty-evaluation-summary-v' . (int) ($report['portfolio_version'] ?? 1) . '.pdf"')
+                ->setHeader('Cache-Control', 'private, no-store')
+                ->setBody($pdf);
+        } catch (Throwable $e) {
+            log_message('error', 'Faculty evaluation summary PDF failed for {evaluation}: {message}', ['evaluation' => $id, 'message' => $e->getMessage()]);
+            return $this->respond(['error' => ['code' => 'PDF_GENERATION_FAILED', 'message' => 'The PDF could not be generated. Please try again.']], 500);
+        }
+    }
+
+    /** The assigned reviewer may add summary comments before finalization. */
+    public function updateSummaryComments(string $id): mixed
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! ValidationHelper::validateUuid($id)) return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid evaluation ID.']], 422);
+        $db = db_connect();
+        $evaluation = $db->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
+        if (! $evaluation) return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
+        if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
+        if ($evaluation['status'] !== 'ready_for_finalization') return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'Comments can be changed only after review completion and before finalization.']], 409);
+        $group = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
+        if ($group === '') {
+            $period = $db->table('personnel_evaluation_periods')->select('personnel_group')->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
+            $group = strtoupper(trim((string) ($period['personnel_group'] ?? '')));
+        }
+        $endorsement = $db->table('personnel_evaluation_events')
+            ->select('actor_profile_id')->where('evaluation_id', $id)
+            ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
+            ->orderBy('occurred_at', 'DESC')->get()->getRowArray();
+        $actorId = (string) ($actor['profile']['id'] ?? '');
+        $endorsingDean = $group === 'FACULTY' && in_array('dean', $actor['roles'] ?? [], true)
+            && $endorsement && (string) $endorsement['actor_profile_id'] === $actorId;
+        $assignedHr = $group === 'NON_TEACHING_FACULTY'
+            && ($actor['profile']['account_type'] ?? '') === 'hr_admin'
+            && (bool) array_intersect(['hr_staff', 'hr_admin'], (array) ($actor['roles'] ?? []))
+            && $this->authorityMayEvaluate($actor, $evaluation);
+        if (! $endorsingDean && ! $assignedHr) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned reviewer may edit summary comments.']], 403);
+        $payload = $this->request->getJSON(true) ?? [];
+        if (! is_string($payload['comments'] ?? null)) return $this->respond(['error' => ['code' => 'COMMENTS_REQUIRED', 'message' => 'Comments must be text.']], 422);
+        $comments = trim($payload['comments']);
+        if ($comments !== '' && ! ValidationHelper::validateBoundedText($comments, ValidationHelper::MAX_REMARKS_LENGTH)) {
+            return $this->respond(['error' => ['code' => 'COMMENTS_TOO_LONG', 'message' => 'Comments exceed maximum allowed length.']], 422);
+        }
+        $this->recordEvaluationEvent($db, $id, (string) $actor['profile']['id'], 'evaluation_summary_comments_updated', $evaluation['status'], $evaluation['status'], $comments);
+        return $this->respond(['data' => ['comments' => $comments]], 200);
+    }
+
+    /** Non-teaching personnel use the same active rank transitions as teaching faculty. */
+    private function nonTeachingRankContext($db, string $profileId, string $trackId): array
+    {
+        return (new \App\Services\PersonnelSharedRankContextService($db))->forPersonnel($profileId, $trackId);
+    }
+
+    /** Current review context supplements the saved report without rewriting it. */
+    private function facultySummaryContext(string $evaluationId, array $reportRow, array $actor): array
+    {
+        $db = db_connect();
+        $evaluation = $db->table('personnel_evaluations')->where('id', $evaluationId)->get()->getRowArray();
+        if (! $evaluation) return [];
+        $group = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
+        if ($group === '') {
+            $period = $db->table('personnel_evaluation_periods')->select('personnel_group')
+                ->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
+            $group = strtoupper(trim((string) ($period['personnel_group'] ?? '')));
+        }
+        if ($group === 'NON_TEACHING_FACULTY') {
+            $profileId = (string) $evaluation['personnel_profile_id'];
+            $report = is_string($reportRow['report_payload'] ?? null)
+                ? (json_decode($reportRow['report_payload'], true) ?: [])
+                : ($reportRow['report_payload'] ?? []);
+            $frozenRank = (array) ($report['official_summary'] ?? []);
+            $rankContext = ($evaluation['status'] ?? '') === 'completed'
+                ? $frozenRank
+                : $this->nonTeachingRankContext($db, $profileId, (string) $evaluation['evaluation_period_id']);
+            $finishedEvent = $db->table('personnel_evaluation_events')
+                ->select('occurred_at')->where('evaluation_id', $evaluationId)
+                ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
+                ->orderBy('occurred_at', 'DESC')->get()->getRowArray();
+            $finishedAt = $finishedEvent['occurred_at'] ?? $report['completed_at'] ?? $reportRow['generated_at'] ?? null;
+            $assignedHr = $evaluation['status'] === 'ready_for_finalization'
+                && ($actor['profile']['account_type'] ?? '') === 'hr_admin'
+                && (bool) array_intersect(['hr_staff', 'hr_admin'], (array) ($actor['roles'] ?? []))
+                && $this->authorityMayEvaluate($actor, $evaluation);
+            return [
+                'review_completed_at' => $finishedAt ? substr((string) $finishedAt, 0, 10) : null,
+                'effectivity' => null,
+                'effectivity_status' => 'pending_approval',
+                'recommended_rank' => $rankContext['recommended_rank'] ?? null,
+                'recommended_rank_status' => $rankContext['recommended_rank_status'] ?? 'legacy_recommendation_unavailable',
+                'employee_progress_last_ranking' => $rankContext['employee_progress_last_ranking'] ?? null,
+                'present_rank' => $rankContext['present_rank'] ?? null,
+                'rank_applied_for' => $rankContext['rank_applied_for'] ?? null,
+                'rank_applied_for_status' => $rankContext['rank_applied_for_status'] ?? 'UNRESOLVED',
+                'comments' => $this->summaryComments($db, $evaluationId, $evaluation, (string) ($report['official_summary']['comments'] ?? '')),
+                'comments_editable' => $assignedHr,
+            ];
+        }
+        if ($group !== 'FACULTY') return [];
+
+        $profileId = (string) $evaluation['personnel_profile_id'];
+        $trackId = (string) $evaluation['evaluation_period_id'];
+        $profile = $db->table('personnel_profiles')->select('current_rank_title,position_title')->where('profile_id', $profileId)->get()->getRowArray() ?: [];
+        $report = is_string($reportRow['report_payload'] ?? null)
+            ? (json_decode($reportRow['report_payload'], true) ?: [])
+            : ($reportRow['report_payload'] ?? []);
+        $passingScore = (float) ($report['official_summary']['passing_score'] ?? $report['criteria_snapshot']['version']['passing_score'] ?? $report['criteria_snapshot']['sheet']['passing_score'] ?? 0);
+        $finishedEvent = $db->table('personnel_evaluation_events')
+            ->select('occurred_at')->where('evaluation_id', $evaluationId)
+            ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
+            ->orderBy('occurred_at', 'DESC')->get()->getRowArray();
+        $evaluationFinishedAt = $finishedEvent['occurred_at'] ?? $report['completed_at'] ?? $reportRow['generated_at'] ?? $evaluation['finalized_at'] ?? null;
+        $endorsement = $evaluation['status'] === 'ready_for_finalization' && in_array('dean', $actor['roles'] ?? [], true)
+            ? $db->table('personnel_evaluation_events')->select('actor_profile_id')
+                ->where('evaluation_id', $evaluationId)
+                ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
+                ->orderBy('occurred_at', 'DESC')->get()->getRowArray()
+            : null;
+        $context = [
+            'specific_job' => ($evaluation['position_title_snapshot'] ?? null) ?: ($profile['position_title'] ?? null),
+            'present_rank' => $profile['current_rank_title'] ?? null,
+            'comments' => $this->summaryComments($db, $evaluationId, $evaluation, (string) ($report['official_summary']['comments'] ?? '')),
+            'comments_editable' => $endorsement && (string) $endorsement['actor_profile_id'] === (string) ($actor['profile']['id'] ?? ''),
+            'effectivity' => $evaluationFinishedAt ? substr((string) $evaluationFinishedAt, 0, 10) : null,
+        ];
+        if ($db->tableExists('personnel_rank_history')) {
+            $prior = $db->table('personnel_rank_history')->select('rank_code')
+                ->where('personnel_profile_id', $profileId)->where('status', 'historical')
+                ->orderBy('effective_to', 'DESC')->get()->getRowArray();
+            $context['previous_rank'] = $prior ? $this->facultyRankLabel((string) $prior['rank_code']) : null;
+        }
+
+        if ($db->tableExists('personnel_rank_applied_for_decisions')) {
+            $applied = $db->table('personnel_rank_applied_for_decisions')
+                ->select('status,confirmed_rank_code,suggested_rank_code,present_rank_label_snapshot')
+                ->where('personnel_profile_id', $profileId)->where('ranking_track_id', $trackId)
+                ->whereIn('status', ['confirmed', 'suggested'])->orderBy('created_at', 'DESC')->get()->getRowArray();
+            if ($applied) {
+                $context['present_rank'] = $applied['present_rank_label_snapshot'] ?: $context['present_rank'];
+                $context['rank_applied_for'] = $this->facultyRankLabel((string) ($applied['confirmed_rank_code'] ?: $applied['suggested_rank_code']));
+                $context['rank_applied_for_status'] = $applied['status'];
+            }
+        }
+        // The confirmed Annual Review workbook records the rank the faculty member applied for.
+        // Older imports did not persist its header, so read their retained workbook on demand.
+        if ($db->tableExists('personnel_annual_review_imports')) {
+            $annualReview = $db->table('personnel_annual_review_imports')
+                ->where('personnel_profile_id', $profileId)->where('evaluation_period_id', $trackId)
+                ->where('confirmed_at !=', null)->where('superseded_at', null)
+                ->orderBy('confirmed_at', 'DESC')->get()->getRowArray();
+            if ($annualReview) {
+                $appliedRank = trim((string) ($annualReview['applied_status'] ?? ''));
+                if ($appliedRank === '') {
+                    try {
+                        $path = (new \App\Services\LocalEvidenceStorageService())->resolveAbsolutePath((string) ($annualReview['source_file_path'] ?? ''));
+                        if ($path) {
+                            $parsed = (new \App\Services\AnnualReviewWorkbookParser())->parse(
+                                $path,
+                                (string) ($annualReview['original_filename'] ?? ''),
+                                [(string) ($annualReview['review_1_school_year'] ?? ''), (string) ($annualReview['review_2_school_year'] ?? '')]
+                            );
+                            $appliedRank = trim((string) ($parsed['applied_status'] ?? ''));
+                        }
+                    } catch (\Throwable $e) {
+                        log_message('warning', '[HREvaluationController] Annual-review applied rank unavailable for import ' . $annualReview['id'] . ': ' . $e->getMessage());
+                    }
+                }
+                if ($appliedRank !== '') {
+                    $context['rank_applied_for'] = $appliedRank;
+                    $context['rank_applied_for_status'] = 'annual_review';
+                }
+            }
+        }
+        $presentRank = trim((string) ($context['present_rank'] ?? ''));
+        $appliedRank = trim((string) ($context['rank_applied_for'] ?? ''));
+        if (($context['rank_applied_for_status'] ?? '') === 'suggested') $appliedRank = '';
+        $total = (float) ($reportRow['summary_score'] ?? $report['grand_total'] ?? 0);
+        // A workbook rank must match the active progression before it can be recommended.
+        if ($appliedRank !== '' && ($context['rank_applied_for_status'] ?? '') === 'annual_review') {
+            try {
+                $alignment = (new \App\Services\AnnualReviewRankAlignmentService())->evaluate(
+                    $presentRank, $appliedRank,
+                    ['current_rank_title' => $presentRank, 'personnel_group' => 'faculty'],
+                    \App\Services\AnnualReviewRankAlignmentService::hasVerifiedPhd($db, $profileId)
+                );
+                if (($alignment['status'] ?? '') !== 'aligned') $appliedRank = '';
+                else $appliedRank = (string) ($alignment['applied_rank']['display_label'] ?? $appliedRank);
+            } catch (\Throwable $e) {
+                log_message('warning', '[HREvaluationController] Rank alignment unavailable for evaluation ' . $evaluationId . ': ' . $e->getMessage());
+                $appliedRank = '';
+            }
+        }
+        $recommended = \App\Services\RecommendedRankService::summaryRecommendation(
+            $total, $passingScore, $presentRank ?: null, $appliedRank ?: null
+        );
+        $context['recommended_rank'] = $recommended ?: null;
+        $context['recommended_rank_rule'] = $passingScore > 0 ? ($total >= $passingScore ? 'passed_applied_rank' : 'below_threshold_retain_present') : 'passing_score_unavailable';
+        return $context;
+    }
+
+    private function facultyRankLabel(string $code): ?string
+    {
+        if ($code === '') return null;
+        $rank = db_connect()->table('faculty_rank_catalog')->select('display_label')->where('rank_code', $code)->get()->getRowArray();
+        return $rank['display_label'] ?? $code;
     }
 
     public function getResult(string $id): mixed

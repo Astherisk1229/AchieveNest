@@ -6,6 +6,7 @@ export default function StudioDecisionBar({
   onOpenReturnModal,
   onOpenFinalizeModal,
   onOpenRankPreparation,
+  rankPreparationLabel = 'Prepare Faculty Rank',
   finalizeLabel = 'Finalize Evaluation'
 }) {
   return (
@@ -17,7 +18,7 @@ export default function StudioDecisionBar({
           onClick={onOpenRankPreparation}
           className="px-4 py-2 rounded-xl border border-emerald-700 text-emerald-900 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed dark:text-emerald-200 dark:hover:bg-emerald-950/30 font-bold text-xs transition cursor-pointer"
         >
-          Prepare Faculty Rank
+          {rankPreparationLabel}
         </button>}
 
         {onOpenReturnModal && <button

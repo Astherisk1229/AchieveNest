@@ -8,10 +8,10 @@ export function personnelGroup(row) {
 export function evaluationAction(row) {
   const actions = row?.allowed_actions || []
   const group = personnelGroup(row)
-  if (actions.includes('start_evaluation')) return { label: 'Start evaluation', kind: 'start' }
+  if (actions.includes('start_evaluation')) return { label: 'Review portfolio', kind: 'evaluate' }
   if (actions.includes('evaluate_items')) return { label: 'Continue evaluation', kind: 'evaluate' }
   if (actions.includes('review_final_rank') && group === FACULTY) return { label: 'Open final rank review', kind: 'phase-o' }
-  if (actions.includes('finalize_evaluation') && group === NON_TEACHING_FACULTY) return { label: 'Finalize evaluation', kind: 'finalize' }
+  if (actions.includes('finalize_evaluation') && group === NON_TEACHING_FACULTY) return { label: 'View summary', kind: 'summary' }
   if (actions.includes('view_evaluation')) return { label: 'View details', kind: 'view' }
   return null
 }

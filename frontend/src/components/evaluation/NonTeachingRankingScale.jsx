@@ -1,5 +1,5 @@
-import React from 'react'
-import { FileCheck2, Printer } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Download, Printer } from 'lucide-react'
 
 const number = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const date = value => value ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
@@ -26,8 +26,52 @@ const criterionDetails = item => {
   }
 }
 
-export default function NonTeachingRankingScale({ result }) {
+export default function NonTeachingRankingScale({ result, preview = false, context = {}, onSaveComments, embedded = false }) {
   const summary = result.summary || {}
+  const recordedRank = field => Object.prototype.hasOwnProperty.call(summary, field) ? summary[field] : context[field]
+  const appliedRank = recordedRank('rank_applied_for') === 'Non-teaching rank sequence not configured'
+    ? context.rank_applied_for
+    : recordedRank('rank_applied_for')
+  const appliedStatus = recordedRank('rank_applied_for_status')
+  const appliedRankDisplay = appliedRank || (appliedStatus === 'MASTERS_REQUIRED'
+    ? 'Verified Master’s required for advancement' : appliedStatus === 'RULE_REVIEW_REQUIRED'
+    || (recordedRank('present_rank') === 'Assistant Instructor' && appliedStatus === 'TERMINAL')
+    ? 'Pending rank-rule review' : appliedStatus === 'TERMINAL' ? 'No next rank under current rules' : 'No confirmed rank application')
+  const comments = context.comments !== undefined ? context.comments : summary.comments || ''
+  const effectivity = context.effectivity || summary.effectivity || context.review_completed_at || 'Pending approval'
+  const recommendationStatus = summary.recommended_rank_status || context.recommended_rank_status
+  const recommendedRank = summary.recommended_rank || context.recommended_rank || ({
+    pending_rule_review: 'Rank recommendation pending rule review',
+    retained_masters_required: recordedRank('present_rank') || 'Present rank retained',
+    pending_rank_application_confirmation: 'Rank application confirmation required',
+    passing_score_unavailable: 'Passing score unavailable',
+    present_rank_unresolved: 'Present rank requires review',
+    legacy_recommendation_unavailable: 'Unavailable for this saved evaluation',
+  }[recommendationStatus] || 'Pending evaluation completion')
+  const [editingComments, setEditingComments] = useState(false)
+  const [draftComments, setDraftComments] = useState(comments)
+  const [savingComments, setSavingComments] = useState(false)
+  const [commentsError, setCommentsError] = useState('')
+  const printSummary = (saveAsPdf = false) => {
+    const originalTitle = document.title
+    const restoreTitle = () => { document.title = originalTitle }
+    window.addEventListener('afterprint', restoreTitle, { once: true })
+    if (saveAsPdf) document.title = `Non-Teaching-Evaluation-${result.personnel?.name || 'Summary'}`
+    try { window.print() } catch (error) {
+      window.removeEventListener('afterprint', restoreTitle)
+      restoreTitle()
+      throw error
+    }
+  }
+  useEffect(() => { setDraftComments(comments); setCommentsError('') }, [comments])
+  const saveComments = async () => {
+    if (!onSaveComments || savingComments) return
+    setSavingComments(true)
+    setCommentsError('')
+    try { await onSaveComments(draftComments.trim()); setEditingComments(false) }
+    catch (error) { setCommentsError(error?.response?.data?.error?.message || error?.message || 'Comments could not be saved.') }
+    finally { setSavingComments(false) }
+  }
   const performance = normalizedSection(summary.performance_personal_indicators, result.items, item => String(item.criterion_code || '').toUpperCase().startsWith('A'))
   const service = normalizedSection(summary.service_leadership, result.items, item => !String(item.criterion_code || '').toUpperCase().startsWith('A'))
   const performanceTotal = present(performance.points_earned) ? performance.points_earned : result.scores?.areas?.A
@@ -36,23 +80,25 @@ export default function NonTeachingRankingScale({ result }) {
     : sumKnown([result.scores?.areas?.B, result.scores?.areas?.C])
   const resultLabel = summary.result || result.scores?.passing_status || (Number(result.scores?.total || 0) >= Number(result.scores?.passing || Infinity) ? 'Passed' : 'Retained')
   const passed = String(resultLabel).toLowerCase() === 'passed'
-  const evidence = (result.items || []).flatMap(item => item.verification_status === 'verified'
-    ? (item.evidence_snapshot || []).map(entry => ({ ...entry, criterion: criterionDetails(item).code }))
-    : [])
-
-  return <article data-evaluation-summary className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm dark:border-slate-800 dark:bg-slate-950 print:overflow-visible print:border-0 print:bg-white print:shadow-none">
+  const retained = String(resultLabel).toLowerCase() === 'retained'
+  return <div className={embedded ? 'space-y-3' : ''}>
     <style>{`@media print { body * { visibility: hidden !important; } [data-evaluation-summary], [data-evaluation-summary] * { visibility: visible !important; } [data-evaluation-summary] { position: absolute; inset: 0; width: 100%; } [data-print-hidden] { display: none !important; } @page { size: A4; margin: 12mm; } }`}</style>
-    <div data-print-hidden className="flex flex-col gap-3 border-b border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-950">
-      <div><h1 className="text-xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">Non-Teaching Faculty Evaluation Result</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Official completed personnel ranking scale</p></div>
-      <button type="button" onClick={() => window.print()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"><Printer className="h-4 w-4"/>Print / Export PDF</button>
+    {!embedded && <div data-print-hidden className="border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
+      <div><h1 className="text-xl font-black tracking-[-0.025em] text-slate-950 dark:text-white">{preview ? 'Non-Teaching Evaluation Summary' : 'Non-Teaching Faculty Evaluation Result'}</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{preview ? 'Saved review summary' : 'Official completed personnel ranking scale'}</p></div>
+    </div>}
+    <div data-print-hidden className={`flex flex-wrap items-center justify-end gap-2 ${embedded ? '' : 'px-5 py-3'}`}>
+      {context.comments_editable && onSaveComments && <button type="button" onClick={() => setEditingComments(value => !value)} aria-expanded={editingComments} className="min-h-10 rounded-lg border border-emerald-700 bg-white px-3 text-sm font-bold text-emerald-900 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600">{editingComments ? 'Close comments' : 'Edit comments'}</button>}
+      <button type="button" onClick={() => printSummary()} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 hover:border-emerald-700 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"><Printer className="h-4 w-4"/>Print</button>
+      <button type="button" onClick={() => printSummary(true)} title="Choose Save as PDF in the print dialog" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"><Download className="h-4 w-4"/>Save PDF</button>
     </div>
+    {editingComments && context.comments_editable && onSaveComments && <div data-print-hidden className="space-y-3 border-b border-slate-200 bg-white p-4"><label htmlFor="non-teaching-summary-comments" className="block text-sm font-bold">Evaluation summary comments</label><textarea id="non-teaching-summary-comments" value={draftComments} onChange={event => setDraftComments(event.target.value)} rows={3} maxLength={2000} className="w-full rounded-lg border border-slate-300 p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"/><div className="flex items-center justify-between gap-3"><span role="alert" className="text-sm text-rose-700">{commentsError}</span><button type="button" disabled={savingComments || draftComments.trim() === String(comments || '').trim()} onClick={saveComments} className="rounded-lg bg-emerald-800 px-3 py-2 text-sm font-bold text-white disabled:opacity-50">{savingComments ? 'Saving…' : 'Save comments'}</button></div></div>}
 
-    <div className="mx-auto my-5 max-w-[980px] bg-white px-4 py-5 text-[13px] leading-snug text-slate-950 sm:px-8 sm:py-7 print:m-0 print:max-w-none print:p-0 print:text-[10px]">
+    <article data-evaluation-summary className={`mx-auto w-full max-w-[980px] bg-white px-4 py-5 text-[13px] leading-snug text-slate-950 sm:px-8 sm:py-7 print:m-0 print:max-w-none print:p-0 print:text-[10px] ${embedded ? '' : 'my-5'}`}>
       <header className="relative text-center">
-        <p className="sm:absolute sm:right-0 sm:top-0">Appendix N</p>
         <p className="font-bold uppercase">Notre Dame of Marbel University</p>
         <p>City of Koronadal, South Cotabato</p>
         <h2 className="mt-2 text-lg font-black uppercase underline decoration-1 underline-offset-4 print:text-[14px]">Non-Teaching Personnel Ranking Scale</h2>
+        {preview && <p className="mt-2 font-bold uppercase text-amber-800 print:text-black">Saved review summary</p>}
       </header>
 
       <section className="mt-5 grid gap-x-8 gap-y-2 sm:grid-cols-2" aria-label="Personnel ranking details">
@@ -60,10 +106,9 @@ export default function NonTeachingRankingScale({ result }) {
         <FormField label="Department" value={result.personnel?.department || result.personnel?.college || summary.personnel_information?.department}/>
         <FormField label="Specific Job" value={result.personnel?.position || summary.personnel_information?.position}/>
         <FormField label="Period Covered" value={summary.period_covered || result.evaluation_period?.name || result.evaluation_period?.academic_year}/>
-        <FormField label="Employee's Progress last Ranking" value={summary.employee_progress_last_ranking}/>
-        <FormField label="Present Rank" value={summary.present_rank}/>
-        <FormField label="Rank Applied For" value={summary.rank_applied_for}/>
-        <FormField label="Employee ID" value={result.personnel?.institutional_id || summary.personnel_information?.personnel_id}/>
+        <FormField label="Employee's Progress last Ranking" value={recordedRank('employee_progress_last_ranking') || 'No prior rank recorded'}/>
+        <FormField label="Present Rank" value={recordedRank('present_rank') || 'No present rank recorded'}/>
+        <FormField label="Rank Applied For" value={appliedRankDisplay}/>
       </section>
 
       <div className="mt-5 overflow-x-auto border border-slate-950 print:overflow-visible">
@@ -93,11 +138,11 @@ export default function NonTeachingRankingScale({ result }) {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-bold">
           <span>Passing Score: {score(result.scores?.passing ?? summary.passing_score)} points</span>
           <StatusBox checked={passed} label="Passed"/>
-          <StatusBox checked={!passed} label="Retained"/>
-          <span className="ml-auto">Effectivity: <Blank value={summary.effectivity}/></span>
+          <StatusBox checked={retained} label="Retained"/>
+          <span className="ml-auto">Effectivity: <Blank value={effectivity}/></span>
         </div>
-        <p><strong>Recommended Rank:</strong> <Blank value={summary.recommended_rank}/></p>
-        <p><strong>Comments:</strong> <span className="inline-block min-w-[70%] border-b border-slate-950 px-2">{display(summary.comments)}</span></p>
+        <p><strong>Recommended Rank:</strong> <Blank value={recommendedRank}/></p>
+        <p><strong>Comments:</strong> <span className="inline-block min-w-[70%] border-b border-slate-950 px-2">{comments || 'No summary comments added'}</span></p>
       </section>
 
       <section className="mt-6 grid gap-6 sm:grid-cols-2 print:grid-cols-2" aria-label="Approval lines">
@@ -107,17 +152,12 @@ export default function NonTeachingRankingScale({ result }) {
         <SignatureLine label="Approved / President" value={summary.approvals?.president?.name}/>
       </section>
 
-      {evidence.length > 0 && <section data-print-hidden className="mt-8 border-t border-slate-200 pt-4" aria-labelledby="verified-records-heading">
-        <h3 id="verified-records-heading" className="font-black">Verified supporting records</h3>
-        <ul className="mt-2 grid gap-2 sm:grid-cols-2">{evidence.map((entry, index) => <li key={entry.id || index} className="flex items-center gap-2 text-sm text-slate-700"><FileCheck2 className="h-4 w-4 shrink-0 text-emerald-700"/><span><strong>{entry.criterion}</strong> · {entry.original_filename || 'Verified evidence'}</span></li>)}</ul>
-      </section>}
-
       <footer className="mt-7 flex flex-col gap-1 border-t border-slate-300 pt-3 text-[10px] text-slate-500 sm:flex-row sm:items-end sm:justify-between">
-        <div><p>Immutable report · {result.result_snapshot?.report_id}</p><p>Generated {date(result.result_snapshot?.generated_at)}</p></div>
+        <div><p>{preview ? 'Saved review summary' : 'Immutable report'} · {result.result_snapshot?.report_id}</p><p>Generated {date(result.result_snapshot?.generated_at)}</p></div>
         <p>Criteria {display(result.scale_version_id)} · Evaluation version {display(result.evaluation?.version_number)}</p>
       </footer>
-    </div>
-  </article>
+    </article>
+  </div>
 }
 
 function normalizedSection(section, items, predicate) {

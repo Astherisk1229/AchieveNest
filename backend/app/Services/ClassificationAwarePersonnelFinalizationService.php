@@ -39,6 +39,8 @@ final class ClassificationAwarePersonnelFinalizationService
             throw new RuntimeException('EVALUATION_NOT_READY_FOR_FINALIZATION');
         }
 
+        (new PersonnelEvaluationCriteriaRecalculationService($this->db))->assertCanFinalize($evaluation);
+
         $this->assertLatestVersion($evaluation);
         $this->assertAuthorizedHrFinalizer($actor, $evaluation);
         $this->assertEligibility($evaluation);
@@ -51,6 +53,7 @@ final class ClassificationAwarePersonnelFinalizationService
         if ($items === []) {
             throw new RuntimeException('EVALUATION_ITEMS_REQUIRED');
         }
+        $this->assertAreaAScoresComplete($evaluation, $items);
         $criteriaSnapshot = $evaluation['criteria_snapshot'] ?? null;
         if (is_string($criteriaSnapshot)) $criteriaSnapshot = json_decode($criteriaSnapshot, true);
         if (! is_array($criteriaSnapshot) || $criteriaSnapshot === []) {
@@ -67,7 +70,9 @@ final class ClassificationAwarePersonnelFinalizationService
             $evidence = $item['evidence_snapshot'] ?? null;
             if (is_string($criterion)) $criterion = json_decode($criterion, true);
             if (is_string($evidence)) $evidence = json_decode($evidence, true);
-            if (! is_array($criterion) || $criterion === [] || ! is_array($evidence) || $evidence === []) {
+            $isAreaAScore = ($item['domain'] ?? '') === NtfAnnualReviewAreaAService::DOMAIN
+                && strtolower((string) ($item['category_area'] ?? '')) === 'areaa';
+            if (! is_array($criterion) || $criterion === [] || ! is_array($evidence) || (! $isAreaAScore && $evidence === [])) {
                 throw new RuntimeException('IMMUTABLE_ITEM_SNAPSHOT_REQUIRED');
             }
         }
@@ -91,6 +96,30 @@ final class ClassificationAwarePersonnelFinalizationService
         $now = date('Y-m-d H:i:s');
         $actorId = (string) ($actor['profile']['id'] ?? '');
         $reportSnapshot = json_decode((string) ($report['report_payload'] ?? '{}'), true) ?: [];
+        $rankRecommendation = (new NonTeachingRankRecommendationService($this->db))->decide(
+            (string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id'],
+            (float) $totals['total_score'], $criteriaSnapshot
+        );
+        if ($rankRecommendation['recommended_rank'] === null) {
+            throw new RuntimeException('RANK_RECOMMENDATION_UNRESOLVED');
+        }
+        $commentsEvent = $this->db->table('personnel_evaluation_events')
+            ->select('remarks')->where('evaluation_id', $evaluationId)
+            ->where('action', 'evaluation_summary_comments_updated')
+            ->orderBy('occurred_at', 'DESC')->orderBy('id', 'DESC')->get()->getRowArray();
+        if ($commentsEvent !== null) {
+            $reportSnapshot['official_summary']['comments'] = (string) ($commentsEvent['remarks'] ?? '');
+        }
+        // Older saved reviews predate rank fields in the report. Freeze recorded values now
+        // so their displayed ranking details cannot drift after completion.
+        if (! array_key_exists('present_rank', (array) ($reportSnapshot['official_summary'] ?? []))) {
+            $reportSnapshot['official_summary'] += (new PersonnelSharedRankContextService($this->db))->forPersonnel(
+                (string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']
+            );
+        }
+        $reportSnapshot['official_summary'] = array_merge((array) ($reportSnapshot['official_summary'] ?? []), $rankRecommendation);
+        $reportSnapshot['status'] = 'completed';
+        $reportSnapshot['completed_at'] = $now;
         $criteria = $criteriaSnapshot;
         $snapshot = [
             'snapshot_type' => 'non_teaching_faculty_terminal_completion',
@@ -104,6 +133,7 @@ final class ClassificationAwarePersonnelFinalizationService
             'criteria_snapshot' => $criteria,
             'items' => $items,
             'scores' => $totals,
+            'rank_recommendation' => $rankRecommendation,
             'evaluation_summary' => $reportSnapshot,
             'report_id' => $report['id'],
             'finalizer' => ['profile_id' => $actorId, 'role' => 'hr_staff'],
@@ -120,6 +150,10 @@ final class ClassificationAwarePersonnelFinalizationService
             if (($locked['status'] ?? null) !== 'ready_for_finalization') {
                 throw new RuntimeException('EVALUATION_NOT_READY_FOR_FINALIZATION');
             }
+
+            $this->db->table('personnel_evaluation_reports')->where('id', $report['id'])->update([
+                'report_payload' => json_encode($reportSnapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            ]);
 
             $this->db->table('personnel_evaluations')->where('id', $evaluationId)->update([
                 'status' => 'completed',
@@ -197,12 +231,39 @@ final class ClassificationAwarePersonnelFinalizationService
     {
         $snapshot = $evaluation['eligibility_snapshot'] ?? null;
         if (is_string($snapshot) && $snapshot !== '') $snapshot = json_decode($snapshot, true);
-        if (is_array($snapshot) && array_key_exists('eligibility_status', $snapshot)) {
-            if (($snapshot['eligibility_status'] ?? '') !== 'eligible') throw new RuntimeException('QUALIFICATION_NOT_CLEARED');
+        if (is_array($snapshot) && array_key_exists('submission_readiness_status', $snapshot)) {
+            if (($snapshot['submission_readiness_status'] ?? '') !== 'eligible') throw new RuntimeException('QUALIFICATION_NOT_CLEARED');
             return;
         }
+        // Recheck legacy NTF snapshots against current requirements. Their old
+        // eligibility_status may only reflect the retired annual-review gate.
         $current = (new PersonnelEligibilityService())->evaluateEligibility((string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
-        if (($current['eligibility_status'] ?? '') !== 'eligible') throw new RuntimeException('QUALIFICATION_NOT_CLEARED');
+        if (($current['submission_readiness_status'] ?? $current['eligibility_status'] ?? '') !== 'eligible') throw new RuntimeException('QUALIFICATION_NOT_CLEARED');
+    }
+
+    private function assertAreaAScoresComplete(array $evaluation, array $items): void
+    {
+        $period = $this->db->table('personnel_evaluation_periods')->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
+        if (! $period) throw new RuntimeException('EVALUATION_PERIOD_NOT_FOUND');
+        $criteria = (new NtfAnnualReviewTemplateService($this->db))->criteria($period);
+        $areaAItems = [];
+        foreach ($items as $item) {
+            if (($item['domain'] ?? '') !== NtfAnnualReviewAreaAService::DOMAIN
+                || strtolower((string) ($item['category_area'] ?? '')) !== 'areaa') continue;
+            $areaAItems[strtoupper(trim((string) ($item['criterion_code'] ?? '')))] = $item;
+        }
+
+        foreach ($criteria['items'] as $criterion) {
+            $code = strtoupper(trim((string) ($criterion['code'] ?? '')));
+            $item = $areaAItems[$code] ?? null;
+            $payload = is_string($item['scoring_payload'] ?? null)
+                ? (json_decode($item['scoring_payload'], true) ?: [])
+                : ($item['scoring_payload'] ?? []);
+            $scores = array_values(array_filter((array) ($payload['ds'] ?? []), 'is_numeric'));
+            if (! $item || $scores === []) {
+                throw new RuntimeException("NTF_AREA_A_SCORE_MISSING: Enter an HR score for Area A criterion {$code} before finalizing.");
+            }
+        }
     }
 
     private function totals(array $items): array

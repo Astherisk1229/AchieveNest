@@ -13,6 +13,8 @@ use Config\Database;
  */
 class FacultyRankProgressionService
 {
+    private const MASTERS_ENTRY_RANKS = ['ASSISTANT_INSTRUCTOR', 'SENIOR_INSTRUCTOR'];
+    private const MASTERS_TARGET_RANK = 'ASSISTANT_PROFESSOR';
     private const RETIRED_SENIOR_INSTRUCTOR_STEPS = [
         'SENIOR_INSTRUCTOR_I',
         'SENIOR_INSTRUCTOR_II',
@@ -59,7 +61,10 @@ class FacultyRankProgressionService
         }
 
         $code = $current['rank_code'];
-        if ($code === 'SENIOR_INSTRUCTOR' || in_array($code, self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
+        if (in_array($code, self::MASTERS_ENTRY_RANKS, true)) {
+            return false;
+        }
+        if (in_array($code, self::RETIRED_SENIOR_INSTRUCTOR_STEPS, true)) {
             return true;
         }
         $count = $this->db->table('faculty_rank_transitions')
@@ -83,7 +88,7 @@ class FacultyRankProgressionService
             return null;
         }
 
-        if (in_array($current['rank_code'], ['SENIOR_INSTRUCTOR', ...self::RETIRED_SENIOR_INSTRUCTOR_STEPS], true)) {
+        if (in_array($current['rank_code'], [...self::MASTERS_ENTRY_RANKS, ...self::RETIRED_SENIOR_INSTRUCTOR_STEPS], true)) {
             return null;
         }
         // The only rank in the Board Licensure track is Senior Instructor. Older
@@ -127,20 +132,6 @@ class FacultyRankProgressionService
                 'status' => 'INELIGIBLE',
                 'reason_code' => 'part_time_not_eligible',
                 'message' => 'Part-time faculty are not eligible for Full-Time rank progression.',
-                'normal_next_rank' => null,
-                'allowed_exception_transitions' => [],
-                'all_valid_target_ranks' => [],
-                'is_terminal' => false,
-            ];
-        }
-
-        $personnelGroup = $context['personnel_group'] ?? 'faculty';
-        if ($personnelGroup !== 'faculty') {
-            return [
-                'current_rank_code' => $currentRankCode,
-                'status' => 'UNRESOLVED',
-                'reason_code' => 'rank_catalog_not_configured',
-                'message' => 'Non-Teaching Faculty follows the shared ranking process, but its authoritative rank catalog is not configured.',
                 'normal_next_rank' => null,
                 'allowed_exception_transitions' => [],
                 'all_valid_target_ranks' => [],
@@ -194,11 +185,11 @@ class FacultyRankProgressionService
             }
         }
 
-        // A Senior Instructor has no numbered sub-ranks. Movement into the
-        // Master's tier is available only when HR has a verified Master's
-        // credential on the actual Personnel record.
-        if ($current['rank_code'] === 'SENIOR_INSTRUCTOR' && $hasVerifiedMasters) {
-            $mastersTarget = $this->catalogService->getRankByCode('ASSISTANT_PROFESSOR_I');
+        // Both entry ranks require a verified Master's before entering the
+        // Assistant Professor tier. They cannot advance through retired
+        // Instructor or numbered Senior Instructor steps.
+        if (in_array($current['rank_code'], self::MASTERS_ENTRY_RANKS, true) && $hasVerifiedMasters) {
+            $mastersTarget = $this->catalogService->getRankByCode(self::MASTERS_TARGET_RANK);
             if ($mastersTarget !== null) {
                 $allowedExceptions[] = [
                     'rank' => $mastersTarget,
@@ -227,14 +218,16 @@ class FacultyRankProgressionService
             ];
         }
 
-        $isTerminal = ($normalNext === null && empty($allowedExceptions));
+        $qualificationRequired = in_array($current['rank_code'], self::MASTERS_ENTRY_RANKS, true)
+            && ! $hasVerifiedMasters;
+        $isTerminal = ! $qualificationRequired && $normalNext === null && empty($allowedExceptions);
 
         return [
             'current_rank_code' => $current['rank_code'],
             'current_rank_name' => $current['display_label'],
             'qualification_tier' => $current['qualification_tier_code'],
-            'status' => $isTerminal ? 'TERMINAL' : 'OK',
-            'reason_code' => $isTerminal ? 'no_next_rank' : null,
+            'status' => $qualificationRequired ? 'QUALIFICATION_REQUIRED' : ($isTerminal ? 'TERMINAL' : 'OK'),
+            'reason_code' => $qualificationRequired ? 'verified_masters_required' : ($isTerminal ? 'no_next_rank' : null),
             'is_terminal' => $isTerminal,
             'normal_next_rank_code' => $normalNext['rank_code'] ?? null,
             'normal_next_rank_name' => $normalNext['display_label'] ?? null,
@@ -262,15 +255,6 @@ class FacultyRankProgressionService
                 'allowed' => false,
                 'reason_code' => 'part_time_not_eligible',
                 'message' => 'Part-time faculty are not eligible for Full-Time rank progression.',
-            ];
-        }
-
-        $personnelGroup = $context['personnel_group'] ?? 'faculty';
-        if ($personnelGroup !== 'faculty') {
-            return [
-                'allowed' => false,
-                'reason_code' => 'rank_catalog_not_configured',
-                'message' => 'Non-Teaching Faculty follows the shared ranking process, but its authoritative rank catalog is not configured.',
             ];
         }
 
@@ -324,12 +308,12 @@ class FacultyRankProgressionService
             ];
         }
 
-        if ($from === 'SENIOR_INSTRUCTOR' && $to === 'ASSISTANT_PROFESSOR_I') {
+        if (in_array($from, self::MASTERS_ENTRY_RANKS, true) && $to === self::MASTERS_TARGET_RANK) {
             if (! $this->hasVerifiedMasters((string) ($context['personnel_profile_id'] ?? ''))) {
                 return [
                     'allowed' => false,
                     'reason_code' => 'verified_masters_required',
-                    'message' => 'Progression from Senior Instructor to the Assistant Professor tier requires a verified Master’s degree on the Personnel record.',
+                    'message' => 'Progression to Assistant Professor requires a verified Master’s degree on the Personnel record.',
                 ];
             }
             return [

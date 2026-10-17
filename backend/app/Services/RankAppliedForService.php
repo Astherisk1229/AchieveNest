@@ -16,10 +16,30 @@ class RankAppliedForService
         $context=$this->context($personnelId,$cycleId,$trackId);
         $this->authorize($actor,$personnelId,$context['track']);
         $options=[];
-        $normal=$this->normalNext($context['rank']['rank_code'],$context['placement']['rank_placement_group_id']);
-        if($normal)$options[]=['rank_code'=>$normal['rank_code'],'display_label'=>$normal['display_label'],'transition_type'=>'normal_sequential','rule_reference'=>$normal['rule_reference']];
-        $exception=$this->phdException($context);
-        if($exception)$options[]=$exception;
+        if (strtoupper((string) $context['track']['personnel_group']) === 'NON_TEACHING_FACULTY') {
+            $options = $context['valid_rank_options'];
+            $normal = current(array_filter($options, static fn($option) => $option['transition_type'] === 'normal_sequential')) ?: null;
+            $exception = $options[0] ?? null;
+        } else {
+            $entryRank = in_array($context['rank']['rank_code'], ['ASSISTANT_INSTRUCTOR', 'SENIOR_INSTRUCTOR'], true);
+            $normal=$entryRank ? null : $this->normalNext($context['rank']['rank_code'],$context['placement']['rank_placement_group_id']);
+            if($normal)$options[]=['rank_code'=>$normal['rank_code'],'display_label'=>$normal['display_label'],'transition_type'=>'normal_sequential','rule_reference'=>$normal['rule_reference']];
+            $exception=$this->phdException($context);
+            if($exception)$options[]=$exception;
+            // Teaching and non-teaching use the same verified Master's entry
+            // rule from either Instructor entry rank to Assistant Professor.
+            if ($entryRank) {
+                $progression = (new FacultyRankProgressionService())->getAllowedTransitions($context['rank']['rank_code'], [
+                    'personnel_profile_id' => $personnelId,
+                    'has_verified_phd' => $context['hasPhd'],
+                ]);
+                foreach ($progression['all_valid_target_ranks'] ?? [] as $option) {
+                    if (($option['transition_type'] ?? '') !== 'masters_qualification') continue;
+                    $exception = $option;
+                    $options[] = $option;
+                }
+            }
+        }
         if(!$options)throw new RuntimeException('NO_SYSTEM_VALID_RANK_APPLIED_FOR_OPTION');
         $suggested=$normal?$options[0]:$exception;
         $id=$this->uuid();
@@ -27,7 +47,7 @@ class RankAppliedForService
         $this->db->table('personnel_rank_applied_for_decisions')->insert([
             'id'=>$id,'personnel_profile_id'=>$personnelId,'ranking_cycle_id'=>$cycleId,'ranking_track_id'=>$trackId,
             'present_rank_code_snapshot'=>$context['rank']['rank_code'],'present_rank_label_snapshot'=>$context['rank']['display_label'],
-            'placement_id_snapshot'=>$context['placement']['id'],'placement_group_id_snapshot'=>$context['placement']['rank_placement_group_id'],
+            'placement_id_snapshot'=>$context['placement']['id']??null,'placement_group_id_snapshot'=>$context['placement']['rank_placement_group_id']??null,
             'verified_credential_references'=>json_encode($context['credential_snapshot']),'context_hash'=>$context['hash'],
             'suggested_rank_code'=>$suggested['rank_code'],'valid_rank_options'=>json_encode($options),
             'suggestion_rule'=>$suggested['transition_type'],'suggestion_basis'=>$suggested['rule_reference'],'status'=>'suggested',
@@ -59,12 +79,38 @@ class RankAppliedForService
         return$this->decision($decisionId);
     }
 
+    public function currentNonTeaching(array $actor, string $personnelId, string $cycleId, string $trackId): array
+    {
+        $context = $this->context($personnelId, $cycleId, $trackId);
+        if (strtoupper((string) $context['track']['personnel_group']) !== 'NON_TEACHING_FACULTY') {
+            throw new RuntimeException('NON_TEACHING_TRACK_REQUIRED');
+        }
+        $this->authorize($actor, $personnelId, $context['track']);
+        $row = $this->db->table('personnel_rank_applied_for_decisions')
+            ->where('personnel_profile_id', $personnelId)->where('ranking_track_id', $trackId)
+            ->whereIn('status', ['suggested', 'confirmed'])->orderBy('created_at', 'DESC')->get()->getRowArray();
+        return [
+            'present_rank' => $context['rank']['display_label'],
+            'valid_rank_options' => $context['valid_rank_options'],
+            'decision' => $row ? $this->decision((string) $row['id']) : null,
+        ];
+    }
+
     private function context(string $personnelId,string $cycleId,string $trackId):array
     {
-        $track=$this->db->table('personnel_evaluation_periods')->where(['id'=>$trackId,'ranking_cycle_id'=>$cycleId,'personnel_group'=>'FACULTY'])->get()->getRowArray();if(!$track)throw new InvalidArgumentException('RANKING_TRACK_CONTEXT_INVALID');
+        $track=$this->db->table('personnel_evaluation_periods')->where(['id'=>$trackId,'ranking_cycle_id'=>$cycleId])->whereIn('personnel_group',['FACULTY','NON_TEACHING_FACULTY'])->get()->getRowArray();if(!$track)throw new InvalidArgumentException('RANKING_TRACK_CONTEXT_INVALID');
         $cycle=$this->db->table('ranking_cycles')->where('id',$cycleId)->get()->getRowArray();if(!$cycle)throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND');
-        $person=$this->db->table('personnel_profiles')->where('profile_id',$personnelId)->get()->getRowArray();if(!$person)throw new InvalidArgumentException('PERSONNEL_NOT_FOUND');if(strtoupper((string)($person['personnel_group']??''))!=='FACULTY')throw new RuntimeException('NON_TEACHING_RANK_CATALOG_UNRESOLVED');if(($person['faculty_engagement']??'full_time_faculty')==='part_time_faculty')throw new RuntimeException('PART_TIME_RANKING_UNRESOLVED');
+        $person=$this->db->table('personnel_profiles')->where('profile_id',$personnelId)->get()->getRowArray();if(!$person)throw new InvalidArgumentException('PERSONNEL_NOT_FOUND');if(strtoupper((string)($person['personnel_group']??''))!==strtoupper((string)$track['personnel_group']))throw new RuntimeException('RANKING_TRACK_PERSONNEL_GROUP_MISMATCH');if(($person['faculty_engagement']??'full_time_faculty')==='part_time_faculty')throw new RuntimeException('PART_TIME_RANKING_UNRESOLVED');
         $rankText=trim((string)($person['current_rank_title']??''));$rank=$this->db->table('faculty_rank_catalog')->where('is_active',1)->groupStart()->where('rank_code',$rankText)->orWhere('display_label',$rankText)->groupEnd()->get()->getRowArray();if(!$rank)throw new RuntimeException('PRESENT_RANK_UNRESOLVED');
+        if (strtoupper((string) $track['personnel_group']) === 'NON_TEACHING_FACULTY') {
+            $credentials=$this->db->table('personnel_credentials')->select('id,credential_type,degree_level,board_licensure_status,verified_at,updated_at')->where(['personnel_profile_id'=>$personnelId,'verification_status'=>'verified','record_state'=>'active'])->orderBy('id')->get()->getResultArray();
+            $hasPhd=count(array_filter($credentials,fn($c)=>$c['credential_type']==='degree'&&$c['degree_level']==='doctorate'))>0;
+            $progression=(new FacultyRankProgressionService())->getAllowedTransitions($rank['rank_code'],['personnel_profile_id'=>$personnelId,'has_verified_phd'=>$hasPhd]);
+            $options=array_map(static fn($option)=>$option+['rule_reference'=>$progression['rule_reference']??'NDMU-DOC-ACAD-RANKS-2026-V1'],$progression['all_valid_target_ranks']??[]);
+            $snapshot=array_map(fn($c)=>['id'=>$c['id'],'verified_at'=>$c['verified_at'],'updated_at'=>$c['updated_at']],$credentials);
+            $hash=hash('sha256',json_encode(['rank'=>$rank['rank_code'],'rank_updated'=>$person['updated_at']??null,'placement'=>null,'credentials'=>$snapshot,'cycle'=>$cycleId,'cycle_updated'=>$cycle['updated_at']??null,'track'=>$trackId,'track_version'=>$track['version']??null,'track_updated'=>$track['updated_at']??null,'options'=>$options]));
+            return compact('cycle','track','person','rank','credentials','hasPhd')+['placement'=>null,'credential_snapshot'=>$snapshot,'hash'=>$hash,'valid_rank_options'=>$options];
+        }
         $placement=$this->db->table('personnel_rank_placements')->where(['personnel_profile_id'=>$personnelId,'status'=>'current'])->where('effective_from <=',date('Y-m-d'))->get()->getRowArray();
         if(!$placement){$latest=$this->db->table('personnel_rank_placements')->where('personnel_profile_id',$personnelId)->orderBy('created_at','DESC')->get()->getRowArray();$latestSuggestion=$this->db->table('personnel_rank_placement_suggestions')->where('personnel_profile_id',$personnelId)->orderBy('created_at','DESC')->get()->getRowArray();if(($latestSuggestion['status']??'')==='ambiguous')throw new RuntimeException('PLACEMENT_AMBIGUOUS');$code=['pending_future'=>'PLACEMENT_NOT_YET_EFFECTIVE','activation_failed'=>'PLACEMENT_ACTIVATION_FAILED','cancelled'=>'PLACEMENT_CANCELLED','corrected'=>'PLACEMENT_CORRECTED'][$latest['status']??'']??'CURRENT_PLACEMENT_MISSING';throw new RuntimeException($code);}
         $credentials=$this->db->table('personnel_credentials')->select('id,credential_type,degree_level,board_licensure_status,verified_at,updated_at')->where(['personnel_profile_id'=>$personnelId,'verification_status'=>'verified','record_state'=>'active'])->orderBy('id')->get()->getResultArray();

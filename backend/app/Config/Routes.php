@@ -412,6 +412,7 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
 
     // Phase M — system-suggested and organizational-authority-confirmed Rank Applied For.
     $routes->post('reviewer/personnel/(:segment)/rank-applied-for/suggest', 'Api\RankAppliedForController::suggest/$1');
+    $routes->get('reviewer/personnel/(:segment)/rank-applied-for/current-non-teaching', 'Api\RankAppliedForController::currentNonTeaching/$1');
     $routes->post('reviewer/rank-applied-for/(:segment)/confirm', 'Api\RankAppliedForController::confirm/$1');
     $routes->options('reviewer/personnel/(:segment)/rank-applied-for/suggest', 'Api\RankAppliedForController::options');
     $routes->options('reviewer/rank-applied-for/(:segment)/confirm', 'Api\RankAppliedForController::options');
@@ -541,6 +542,10 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('reviewer/evaluations/(:segment)/items/(:segment)/rate', 'Api\HREvaluationController::options');
     $routes->get('reviewer/evaluations/(:segment)/report', 'Api\HREvaluationController::getReport/$1');
     $routes->options('reviewer/evaluations/(:segment)/report', 'Api\HREvaluationController::options');
+    $routes->get('reviewer/evaluations/(:segment)/summary.pdf', 'Api\HREvaluationController::downloadFacultySummaryPdf/$1');
+    $routes->options('reviewer/evaluations/(:segment)/summary.pdf', 'Api\HREvaluationController::options');
+    $routes->patch('reviewer/evaluations/(:segment)/summary-comments', 'Api\HREvaluationController::updateSummaryComments/$1');
+    $routes->options('reviewer/evaluations/(:segment)/summary-comments', 'Api\HREvaluationController::options');
     $routes->options('reviewer/evaluations', 'Api\HREvaluationController::options');
     $routes->options('reviewer/evaluations/(:segment)', 'Api\HREvaluationController::options');
 

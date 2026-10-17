@@ -169,7 +169,7 @@ final class PersonnelCompletedEvaluationResultService
     {
         $allowed = $group === 'FACULTY'
             ? ['format_key', 'format_version', 'personnel_information', 'present_rank', 'period_covered', 'sections', 'documents_submitted', 'total', 'passing_score', 'comments']
-            : ['format_key', 'format_version', 'personnel_information', 'period_covered', 'performance_personal_indicators', 'service_leadership', 'total', 'passing_score', 'result', 'comments'];
+            : ['format_key', 'format_version', 'personnel_information', 'employee_progress_last_ranking', 'present_rank', 'rank_applied_for', 'rank_applied_for_status', 'recommended_rank', 'recommended_rank_status', 'recommended_rank_rule', 'recommendation_score', 'recommendation_passing_score', 'period_covered', 'performance_personal_indicators', 'service_leadership', 'total', 'passing_score', 'result', 'comments'];
         return array_intersect_key($summary, array_flip($allowed));
     }
 

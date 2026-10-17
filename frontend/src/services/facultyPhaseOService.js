@@ -6,6 +6,7 @@ const enc = value => encodeURIComponent(value)
 export const facultyPhaseOService = {
   context: evaluationId => apiClient.get(`/reviewer/evaluations/${enc(evaluationId)}/phase-o`).then(unwrap),
   suggestApplied: (personnelId, payload) => apiClient.post(`/reviewer/personnel/${enc(personnelId)}/rank-applied-for/suggest`, payload).then(unwrap),
+  currentNonTeachingApplied: (personnelId, params) => apiClient.get(`/reviewer/personnel/${enc(personnelId)}/rank-applied-for/current-non-teaching`, { params }).then(unwrap),
   confirmApplied: (decisionId, payload) => apiClient.post(`/reviewer/rank-applied-for/${enc(decisionId)}/confirm`, payload).then(unwrap),
   suggestRecommended: evaluationId => apiClient.post(`/reviewer/evaluations/${enc(evaluationId)}/recommended-rank/suggest`).then(unwrap),
   confirmRecommended: (decisionId, payload) => apiClient.post(`/reviewer/recommended-ranks/${enc(decisionId)}/confirm`, payload).then(unwrap),

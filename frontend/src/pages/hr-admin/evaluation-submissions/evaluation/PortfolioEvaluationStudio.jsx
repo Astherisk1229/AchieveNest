@@ -48,6 +48,7 @@ export default function PortfolioEvaluationStudio({
   onOpenReturnModal,
   onOpenFinalizeModal,
   onOpenRankPreparation,
+  rankPreparationLabel,
   finalizeLabel
 }) {
   const hasRecordedServiceYears = submission?.tenure_years !== null && submission?.tenure_years !== undefined
@@ -356,6 +357,7 @@ export default function PortfolioEvaluationStudio({
         onOpenReturnModal={canEvaluate ? onOpenReturnModal : undefined}
         onOpenFinalizeModal={onOpenFinalizeModal ? handleFinalizeClicked : undefined}
         onOpenRankPreparation={onOpenRankPreparation}
+        rankPreparationLabel={rankPreparationLabel}
         finalizeLabel={finalizeLabel}
       />}
       {previewEvidence && <PersonnelEvidencePreviewModal evidence={previewEvidence} onClose={() => setPreviewEvidence(null)} />}

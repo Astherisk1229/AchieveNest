@@ -12,6 +12,12 @@ import { getEvaluationCriterionContext } from '../../utils/evaluationCriterionCo
 const label = value => String(value || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase())
 const evidenceFor = item => (item.evidence_snapshot?.length ? item.evidence_snapshot : item.evidence_id ? [{ id: item.evidence_id, original_filename: item.file_name || 'Supporting evidence', mime_type: item.mime_type || 'application/pdf' }] : []).map(row => ({ ...row, id: row.id || row.evidence_id, original_filename: row.original_filename || row.file_name || 'Supporting evidence', mime_type: row.mime_type || row.detected_mime_type || 'application/pdf' }))
 const submittedDetailsFor = item => item.scoring_payload?.category_metadata?.details || {}
+const submittedBookletItem = item => {
+  const metadata = item.scoring_payload?.category_metadata || item.category_metadata || {}
+  const subcategory = String(metadata.subcategory_code || item.subcategory_code || item.criterion_key || '').toUpperCase()
+  if (!['A1_PHD_HOLDER', 'A1_PHD_UNITS', 'A1_MA_HOLDER', 'A1_MA_UNITS'].includes(subcategory)) return item
+  return { ...item, criterion_code: 'A.1', category_metadata: metadata, subcategory_code: subcategory }
+}
 
 export default function DeanPortfolioEvaluationWorkspace({ data, onReload }) {
   const { review = {}, items = [] } = data || {}
@@ -30,7 +36,7 @@ export default function DeanPortfolioEvaluationWorkspace({ data, onReload }) {
     employment_status: review.employment_status,
     current_rank_title: review.current_rank_title || review.present_rank || ''
   }), [review])
-  const bookletPortfolio = useMemo(() => ({ items, academic_year: review.academic_year || '', tenure_years: review.tenure_years }), [items, review])
+  const bookletPortfolio = useMemo(() => ({ items: items.map(submittedBookletItem), academic_year: review.academic_year || '', tenure_years: review.tenure_years }), [items, review])
   // Group from the review, else from the locked criteria sheet; Dean reviews default to Faculty.
   const appliesTo = String(review.criteria_snapshot?.sheet?.applies_to || '').toUpperCase()
   const reviewGroup = String(review.personnel_group_at_submission || review.personnel_group || (appliesTo === 'NON_TEACHING_FACULTY' ? 'non_teaching_faculty' : 'faculty')).toLowerCase()

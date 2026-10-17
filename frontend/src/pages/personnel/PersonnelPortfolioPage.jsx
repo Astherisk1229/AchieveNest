@@ -58,7 +58,16 @@ const portfolioCriterionLabel = item => {
 
 const provisionalScoringFor = item => {
   const snapshot = asObject(item?.criterion_snapshot)
-  return asObject(item?.provisional_scoring || snapshot.provisional_scoring)
+  const saved = asObject(item?.provisional_scoring || snapshot.provisional_scoring)
+  if (Object.keys(saved).length > 0) return saved
+  const configuredPoints = Number(snapshot.configured_points)
+  if (snapshot.evaluator_judgment_required === true || Number(snapshot.evaluator_judgment_required) === 1) {
+    return { status: 'evaluator_rating_required', maximum_points: snapshot.criterion_cap ?? snapshot.category?.max_points }
+  }
+  if (Number.isFinite(configuredPoints) && configuredPoints > 0) {
+    return { status: 'pending_verification', points: configuredPoints }
+  }
+  return {}
 }
 
 const provisionalMaximumFor = (item, scoring = provisionalScoringFor(item)) => {
@@ -72,11 +81,12 @@ const provisionalMaximumFor = (item, scoring = provisionalScoringFor(item)) => {
 const areaMaximumFor = (item, areaCode) => {
   const snapshot = asObject(item?.criterion_snapshot)
   const snapshotArea = asObject(snapshot.area)
+  const category = asObject(snapshot.category)
   const configuration = asObject(snapshot.scoring_configuration)
   const configuredArea = Array.isArray(configuration.areas)
     ? configuration.areas.find(area => String(area?.area_code || '').toUpperCase() === String(areaCode || '').toUpperCase())
     : null
-  const maximum = Number(snapshotArea.maximum_points ?? snapshotArea.max_points ?? configuredArea?.max_points)
+  const maximum = Number(snapshotArea.maximum_points ?? snapshotArea.max_points ?? category.area_max_points ?? configuredArea?.max_points)
   return Number.isFinite(maximum) && maximum > 0 ? maximum : null
 }
 
@@ -98,7 +108,7 @@ const categoryMaximumFor = item => {
   return Number.isFinite(maximum) && maximum > 0 ? maximum : null
 }
 
-const submissionPointEstimate = submissionAreas => {
+export const submissionPointEstimate = submissionAreas => {
   const groups = new Map()
   const areaMaximums = { A: null, B: null, C: null }
   let calculatedRecords = 0

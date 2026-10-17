@@ -106,6 +106,17 @@ describe('completed evaluation summary', () => {
     expect(html).toContain('No confirmed rank application')
   })
 
+  it('keeps summary comments editable for the assigned HR reviewer after completion', () => {
+    const html = renderToStaticMarkup(<CompletedEvaluationSummary
+      result={result('NON_TEACHING_FACULTY_EVALUATION_RESULT')}
+      context={{ comments: 'Verified by HR', comments_editable: true }}
+      onSaveComments={vi.fn()}
+    />)
+    expect(html).toContain('Edit comments')
+    expect(html).toContain('Verified by HR')
+    expect(html).toContain('Official completed personnel ranking scale')
+  })
+
   it('keeps frozen rank fields unchanged when the live personnel record changes', () => {
     const ntf = result('NON_TEACHING_FACULTY_EVALUATION_RESULT')
     ntf.summary.present_rank = null

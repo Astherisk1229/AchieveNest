@@ -97,7 +97,7 @@ export default function EvaluationSummaryPage() {
   const awaitingNonTeachingFinalization = state.result?.personnel?.group === 'NON_TEACHING_FACULTY'
     && state.result?.evaluation?.status === 'ready_for_finalization'
 
-  const selectedTab = fromEvaluation ? 'portfolio-evaluation' : 'evaluation-summaries'
+  const selectedTab = 'evaluation-summaries'
   const workspaceHref = tab => {
     const params = new URLSearchParams()
     params.set('tab', tab)
@@ -123,6 +123,6 @@ export default function EvaluationSummaryPage() {
     {actionError && <div role="alert" className="mx-auto flex w-full max-w-[210mm] flex-wrap items-center justify-between gap-3 rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-900 dark:bg-rose-950/30 dark:text-rose-100"><span>{actionError}</span>{awaitingNonTeachingFinalization && state.canFinalize && <button type="button" disabled={finalizing} onClick={finalize} className="rounded-lg bg-emerald-800 px-4 py-2 font-bold text-white disabled:opacity-50">{finalizing ? 'Completing…' : 'Retry completion'}</button>}</div>}
     {state.phase === 'ready' && state.result?.personnel?.group === 'FACULTY' && state.report?.status === 'endorsed_to_hr' && <FacultyEvaluationSummary report={state.report} context={state.context || {}} onDownloadPdf={() => hrEvaluationService.downloadSummaryPdf(evaluationId)}/>}
     {state.phase === 'ready' && isNonTeaching && <header className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Review Portfolio</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{state.result.personnel?.name} · Version {state.result.evaluation?.version_number || 1}</p></div><p className="text-sm font-bold text-slate-900 dark:text-slate-100">{state.result.personnel?.department || 'Non-Teaching Personnel'} · {awaitingNonTeachingFinalization ? 'Review completed' : 'Evaluation completed'}</p></header>}
-    {state.phase === 'ready' && (state.result?.personnel?.group !== 'FACULTY' || state.report?.status !== 'endorsed_to_hr') && state.result && <CompletedEvaluationSummary result={state.result} preview={awaitingNonTeachingFinalization} context={state.context || {}} onSaveComments={awaitingNonTeachingFinalization ? saveComments : undefined} embedded={isNonTeaching}/>}
+    {state.phase === 'ready' && (state.result?.personnel?.group !== 'FACULTY' || state.report?.status !== 'endorsed_to_hr') && state.result && <CompletedEvaluationSummary result={state.result} preview={awaitingNonTeachingFinalization} context={state.context || {}} onSaveComments={isNonTeaching && state.context?.comments_editable ? saveComments : undefined} embedded={isNonTeaching}/>}
   </main>
 }

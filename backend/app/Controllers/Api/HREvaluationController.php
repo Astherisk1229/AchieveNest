@@ -1427,7 +1427,7 @@ class HREvaluationController extends Controller
         }
     }
 
-    /** The assigned reviewer may add summary comments before finalization. */
+    /** The assigned reviewer may update summary comments without changing saved scores. */
     public function updateSummaryComments(string $id): mixed
     {
         $actor = $this->resolveActor();
@@ -1437,12 +1437,14 @@ class HREvaluationController extends Controller
         $evaluation = $db->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
         if (! $evaluation) return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
-        if ($evaluation['status'] !== 'ready_for_finalization') return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'Comments can be changed only after review completion and before finalization.']], 409);
         $group = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
         if ($group === '') {
             $period = $db->table('personnel_evaluation_periods')->select('personnel_group')->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
             $group = strtoupper(trim((string) ($period['personnel_group'] ?? '')));
         }
+        $editableStatus = $evaluation['status'] === 'ready_for_finalization'
+            || ($group === 'NON_TEACHING_FACULTY' && $evaluation['status'] === 'completed');
+        if (! $editableStatus) return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'Summary comments cannot be changed at this stage.']], 409);
         $endorsement = $db->table('personnel_evaluation_events')
             ->select('actor_profile_id')->where('evaluation_id', $id)
             ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
@@ -1497,7 +1499,7 @@ class HREvaluationController extends Controller
                 ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
                 ->orderBy('occurred_at', 'DESC')->get()->getRowArray();
             $finishedAt = $finishedEvent['occurred_at'] ?? $report['completed_at'] ?? $reportRow['generated_at'] ?? null;
-            $assignedHr = $evaluation['status'] === 'ready_for_finalization'
+            $assignedHr = in_array($evaluation['status'], ['ready_for_finalization', 'completed'], true)
                 && ($actor['profile']['account_type'] ?? '') === 'hr_admin'
                 && (bool) array_intersect(['hr_staff', 'hr_admin'], (array) ($actor['roles'] ?? []))
                 && $this->authorityMayEvaluate($actor, $evaluation);

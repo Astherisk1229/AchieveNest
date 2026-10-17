@@ -113,6 +113,49 @@ describe('Faculty Academic portfolio — continuous viewer', () => {
     expect(printCopy).not.toContain('<a ')
   })
 
+  it('shows submitted Ph.D. Units in both the on-screen and print Education table', () => {
+    const portfolio = {
+      academic_year: '2026-2027',
+      items: [{
+        accomplishment_id: 'submitted-phd-units',
+        criterion_code: 'C.3',
+        category_metadata: {},
+        item_description: 'Doctoral Program in Communication',
+        scoring_payload: {
+          category_metadata: {
+            subcategory_code: 'A1_PHD_UNITS',
+            start_date: '2025-06-27',
+            end_date: '2026-04-27',
+            details: {
+              program: 'Doctoral Program in Communication',
+              institution: 'NOTRE DAME OF MARBEL UNIVERSITY',
+              semester: 'Second Semester',
+              academic_year: '2025-2026',
+              units_completed: 15
+            }
+          }
+        }
+      }]
+    }
+
+    const screenHtml = render(portfolio)
+    expect(screenHtml).toContain('Doctoral Program in Communication')
+    expect(screenHtml).toContain('NOTRE DAME OF MARBEL UNIVERSITY')
+    expect(screenHtml).toContain('Second Semester')
+    expect(screenHtml).toContain('AY 2025-2026')
+    expect(screenHtml).toContain('15 units completed')
+
+    const format = resolveBookletFormat(facultyUser, portfolio)
+    const rows = format.normalize(portfolio)
+    const pages = buildBookletPages(format, rows)
+    const printHtml = pages.map((page) => renderToString(<BookletPage page={page} format={format} rows={rows} user={facultyUser} portfolio={portfolio} />)).join('')
+    expect(printHtml).toContain('Doctoral Program in Communication')
+    expect(printHtml).toContain('NOTRE DAME OF MARBEL UNIVERSITY')
+    expect(printHtml).toContain('Second Semester')
+    expect(printHtml).toContain('AY 2025-2026')
+    expect(printHtml).toContain('15 units completed')
+  })
+
   it('shows the official header fields from authoritative personnel data only', () => {
     const user = { ...facultyUser, full_name: 'Header Fixture', faculty_engagement: 'full_time_faculty', employment_status: 'contractual', current_rank_title: 'Instructor I' }
     const html = renderToString(<PersonnelPortfolioBookletModal isOpen onClose={() => {}} portfolio={{ ...fixturePortfolio, academic_year: 'AY 2023-2024' }} user={user} />)

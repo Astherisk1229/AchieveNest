@@ -16,6 +16,72 @@ describe('Faculty Academic booklet integrity', () => {
     expect(rows[0].evidence.id).toBe('ev-1')
   })
 
+  it('renders frozen Ph.D. Units metadata in submitted portfolios', () => {
+    const submittedItem = {
+      accomplishment_id: '4427f8cb-e60b-4ca3-9b90-3f0753dc036f',
+      criterion_code: 'C.3',
+      category_metadata: {},
+      item_description: 'Doctoral Program in Communication',
+      scoring_payload: {
+        category_metadata: {
+          portfolio_format: 'faculty_academic',
+          subcategory_code: 'A1_PHD_UNITS',
+          start_date: '2025-06-27',
+          end_date: '2026-04-27',
+          details: {
+            program: 'Doctoral Program in Communication',
+            institution: 'NOTRE DAME OF MARBEL UNIVERSITY',
+            semester: 'Second Semester',
+            academic_year: '2025-2026',
+            units_completed: 15
+          }
+        }
+      }
+    }
+
+    expect(resolveFacultyCriterion(submittedItem)).toBe('A.1')
+    expect(normalizeFacultyBookletItems({ items: [submittedItem] })).toEqual([
+      expect.objectContaining({
+        accomplishmentId: submittedItem.accomplishment_id,
+        criterionKey: 'A.1',
+        subcategoryCode: 'A1_PHD_UNITS',
+        date_or_period_display: '2025-06-27 – 2026-04-27',
+        accomplishment_display: 'Doctoral Program in Communication',
+        organization_display: 'NOTRE DAME OF MARBEL UNIVERSITY',
+        remarks_classification_display: 'Ph.D. Units · Second Semester · AY 2025-2026 · 15 units completed'
+      })
+    ])
+  })
+
+  it('keeps separate Ph.D. Units semester submissions as separate Education rows', () => {
+    const phdItem = (id, semester) => ({
+      accomplishment_id: id,
+      criterion_code: 'A.1',
+      scoring_payload: {
+        category_metadata: {
+          subcategory_code: 'A1_PHD_UNITS',
+          start_date: '2025-06-27',
+          end_date: '2026-04-27',
+          details: {
+            program: 'Doctoral Program in Communication',
+            institution: 'NOTRE DAME OF MARBEL UNIVERSITY',
+            semester,
+            academic_year: '2025-2026',
+            units_completed: 15
+          }
+        }
+      }
+    })
+
+    const rows = normalizeFacultyBookletItems({ items: [phdItem('phd-1', 'First Semester'), phdItem('phd-2', 'Second Semester')] })
+    expect(rows).toHaveLength(2)
+    expect(rows.map((row) => row.reference)).toEqual(['A1-001', 'A1-002'])
+  })
+
+  it('continues to classify actual years-of-service items as C.3', () => {
+    expect(resolveFacultyCriterion({ accomplishment_id: 'service-1', criterion_code: 'C.3', title: 'Years of Service at NDMU' })).toBe('C.3')
+  })
+
   it('renders a genuinely empty source and rejects non-teaching format reuse', () => {
     expect(normalizeFacultyBookletItems({})).toEqual([])
     expect(isFacultyAcademicFormat({ personnel_group: 'faculty' })).toBe(true)

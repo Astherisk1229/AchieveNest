@@ -6,7 +6,7 @@ import { RecordApprovedRankDialog } from '../ranking/RankActionDialogs'
 
 const rankLabel = option => option?.display_label || option?.rank_code || 'Rank unavailable'
 
-export default function FacultyPhaseOWorkspace({ evaluationId, mode, onChanged, onClose }) {
+export default function FacultyPhaseOWorkspace({ evaluationId, mode, onChanged, onClose, onPreparationReady }) {
   const [state, setState] = useState({ loading: true, data: null, error: '' })
   const [busy, setBusy] = useState('')
   const [selected, setSelected] = useState('')
@@ -20,6 +20,10 @@ export default function FacultyPhaseOWorkspace({ evaluationId, mode, onChanged, 
   const recommended = data?.recommended_rank
   const review = data?.hr_review
   const approvedRank = data?.approved_rank
+  useEffect(() => {
+    const reviewerMode = mode === 'reviewer' || data?.actor_mode === 'reviewer'
+    onPreparationReady?.(Boolean(reviewerMode && applied?.status === 'confirmed' && recommended?.status === 'confirmed'))
+  }, [mode, data, applied, recommended, onPreparationReady])
   const options = useMemo(() => recommended?.valid_rank_options || applied?.valid_rank_options || [], [recommended, applied])
   useEffect(() => { setSelected(recommended?.confirmed_rank_code || recommended?.suggested_rank_code || applied?.confirmed_rank_code || applied?.suggested_rank_code || '') }, [applied, recommended])
   const act = async (name, operation) => { setBusy(name); setState(s => ({ ...s, error: '' })); try { await operation(); await load(); await onChanged?.() } catch (error) { setState(s => ({ ...s, error: rankActionError(error, 'The rank workflow action failed.') })) } finally { setBusy('') } }

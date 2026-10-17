@@ -25,9 +25,21 @@ describe('Faculty Phase O production wiring', () => {
     const dean = read('pages/dean/DeanPortfolioEvaluationWorkspace.jsx')
     const workspace = read('components/evaluation/FacultyPhaseOWorkspace.jsx')
     expect(dean).toContain('mode="reviewer"')
+    expect(dean).toContain('onPreparationReady={ready => setPhaseOReadyId(ready ? review.id :')
+    expect(dean).toContain('phaseOReadyId!==review.id')
     expect(workspace).toContain("reviewerMode")
     expect(workspace).toContain("!reviewerMode")
     expect(workspace).toContain('Generate Recommended Rank')
+  })
+
+  it('lets HR prepare ranks for Faculty evaluations assigned directly to HR', () => {
+    const stage = read('pages/hr-admin/ranking-cycle-stages/EvaluationStage.jsx')
+    const studio = read('pages/hr-admin/evaluation-submissions/evaluation/PortfolioEvaluationStudio.jsx')
+    const actions = read('pages/hr-admin/evaluation-submissions/studio/StudioDecisionBar.jsx')
+    expect(stage).toContain('onOpenRankPreparation=')
+    expect(stage).toContain("mode={phaseO.status === 'in_evaluation' ? 'reviewer' : 'hr'}")
+    expect(studio).toContain('onOpenRankPreparation={onOpenRankPreparation}')
+    expect(actions).toContain('Prepare Faculty Rank')
   })
 
   it('uses only canonical Phase M through P endpoints', () => {

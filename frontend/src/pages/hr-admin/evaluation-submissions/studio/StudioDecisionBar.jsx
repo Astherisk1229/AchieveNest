@@ -7,6 +7,7 @@ export default function StudioDecisionBar({
   isReadyForFinalize = false,
   onOpenReturnModal,
   onOpenFinalizeModal,
+  onOpenRankPreparation,
   finalizeLabel = 'Finalize Evaluation'
 }) {
   return (
@@ -19,6 +20,14 @@ export default function StudioDecisionBar({
       </div>
 
       <div className="flex items-center gap-2">
+        {onOpenRankPreparation && <button
+          type="button"
+          disabled={!isReadyForFinalize}
+          onClick={onOpenRankPreparation}
+          className="px-4 py-2 rounded-xl border border-emerald-700 text-emerald-900 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed dark:text-emerald-200 dark:hover:bg-emerald-950/30 font-bold text-xs transition cursor-pointer"
+        >
+          Prepare Faculty Rank
+        </button>}
         {onOpenReturnModal && <button
           type="button"
           onClick={onOpenReturnModal}

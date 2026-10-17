@@ -35,7 +35,9 @@ describe('real Dean portfolio evaluation workspace contracts', () => {
     expect(workspace).toContain('await onReload()')
     expect(workspace).toContain('Saved and reloaded')
     expect(workspace).toContain('Evaluation is incomplete.')
-    expect(workspace).toContain('disabled={!editable||remaining>0}')
+    expect(workspace).toContain('disabled={!editable||remaining>0||(reviewGroup===\'faculty\'&&phaseOReadyId!==review.id)}')
+    expect(workspace).toContain('Confirm Rank Applied For and Recommended Rank before endorsing this faculty evaluation to HR.')
+    expect(workspace).toContain('onPreparationReady={ready => setPhaseOReadyId(ready ? review.id : \'\')}')
   })
 
   it('shares one immutable printable summary between Dean and HR', () => {

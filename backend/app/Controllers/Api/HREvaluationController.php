@@ -877,6 +877,36 @@ class HREvaluationController extends Controller
             return $this->respond(['error' => ['code' => 'EVALUATION_INCOMPLETE', 'message' => "{$remaining} submitted achievement(s) still require a final decision.", 'remaining' => $remaining]], 422);
         }
 
+        $personnelGroup = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
+        if ($personnelGroup === '') {
+            $personnelGroup = strtoupper(trim((string) ($db->table('personnel_profiles')
+                ->select('personnel_group')->where('profile_id', $evaluation['personnel_profile_id'])
+                ->get()->getRowArray()['personnel_group'] ?? '')));
+        }
+        if ($personnelGroup === 'FACULTY') {
+            $track = $db->table('personnel_evaluation_periods')
+                ->select('id, ranking_cycle_id')->where('id', $evaluation['evaluation_period_id'])
+                ->where('personnel_group', 'FACULTY')->get()->getRowArray();
+            $applied = $track ? $db->table('personnel_rank_applied_for_decisions')->where([
+                'personnel_profile_id' => $evaluation['personnel_profile_id'],
+                'ranking_cycle_id' => $track['ranking_cycle_id'],
+                'ranking_track_id' => $track['id'],
+                'status' => 'confirmed',
+            ])->orderBy('confirmed_at', 'DESC')->get()->getRowArray() : null;
+            $recommended = $db->table('personnel_recommended_rank_decisions')->where([
+                'evaluation_id' => $id,
+                'status' => 'confirmed',
+            ])->orderBy('confirmed_at', 'DESC')->get()->getRowArray();
+            if (! $track || ! $applied || ! $recommended || ($recommended['rank_applied_for_decision_id'] ?? null) !== $applied['id']) {
+                return $this->respond(['error' => ['code' => 'FACULTY_PHASE_O_INCOMPLETE', 'message' => 'Confirm Rank Applied For and Recommended Rank before endorsing this faculty evaluation to HR.']], 409);
+            }
+            try {
+                (new \App\Services\RecommendedRankService($db))->assertFreshConfirmedDecision((string) $recommended['id']);
+            } catch (Throwable $error) {
+                return $this->respond(['error' => ['code' => 'FACULTY_PHASE_O_STALE', 'message' => 'The confirmed faculty rank recommendation is stale. Refresh Phase O and confirm the current recommendation before endorsing to HR.']], 409);
+            }
+        }
+
         $db->transBegin();
         try {
             $now = date('Y-m-d H:i:s');

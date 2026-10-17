@@ -31,6 +31,7 @@ export default function PortfolioEvaluationStudio({
   onSaveProgress,
   onOpenReturnModal,
   onOpenFinalizeModal,
+  onOpenRankPreparation,
   finalizeLabel
 }) {
   const tenureYears = submission?.tenure_years || 0
@@ -275,6 +276,7 @@ export default function PortfolioEvaluationStudio({
         isReadyForFinalize={isReadyForFinalize}
         onOpenReturnModal={onOpenReturnModal}
         onOpenFinalizeModal={onOpenFinalizeModal ? handleFinalizeClicked : undefined}
+        onOpenRankPreparation={onOpenRankPreparation}
         finalizeLabel={finalizeLabel}
       />
     </div>

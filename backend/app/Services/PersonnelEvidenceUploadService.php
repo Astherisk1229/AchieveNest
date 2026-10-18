@@ -81,9 +81,9 @@ class PersonnelEvidenceUploadService
      */
     public function validateOwnership(array $actor, string $accomplishmentId): array
     {
-        $accomplishment = $this->db->table('personnel_accomplishments')
-            ->where('id', $accomplishmentId)
-            ->get()->getRowArray();
+        $recordQuery = $this->db->table('personnel_accomplishments')->where('id', $accomplishmentId);
+        if ($this->db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $accomplishment = $recordQuery->get()->getRowArray();
 
         if ($accomplishment === null) {
             return [

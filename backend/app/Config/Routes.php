@@ -142,6 +142,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('personnel/accomplishments', 'Api\PersonnelAccomplishmentController::options');
     $routes->post('personnel/accomplishments/(:segment)/evidence', 'Api\PersonnelAccomplishmentController::addEvidence/$1');
     $routes->options('personnel/accomplishments/(:segment)/evidence', 'Api\PersonnelAccomplishmentController::options');
+    $routes->post('personnel/accomplishments/(:segment)/evidence/(:segment)/scan', 'Api\PersonnelAccomplishmentController::scanEvidence/$1/$2');
+    $routes->options('personnel/accomplishments/(:segment)/evidence/(:segment)/scan', 'Api\PersonnelAccomplishmentController::options');
 
     // Personnel whole-portfolio submission (Plan C Phase C1, C2, C3, C4 & C5)
     $routes->post('personnel/portfolio/submit', 'Api\PersonnelPortfolioSubmissionController::submit');
@@ -281,12 +283,12 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('hr/personnel/(:segment)/status', 'Api\TargetHRPersonnelController::options');
 
     // Dean Annual Review & Portfolio-Validation Eligibility (Plan D1 Companion)
-    $routes->get('dean/dashboard', 'Api\DeanWorkspaceController::dashboard');
-    $routes->options('dean/dashboard', 'Api\DeanWorkspaceController::options');
     $routes->get('dean/roster', 'Api\DeanWorkspaceController::roster');
     $routes->options('dean/roster', 'Api\DeanWorkspaceController::options');
     $routes->get('dean/reviews', 'Api\DeanWorkspaceController::reviews');
     $routes->options('dean/reviews', 'Api\DeanWorkspaceController::options');
+    $routes->get('dean/evaluation-periods', 'Api\DeanWorkspaceController::evaluationPeriods');
+    $routes->options('dean/evaluation-periods', 'Api\DeanWorkspaceController::options');
     $routes->get('dean/reviews/(:segment)', 'Api\DeanWorkspaceController::reviewDetail/$1');
     $routes->options('dean/reviews/(:segment)', 'Api\DeanWorkspaceController::options');
     $routes->post('dean/reviews/(:segment)/criteria-reconfirmation', 'Api\DeanWorkspaceController::criteriaReconfirmation/$1');
@@ -303,14 +305,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('annual-review-imports/history/(:segment)', 'Api\AnnualReviewImportController::history/$1');
     $routes->get('annual-review-imports/(:segment)/file', 'Api\AnnualReviewImportController::file/$1');
     $routes->options('annual-review-imports/(:any)', 'Api\AnnualReviewImportController::options');
-    $routes->get('hr/ntf-annual-review/settings', 'Api\NtfAnnualReviewTemplateController::showSettings');
-    $routes->put('hr/ntf-annual-review/settings/rating-scale', 'Api\NtfAnnualReviewTemplateController::saveRatingScale');
-    $routes->put('hr/ntf-annual-review/settings/signatories', 'Api\NtfAnnualReviewTemplateController::saveSignatories');
-    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template', 'Api\NtfAnnualReviewTemplateController::blank/$1');
-    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template/prefilled.zip', 'Api\NtfAnnualReviewTemplateController::prefilledZip/$1');
-    $routes->post('hr/ntf-annual-review/tracks/(:segment)/template/prefilled.zip', 'Api\NtfAnnualReviewTemplateController::selectedPrefilledZip/$1');
-    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template/personnel/(:segment)', 'Api\NtfAnnualReviewTemplateController::prefilled/$1/$2');
-    $routes->options('hr/ntf-annual-review/(:any)', 'Api\NtfAnnualReviewTemplateController::options');
 
     // Personnel Eligibility Endpoints (Plan D1 Companion)
     $routes->get('personnel/eligibility/current', 'Api\PersonnelEligibilityController::current');
@@ -341,6 +335,10 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::options');
     $routes->get('admin/evaluation-scales/versions/(:segment)/history', 'Api\EvaluationScaleController::versionHistory/$1');
     $routes->options('admin/evaluation-scales/versions/(:segment)/history', 'Api\EvaluationScaleController::options');
+    $routes->post('admin/evaluation-scales/versions/(:segment)/direct-change/preview', 'Api\EvaluationScaleController::previewDirectChange/$1');
+    $routes->options('admin/evaluation-scales/versions/(:segment)/direct-change/preview', 'Api\EvaluationScaleController::options');
+    $routes->post('admin/evaluation-scales/versions/(:segment)/direct-change', 'Api\EvaluationScaleController::applyDirectChange/$1');
+    $routes->options('admin/evaluation-scales/versions/(:segment)/direct-change', 'Api\EvaluationScaleController::options');
     $routes->post('admin/evaluation-scales/versions/(:segment)/clone', 'Api\EvaluationScaleController::cloneVersion/$1');
     $routes->options('admin/evaluation-scales/versions/(:segment)/clone', 'Api\EvaluationScaleController::options');
     $routes->put('admin/evaluation-scales/versions/(:segment)', 'Api\EvaluationScaleController::updateVersion/$1');

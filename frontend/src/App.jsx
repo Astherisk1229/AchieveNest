@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom'
 import LoginPage from './pages/common/LoginPage'
 import MainLayout from './components/layout/MainLayout'
 import RouteLoadingFallback from './components/common/RouteLoadingFallback'
@@ -12,6 +12,7 @@ import { useAuth } from './context/AuthContext'
 import { getCurrentUser } from './services/authService'
 import RouteAccessController from './controllers/RouteAccessController'
 import { PERSONNEL_DASHBOARD_CONTEXTS } from './utils/roleContext'
+import { legacyRankingWorkspaceHref, rankingWorkspaceHref } from './utils/hrRankingNavigation'
 import { DEAN_ROUTES } from './config/deanRoutes'
 
 import ActiveRoleGuard from './components/common/ActiveRoleGuard'
@@ -31,14 +32,12 @@ const RankPlacementPage = lazy(() => import('./pages/common/RankPlacementPage'))
 
 const PersonnelDashboardPage = lazy(() => import('./pages/personnel/PersonnelDashboardPage'))
 const PersonnelPortfolioPage = lazy(() => import('./pages/personnel/PersonnelPortfolioPage'))
-const PersonnelPortfolioEditPage = lazy(() => import('./pages/personnel/PersonnelPortfolioEditPage'))
 const PersonnelAchievementsPage = lazy(() => import('./pages/personnel/PersonnelAchievementsPage'))
 const DeanWorkspacePage = lazy(() => import('./pages/dean/DeanWorkspacePage'))
-const DeanFacultyRankingReviewsPage = lazy(() => import('./pages/dean/DeanFacultyRankingReviewsPage'))
+const DeanFacultyEvaluationPage = lazy(() => import('./pages/dean/DeanFacultyEvaluationPage'))
 const DeanAnnualReviewEligibilityPage = lazy(() => import('./pages/dean/DeanAnnualReviewEligibilityPage'))
 
 const HRDashboardPage = lazy(() => import('./pages/hr-admin/HRDashboardPage'))
-const HREvaluationQueueLanding = lazy(() => import('./pages/hr-admin/HREvaluationQueueLanding'))
 const HRPersonnelDirectoryPage = lazy(() => import('./pages/hr-admin/HRPersonnelDirectoryPage'))
 const HROrganizationalStructurePage = lazy(() => import('./pages/hr-admin/HROrganizationalStructurePage'))
 const PersonnelEvaluationSetupPage = lazy(() => import('./pages/hr-admin/PersonnelEvaluationSetupPage'))
@@ -59,6 +58,26 @@ const ChangePasswordPage = lazy(() => import('./pages/common/ChangePasswordPage'
 function QueryPreservingRedirect({ to }) {
   const location = useLocation()
   return <Navigate to={`${to}${location.search}${location.hash}`} replace />
+}
+
+function DeanEvaluationRedirect({ tab }) {
+  const location = useLocation()
+  const { evaluationId } = useParams()
+  const params = new URLSearchParams(location.search)
+  params.set('tab', tab)
+  if (evaluationId) params.set('evaluation', evaluationId)
+  return <Navigate to={`${DEAN_ROUTES.FACULTY_EVALUATION}?${params.toString()}${location.hash}`} replace />
+}
+
+function HRRankingTabRedirect({ tab }) {
+  const location = useLocation()
+  return <Navigate to={rankingWorkspaceHref(location, tab)} replace />
+}
+
+function HRRankingStageRedirect() {
+  const location = useLocation()
+  const { cycleId, trackKey, stage } = useParams()
+  return <Navigate to={legacyRankingWorkspaceHref(location, { cycleId, trackKey, stage })} replace />
 }
 
 class ErrorBoundary extends React.Component {
@@ -175,7 +194,7 @@ function AppContent() {
             {/* Personnel Portal — Rejected for hr_admin & osad_admin */}
             <Route element={<LayoutShell allowedAccountTypes={['personnel']} requiredRoles={['personnel']} />}>
               <Route path="/personnel/dashboard" element={<ActiveRoleGuard allowedActiveContexts={PERSONNEL_DASHBOARD_CONTEXTS} redirectTo="/personnel/account"><PersonnelDashboardPage /></ActiveRoleGuard>} />
-              <Route path="/personnel/portfolio/edit" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelPortfolioEditPage /></ActiveRoleGuard>} />
+              <Route path="/personnel/portfolio/edit" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><Navigate to="/personnel/portfolio" replace /></ActiveRoleGuard>} />
               <Route path="/personnel/portfolio" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelPortfolioPage /></ActiveRoleGuard>} />
               <Route path="/personnel/achievements" element={<ActiveRoleGuard allowedActiveContexts={['personnel']}><PersonnelAchievementsPage /></ActiveRoleGuard>} />
               <Route path="/personnel/account" element={<AccountPage />} />
@@ -185,11 +204,12 @@ function AppContent() {
             </Route>
 
             <Route element={<LayoutShell allowedAccountTypes={['personnel']} requiredRoles={['dean']} />}>
-              <Route path={DEAN_ROUTES.DASHBOARD} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanWorkspacePage view="dashboard" /></ActiveRoleGuard>} />
-              <Route path={DEAN_ROUTES.ANNUAL_REVIEW_ELIGIBILITY} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanAnnualReviewEligibilityPage /></ActiveRoleGuard>} />
+              <Route path={DEAN_ROUTES.DASHBOARD} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><Navigate to={DEAN_ROUTES.FACULTY_EVALUATION} replace /></ActiveRoleGuard>} />
+              <Route path={DEAN_ROUTES.FACULTY_EVALUATION} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanFacultyEvaluationPage /></ActiveRoleGuard>} />
+              <Route path={DEAN_ROUTES.ANNUAL_REVIEW_ELIGIBILITY} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanEvaluationRedirect tab="annual" /></ActiveRoleGuard>} />
               <Route path="/dean/ranking-cycles/:cycleId/:trackKey/annual-reviews" element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanAnnualReviewEligibilityPage /></ActiveRoleGuard>} />
-              <Route path={DEAN_ROUTES.FACULTY_RANKING_REVIEWS} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanFacultyRankingReviewsPage /></ActiveRoleGuard>} />
-              <Route path={`${DEAN_ROUTES.FACULTY_RANKING_REVIEWS}/:evaluationId`} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanFacultyRankingReviewsPage /></ActiveRoleGuard>} />
+              <Route path={DEAN_ROUTES.FACULTY_RANKING_REVIEWS} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanEvaluationRedirect tab="portfolio" /></ActiveRoleGuard>} />
+              <Route path={`${DEAN_ROUTES.FACULTY_RANKING_REVIEWS}/:evaluationId`} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanEvaluationRedirect tab="portfolio" /></ActiveRoleGuard>} />
               <Route path={DEAN_ROUTES.COLLEGE_PERSONNEL} element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><DeanWorkspacePage view="roster" /></ActiveRoleGuard>} />
               <Route path="/dean/personnel/:personnelId/rank-placement" element={<ActiveRoleGuard allowedActiveContexts={['dean']} redirectTo="/personnel/dashboard"><RankPlacementPage role="reviewer" /></ActiveRoleGuard>} />
               <Route path={DEAN_ROUTES.LEGACY_REVIEWS} element={<QueryPreservingRedirect to={DEAN_ROUTES.FACULTY_RANKING_REVIEWS} />} />
@@ -213,11 +233,11 @@ function AppContent() {
               <Route path="/hr/personnel-directory" element={<HRPersonnelDirectoryPage />} />
               <Route path="/hr/organizational-structure" element={<HROrganizationalStructurePage />} />
               <Route path="/hr/personnel-evaluation-setup" element={<PersonnelEvaluationSetupPage />} />
-              <Route path="/hr/ranking-cycles/criteria" element={<PersonnelEvaluationSetupPage criteriaOnly />} />
+              <Route path="/hr/ranking-cycles/criteria" element={<HRRankingTabRedirect tab="evaluation-criteria" />} />
               <Route path="/hr/ranking-cycles" element={<HRRankingCyclesPage />} />
               <Route path="/hr/ranking-cycles/:cycleId" element={<HRRankingCyclesPage />} />
               <Route path="/hr/ranking-cycles/:cycleId/:trackKey/results/:evaluationId/summary" element={<EvaluationSummaryPage />} />
-              <Route path="/hr/ranking-cycles/:cycleId/:trackKey/:stage" element={<HRRankingCyclesPage />} />
+              <Route path="/hr/ranking-cycles/:cycleId/:trackKey/:stage" element={<HRRankingStageRedirect />} />
               <Route path="/hr/personnel/:personnelId/rank-placement" element={<RankPlacementPage role="hr" />} />
               <Route path="/hr/audit-trail" element={<HRAuditTrailPage />} />
               <Route path="/hr/rank-assignment-logs" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
@@ -228,7 +248,7 @@ function AppContent() {
               {/* Legacy Route Redirects */}
               <Route path="/hr/profile" element={<Navigate to="/hr/account" replace />} />
               <Route path="/hr/personnel-governance" element={<Navigate to="/hr/personnel-directory" replace />} />
-              <Route path="/hr/evaluation-submissions" element={<HREvaluationQueueLanding />} />
+              <Route path="/hr/evaluation-submissions" element={<HRRankingTabRedirect tab="portfolio-evaluation" />} />
               <Route path="/hr/faculty-evaluation-and-ranking" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
               <Route path="/hr/verification-queue" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
               <Route path="/hr/faculty-ranking-and-matrix" element={<QueryPreservingRedirect to="/hr/ranking-cycles" />} />
@@ -250,7 +270,7 @@ function AppContent() {
             </Route>
 
             <Route path="/scanner/:eventId" element={<Suspense fallback={<RouteLoadingFallback />}><OfficerScannerPage /></Suspense>} />
-            <Route path="/personnel/achievements" element={<Navigate to="/personnel/portfolio/edit" replace />} />
+            <Route path="/personnel/achievements" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/personnel" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/coordinator" element={<Navigate to="/personnel/dashboard" replace />} />
             <Route path="/org-moderator" element={<Navigate to="/personnel/dashboard" replace />} />

@@ -144,9 +144,6 @@ class PersonnelAccomplishmentCriterionService
     /** Pure resolver used to keep snapshot construction deterministic and independently testable. */
     public static function snapshotFromPublishedHierarchy(array $hierarchy, string $criterionId, ?string $expectedGroup = null): array
     {
-        if (strtoupper((string) ($hierarchy['sheet']['applies_to'] ?? '')) === 'FACULTY') {
-            $hierarchy = FacultyPersonnelIntakeDefaults::apply($hierarchy);
-        }
         $version = $hierarchy['version'] ?? [];
         if (strtolower((string) ($version['status'] ?? '')) !== 'approved') {
             throw new RuntimeException('The selected HR criterion is not in a published version.', 422);

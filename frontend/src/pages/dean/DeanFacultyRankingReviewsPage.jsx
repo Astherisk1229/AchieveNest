@@ -75,8 +75,8 @@ function ReviewQueue() {
 
   return <main className="mx-auto max-w-6xl space-y-6 py-4">
     <header>
-      <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">Faculty Ranking Reviews</h1>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Academic faculty under your college requiring Dean review.</p>
+      <h1 className="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">Faculty Evaluation</h1>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Review academic faculty portfolios and track evaluation progress for your college.</p>
     </header>
 
     {state.phase === 'loading' && <div className="space-y-3" aria-busy="true" aria-label="Loading faculty ranking reviews"><div className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-900" /><div className="h-40 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-900" /></div>}
@@ -122,7 +122,7 @@ function ReviewDetail({ evaluationId }) {
   if (state.phase === 'loading') return <main className="mx-auto max-w-6xl space-y-3 py-4" aria-busy="true"><div className="h-9 w-64 animate-pulse rounded bg-slate-200" /><div className="h-72 animate-pulse rounded-xl bg-slate-100" /></main>
   if (state.phase === 'error') return <main className="mx-auto max-w-3xl py-10"><div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-900"><AlertCircle className="h-5 w-5" /><h1 className="mt-2 font-bold">Portfolio review unavailable</h1><p className="mt-1 text-sm">{state.error}</p><button onClick={load} className="mt-4 rounded-lg bg-rose-900 px-3 py-2 text-sm font-bold text-white">Try Again</button></div></main>
   const review=state.data?.review || {}
-  return <main className="mx-auto max-w-[1500px] space-y-5 py-4"><Link to={DEAN_ROUTES.FACULTY_RANKING_REVIEWS} className="text-sm font-bold text-emerald-800">← Faculty Ranking Reviews</Link><header className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Review Portfolio</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{review.full_name} · {review.institutional_id} · Version {review.version_number || 1}</p></div><p className="text-sm font-bold">{review.college_name} · {friendlyStatus(review.status, Number(review.version_number || 1))}</p></header><DeanPortfolioEvaluationWorkspace data={state.data} onReload={load} /></main>
+  return <main className="mx-auto max-w-[1500px] space-y-5 py-4"><Link to={DEAN_ROUTES.FACULTY_RANKING_REVIEWS} className="text-sm font-bold text-emerald-800">← Faculty Evaluation</Link><header className="flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Review Portfolio</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{review.full_name} · {review.institutional_id} · Version {review.version_number || 1}</p></div><p className="text-sm font-bold">{review.college_name} · {friendlyStatus(review.status, Number(review.version_number || 1))}</p></header><DeanPortfolioEvaluationWorkspace data={state.data} onReload={load} /></main>
 }
 
 export default function DeanFacultyRankingReviewsPage() {

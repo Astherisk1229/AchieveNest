@@ -5,6 +5,7 @@ import path from 'node:path'
 describe('Personnel completed evaluation result release UI', () => {
   const gallery = fs.readFileSync(path.resolve(__dirname, '../PersonnelPortfolioGallery.jsx'), 'utf8')
   const modal = fs.readFileSync(path.resolve(__dirname, '../PersonnelEvaluationResultModal.jsx'), 'utf8')
+  const nonTeachingSummary = fs.readFileSync(path.resolve(__dirname, '../../../components/evaluation/CompletedEvaluationSummary.jsx'), 'utf8')
   const service = fs.readFileSync(path.resolve(__dirname, '../../../services/PersonnelEvaluationResultService.js'), 'utf8')
 
   it('shows the result action only inside the finalized branch', () => {
@@ -16,7 +17,7 @@ describe('Personnel completed evaluation result release UI', () => {
 
   it('renders classification-correct summaries without Faculty rank sections', () => {
     expect(modal).toContain("result?.personnel?.group === 'FACULTY'")
-    expect(modal).toContain('Non-Teaching Faculty')
+    expect(nonTeachingSummary).toContain("result.personnel?.group === 'FACULTY' ? 'Faculty' : 'Non-Teaching Faculty'")
     expect(modal).not.toContain('Rank Applied For')
     expect(modal).not.toContain('Recommended Faculty Rank')
   })

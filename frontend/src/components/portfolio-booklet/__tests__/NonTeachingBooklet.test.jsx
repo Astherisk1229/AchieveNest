@@ -1,19 +1,22 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
+import fs from 'node:fs'
+import path from 'node:path'
 
 vi.mock('../../../services/personnelAccomplishmentService', () => ({
   default: { getEvidenceBlobUrl: vi.fn(), downloadEvidenceBlob: vi.fn() }
 }))
 
 import PersonnelPortfolioBookletModal from '../../../pages/personnel/PersonnelPortfolioBookletModal'
-import PersonnelSubmissionModal from '../../../pages/personnel/modals/PersonnelSubmissionModal'
+import NonTeachingFacultySubmissionModal from '../../../pages/personnel/modals/NonTeachingFacultySubmissionModal'
 import { resolveNtpCriterion, ntpContractCode, NTP_ENTRY_CRITERIA } from '../../../config/nonTeachingPortfolioSchema'
 import { normalizeNonTeachingBookletItems, nonTeachingAreaARows, nonTeachingServicePoints, NTP_OTHER_KEY } from '../../../utils/nonTeachingBooklet'
 import { NON_TEACHING_BOOKLET_FORMAT } from '../bookletFormats'
 import BookletPage, { buildBookletPages } from '../BookletPage'
 
 const staff = { full_name: 'Demo Staff', personnel_group: 'non_teaching_faculty', designation_title: 'Records Officer' }
+const submissionSource = fs.readFileSync(path.resolve(__dirname, '../../../pages/personnel/modals/NonTeachingFacultySubmissionModal.jsx'), 'utf8')
 
 describe('Appendix N schema', () => {
   it('maps lettered, numbered and older category labels onto the official criteria', () => {
@@ -105,11 +108,12 @@ describe('Personnel views', () => {
   })
 
   it('offers only the Appendix N categories when adding an accomplishment', () => {
-    const html = renderToStaticMarkup(<PersonnelSubmissionModal isOpen onClose={() => {}} areaCode="B" />)
-    for (const criterion of NTP_ENTRY_CRITERIA) expect(html).toContain(`${criterion.code} ${criterion.title}`)
-    expect(html).not.toContain('Scholarly Publications')
-    expect(html).toContain('Club / Organization')
-    expect(html).toContain('Start date')
+    expect(submissionSource).toContain('personnelAccomplishmentService.fetchActiveIntakeCriteria()')
+    expect(submissionSource).toContain('const publishedOptions = (activeCriteria?.areas || [])')
+    expect(submissionSource).toContain('{publishedOptions.map((item) =>')
+    expect(submissionSource).toContain('NTP_ENTRY_CRITERIA')
+    expect(NTP_ENTRY_CRITERIA.map(criterion => `${criterion.code} ${criterion.title}`).join(' ')).not.toContain('Scholarly Publications')
+    expect(NTP_ENTRY_CRITERIA.map(criterion => criterion.code)).not.toContain('B.3')
   })
 
   it('uses the compact Faculty document styling while preserving NTF headings, fields, and records', () => {

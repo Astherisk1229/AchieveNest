@@ -189,7 +189,56 @@ final class CanonicalPersonnelAccomplishmentPersistenceTest extends TestCase
         self::assertSame(0, $this->db->table('achievement_legacy_crosswalk')->where('mapped_by_profile_id', self::PROFILE_ID)->countAllResults());
     }
 
-    /** @dataProvider validNtfRoles */
+    public function testDeleteAllowsUnsubmittedAccomplishmentWhileAnotherEvaluationIsActive(): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $accomplishmentId = 'c7a00000-0000-4000-8000-000000000101';
+        $evaluationId = 'c7a00000-0000-4000-8000-000000000102';
+        $this->db->table('personnel_accomplishments')->insert([
+            'id' => $accomplishmentId,
+            'personnel_profile_id' => self::PROFILE_ID,
+            'category_code' => 'B.5',
+            'category_area' => 'areaB',
+            'title' => 'Maria test certificate',
+            'category_metadata' => json_encode([]),
+            'status' => 'draft',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->db->table('personnel_evaluations')->insert([
+            'id' => $evaluationId,
+            'personnel_profile_id' => self::PROFILE_ID,
+            'status' => 'submitted',
+            'academic_year' => '2026-2027',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $this->db->table('personnel_evaluation_items')->insert([
+            'id' => 'c7a00000-0000-4000-8000-000000000103',
+            'evaluation_id' => $evaluationId,
+            'accomplishment_id' => $accomplishmentId,
+            'item_description' => 'Maria test certificate',
+            'category_area' => 'areaB',
+            'criterion_code' => 'B.5',
+            'criterion_key' => 'B.5',
+            'criterion_title' => 'B.5',
+            'evidence_title' => 'Maria test certificate',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $controller = new PersonnelAccomplishmentController($this->authz());
+        $this->initController($controller, $this->request([], 'DELETE'));
+        $response = $controller->delete($accomplishmentId);
+
+        self::assertSame(200, $response->getStatusCode());
+        $removed = $this->db->table('personnel_accomplishments')->where('id', $accomplishmentId)->get()->getRowArray();
+        self::assertNotNull($removed);
+        self::assertNotEmpty($removed['deleted_at'] ?? null);
+        self::assertSame(1, $this->db->table('personnel_evaluations')->where('id', $evaluationId)->countAllResults());
+        self::assertSame($accomplishmentId, $this->db->table('personnel_evaluation_items')->where('evaluation_id', $evaluationId)->get()->getRowArray()['accomplishment_id']);
+    }
+
     public function testCreatePersistsOneCanonicalNtfB1AGraph(string $role): void
     {
         $controller = new PersonnelAccomplishmentController(
@@ -378,10 +427,10 @@ final class CanonicalPersonnelAccomplishmentPersistenceTest extends TestCase
         };
     }
 
-    private function request(array $body): IncomingRequest
+    private function request(array $body, string $method = 'POST'): IncomingRequest
     {
         $request = new IncomingRequest(new \Config\App(), new URI('http://localhost/api/v1/personnel/accomplishments'), null, new UserAgent());
-        $request->setMethod('POST');
+        $request->setMethod($method);
         $request->setBody(json_encode($body));
         $request->setHeader('Content-Type', 'application/json');
         $request->setHeader('Authorization', 'Bearer fake-token');

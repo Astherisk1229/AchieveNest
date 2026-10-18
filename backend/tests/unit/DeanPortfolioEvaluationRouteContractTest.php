@@ -24,12 +24,12 @@ final class DeanPortfolioEvaluationRouteContractTest extends TestCase
         self::assertStringContainsString("persistEvaluationEvent(\$db, \$eventsTable, \$eventRow, (string) \$evaluation['status'], 'returned_for_revision')", $controller);
     }
 
-    public function testFacultyHandoffRequiresFreshConfirmedPhaseODecisions(): void
+    public function testFacultyHandoffDoesNotBlockPortfolioCompletionOnRankProgression(): void
     {
         $controller = file_get_contents(__DIR__ . '/../../app/Controllers/Api/HREvaluationController.php');
-        self::assertStringContainsString('FACULTY_PHASE_O_INCOMPLETE', $controller);
-        self::assertStringContainsString('rank_applied_for_decision_id', $controller);
-        self::assertStringContainsString('assertFreshConfirmedDecision', $controller);
-        self::assertStringContainsString('FACULTY_PHASE_O_STALE', $controller);
+        self::assertStringNotContainsString('FACULTY_PHASE_O_INCOMPLETE', $controller);
+        self::assertStringNotContainsString('rank_applied_for_decision_id', $controller);
+        self::assertStringNotContainsString('assertFreshConfirmedDecision', $controller);
+        self::assertStringNotContainsString('FACULTY_PHASE_O_STALE', $controller);
     }
 }

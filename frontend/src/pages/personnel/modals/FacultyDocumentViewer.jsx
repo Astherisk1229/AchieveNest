@@ -72,7 +72,7 @@ export default function FacultyDocumentViewer({ evidence = null, localFile = nul
   if (!source && !evidence) return null
 
   return (
-    <section aria-labelledby="faculty-document-viewer-title" className={`flex min-h-0 flex-col overflow-hidden bg-slate-950 ${fill ? 'h-full' : 'rounded-2xl shadow-[0_14px_35px_-22px_rgba(15,23,42,.8)]'}`}>
+    <section aria-labelledby="faculty-document-viewer-title" className={`flex min-h-0 min-w-0 flex-col overflow-hidden bg-slate-950 ${fill ? 'h-full w-full' : 'rounded-2xl shadow-[0_14px_35px_-22px_rgba(15,23,42,.8)]'}`}>
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-900 px-4 py-2.5 text-white">
         <div className="min-w-0">
           <h3 id="faculty-document-viewer-title" className="truncate text-sm font-extrabold">{label}</h3>
@@ -89,7 +89,7 @@ export default function FacultyDocumentViewer({ evidence = null, localFile = nul
         )}
       </header>
       {statusText && <p role="status" className="bg-amber-50 px-4 py-2 text-xs font-semibold leading-5 text-amber-950">{statusText}</p>}
-      <div ref={viewportRef} tabIndex={0} aria-label="Document preview" className={`relative flex min-h-0 items-center justify-center overflow-auto bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 ${fill ? 'flex-1' : 'h-[25rem] lg:h-[calc(94vh-15rem)] lg:min-h-[31rem]'} ${highlight ? 'faculty-doc-flash' : ''}`}>
+      <div ref={viewportRef} tabIndex={0} aria-label="Document preview" className={`relative flex min-h-0 min-w-0 items-center justify-center overflow-auto bg-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 ${fill ? 'w-full flex-1' : 'h-[25rem] lg:h-[calc(94vh-15rem)] lg:min-h-[31rem]'} ${highlight ? 'faculty-doc-flash' : ''}`}>
         {scanning && <div aria-hidden="true" className="faculty-scan-overlay pointer-events-none absolute inset-0 z-10"><span className="faculty-scan-line" /></div>}
         {localPreviewUrl && persistedUrl && evidence && String(evidence.detected_mime_type || evidence.mime_type || '').startsWith('image/') && <img src={persistedUrl} alt="" aria-hidden="true" className="hidden" onLoad={confirmPersistedRender} onError={failPersistedRender} />}
         {localPreviewUrl && persistedUrl && evidence && (evidence.detected_mime_type || evidence.mime_type) === 'application/pdf' && <iframe src={persistedUrl} title="Saved document preview verification" className="hidden" onLoad={confirmPersistedRender} />}

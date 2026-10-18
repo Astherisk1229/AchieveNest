@@ -9,7 +9,6 @@ import ReturnForRevisionModal from './evaluation-submissions/evaluation/actions/
 import FinalizeEvaluationModal from './evaluation-submissions/evaluation/actions/FinalizeEvaluationModal'
 import hrEvaluationService from '../../services/hrEvaluationService'
 import periodService from '../../services/personnelEvaluationPeriodService'
-import FacultyPhaseOWorkspace from '../../components/evaluation/FacultyPhaseOWorkspace'
 
 export function HREvaluationSubmissionsPage(props) {
   // Queue State: 'submitted' | 'in_evaluation' | 'ready_for_finalization' | 'returned_for_revision' | 'completed'
@@ -28,7 +27,8 @@ export function HREvaluationSubmissionsPage(props) {
   const [toastMsg, setToastMsg] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [loadError, setLoadError] = useState(null)
-  const [phaseOEvaluation, setPhaseOEvaluation] = useState(null)
+  const [facultyCompletion, setFacultyCompletion] = useState(null)
+  const [facultyCompletionBusy, setFacultyCompletionBusy] = useState(false)
 
   const loadSubmissions = useCallback(async () => {
     try {
@@ -100,7 +100,8 @@ export function HREvaluationSubmissionsPage(props) {
   const handleInspect = async (sub) => {
     try {
       if (sub.status === 'ready_for_finalization' && String(sub.personnel_group || '').toUpperCase() === 'FACULTY') {
-        setPhaseOEvaluation(sub)
+        const report = await hrEvaluationService.getReport(sub.id)
+        setFacultyCompletion({ submission: sub, report })
         return
       }
       if (sub.status === 'completed') {
@@ -111,6 +112,21 @@ export function HREvaluationSubmissionsPage(props) {
       setEvaluatingSubmission({ ...sub, ...(detail?.evaluation || detail), items: detail?.items || [], scores: detail?.scores || {} })
     } catch (error) {
       showToast(error?.response?.data?.error?.message || error?.message || 'Unable to open evaluation.')
+    }
+  }
+
+  const handleCompleteFacultyPortfolio = async () => {
+    if (!facultyCompletion?.submission?.id || facultyCompletionBusy) return
+    setFacultyCompletionBusy(true)
+    try {
+      await hrEvaluationService.finalize(facultyCompletion.submission.id)
+      setFacultyCompletion(null)
+      showToast('Portfolio review completed.')
+      await loadSubmissions()
+    } catch (error) {
+      showToast(error?.response?.data?.error?.message || error?.message || 'The portfolio review could not be completed.')
+    } finally {
+      setFacultyCompletionBusy(false)
     }
   }
 
@@ -162,7 +178,7 @@ export function HREvaluationSubmissionsPage(props) {
           <span>{toastMsg}</span>
         </div>
       )}
-      {phaseOEvaluation && <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 p-4 sm:p-8"><div className="mx-auto max-w-4xl"><FacultyPhaseOWorkspace evaluationId={phaseOEvaluation.id} mode="hr" onChanged={loadSubmissions} onClose={() => setPhaseOEvaluation(null)} /></div></div>}
+      {facultyCompletion && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4"><section role="dialog" aria-modal="true" aria-labelledby="faculty-portfolio-complete-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-950"><h2 id="faculty-portfolio-complete-title" className="text-xl font-black text-slate-950 dark:text-white">Complete portfolio review</h2><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{facultyCompletion.submission.faculty_name} · {facultyCompletion.submission.employee_id || facultyCompletion.submission.institutional_id}</p><div className="mt-5 rounded-xl bg-slate-50 p-4 dark:bg-slate-900"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Approved portfolio score</p><p className="mt-1 text-2xl font-black text-emerald-800 dark:text-emerald-300">{Number(facultyCompletion.report?.result?.scores?.total ?? facultyCompletion.report?.report?.snapshot?.grand_total ?? 0).toFixed(2)} points</p></div><p className="mt-4 text-sm text-slate-600 dark:text-slate-300">This completes the portfolio score report. Rank progression is handled separately.</p><div className="mt-6 flex justify-end gap-2"><button type="button" disabled={facultyCompletionBusy} onClick={() => setFacultyCompletion(null)} className="min-h-10 rounded-lg border px-4 text-sm font-bold">Cancel</button><button type="button" disabled={facultyCompletionBusy} onClick={handleCompleteFacultyPortfolio} className="min-h-10 rounded-lg bg-emerald-800 px-4 text-sm font-bold text-white disabled:opacity-50">{facultyCompletionBusy ? 'Completing…' : 'Complete portfolio review'}</button></div></section></div>}
 
       {/* The period shell supplies context when this queue is embedded. */}
       {!props.embedded && <VerificationQueueHeader stats={counts} />}

@@ -21,6 +21,7 @@ import { confirmDialog } from '../../../components/ui/DialogProvider'
 import { CardHeading, StepProgress } from './AccomplishmentModalParts'
 import { NTP_ENTRY_CRITERIA, ntpCategoryLabel, ntpContractCode, ntpCriterionByCode, ntpDetailText, resolveNtpCriterion } from '../../../config/nonTeachingPortfolioSchema'
 import { useHelpGuide } from '../../../context/HelpGuideContext'
+import personnelAccomplishmentService from '../../../services/personnelAccomplishmentService'
 
 // Helper component for required field labels (Clean Auto-filled badge when OCR populated)
 const ReqLabel = ({ label, value, isOcrAutoFilled, isManuallyEdited, ocrConfidence = null }) => {
@@ -58,6 +59,14 @@ const AREA_CATEGORY_OPTIONS = Object.freeze({
 
 const normalizeEntryArea = () => 'B'
 
+const displayErrorMessage = (error, fallback) => {
+  if (typeof error === 'string' && error.trim()) return error
+  if (typeof error?.message === 'string' && error.message.trim()) return error.message
+  if (typeof error?.error?.message === 'string' && error.error.message.trim()) return error.error.message
+  if (typeof error?.code === 'string' && error.code.trim()) return error.code.replaceAll('_', ' ').toLowerCase()
+  return fallback
+}
+
 const categoryBelongsToArea = (category) => AREA_CATEGORY_OPTIONS.B.some(([value]) => value === category)
 
 /** Any stored or suggested category (including older labels) mapped onto an Appendix N option. */
@@ -81,7 +90,7 @@ export function findAccomplishmentWithDocument(achievements = [], sha256, exclud
     && evidenceListOf(item).some(evidence => String(evidence.sha256 || evidence.checksum || '').toLowerCase() === sha256)) || null
 }
 
-export default function PersonnelSubmissionModal({
+export default function NonTeachingFacultySubmissionModal({
   isOpen,
   onClose,
   onSubmitAccomplishment,
@@ -108,6 +117,8 @@ export default function PersonnelSubmissionModal({
 
   // Active Category State
   const [category, setCategory] = useState(() => categoryForArea(initialCategory, lockedAreaCode))
+  const [activeCriteria, setActiveCriteria] = useState(null)
+  const [criteriaError, setCriteriaError] = useState('')
   const [dateAchieved, setDateAchieved] = useState('')
   const [academicYear, setAcademicYear] = useState('')
 
@@ -118,6 +129,28 @@ export default function PersonnelSubmissionModal({
   const [ongoing, setOngoing] = useState(false)
   const [scopeLevel, setScopeLevel] = useState('')
   const activeCriterion = criterionForCategory(category)
+  const publishedOptions = (activeCriteria?.areas || []).flatMap((area) => (area.categories || []).flatMap((item) => item.criteria || []))
+    .map((criterion) => {
+      const normalizedCode = String(criterion.code || '').trim().toUpperCase().replace(/^NTF-/, '').replaceAll('_', '.')
+      const compactCode = normalizedCode.replaceAll('.', '')
+      const contractAliases = { B1A: 'B.1.a', B1B: 'B.1.b', B1C: 'B.1.c', B1D: 'B.1.d', B2A: 'B.2.a', B2B: 'B.2.b', B2C: 'B.2.c', B4: 'B.4', B5: 'B.5' }
+      const canonicalCode = ntpCriterionByCode(contractAliases[compactCode] || normalizedCode)?.code
+        || resolveNtpCriterion({ criterion_key: normalizedCode, category: `${normalizedCode} ${criterion.label || criterion.name}` })
+      const canonical = ntpCriterionByCode(canonicalCode)
+      return canonical ? { ...criterion, canonical, value: ntpCategoryLabel(canonical) } : null
+    }).filter(Boolean)
+  const selectedPublishedCriterion = publishedOptions.find((item) => item.value === category)
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let active = true
+    setCriteriaError('')
+    setActiveCriteria(null)
+    personnelAccomplishmentService.fetchActiveIntakeCriteria()
+      .then((contract) => { if (active) setActiveCriteria(contract) })
+      .catch((failure) => { if (active) { setActiveCriteria(null); setCriteriaError(failure?.message || 'Published Non-Teaching Faculty criteria could not be loaded.') } })
+    return () => { active = false }
+  }, [isOpen])
   const setDetail = (name, value) => { setDetails((current) => ({ ...current, [name]: value })); markFieldEdited(name) }
 
   const [description, setDescription] = useState('')
@@ -245,7 +278,7 @@ export default function PersonnelSubmissionModal({
 
         setOcrBadges(newBadges)
       } else {
-        setError(response.error || 'Failed to scan document.')
+        setError(displayErrorMessage(response.error, 'Failed to scan document.'))
       }
     } catch (err) {
       setIsScanning(false)
@@ -271,7 +304,7 @@ export default function PersonnelSubmissionModal({
       setError('')
       const validation = await SecurityController.validateFileUpload(file)
       if (!validation.isValid) {
-        setError(validation.error)
+        setError(displayErrorMessage(validation.error, 'This file could not be uploaded.'))
         setAttachedFile(null)
         e.target.value = ''
         return
@@ -335,6 +368,7 @@ export default function PersonnelSubmissionModal({
       }) : ''
 
       const newEntry = {
+        criterion_id: editingItem ? undefined : selectedPublishedCriterion?.criterion_id,
         title: resolvedTitle.trim(),
         issuer: resolvedIssuer.trim(),
         location: resolvedIssuer.trim(),
@@ -390,9 +424,12 @@ export default function PersonnelSubmissionModal({
     const dup = PersonnelAchievementController.checkDuplicateWarning({ title: curTitle, date_achieved: dateAchieved, issuer: curIssuer }, existingAchievements)
     return dup.isDuplicate ? dup.warningMessage : null
   })()
-  const submitBlocker = documentDuplicate
-    ? `This document is already used for "${documentDuplicate.title || 'another accomplishment'}". Each document can support only one accomplishment — choose a different file.`
-    : titleDuplicate ? `${titleDuplicate} Open the existing record instead of adding it again.` : null
+  const submitBlocker = criteriaError || !activeCriteria
+    ? 'Published Non-Teaching Faculty criteria must load before you can submit.'
+    : !editingItem && !selectedPublishedCriterion ? 'Choose a criterion from the published Non-Teaching Faculty criteria.'
+      : documentDuplicate
+        ? `This document is already used for "${documentDuplicate.title || 'another accomplishment'}". Each document can support only one accomplishment — choose a different file.`
+        : titleDuplicate ? `${titleDuplicate} Open the existing record instead of adding it again.` : null
   const hasDocument = Boolean(attachedFile || editingItem)
   const step = !hasDocument ? 1 : !dateAchieved ? 2 : 3
   const chipState = (n) => n === step ? 'active' : n < step ? 'done' : 'todo'
@@ -568,10 +605,12 @@ export default function PersonnelSubmissionModal({
               onChange={(e) => handleCategoryChange(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-300 font-semibold text-slate-900 text-sm focus:ring-2 focus:ring-[#16834a]/20 focus:border-[#16834a] outline-hidden cursor-pointer"
             >
-              {AREA_CATEGORY_OPTIONS[lockedAreaCode].map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              {publishedOptions.map((item) => (
+                <option key={item.criterion_id} value={item.value}>{item.code} {item.label}</option>
               ))}
             </select>
+            {criteriaError && <p role="alert" className="text-sm font-semibold text-rose-700">{criteriaError}</p>}
+            {!criteriaError && activeCriteria && publishedOptions.length === 0 && <p role="alert" className="text-sm font-semibold text-rose-700">No active Non-Teaching Faculty criteria match the configured Appendix N entry forms. HR must configure the criteria before personnel can submit.</p>}
             {activeCriterion && <button type="button" onClick={() => openHelpGuide({ topicId: 'categories', categoryId: activeCriterion.group, subcategoryId: activeCriterion.code })} className="rounded-md px-1 py-1 text-xs font-bold text-emerald-900 underline underline-offset-2 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">What belongs here?</button>}
           </section>
 

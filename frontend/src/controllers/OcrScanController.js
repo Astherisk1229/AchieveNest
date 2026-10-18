@@ -191,8 +191,11 @@ export default class OcrScanController {
     if (!rawText || rawText.trim() === '') {
       return {
         title: '',
+        activity: '',
         issuer: '',
         date: '',
+        startDate: '',
+        endDate: '',
         academicYear: '',
         scopeLevel: '',
         specificRole: '',
@@ -210,6 +213,7 @@ export default class OcrScanController {
 
     // 1. Extract Explicit Date
     const extractedDate = OcrScanController.extractDateFromText(rawText)
+    const extractedDateRange = OcrScanController.extractDateRangeFromText(rawText)
     const academicYear = extractedDate ? OcrScanController.inferAcademicYear(extractedDate) : ''
 
     // 2. Extract Scope Level (Only if explicitly stated in text)
@@ -341,7 +345,11 @@ export default class OcrScanController {
     }
 
     let specificRole = ''
-    if (uppercaseText.includes('KEYNOTE SPEAKER') || uppercaseText.includes('PLENARY SPEAKER')) {
+    if (/\bCOACH(?:ED)?\b/.test(uppercaseText)) {
+      specificRole = 'Coach'
+    } else if (/\bTRAIN(?:ER|ED)\b/.test(uppercaseText)) {
+      specificRole = 'Trainer'
+    } else if (uppercaseText.includes('KEYNOTE SPEAKER') || uppercaseText.includes('PLENARY SPEAKER')) {
       specificRole = 'Keynote Speaker'
     } else if (uppercaseText.includes('RESOURCE PERSON') || uppercaseText.includes('RESOURCE SPEAKER') || uppercaseText.includes('GUEST LECTURER')) {
       specificRole = 'Resource Person'
@@ -354,6 +362,13 @@ export default class OcrScanController {
     } else if (uppercaseText.includes('LEAD RESEARCHER') || uppercaseText.includes('PRINCIPAL INVESTIGATOR')) {
       specificRole = 'Lead Researcher'
     }
+
+    // Extract the subject of coaching/training certificates instead of using
+    // the generic certificate heading as the activity title.
+    const normalizedText = rawText.replace(/\s+/g, ' ')
+    const coachedTeam = normalizedText.match(/\b(?:coach(?:ed)?|trainer|trained)\s+(?:of|for)\s+(?:the\s+)?(.+?)(?=\s+(?:during|at|in|held|from|on)\b|[,.;]|$)/i)?.[1]?.trim() || ''
+    const coachedEvent = normalizedText.match(/\b(?:during|at)\s+(?:the\s+)?(.+?\b(?:tournament|competition|meet|event|program|activity))(?=[,.;]|\s+held\b|$)/i)?.[1]?.trim() || ''
+    const activity = [coachedTeam, coachedEvent].filter(Boolean).join(' — ')
 
     let awardType = ''
     if (uppercaseText.includes('AWARDEE') || uppercaseText.includes('AWARD OF EXCELLENCE') || uppercaseText.includes('OUTSTANDING')) {
@@ -385,8 +400,11 @@ export default class OcrScanController {
 
     return {
       title: title || '',
+      activity,
       issuer: issuer || '',
       date: labeledDate || extractedDate || '',
+      startDate: extractedDateRange.startDate || '',
+      endDate: extractedDateRange.endDate || '',
       academicPeriod,
       academicYear: academicYear || '',
       scopeLevel: scopeLevel || '',
@@ -529,6 +547,39 @@ export default class OcrScanController {
     }
 
     return ''
+  }
+
+  /** Extract explicit inclusive date ranges such as "October 15–17, 2025". */
+  static extractDateRangeFromText(text) {
+    if (!text) return { startDate: '', endDate: '' }
+    const months = 'January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec'
+    const separator = '(?:\\s*(?:-|–|—|to)\\s*)'
+    const ordinal = '(?:st|nd|rd|th)?'
+    const patterns = [
+      new RegExp(`\\b(${months})\\s+(\\d{1,2})${ordinal}${separator}(?:(${months})\\s+)?(\\d{1,2})${ordinal}[,\\s]+(20\\d{2})\\b`, 'i'),
+      new RegExp(`\\b(\\d{1,2})${ordinal}${separator}(\\d{1,2})${ordinal}\\s+(${months})[,\\s]+(20\\d{2})\\b`, 'i')
+    ]
+    const monthNumber = (month) => {
+      const index = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(String(month || '').slice(0, 3).toLowerCase())
+      return index + 1
+    }
+    for (const pattern of patterns) {
+      const match = String(text).match(pattern)
+      if (!match) continue
+      let startMonth; let startDay; let endMonth; let endDay; let year
+      if (pattern === patterns[0]) {
+        startMonth = monthNumber(match[1]); startDay = Number(match[2])
+        endMonth = monthNumber(match[3] || match[1]); endDay = Number(match[4]); year = Number(match[5])
+      } else {
+        startDay = Number(match[1]); endDay = Number(match[2]); startMonth = monthNumber(match[3]); endMonth = startMonth; year = Number(match[4])
+      }
+      if (!OcrScanController.isValidCalendarDate(year, startMonth, startDay) || !OcrScanController.isValidCalendarDate(year, endMonth, endDay)) continue
+      return {
+        startDate: `${year}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`,
+        endDate: `${year}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
+      }
+    }
+    return { startDate: '', endDate: '' }
   }
 
   /**

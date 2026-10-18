@@ -52,7 +52,7 @@ final class RankingCycleWorkspaceReadServiceTest extends TestCase
             $this->invoke('allowedActions', ['evaluation', 'in_evaluation', true, false, true, 'FACULTY', true])
         );
         self::assertSame(
-            ['view_evaluation', 'review_final_rank'],
+            ['view_evaluation', 'finalize_evaluation'],
             $this->invoke('allowedActions', ['evaluation', 'ready_for_finalization', false, true, true, 'FACULTY', true])
         );
         self::assertSame(
@@ -72,12 +72,19 @@ final class RankingCycleWorkspaceReadServiceTest extends TestCase
             $this->invoke('workflowState', ['returned_for_revision', 'FACULTY', 'dean', ['view_evaluation']])
         );
         self::assertSame(
-            ['key'=>'with_hr_for_final_rank_review', 'label'=>'With HR for Final Rank Review'],
+            ['key'=>'with_hr_for_finalization', 'label'=>'Ready for HR to complete portfolio review'],
             $this->invoke('workflowState', ['ready_for_finalization', 'FACULTY', 'dean', ['view_evaluation']])
         );
         self::assertNull(
             $this->invoke('workflowState', ['in_evaluation', 'FACULTY', 'dean', ['view_evaluation', 'evaluate_items']])
         );
+    }
+
+    public function testResultsDistinguishDeanEndorsedFacultyFromNonTeachingAwaitingFinalization(): void
+    {
+        self::assertSame('endorsed_to_hr', $this->invoke('resultStatus', ['ready_for_finalization', 'FACULTY']));
+        self::assertSame('awaiting_finalization', $this->invoke('resultStatus', ['ready_for_finalization', 'NON_TEACHING_FACULTY']));
+        self::assertSame('completed', $this->invoke('resultStatus', ['completed', 'FACULTY']));
     }
 
     private function invoke(string $method, array $arguments): mixed

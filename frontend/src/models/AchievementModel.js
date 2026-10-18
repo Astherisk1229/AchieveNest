@@ -36,6 +36,7 @@ export default class AchievementModel {
   #evaluation_scale_version_id
   #criterion_snapshot
   #raw_status
+  #is_deletable
   #reuse
   #cycle_validity
 
@@ -65,6 +66,7 @@ export default class AchievementModel {
     this.#date = data.date || data.occurrence_date || data.date_achieved || new Date().toISOString().split('T')[0]
     this.#status = data.status === 'submitted' ? 'Pending Review' : (data.status === 'verified' ? 'Verified' : (data.status === 'rejected' ? 'Returned' : (data.status || 'Pending Review')))
     this.#raw_status = data.raw_status || data.status || this.#status
+    this.#is_deletable = typeof data.is_deletable === 'boolean' ? data.is_deletable : null
     this.#return_remarks = data.return_remarks || data.rejection_reason || ''
     this.#docs_count = Number(data.docs_count) || (Array.isArray(data.evidence) ? data.evidence.length : 0)
     this.#participation_photo_name = data.participation_photo_name || ''
@@ -142,7 +144,7 @@ export default class AchievementModel {
   }
 
   canDelete() {
-    return this.#status !== 'Verified'
+    return this.#is_deletable ?? this.#status !== 'Verified'
   }
 
   canResubmit() {
@@ -227,6 +229,7 @@ export default class AchievementModel {
       category_metadata: this.#category_metadata,
       category_code: this.#category_code,
       raw_status: this.#raw_status,
+      is_deletable: this.#is_deletable,
       reuse: this.#reuse,
       cycle_validity: this.#cycle_validity
     }

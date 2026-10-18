@@ -76,6 +76,11 @@ export default function FacultyEvaluationSummary({ report, context = {}, onClose
     return { ...row, names, awarded, weight: snapshotWeight(snapshot, row) }
   })
   const personnel = summary.personnel_information || {}
+  const specificJob = context?.specific_job || personnel.position || report.assignment?.position || ''
+  const isDean = /\bdean\b/i.test(String(specificJob))
+  const department = isDean
+    ? personnel.college || report.assignment?.college || personnel.department || report.assignment?.department
+    : personnel.department || report.assignment?.department || personnel.college || report.assignment?.college
   const passing = summary.passing_score ?? snapshot?.version?.passing_score ?? snapshot?.sheet?.passing_score
   const maximum = snapshot?.version?.total_max_points ?? snapshot?.sheet?.overall_max_points ?? 160
   const sectionTotals = report.section_totals || {}
@@ -134,8 +139,8 @@ export default function FacultyEvaluationSummary({ report, context = {}, onClose
     <section data-evaluation-summary className="bg-white p-5 font-serif text-[11px] leading-tight text-slate-950 shadow-sm print:p-0 print:shadow-none" aria-label="Administrators Ranking Scale evaluation summary">
     <style>{`@media print { body * { visibility: hidden !important; } [data-evaluation-summary], [data-evaluation-summary] * { visibility: visible !important; } [data-evaluation-summary] { position: absolute; inset: 0; width: 100%; } @page { size: A4; margin: 12mm; } }`}</style>
     <header className="mb-2 text-center"><p className="text-base font-bold uppercase tracking-wide">Notre Dame of Marbel University</p><p className="italic">City of Koronadal, South Cotabato</p><h2 className="mt-3 text-base font-bold uppercase tracking-wide">Administrators Ranking Scale</h2></header>
-    <div className="grid grid-cols-2 border border-black px-2 py-1 font-bold"><span>Name: {text(personnel.name || report.personnel?.full_name)}</span><span>Department: {text(personnel.department || report.assignment?.department)}</span></div>
-    <dl className="mb-2 grid grid-cols-2 gap-x-3 px-1 py-1 font-semibold"><div>Specific Job: {context?.specific_job || personnel.position || report.assignment?.position || 'Job title not recorded'}</div><div>Employee’s Progress Last Ranking: {context?.previous_rank || 'No prior rank recorded'}</div><div>Present Rank: {context?.present_rank || summary.present_rank || 'Present rank not recorded'}</div><div>Period Covered: {summary.period_covered || report.evaluation_period?.name || report.evaluation_period?.academic_year || 'Period not recorded'}</div><div>Rank Applied for: {decisionLabel(context?.rank_applied_for || summary.rank_applied_for, context?.rank_applied_for_status, 'Not recorded in Annual Review')}</div></dl>
+    <div className="grid grid-cols-2 border border-black px-2 py-1 font-bold"><span>Name: {text(personnel.name || report.personnel?.full_name)}</span><span>Department: {text(department)}</span></div>
+    <dl className="mb-2 grid grid-cols-2 gap-x-3 px-1 py-1 font-semibold"><div>Specific Job: {specificJob || 'Job title not recorded'}</div><div>Employee’s Progress Last Ranking: {context?.previous_rank || 'No prior rank recorded'}</div><div>Present Rank: {context?.present_rank || summary.present_rank || 'Present rank not recorded'}</div><div>Period Covered: {summary.period_covered || report.evaluation_period?.name || report.evaluation_period?.academic_year || 'Period not recorded'}</div><div>Rank Applied for: {decisionLabel(context?.rank_applied_for || summary.rank_applied_for, context?.rank_applied_for_status, 'Not recorded in Annual Review')}</div></dl>
     <div className="overflow-x-auto"><table className="w-full min-w-[620px] border-collapse border border-black text-left"><colgroup><col className="w-[49%]"/><col className="w-[11%]"/><col className="w-[30%]"/><col className="w-[10%]"/></colgroup><thead><tr className="border border-black"><th className="border border-black px-2 py-1 text-center">Criteria</th><th className="border border-black px-2 py-1 text-center">Weight<br/>(pts)</th><th className="border border-black px-2 py-1 text-center">Documents Submitted</th><th className="border border-black px-2 py-1 text-center">Points<br/>Earned</th></tr></thead><tbody>{areas.map(([area, title]) => {
       let lastParent = ''
       return <React.Fragment key={area}><tr className="break-after-avoid border border-black"><th colSpan="4" className="border border-black px-2 py-1 text-sm">{title}</th></tr>{rows.filter(row => row.area === area).map(row => {

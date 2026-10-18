@@ -8,6 +8,17 @@ use RuntimeException;
 class RecommendedRankService
 {
  public function __construct(private ?BaseConnection $db=null,private ?OrganizationalAuthorityResolver $authority=null){$this->db??=db_connect();$this->authority??=new OrganizationalAuthorityResolver($this->db);}
+
+ /** Return the score-based summary rank without requiring a second confirmation.
+  * The applied rank has already been limited to valid progression options by Phase M.
+  */
+ public static function summaryRecommendation(float $total, float $passingScore, ?string $presentRank, ?string $appliedRank): ?string
+ {
+  if ($passingScore <= 0) return null;
+  if ($total < $passingScore) return trim((string) $presentRank) !== '' ? trim((string) $presentRank) : null;
+  return trim((string) $appliedRank) !== '' ? trim((string) $appliedRank) : null;
+ }
+
  public function suggest(array $actor,string $evaluationId):array
  {
   $c=$this->context($evaluationId);$this->authorize($actor,$c);
@@ -47,11 +58,12 @@ class RecommendedRankService
   $applied=$this->db->table('personnel_rank_applied_for_decisions')->where(['personnel_profile_id'=>$e['personnel_profile_id'],'ranking_cycle_id'=>$track['ranking_cycle_id'],'ranking_track_id'=>$track['id'],'status'=>'confirmed'])->orderBy('confirmed_at','DESC')->get()->getRowArray();if(!$applied)throw new RuntimeException('CONFIRMED_RANK_APPLIED_FOR_MISSING');
   $present=trim((string)($person['current_rank_title']??''));$this->rank($present);
   $placement=$this->db->table('personnel_rank_placements')->where(['personnel_profile_id'=>$e['personnel_profile_id'],'status'=>'current'])->where('effective_from <=',date('Y-m-d'))->get()->getRowArray();if(!$placement)throw new RuntimeException('CURRENT_PLACEMENT_MISSING');
-  $criteria=is_string($e['criteria_snapshot']??null)?json_decode($e['criteria_snapshot'],true):($e['criteria_snapshot']??[]);$values=array_values(array_filter([$criteria['version']['passing_score']??null,$criteria['sheet']['passing_score']??null,$criteria['passing_score']??null],fn($v)=>is_numeric($v)));$values=array_values(array_unique(array_map('floatval',$values)));if(count($values)!==1||$values[0]<=0)throw new RuntimeException('PASSING_THRESHOLD_MISSING_OR_AMBIGUOUS');$threshold=$values[0];$total=(float)$e['total_score'];$criteriaHash=hash('sha256',json_encode($criteria));
+  $criteria=is_string($e['criteria_snapshot']??null)?json_decode($e['criteria_snapshot'],true):($e['criteria_snapshot']??[]);$criteria=is_array($criteria)?$criteria:[];$values=array_values(array_filter([$criteria['version']['passing_score']??null,$criteria['sheet']['passing_score']??null,$criteria['passing_score']??null],fn($v)=>is_numeric($v)));$values=array_values(array_unique(array_map('floatval',$values)));if(count($values)!==1||$values[0]<=0)throw new RuntimeException('PASSING_THRESHOLD_MISSING_OR_AMBIGUOUS');$threshold=$values[0];$items=$this->db->table('personnel_evaluation_items')->where('evaluation_id',$e['id'])->get()->getResultArray();$scoreTotals=(new PersonnelEvaluationItemScorePreviewService())->totals($items,(int)($e['tenure_years']??0),$criteria);$total=(float)$scoreTotals['total_score'];$criteriaHash=hash('sha256',json_encode($criteria));
   $credentials=$this->db->table('personnel_credentials')->select('id,credential_type,degree_level,verified_at,updated_at')->where(['personnel_profile_id'=>$e['personnel_profile_id'],'verification_status'=>'verified','record_state'=>'active'])->orderBy('id')->get()->getResultArray();$hasPhd=count(array_filter($credentials,fn($r)=>$r['credential_type']==='degree'&&$r['degree_level']==='doctorate'))>0;$credentialSnapshot=array_map(fn($r)=>['id'=>$r['id'],'verified_at'=>$r['verified_at'],'updated_at'=>$r['updated_at']],$credentials);
   $appliedCredentials=is_string($applied['verified_credential_references']??null)?json_decode($applied['verified_credential_references'],true):($applied['verified_credential_references']??[]);if($applied['present_rank_code_snapshot']!==$this->rank($present)['rank_code']||$applied['placement_id_snapshot']!==$placement['id']||$appliedCredentials!==$credentialSnapshot)throw new RuntimeException('CONFIRMED_RANK_APPLIED_FOR_STALE');
   $cycle=$this->db->table('ranking_cycles')->where('id',$track['ranking_cycle_id'])->get()->getRowArray();$hash=hash('sha256',json_encode(['present'=>$this->rank($present)['rank_code'],'person_updated'=>$person['updated_at']??null,'placement'=>$placement['id'],'placement_updated'=>$placement['updated_at']??null,'credentials'=>$credentialSnapshot,'applied_id'=>$applied['id'],'applied_rank'=>$applied['confirmed_rank_code'],'applied_at'=>$applied['confirmed_at'],'evaluation'=>$e['id'],'version'=>$e['version_number'],'total'=>$total,'evaluation_updated'=>$e['updated_at']??null,'criteria'=>$criteriaHash,'threshold'=>$threshold,'cycle'=>$track['ranking_cycle_id'],'cycle_updated'=>$cycle['updated_at']??null,'track'=>$track['id'],'track_updated'=>$track['updated_at']??null]));
-  return['evaluation'=>$e,'track'=>$track,'applied'=>$applied,'placement'=>$placement,'present_rank'=>$present,'total'=>$total,'threshold'=>$threshold,'criteria_hash'=>$criteriaHash,'credential_snapshot'=>$credentialSnapshot,'has_phd'=>$hasPhd,'hash'=>$hash];
+  $e['total_score']=$total;$e['area_a_score']=$scoreTotals['areaA_score'];$e['area_b_score']=$scoreTotals['areaB_score'];$e['area_c_score']=$scoreTotals['areaC_score'];
+  return['evaluation'=>$e,'track'=>$track,'applied'=>$applied,'placement'=>$placement,'present_rank'=>$present,'total'=>$total,'score_totals'=>$scoreTotals,'threshold'=>$threshold,'criteria_hash'=>$criteriaHash,'credential_snapshot'=>$credentialSnapshot,'has_phd'=>$hasPhd,'hash'=>$hash];
  }
  /** Rank gates are bound to the submission snapshot; incomplete legacy snapshots cannot bypass them. */
  public static function eligibilityFailure($snapshot):?string{$data=is_string($snapshot)?json_decode($snapshot,true):$snapshot;if(!is_array($data))return 'EVALUATION_ELIGIBILITY_UNREADABLE';if(($data['eligibility_status']??null)!=='eligible')return 'EVALUATION_ELIGIBILITY_NOT_MET';$annual=$data['annual_review_requirement']['status']??null;if($annual!=='passed')return 'EVALUATION_ANNUAL_REVIEW_NOT_MET';$research=$data['research_output_requirement']??null;if(!is_array($research)||($research['required']??true)!==false&&($research['status']??null)!=='passed')return 'EVALUATION_RESEARCH_OUTPUT_NOT_MET';return null;}

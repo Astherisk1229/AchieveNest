@@ -26,7 +26,7 @@ final class ClassificationAwarePersonnelFinalizationService
         $group = $this->personnelGroup($evaluation);
 
         if ($group === self::FACULTY) {
-            throw new RuntimeException('HR_FINAL_RANK_REVIEW_REQUIRED');
+            return $this->finalizeFacultyPortfolio($actor, $evaluation);
         }
         if ($group !== self::NON_TEACHING_FACULTY) {
             throw new RuntimeException('PERSONNEL_GROUP_UNSUPPORTED_FOR_FINALIZATION');
@@ -53,7 +53,6 @@ final class ClassificationAwarePersonnelFinalizationService
         if ($items === []) {
             throw new RuntimeException('EVALUATION_ITEMS_REQUIRED');
         }
-        $this->assertAreaAScoresComplete($evaluation, $items);
         $criteriaSnapshot = $evaluation['criteria_snapshot'] ?? null;
         if (is_string($criteriaSnapshot)) $criteriaSnapshot = json_decode($criteriaSnapshot, true);
         if (! is_array($criteriaSnapshot) || $criteriaSnapshot === []) {
@@ -70,9 +69,10 @@ final class ClassificationAwarePersonnelFinalizationService
             $evidence = $item['evidence_snapshot'] ?? null;
             if (is_string($criterion)) $criterion = json_decode($criterion, true);
             if (is_string($evidence)) $evidence = json_decode($evidence, true);
-            $isAreaAScore = ($item['domain'] ?? '') === NtfAnnualReviewAreaAService::DOMAIN
+            $evaluatorRating = strtoupper((string) ($evaluation['personnel_group_snapshot'] ?? '')) === 'NON_TEACHING_FACULTY'
+                && ($item['source_type'] ?? '') === 'computed'
                 && strtolower((string) ($item['category_area'] ?? '')) === 'areaa';
-            if (! is_array($criterion) || $criterion === [] || ! is_array($evidence) || (! $isAreaAScore && $evidence === [])) {
+            if (! is_array($criterion) || $criterion === [] || ! is_array($evidence) || (! $evaluatorRating && $evidence === [])) {
                 throw new RuntimeException('IMMUTABLE_ITEM_SNAPSHOT_REQUIRED');
             }
         }
@@ -191,6 +191,117 @@ final class ClassificationAwarePersonnelFinalizationService
         return $row;
     }
 
+    /** Complete the scored portfolio independently of optional rank progression. */
+    private function finalizeFacultyPortfolio(array $actor, array $evaluation): array
+    {
+        if (($evaluation['status'] ?? '') === 'completed') {
+            return $this->completedResult($evaluation, true);
+        }
+        if (($evaluation['status'] ?? '') !== 'ready_for_finalization') {
+            throw new RuntimeException('EVALUATION_NOT_READY_FOR_FINALIZATION');
+        }
+
+        (new PersonnelEvaluationCriteriaRecalculationService($this->db))->assertCanFinalize($evaluation);
+        $this->assertLatestVersion($evaluation);
+        $this->assertAuthorizedHrFinalizer($actor, $evaluation);
+        $this->assertEligibility($evaluation);
+
+        $items = $this->db->table('personnel_evaluation_items')
+            ->where('evaluation_id', $evaluation['id'])
+            ->orderBy('submission_order', 'ASC')->orderBy('created_at', 'ASC')
+            ->get()->getResultArray();
+        if ($items === []) throw new RuntimeException('EVALUATION_ITEMS_REQUIRED');
+        foreach ($items as $item) {
+            $verification = (string) ($item['verification_status'] ?? 'pending');
+            $rating = (string) ($item['rating_status'] ?? 'unrated');
+            if (! in_array($verification, ['verified', 'ineligible'], true)
+                || ($verification === 'verified' && $rating !== 'rated')) {
+                throw new RuntimeException('EVALUATION_INCOMPLETE');
+            }
+        }
+        $unresolved = $this->db->table('personnel_evaluation_deficiency_requests')
+            ->where('evaluation_id', $evaluation['id'])
+            ->whereIn('status', ['pending', 'open', 'responded'])->countAllResults();
+        if ($unresolved > 0) throw new RuntimeException('UNRESOLVED_DEFICIENCIES');
+
+        $criteria = $evaluation['criteria_snapshot'] ?? [];
+        if (is_string($criteria)) $criteria = json_decode($criteria, true);
+        if (! is_array($criteria) || $criteria === []) throw new RuntimeException('CRITERIA_SNAPSHOT_REQUIRED');
+        $totals = (new PersonnelEvaluationItemScorePreviewService())->totals(
+            $items, (int) ($evaluation['tenure_years'] ?? 0), $criteria
+        );
+        $report = $this->db->table('personnel_evaluation_reports')
+            ->where('evaluation_id', $evaluation['id'])->orderBy('generated_at', 'DESC')->get()->getRowArray();
+        if (! $report) throw new RuntimeException('FINALIZATION_REPORT_SNAPSHOT_REQUIRED');
+
+        $now = date('Y-m-d H:i:s');
+        $actorId = (string) ($actor['profile']['id'] ?? '');
+        $payload = json_decode((string) ($report['report_payload'] ?? '{}'), true) ?: [];
+        $payload['section_totals'] = ['A' => $totals['areaA_score'], 'B' => $totals['areaB_score'], 'C' => $totals['areaC_score']];
+        $payload['grand_total'] = $totals['total_score'];
+        $summary = is_array($payload['official_summary'] ?? null) ? $payload['official_summary'] : [];
+        $summary['total'] = $totals['total_score'];
+        $areaBySection = ['professional development' => 'A', 'productivity and creative work' => 'B', 'service and leadership' => 'C'];
+        foreach ((array) ($summary['sections'] ?? []) as $index => $section) {
+            $area = $areaBySection[strtolower(trim((string) ($section['title'] ?? '')))] ?? null;
+            if ($area !== null) $summary['sections'][$index]['points_earned'] = $totals['area' . $area . '_score'];
+        }
+        $payload['official_summary'] = $summary;
+        $payload['status'] = 'completed';
+        $payload['completed_at'] = date(DATE_ATOM, strtotime($now));
+        $payload['portfolio_review'] = ['completed_by' => $actorId, 'completed_at' => $now];
+        $passing = (float) ($criteria['version']['passing_score'] ?? $criteria['sheet']['passing_score'] ?? $criteria['passing_score'] ?? 0);
+        $snapshot = [
+            'snapshot_type' => 'faculty_portfolio_review_completion',
+            'evaluation_id' => $evaluation['id'],
+            'evaluation_root_id' => $evaluation['evaluation_root_id'] ?? null,
+            'version_number' => (int) ($evaluation['version_number'] ?? 1),
+            'personnel_profile_id' => $evaluation['personnel_profile_id'],
+            'personnel_group' => self::FACULTY,
+            'evaluation_period_id' => $evaluation['evaluation_period_id'] ?? null,
+            'criteria_snapshot' => $criteria,
+            'items' => $items,
+            'scores' => $totals,
+            'report_id' => $report['id'],
+            'rank_progression' => 'not_processed',
+            'finalizer' => ['profile_id' => $actorId, 'role' => 'hr_staff'],
+            'completed_at' => $now,
+        ];
+
+        $this->db->transBegin();
+        try {
+            $locked = $this->db->query('SELECT status FROM personnel_evaluations WHERE id = ? FOR UPDATE', [$evaluation['id']])->getRowArray();
+            if (($locked['status'] ?? null) === 'completed') {
+                $this->db->transRollback();
+                return $this->completedResult($this->evaluation((string) $evaluation['id']), true);
+            }
+            if (($locked['status'] ?? null) !== 'ready_for_finalization') throw new RuntimeException('EVALUATION_NOT_READY_FOR_FINALIZATION');
+            $this->db->table('personnel_evaluation_reports')->where('id', $report['id'])->update([
+                'report_payload' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'summary_score' => $totals['total_score'],
+                'passing_status' => $passing > 0 && $totals['total_score'] >= $passing ? 'passed' : 'not_passed',
+            ]);
+            $this->db->table('personnel_evaluations')->where('id', $evaluation['id'])->update([
+                'status' => 'completed', 'total_score' => $totals['total_score'],
+                'area_a_score' => $totals['areaA_score'], 'area_b_score' => $totals['areaB_score'],
+                'area_c_score' => $totals['areaC_score'],
+                'final_snapshot' => json_encode($snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'finalized_at' => $now, 'updated_at' => $now,
+            ]);
+            $this->db->table('personnel_evaluation_events')->insert([
+                'id' => $this->uuid(), 'evaluation_id' => $evaluation['id'], 'actor_profile_id' => $actorId,
+                'action' => 'finalized', 'previous_status' => 'ready_for_finalization', 'new_status' => 'completed',
+                'remarks' => "Completed faculty portfolio review. Grand total: {$totals['total_score']}. Rank progression is separate.",
+                'occurred_at' => $now,
+            ]);
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            throw $e;
+        }
+        return ['idempotent' => false, 'report_id' => $report['id'], 'grand_total' => $totals['total_score'], 'final_snapshot' => $snapshot];
+    }
+
     private function personnelGroup(array $evaluation): string
     {
         $snapshot = strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? '')));
@@ -241,31 +352,6 @@ final class ClassificationAwarePersonnelFinalizationService
         if (($current['submission_readiness_status'] ?? $current['eligibility_status'] ?? '') !== 'eligible') throw new RuntimeException('QUALIFICATION_NOT_CLEARED');
     }
 
-    private function assertAreaAScoresComplete(array $evaluation, array $items): void
-    {
-        $period = $this->db->table('personnel_evaluation_periods')->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
-        if (! $period) throw new RuntimeException('EVALUATION_PERIOD_NOT_FOUND');
-        $criteria = (new NtfAnnualReviewTemplateService($this->db))->criteria($period);
-        $areaAItems = [];
-        foreach ($items as $item) {
-            if (($item['domain'] ?? '') !== NtfAnnualReviewAreaAService::DOMAIN
-                || strtolower((string) ($item['category_area'] ?? '')) !== 'areaa') continue;
-            $areaAItems[strtoupper(trim((string) ($item['criterion_code'] ?? '')))] = $item;
-        }
-
-        foreach ($criteria['items'] as $criterion) {
-            $code = strtoupper(trim((string) ($criterion['code'] ?? '')));
-            $item = $areaAItems[$code] ?? null;
-            $payload = is_string($item['scoring_payload'] ?? null)
-                ? (json_decode($item['scoring_payload'], true) ?: [])
-                : ($item['scoring_payload'] ?? []);
-            $scores = array_values(array_filter((array) ($payload['ds'] ?? []), 'is_numeric'));
-            if (! $item || $scores === []) {
-                throw new RuntimeException("NTF_AREA_A_SCORE_MISSING: Enter an HR score for Area A criterion {$code} before finalizing.");
-            }
-        }
-    }
-
     private function totals(array $items): array
     {
         $areas = ['A' => 0.0, 'B' => 0.0, 'C' => 0.0];
@@ -285,7 +371,7 @@ final class ClassificationAwarePersonnelFinalizationService
     private function completedResult(array $evaluation, bool $idempotent): array
     {
         $snapshot = is_string($evaluation['final_snapshot'] ?? null) ? (json_decode($evaluation['final_snapshot'], true) ?: []) : ($evaluation['final_snapshot'] ?? []);
-        if (($snapshot['snapshot_type'] ?? '') !== 'non_teaching_faculty_terminal_completion') throw new RuntimeException('EVALUATION_ALREADY_COMPLETED');
+        if (! in_array(($snapshot['snapshot_type'] ?? ''), ['non_teaching_faculty_terminal_completion', 'faculty_portfolio_review_completion'], true)) throw new RuntimeException('EVALUATION_ALREADY_COMPLETED');
         return ['idempotent' => $idempotent, 'report_id' => $snapshot['report_id'] ?? null, 'grand_total' => (float) ($evaluation['total_score'] ?? 0), 'final_snapshot' => $snapshot];
     }
 

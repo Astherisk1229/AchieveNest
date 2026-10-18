@@ -38,6 +38,25 @@ final class GraduateUnitScoringService
         };
     }
 
+    /** Resolve the applicable row from a locked, editable units rubric. */
+    public static function configuredLevel(array $levels, int $units): ?array
+    {
+        $units = max(0, $units);
+        $selected = null;
+        $selectedThreshold = -1;
+        foreach ($levels as $level) {
+            if ((int) ($level['is_active'] ?? 1) !== 1) continue;
+            $label = (string) ($level['label'] ?? $level['name'] ?? '');
+            if (preg_match('/(\d+)\s*(?:\+|plus)?\s*(?:units?)?/i', $label, $matches) !== 1) continue;
+            $threshold = (int) $matches[1];
+            if ($threshold <= $units && $threshold > $selectedThreshold) {
+                $selected = $level;
+                $selectedThreshold = $threshold;
+            }
+        }
+        return $selected;
+    }
+
     /** Graduate level of a portfolio record or an evaluation item, or null when it is not a units record. */
     public static function levelOf(array $row): ?string
     {

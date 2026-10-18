@@ -10,6 +10,10 @@ vi.mock('../ranking-cycle-stages/useRankingWorkspaceStage', () => ({
   default: () => ({
     phase: 'ready', error: '', reload: vi.fn(),
     data: { rows: [{
+      personnel: { id: 'jane-1', full_name: 'Jane Doe', institutional_id: 'EMP-0', personnel_group: 'FACULTY', college_id: 'college-1', college_name: 'College of Arts and Sciences' },
+      evaluation: { id: 'evaluation-jane', status: 'ready_for_finalization', version_number: 8 }, result_status: 'endorsed_to_hr', report_score: 118,
+      endorsement: { by: 'Dean Maria Dela Cruz', at: '2026-10-17T08:00:00Z' }, allowed_actions: ['view_report'],
+    }, {
       personnel: { full_name: 'Ada Faculty', institutional_id: 'EMP-1', position_title: 'Professor' },
       evaluation: { id: 'evaluation-1' }, result_status: 'completed', report_score: 143.25,
       result: { evaluation: { completed_at: '2026-09-28T08:00:00Z' } }, allowed_actions: ['view_report'],
@@ -103,7 +107,7 @@ describe('completed evaluation summary', () => {
     expect(html).toContain('Edit comments')
     expect(html).toContain('Staff II')
     expect(html).toContain('Staff I')
-    expect(html).toContain('No confirmed rank application')
+    expect(html).toContain('Rank progression requires review')
   })
 
   it('keeps summary comments editable for the assigned HR reviewer after completion', () => {
@@ -117,15 +121,13 @@ describe('completed evaluation summary', () => {
     expect(html).toContain('Official completed personnel ranking scale')
   })
 
-  it('keeps frozen rank fields unchanged when the live personnel record changes', () => {
+  it('fills missing rank fields from current personnel context', () => {
     const ntf = result('NON_TEACHING_FACULTY_EVALUATION_RESULT')
     ntf.summary.present_rank = null
     ntf.summary.rank_applied_for = null
     const html = renderToStaticMarkup(<CompletedEvaluationSummary result={ntf} context={{ present_rank: 'Later Rank', rank_applied_for: 'Later Application' }}/>)
-    expect(html).toContain('No present rank recorded')
-    expect(html).toContain('No confirmed rank application')
-    expect(html).not.toContain('Later Rank')
-    expect(html).not.toContain('Later Application')
+    expect(html).toContain('Later Rank')
+    expect(html).toContain('Later Application')
   })
 
   it('explains when the shared active rank rules have no next rank', () => {
@@ -144,7 +146,7 @@ describe('completed evaluation summary', () => {
     ntf.summary.recommended_rank = 'Assistant Instructor'
     ntf.summary.recommended_rank_status = 'retained_masters_required'
     const html = renderToStaticMarkup(<CompletedEvaluationSummary result={ntf}/>)
-    expect(html).toContain('Verified Master’s required for advancement')
+    expect(html).toContain('Assistant Professor (verified Master’s required)')
     expect(html).toContain('Assistant Instructor')
   })
 
@@ -158,6 +160,14 @@ describe('completed evaluation summary', () => {
     expect(html).toContain('stage=results')
     expect(html).toContain('return_to=')
     expect(html).not.toContain('View report')
+  })
+
+  it('shows a Dean-endorsed faculty summary in HR results before finalization', () => {
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={['/hr/ranking-cycles?tab=evaluation-summaries&period=cycle-1&track=faculty']}><ResultsStage cycleId="cycle-1" trackKey="faculty"/></MemoryRouter>)
+    expect(html).toContain('Jane Doe')
+    expect(html).toContain('Endorsed to HR')
+    expect(html).toContain('118.00')
+    expect(html).toContain('/faculty/results/evaluation-jane/summary')
   })
 
   it('returns from a summary to the workspace and filters that opened it', () => {

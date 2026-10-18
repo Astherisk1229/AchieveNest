@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef } from 'react'
 import { X } from 'lucide-react'
+import { apiErrorText } from '../../../utils/apiErrorText'
 
 /** Shared accessible dialog shell for the Ranking Periods module. */
 export default function RankingCycleDialog({ title, description, onClose, children, footer, headerActions, width = 'max-w-3xl', layer = 'z-50', labelledBy }) {
@@ -50,4 +51,4 @@ export function LockedBadge() {
   return <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900">Locked</span>
 }
 
-export const errorMessage = (failure, fallback) => failure?.error?.message || failure?.message || fallback
+export const errorMessage = apiErrorText

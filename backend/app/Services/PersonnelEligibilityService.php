@@ -19,6 +19,35 @@ class PersonnelEligibilityService
         return false;
     }
 
+    /** Submission requires a clean active proof file and either B.3 research or a B.2 Research Output. */
+    public static function submissionIncludesResearchOutput(array $accomplishments, array $evidenceMap): bool
+    {
+        foreach ($accomplishments as $accomplishment) {
+            $id = (string) ($accomplishment['id'] ?? '');
+            if ($id === '') continue;
+            $hasCleanProof = false;
+            foreach (($evidenceMap[$id] ?? []) as $evidence) {
+                if (($evidence['status'] ?? 'active') === 'active' && ($evidence['security_status'] ?? '') === 'clean') {
+                    $hasCleanProof = true;
+                    break;
+                }
+            }
+            if (! $hasCleanProof) continue;
+
+            $category = strtoupper(trim((string) ($accomplishment['category_code'] ?? '')));
+            if (in_array($category, ['B.3', 'B3_RESEARCH'], true)) return true;
+            if (! in_array($category, ['B.2', 'B2_PUBLICATION'], true)) continue;
+
+            $metadata = $accomplishment['category_metadata'] ?? [];
+            if (is_string($metadata)) {
+                $metadata = json_decode($metadata, true);
+            }
+            $publicationType = strtolower(trim((string) ($metadata['details']['publication_type'] ?? '')));
+            if ($publicationType === 'research output') return true;
+        }
+        return false;
+    }
+
     public function __construct(protected ?BaseConnection $db = null, private ?EmploymentServiceDurationService $duration = null)
     {
         $this->db ??= db_connect();
@@ -87,12 +116,13 @@ class PersonnelEligibilityService
         // Part-time faculty hold part-time titles and are not ranked, so they cannot enter a ranking period.
         if(strtoupper((string)($person['personnel_group']??''))==='FACULTY'&&($person['faculty_engagement']??null)===FacultyStatusService::ENGAGEMENT_PART_TIME){$serviceStatus='not_passed';$reasons[]='Part-time faculty hold a part-time title and are not ranked; only full-time faculty can apply for a rank.';}
 
+        $annualReviewRequired = $personnelGroup === 'faculty';
         $import=null;
-        if($period&&$this->db->tableExists('personnel_annual_review_imports'))$import=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personnelProfileId,'evaluation_period_id'=>$period['id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();
-        $annualStatus=$import['two_review_status']??'pending';
-        if(!$import)$reasons[]='Two confirmed annual-review reports are required.';
-        elseif($annualStatus==='pending')$reasons[]=$import['two_review_reason']?:'Second required annual review is missing.';
-        elseif($annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
+        if($annualReviewRequired&&$period&&$this->db->tableExists('personnel_annual_review_imports'))$import=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personnelProfileId,'evaluation_period_id'=>$period['id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();
+        $annualStatus=$annualReviewRequired?($import['two_review_status']??'pending'):'not_applicable';
+        if($annualReviewRequired&&!$import)$reasons[]='Two confirmed annual-review reports are required.';
+        elseif($annualReviewRequired&&$annualStatus==='pending')$reasons[]=$import['two_review_reason']?:'Second required annual review is missing.';
+        elseif($annualReviewRequired&&$annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
         $researchStatus = 'not_applicable';
         if ($personnelGroup === 'faculty') {
             $researchStatus = $this->researchOutputStatus($personnelProfileId, $period);
@@ -100,10 +130,22 @@ class PersonnelEligibilityService
                 ? 'At least one Research Output in the Publications category with clean supporting evidence is required before evaluation.'
                 : 'A required Research Output could not be verified.';
         }
-        $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||$researchStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
-        $eligibility=$hardFailure?'not_eligible':(($classificationStatus==='resolved'&&$serviceStatus==='passed'&&$annualStatus==='passed'&&in_array($researchStatus,['passed','not_applicable'],true)&&$period)?'eligible':'pending');
+        $annualReviewPassed = ! $annualReviewRequired || $annualStatus === 'passed';
+        $hardFailure=$serviceStatus==='not_passed'||($annualReviewRequired&&$annualStatus==='not_passed')||$researchStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
+        $eligibility=$hardFailure?'not_eligible':(($classificationStatus==='resolved'&&$serviceStatus==='passed'&&$annualReviewPassed&&in_array($researchStatus,['passed','not_applicable'],true)&&$period)?'eligible':'pending');
+        // Research evidence is verified after personnel submit, before evaluation starts.
+        // Keep ranking eligibility strict while giving submission its own readiness state.
+        $periodReady = $period && in_array($period['status'] ?? '', ['OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'], true);
+        $submissionHardFailure = $serviceStatus === 'not_passed'
+            || ($annualReviewRequired && $annualStatus === 'not_passed')
+            || ($period && ! $periodReady);
+        $submissionReadiness = $submissionHardFailure
+            ? 'not_eligible'
+            : (($classificationStatus === 'resolved' && $serviceStatus === 'passed' && $annualReviewPassed && $periodReady) ? 'eligible' : 'pending');
         $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;
+        $result['submission_readiness_status'] = $submissionReadiness;
         $result['personnel_type_requirement'] = ['status' => $classificationStatus, 'personnel_group' => $personnelGroup ?: null];
+        $result['annual_review_requirement']['required'] = $annualReviewRequired;
         $result['research_output_requirement'] = ['status' => $researchStatus, 'required' => $personnelGroup === 'faculty'];
         $result['service_completed_years'] = $service['completed_years'] ?? null;
         $result['service_requirement'] += [
@@ -120,7 +162,7 @@ class PersonnelEligibilityService
         return$result;
     }
 
-    /** Teaching Faculty need one evidence-backed Research Output from the canonical B.2 Publications category. */
+    /** Teaching Faculty need an evidence-backed B.3 research record or B.2 Research Output. */
     private function researchOutputStatus(string $personnelProfileId, ?array $period): string
     {
         if (!$this->db->tableExists('personnel_accomplishments') || !$this->db->tableExists('personnel_accomplishment_evidence')) return 'pending';
@@ -128,14 +170,41 @@ class PersonnelEligibilityService
             ->select('a.id')
             ->join('personnel_accomplishment_evidence e', 'e.accomplishment_id = a.id')
             ->where('a.personnel_profile_id', $personnelProfileId)
-            ->whereIn('a.category_code', ['B.2', 'B2_PUBLICATION'])
             ->whereIn('a.status', ['draft', 'submitted', 'under_review', 'verified']);
+        if ($this->db->fieldExists('category_metadata', 'personnel_accomplishments')) {
+            $jsonValue = $this->db->DBDriver === 'SQLite3'
+                ? "JSON_EXTRACT(a.category_metadata, '$.details.publication_type')"
+                : "JSON_UNQUOTE(JSON_EXTRACT(a.category_metadata, '$.details.publication_type'))";
+            $publicationType = "LOWER(TRIM({$jsonValue})) = " . $this->db->escape('research output');
+            $query->groupStart()
+                ->whereIn('a.category_code', ['B.3', 'B3_RESEARCH'])
+                ->orGroupStart()
+                    ->whereIn('a.category_code', ['B.2', 'B2_PUBLICATION'])
+                    ->where($publicationType, null, false)
+                ->groupEnd()
+            ->groupEnd();
+        } else {
+            $query->whereIn('a.category_code', ['B.3', 'B3_RESEARCH']);
+        }
         if ($this->db->fieldExists('security_status', 'personnel_accomplishment_evidence')) $query->where('e.security_status', 'clean');
+        if ($this->db->fieldExists('status', 'personnel_accomplishment_evidence')) $query->where('e.status', 'active');
         if ($period) {
             $coverage = (new EvaluationValidityService($this->db))->coverageForPeriod($period);
-            $dateField = $this->db->fieldExists('date_achieved', 'personnel_accomplishments') ? 'date_achieved'
-                : ($this->db->fieldExists('occurrence_date', 'personnel_accomplishments') ? 'occurrence_date' : null);
-            if ($coverage && $dateField !== null) $query->where("a.{$dateField} >=", $coverage['start'])->where("a.{$dateField} <=", $coverage['end']);
+            // Both date columns exist in some installations during the canonical
+            // schema transition. Accomplishment writes may still populate only
+            // occurrence_date, so preferring a nullable date_achieved column
+            // would incorrectly exclude valid, in-period Research Outputs.
+            $dateFields = array_values(array_filter(
+                ['occurrence_date', 'date_achieved'],
+                fn (string $field): bool => $this->db->fieldExists($field, 'personnel_accomplishments')
+            ));
+            if ($coverage && count($dateFields) === 1) {
+                $dateField = $dateFields[0];
+                $query->where("a.{$dateField} >=", $coverage['start'])->where("a.{$dateField} <=", $coverage['end']);
+            } elseif ($coverage && count($dateFields) > 1) {
+                $query->where('COALESCE(a.occurrence_date, a.date_achieved) >=', $coverage['start'], false)
+                    ->where('COALESCE(a.occurrence_date, a.date_achieved) <=', $coverage['end'], false);
+            }
         }
         return $query->groupBy('a.id')->countAllResults() > 0 ? 'passed' : 'pending';
     }

@@ -209,30 +209,10 @@ export const NAVIGATION_CATALOG = [
   // 5. DEAN NAVIGATION
   // ==========================================
   {
-    id: 'dean-dashboard-overview',
-    label: 'Dean Dashboard',
-    icon: Home,
-    path: DEAN_ROUTES.DASHBOARD,
-    portal: 'dean',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.DEAN],
-    requiredPermissions: ['college.faculty.review']
-  },
-  {
-    id: 'dean-annual-review-eligibility',
-    label: 'Annual Review & Eligibility',
-    icon: ShieldCheck,
-    path: DEAN_ROUTES.ANNUAL_REVIEW_ELIGIBILITY,
-    portal: 'dean',
-    allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
-    requiredActiveContexts: [CANONICAL_ROLES.DEAN],
-    requiredPermissions: ['college.faculty.review']
-  },
-  {
     id: 'dean-review-workspace',
-    label: 'Faculty Ranking Reviews',
+    label: 'Faculty Evaluation',
     icon: FileCheck2,
-    path: DEAN_ROUTES.FACULTY_RANKING_REVIEWS,
+    path: DEAN_ROUTES.FACULTY_EVALUATION,
     portal: 'dean',
     allowedAccountTypes: [CANONICAL_ACCOUNT_TYPES.PERSONNEL],
     requiredActiveContexts: [CANONICAL_ROLES.DEAN],

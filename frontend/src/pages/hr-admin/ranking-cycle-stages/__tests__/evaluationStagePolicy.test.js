@@ -9,23 +9,28 @@ const row = (group, allowed_actions, workflow_state = null) => ({
 })
 
 describe('ranking-cycle evaluation stage policy', () => {
-  it('routes Faculty final rank work only to Phase O', () => {
-    const faculty = row('FACULTY', ['view_evaluation', 'review_final_rank'])
-    expect(evaluationAction(faculty)).toEqual({ label: 'Open final rank review', kind: 'phase-o' })
-    expect(mayOpenFacultyPhaseO(faculty)).toBe(true)
-    expect(mayUseGenericFinalizer(faculty)).toBe(false)
+  it('opens submitted portfolios for review before evaluation starts', () => {
+    expect(evaluationAction(row('FACULTY', ['start_evaluation']))).toEqual({ label: 'Review portfolio', kind: 'evaluate' })
   })
 
-  it('routes only Non-Teaching Faculty to the generic finalizer', () => {
+  it('lets HR complete a Faculty portfolio without a separate rank review', () => {
+    const faculty = row('FACULTY', ['view_evaluation', 'finalize_evaluation'])
+    expect(evaluationAction(faculty)).toEqual({ label: 'Complete portfolio review', kind: 'summary' })
+    expect(mayOpenFacultyPhaseO(faculty)).toBe(false)
+    expect(mayUseGenericFinalizer(faculty)).toBe(true)
+  })
+
+  it('opens the saved summary before Non-Teaching finalization', () => {
     const ntf = row('NON_TEACHING_FACULTY', ['view_evaluation', 'finalize_evaluation'])
-    expect(evaluationAction(ntf)).toEqual({ label: 'Finalize evaluation', kind: 'finalize' })
+    expect(evaluationAction(ntf)).toEqual({ label: 'View summary', kind: 'summary' })
     expect(mayUseGenericFinalizer(ntf)).toBe(true)
     expect(mayOpenFacultyPhaseO(ntf)).toBe(false)
   })
 
-  it('does not trust a mismatched finalization action', () => {
-    const faculty = row('FACULTY', ['view_evaluation', 'finalize_evaluation'])
+  it('does not route Faculty portfolio completion through the legacy rank action', () => {
+    const faculty = row('FACULTY', ['view_evaluation', 'review_final_rank'])
     expect(evaluationAction(faculty)).toEqual({ label: 'View details', kind: 'view' })
     expect(mayUseGenericFinalizer(faculty)).toBe(false)
+    expect(mayOpenFacultyPhaseO(faculty)).toBe(true)
   })
 })

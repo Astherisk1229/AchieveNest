@@ -10,7 +10,7 @@ vi.mock('../../../../services/personnelAccomplishmentService', () => ({
 
 import personnelAccomplishmentService from '../../../../services/personnelAccomplishmentService'
 import PersonnelAchievementController from '../../../../controllers/PersonnelAchievementController'
-import { findAccomplishmentWithDocument } from '../PersonnelSubmissionModal'
+import { findAccomplishmentWithDocument } from '../NonTeachingFacultySubmissionModal'
 
 describe('duplicate document detection', () => {
   const list = [

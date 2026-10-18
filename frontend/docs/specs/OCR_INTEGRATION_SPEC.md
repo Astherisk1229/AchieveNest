@@ -46,7 +46,7 @@ By integrating Optical Character Recognition (OCR) combined with Pattern Matchin
 |  - Tamper & Risk Evaluator: Checks font consistency, image manipulation artifacts, and metadata mismatch              |
 |                                                                                                                       |
 | [ STEP 5: VIEW CONSUMPTION ]                                                                                          |
-|  - Auto-fills `PersonnelSubmissionModal.jsx` and `AchievementSubmissionModal.jsx` with confidence indicators         |
+|  - Auto-fills `NonTeachingFacultySubmissionModal.jsx` and `AchievementSubmissionModal.jsx` with confidence indicators         |
 |  - Stores structured payload in `AchievementModel.js` schema for `DeanEvaluatorWorkbench.jsx`                       |
 +-----------------------------------------------------------------------------------------------------------------------+
 ```
@@ -56,7 +56,7 @@ By integrating Optical Character Recognition (OCR) combined with Pattern Matchin
 ## 3. Key Operational Use Cases
 
 ### A. Faculty & Personnel Accomplishment Auto-Fill
-- **Trigger**: Personnel member clicks **Log Accomplishment** (`PersonnelSubmissionModal.jsx`) and drops a certificate file (e.g. *CHED Faculty Training Certificate.pdf*).
+- **Trigger**: Non-teaching faculty member clicks **Log Accomplishment** (`NonTeachingFacultySubmissionModal.jsx`) and drops a certificate file (e.g. *CHED Faculty Training Certificate.pdf*).
 - **Execution**:
   1. OCR Engine scans the document within ~1.2 seconds.
   2. Extracted fields populate form inputs:
@@ -192,7 +192,7 @@ export const AchievementSchema = {
 | **Controller** | `OcrExtractionController.js` | Coordinates image preprocessing, regex extraction, NER parsing, and NDMU category weighting algorithms. |
 | **Controller** | `SecurityController.js` | Performs identity match validation and flags tamper/mismatch risk scores. |
 | **Hook** | `useOcrScanner.js` | Custom React hook providing loading states, progress percentages, and parsed field output. |
-| **View (Form)** | `PersonnelSubmissionModal.jsx` | Renders file drag-and-drop zone with OCR scan trigger and auto-filled field badges. |
+| **View (Form)** | `NonTeachingFacultySubmissionModal.jsx` | Renders file drag-and-drop zone with OCR scan trigger and auto-filled field badges. |
 | **View (Form)** | `AchievementSubmissionModal.jsx` | Student submission view with certificate OCR auto-complete. |
 | **View (Audit)** | `DeanEvaluatorWorkbench.jsx` | Dean split-screen audit view with clickable bounding box overlays. |
 | **View (Audit)** | `HRDashboardView.jsx` | HR Admin master audit view displaying system-wide OCR identity match logs. |
@@ -218,5 +218,5 @@ export const AchievementSchema = {
 - Test identity matching algorithm against exact matches, partial matches, and complete mismatches.
 
 ### Manual Verification
-- Upload sample certificate PDFs in `PersonnelSubmissionModal.jsx` and confirm form fields auto-fill within 2 seconds.
+- Upload sample certificate PDFs in `NonTeachingFacultySubmissionModal.jsx` and confirm form fields auto-fill within 2 seconds.
 - Open `DeanEvaluatorWorkbench.jsx` and verify bounding box visual highlights align with PDF text regions.

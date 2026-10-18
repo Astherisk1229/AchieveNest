@@ -10,6 +10,16 @@ export async function fetchCurrentEvaluationPeriod(evaluationType = 'RANKING_PRO
  * Frontend Service for Personnel Accomplishment persistence and secure evidence file upload/streaming.
  */
 export const personnelAccomplishmentService = {
+  async fetchActiveIntakeCriteria() {
+    try {
+      const res = await apiClient.get('/personnel/accomplishments/active-criteria')
+      return res?.data?.data || res?.data || res
+    } catch (failure) {
+      const message = failure?.error?.message || failure?.response?.data?.error?.message || failure?.message
+      throw new Error(message || 'Published personnel criteria could not be loaded.')
+    }
+  },
+
   /**
    * Fetch all portfolio accomplishments for the authenticated personnel (or HR scoped view).
    */
@@ -66,6 +76,11 @@ export const personnelAccomplishmentService = {
         'Content-Type': 'multipart/form-data'
       }
     })
+    return res?.data || res
+  },
+
+  async scanEvidence(accomplishmentId, evidenceId) {
+    const res = await apiClient.post(`/personnel/accomplishments/${accomplishmentId}/evidence/${evidenceId}/scan`, {}, { timeout: 90_000 })
     return res?.data || res
   },
 

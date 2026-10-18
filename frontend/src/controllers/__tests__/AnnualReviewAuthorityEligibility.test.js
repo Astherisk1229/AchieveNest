@@ -35,7 +35,8 @@ describe('Annual Review authority and eligibility', () => {
 
   it('preserves workbook parsing and eligibility prerequisite semantics without points', () => {
     expect(parser).toContain("SHEET = 'SUMMARY 1st & 2nd'")
-    expect(eligibility).toContain("$annualStatus==='passed'")
+    expect(eligibility).toContain("$annualReviewRequired = $personnelGroup === 'faculty'")
+    expect(eligibility).toContain("$annualStatus=$annualReviewRequired?($import['two_review_status']??'pending'):'not_applicable'")
     expect(eligibility).toContain("'annual_review_requirement'")
     expect(eligibility).not.toMatch(/annual.*(?:points|score)|(?:points|score).*annual/i)
   })

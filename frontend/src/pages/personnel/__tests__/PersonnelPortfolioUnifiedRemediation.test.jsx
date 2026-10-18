@@ -203,6 +203,21 @@ describe('AchieveNest — Personnel Portfolio Unified Remediation Test Suite', (
       expect(result.statusLabel).toContain('finalized evaluation')
     })
 
+    it('shows a separate in-review badge for accomplishments in a Dean-endorsed evaluation', () => {
+      const item = {
+        reuse: {
+          is_consumed: false,
+          is_in_active_evaluation: true,
+          active_evaluation_academic_year: '2026-2027'
+        }
+      }
+
+      const result = AchievementReuseEligibilityService.evaluateReuseEligibility(item)
+      expect(result.badgeType).toBe('in_evaluation')
+      expect(result.displayLabel).toBe('Included in 2026-2027 Evaluation')
+      expect(result.isEligible).toBe(true)
+    })
+
     it('marks unused achievements as immediately eligible for portfolio inclusion', () => {
       const freshItem = {
         id: 'acc-fresh',

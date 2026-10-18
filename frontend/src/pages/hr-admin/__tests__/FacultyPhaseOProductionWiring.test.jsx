@@ -5,41 +5,39 @@ import { describe, expect, it } from 'vitest'
 const root = path.resolve(process.cwd(), 'src')
 const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 
-describe('Faculty Phase O production wiring', () => {
-  it('routes ready Faculty cases into Phase O instead of legacy finalize', () => {
-    const page = read('pages/hr-admin/HREvaluationSubmissionsPage.jsx')
-    expect(page).toContain("sub.status === 'ready_for_finalization'")
-    expect(page).toContain("toUpperCase() === 'FACULTY'")
-    expect(page).toContain('setPhaseOEvaluation(sub)')
-    expect(page).toContain('<FacultyPhaseOWorkspace')
-    expect(page).toContain("props.lockStatus && (sub.status === 'ready_for_finalization' || sub.status === 'ready_finalization')")
+describe('Faculty portfolio review and rank progression are separate', () => {
+  it('lets HR complete the Faculty portfolio review without opening a rank workflow', () => {
+    const stage = read('pages/hr-admin/ranking-cycle-stages/EvaluationStage.jsx')
+    const submissionsPage = read('pages/hr-admin/HREvaluationSubmissionsPage.jsx')
+    expect(stage).toContain('onOpenFinalizeModal=')
+    expect(stage).toContain('Rank progression is handled separately.')
+    expect(stage).toContain('finalizeLabel="Complete review"')
+    expect(submissionsPage).not.toContain('<FacultyPhaseOWorkspace')
   })
 
-  it('keeps NTF on the classification-aware completion path', () => {
-    const page = read('pages/hr-admin/HREvaluationSubmissionsPage.jsx')
-    expect(page).toContain('hrEvaluationService.finalize(subId, scores)')
-    expect(page).toContain("sub.personnel_group || ''")
+  it('keeps NTF rank handling separate from Faculty portfolio completion', () => {
+    const stage = read('pages/hr-admin/ranking-cycle-stages/EvaluationStage.jsx')
+    expect(stage).toContain('NonTeachingRankApplicationPanel')
+    expect(stage).toContain("String(studio.personnel_group || '').toUpperCase() === 'NON_TEACHING_FACULTY'")
   })
 
-  it('gives Dean preparation controls without HR final review authority', () => {
+  it('keeps Dean portfolio review focused on evidence decisions and endorsement', () => {
     const dean = read('pages/dean/DeanPortfolioEvaluationWorkspace.jsx')
-    const workspace = read('components/evaluation/FacultyPhaseOWorkspace.jsx')
-    expect(dean).toContain('mode="reviewer"')
-    expect(dean).toContain('onPreparationReady={ready => setPhaseOReadyId(ready ? review.id :')
-    expect(dean).toContain('phaseOReadyId!==review.id')
-    expect(workspace).toContain("reviewerMode")
-    expect(workspace).toContain("!reviewerMode")
-    expect(workspace).toContain('Generate Recommended Rank')
+    expect(dean).toContain('approveDeanReviewItem')
+    expect(dean).toContain('endorseDeanReview')
+    expect(dean).toContain('FacultyEvaluationSummary')
+    expect(dean).not.toContain('Generate Recommended Rank')
+    expect(dean).not.toContain('FacultyPhaseOWorkspace')
   })
 
-  it('lets HR prepare ranks for Faculty evaluations assigned directly to HR', () => {
+  it('gives HR a direct complete-review action for assigned Faculty evaluations', () => {
     const stage = read('pages/hr-admin/ranking-cycle-stages/EvaluationStage.jsx')
     const studio = read('pages/hr-admin/evaluation-submissions/evaluation/PortfolioEvaluationStudio.jsx')
     const actions = read('pages/hr-admin/evaluation-submissions/studio/StudioDecisionBar.jsx')
-    expect(stage).toContain('onOpenRankPreparation=')
-    expect(stage).toContain("mode={phaseO.status === 'in_evaluation' ? 'reviewer' : 'hr'}")
-    expect(studio).toContain('onOpenRankPreparation={onOpenRankPreparation}')
-    expect(actions).toContain('Prepare Faculty Rank')
+    expect(stage).toContain('finalizeLabel="Complete review"')
+    expect(studio).toContain('onOpenFinalizeModal ? handleFinalizeClicked : undefined')
+    expect(actions).toContain('{finalizeLabel}')
+    expect(actions).not.toContain('Prepare Faculty Rank')
   })
 
   it('uses only canonical Phase M through P endpoints', () => {

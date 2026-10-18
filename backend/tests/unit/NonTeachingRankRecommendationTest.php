@@ -20,7 +20,7 @@ final class NonTeachingRankRecommendationTest extends CIUnitTestCase
             Recommendation::outcome(70, 75, 'Assistant Instructor', '', 'RULE_REVIEW_REQUIRED', false));
     }
 
-    public function testPassingEvaluationRequiresConfirmedValidTarget(): void
+    public function testPassingEvaluationRequiresValidTargetButNotConfirmation(): void
     {
         self::assertSame(['rank' => 'Assistant Instructor', 'status' => 'retained_masters_required'],
             Recommendation::outcome(90, 75, 'Assistant Instructor', '', 'MASTERS_REQUIRED', false));
@@ -28,7 +28,7 @@ final class NonTeachingRankRecommendationTest extends CIUnitTestCase
             Recommendation::outcome(90, 75, 'Senior Instructor', '', 'MASTERS_REQUIRED', false));
         self::assertSame(['rank' => null, 'status' => 'pending_rule_review'],
             Recommendation::outcome(90, 75, 'Assistant Instructor', '', 'RULE_REVIEW_REQUIRED', false));
-        self::assertSame(['rank' => null, 'status' => 'pending_rank_application_confirmation'],
+        self::assertSame(['rank' => 'Professor II', 'status' => 'passed_applied_rank'],
             Recommendation::outcome(90, 75, 'Professor I', 'Professor II', 'PENDING_CONFIRMATION', true));
         self::assertSame(['rank' => null, 'status' => 'pending_rule_review'],
             Recommendation::outcome(90, 75, 'Professor I', 'Professor II', 'confirmed', false));

@@ -345,14 +345,14 @@ class EvaluationScaleController extends BaseController
 
     /**
      * GET /api/v1/personnel/accomplishments/active-criteria
-     * Returns only the authenticated Faculty member's current, published HR intake contract.
+     * Returns only the authenticated personnel member's current, published group-specific HR intake contract.
      */
     public function activePersonnelIntakeCriteria(): ResponseInterface
     {
         $actor = $this->resolveActor();
         if ($actor === null) return $this->authenticationRequired();
         if (! $this->authorization->personnel()->canCreateAccomplishment($actor)) {
-            return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'Only active Faculty may load new-accomplishment criteria.']]);
+            return $this->response->setStatusCode(403)->setJSON(['error'=>['code'=>'FORBIDDEN','message'=>'Only active personnel may load group-specific accomplishment criteria.']]);
         }
 
         $profileId = (string) ($actor['profile']['id'] ?? '');
@@ -363,19 +363,19 @@ class EvaluationScaleController extends BaseController
             $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 500;
             $code = $e->getMessage();
             $messages = [
-                'PERSONNEL_PROFILE_NOT_FOUND' => 'A personnel profile is required to load Faculty criteria.',
-                'FACULTY_INTAKE_CRITERIA_ONLY' => 'This endpoint provides Faculty accomplishment criteria only.',
+                'PERSONNEL_PROFILE_NOT_FOUND' => 'A personnel profile is required to load criteria.',
+            'SUPPORTED_PERSONNEL_GROUP_REQUIRED' => 'Published criteria are available only for Teaching Faculty and Non-Teaching Faculty.',
                 'INVALID_PERSONNEL_GROUP' => 'The personnel group is not supported.',
-                'CRITERIA_NOT_CONFIGURED' => 'No published Faculty criteria are available.',
-                'MULTIPLE_ACTIVE_CRITERIA' => 'HR must resolve multiple published Faculty criteria versions before intake can continue.',
+                'CRITERIA_NOT_CONFIGURED' => 'No published criteria are available for your personnel group.',
+                'MULTIPLE_ACTIVE_CRITERIA' => 'HR must resolve multiple published criteria versions for your personnel group before intake can continue.',
                 'INTAKE_CRITERIA_SCHEMA_NOT_READY' => 'HR intake criteria storage is not ready yet.',
-                'INTAKE_CRITERIA_NOT_CONFIGURED' => 'HR has not configured any active Faculty accomplishment criteria yet.',
-                'INTAKE_CRITERIA_VERSION_NOT_PUBLISHED' => 'The Faculty criteria version is not published.',
+                'INTAKE_CRITERIA_NOT_CONFIGURED' => 'HR has not configured any active accomplishment criteria for your personnel group yet.',
+                'INTAKE_CRITERIA_VERSION_NOT_PUBLISHED' => 'The criteria version is not published.',
             ];
             $responseCode = preg_match('/^INTAKE_CRITERIA_DEFINITION_INCOMPLETE:/', $code) ? 'INTAKE_CRITERIA_DEFINITION_INCOMPLETE' : $code;
             $message = $messages[$responseCode] ?? ($responseCode === 'INTAKE_CRITERIA_DEFINITION_INCOMPLETE'
                 ? 'HR must complete the required fields, accepted evidence, and scoring reference for every active criterion.'
-                : 'Unable to load current Faculty criteria.');
+                : 'Unable to load current criteria for your personnel group.');
             return $this->response->setStatusCode($status)->setJSON(['error'=>['code'=>$responseCode,'message'=>$message]]);
         }
     }
@@ -405,6 +405,12 @@ class EvaluationScaleController extends BaseController
 
     public function compareScaleVersions(string $versionId, string $otherVersionId): ResponseInterface
     { return $this->criteriaAdminAction(fn() => $this->adminService->compareVersions($versionId, $otherVersionId), 200); }
+
+    public function previewDirectChange(string $versionId): ResponseInterface
+    { return $this->criteriaAdminAction(fn($actor) => $this->adminService->previewDirectChange($versionId, $this->request->getJSON(true) ?? [], (string)$actor['profile']['id']), 200); }
+
+    public function applyDirectChange(string $versionId): ResponseInterface
+    { return $this->criteriaAdminAction(fn($actor) => $this->adminService->applyDirectChange($versionId, $this->request->getJSON(true) ?? [], (string)$actor['profile']['id']), 200); }
 
     public function previewActivationImpact(string $versionId): ResponseInterface
     { return $this->criteriaAdminAction(fn() => $this->adminService->previewActivationImpact($versionId), 200); }

@@ -7,6 +7,7 @@ use App\Services\AuthorizationService;
 use App\Services\CanonicalPersonnelAccomplishmentService;
 use App\Services\PersonnelAccomplishmentCriterionService;
 use App\Services\LocalEvidenceStorageService;
+use App\Services\StudentEvidenceClamAvScanner;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -22,17 +23,20 @@ class PersonnelAccomplishmentController extends Controller
     private LocalEvidenceStorageService $storage;
     private CanonicalPersonnelAccomplishmentService $canonicalPersistence;
     private PersonnelAccomplishmentCriterionService $criterionPersistence;
+    private StudentEvidenceClamAvScanner $scanner;
 
     public function __construct(
         ?AuthorizationService $authz = null,
         ?LocalEvidenceStorageService $storage = null,
         ?CanonicalPersonnelAccomplishmentService $canonicalPersistence = null,
-        ?PersonnelAccomplishmentCriterionService $criterionPersistence = null
+        ?PersonnelAccomplishmentCriterionService $criterionPersistence = null,
+        ?StudentEvidenceClamAvScanner $scanner = null
     ) {
         $this->authz = $authz ?? new AuthorizationService();
         $this->storage = $storage ?? new LocalEvidenceStorageService();
         $this->canonicalPersistence = $canonicalPersistence ?? new CanonicalPersonnelAccomplishmentService();
         $this->criterionPersistence = $criterionPersistence ?? new PersonnelAccomplishmentCriterionService();
+        $this->scanner = $scanner ?? new StudentEvidenceClamAvScanner();
     }
 
     public function options(): mixed
@@ -132,7 +136,14 @@ class PersonnelAccomplishmentController extends Controller
             $start = (string) ($metadata['start_date'] ?? ''); $end = (string) ($metadata['end_date'] ?? '');
             $ongoing = ($metadata['ongoing'] ?? false) === true;
             $ongoingAllowed = in_array($subcategory, ['A2_MEMBERSHIP','A2_REGULAR_MEMBER','C1_MODERATOR','C1_COACH'], true);
-            if (! ValidationHelper::validateDateString($start) || (! $ongoing && ! ValidationHelper::validateDateString($end)) || ($end !== '' && $start > $end) || ($ongoing && ! $ongoingAllowed)) return 'Invalid accomplishment date period.';
+            $singleDay = in_array($subcategory, ['B3_RESEARCH', 'B5_MATERIAL'], true)
+                && ($metadata['single_day'] ?? false) === true;
+            $endRequired = ! $ongoing && ! ($singleDay && $end === '');
+            if (! ValidationHelper::validateDateString($start)
+                || ($endRequired && ! ValidationHelper::validateDateString($end))
+                || ($end !== '' && ! ValidationHelper::validateDateString($end))
+                || ($end !== '' && $start > $end)
+                || ($ongoing && ! $ongoingAllowed)) return 'Invalid accomplishment date period.';
         }
         return null;
     }
@@ -183,6 +194,23 @@ class PersonnelAccomplishmentController extends Controller
                 || ($end !== '' && $start > $end)) {
                 return 'Invalid NTF assignment period.';
             }
+        }
+        return null;
+    }
+
+    /** Keep accomplishment classifications tied to the personnel group's official portfolio. */
+    private function validatePortfolioFormat(string $personnelProfileId, array $metadata): ?string
+    {
+        $format = trim((string) ($metadata['portfolio_format'] ?? ''));
+        if ($format === '') return null; // Older, unformatted records remain editable.
+
+        $expected = $this->isNonTeachingPersonnel($personnelProfileId)
+            ? 'non_teaching_faculty'
+            : 'faculty_academic';
+        if ($format !== $expected) {
+            return $expected === 'non_teaching_faculty'
+                ? 'Non-Teaching Faculty accomplishments must use the Non-Teaching Faculty criteria.'
+                : 'Teaching Faculty accomplishments must use the Teaching Faculty criteria.';
         }
         return null;
     }
@@ -280,11 +308,17 @@ class PersonnelAccomplishmentController extends Controller
         $db = db_connect();
         $builder = $db->table('personnel_accomplishments pa')
             ->select('pa.*');
+        $supportsSoftDelete = $db->fieldExists('deleted_at', 'personnel_accomplishments');
+        if ($supportsSoftDelete) $builder->where('pa.deleted_at', null);
 
         if ($requestedProfileId !== '') {
             $builder->where('pa.personnel_profile_id', $requestedProfileId);
-        } else {
+        } elseif ($isHr) {
             $this->authz->personnel()->scopeAccomplishmentQuery($actor, $builder);
+        } else {
+            // This endpoint feeds the signed-in person's own portfolio repository.
+            // A Dean assignment must not widen it to every faculty member in the college.
+            $builder->where('pa.personnel_profile_id', $profileId);
         }
 
         $rows = $builder->groupBy('pa.id')
@@ -322,6 +356,7 @@ class PersonnelAccomplishmentController extends Controller
         $validity = new \App\Services\EvaluationValidityService($db);
         $openCycles = [];
         $eligibilityById = [];
+        $inProgressUsageByOwner = [];
         $recordsByOwner = [];
         foreach ($rows as $row) {
             $ownerId = (string) ($row['personnel_profile_id'] ?? '');
@@ -331,10 +366,15 @@ class PersonnelAccomplishmentController extends Controller
             $openCycles[$ownerId] = $validity->openCycleFor($ownerId);
             $partition = $validity->partitionForPersonnel($ownerRecords, $openCycles[$ownerId]['period'] ?? null, $ownerId);
             $eligibilityById += $partition['decisions'];
+            $inProgressUsageByOwner[$ownerId] = $validity->inProgressUsageFor($ownerId);
         }
 
         foreach ($rows as &$r) {
             $r['evidence'] = $evidenceMap[$r['id']] ?? [];
+            // Deletion is a soft delete, so snapshot-linked records remain available to
+            // saved evaluations while disappearing from the owner's repository.
+            $r['is_deletable'] = $supportsSoftDelete
+                && ($isHr || hash_equals((string) $profileId, (string) ($r['personnel_profile_id'] ?? '')));
             $validEvidence = array_values(array_filter($r['evidence'], static fn (array $e): bool => $e['previewable'] === true));
             $r['primary_evidence'] = $validEvidence[0] ?? null;
             $r['has_valid_evidence'] = $r['primary_evidence'] !== null;
@@ -349,14 +389,18 @@ class PersonnelAccomplishmentController extends Controller
             $decision = $eligibilityById[(string) $r['id']] ?? null;
             $consumed = ($decision['status'] ?? null) === \App\Services\EvaluationValidityService::PREVIOUSLY_FINALIZED;
             $ownerId = (string) ($r['personnel_profile_id'] ?? '');
+            $isInActiveEvaluation = array_key_exists((string) $r['id'], $inProgressUsageByOwner[$ownerId] ?? []);
+            $activeEvaluationYear = $inProgressUsageByOwner[$ownerId][(string) $r['id']] ?? null;
             $group = (string) ($openCycles[$ownerId]['personnel_group'] ?? 'FACULTY');
             $isEducation = \App\Services\EvaluationValidityService::isReusableEducationRecord($r, $group);
             $r['reuse'] = [
                 'is_eligible' => ! $consumed,
                 'is_consumed' => $consumed,
+                'is_in_active_evaluation' => $isInActiveEvaluation,
                 'last_used_academic_year' => $decision['previous_finalized_academic_year'] ?? null,
+                'active_evaluation_academic_year' => $activeEvaluationYear,
                 'eligible_again_academic_year' => null,
-                'status_label' => $consumed ? 'Used in finalized evaluation' : ($isEducation ? 'Education is reusable' : 'Available for evaluation'),
+                'status_label' => $consumed ? 'Used in finalized evaluation' : ($isInActiveEvaluation ? 'Included in active evaluation' : ($isEducation ? 'Education is reusable' : 'Available for evaluation')),
             ];
             $r['cycle_validity'] = $openCycles[(string) ($r['personnel_profile_id'] ?? '')] ? $decision : null;
         }
@@ -388,6 +432,8 @@ class PersonnelAccomplishmentController extends Controller
         $category = trim((string) ($json['category'] ?? ''));
         $categoryCode = preg_match('/^([ABC]\.\d(?:\.(?:\d+|[a-z]))?)/i', $category, $categoryMatch) ? $categoryMatch[1] : '';
         $categoryMetadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : [];
+        $portfolioFormatError = $this->validatePortfolioFormat((string) $actor['profile']['id'], $categoryMetadata);
+        if ($portfolioFormatError !== null) return $this->respond(['error' => ['code' => 'PORTFOLIO_FORMAT_MISMATCH', 'message' => $portfolioFormatError]], 422);
         $criterionAssociation = null;
         if (array_key_exists('criterion_id', $json) && ! is_string($json['criterion_id'])) {
             return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => 'The criterion identifier must be a string.']], 422);
@@ -528,7 +574,9 @@ class PersonnelAccomplishmentController extends Controller
         $actor = $this->actor();
         if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         $db = db_connect();
-        $record = $db->table('personnel_accomplishments')->where('id', $id)->get()->getRowArray();
+        $recordQuery = $db->table('personnel_accomplishments')->where('id', $id);
+        if ($db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $record = $recordQuery->get()->getRowArray();
         if ($record === null) return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Draft not found.']], 404);
         if (! hash_equals((string) $record['personnel_profile_id'], (string) $actor['profile']['id'])) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You may only save your own draft.']], 403);
         if (($record['status'] ?? '') !== 'draft' || $this->hasLockedPortfolio((string) $actor['profile']['id'])) return $this->respond(['error' => ['code' => 'DRAFT_NOT_EDITABLE', 'message' => 'This draft is no longer editable.']], 409);
@@ -584,7 +632,9 @@ class PersonnelAccomplishmentController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         }
         $db = db_connect();
-        $record = $db->table('personnel_accomplishments')->where('id', $id)->get()->getRowArray();
+        $recordQuery = $db->table('personnel_accomplishments')->where('id', $id);
+        if ($db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $record = $recordQuery->get()->getRowArray();
         if ($record === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Accomplishment not found.']], 404);
         }
@@ -630,9 +680,9 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $db = db_connect();
-        $accomplishment = $db->table('personnel_accomplishments')
-            ->where('id', $id)
-            ->get()->getRowArray();
+        $recordQuery = $db->table('personnel_accomplishments')->where('id', $id);
+        if ($db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $accomplishment = $recordQuery->get()->getRowArray();
 
         if ($accomplishment === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Accomplishment not found.']], 404);
@@ -648,9 +698,38 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
-        $protectedFields = ['claimed_points', 'points', 'points_earned', 'accepted_points', 'verified_points', 'provisional_points', 'reviewer_points', 'reviewer_score', 'verification_score', 'award_score', 'ranking_score', 'suggested_points', 'maximum_points', 'weight', 'rank', 'reviewer_id', 'review_status', 'verification_status', 'endorsed_by', 'approved_by', 'criterion_id', 'evaluation_scale_version_id', 'criterion_snapshot'];
+        // Evidence-first submissions begin as an owned draft without a criterion.
+        // Allow its owner to attach the selected published criterion on final save;
+        // established records must keep their governed classification immutable.
+        $storedCriterionSnapshot = is_string($accomplishment['criterion_snapshot'] ?? null)
+            ? (json_decode($accomplishment['criterion_snapshot'], true) ?: null)
+            : ($accomplishment['criterion_snapshot'] ?? null);
+        $isOwnedDraft = $isOwner && ! $isHr && ($accomplishment['status'] ?? '') === 'draft';
+        $canAssignDraftCriterion = $isOwnedDraft
+            && ! is_array($storedCriterionSnapshot)
+            && empty($accomplishment['criterion_id']);
+        $keepsDraftCriterion = $isOwnedDraft
+            && is_string($json['criterion_id'] ?? null)
+            && (string) ($accomplishment['criterion_id'] ?? '') !== ''
+            && hash_equals((string) $accomplishment['criterion_id'], trim($json['criterion_id']));
+        $maySendDraftCriterion = $canAssignDraftCriterion || $keepsDraftCriterion;
+        $protectedFields = ['claimed_points', 'points', 'points_earned', 'accepted_points', 'verified_points', 'provisional_points', 'reviewer_points', 'reviewer_score', 'verification_score', 'award_score', 'ranking_score', 'suggested_points', 'maximum_points', 'weight', 'rank', 'reviewer_id', 'review_status', 'verification_status', 'endorsed_by', 'approved_by', 'evaluation_scale_version_id', 'criterion_snapshot'];
+        if (! $maySendDraftCriterion) $protectedFields[] = 'criterion_id';
         if (array_intersect($protectedFields, array_keys($json)) !== []) {
             return $this->respond(['error' => ['code' => 'PROTECTED_SCORING_FIELDS', 'message' => 'Personnel cannot set or change evaluation scores.']], 422);
+        }
+        $criterionAssociation = null;
+        if (array_key_exists('criterion_id', $json) && $canAssignDraftCriterion) {
+            if (! is_string($json['criterion_id'])) return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => 'The criterion identifier must be a string.']], 422);
+            $criterionId = trim($json['criterion_id']);
+            if ($criterionId !== '') {
+                try {
+                    $criterionAssociation = $this->criterionPersistence->resolveForCreation((string) $accomplishment['personnel_profile_id'], $criterionId);
+                } catch (Throwable $e) {
+                    $status = $e->getCode() >= 400 && $e->getCode() < 600 ? $e->getCode() : 422;
+                    return $this->respond(['error' => ['code' => 'INVALID_HR_CRITERION', 'message' => $e->getMessage()]], $status);
+                }
+            }
         }
         $title = isset($json['title']) ? trim((string) $json['title']) : $accomplishment['title'];
         $domain = isset($json['domain']) ? trim((string) $json['domain']) : $accomplishment['domain'];
@@ -658,9 +737,11 @@ class PersonnelAccomplishmentController extends Controller
         $category = trim((string) ($json['category'] ?? ''));
         $categoryCode = preg_match('/^([ABC]\.\d(?:\.\d)?)/', $category, $categoryMatch) ? $categoryMatch[1] : ($accomplishment['category_code'] ?? '');
         $categoryMetadata = is_array($json['category_metadata'] ?? null) ? $json['category_metadata'] : null;
-        $criterionSnapshot = is_string($accomplishment['criterion_snapshot'] ?? null)
-            ? (json_decode($accomplishment['criterion_snapshot'], true) ?: null)
-            : ($accomplishment['criterion_snapshot'] ?? null);
+        if ($categoryMetadata !== null) {
+            $portfolioFormatError = $this->validatePortfolioFormat((string) $accomplishment['personnel_profile_id'], $categoryMetadata);
+            if ($portfolioFormatError !== null) return $this->respond(['error' => ['code' => 'PORTFOLIO_FORMAT_MISMATCH', 'message' => $portfolioFormatError]], 422);
+        }
+        $criterionSnapshot = $storedCriterionSnapshot;
         if (is_array($criterionSnapshot)) {
             // Preserve the saved HR classification/version while allowing factual detail edits.
             $categoryCode = (string) ($criterionSnapshot['category']['code'] ?? $categoryCode);
@@ -668,9 +749,13 @@ class PersonnelAccomplishmentController extends Controller
             $category = $categoryCode . ' ' . (string) ($criterionSnapshot['category']['name'] ?? '');
             $domain = (string) $accomplishment['domain'];
         }
-        $criterionSnapshot = is_string($accomplishment['criterion_snapshot'] ?? null)
-            ? (json_decode($accomplishment['criterion_snapshot'], true) ?: null)
-            : ($accomplishment['criterion_snapshot'] ?? null);
+        if ($criterionAssociation !== null) {
+            $categoryCode = $criterionAssociation['category_code'];
+            $categoryArea = $criterionAssociation['category_area'];
+            $category = $categoryCode . ' ' . ($criterionAssociation['criterion_snapshot']['category']['name'] ?? '');
+            $domain = $criterionAssociation['domain'];
+        }
+        $criterionSnapshot = $storedCriterionSnapshot;
         if (is_array($criterionSnapshot)) {
             // Preserve the saved HR classification/version while allowing factual detail edits.
             $categoryCode = (string) ($criterionSnapshot['category']['code'] ?? $categoryCode);
@@ -701,9 +786,16 @@ class PersonnelAccomplishmentController extends Controller
         $dateAchieved = isset($json['date_achieved']) || isset($json['occurrence_date']) || isset($json['date'])
             ? trim((string) ($json['date_achieved'] ?? $json['occurrence_date'] ?? $json['date'] ?? ''))
             : ($accomplishment['occurrence_date'] ?? '');
-        if ($categoryMetadata !== null && ! is_array($criterionSnapshot)) {
+        // Published HR criterion associations are authoritative for structured
+        // Faculty submissions. Their category codes can differ from the legacy
+        // hard-coded hierarchy (for example a published C.1 category with a
+        // C.1.1 leaf), so do not re-validate that pair against legacy mappings.
+        // Keep the legacy validation for records that have no criterion link.
+        if ($categoryMetadata !== null && $criterionAssociation === null && ! is_array($criterionSnapshot)) {
             $facultyError = $this->validateFacultyMetadata($categoryCode, $categoryMetadata, $dateAchieved);
             if ($facultyError !== null) return $this->respond(['error' => ['code' => 'INVALID_FACULTY_ACCOMPLISHMENT', 'message' => $facultyError]], 422);
+            $ntfError = $this->validateNtfMetadata($categoryCode, $categoryMetadata);
+            if ($ntfError !== null) return $this->respond(['error' => ['code' => 'INVALID_NTF_ACCOMPLISHMENT', 'message' => $ntfError]], 422);
         }
         $storedMetadata = json_decode((string) ($accomplishment['category_metadata'] ?? ''), true);
         $dateError = $this->validateCompletedDates((string) $dateAchieved, $categoryMetadata ?? (is_array($storedMetadata) ? $storedMetadata : []));
@@ -734,6 +826,11 @@ class PersonnelAccomplishmentController extends Controller
             if ($db->fieldExists('category_area', 'personnel_accomplishments') && $categoryArea !== '') $update['category_area'] = $categoryArea;
             if ($db->fieldExists('category_metadata', 'personnel_accomplishments') && $categoryMetadata !== null) $update['category_metadata'] = json_encode($categoryMetadata);
             if ($db->fieldExists('duplicate_hash', 'personnel_accomplishments')) $update['duplicate_hash'] = $duplicateHash;
+            if ($criterionAssociation !== null) {
+                $update['criterion_id'] = $criterionAssociation['criterion_id'];
+                $update['evaluation_scale_version_id'] = $criterionAssociation['evaluation_scale_version_id'];
+                $update['criterion_snapshot'] = json_encode($criterionAssociation['criterion_snapshot'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
             $db->table('personnel_accomplishments')->where('id', $id)->update($update);
         } catch (Throwable) {
             return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'Unable to update accomplishment.']], 500);
@@ -752,7 +849,10 @@ class PersonnelAccomplishmentController extends Controller
             return $this->respond(['error' => ['code' => 'PORTFOLIO_LOCKED', 'message' => 'Evidence cannot be changed while the portfolio is under review.']], 409);
         }
 
-        $accomplishment = db_connect()->table('personnel_accomplishments')->where('id', $id)->get()->getRowArray();
+        $db = db_connect();
+        $recordQuery = $db->table('personnel_accomplishments')->where('id', $id);
+        if ($db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $accomplishment = $recordQuery->get()->getRowArray();
         if ($accomplishment !== null
             && hash_equals((string) $accomplishment['personnel_profile_id'], (string) $actor['profile']['id'])
             && $this->isNonTeachingPersonnel((string) $actor['profile']['id'])
@@ -775,6 +875,58 @@ class PersonnelAccomplishmentController extends Controller
         return $this->respondCreated(['data' => $result['data']]);
     }
 
+    /** Scan persisted Personnel proof with ClamAV before OCR or eligibility can trust it. */
+    public function scanEvidence(string $id, string $evidenceId): mixed
+    {
+        set_time_limit(StudentEvidenceClamAvScanner::TIMEOUT_SECONDS + 30);
+        $actor = $this->actor();
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
+        if (! ValidationHelper::validateUuid($id) || ! ValidationHelper::validateUuid($evidenceId)) {
+            return $this->respond(['error' => ['code' => 'INVALID_ID', 'message' => 'Invalid accomplishment or evidence ID.']], 422);
+        }
+        $ownerId = (string) ($actor['profile']['id'] ?? '');
+        if ($this->hasLockedPortfolio($ownerId)) {
+            return $this->respond(['error' => ['code' => 'PORTFOLIO_LOCKED', 'message' => 'Evidence cannot be scanned while the portfolio is under review.']], 409);
+        }
+
+        $db = db_connect();
+        $recordQuery = $db->table('personnel_accomplishments')->where('id', $id);
+        if ($db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $record = $recordQuery->get()->getRowArray();
+        if ($record === null) return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Accomplishment not found.']], 404);
+        if (! $this->authz->personnel()->canEditAccomplishment($actor, $record)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the owner of an editable accomplishment can scan its proof.']], 403);
+        }
+
+        $evidence = $db->table('personnel_accomplishment_evidence')
+            ->where('id', $evidenceId)->where('accomplishment_id', $id)->where('status', 'active')
+            ->get()->getRowArray();
+        if ($evidence === null) return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Active proof was not found for this accomplishment.']], 404);
+        $path = $this->storage->resolveAbsolutePath((string) ($evidence['storage_path'] ?? ''));
+        if ($path === null || ! is_file($path)) {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_FILE_UNAVAILABLE', 'message' => 'The saved proof file could not be found. Upload it again.']], 410);
+        }
+
+        $scan = $this->scanner->scan($path);
+        if (($scan['status'] ?? '') === 'unavailable') {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_SCAN_UNAVAILABLE', 'message' => 'The security scanner is unavailable. Proof remains pending; try again later.']], 503);
+        }
+        if (($scan['status'] ?? '') !== 'clean') {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_SCAN_REJECTED', 'message' => 'This proof did not pass the security scan. Replace it with a clean document.']], 422);
+        }
+        $update = [
+            'security_status' => 'clean',
+            'malware_scanner' => 'clamav_1_5_4',
+            'security_validated_at' => date('Y-m-d H:i:s'),
+        ];
+        $db->table('personnel_accomplishment_evidence')->where('id', $evidenceId)->where('accomplishment_id', $id)->update($update);
+        $fresh = $db->table('personnel_accomplishment_evidence')->where('id', $evidenceId)->get()->getRowArray();
+        return $this->respond(['data' => [
+            'scan' => $scan,
+            'evidence' => $this->storage->formatSafeEvidence($fresh ?? array_merge($evidence, $update), 'personnel'),
+        ]], 200);
+    }
+
     public function delete(string $id): mixed
     {
         $actor = $this->actor();
@@ -783,9 +935,9 @@ class PersonnelAccomplishmentController extends Controller
         }
 
         $db = db_connect();
-        $accomplishment = $db->table('personnel_accomplishments')
-            ->where('id', $id)
-            ->get()->getRowArray();
+        $recordQuery = $db->table('personnel_accomplishments')->where('id', $id);
+        if ($db->fieldExists('deleted_at', 'personnel_accomplishments')) $recordQuery->where('deleted_at', null);
+        $accomplishment = $recordQuery->get()->getRowArray();
 
         if ($accomplishment === null) {
             return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Accomplishment not found.']], 404);
@@ -796,24 +948,31 @@ class PersonnelAccomplishmentController extends Controller
         if (! $isOwner && ! $isHr) {
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You cannot delete this accomplishment.']], 403);
         }
-        if ($isOwner && ! $isHr && $this->hasLockedPortfolio((string) $actor['profile']['id'])) {
-            return $this->respond(['error' => ['code' => 'PORTFOLIO_LOCKED', 'message' => 'This accomplishment cannot be deleted while the portfolio is under review.']], 409);
+        if (! $db->fieldExists('deleted_at', 'personnel_accomplishments')) {
+            return $this->respond(['error' => ['code' => 'SOFT_DELETE_UNAVAILABLE', 'message' => 'The accomplishment removal update is not installed yet. Please apply database migrations and retry.']], 503);
         }
 
-        // Clean up attached physical evidence files
-        $evidenceRows = $db->table('personnel_accomplishment_evidence')
-            ->where('accomplishment_id', $id)
-            ->get()->getResultArray();
-
-        foreach ($evidenceRows as $ev) {
-            if (! empty($ev['storage_path'])) {
-                $this->storage->deletePhysicalFile($ev['storage_path']);
+        $now = date('Y-m-d H:i:s');
+        $db->transBegin();
+        try {
+            $db->table('personnel_accomplishments')
+                ->where('id', $id)
+                ->where('personnel_profile_id', $accomplishment['personnel_profile_id'])
+                ->where('deleted_at', null)
+                ->update(['deleted_at' => $now, 'updated_at' => $now]);
+            if ($db->transStatus() === false || $db->affectedRows() !== 1) {
+                throw new \RuntimeException('ACCOMPLISHMENT_REMOVE_FAILED');
             }
+            $db->transCommit();
+        } catch (Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'Personnel accomplishment removal failed for {id}: {message}', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+            ]);
+            return $this->respond(['error' => ['code' => 'REMOVE_FAILED', 'message' => 'The accomplishment could not be removed. Please refresh and try again.']], 500);
         }
 
-        $db->table('personnel_accomplishment_evidence')->where('accomplishment_id', $id)->delete();
-        $db->table('personnel_accomplishments')->where('id', $id)->delete();
-
-        return $this->respond(['data' => ['message' => 'Accomplishment and linked evidence deleted successfully.']]);
+        return $this->respond(['data' => ['message' => 'Removed from your accomplishment list. Saved evaluation records and evidence are preserved.']]);
     }
 }

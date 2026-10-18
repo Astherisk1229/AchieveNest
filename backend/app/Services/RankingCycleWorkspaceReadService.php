@@ -115,11 +115,12 @@ final class RankingCycleWorkspaceReadService
 
     public function results(array $actor, string $cycleId, string $trackKey, ?array $filters = null): array
     {
-        $page = $filters === null ? null : $this->pageEvaluations($actor, $cycleId, $trackKey, ['completed'], $filters, true);
+        $resultStatuses = ['ready_for_finalization', 'completed'];
+        $page = $filters === null ? null : $this->pageEvaluations($actor, $cycleId, $trackKey, $resultStatuses, $filters, true);
         $context = $this->context($actor, $cycleId, $trackKey, $page === null ? null : array_column($page['rows'], 'personnel_profile_id'));
         $people = $this->personnelById($context);
         $rows = [];
-        $evaluations = $this->evaluationRows($context['evaluation_period_id'], array_keys($people), ['completed']);
+        $evaluations = $this->evaluationRows($context['evaluation_period_id'], array_keys($people), $resultStatuses);
         if ($page !== null) {
             $selectedIds = array_fill_keys(array_column($page['rows'], 'id'), true);
             $evaluations = array_values(array_filter($evaluations, static fn(array $evaluation): bool => isset($selectedIds[$evaluation['id']])));
@@ -141,19 +142,21 @@ final class RankingCycleWorkspaceReadService
             $entry = $people[$personnelId] ?? null;
             if (! $entry) continue;
             $report = $reports[(string) $evaluation['id']] ?? null;
-            if ($report === null) continue;
+            if (($evaluation['status'] ?? '') === 'completed' && $report === null) continue;
+            $personnelGroup = (string) ($entry['personnel']['personnel_group'] ?? '');
+            $resultStatus = self::resultStatus((string) ($evaluation['status'] ?? ''), $personnelGroup);
             $rows[] = $entry + [
                 'evaluation' => $evaluation,
                 'result' => ['evaluation' => ['completed_at' => $evaluation['finalized_at'] ?? null]],
-                'result_status' => 'completed',
+                'result_status' => $resultStatus,
                 'report_score' => (float) ($report['summary_score'] ?? 0),
                 'allowed_actions' => self::allowedActions(
                     'results',
-                    'completed',
+                    (string) ($evaluation['status'] ?? ''),
                     false,
                     $this->isHr($actor),
                     $this->isAssignedEvaluator($actor, $evaluation),
-                    (string) ($entry['personnel']['personnel_group'] ?? ''),
+                    $personnelGroup,
                     true
                 ),
             ];
@@ -187,17 +190,22 @@ final class RankingCycleWorkspaceReadService
             $builder->where('EXISTS (SELECT 1 FROM dean_assignments da WHERE da.personnel_profile_id=pe.personnel_profile_id AND da.is_active=1)', null, false);
         }
         if ($requireReport) {
-            $builder->where('EXISTS (SELECT 1 FROM personnel_evaluation_reports r WHERE r.evaluation_id=pe.id)', null, false);
+            $builder->groupStart()
+                ->where('pe.status !=', 'completed')
+                ->orWhere('EXISTS (SELECT 1 FROM personnel_evaluation_reports r WHERE r.evaluation_id=pe.id)', null, false)
+                ->groupEnd();
         }
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') $builder->groupStart()->like('p.full_name', $search)->orLike('p.institutional_id', $search)->groupEnd();
         $status = (string) ($filters['status'] ?? 'all');
         $mappedStatus = match ($status) {
             'ready_for_evaluation' => 'submitted', 'in_progress' => 'in_evaluation',
-            'returned_for_revision' => 'returned_for_revision', 'completed' => 'ready_for_finalization',
+            'returned_for_revision' => 'returned_for_revision',
+            'endorsed_to_hr', 'awaiting_finalization' => $requireReport ? 'ready_for_finalization' : null,
+            'completed' => $requireReport ? 'completed' : 'ready_for_finalization',
             default => null,
         };
-        if ($mappedStatus !== null && !$requireReport) $builder->where('pe.status', $mappedStatus);
+        if ($mappedStatus !== null) $builder->where('pe.status', $mappedStatus);
         $total = (clone $builder)->countAllResults(false);
         $rows = $builder->orderBy('pe.submitted_at', 'DESC')->orderBy('pe.id', 'ASC')
             ->limit($filters['per_page'], $filters['offset'])->get()->getResultArray();
@@ -317,6 +325,12 @@ final class RankingCycleWorkspaceReadService
         };
     }
 
+    private static function resultStatus(string $status, string $personnelGroup): string
+    {
+        if ($status === 'completed') return 'completed';
+        return strtoupper($personnelGroup) === 'FACULTY' ? 'endorsed_to_hr' : 'awaiting_finalization';
+    }
+
     private static function workflowState(string $status, string $personnelGroup, string $responsibility, array $allowedActions): ?array
     {
         $workflowActions = ['start_evaluation', 'evaluate_items', 'return_for_revision', 'mark_ready', 'review_final_rank', 'finalize_evaluation'];
@@ -327,7 +341,7 @@ final class RankingCycleWorkspaceReadService
         }
         if ($status === 'ready_for_finalization') {
             return strtoupper($personnelGroup) === 'FACULTY'
-                ? ['key' => 'with_hr_for_final_rank_review', 'label' => 'With HR for Final Rank Review']
+                ? ['key' => 'with_hr_for_finalization', 'label' => 'Ready for HR to complete portfolio review']
                 : ['key' => 'with_assigned_hr_for_finalization', 'label' => 'With Assigned HR for Finalization'];
         }
 
@@ -357,7 +371,7 @@ final class RankingCycleWorkspaceReadService
             array_push($actions, 'evaluate_items', 'return_for_revision', 'mark_ready');
         }
         if ($status === 'ready_for_finalization' && $isHr && $isAssignedEvaluator) {
-            $actions[] = strtoupper($personnelGroup) === 'FACULTY' ? 'review_final_rank' : 'finalize_evaluation';
+            $actions[] = 'finalize_evaluation';
         }
         return $actions;
     }

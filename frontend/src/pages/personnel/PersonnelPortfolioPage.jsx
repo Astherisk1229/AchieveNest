@@ -17,7 +17,7 @@ import { fetchOwnProfileFields, lengthOfServiceLabel } from '../../services/pers
 import { usePersonnelPortfolio } from '../../hooks/usePersonnelPortfolio'
 import PersonnelPortfolioController from '../../controllers/PersonnelPortfolioController'
 import { hasValidPersonnelEvidence } from '../../utils/personnelEvidence'
-import { derivePersonnelSubmissionContext, derivePersonnelSubmissionActionGate } from '../../utils/personnelPortfolioState'
+import { derivePersonnelSubmissionContext, derivePersonnelSubmissionActionGate, personnelSubmissionReadiness } from '../../utils/personnelPortfolioState'
 import { usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
@@ -25,14 +25,15 @@ import personnelEvaluationResultService from '../../services/PersonnelEvaluation
 import { getCurrentPersonnelEvaluationPeriod } from '../../services/personnelEvaluationPeriodService'
 import { getCurrentEligibility } from '../../services/personnelPortfolioService'
 import { facultySubcategoryByCode } from '../../config/facultyAcademicAccomplishmentSchema'
+import { CANONICAL_ROLES, normalizeAssignedRoles } from '../../utils/roleContext'
 
-const isFacultyResearchOutput = item => {
-  const code = String(item?.category_code || '').trim().toUpperCase()
-  if (code === 'B.3' || code === 'B3_RESEARCH' || code.startsWith('B.3.')) return true
-  if (code !== 'B.2' && code !== 'B2_PUBLICATION' && !code.startsWith('B.2.')) return false
-  const metadata = item?.category_metadata || {}
-  const publicationType = String(metadata?.details?.publication_type || metadata?.publication_type || '').trim().toLowerCase()
-  return publicationType.replace(/[-\s]+/g, '_') === 'research_output'
+const userHasDeanRole = user => {
+  const roles = [
+    ...(Array.isArray(user?.assigned_roles) ? user.assigned_roles : []),
+    ...(Array.isArray(user?.roles) ? user.roles : []),
+    ...(Array.isArray(user?.role_assignments) ? user.role_assignments : [])
+  ]
+  return normalizeAssignedRoles(roles, user?.account_type || user?.user_type).includes(CANONICAL_ROLES.DEAN)
 }
 
 const asObject = value => {
@@ -42,6 +43,28 @@ const asObject = value => {
     const parsed = JSON.parse(value)
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
   } catch { return {} }
+}
+
+const isFacultyResearchOutput = item => {
+  const metadata = asObject(item?.category_metadata)
+  const code = String(item?.category_code || item?.subcategory_code || metadata.subcategory_code || '').trim().toUpperCase()
+  if (['B.3', 'B3_RESEARCH'].includes(code) || code.startsWith('B.3.')) return true
+  if (!['B.2', 'B2_PUBLICATION'].includes(code) && !code.startsWith('B.2.')) return false
+  const publicationType = String(metadata.details?.publication_type || metadata.publication_type || '').trim().toLowerCase()
+  return publicationType.replace(/[\s_-]+/g, ' ') === 'research output'
+}
+
+// Eligibility responses may contain structured API issues (for example
+// { code, message }) alongside plain text reasons. React cannot render those
+// objects directly, so reduce each reason to its human-readable message first.
+const eligibilityReasonText = value => {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (value && typeof value === 'object') {
+    if (typeof value.message === 'string') return value.message
+    if (typeof value.label === 'string') return value.label
+    if (typeof value.code === 'string') return value.code.replaceAll('_', ' ').toLowerCase()
+  }
+  return ''
 }
 
 const portfolioCriterionLabel = item => {
@@ -60,8 +83,10 @@ const provisionalScoringFor = item => {
   const snapshot = asObject(item?.criterion_snapshot)
   const saved = asObject(item?.provisional_scoring || snapshot.provisional_scoring)
   if (Object.keys(saved).length > 0) return saved
-  const configuredPoints = Number(snapshot.configured_points)
-  if (snapshot.evaluator_judgment_required === true || Number(snapshot.evaluator_judgment_required) === 1) {
+  const criterion = asObject(snapshot.criterion)
+  const configuredPoints = Number(snapshot.configured_points ?? criterion.configured_points ?? criterion.maximum_points)
+  if (snapshot.evaluator_judgment_required === true || Number(snapshot.evaluator_judgment_required) === 1
+    || criterion.evaluator_judgment_required === true || Number(criterion.evaluator_judgment_required) === 1) {
     return { status: 'evaluator_rating_required', maximum_points: snapshot.criterion_cap ?? snapshot.category?.max_points }
   }
   if (Number.isFinite(configuredPoints) && configuredPoints > 0) {
@@ -166,6 +191,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const navigate = useNavigate()
   const location = useLocation()
   const activeUser = currentUser || getCurrentUser()
+  const hasDeanRole = userHasDeanRole(activeUser)
 
   const {
     portfolio,
@@ -201,6 +227,9 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const [submitError, setSubmitError] = useState('')
   const [submitSuccess, setSubmitSuccess] = useState('')
   const reviewRef = useRef(null)
+  const eligibilityReasons = (Array.isArray(eligibility?.eligibility_reasons) ? eligibility.eligibility_reasons : [])
+    .map(eligibilityReasonText)
+    .filter(Boolean)
 
   useEffect(() => {
     if (new URLSearchParams(location.search).has('review')) setReviewOpen(true)
@@ -260,7 +289,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const submissionGate = derivePersonnelSubmissionActionGate({
     portfolioState: actionState,
     evaluationPeriod,
-    eligibilityStatus: eligibility?.submission_readiness_status ?? eligibility?.eligibility_status,
+    eligibilityStatus: personnelSubmissionReadiness(eligibility),
     isSubmitting
   })
   const eligiblePreview = useMemo(() => PersonnelPortfolioController.eligiblePortfolioPreview(portfolio), [portfolio])
@@ -276,11 +305,14 @@ export default function PersonnelPortfolioPage({ currentUser }) {
   const missingProofItems = submissionItems.filter(item => !hasValidPersonnelEvidence(item))
   const researchOutputIncluded = submissionItems.some(item => isFacultyResearchOutput(item) && hasValidPersonnelEvidence(item))
   const researchOutputMissing = facultySubmission && !researchOutputIncluded
-  const submissionReady = (eligibility?.submission_readiness_status ?? eligibility?.eligibility_status) === 'eligible' && !researchOutputMissing
+  const researchReviewer = eligibility?.review_responsibility === 'hr' || hasDeanRole ? 'HR' : 'the Dean'
+  const submissionReady = personnelSubmissionReadiness(eligibility) === 'eligible'
   const submissionReadinessLabel = nonTeachingSubmission && submissionReady
     ? 'Eligible — HR will complete Area A during evaluation'
-    : researchOutputMissing ? 'Research record needed' : eligibility?.eligibility_label || eligibility?.eligibility_status || 'Pending'
-  const canConfirmSubmission = !loading && !portfolioError && !submissionGate.disabled && submissionItems.length > 0 && missingProofItems.length === 0 && !researchOutputMissing
+    : facultySubmission && researchOutputMissing && submissionReady
+      ? 'Ready to submit — research evidence will be checked after submission'
+      : eligibility?.eligibility_label || eligibility?.eligibility_status || 'Pending'
+  const canConfirmSubmission = !loading && !portfolioError && !submissionGate.disabled && submissionItems.length > 0 && missingProofItems.length === 0
 
   const confirmSubmission = async () => {
     if (!canConfirmSubmission || isSubmitting) return
@@ -291,7 +323,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
       if (submissionGate.action !== 'resubmit') {
         const currentEligibility = await getCurrentEligibility(evaluationPeriod.id)
         setEligibility(currentEligibility)
-        if ((currentEligibility?.submission_readiness_status ?? currentEligibility?.eligibility_status) !== 'eligible') {
+        if (personnelSubmissionReadiness(currentEligibility) !== 'eligible') {
           setSubmitError('Eligibility has changed. Review the requirements below before submitting.')
           return
         }
@@ -602,8 +634,8 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 <p>Service: <strong className="capitalize">{String(eligibility.service_requirement?.status || 'pending').replaceAll('_', ' ')}</strong></p>
                 <p>Submission readiness: <strong>{submissionReadinessLabel}</strong></p>
               </div> : <p className="mt-2 text-amber-800">{eligibilityError || submissionGate.periodUnavailableReason || 'Eligibility is being checked.'}</p>}
-              {facultySubmission && <p className={`mt-2 text-sm font-semibold ${researchOutputMissing ? 'text-rose-700' : 'text-emerald-700'}`}>Research with proof in this submission: {researchOutputMissing ? 'Missing — add B.3 Conduct of Research or B.2 Publication marked Research Output, with proof.' : 'Included — the Dean will verify it before a rank is recommended.'}</p>}
-              {eligibility?.eligibility_reasons?.filter(reason => !nonTeachingSubmission || !/annual.review|annual review/i.test(reason)).length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700 dark:text-slate-300">{eligibility.eligibility_reasons.filter(reason => !nonTeachingSubmission || !/annual.review|annual review/i.test(reason)).map((reason, index) => <li key={index}>{reason}</li>)}</ul>}
+              {facultySubmission && <p className={`mt-2 text-sm font-semibold ${researchOutputMissing ? 'text-amber-800' : 'text-emerald-700'}`}>Research evidence: {researchOutputMissing ? `No qualifying research record with proof is included in this submission. You may still submit; ${researchReviewer} must verify the research requirement before evaluation.` : `Research record and proof detected. ${researchReviewer} will evaluate this portfolio and verify the evidence.`}</p>}
+              {eligibilityReasons.filter(reason => (!nonTeachingSubmission || !/annual.review|annual review/i.test(reason)) && !/research output|research evidence/i.test(reason)).length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700 dark:text-slate-300">{eligibilityReasons.filter(reason => (!nonTeachingSubmission || !/annual.review|annual review/i.test(reason)) && !/research output|research evidence/i.test(reason)).map((reason, index) => <li key={index}>{reason}</li>)}</ul>}
             </div>}
 
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/25" role="note" aria-labelledby="estimated-points-heading">
@@ -641,7 +673,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
                 </div>
               )}
               {missingProofItems.length > 0 && <p className="mt-2 text-sm font-semibold text-rose-700">{missingProofItems.length} eligible record(s) need proof before submission.</p>}
-              {researchOutputMissing && <p className="mt-2 text-sm font-semibold text-rose-700">Submission requires B.3 Conduct of Research or B.2 Publication marked Research Output, with proof, for this period. Add or correct the record on Profile.</p>}
+              {researchOutputMissing && <p className="mt-2 text-sm font-semibold text-amber-800">No qualifying research record with proof is included. The portfolio can be submitted, but the research requirement must be verified before evaluation begins.</p>}
             </div>
 
             {submitError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">{submitError}</p>}
@@ -649,7 +681,7 @@ export default function PersonnelPortfolioPage({ currentUser }) {
             <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
               <button type="button" onClick={() => navigate('/personnel/dashboard')} className="rounded-xl border border-emerald-700 px-4 py-2.5 text-sm font-bold text-emerald-800 dark:text-emerald-300">Manage accomplishments on Profile</button>
               <button type="button" onClick={confirmSubmission} disabled={!canConfirmSubmission} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? 'Submitting…' : submissionGate.action === 'resubmit' ? 'Confirm and resubmit' : 'Confirm and submit for evaluation'}</button>
-              {!canConfirmSubmission && !isSubmitting && <span className="text-sm text-slate-600 dark:text-slate-300">{submissionGate.periodUnavailableReason || (submissionGate.eligibilityBlocked ? (nonTeachingSubmission ? 'Service requirements are not complete.' : 'Annual review or service requirements are not complete.') : researchOutputMissing ? 'Add a Research Output with proof for this period.' : missingProofItems.length ? 'Attach proof to every eligible record.' : submissionItems.length === 0 ? 'Add an eligible accomplishment first.' : '')}</span>}
+              {!canConfirmSubmission && !isSubmitting && <span className="text-sm text-slate-600 dark:text-slate-300">{submissionGate.periodUnavailableReason || (submissionGate.eligibilityBlocked ? (nonTeachingSubmission ? 'Service requirements are not complete.' : 'Annual review or service requirements are not complete.') : missingProofItems.length ? 'Attach proof to every eligible record.' : submissionItems.length === 0 ? 'Add an eligible accomplishment first.' : '')}</span>}
             </div>
           </section>
         )}

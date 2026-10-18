@@ -33,6 +33,9 @@ class AuthorityRankingRosterService
         $group = $this->trackGroup($trackKey);
         $track = $this->db->table('personnel_evaluation_periods')->where('ranking_cycle_id', $cycleId)->where('personnel_group', $group)->get()->getRowArray();
         if (! $track) throw new InvalidArgumentException('RANKING_TRACK_NOT_FOUND: Requested classification track is not configured for this cycle.');
+        if ($includeReadOnly && $group === 'NON_TEACHING_FACULTY') {
+            throw new InvalidArgumentException('ANNUAL_REVIEW_NOT_APPLICABLE: Non-Teaching Faculty do not have annual reviews.');
+        }
 
         [$authorityType, $scopeType, $scopeId] = $this->actorScope($actor);
         $actorId = (string) ($actor['profile']['id'] ?? '');

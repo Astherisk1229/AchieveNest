@@ -21,8 +21,7 @@ final class NonTeachingRankRecommendationService
         $present = trim((string) ($rank['present_rank'] ?? ''));
         $applied = trim((string) ($rank['rank_applied_for'] ?? ''));
         $transition = $threshold !== null && $total >= $threshold && $applied !== ''
-            && ($rank['rank_applied_for_status'] ?? '') === 'confirmed'
-            ? $this->confirmedTargetTransition($profileId, $present, $applied, $rank) : null;
+            ? $this->targetTransition($profileId, $present, $applied, $rank) : null;
         $targetValid = (bool) ($transition['allowed'] ?? false);
         $outcome = self::outcome($total, $threshold, $present, $applied,
             (string) ($rank['rank_applied_for_status'] ?? ''), $targetValid);
@@ -45,10 +44,10 @@ final class NonTeachingRankRecommendationService
         if ($applicationStatus === 'MASTERS_REQUIRED') {
             return ['rank' => $present, 'status' => 'retained_masters_required'];
         }
-        if ($applied === '' || $applicationStatus !== 'confirmed') {
-            return ['rank' => null, 'status' => $applicationStatus === 'RULE_REVIEW_REQUIRED'
-                ? 'pending_rule_review' : 'pending_rank_application_confirmation'];
+        if ($applicationStatus === 'RULE_REVIEW_REQUIRED' || $applicationStatus === 'UNRESOLVED') {
+            return ['rank' => null, 'status' => 'pending_rule_review'];
         }
+        if ($applied === '') return ['rank' => $present, 'status' => 'retained_present_rank'];
         return $targetValid
             ? ['rank' => $applied, 'status' => 'passed_applied_rank']
             : ['rank' => null, 'status' => 'pending_rule_review'];
@@ -64,26 +63,37 @@ final class NonTeachingRankRecommendationService
         return count($values) === 1 && $values[0] > 0 ? $values[0] : null;
     }
 
-    private function confirmedTargetTransition(string $profileId, string $present, string $applied, array $rank): ?array
+    private function targetTransition(string $profileId, string $present, string $applied, array $rank): ?array
     {
         $decisionId = (string) ($rank['rank_applied_for_decision_id'] ?? '');
-        if ($decisionId === '') return null;
-        $decision = $this->db->table('personnel_rank_applied_for_decisions')
-            ->select('present_rank_code_snapshot,confirmed_rank_code')
-            ->where('id', $decisionId)->where('status', 'confirmed')->get()->getRowArray();
-        if (! $decision) return null;
         $catalog = new FacultyRankCatalogService();
         $source = $catalog->getRankByCode($present) ?? $catalog->getRankByLabel($present);
         $target = $catalog->getRankByCode($applied) ?? $catalog->getRankByLabel($applied);
-        if (! $source || ! $target || $source['rank_code'] !== $decision['present_rank_code_snapshot']
-            || $target['rank_code'] !== $decision['confirmed_rank_code']) return null;
-        $hasPhd = $this->db->table('personnel_credentials')->where([
+        if (! $source || ! $target) return null;
+        if ($decisionId !== '') {
+            $decision = $this->db->table('personnel_rank_applied_for_decisions')
+                ->select('present_rank_code_snapshot,confirmed_rank_code')
+                ->where('id', $decisionId)->where('status', 'confirmed')->get()->getRowArray();
+            if (! $decision || $source['rank_code'] !== $decision['present_rank_code_snapshot']
+                || $target['rank_code'] !== $decision['confirmed_rank_code']) return null;
+        } else {
+            $validTargets = $this->progression->getAllowedTransitions($source['rank_code'], [
+                'personnel_group' => 'non_teaching_faculty', 'personnel_profile_id' => $profileId,
+                'has_verified_phd' => $this->hasVerifiedDoctorate($profileId),
+            ])['all_valid_target_ranks'] ?? [];
+            if (! in_array($target['rank_code'], array_column($validTargets, 'rank_code'), true)) return null;
+        }
+        $transition = $this->progression->validateTransition($source['rank_code'], $target['rank_code'], [
+            'personnel_profile_id' => $profileId, 'has_verified_phd' => $this->hasVerifiedDoctorate($profileId),
+        ]);
+        return $transition;
+    }
+
+    private function hasVerifiedDoctorate(string $profileId): bool
+    {
+        return $this->db->tableExists('personnel_credentials') && $this->db->table('personnel_credentials')->where([
             'personnel_profile_id' => $profileId, 'credential_type' => 'degree',
             'degree_level' => 'doctorate', 'verification_status' => 'verified', 'record_state' => 'active',
         ])->countAllResults() > 0;
-        $transition = $this->progression->validateTransition($source['rank_code'], $target['rank_code'], [
-            'personnel_profile_id' => $profileId, 'has_verified_phd' => $hasPhd,
-        ]);
-        return $transition;
     }
 }

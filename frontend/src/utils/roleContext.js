@@ -273,7 +273,7 @@ export function isWorkspaceAvailable(user = {}, workspace = '') {
 
 export function getWorkspaceLandingRoute(workspace = '') {
   switch (normalizeRoleContext(workspace)) {
-    case CANONICAL_ROLES.DEAN: return DEAN_ROUTES.DASHBOARD
+    case CANONICAL_ROLES.DEAN: return DEAN_ROUTES.FACULTY_EVALUATION
     case CANONICAL_ROLES.PERSONNEL: return '/personnel/dashboard?tab=overview'
     case CANONICAL_ROLES.PROGRAM_COORDINATOR: return '/personnel/dashboard?tab=overview'
     case CANONICAL_ROLES.ORGANIZATION_MODERATOR: return '/personnel/dashboard?tab=overview'
@@ -310,6 +310,7 @@ export function resolveRouteOwnership(pathname = '', workspaceHint = '') {
     return { type: ROUTE_OWNERSHIP_TYPES.SHARED }
   }
   if (path === DEAN_ROUTES.DASHBOARD ||
+      path === DEAN_ROUTES.FACULTY_EVALUATION ||
       path === DEAN_ROUTES.FACULTY_RANKING_REVIEWS ||
       path.startsWith(`${DEAN_ROUTES.FACULTY_RANKING_REVIEWS}/`) ||
       path === DEAN_ROUTES.COLLEGE_PERSONNEL ||

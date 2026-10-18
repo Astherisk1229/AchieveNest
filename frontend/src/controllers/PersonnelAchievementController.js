@@ -147,6 +147,7 @@ export default class PersonnelAchievementController {
     // 1. Prepare update payload
     const payload = {
       title: updateData.title,
+      criterion_id: updateData.criterion_id || undefined,
       category: updateData.category,
       category_area: updateData.category_area || (updateData.category?.startsWith('A.') ? 'areaA' : updateData.category?.startsWith('B.') ? 'areaB' : 'areaC'),
       domain: updateData.domain || (updateData.category?.startsWith('A.') ? 'professional_development' : updateData.category?.startsWith('B.') ? 'productivity_creative_work' : 'service_leadership'),

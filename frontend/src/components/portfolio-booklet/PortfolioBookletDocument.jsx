@@ -27,7 +27,25 @@ export default function PortfolioBookletDocument({
   const print = useBookletPrint(proofCount)
 
   const scrollRef = useRef(null)
+  const previousSelectedSourceId = useRef(selectedSourceId)
   const [zoom, setZoom] = useState(1)
+  useEffect(() => {
+    const container = scrollRef.current
+    const selectionChanged = previousSelectedSourceId.current !== selectedSourceId
+    previousSelectedSourceId.current = selectedSourceId
+    if (!container || !selectionChanged || !selectedSourceId) return
+
+    const selectedRow = container.querySelector('[aria-pressed="true"]')
+    if (!selectedRow) return
+
+    const containerRect = container.getBoundingClientRect()
+    const rowRect = selectedRow.getBoundingClientRect()
+    const rowTop = (rowRect.top - containerRect.top) / zoom
+    const rowHeight = rowRect.height / zoom
+    const targetTop = container.scrollTop + rowTop - (container.clientHeight - rowHeight) / 2
+    container.scrollTo({ top: targetTop, behavior: 'smooth' })
+  }, [selectedSourceId, pages, zoom])
+
   useEffect(() => {
     const element = scrollRef.current
     if (!element) return undefined

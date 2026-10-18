@@ -13,7 +13,7 @@ vi.mock('../../../services/authService', () => ({ getCurrentUser: () => session.
 vi.mock('../../../context/AuthContext', () => ({ useAuth: () => ({ user: session.user, activeRoleContext: session.user?.active_role_context || 'personnel' }) }))
 vi.mock('../../../hooks/usePersonnelPortfolio', () => ({ usePersonnelPortfolio: () => ({ portfolio: null, totals: {} }) }))
 vi.mock('../modals/FacultyAcademicSubmissionModal', () => ({ default: () => <div data-testid="faculty-submission-modal" /> }))
-vi.mock('../modals/PersonnelSubmissionModal', () => ({ default: () => <div data-testid="ntf-submission-modal" /> }))
+vi.mock('../modals/NonTeachingFacultySubmissionModal', () => ({ default: () => <div data-testid="ntf-submission-modal" /> }))
 vi.mock('../program-coordinator/CoordinatorDashboardPage', () => ({ default: () => <div data-testid="coordinator-dashboard" /> }))
 vi.mock('../organization-moderator/OrganizationModeratorDashboardPage', () => ({ default: () => <div data-testid="moderator-dashboard" /> }))
 vi.mock('../../hr-admin/HREvaluationSubmissionsPage', () => ({ HREvaluationSubmissionsPage: () => <div data-testid="dean-evaluation-workspace" /> }))
@@ -131,6 +131,11 @@ describe('Personnel Dashboard accomplishments timeline', () => {
   it('does not offer repository deletion for verified accomplishments', () => {
     const verified = new AchievementModel({ id: 'verified', title: 'Verified record', status: 'verified' })
     expect(PersonnelDashboardController.toTimelineEntry(verified).is_deletable).toBe(false)
+  })
+
+  it('allows deleting a verified record when the backend confirms it is not in an active evaluation', () => {
+    const verified = new AchievementModel({ id: 'verified-unused', title: 'Verified but unused', status: 'verified', is_deletable: true })
+    expect(PersonnelDashboardController.toTimelineEntry(verified).is_deletable).toBe(true)
   })
 
   it('flags a submitted record without a category for review instead of guessing', () => {

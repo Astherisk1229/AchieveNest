@@ -41,7 +41,11 @@ final class PersonnelEvaluationItemScorePreviewService
             $fixedNtf = $this->nonTeachingFixedCriterion($item);
             $categoryCaps[$code] = $fixedNtf !== null
                 ? $fixedNtf['category_max']
-                : (float) ($snapshot['criterion_cap'] ?? $category['max_points'] ?? PHP_FLOAT_MAX);
+                // Sum sibling subcriteria first, then apply the parent category
+                // maximum. criterion_cap is the per-item ceiling and can be
+                // lower than the parent cap (for example, each C.1 leaf is 20
+                // while the C.1 category allows 30 across multiple items).
+                : (float) ($category['max_points'] ?? $snapshot['criterion_cap'] ?? PHP_FLOAT_MAX);
             $areaCaps[$area] = (float) ($category['area_max_points'] ?? $areaCaps[$area] ?? PHP_FLOAT_MAX);
         }
         foreach ($graduateUnits as $level) $categories[$level['category_code']] = ($categories[$level['category_code']] ?? 0.0) + $level['points'];

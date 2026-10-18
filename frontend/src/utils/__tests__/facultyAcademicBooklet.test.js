@@ -94,9 +94,9 @@ describe('Faculty Academic booklet integrity', () => {
       'C.1.1', 'C.1.2', 'C.1.3', 'C.1.4', 'C.2.1', 'C.2.2', 'C.2.3', 'C.3'
     ])
     expect(FACULTY_ACADEMIC_CRITERIA.find((criterion) => criterion.key === 'A.1')?.columns).toEqual([
-      'Date / Period', 'Course / Degree', 'School / University', 'Remarks / Classification'
+      'Date(s)', 'Course/Degree', 'School/University', 'Remarks'
     ])
-    expect(FACULTY_ACADEMIC_CRITERIA.find((criterion) => criterion.key === 'B.3')?.columns[2]).toBe('Institution / Granting Body')
+    expect(FACULTY_ACADEMIC_CRITERIA.find((criterion) => criterion.key === 'B.3')?.columns[2]).toBe('Granted by')
     expect(FACULTY_ACADEMIC_CRITERIA.find((criterion) => criterion.key === 'C.3')?.columns).toHaveLength(2)
   })
 })

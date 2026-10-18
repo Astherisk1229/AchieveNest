@@ -147,9 +147,7 @@ describe('permissionResolver', () => {
       const labels = nav.map(n => n.label)
 
       expect(labels).toEqual([
-        'Dean Dashboard',
-        'Annual Review & Eligibility',
-        'Faculty Ranking Reviews',
+        'Faculty Evaluation',
         'College Personnel Roster'
       ])
       expect(labels).not.toContain('Edit Portfolio')

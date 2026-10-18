@@ -1,6 +1,32 @@
 import React from 'react'
 import { Award, X } from 'lucide-react'
+import FacultyEvaluationSummary from '../../components/evaluation/FacultyEvaluationSummary'
 import CompletedEvaluationSummary from '../../components/evaluation/CompletedEvaluationSummary'
+
+const facultySummaryReport = result => ({
+  official_summary: result.summary || {},
+  criteria_snapshot: result.criteria_snapshot || {},
+  items: result.items || [],
+  section_totals: result.scores?.areas || {},
+  grand_total: result.scores?.total ?? 0,
+  personnel: {
+    full_name: result.personnel?.name,
+    institutional_id: result.personnel?.institutional_id,
+    position_title: result.personnel?.position,
+    department_name: result.personnel?.department,
+    college_name: result.personnel?.college,
+  },
+  assignment: {
+    position: result.personnel?.position,
+    department: result.personnel?.department,
+    college: result.personnel?.college,
+  },
+  evaluation_period: result.evaluation_period,
+  portfolio_version: result.evaluation?.version_number,
+  status: result.evaluation?.status,
+  completed_at: result.evaluation?.completed_at,
+  generated_at: result.result_snapshot?.generated_at,
+})
 
 export default function PersonnelEvaluationResultModal({ result, loading, error, onClose }) {
   if (!result && !loading && !error) return null
@@ -15,7 +41,9 @@ export default function PersonnelEvaluationResultModal({ result, loading, error,
         <div className="p-4 sm:p-6">
           {loading && <p className="py-12 text-center text-sm text-slate-500">Loading your completed result…</p>}
           {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>}
-          {result && <CompletedEvaluationSummary result={result} context={result.summary_context || {}} embedded showApprovalLines={false}/>}
+          {result?.personnel?.group === 'FACULTY'
+            ? <FacultyEvaluationSummary report={facultySummaryReport(result)} context={result.summary_context || {}} />
+            : result && <CompletedEvaluationSummary result={result} context={result.summary_context || {}} embedded showApprovalLines={false}/>}
         </div>
       </div>
     </div>

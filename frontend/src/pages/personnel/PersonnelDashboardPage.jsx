@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
 import PersonnelEvidencePreviewModal from './modals/PersonnelEvidencePreviewModal'
 import AchievementPreviewModal from './modals/AchievementPreviewModal'
-import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import NonTeachingFacultySubmissionModal from './modals/NonTeachingFacultySubmissionModal'
 import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
 import CoordinatorDashboardPage from './program-coordinator/CoordinatorDashboardPage'
 import OrganizationModeratorDashboardPage from './organization-moderator/OrganizationModeratorDashboardPage'
@@ -31,6 +31,7 @@ import {
 import { getCurrentUser } from '../../services/authService'
 import { useAuth } from '../../context/AuthContext'
 import PersonnelDashboardController from '../../controllers/PersonnelDashboardController'
+import PersonnelAchievementController from '../../controllers/PersonnelAchievementController'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import PersonnelProfilePhotoService from '../../services/PersonnelProfilePhotoService'
 import personnelAccomplishmentService from '../../services/personnelAccomplishmentService'
@@ -39,7 +40,7 @@ import { AchieveNestLogo } from '../../components/brand'
 import AchievementReuseBadge from '../../components/common/AchievementReuseBadge'
 import { isPersonnelAreaEntryAllowed, usesFacultyAcademicPortfolio } from '../../utils/personnelPortfolioFormat'
 import { ALL_FILTER_KEY, normalizeTimelineFilterKey, timelineCategoryState, timelineFiltersFor, timelineFormatFor } from '../../config/personnelTimelineFilters'
-import { fetchOwnProfileFields } from '../../services/personnelProfileService'
+import { completedServiceYearsLabel, fetchOwnProfileFields } from '../../services/personnelProfileService'
 import { alertDialog, confirmDialog } from '../../components/ui/DialogProvider'
 
 /** Category badge: a readable type, or a warning with icon + text (never color alone). */
@@ -131,10 +132,15 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
     setIsSubmitOpen(true)
   }
 
+  const openNewAccomplishment = () => {
+    setEditingAccomplishment(null)
+    setIsSubmitOpen(true)
+  }
+
   const handleDeleteAccomplishment = async (item) => {
     const confirmed = await confirmDialog({
       title: 'Delete accomplishment?',
-      message: `Are you sure you want to delete “${item.title}”? The accomplishment and its attached proof document will be removed. This action cannot be undone.`,
+      message: `Remove “${item.title}” from your accomplishment list? Its saved evaluation records and attached proof will be preserved.`,
       confirmLabel: 'Delete',
       cancelLabel: 'Cancel',
       tone: 'destructive'
@@ -145,7 +151,11 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
       setAccomplishments((current) => current.filter((accomplishment) => accomplishment.id !== item.id))
       if (viewingAccomplishment?.id === item.id) setViewingAccomplishment(null)
     } catch (error) {
-      await alertDialog({ title: 'Could not delete accomplishment', message: error?.message || 'The accomplishment could not be deleted. It may be locked by an active evaluation.', tone: 'destructive' })
+      const message = error?.error?.message
+        || error?.response?.data?.error?.message
+        || error?.message
+        || 'The accomplishment could not be deleted. Please try again.'
+      await alertDialog({ title: 'Could not delete accomplishment', message, tone: 'destructive' })
     }
   }
 
@@ -229,7 +239,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
   const profileDetails = [
     { label: 'Employee ID', value: profile.employee_id || 'Not recorded by HR', Icon: IdCard },
     { label: 'Current Rank', value: profile.current_rank_title || profile.academic_rank || profile.position_title || profile.designation || 'Not recorded by HR', Icon: Award },
-    { label: 'Years of Service', value: profile.length_of_service?.display || 'Not recorded by HR', Icon: Briefcase },
+    { label: 'Years of Service', value: completedServiceYearsLabel(profile.length_of_service) || 'Not recorded by HR', Icon: Briefcase },
     { label: 'Institutional Email', value: profile.institutional_email || profile.email || 'Not recorded by HR', Icon: Mail }
   ]
 
@@ -315,7 +325,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
               </div>
               <button
                 type="button"
-                onClick={() => setIsSubmitOpen(true)}
+                onClick={openNewAccomplishment}
                 className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
               >
                 <Plus className="w-4 h-4" aria-hidden="true" />
@@ -413,7 +423,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                       </div>
                       <button
                         type="button"
-                        onClick={() => navigate('/personnel/portfolio/edit')}
+                        onClick={() => openAccomplishmentEditor(item)}
                         className="shrink-0 px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-amber-900 dark:text-amber-100 text-xs font-bold hover:bg-amber-50 dark:hover:bg-amber-950/50 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
                       >
                         Finish details
@@ -436,7 +446,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Add your first accomplishment and attach supporting proof.</p>
                   <button
                     type="button"
-                    onClick={() => setIsSubmitOpen(true)}
+                    onClick={openNewAccomplishment}
                     className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#16834a] hover:bg-[#236c3d] text-white text-xs font-bold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
                   >
                     <Plus className="w-4 h-4" aria-hidden="true" />
@@ -485,6 +495,12 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
                               {item.status === 'Returned' && <span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">Returned for revision</span>}
                               <TimelineCategoryBadge state={item.categoryState} />
                             </div>
+                            {item.categoryState.kind === 'classified' && (
+                              <p className="mt-2 text-[11px] leading-4 text-emerald-900 dark:text-emerald-200">
+                                <span className="font-semibold">Filed under:</span>{' '}
+                                {item.categoryState.official}
+                              </p>
+                            )}
                             {item.categoryState.kind === 'needs_review' && <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-200">{item.categoryState.message}</p>}
                           </div>
                         </div>
@@ -549,7 +565,7 @@ export default function PersonnelDashboardPage({ currentUser: propUser, onRoleCh
           areaName={editingAccomplishment?.category || 'Professional Development'}
         />
       ) : (
-        <PersonnelSubmissionModal
+        <NonTeachingFacultySubmissionModal
           isOpen={isSubmitOpen}
           onClose={() => { setIsSubmitOpen(false); setEditingAccomplishment(null) }}
           onSubmitAccomplishment={handleAddNewAccomplishment}

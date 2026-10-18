@@ -56,6 +56,7 @@ class PersonnelAccomplishmentDuplicateGuard
         if ($hasColumn) {
             $builder = $this->db->table('personnel_accomplishments')->select('id, title, occurrence_date')
                 ->where('personnel_profile_id', $personnelProfileId)->where('duplicate_hash', $hash);
+            if ($this->db->fieldExists('deleted_at', 'personnel_accomplishments')) $builder->where('deleted_at', null);
             if ($excludeId !== null && $excludeId !== '') $builder->where('id !=', $excludeId);
             $row = $builder->get()->getRowArray();
             if ($row) return $row;
@@ -68,6 +69,7 @@ class PersonnelAccomplishmentDuplicateGuard
         }
         $builder = $this->db->table('personnel_accomplishments')->select(implode(', ', $columns))
             ->where('personnel_profile_id', $personnelProfileId);
+        if ($this->db->fieldExists('deleted_at', 'personnel_accomplishments')) $builder->where('deleted_at', null);
         if ($hasColumn) $builder->where('duplicate_hash', null);
         if ($excludeId !== null && $excludeId !== '') $builder->where('id !=', $excludeId);
         foreach ($builder->get()->getResultArray() as $row) {

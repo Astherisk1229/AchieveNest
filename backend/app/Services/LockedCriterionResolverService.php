@@ -53,10 +53,9 @@ final class LockedCriterionResolverService
             return ['criterion_reference' => $contractMapping['criterion_code'], 'category' => $category, 'subcategory' => null, 'level' => null, 'configured_points' => $cap, 'criterion_cap' => $cap, 'evaluator_judgment_required' => true];
         }
         $personnelGroup = strtoupper(trim((string) ($snapshot['sheet']['applies_to'] ?? '')));
-        // The official faculty B.3 and B.6 criteria have a maximum but no
-        // automatic breakdown. Submit the evidence for evaluator scoring.
+        // Faculty criteria with only a locked maximum and no scoring breakdown
+        // award that maximum when the evaluator approves the evidence.
         if ($personnelGroup === 'FACULTY'
-            && in_array(strtoupper($categoryCode), ['B.3', 'B.6'], true)
             && (int) ($category['requires_manual_hr_rule'] ?? 0) === 1
             && empty($category['subcategories']) && empty($category['options'])) {
             $maximum = (float) ($category['max_points'] ?? 0);
@@ -68,8 +67,9 @@ final class LockedCriterionResolverService
                 'level' => null,
                 'configured_points' => $maximum,
                 'criterion_cap' => $maximum,
-                'evaluator_judgment_required' => true,
-                'scoring_rule' => 'EVALUATOR_JUDGMENT_MAX_ONLY',
+                'evaluator_judgment_required' => false,
+                'award_maximum_after_evidence_verification' => true,
+                'scoring_rule' => 'VERIFIED_EVIDENCE_FULL_CRITERION_MAXIMUM',
             ];
         }
         // Teaching Faculty B.2 and B.5 use verified-evidence full-maximum scoring.
@@ -125,11 +125,20 @@ final class LockedCriterionResolverService
                         $resolved['evaluator_judgment_required'] = false;
                         $resolved['criterion_cap'] = (float) ($category['max_points'] ?? $points);
                     } elseif (empty($row['levels']) && ! $isGraduateUnits) {
-                        $resolved['evaluator_judgment_required'] = true;
-                        $resolved['criterion_cap'] = min(
+                        $leafMaximum = min(
                             (float) ($category['max_points'] ?? $row['default_points'] ?? 0),
                             (float) ($row['default_points'] ?? 0)
                         );
+                        if ($personnelGroup === 'FACULTY' && $leafMaximum > 0 && empty($category['options'])) {
+                            $resolved['evaluator_judgment_required'] = false;
+                            $resolved['award_maximum_after_evidence_verification'] = true;
+                            $resolved['configured_points'] = $leafMaximum;
+                            $resolved['criterion_cap'] = $leafMaximum;
+                            $resolved['scoring_rule'] = 'VERIFIED_EVIDENCE_FULL_CRITERION_MAXIMUM';
+                        } else {
+                            $resolved['evaluator_judgment_required'] = true;
+                            $resolved['criterion_cap'] = $leafMaximum;
+                        }
                     }
                     return $resolved;
                 }

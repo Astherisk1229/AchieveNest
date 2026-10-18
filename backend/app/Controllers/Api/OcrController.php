@@ -44,12 +44,16 @@ final class OcrController extends Controller
 
         $db = db_connect();
         $evidence = $db->table('personnel_accomplishment_evidence e')
-            ->select('e.storage_path, e.detected_mime_type, e.mime_type')
+            ->select('e.storage_path, e.detected_mime_type, e.mime_type, e.security_status, e.status')
             ->join('personnel_accomplishments a', 'a.id = e.accomplishment_id')
             ->where('e.id', $evidenceId)
             ->where('a.personnel_profile_id', $actor['profile']['id'])
+            ->where('e.status', 'active')
             ->get()->getRowArray();
         if ($evidence === null) return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_FOUND', 'message' => 'Persisted evidence was not found for this account.']], 404);
+        if (($evidence['security_status'] ?? '') !== 'clean') {
+            return $this->respond(['error' => ['code' => 'EVIDENCE_NOT_SCANNED', 'message' => 'Proof must pass the security scan before OCR can read it.']], 409);
+        }
 
         $storage = new LocalEvidenceStorageService();
         $path = $storage->resolveAbsolutePath((string) $evidence['storage_path']);

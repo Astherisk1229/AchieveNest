@@ -6,6 +6,38 @@ const frontendRoot = path.resolve(import.meta.dirname, '../../..')
 const read = relative => fs.readFileSync(path.join(frontendRoot, relative), 'utf8')
 
 describe('Ranking Period UX restructure', () => {
+  it('provides the five top-level tabs and preserves selected period and category in URL state', () => {
+    const workspace = read('pages/hr-admin/HRRankingCyclesPage.jsx')
+    const navigation = read('utils/hrRankingNavigation.js')
+    for (const label of ['Ranking Periods', 'Annual Reviews', 'Portfolio Evaluation', 'Evaluation Summaries', 'Evaluation Criteria']) expect(navigation).toContain(`label: '${label}'`)
+    expect(workspace).toContain("next.set('period', period)")
+    expect(workspace).toContain("next.set('track', group)")
+    expect(workspace).toContain('setSearchParams(next)')
+    expect(workspace).toContain('SubmissionsStage')
+  })
+
+  it('counts HR portfolio work from server-authorized evaluation actions only', () => {
+    const page = read('pages/hr-admin/ranking-cycle-stages/EvaluationStage.jsx')
+    expect(page).toContain('needHrEvaluation')
+    expect(page).toContain("['start_evaluation', 'evaluate_items']")
+    expect(page).toContain('No portfolios need HR evaluation.')
+  })
+
+  it('enables HR-only annual-review selection, category filtering, and eligibility visibility', () => {
+    const page = read('pages/dean/DeanAnnualReviewEligibilityPage.jsx')
+    expect(page).toContain("else if (embedded) setEmbeddedPersonnelId(String(id))")
+    for (const category of ['All HR-assigned personnel', 'Dean-role Faculty', 'Non-Teaching Personnel']) expect(page).toContain(category)
+    expect(page).toContain('{embedded && <Status value={item.eligibility.eligibility_status} eligibility/>}')
+  })
+
+  it('provides evaluation summaries with a college filter backed by returned result records', () => {
+    const stage = read('pages/hr-admin/ranking-cycle-stages/ResultsStage.jsx')
+    expect(stage).toContain('Evaluation Summaries')
+    expect(stage).toContain('Filter by college')
+    expect(stage).toContain("searchParams.get('summary_college')")
+    expect(stage).toContain('person.college_name')
+  })
+
   it('exposes one cycle-centric HR navigation entry', () => {
     const navigation = read('config/navigationCatalog.js')
     expect(navigation).toContain("label: 'Ranking & Evaluation'")
@@ -25,7 +57,7 @@ describe('Ranking Period UX restructure', () => {
     expect(context).not.toContain("['evaluations','Evaluations']")
   })
 
-  it('opens a cycle directly in the four-stage workspace and preserves legacy links', () => {
+  it('opens a cycle in the unified workspace and preserves legacy links', () => {
     const workspace = read('pages/hr-admin/HRRankingCyclesPage.jsx')
     expect(workspace).toContain("'annual-reviews'")
     expect(workspace).toContain("overview: 'annual-reviews'")
@@ -73,10 +105,29 @@ describe('Ranking Period UX restructure', () => {
     expect(row).not.toContain('Aug 14, 2026')
   })
 
-  it('keeps the landing page focused on cycle selection', () => {
+  it('keeps the periods tab focused on cycle selection', () => {
     const workspace = read('pages/hr-admin/HRRankingCyclesPage.jsx')
-    for (const label of ['Academic Year', 'Status', 'Open Period', 'View Period']) expect(workspace).toContain(label)
+    for (const label of ['Academic year', 'Status', 'Open Period', 'View Period']) expect(workspace).toContain(label)
     expect(workspace).not.toContain('<th className="px-4 py-3">Faculty</th>')
     expect(workspace).not.toContain('<th className="px-4 py-3">Non-Teaching Faculty</th>')
+  })
+
+  it('omits the redundant ranking-period tab and keeps contextual navigation inside a selected period', () => {
+    const layout = read('components/layout/MainLayout.jsx')
+    const workspace = read('pages/hr-admin/HRRankingCyclesPage.jsx')
+    expect(layout).toMatch(/isHrRankingWorkspace\s+\?\s+null/)
+    expect(layout).not.toContain("label: 'Ranking Periods', path: '/hr/ranking-cycles?tab=periods'")
+    expect(layout).toContain('isHrRankingWorkspace')
+    expect(workspace).toContain('HR_PERIOD_WORKSPACE_TABS.map')
+    expect(workspace).toContain('Back to Ranking Periods')
+  })
+
+  it('keeps legacy queue URLs in the canonical portfolio tab and removes the obsolete guesser', () => {
+    const app = read('App.jsx')
+    const navigation = read('utils/hrRankingNavigation.js')
+    expect(app).toContain('HRRankingTabRedirect tab="portfolio-evaluation"')
+    expect(navigation).toContain("submissions: 'portfolio-evaluation'")
+    expect(navigation).toContain("params.set('view', 'submissions')")
+    expect(app).not.toContain('HREvaluationQueueLanding')
   })
 })

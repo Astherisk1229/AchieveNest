@@ -25,6 +25,21 @@ export async function fetchEvaluationScaleVersion(versionId) {
   return response?.data || response
 }
 
+export async function fetchScaleVersionHistory(versionId) {
+  const response = await apiClient.get(`/admin/evaluation-scales/versions/${encodeURIComponent(versionId)}/history`)
+  return response?.data || response
+}
+
+export async function previewDirectCriteriaChange(versionId, input) {
+  const response = await apiClient.post(`/admin/evaluation-scales/versions/${encodeURIComponent(versionId)}/direct-change/preview`, input)
+  return response?.data || response
+}
+
+export async function applyDirectCriteriaChange(versionId, input) {
+  const response = await apiClient.post(`/admin/evaluation-scales/versions/${encodeURIComponent(versionId)}/direct-change`, input)
+  return response?.data || response
+}
+
 export async function downloadEvaluationScaleVersionPdf(versionId, title = 'Ranking-Criteria') {
   let blob
   try {
@@ -97,6 +112,9 @@ export default {
   validateAccomplishmentEntry,
   fetchEvaluationScalesCatalogue,
   fetchEvaluationScaleVersion,
+  fetchScaleVersionHistory,
+  previewDirectCriteriaChange,
+  applyDirectCriteriaChange,
   downloadEvaluationScaleVersionPdf,
   fetchActiveRankingCriteria,
   cloneScaleVersion,

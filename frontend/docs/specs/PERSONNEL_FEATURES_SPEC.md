@@ -138,7 +138,7 @@ The **Homepage** ([`PersonnelDashboard.jsx`](<USER_HOME>/.gemini/antigravity/scr
   - `+ Log Speaker`: Launches accomplishment submission modal pre-set to *Lectures & Publications (Guest Speaker)*.
   - `+ Log Org/Service`: Launches accomplishment submission modal pre-set to *Service & Community*.
 - **3 Primary Interactive Action Cards**:
-  1. **`Add Achievement`**: Icon container with green circle badge; opens [`PersonnelSubmissionModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/PersonnelSubmissionModal.jsx).
+  1. **`Add Achievement`**: Icon container with green circle badge; opens [`NonTeachingFacultySubmissionModal.jsx`](../../src/pages/personnel/modals/NonTeachingFacultySubmissionModal.jsx).
   2. **`Manage Portfolio`**: Icon container with document badge; navigates to `/personnel/portfolio/edit`.
   3. **`Edit Basic Information`**: Icon container with edit badge; opens [`EditBasicInfoModal.jsx`](<USER_HOME>/.gemini/antigravity/scratch/achievenest/src/components/personnel/EditBasicInfoModal.jsx) to update academic rank, designation, educational attainment, contact details, and years of service.
 

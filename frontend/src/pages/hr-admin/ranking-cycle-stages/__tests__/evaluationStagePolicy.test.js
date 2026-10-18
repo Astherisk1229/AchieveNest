@@ -9,6 +9,10 @@ const row = (group, allowed_actions, workflow_state = null) => ({
 })
 
 describe('ranking-cycle evaluation stage policy', () => {
+  it('opens submitted portfolios for review before evaluation starts', () => {
+    expect(evaluationAction(row('FACULTY', ['start_evaluation']))).toEqual({ label: 'Review portfolio', kind: 'evaluate' })
+  })
+
   it('routes Faculty final rank work only to Phase O', () => {
     const faculty = row('FACULTY', ['view_evaluation', 'review_final_rank'])
     expect(evaluationAction(faculty)).toEqual({ label: 'Open final rank review', kind: 'phase-o' })
@@ -16,9 +20,9 @@ describe('ranking-cycle evaluation stage policy', () => {
     expect(mayUseGenericFinalizer(faculty)).toBe(false)
   })
 
-  it('routes only Non-Teaching Faculty to the generic finalizer', () => {
+  it('opens the saved summary before Non-Teaching finalization', () => {
     const ntf = row('NON_TEACHING_FACULTY', ['view_evaluation', 'finalize_evaluation'])
-    expect(evaluationAction(ntf)).toEqual({ label: 'Finalize evaluation', kind: 'finalize' })
+    expect(evaluationAction(ntf)).toEqual({ label: 'View summary', kind: 'summary' })
     expect(mayUseGenericFinalizer(ntf)).toBe(true)
     expect(mayOpenFacultyPhaseO(ntf)).toBe(false)
   })

@@ -8,19 +8,26 @@ export default class AchievementReuseEligibilityService {
   static evaluateReuseEligibility(accomplishmentOrUsage) {
     const reuse = accomplishmentOrUsage?.reuse || {}
     const isConsumed = reuse.is_consumed === true
+    const isInActiveEvaluation = reuse.is_in_active_evaluation === true
     const lastUsedAY = reuse.last_used_academic_year || null
+    const activeEvaluationAY = reuse.active_evaluation_academic_year || null
 
     return {
       isEligible: !isConsumed,
       lastUsedAY,
+      activeEvaluationAY,
       eligibleAgainAY: null,
       displayLabel: isConsumed
         ? (lastUsedAY ? `Used in ${String(lastUsedAY).replace(/^AY\s*/i, '')} Evaluation` : 'Used in a finalized evaluation')
-        : (/education/i.test(reuse.status_label || '') ? 'Reusable in evaluations' : 'Available for future evaluation'),
+        : isInActiveEvaluation
+          ? `Included in ${String(activeEvaluationAY || '').replace(/^AY\s*/i, '') || 'active'} Evaluation`
+          : (/education/i.test(reuse.status_label || '') ? 'Reusable in evaluations' : 'Available for future evaluation'),
       statusLabel: isConsumed
         ? `Used in finalized evaluation${lastUsedAY ? ` (${lastUsedAY})` : ''}`
-        : (reuse.status_label || 'Available for evaluation'),
-      badgeType: isConsumed ? 'locked' : 'eligible'
+        : isInActiveEvaluation
+          ? `Included in an active evaluation${activeEvaluationAY ? ` (${activeEvaluationAY})` : ''}`
+          : (reuse.status_label || 'Available for evaluation'),
+      badgeType: isConsumed ? 'locked' : isInActiveEvaluation ? 'in_evaluation' : 'eligible'
     }
   }
 

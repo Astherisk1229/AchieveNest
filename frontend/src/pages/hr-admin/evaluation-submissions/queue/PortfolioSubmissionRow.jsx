@@ -74,7 +74,7 @@ export default function PortfolioSubmissionRow({ submission, onInspect }) {
             {submission.status === 'in_evaluation' || submission.status === 'in_review'
               ? 'Continue Evaluation'
               : submission.status === 'ready_for_finalization'
-              ? String(submission.personnel_group || '').toUpperCase() === 'FACULTY' ? 'Open Phase O Review' : 'Finalize Evaluation'
+              ? String(submission.personnel_group || '').toUpperCase() === 'FACULTY' ? 'Complete portfolio review' : 'Finalize Evaluation'
               : submission.status === 'returned_for_revision'
               ? 'View Returned Submission'
               : submission.status === 'completed'

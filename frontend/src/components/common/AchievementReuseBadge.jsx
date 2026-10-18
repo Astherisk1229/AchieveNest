@@ -20,6 +20,18 @@ export default function AchievementReuseBadge({
     )
   }
 
+  if (eligibility.badgeType === 'in_evaluation') {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300 ${className}`}
+        title={`${eligibility.statusLabel}. The submitted portfolio is read-only while it is under review.`}
+      >
+        <Lock className="w-3 h-3 text-sky-600 dark:text-sky-400 shrink-0" />
+        <span>{eligibility.displayLabel}</span>
+      </span>
+    )
+  }
+
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 ${className}`}

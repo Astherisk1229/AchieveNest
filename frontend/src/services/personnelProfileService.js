@@ -9,10 +9,24 @@ export async function fetchOwnLengthOfService() {
   return res?.data?.data?.length_of_service ?? null
 }
 
-/** Label for the portfolio chip, e.g. "7 years, 4 months of service". */
+/** Returns the whole completed-year count used by the portfolio and profile UI. */
+export function completedServiceYearsLabel(service) {
+  if (!service) return null
+  const completed = service.completed_years ?? service.years
+  if (completed != null && Number.isFinite(Number(completed))) {
+    const years = Math.max(0, Math.floor(Number(completed)))
+    return `${years} ${years === 1 ? 'year' : 'years'}`
+  }
+  const match = String(service.display || '').match(/(?:^|,\s*)(\d+)\s+years?/i)
+  if (!match) return null
+  const years = Number(match[1])
+  return `${years} ${years === 1 ? 'year' : 'years'}`
+}
+
+/** Label for the portfolio chip, e.g. "7 years of service". */
 export function lengthOfServiceLabel(service) {
-  if (!service || !service.display) return 'Years of service not yet recorded by HR'
-  return `${service.display} of service`
+  const years = completedServiceYearsLabel(service)
+  return years ? `${years} of service` : 'Years of service not yet recorded by HR'
 }
 
 /**

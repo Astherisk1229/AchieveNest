@@ -26,7 +26,7 @@ export default function PortfolioNavigator({
     full_name: submission.faculty_name || submission.full_name || '',
     personnel_group: submission.personnel_group,
     designation_title: submission.designation || submission.position_title || submission.designation_title || '',
-    department_name: submission.college || submission.department || submission.administrative_unit_name || '',
+    department_name: submission.college || submission.college_name || submission.college_name_snapshot || submission.department || submission.department_name || submission.department_name_snapshot || submission.administrative_unit_name || '',
     faculty_engagement: submission.faculty_engagement,
     employment_status: submission.employment_status,
     employment_status_label: submission.employment_status_label,

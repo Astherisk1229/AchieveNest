@@ -1,7 +1,7 @@
 import apiClient from './apiClient'
 import { fetchColleges as fetchCollegesFromAdmin, fetchAcademicPrograms } from './collegeAdminService'
 import { facultyRankCatalogService } from './facultyRankCatalogService'
-import { cachedRequest } from '../utils/requestCache'
+import { cachedRequest, invalidateCachedRequest } from '../utils/requestCache'
 
 const REFERENCE_DATA_TTL_MS = 5 * 60 * 1000
 
@@ -48,6 +48,12 @@ export const personnelMasterDataService = {
 
     return []
     }, { ttlMs: REFERENCE_DATA_TTL_MS })
+  },
+
+  /** Fetch the latest institutional colleges, bypassing the reference-data cache. */
+  async refreshColleges(filters = {}) {
+    invalidateCachedRequest(`personnel-master-data:colleges:${JSON.stringify(filters)}`)
+    return this.getColleges(filters)
   },
 
   /**
@@ -100,6 +106,12 @@ export const personnelMasterDataService = {
     }
     return SEEDED_ADMINISTRATIVE_UNITS
     }, { ttlMs: REFERENCE_DATA_TTL_MS })
+  },
+
+  /** Fetch the latest administrative units, bypassing the reference-data cache. */
+  async refreshDepartments() {
+    invalidateCachedRequest('personnel-master-data:departments')
+    return this.getDepartments()
   },
 
   /**

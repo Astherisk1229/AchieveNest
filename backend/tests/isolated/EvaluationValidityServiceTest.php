@@ -171,6 +171,29 @@ final class EvaluationValidityServiceTest extends CIUnitTestCase
         self::assertTrue($result['decisions']['old-degree']['eligible'], 'old Faculty education remains reusable');
     }
 
+    public function testInProgressUsageIncludesDeanEndorsedPortfolioItems(): void
+    {
+        $db = $this->database('2025-06-01', '2027-05-31');
+        $db->query('CREATE TABLE personnel_evaluations (id TEXT PRIMARY KEY, personnel_profile_id TEXT, status TEXT, academic_year TEXT)');
+        $db->query('CREATE TABLE personnel_evaluation_items (id TEXT PRIMARY KEY, evaluation_id TEXT, accomplishment_id TEXT)');
+        $db->table('personnel_evaluations')->insertBatch([
+            ['id' => 'endorsed', 'personnel_profile_id' => 'P1', 'status' => 'ready_for_finalization', 'academic_year' => '2026-2027'],
+            ['id' => 'returned', 'personnel_profile_id' => 'P1', 'status' => 'returned_for_revision', 'academic_year' => '2025-2026'],
+            ['id' => 'other-owner', 'personnel_profile_id' => 'P2', 'status' => 'ready_for_finalization', 'academic_year' => '2026-2027'],
+            ['id' => 'completed', 'personnel_profile_id' => 'P1', 'status' => 'completed', 'academic_year' => '2024-2025'],
+        ]);
+        $db->table('personnel_evaluation_items')->insertBatch([
+            ['id' => 'item-endorsed', 'evaluation_id' => 'endorsed', 'accomplishment_id' => 'jane-accomplishment'],
+            ['id' => 'item-returned', 'evaluation_id' => 'returned', 'accomplishment_id' => 'returned-accomplishment'],
+            ['id' => 'item-other', 'evaluation_id' => 'other-owner', 'accomplishment_id' => 'other-accomplishment'],
+            ['id' => 'item-completed', 'evaluation_id' => 'completed', 'accomplishment_id' => 'old-accomplishment'],
+        ]);
+
+        $validity = new V($db);
+        self::assertSame(['jane-accomplishment' => '2026-2027'], $validity->inProgressUsageFor('P1'));
+        self::assertSame([], $validity->inProgressUsageFor(''));
+    }
+
     private function database(?string $start, ?string $end)
     {
         $this->sqlite = Database::connect(['DBDriver' => 'SQLite3', 'database' => ':memory:', 'DBPrefix' => ''], false);

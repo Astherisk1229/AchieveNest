@@ -33,7 +33,10 @@ export default function MainLayout({ children, onRoleChange: externalRoleChange 
   const [showScrollTop, setShowScrollTop] = useState(false)
   const mainRef = useRef(null)
   const isHrDashboard = location.pathname === '/hr/dashboard'
-  const hrWorkspaceTabs = location.pathname.startsWith('/hr/') && location.pathname !== '/hr/dashboard'
+  const isHrRankingWorkspace = location.pathname === '/hr/ranking-cycles'
+    || location.pathname.startsWith('/hr/ranking-cycles/')
+    || ['/hr/evaluation-submissions', '/hr/verification-queue', '/hr/faculty-evaluation-and-ranking', '/hr/faculty-ranking-and-matrix'].includes(location.pathname)
+  const hrWorkspaceTabs = isHrRankingWorkspace ? null : location.pathname.startsWith('/hr/') && location.pathname !== '/hr/dashboard'
     ? location.pathname.startsWith('/hr/personnel-directory') || location.pathname.startsWith('/hr/organizational-structure')
       ? [{ label: 'Personnel Directory', path: '/hr/personnel-directory' }, { label: 'College and Department', path: '/hr/organizational-structure' }]
       : location.pathname.startsWith('/hr/password-resets') || location.pathname.startsWith('/hr/audit-trail')

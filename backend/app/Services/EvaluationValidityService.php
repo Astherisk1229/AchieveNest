@@ -222,6 +222,41 @@ final class EvaluationValidityService
         return $used;
     }
 
+    /** Accomplishments present in evaluations that are submitted or still under review. */
+    public function inProgressUsageFor(string $personnelProfileId): array
+    {
+        $personnelProfileId = trim($personnelProfileId);
+        if ($personnelProfileId === '') return [];
+
+        $db = $this->db();
+        $evaluations = $db->tableExists('public.personnel_evaluations') ? 'public.personnel_evaluations' : 'personnel_evaluations';
+        $items = $db->tableExists('public.personnel_evaluation_items') ? 'public.personnel_evaluation_items' : 'personnel_evaluation_items';
+        if (! $db->tableExists($evaluations) || ! $db->tableExists($items)
+            || ! $db->fieldExists('personnel_profile_id', $evaluations)
+            || ! $db->fieldExists('status', $evaluations)
+            || ! $db->fieldExists('academic_year', $evaluations)
+            || ! $db->fieldExists('evaluation_id', $items)
+            || ! $db->fieldExists('accomplishment_id', $items)) {
+            return [];
+        }
+
+        $rows = $db->table($items . ' pei')
+            ->select('pei.accomplishment_id, pe.academic_year')
+            ->join($evaluations . ' pe', 'pe.id = pei.evaluation_id', 'inner')
+            ->where('pe.personnel_profile_id', $personnelProfileId)
+            ->whereIn('pe.status', ['submitted', 'in_evaluation', 'ready_for_finalization'])
+            ->where('pei.accomplishment_id IS NOT NULL', null, false)
+            ->orderBy('pe.academic_year', 'DESC')
+            ->get()->getResultArray();
+
+        $usage = [];
+        foreach ($rows as $row) {
+            $id = (string) ($row['accomplishment_id'] ?? '');
+            if ($id !== '' && ! array_key_exists($id, $usage)) $usage[$id] = $row['academic_year'] ?? null;
+        }
+        return $usage;
+    }
+
     /** Coverage and group of the personnel member's currently open track, for portfolio status badges. */
     public function openCycleFor(string $personnelProfileId): ?array
     {

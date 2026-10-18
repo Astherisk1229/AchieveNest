@@ -26,12 +26,17 @@ export function ConfirmDialog({
   inputValue = '',
   inputPlaceholder = '',
   inputRequired = false,
+  inputHint = '',
+  inputError = '',
+  inputMaxLength,
   onInputChange
 }) {
   const baseId = useId()
   const titleId = `${baseId}-title`
   const descriptionId = `${baseId}-description`
   const inputId = `${baseId}-input`
+  const inputHintId = `${baseId}-input-hint`
+  const inputErrorId = `${baseId}-input-error`
   const hasInput = typeof onInputChange === 'function'
   const inputMissing = hasInput && inputRequired && !String(inputValue || '').trim()
   const confirmBtnRef = useRef(null)
@@ -185,9 +190,16 @@ export function ConfirmDialog({
               rows={3}
               value={inputValue}
               placeholder={inputPlaceholder}
+              maxLength={inputMaxLength}
+              aria-required={inputRequired}
+              aria-invalid={Boolean(inputError)}
+              aria-describedby={[inputHint && inputHintId, inputError && inputErrorId].filter(Boolean).join(' ') || undefined}
+              disabled={isProcessing}
               onChange={(e) => onInputChange(e.target.value)}
               className="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
             />
+            {inputHint && <p id={inputHintId} className="text-xs text-slate-600 dark:text-slate-300">{inputHint}</p>}
+            {inputError && <p id={inputErrorId} role="alert" className="text-xs font-semibold text-rose-700 dark:text-rose-300">{inputError}</p>}
           </div>
         )}
 

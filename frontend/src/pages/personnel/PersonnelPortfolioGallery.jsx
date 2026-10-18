@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Folder,
   Calendar,
@@ -16,9 +15,9 @@ export default function PersonnelPortfolioGallery({
   submissionHistory = [],
   onOpenBooklet,
   onOpenFeedback,
-  onViewResult
+  onViewResult,
+  onRevise
 }) {
-  const navigate = useNavigate()
   const [filterStatus, setFilterStatus] = useState('ALL') // 'ALL' | 'SUBMITTED' | 'FINALIZED'
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -234,7 +233,7 @@ export default function PersonnelPortfolioGallery({
                     <>
                       <button
                         type="button"
-                        onClick={() => navigate('/personnel/portfolio/edit')}
+                        onClick={() => onRevise?.(card)}
                         className="flex-1 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />

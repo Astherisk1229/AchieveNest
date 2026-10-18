@@ -30,6 +30,13 @@ final class DeanRankingCycleAlignmentContractTest extends TestCase
         self::assertStringContainsString("default => \$row['dean_review_status'] === 'needs_review'", $controller);
     }
 
+    public function testSavedDeanResultsRemainViewableAfterEligibilityChanges(): void
+    {
+        $controller = $this->source('app/Controllers/Api/DeanWorkspaceController.php');
+        self::assertStringContainsString("in_array((string) \$review['status'], ['submitted', 'in_evaluation'], true)", $controller);
+        self::assertStringContainsString('$requiresCurrentEligibility &&', $controller);
+    }
+
     public function testLegacyDeanAnnualReviewFallbackIsFacultyOnly(): void
     {
         $service = $this->source('app/Services/DeanAnnualReviewService.php');

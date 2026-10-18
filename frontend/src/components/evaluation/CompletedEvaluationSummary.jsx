@@ -26,12 +26,12 @@ const criterionDetails = item => {
   }
 }
 
-export default function CompletedEvaluationSummary({ result, preview = false, context, onSaveComments, embedded = false }) {
+export default function CompletedEvaluationSummary({ result, preview = false, context, onSaveComments, embedded = false, showApprovalLines = true }) {
   const format = formats[result?.summary?.format_key]
   if (!format) return <div role="alert" className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-900 dark:bg-rose-950/30 dark:text-rose-100">This completed report uses an unsupported summary format.</div>
 
   if (result.summary.format_key === 'NON_TEACHING_FACULTY_EVALUATION_RESULT') {
-    return <NonTeachingRankingScale result={result} preview={preview} context={context} onSaveComments={onSaveComments} embedded={embedded}/>
+    return <NonTeachingRankingScale result={result} preview={preview} context={context} onSaveComments={onSaveComments} embedded={embedded} showApprovalLines={showApprovalLines}/>
   }
 
   const items = result.items || []

@@ -80,6 +80,13 @@ final class RankingCycleWorkspaceReadServiceTest extends TestCase
         );
     }
 
+    public function testResultsDistinguishDeanEndorsedFacultyFromNonTeachingAwaitingFinalization(): void
+    {
+        self::assertSame('endorsed_to_hr', $this->invoke('resultStatus', ['ready_for_finalization', 'FACULTY']));
+        self::assertSame('awaiting_finalization', $this->invoke('resultStatus', ['ready_for_finalization', 'NON_TEACHING_FACULTY']));
+        self::assertSame('completed', $this->invoke('resultStatus', ['completed', 'FACULTY']));
+    }
+
     private function invoke(string $method, array $arguments): mixed
     {
         return (new ReflectionMethod(RankingCycleWorkspaceReadService::class, $method))->invoke(null, ...$arguments);

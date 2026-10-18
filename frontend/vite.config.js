@@ -12,6 +12,12 @@ export default defineConfig(({ mode }) => {
 
   return {
     define: createApiBaseUrlDefine(environment),
+    // Keep hooks in lazy-loaded routes on the same React runtime as the app root.
+    // This prevents the dispatcher from being null when Vite resolves React
+    // through more than one dependency path (for example, after dependency updates).
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+    },
     plugins: [
       react(),
       tailwindcss(),

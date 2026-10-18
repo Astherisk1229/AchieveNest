@@ -1,6 +1,6 @@
-import React, { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { AlertCircle, AlertTriangle, ArrowUpRight, Check, CheckCircle2, GraduationCap, LoaderCircle, RefreshCw, UploadCloud, X } from 'lucide-react'
-import { DEGREE_LEVEL_LABELS, FACULTY_ACADEMIC_ENTRY_SCHEMA, facultyCategoryDisplayLabel, facultySchemaByCode, facultySubcategoryByCode } from '../../../config/facultyAcademicAccomplishmentSchema'
+import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, AlertTriangle, ArrowUpRight, CheckCircle2, GraduationCap, LoaderCircle, RefreshCw, UploadCloud, X } from 'lucide-react'
+import { DEGREE_LEVEL_LABELS, facultySchemaByCode, facultySubcategoryByCode, facultySubcategoryForHrCriterion } from '../../../config/facultyAcademicAccomplishmentSchema'
 import { EMPTY_ACCOMPLISHMENT_FORM, localIsoDateToday, mapAccomplishmentToForm, validateAccomplishmentForm } from '../../../utils/personnelAccomplishmentForm'
 import personnelAccomplishmentService from '../../../services/personnelAccomplishmentService'
 import { ocrService } from '../../../services/ocrService'
@@ -8,15 +8,23 @@ import OcrScanController from '../../../controllers/OcrScanController'
 import FacultyDocumentViewer from './FacultyDocumentViewer'
 import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from '../../../services/PersonnelEvidenceUploadService'
 import { confirmDialog } from '../../../components/ui/DialogProvider'
-import { CardHeading, StepProgress } from './AccomplishmentModalParts'
+import { CardHeading } from './AccomplishmentModalParts'
 import { useHelpGuide } from '../../../context/HelpGuideContext'
 
-const initialForm = () => ({ ...EMPTY_ACCOMPLISHMENT_FORM, area: '', categoryCode: '', subcategoryCode: '', details: {}, persistedEvidence: [], pendingEvidence: [] })
+const initialForm = () => ({ ...EMPTY_ACCOMPLISHMENT_FORM, area: '', categoryCode: '', subcategoryCode: '', criterionId: '', singleDay: false, details: {}, persistedEvidence: [], pendingEvidence: [] })
 const categoryCodeFromSuggestion = (value = '') => String(value).match(/^([ABC]\.[0-9](?:\.[0-9])?)/)?.[1] || ''
+const categoryCodeFromFilename = (value = '') => String(value).match(/(?:^|[^A-Z0-9])([ABC]\.\d(?:\.\d+)?)(?=$|[^A-Z0-9])/i)?.[1]?.toUpperCase() || ''
+const hierarchyOptionLabel = (code, name, isArea = false) => {
+  const escapedCode = String(code || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const prefix = new RegExp(`^(?:Area\\s+)?${escapedCode}\\s*[:.\\-]?\\s*`, 'i')
+  const cleanName = String(name || '').trim().replace(prefix, '')
+  return `${code}${isArea ? '.' : ''} ${cleanName}`.trim()
+}
 const primaryTitle = (details, config) => config.fields.find((field) => field.type === 'text' && String(details[field.name] || '').trim())?.name
   ? details[config.fields.find((field) => field.type === 'text' && String(details[field.name] || '').trim()).name]
   : 'Faculty accomplishment'
 const issuer = (details) => details.institution || details.organization || details.organizer || details.publisher_or_journal || details.granting_body || details.presenting_body || ''
+const saveErrorMessage = (error, fallback) => error?.error?.message || error?.response?.data?.error?.message || error?.message || fallback
 const confidenceBand = (score) => score >= 75 ? 'High' : score >= 50 ? 'Medium' : 'Low'
 const formatBytes = (value) => {
   const bytes = Number(value)
@@ -74,7 +82,7 @@ const legacyCandidates = (extracted) => ({
   degree_title: extracted.title, program: extracted.title, institution: extracted.issuer,
   title: extracted.title, activity_title: extracted.title, publication_title: extracted.title,
   research_title: extracted.title, award_title: extracted.title, material_title: extracted.title,
-  creative_work: extracted.title, activity: extracted.title, organization: extracted.issuer,
+  creative_work: extracted.title, activity: extracted.activity || extracted.title, organization: extracted.issuer,
   organizer: extracted.issuer, publisher_or_journal: extracted.issuer, granting_body: extracted.issuer,
   presenting_body: extracted.issuer, units_completed: extracted.unitsCompleted, scope: extracted.scopeLevel,
   role: extracted.specificRole === 'Participant' ? '' : extracted.specificRole,
@@ -94,15 +102,19 @@ export function ocrCandidates(config, extracted = {}) {
     if (value && (!field.options || field.options.includes(value))) result[`details.${field.name}`] = value
   }
   const dateKey = config.dateMode === 'single' ? 'date' : 'startDate'
-  const dateSource = map ? (map[dateKey] ? extracted[map[dateKey]] : '') : extracted.date
+  const dateSource = map ? (map[dateKey] ? extracted[map[dateKey]] : '') : (config.dateMode === 'single' ? extracted.date : (extracted.startDate || extracted.date))
   if (dateSource) result[dateKey] = dateSource
+  if (config.dateMode !== 'single' && extracted.endDate) result.endDate = extracted.endDate
   return result
 }
 
 export function mapOcrToForm(old, categoryCode, subcategoryCode, extracted = {}, touchedFields = {}, { overwrite = false } = {}) {
-  const schema = facultySchemaByCode(categoryCode)
   const config = facultySubcategoryByCode(subcategoryCode)
-  if (!schema || !config) return old
+  // Published criteria can use a parent category code (for example C.1)
+  // that is not present in the legacy form catalogue. The selected entry
+  // schema is the authoritative source for fields and its area; retain the
+  // published category code for saving against the active criteria contract.
+  if (!config) return old
   const candidates = ocrCandidates(config, extracted)
   const pick = (key, currentValue) => {
     if (touchedFields[key]) return currentValue ?? ''
@@ -111,9 +123,10 @@ export function mapOcrToForm(old, categoryCode, subcategoryCode, extracted = {},
   }
   const details = Object.fromEntries(config.fields.map((field) => [field.name, pick(`details.${field.name}`, old.details?.[field.name])]))
   return {
-    ...old, area: schema.area, categoryCode, subcategoryCode, details,
+    ...old, area: facultySchemaByCode(categoryCode)?.area || config.area, categoryCode, subcategoryCode, details,
     date: config.dateMode === 'single' ? pick('date', old.date) : old.date,
-    startDate: config.dateMode !== 'single' ? pick('startDate', old.startDate) : old.startDate
+    startDate: config.dateMode !== 'single' ? pick('startDate', old.startDate) : old.startDate,
+    endDate: config.dateMode !== 'single' ? pick('endDate', old.endDate) : old.endDate
   }
 }
 
@@ -150,7 +163,6 @@ function showSuccessToast(message) {
 }
 
 const FILE_ACCEPT = [...ALLOWED_EXTENSIONS.map((extension) => `.${extension}`), ...ALLOWED_MIME_TYPES].join(',')
-const AREA_NAMES = { A: 'Professional Development', B: 'Productivity & Creative Work', C: 'Service & Leadership' }
 const BUSY_STATES = ['staging', 'uploading', 'ocr_processing', 'classification_pending']
 const SCAN_FAILED_MESSAGE = "We couldn't read this document. Fill in the details manually or try a clearer scan."
 const DUPLICATE_DOCUMENT_PREFIX = 'This document is already used'
@@ -162,7 +174,7 @@ const friendlyUploadError = (error) => {
   return 'Document upload interrupted. Your draft is safe, and the selected file is still available in this session.'
 }
 
-export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, editingItem = null, currentUser = {}, areaCode = 'A', areaName = '' }) {
+export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubmitAccomplishment, editingItem = null, currentUser = {}, areaCode = 'A' }) {
   const { openHelpGuide } = useHelpGuide()
   const [form, setForm] = useState(initialForm)
   const [loading, setLoading] = useState(false)
@@ -181,38 +193,131 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   const [draftMessage, setDraftMessage] = useState('')
   const [stagedId, setStagedId] = useState(null)
   const [suggestion, setSuggestion] = useState(null)
+  const [filenameSuggestion, setFilenameSuggestion] = useState('')
   const [classificationConfirmed, setClassificationConfirmed] = useState(false)
   const [classificationEditing, setClassificationEditing] = useState(false)
+  const [activeTab, setActiveTab] = useState('classification')
   const [reloadKey, setReloadKey] = useState(0)
+  const [activeCriteria, setActiveCriteria] = useState(null)
+  const [criteriaError, setCriteriaError] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [previewFlash, setPreviewFlash] = useState(false)
   const fileInput = useRef(null)
   const dialogRef = useRef(null)
   const previewRef = useRef(null)
   const formRef = useRef(null)
+  const savedClassification = useRef(null)
   const ids = useId()
   // Async upload/scan callbacks read the latest values, not the render they started in.
   const latest = useRef({ form, touchedFields, classificationEditing })
   latest.current = { form, touchedFields, classificationEditing }
   const config = useMemo(() => facultySubcategoryByCode(form.subcategoryCode), [form.subcategoryCode])
   const category = facultySchemaByCode(form.categoryCode)
-  const effectiveAreaCode = String(form.mode === 'edit' && form.area ? form.area : areaCode || 'A').toUpperCase().replace('AREA', '').trim()
-  const effectiveAreaName = areaName || AREA_NAMES[effectiveAreaCode] || 'Faculty Accomplishments'
+  const effectiveAreaCode = String(form.area || areaCode || 'A').toUpperCase().replace('AREA', '').trim()
+  const criteriaAreas = activeCriteria?.areas || []
+  const selectedArea = criteriaAreas.find((item) => String(item.code).toUpperCase() === effectiveAreaCode)
+  const areaCategories = selectedArea?.categories || []
+  const selectedCategory = areaCategories.find((item) => item.code === form.categoryCode)
+  const selectedCategoryCriteria = (selectedCategory?.criteria || []).map((criterion) => ({
+    ...criterion,
+    parentCategory: selectedCategory,
+    entrySchema: facultySubcategoryForHrCriterion(selectedCategory.code, criterion.code, criterion.label || criterion.name)
+  }))
+  const selectedIntakeCriterion = selectedCategoryCriteria.find((item) => item.criterion_id === form.criterionId)
 
-  useEffect(() => {
+  // Reset before paint so a previous record's classification never flashes in a new modal.
+  useLayoutEffect(() => {
     if (!isOpen) return
     let active = true
     const load = async () => {
-      setErrors({}); setLoadError(''); setDocumentError(''); setSuggestion(null); setStagedId(null); setSelectedFile(null); setLocalPreviewUrl(''); setHandoffEvidenceId(null); setTouchedFields({}); setProvenance({}); setOcrDocument(null); setDraftMessage(''); setClassificationEditing(false)
-      if (!editingItem?.id) { setForm({ ...initialForm(), area: String(areaCode || 'A').toUpperCase() }); setClassificationConfirmed(false); setDocumentState('idle'); return }
+      setErrors({}); setLoadError(''); setDocumentError(''); setSuggestion(null); setFilenameSuggestion(''); setStagedId(null); setSelectedFile(null); setLocalPreviewUrl(''); setHandoffEvidenceId(null); setTouchedFields({}); setProvenance({}); setOcrDocument(null); setDraftMessage(''); setClassificationEditing(Boolean(editingItem?.id)); setActiveTab('classification'); savedClassification.current = null
+      if (!editingItem?.id) { setLoading(false); setActiveEvidenceId(null); setForm({ ...initialForm(), area: String(areaCode || 'A').toUpperCase() }); setClassificationConfirmed(false); setDocumentState('idle'); return }
       setLoading(true)
       try {
         const record = await personnelAccomplishmentService.fetchAccomplishment(editingItem.id)
-        if (active) { const mapped = mapAccomplishmentToForm(record); setForm(mapped); setActiveEvidenceId(mapped.persistedEvidence[0]?.id || null); setClassificationConfirmed(Boolean(mapped.subcategoryCode)); setDocumentState(mapped.persistedEvidence.length ? 'persisted' : 'idle') }
+        if (active) { const mapped = { ...mapAccomplishmentToForm(record), criterionId: record.criterion_id || '' }; savedClassification.current = mapped; setForm(mapped); setActiveEvidenceId(mapped.persistedEvidence[0]?.id || null); setClassificationConfirmed(Boolean(mapped.subcategoryCode)); setDocumentState(mapped.persistedEvidence.length ? 'persisted' : 'idle') }
       } catch (error) { if (active) setLoadError(error?.message || 'Unable to load accomplishment.') } finally { if (active) setLoading(false) }
     }
     load(); return () => { active = false }
   }, [isOpen, editingItem?.id, areaCode, reloadKey])
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let active = true
+    setCriteriaError('')
+    setActiveCriteria(null)
+    personnelAccomplishmentService.fetchActiveIntakeCriteria()
+      .then((contract) => { if (active) setActiveCriteria(contract) })
+      .catch((error) => { if (active) { setActiveCriteria(null); setCriteriaError(error?.message || 'Published Teaching Faculty criteria could not be loaded.') } })
+    return () => { active = false }
+  }, [isOpen])
+
+  // A category or criterion code in the uploaded filename can identify the right
+  // published intake form before OCR finishes. Keep it as a suggestion until the
+  // faculty member confirms the classification.
+  useEffect(() => {
+    const persistedFilename = form.persistedEvidence?.find((item) => item.id === activeEvidenceId)?.original_filename || form.persistedEvidence?.[0]?.original_filename
+    const filename = selectedFile?.name || persistedFilename
+    // A user may choose the broad category before the upload finishes. Still
+    // resolve a more specific code from the filename so its detail form opens;
+    // only stop once a subcategory has already been selected.
+    if (!isOpen || !filename || form.subcategoryCode || form.criterionId) return
+    const code = categoryCodeFromFilename(filename)
+    if (!code || !activeCriteria?.areas) return
+    const categoryMatchesCode = (categoryItem) => categoryItem.code === code || (categoryItem.criteria || []).some((criterion) => {
+      const entrySchema = facultySubcategoryForHrCriterion(categoryItem.code, criterion.code, criterion.label || criterion.name)
+      return String(criterion.code || '').toUpperCase() === code || String(entrySchema?.categoryCode || '').toUpperCase() === code
+    })
+    const selectedCategoryMatch = form.categoryCode
+      ? activeCriteria.areas.flatMap((item) => (item.categories || []).map((categoryItem) => ({ area: item, category: categoryItem }))).find(({ category }) => category.code === form.categoryCode)
+      : null
+    // Respect an explicit category choice unless the filename identifies a
+    // criterion within that same category. This avoids silently changing a
+    // user's classification while still allowing C.1.1-style filenames to
+    // select the matching detail form under C.1.
+    if (selectedCategoryMatch && !categoryMatchesCode(selectedCategoryMatch.category)) return
+    const matchInArea = selectedCategoryMatch
+      ? selectedCategoryMatch
+      : activeCriteria.areas.flatMap((item) => (item.categories || []).filter(categoryMatchesCode).map((category) => ({ area: item, category })))[0]
+    const area = matchInArea?.area
+    const publishedCategory = matchInArea?.category
+    if (!publishedCategory) return
+    const mapped = (publishedCategory.criteria || []).map((criterion) => ({
+      criterion,
+      entrySchema: facultySubcategoryForHrCriterion(publishedCategory.code, criterion.code, criterion.label || criterion.name)
+    })).filter((item) => item.entrySchema)
+    const exact = mapped.filter(({ criterion, entrySchema }) => String(criterion.code || '').toUpperCase() === code || String(entrySchema.categoryCode || '').toUpperCase() === code)
+    const firstLeaf = mapped.filter(({ criterion }) => String(criterion.code || '').toUpperCase() === `${publishedCategory.code}.1`)
+    const match = exact.length === 1 ? exact[0] : firstLeaf.length === 1 ? firstLeaf[0] : mapped.length === 1 ? mapped[0] : null
+    if (!match?.criterion?.criterion_id) return
+    setForm((old) => {
+      if (old.subcategoryCode || old.criterionId) return old
+      if (old.categoryCode && old.categoryCode !== publishedCategory.code) return old
+      return { ...mapOcrToForm(old, publishedCategory.code, match.entrySchema.code, {}, {}), area: area.code, criterionId: match.criterion.criterion_id }
+    })
+    setFilenameSuggestion(publishedCategory.code)
+    setClassificationConfirmed(false)
+  }, [isOpen, selectedFile, activeEvidenceId, form.persistedEvidence, activeCriteria, form.categoryCode, form.subcategoryCode, form.criterionId])
+
+  // Some published HR categories are themselves the intake leaf (intake_level=CATEGORY).
+  // In that case the user has already selected the complete category; do not ask them to
+  // select the same B.3 label again as a fake subcategory/criterion.
+  useEffect(() => {
+    if (!isOpen || !form.categoryCode || form.criterionId) return
+    const categoryItem = criteriaAreas.flatMap((item) => item.categories || []).find((item) => item.code === form.categoryCode)
+    const categoryLevel = (categoryItem?.criteria || []).map((criterion) => ({
+      criterion,
+      entrySchema: facultySubcategoryForHrCriterion(categoryItem.code, criterion.code, criterion.label || criterion.name)
+    })).filter((item) => item.criterion.intake_level === 'CATEGORY' && item.entrySchema)
+    if (categoryLevel.length !== 1 || (categoryItem.criteria || []).filter((criterion) => facultySubcategoryForHrCriterion(categoryItem.code, criterion.code, criterion.label || criterion.name)).length !== 1) return
+    const { criterion, entrySchema } = categoryLevel[0]
+    setForm((old) => {
+      if (old.categoryCode !== categoryItem.code || old.criterionId) return old
+      if (old.subcategoryCode === entrySchema.code) return { ...old, area: categoryItem.area || old.area, criterionId: criterion.criterion_id }
+      return { ...mapOcrToForm(old, categoryItem.code, entrySchema.code, {}, {}), criterionId: criterion.criterion_id }
+    })
+    setClassificationConfirmed(filenameSuggestion !== categoryItem.code)
+  }, [isOpen, criteriaAreas, form.categoryCode, form.subcategoryCode, form.criterionId, filenameSuggestion])
 
   useEffect(() => () => {
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl)
@@ -243,24 +348,46 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   const applyMapping = (categoryCode, subcategoryCode, extracted, touched, options) => {
     setForm((old) => {
       const next = mapOcrToForm(old, categoryCode, subcategoryCode, extracted || {}, touched, options)
+      next.singleDay = facultySubcategoryByCode(subcategoryCode)?.allowSingleDay ? old.singleDay : false
       setProvenance(extracted ? buildProvenance(facultySubcategoryByCode(subcategoryCode), extracted, next, touched) : {})
       return next
     })
   }
-  const selectClassification = async (categoryCode, subcategoryCode = '', { fromUser = true } = {}) => {
-    const schema = facultySchemaByCode(categoryCode)
-    if (!schema || schema.area !== effectiveAreaCode) return
+  const selectClassification = async (categoryCode, subcategoryCode = '', criterionId = '', { fromUser = true } = {}) => {
+    // The published criteria hierarchy can contain category codes that are not in
+    // the legacy form-schema catalogue (for example C.1/C.2/C.3). Validate against
+    // the same active area that populated the dropdown so those options stay usable.
+    const publishedCategory = areaCategories.find((item) => item.code === categoryCode)
+    if (!publishedCategory) return
     const changingExisting = form.mode === 'edit' && form.subcategoryCode && subcategoryCode && subcategoryCode !== form.subcategoryCode
     if (changingExisting && !(await confirmDialog({ title: 'Change classification?', message: 'Fields that only apply to the current category may be replaced by the new selection.', confirmLabel: 'Change', cancelLabel: 'Keep current' }))) return
-    if (fromUser) setTouchedFields((old) => ({ ...old, classification: true }))
+    if (fromUser) { setTouchedFields((old) => ({ ...old, classification: true })); setFilenameSuggestion('') }
     if (!subcategoryCode) {
-      setForm((old) => ({ ...old, area: effectiveAreaCode, categoryCode, subcategoryCode: '', details: {} }))
+      setForm((old) => ({ ...old, area: effectiveAreaCode, categoryCode, subcategoryCode: '', criterionId: '', singleDay: false, details: {} }))
       setProvenance({})
       setClassificationConfirmed(false)
       return
     }
+    setForm((old) => ({ ...old, criterionId }))
     applyMapping(categoryCode, subcategoryCode, suggestion?.extractedFields, touchedFields)
     setClassificationConfirmed(true)
+  }
+  const selectArea = (area) => {
+    if (area === effectiveAreaCode) return
+    setTouchedFields((old) => ({ ...old, classification: true }))
+    setForm((old) => ({ ...old, area, categoryCode: '', subcategoryCode: '', criterionId: '', singleDay: false, details: {} }))
+    setClassificationConfirmed(false)
+    setProvenance({})
+    setSuggestion(null)
+    setFilenameSuggestion('')
+  }
+  const keepSavedClassification = () => {
+    const saved = savedClassification.current
+    if (!saved) return
+    setForm((old) => ({ ...old, area: saved.area, categoryCode: saved.categoryCode, subcategoryCode: saved.subcategoryCode, criterionId: saved.criterionId || '', details: saved.details, date: saved.date, startDate: saved.startDate, endDate: saved.endDate, singleDay: saved.singleDay, ongoing: saved.ongoing }))
+    setClassificationConfirmed(Boolean(saved.subcategoryCode))
+    setClassificationEditing(false)
+    setProvenance({})
   }
   const analyzeDocument = (backendDocument, { rescan = false } = {}) => {
     setDocumentState('classification_pending')
@@ -292,16 +419,20 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
     setDocumentState(text ? (backendDocument?.quality?.label === 'review' ? 'ocr_partial' : 'ocr_completed') : 'ocr_failed')
     if (!text) setDocumentError(SCAN_FAILED_MESSAGE)
   }
-  const runOcr = async (evidenceId = activeEvidenceId, options = {}) => {
+  const runOcr = async (evidenceId = activeEvidenceId, options = {}, accomplishmentId = editingItem?.id || stagedId) => {
     if (!evidenceId) { setDocumentError('Upload the document before retrying text extraction.'); return }
+    if (!accomplishmentId) { setDocumentError('The saved accomplishment could not be identified for proof scanning. Save it as a draft and try again.'); return }
     setDocumentError(''); setDocumentState('ocr_processing')
     try {
+      const securityScan = await retryTemporaryOperation(() => personnelAccomplishmentService.scanEvidence(accomplishmentId, evidenceId))
+      const scan = securityScan?.data?.scan || securityScan?.scan
+      if (scan?.status !== 'clean') throw new Error('The proof did not pass the security scan. Replace it with a clean document before continuing.')
       const backendDocument = await retryTemporaryOperation(() => ocrService.extractPersisted(evidenceId))
       setOcrDocument(backendDocument)
       analyzeDocument(backendDocument, options)
-    } catch {
+    } catch (error) {
       setDocumentState('ocr_failed')
-      setDocumentError(SCAN_FAILED_MESSAGE)
+      setDocumentError(error?.error?.message || error?.response?.data?.error?.message || error?.message || SCAN_FAILED_MESSAGE)
     }
   }
   const processFile = async (file, { reuseLocalPreview = false } = {}) => {
@@ -311,7 +442,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
     if (!file.size || file.size > MAX_FILE_SIZE_BYTES) { setErrors({ evidence: file.size ? 'This file is larger than the 10 MB limit. Please choose a smaller file.' : 'This document is empty. Please choose another file.' }); return }
     setSelectedFile(file)
     if (!reuseLocalPreview) setLocalPreviewUrl(URL.createObjectURL(file))
-    setHandoffEvidenceId(null); setErrors({}); setDocumentError(''); setSuggestion(null); setDocumentState('staging')
+    setHandoffEvidenceId(null); setErrors({}); setDocumentError(''); setSuggestion(null); setFilenameSuggestion(''); setDocumentState('staging')
     try {
       let targetId = editingItem?.id || stagedId
       if (!targetId) { const draft = await personnelAccomplishmentService.beginEvidenceDraft(); targetId = draft?.id; if (!targetId) throw new Error('The server could not prepare secure document storage.'); setStagedId(targetId) }
@@ -322,7 +453,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
       setActiveEvidenceId(evidence.id); setHandoffEvidenceId(evidence.id)
       setForm((old) => ({ ...old, persistedEvidence: [evidence, ...old.persistedEvidence.filter((item) => item.id !== evidence.id)], pendingEvidence: [] }))
       setDocumentState('persisted')
-      await runOcr(evidence.id) // scan starts automatically after upload
+      await runOcr(evidence.id, {}, targetId) // security scan and OCR start automatically after upload
     } catch (error) { setDocumentState('upload_failed'); setDocumentError(friendlyUploadError(error)) }
   }
   const editField = (key, patch) => {
@@ -357,9 +488,10 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
       }
       await personnelAccomplishmentService.saveDraft(id, {
         title: config ? String(primaryTitle(form.details, config)).trim() : 'Pending document review',
+        criterion_id: form.criterionId || undefined,
         category_code: form.categoryCode || null,
         category_area: form.area ? `area${form.area}` : null,
-        category_metadata: form.subcategoryCode ? { portfolio_format: 'faculty_academic', criterion_code: form.categoryCode, subcategory_code: form.subcategoryCode, faculty_confirmed_category: classificationConfirmed, draft_incomplete: true, details: form.details, start_date: form.startDate || null, end_date: form.endDate || null } : {}
+        category_metadata: form.subcategoryCode ? { portfolio_format: 'faculty_academic', criterion_code: form.categoryCode, subcategory_code: form.subcategoryCode, faculty_confirmed_category: classificationConfirmed, draft_incomplete: true, details: form.details, start_date: form.startDate || null, end_date: form.endDate || null, single_day: Boolean(config?.allowSingleDay && form.singleDay) } : {}
       })
       setDraftMessage('Draft saved. You can resume it later; submission remains blocked until required evidence and fields are complete.')
     } catch (error) { setErrors({ form: error?.message || 'The draft could not be saved. Try again.' }) } finally { setSaving(false) }
@@ -370,7 +502,6 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   const scanning = ['ocr_processing', 'classification_pending'].includes(documentState)
   const activeEvidence = form.persistedEvidence.find((item) => item.id === activeEvidenceId) || form.persistedEvidence[0]
   const hasDocument = Boolean(localPreviewUrl || activeEvidence)
-  const areaCategories = FACULTY_ACADEMIC_ENTRY_SCHEMA.filter((item) => item.area === effectiveAreaCode && !item.derived)
   const liveValidationErrors = config ? validateAccomplishmentForm(form, config) : {}
   const missingRequired = Object.keys(liveValidationErrors).filter((key) => key !== 'evidence')
   const pendingVerification = Object.entries(provenance).filter(([, value]) => value.status === 'verify').map(([key]) => key)
@@ -378,10 +509,12 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   const mismatch = detectDegreeMismatch(config, degreeText)
   const detectedCount = Object.keys(provenance).length
   const reviewItems = (form.subcategoryCode ? 0 : 1) + missingRequired.length + pendingVerification.length + (mismatch ? 1 : 0)
-  const submitBlocker = !hasDocument || !form.persistedEvidence.length
+  const submitBlocker = criteriaError || !activeCriteria
+    ? 'Published Teaching Faculty criteria must load before you can submit.'
+    : !hasDocument || !form.persistedEvidence.length
     ? 'Attach a supporting document to submit.'
     : busy ? 'Wait for the document to finish uploading and reading.'
-      : !form.categoryCode || !form.subcategoryCode ? 'Choose a category and subcategory.'
+        : !form.categoryCode || !form.subcategoryCode || !form.criterionId ? 'Complete the classification using the published categories and subcategories.'
         : mismatch ? 'Resolve the classification warning first.'
           : missingRequired.length ? `Complete ${missingRequired.length} required field${missingRequired.length === 1 ? '' : 's'}.`
             : pendingVerification.length ? `Check ${pendingVerification.length} field${pendingVerification.length === 1 ? '' : 's'} marked “Please verify.”`
@@ -391,9 +524,7 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
     ? { tone: 'bg-slate-400', text: 'Upload a document to begin' }
     : busy ? { tone: 'bg-amber-500', text: uploadBusy ? 'Uploading document…' : 'Reading document…' }
       : submitBlocker ? { tone: 'bg-amber-500', text: reviewItems ? `${reviewItems} item${reviewItems === 1 ? '' : 's'} need${reviewItems === 1 ? 's' : ''} your review` : submitBlocker }
-        : { tone: 'bg-emerald-600', text: 'Ready to submit' }
-  const step = !hasDocument ? 1 : submitBlocker ? 2 : 3
-  const chipState = (n) => n === step ? 'active' : n < step ? 'done' : 'todo'
+        : { tone: 'bg-emerald-600', text: form.mode === 'edit' ? 'Ready to save changes' : 'Ready to add accomplishment' }
 
   const save = async (event) => {
     event.preventDefault()
@@ -403,14 +534,15 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
     setSaving(true)
     try {
       const occurrenceDate = config.dateMode === 'single' ? form.date : (form.endDate || form.startDate)
-      const payload = { title: String(primaryTitle(form.details, config)).trim(), issuer: issuer(form.details), location: issuer(form.details), date_achieved: occurrenceDate, date: occurrenceDate, category: `${category.code} ${category.label}`, category_area: `area${category.area}`, category_metadata: { portfolio_format: 'faculty_academic', criterion_code: category.code, subcategory_code: config.code, faculty_confirmed_category: true, ocr_confidence_band: suggestion?.band || null, matched_signals: suggestion?.matchedKeywords || [], date_mode: config.dateMode, start_date: form.startDate || null, end_date: form.endDate || null, ongoing: form.ongoing, details: form.details }, description: '', status: 'Pending Review' }
+      const parentCategory = selectedIntakeCriterion?.parentCategory || selectedCategory
+      const payload = { criterion_id: form.criterionId || undefined, title: String(primaryTitle(form.details, config)).trim(), issuer: issuer(form.details), location: issuer(form.details), date_achieved: occurrenceDate, date: occurrenceDate, category: `${parentCategory?.code || category.code} ${parentCategory?.name || category.label}`, category_area: `area${effectiveAreaCode}`, category_metadata: { portfolio_format: 'faculty_academic', criterion_code: parentCategory?.code || category.code, subcategory_code: config.code, faculty_confirmed_category: true, ocr_confidence_band: suggestion?.band || null, matched_signals: suggestion?.matchedKeywords || [], date_mode: config.dateMode, start_date: form.startDate || null, end_date: form.endDate || null, single_day: Boolean(config.allowSingleDay && form.singleDay), ongoing: form.ongoing, details: form.details }, description: '', status: 'Pending Review' }
       const duplicate = await personnelAccomplishmentService.checkDuplicate({ ...payload, exclude_id: form.id || stagedId || undefined })
       if (duplicate?.exact_duplicate) { setErrors({ form: 'This exact accomplishment already exists. Open the existing record instead.' }); return }
       if (stagedId) { await personnelAccomplishmentService.updateAccomplishment(stagedId, payload); await onSubmitAccomplishment?.(payload, null, { alreadyPersisted: true, id: stagedId }); setStagedId(null) }
       else { const saved = await onSubmitAccomplishment?.(payload, null); if (saved === false) throw new Error('The server did not save the accomplishment.') }
-      showSuccessToast('✓ Accomplishment submitted for validation')
+      showSuccessToast(form.mode === 'edit' ? 'Accomplishment updated' : 'Accomplishment submitted for validation')
       onClose()
-    } catch (error) { setErrors({ form: error?.message || 'The accomplishment could not be saved. Try again.' }) } finally { setSaving(false) }
+    } catch (error) { setErrors({ form: saveErrorMessage(error, 'The accomplishment could not be saved. Try again.') }) } finally { setSaving(false) }
   }
 
   const baseInput = 'mt-1.5 w-full rounded-lg border px-3 py-2 text-base outline-none transition-colors focus-visible:border-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-700/30 disabled:bg-slate-100 disabled:text-slate-500 min-[820px]:text-sm'
@@ -437,20 +569,19 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
   const documentStatusText = documentState === 'staging' ? 'Preparing your draft…' : documentState === 'uploading' ? 'Uploading document…' : scanning ? 'Reading your document…' : null
 
   return <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-0 min-[820px]:p-6">
-    <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="faculty-entry-title" onKeyDown={onDialogKeyDown} className="flex h-full w-full flex-col overflow-hidden bg-[#fbfcf8] shadow-[0_24px_70px_-24px_rgba(15,23,42,.55)] min-[820px]:h-[min(760px,calc(100vh-48px))] min-[820px]:w-[1100px] min-[820px]:max-w-full min-[820px]:rounded-2xl">
+    <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="faculty-entry-title" onKeyDown={onDialogKeyDown} className="flex h-full w-full flex-col overflow-hidden bg-[#fbfcf8] shadow-[0_24px_70px_-24px_rgba(15,23,42,.55)] min-[820px]:h-[min(900px,calc(100vh-32px))] min-[820px]:w-[1440px] min-[820px]:max-w-full min-[820px]:rounded-2xl">
       <header className="shrink-0 bg-emerald-950 px-5 py-3.5 text-white">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><GraduationCap className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h2 id="faculty-entry-title" className="text-lg font-extrabold tracking-[-0.02em]">{form.mode === 'edit' ? 'Edit Accomplishment' : 'New Accomplishment'}</h2><p className="truncate text-sm text-emerald-50/90">Area {effectiveAreaCode} · {effectiveAreaName}</p></div></div>
+          <div className="flex min-w-0 items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10"><GraduationCap className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><h2 id="faculty-entry-title" className="text-lg font-extrabold tracking-[-0.02em]">{form.mode === 'edit' ? 'Edit Accomplishment' : 'New Accomplishment'}</h2><p className="truncate text-sm text-emerald-50/90">Teaching Faculty · Certificate-assisted submission</p></div></div>
           <div className="flex items-center gap-3">
-            <StepProgress chipState={chipState} />
             <button type="button" data-autofocus onClick={close} className="rounded-lg p-2 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label="Close accomplishment form"><X className="h-5 w-5" /></button>
           </div>
         </div>
       </header>
       {loading ? <div className="grid flex-1 place-items-center p-8 text-sm font-semibold text-slate-700"><span><LoaderCircle className="mr-2 inline h-5 w-5 animate-spin" />Loading saved accomplishment…</span></div> : loadError ? <div className="grid flex-1 place-items-center p-8 text-center"><div><p className="font-extrabold">Unable to load accomplishment.</p><p className="mt-2 text-sm text-slate-600">{loadError}</p><button type="button" onClick={() => setReloadKey((value) => value + 1)} className="mt-4 rounded-lg bg-emerald-800 px-4 py-2 text-sm font-bold text-white">Try Again</button></div></div> : <form ref={formRef} onSubmit={save} noValidate className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto min-[820px]:grid min-[820px]:grid-cols-[46fr_54fr] min-[820px]:overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto min-[820px]:grid min-[820px]:grid-cols-[minmax(0,38fr)_minmax(0,62fr)] min-[820px]:overflow-hidden">
           {/* LEFT: the document */}
-          <div className="flex h-[22rem] min-h-0 flex-col border-b border-slate-200 bg-slate-100 min-[820px]:h-auto min-[820px]:border-b-0 min-[820px]:border-r">
+          <div className="flex h-[22rem] min-h-0 min-w-0 flex-col border-b border-slate-200 bg-slate-100 min-[820px]:h-auto min-[820px]:border-b-0 min-[820px]:border-r">
             {hasDocument
               ? <FacultyDocumentViewer fill scanning={scanning} highlight={previewFlash} viewportRef={previewRef} localFile={selectedFile} localPreviewUrl={localPreviewUrl} evidence={localPreviewUrl && !handoffEvidenceId ? null : activeEvidence} onPersistedReady={handlePersistedPreviewReady} />
               : <div className="flex flex-1 p-4 min-[820px]:p-5"><button type="button" disabled={uploadBusy} onClick={() => fileInput.current?.click()} onDragOver={(event) => { event.preventDefault(); setDragActive(true) }} onDragLeave={() => setDragActive(false)} onDrop={(event) => { event.preventDefault(); setDragActive(false); processFile(event.dataTransfer.files?.[0]) }} aria-describedby={`${ids}-drop-hint`} className={`flex flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 ${dragActive ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300 bg-white hover:border-emerald-600 hover:bg-emerald-50/40'}`}>
@@ -462,9 +593,13 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
             <input ref={fileInput} type="file" accept={FILE_ACCEPT} className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; processFile(file) }} />
           </div>
 
-          {/* RIGHT: review */}
-          <div className="min-h-0 space-y-3 p-4 min-[820px]:overflow-y-auto min-[820px]:p-5">
-            <section aria-labelledby="supporting-document-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+          {/* RIGHT: classification and accomplishment details */}
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <div role="tablist" aria-label="Accomplishment form sections" className="flex shrink-0 gap-1 border-b border-slate-200 bg-white px-4 pt-3">
+              {[['classification', 'Classification'], ['details', 'Accomplishment Details']].map(([key, label]) => <button key={key} id={`${ids}-${key}-tab`} type="button" role="tab" aria-selected={activeTab === key} aria-controls={`${ids}-${key}-panel`} onClick={() => setActiveTab(key)} className={`min-h-11 border-b-2 px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700 ${activeTab === key ? 'border-emerald-700 text-emerald-950' : 'border-transparent text-slate-600 hover:text-slate-950'}`}>{label}</button>)}
+            </div>
+            <div id={`${ids}-${activeTab}-panel`} role="tabpanel" aria-labelledby={`${ids}-${activeTab}-tab`} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 min-[820px]:p-5">
+            {activeTab === 'details' && <section aria-labelledby="supporting-document-heading" className="rounded-xl border border-slate-200 bg-white p-4">
               <CardHeading id="supporting-document-heading" number={1} title="Supporting document" />
               {!hasDocument && documentState === 'idle' && <p className="mt-2 text-sm text-slate-600">No document yet. Upload one on the left to get started.</p>}
               {hasDocument && <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
@@ -481,25 +616,29 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
               {scanning && <p className="mt-2 text-sm text-slate-700" aria-live="polite">Reading your document…</p>}
               {errors.evidence && <p role="alert" className="mt-2 text-sm font-semibold text-rose-700">{errors.evidence}</p>}
               {documentState === 'upload_failed' && <div role="alert" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><p className="flex items-start gap-2"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{documentError}</p><div className="mt-2 flex flex-wrap gap-2">{isDuplicateDocument ? <button type="button" onClick={() => fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white"><UploadCloud className="h-3.5 w-3.5" />Choose Another File</button> : <button type="button" onClick={() => selectedFile ? processFile(selectedFile, { reuseLocalPreview: true }) : fileInput.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white"><RefreshCw className="h-3.5 w-3.5" />Retry Upload</button>}{activeEvidence && selectedFile && <button type="button" onClick={cancelReplacement} className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-white">Cancel Replacement</button>}</div></div>}
-              {documentState === 'ocr_failed' && <div role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><div><p>{SCAN_FAILED_MESSAGE}</p><button type="button" onClick={() => runOcr()} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-950"><RefreshCw className="h-3.5 w-3.5" />Try Again</button></div></div>}
+              {documentState === 'ocr_failed' && <div role="alert" className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /><div><p>{documentError || SCAN_FAILED_MESSAGE}</p><button type="button" onClick={() => runOcr()} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-950"><RefreshCw className="h-3.5 w-3.5" />Try Again</button></div></div>}
               {documentState === 'ocr_partial' && <p className="mt-2 text-xs text-amber-900">Some details were found. Please review them.</p>}
               {suggestion?.areaMismatch && <p className="mt-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-950">This document may belong to another Area ({suggestion.category}). Keep Area {effectiveAreaCode} only if that is correct.</p>}
-            </section>
+            </section>}
 
-            <section aria-labelledby="classification-heading" className="rounded-xl border border-slate-200 bg-white p-4">
-              <CardHeading id="classification-heading" number={2} title="Classification" aside={<div className="flex items-center gap-1">{form.categoryCode && <button type="button" onClick={() => openHelpGuide({ topicId: 'categories', categoryId: form.categoryCode, subcategoryId: form.subcategoryCode || undefined })} className="rounded-md px-2 py-1 text-xs font-bold text-emerald-900 underline underline-offset-2 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">What belongs here?</button>}{form.mode === 'edit' && form.subcategoryCode && <button type="button" onClick={() => setClassificationEditing((value) => !value)} className="rounded-md px-2 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{classificationEditing ? 'Keep Saved Classification' : 'Change Classification'}</button>}</div>} />
-              {form.mode === 'edit' && !classificationEditing && form.subcategoryCode
-                ? <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"><p className="text-sm font-bold text-slate-950">{facultyCategoryDisplayLabel(form.categoryCode)}</p><p className="text-sm text-slate-600">{config?.label}</p></div>
-                : <div className="mt-3 grid gap-3 min-[820px]:grid-cols-2">
-                  <div><label htmlFor={`${ids}-category`} className="text-sm font-bold text-slate-900">Category</label><select id={`${ids}-category`} value={form.categoryCode} onChange={(event) => selectClassification(event.target.value)} className={`${baseInput} border-slate-300 bg-white`}><option value="">Select category</option>{areaCategories.map((item) => <option key={item.code} value={item.code}>{facultyCategoryDisplayLabel(item.code)}</option>)}</select></div>
-                  <div><label htmlFor={`${ids}-subcategory`} className="text-sm font-bold text-slate-900">Subcategory</label><select id={`${ids}-subcategory`} value={form.subcategoryCode} disabled={!form.categoryCode} onChange={(event) => selectClassification(form.categoryCode, event.target.value)} className={`${baseInput} border-slate-300 bg-white`}><option value="">{form.categoryCode ? 'Select subcategory' : 'Choose a category first'}</option>{category?.subcategories?.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}</select></div>
-                </div>}
+            {activeTab === 'classification' && <section aria-labelledby="classification-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+              <CardHeading id="classification-heading" number={2} title="Classification" aside={form.mode === 'edit' && savedClassification.current?.subcategoryCode ? <button type="button" onClick={classificationEditing ? keepSavedClassification : () => setClassificationEditing(true)} className="rounded-md px-2 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">{classificationEditing ? 'Keep Saved Classification' : 'Change Classification'}</button> : null} />
+              <div className="mt-4 grid gap-4">
+                <div><label htmlFor={`${ids}-area`} className="text-sm font-bold text-slate-900">Area</label><select id={`${ids}-area`} value={effectiveAreaCode} disabled={!activeCriteria || (form.mode === 'edit' && !classificationEditing)} onChange={(event) => selectArea(event.target.value)} className={`${baseInput} border-slate-300 bg-white`}>{criteriaAreas.map((item) => <option key={item.code} value={item.code}>{hierarchyOptionLabel(item.code, item.name, true)}</option>)}</select></div>
+                <div><label htmlFor={`${ids}-category`} className="text-sm font-bold text-slate-900">Category</label><select id={`${ids}-category`} value={form.categoryCode} disabled={!activeCriteria || (form.mode === 'edit' && !classificationEditing)} onChange={(event) => selectClassification(event.target.value)} className={`${baseInput} border-slate-300 bg-white`}><option value="">Select category</option>{areaCategories.map((item) => <option key={item.code} value={item.code}>{hierarchyOptionLabel(item.code, item.name)}</option>)}</select></div>
+                {selectedCategoryCriteria.some((item) => item.intake_level !== 'CATEGORY') && <div><label htmlFor={`${ids}-subcategory`} className="text-sm font-bold text-slate-900">Subcategory</label><select id={`${ids}-subcategory`} value={form.criterionId || ''} disabled={!form.categoryCode || (form.mode === 'edit' && !classificationEditing)} onChange={(event) => { const selected = selectedCategoryCriteria.find((item) => item.criterion_id === event.target.value); if (selected?.entrySchema) selectClassification(selected.parentCategory.code, selected.entrySchema.code, selected.criterion_id); else setErrors({ form: 'This published subcategory has no matching Faculty entry form. HR must configure its intake fields before it can be used.' }) }} className={`${baseInput} border-slate-300 bg-white`}><option value="">{form.categoryCode ? 'Select subcategory' : 'Choose a category first'}</option>{selectedCategoryCriteria.filter((item) => item.intake_level !== 'CATEGORY').map((item) => <option key={item.criterion_id} value={item.criterion_id}>{item.label}</option>)}</select></div>}
+              </div>
+              {criteriaError && <p role="alert" className="mt-3 text-sm font-semibold text-rose-700">{criteriaError}</p>}
+              {!criteriaError && activeCriteria && selectedIntakeCriterion && !selectedIntakeCriterion.entrySchema && <p role="alert" className="mt-3 text-sm font-semibold text-rose-700">This published classification has no matching Faculty accomplishment form. HR must configure its intake form before personnel can submit it.</p>}
+              {filenameSuggestion && filenameSuggestion === form.categoryCode && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><p>We found “{filenameSuggestion}” in the filename and selected its matching form. Please verify the classification before continuing.</p><button type="button" onClick={() => { setClassificationConfirmed(true); setFilenameSuggestion('') }} className="rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-900">Confirm classification</button></div>}
+              {form.categoryCode && <button type="button" onClick={() => openHelpGuide({ topicId: 'categories', categoryId: form.categoryCode, subcategoryId: form.subcategoryCode || undefined })} className="mt-3 rounded-md py-1 text-xs font-bold text-emerald-900 underline underline-offset-2 hover:text-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">What belongs here?</button>}
               {suggestion?.label && !suggestion.areaMismatch && suggestion.categoryCode === form.categoryCode && !touchedFields.classification && <p className="mt-2 text-xs text-emerald-800">Suggested from your document: {suggestion.label}</p>}
-              {mismatch && <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"><p className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" /><span>Your document shows a {mismatch.documentLabel} degree, but <strong>{config.label}</strong> is selected.</span></p><button type="button" onClick={() => selectClassification(form.categoryCode, mismatch.fixCode)} className="rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2">Use {mismatch.documentLabel}</button></div>}
-            </section>
+              {mismatch && <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"><p className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" /><span>Your document shows a {mismatch.documentLabel} degree, but <strong>{config.label}</strong> is selected.</span></p><button type="button" onClick={() => { const target = selectedCategoryCriteria.find((item) => item.entrySchema?.code === mismatch.fixCode); if (target) selectClassification(form.categoryCode, target.entrySchema.code, target.criterion_id) }} className="rounded-lg bg-amber-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2">Use {mismatch.documentLabel}</button></div>}
+            </section>}
 
-            <section aria-labelledby="details-heading" className="rounded-xl border border-slate-200 bg-white p-4">
+            {activeTab === 'details' && <section aria-labelledby="details-heading" className="rounded-xl border border-slate-200 bg-white p-4">
               <CardHeading id="details-heading" number={3} title="Accomplishment details" />
+              {filenameSuggestion && filenameSuggestion === form.categoryCode && <p className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">The filename suggests {filenameSuggestion}. Review and confirm this in the Classification tab; the detail fields below are for that suggested category. <button type="button" onClick={() => setActiveTab('classification')} className="ml-1 font-bold underline underline-offset-2">Review classification</button></p>}
               {!config ? <p className="mt-2 text-sm text-slate-600">{hasDocument ? 'Choose a subcategory to show its fields.' : 'Fields appear here once the document is read or a subcategory is chosen.'}</p> : <div className="mt-3 grid gap-3 min-[820px]:grid-cols-2">
                 {config.fields.filter((field) => !field.showWhen || form.details[field.showWhen.field] === field.showWhen.equals).map((field) => {
                   const key = `details.${field.name}`
@@ -512,24 +651,24 @@ export default function FacultyAcademicSubmissionModal({ isOpen, onClose, onSubm
                   </div>
                 })}
                 {config.dateMode === 'single' ? renderDateInput('date', config.dateLabel) : <>
-                  {renderDateInput('startDate', 'Start date')}
-                  {renderDateInput('endDate', 'End date', { disabled: form.ongoing })}
+                  {config.allowSingleDay ? <div>{renderDateInput('startDate', 'Start date')}<label className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-800"><input type="checkbox" checked={Boolean(form.singleDay)} onChange={(event) => { const checked = event.target.checked; setTouchedFields((old) => ({ ...old, singleDay: true, endDate: true })); setForm((old) => ({ ...old, singleDay: checked, endDate: checked ? '' : old.endDate })) }} className="h-4 w-4 accent-emerald-800" />One-day event</label></div> : renderDateInput('startDate', 'Start date')}
+                  {(!config.allowSingleDay || !form.singleDay) && renderDateInput('endDate', 'End date', { disabled: form.ongoing })}
                   {config.allowOngoing && <label className="flex items-center gap-2 text-sm font-semibold text-slate-800"><input type="checkbox" checked={form.ongoing} onChange={(event) => { const checked = event.target.checked; setTouchedFields((old) => ({ ...old, ongoing: true, endDate: true })); setForm((old) => ({ ...old, ongoing: checked, endDate: checked ? '' : old.endDate })) }} className="h-4 w-4 accent-emerald-800" />Ongoing</label>}
                 </>}
               </div>}
-            </section>
+            </section>}
             {draftMessage && <div role="status" className="rounded-lg bg-sky-50 p-3 text-sm font-semibold text-sky-950">{draftMessage}</div>}
             {errors.form && <div role="alert" className="rounded-lg bg-rose-50 p-3 text-sm font-semibold text-rose-900">{errors.form}</div>}
+            </div>
           </div>
         </div>
 
         <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-3">
           <div className="flex flex-col-reverse gap-3 min-[820px]:flex-row min-[820px]:items-center min-[820px]:justify-between">
-            <p className="flex items-center gap-2 text-sm font-semibold text-slate-800" aria-live="polite"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${status.tone}`} aria-hidden="true" />{status.text}{status.text !== 'Ready to submit' && hasDocument && !busy && submitBlocker && <span className="sr-only">. {submitBlocker}</span>}</p>
+            <p className="flex items-center gap-2 text-sm font-semibold text-slate-800" aria-live="polite"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${status.tone}`} aria-hidden="true" />{status.text}{hasDocument && !busy && submitBlocker && <span className="sr-only">. {submitBlocker}</span>}</p>
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={close} className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700">Cancel</button>
               <button type="button" onClick={saveDraft} disabled={saving} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-800 hover:border-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 disabled:opacity-45">Save Draft</button>
-              <span title={submitBlocker || undefined}><button type="submit" disabled={saving || Boolean(submitBlocker)} aria-describedby={submitBlocker ? `${ids}-submit-blocker` : undefined} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45">{saving ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />Adding…</> : <><CheckCircle2 className="h-4 w-4" aria-hidden="true" />Add Accomplishment</>}</button></span>
+              <span title={submitBlocker || undefined}><button type="submit" disabled={saving || Boolean(submitBlocker)} aria-describedby={submitBlocker ? `${ids}-submit-blocker` : undefined} className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-800 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-45">{saving ? <><LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />Saving…</> : <><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{form.mode === 'edit' ? 'Save Changes' : 'Add Accomplishment'}</>}</button></span>
               {submitBlocker && <span id={`${ids}-submit-blocker`} className="sr-only">{submitBlocker}</span>}
             </div>
           </div>

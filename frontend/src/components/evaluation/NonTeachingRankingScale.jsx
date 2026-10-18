@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Download, Printer } from 'lucide-react'
 
 const number = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-const date = value => value ? new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
 const present = value => value !== null && value !== undefined && value !== ''
 const display = value => present(value) ? value : '—'
 const score = value => present(value) ? number.format(Number(value)) : '—'
@@ -26,21 +25,33 @@ const criterionDetails = item => {
   }
 }
 
-export default function NonTeachingRankingScale({ result, preview = false, context = {}, onSaveComments, embedded = false }) {
+export default function NonTeachingRankingScale({ result, preview = false, context = {}, onSaveComments, embedded = false, showApprovalLines = true }) {
   const summary = result.summary || {}
   const recordedRank = field => Object.prototype.hasOwnProperty.call(summary, field) ? summary[field] : context[field]
-  const appliedRank = recordedRank('rank_applied_for') === 'Non-teaching rank sequence not configured'
+  const savedAppliedRank = recordedRank('rank_applied_for')
+  const appliedRank = savedAppliedRank === 'Non-teaching rank sequence not configured'
     ? context.rank_applied_for
-    : recordedRank('rank_applied_for')
-  const appliedStatus = recordedRank('rank_applied_for_status')
+    : savedAppliedRank || context.rank_applied_for
+  const savedAppliedStatus = recordedRank('rank_applied_for_status')
+  const appliedStatus = !savedAppliedRank && ['PENDING_CONFIRMATION', 'UNRESOLVED', 'QUALIFICATION_REQUIRED', 'OK'].includes(savedAppliedStatus)
+    ? context.rank_applied_for_status || savedAppliedStatus
+    : savedAppliedStatus || context.rank_applied_for_status
+  const presentRank = recordedRank('present_rank') || context.present_rank
+  const mastersRequiredLabel = ['Assistant Instructor', 'Senior Instructor'].includes(presentRank)
+    ? 'Assistant Professor (verified Master’s required)'
+    : 'Verified Master’s required for advancement'
   const appliedRankDisplay = appliedRank || (appliedStatus === 'MASTERS_REQUIRED'
-    ? 'Verified Master’s required for advancement' : appliedStatus === 'RULE_REVIEW_REQUIRED'
+    ? mastersRequiredLabel : appliedStatus === 'RULE_REVIEW_REQUIRED'
     || (recordedRank('present_rank') === 'Assistant Instructor' && appliedStatus === 'TERMINAL')
-    ? 'Pending rank-rule review' : appliedStatus === 'TERMINAL' ? 'No next rank under current rules' : 'No confirmed rank application')
+    ? 'Pending rank-rule review' : appliedStatus === 'TERMINAL' ? 'No next rank under current rules' : 'Rank progression requires review')
   const comments = context.comments !== undefined ? context.comments : summary.comments || ''
   const effectivity = context.effectivity || summary.effectivity || context.review_completed_at || 'Pending approval'
-  const recommendationStatus = summary.recommended_rank_status || context.recommended_rank_status
-  const recommendedRank = summary.recommended_rank || context.recommended_rank || ({
+  const savedRecommendationIsLegacy = summary.recommended_rank_status === 'legacy_recommendation_unavailable'
+  const recommendationStatus = savedRecommendationIsLegacy
+    ? context.recommended_rank_status || summary.recommended_rank_status
+    : summary.recommended_rank_status || context.recommended_rank_status
+  const recommendedRank = (savedRecommendationIsLegacy ? null : summary.recommended_rank)
+    || context.recommended_rank || ({
     pending_rule_review: 'Rank recommendation pending rule review',
     retained_masters_required: recordedRank('present_rank') || 'Present rank retained',
     pending_rank_application_confirmation: 'Rank application confirmation required',
@@ -107,7 +118,7 @@ export default function NonTeachingRankingScale({ result, preview = false, conte
         <FormField label="Specific Job" value={result.personnel?.position || summary.personnel_information?.position}/>
         <FormField label="Period Covered" value={summary.period_covered || result.evaluation_period?.name || result.evaluation_period?.academic_year}/>
         <FormField label="Employee's Progress last Ranking" value={recordedRank('employee_progress_last_ranking') || 'No prior rank recorded'}/>
-        <FormField label="Present Rank" value={recordedRank('present_rank') || 'No present rank recorded'}/>
+        <FormField label="Present Rank" value={presentRank || 'No present rank recorded'}/>
         <FormField label="Rank Applied For" value={appliedRankDisplay}/>
       </section>
 
@@ -145,17 +156,13 @@ export default function NonTeachingRankingScale({ result, preview = false, conte
         <p><strong>Comments:</strong> <span className="inline-block min-w-[70%] border-b border-slate-950 px-2">{comments || 'No summary comments added'}</span></p>
       </section>
 
-      <section className="mt-6 grid gap-6 sm:grid-cols-2 print:grid-cols-2" aria-label="Approval lines">
+      {showApprovalLines && <section className="mt-6 grid gap-6 sm:grid-cols-2 print:grid-cols-2" aria-label="Approval lines">
         <SignatureLine label="Recommended for Approval" value={summary.approvals?.chair?.name}/>
         <div><p className="font-bold">Members:</p><div className="mt-5 grid grid-cols-2 gap-4"><SignatureLine label="Member"/><SignatureLine label="Member"/></div></div>
         <SignatureLine label="Chair"/>
         <SignatureLine label="Approved / President" value={summary.approvals?.president?.name}/>
-      </section>
+      </section>}
 
-      <footer className="mt-7 flex flex-col gap-1 border-t border-slate-300 pt-3 text-[10px] text-slate-500 sm:flex-row sm:items-end sm:justify-between">
-        <div><p>{preview ? 'Saved review summary' : 'Immutable report'} · {result.result_snapshot?.report_id}</p><p>Generated {date(result.result_snapshot?.generated_at)}</p></div>
-        <p>Criteria {display(result.scale_version_id)} · Evaluation version {display(result.evaluation?.version_number)}</p>
-      </footer>
     </article>
   </div>
 }

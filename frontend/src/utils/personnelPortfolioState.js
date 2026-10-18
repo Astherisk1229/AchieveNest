@@ -15,6 +15,24 @@ const RETURNED_SUBMISSION_STATUSES = new Set([
 const normalizeStatus = (status) => String(status || '').trim().toLowerCase()
 
 /**
+ * Submission does not wait for post-submission research verification. Some
+ * older API responses only expose overall eligibility, where that research
+ * check keeps the status pending, so derive submission readiness from the
+ * actual pre-submission requirements when the dedicated status is absent.
+ */
+export function personnelSubmissionReadiness(eligibility) {
+  const readiness = normalizeStatus(eligibility?.submission_readiness_status)
+  if (readiness === 'eligible' || readiness === 'not_eligible') return readiness
+
+  const annual = normalizeStatus(eligibility?.annual_review_requirement?.status)
+  const service = normalizeStatus(eligibility?.service_requirement?.status)
+  const personnelType = normalizeStatus(eligibility?.personnel_type_requirement?.status)
+  if (annual === 'passed' && service === 'passed' && (personnelType === 'resolved' || !personnelType)) return 'eligible'
+  if (annual === 'not_passed' || service === 'not_passed') return 'not_eligible'
+  return readiness || normalizeStatus(eligibility?.eligibility_status) || 'pending'
+}
+
+/**
  * Normalize both the service-level payload and a raw API data envelope.
  * A DRAFT empty-state response is not an authoritative submission snapshot.
  */
@@ -89,7 +107,7 @@ export function derivePersonnelSubmissionActionGate({
           ? 'The scheduled submission period has not opened yet.'
           : 'The current personnel evaluation period is outside its submission window.'
         : ''
-  const eligibilityBlocked = !isReturnedForRevision && eligibilityStatus !== 'eligible'
+  const eligibilityBlocked = !isReturnedForRevision && normalizeStatus(eligibilityStatus) !== 'eligible'
   const visible = Boolean(portfolioState?.isEditable)
 
   return {

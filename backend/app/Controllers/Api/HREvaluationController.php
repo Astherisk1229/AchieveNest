@@ -257,30 +257,24 @@ class HREvaluationController extends Controller
         return $review !== null;
     }
 
-    /** Submission-time eligibility is authoritative; legacy rows retain the old qualification fallback. */
+    /** Evaluation may start once submission prerequisites are met; research is verified during evaluation. */
     private function isSubmissionEligibilityCleared(array $evaluation): bool
     {
         $snapshot = $evaluation['eligibility_snapshot'] ?? null;
         if (is_string($snapshot) && $snapshot !== '') $snapshot = json_decode($snapshot, true);
-        $personnelGroup = strtoupper((string) ($evaluation['personnel_group_snapshot'] ?? ''));
-        if ($personnelGroup === 'NON_TEACHING_FACULTY') {
-            // NTF portfolios are submitted before Area A is rated. For older
-            // snapshots, recompute the submission-specific decision because
-            // their stored ranking eligibility may still be pending solely
-            // due to Area A scores that HR enters during evaluation.
-            if (is_array($snapshot) && isset($snapshot['submission_readiness_status'])) {
-                return $snapshot['submission_readiness_status'] === 'eligible';
-            }
-            if (! empty($evaluation['evaluation_period_id'])) {
-                $current = (new \App\Services\PersonnelEligibilityService())->evaluateEligibility((string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
-                return ($current['submission_readiness_status'] ?? '') === 'eligible';
-            }
+        // Research verification is a review task, not a gate to starting the
+        // evaluation. Use the same annual-review, personnel-type, and service
+        // prerequisites that allowed the portfolio to be submitted.
+        if (is_array($snapshot) && isset($snapshot['submission_readiness_status'])) {
+            return $snapshot['submission_readiness_status'] === 'eligible';
         }
-        if (is_array($snapshot) && array_key_exists('eligibility_status', $snapshot)) return ($snapshot['eligibility_status'] ?? '') === 'eligible';
-        if (!empty($evaluation['evaluation_period_id'])) {
+        if (! empty($evaluation['evaluation_period_id'])) {
             $current = (new \App\Services\PersonnelEligibilityService())->evaluateEligibility((string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
-            return ($current['eligibility_status'] ?? '') === 'eligible';
+            return ($current['submission_readiness_status'] ?? '') === 'eligible';
         }
+        // Old rows without an eligibility snapshot or linked period retain
+        // the pre-existing qualification-report fallback.
+        if (is_array($snapshot) && array_key_exists('eligibility_status', $snapshot)) return ($snapshot['eligibility_status'] ?? '') === 'eligible';
         $academicYear = (string) ($evaluation['academic_year'] ?? '');
         return $academicYear === '' || $this->isQualificationCleared((string) $evaluation['personnel_profile_id'], $academicYear);
     }
@@ -502,7 +496,7 @@ class HREvaluationController extends Controller
             return $this->respond([
                 'error' => [
                     'code'    => 'QUALIFICATION_NOT_CLEARED',
-                    'message' => "Personnel has not been cleared by the Prerequisite Qualification Report for academic year {$academicYear}. Evaluation cannot begin.",
+                    'message' => "Portfolio submission prerequisites are not cleared for academic year {$academicYear}. Confirm annual reviews, personnel type, and service requirements before evaluation can begin.",
                 ],
             ], 422);
         }
@@ -1028,30 +1022,6 @@ class HREvaluationController extends Controller
         }
 
         $personnel = $db->table('personnel_profiles')->select('personnel_group')->where('profile_id', $evaluation['personnel_profile_id'])->get()->getRowArray();
-        if (strtoupper((string) ($personnel['personnel_group'] ?? '')) === 'FACULTY') {
-            $appliedRank = $db->table('personnel_rank_applied_for_decisions')
-                ->where('personnel_profile_id', $evaluation['personnel_profile_id'])
-                ->where('ranking_track_id', $evaluation['evaluation_period_id'])
-                ->where('status', 'confirmed')->orderBy('confirmed_at', 'DESC')->get()->getRowArray();
-            $recommendedRank = $db->table('personnel_recommended_rank_decisions')
-                ->where('evaluation_id', $id)->orderBy('created_at', 'DESC')->get()->getRowArray();
-            if (! $appliedRank || ! $recommendedRank || ($recommendedRank['status'] ?? '') !== 'confirmed'
-                || (string) ($recommendedRank['rank_applied_for_decision_id'] ?? '') !== (string) $appliedRank['id']) {
-                return $this->respond(['error' => [
-                    'code' => 'FACULTY_PHASE_O_INCOMPLETE',
-                    'message' => 'Confirm the Rank Applied For and Recommended Rank in Faculty Phase O before endorsing this evaluation to HR.',
-                ]], 409);
-            }
-            try {
-                (new \App\Services\RecommendedRankService($db))->assertFreshConfirmedDecision((string) $recommendedRank['id']);
-            } catch (Throwable $phaseOError) {
-                return $this->respond(['error' => [
-                    'code' => 'FACULTY_PHASE_O_STALE',
-                    'message' => 'The Faculty Phase O rank decision is no longer current. Refresh Phase O and confirm the recommendation again before endorsing to HR.',
-                ]], 409);
-            }
-        }
-
         // Check for unresolved deficiencies
         $unresolvedCount = $this->countUnresolvedDeficiencies($id);
         if ($unresolvedCount > 0) {
@@ -1380,6 +1350,8 @@ class HREvaluationController extends Controller
             }
             // Keep the established `report` envelope while making its payload a
             // sanitized, immutable completed-result read model.
+            $ownerReport = db_connect()->table('personnel_evaluation_reports')
+                ->where('evaluation_id', $id)->orderBy('generated_at', 'DESC')->get()->getRowArray() ?? [];
             return $this->respond(['data' => ['report' => [
                 'id' => $result['result_snapshot']['report_id'],
                 'evaluation_id' => $result['evaluation']['version_id'],
@@ -1387,7 +1359,7 @@ class HREvaluationController extends Controller
                 'passing_status' => $result['scores']['passing_status'],
                 'generated_at' => $result['result_snapshot']['generated_at'],
                 'snapshot' => $result,
-            ], 'result' => $result]], 200);
+            ], 'result' => $result, 'summary_context' => $this->facultySummaryContext($id, $ownerReport, $actor)]], 200);
         } catch (RuntimeException $e) {
             $code = $e->getMessage();
             $status = match ($code) {
@@ -1494,6 +1466,45 @@ class HREvaluationController extends Controller
             $rankContext = ($evaluation['status'] ?? '') === 'completed'
                 ? $frozenRank
                 : $this->nonTeachingRankContext($db, $profileId, (string) $evaluation['evaluation_period_id']);
+            // Older completed reports may have frozen empty rank fields. Fill only those
+            // missing fields from current personnel data and the active progression rules.
+            $needsCurrentRankContext = trim((string) ($rankContext['present_rank'] ?? '')) === ''
+                || (trim((string) ($rankContext['rank_applied_for'] ?? '')) === ''
+                    && in_array($rankContext['rank_applied_for_status'] ?? null,
+                        [null, '', 'UNRESOLVED', 'PENDING_CONFIRMATION', 'QUALIFICATION_REQUIRED', 'OK'], true));
+            if ($needsCurrentRankContext) {
+                $currentRank = $this->nonTeachingRankContext($db, $profileId, (string) $evaluation['evaluation_period_id']);
+                if (trim((string) ($rankContext['present_rank'] ?? '')) === '') {
+                    $rankContext['present_rank'] = $currentRank['present_rank'] ?? null;
+                }
+                if (trim((string) ($rankContext['rank_applied_for'] ?? '')) === '') {
+                    $rankContext['rank_applied_for'] = $currentRank['rank_applied_for'] ?? null;
+                    if (in_array($rankContext['rank_applied_for_status'] ?? null,
+                        [null, '', 'UNRESOLVED', 'PENDING_CONFIRMATION', 'QUALIFICATION_REQUIRED', 'OK'], true)) {
+                        $rankContext['rank_applied_for_status'] = $currentRank['rank_applied_for_status'] ?? 'UNRESOLVED';
+                    }
+                }
+            }
+            $recommendationStatus = $rankContext['recommended_rank_status'] ?? null;
+            if (empty($rankContext['recommended_rank'])
+                && in_array($recommendationStatus, [null, '', 'legacy_recommendation_unavailable'], true)) {
+                $savedScore = $report['official_summary']['total'] ?? $report['grand_total'] ?? null;
+                if (is_numeric($savedScore)) {
+                    try {
+                        $recommendation = (new \App\Services\NonTeachingRankRecommendationService($db))->decide(
+                            $profileId,
+                            (string) $evaluation['evaluation_period_id'],
+                            (float) $savedScore,
+                            (array) ($report['criteria_snapshot'] ?? [])
+                        );
+                        $rankContext['recommended_rank'] = $recommendation['recommended_rank'] ?? null;
+                        $rankContext['recommended_rank_status'] = $recommendation['recommended_rank_status'] ?? 'present_rank_unresolved';
+                        $rankContext['recommended_rank_rule'] = $recommendation['recommended_rank_rule'] ?? null;
+                    } catch (\Throwable $e) {
+                        log_message('warning', '[HREvaluationController] Legacy non-teaching rank recommendation unavailable for evaluation ' . $evaluationId . ': ' . $e->getMessage());
+                    }
+                }
+            }
             $finishedEvent = $db->table('personnel_evaluation_events')
                 ->select('occurred_at')->where('evaluation_id', $evaluationId)
                 ->where('action', \App\Services\PersonnelWorkflowEventRegistry::EVENT_EVALUATION_READY_FOR_FINALIZATION)
@@ -1594,7 +1605,6 @@ class HREvaluationController extends Controller
         }
         $presentRank = trim((string) ($context['present_rank'] ?? ''));
         $appliedRank = trim((string) ($context['rank_applied_for'] ?? ''));
-        if (($context['rank_applied_for_status'] ?? '') === 'suggested') $appliedRank = '';
         $total = (float) ($reportRow['summary_score'] ?? $report['grand_total'] ?? 0);
         // A workbook rank must match the active progression before it can be recommended.
         if ($appliedRank !== '' && ($context['rank_applied_for_status'] ?? '') === 'annual_review') {

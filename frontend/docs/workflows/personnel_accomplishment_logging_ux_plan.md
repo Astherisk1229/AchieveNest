@@ -136,7 +136,7 @@ Below is the comprehensive matrix defining the exact, tailored fields required f
 
 ## 4. Multi-Phase Implementation Plan
 
-### Phase 1: Comprehensive Refactoring of `PersonnelSubmissionModal.jsx` [x] COMPLETED
+### Phase 1: Comprehensive Refactoring of `NonTeachingFacultySubmissionModal.jsx` [x] COMPLETED
 * **[x] Task 1.1: Remove Static Generic Top Fields**
   - Deleted static generic inputs (`title`, `issuingEntity`) from the top of the form layout.
 * **[x] Task 1.2: Implement 100% Dynamic Category Field Components**

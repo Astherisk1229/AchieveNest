@@ -66,6 +66,23 @@ describe('Personnel Profile and accomplishment repository', () => {
     expect(html).not.toContain('Portfolio Status')
   })
 
+  it('shows completed service years without the partial month remainder', () => {
+    const html = renderToString(
+      <MemoryRouter>
+        <PersonnelDashboardPage currentUser={{
+          id: 'usr-pers-001',
+          full_name: 'Maria Dela Cruz',
+          account_type: 'personnel',
+          active_role_context: 'personnel',
+          length_of_service: { completed_years: 4, display: '4 years, 7 months' },
+        }} />
+      </MemoryRouter>
+    )
+
+    expect(html).toContain('4 years')
+    expect(html).not.toContain('4 years, 7 months')
+  })
+
   it('renders accomplishment timeline and category pills with proper dark mode contrast', () => {
     const fixture = [{
       id: 'acc-test-1',

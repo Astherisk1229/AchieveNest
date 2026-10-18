@@ -13,7 +13,7 @@ describe('Personnel has no score before Dean evaluation', () => {
 
   it('does not submit score fields from the accomplishment form or controller', () => {
     const sources = [
-      read('pages/personnel/modals/PersonnelSubmissionModal.jsx'),
+      read('pages/personnel/modals/NonTeachingFacultySubmissionModal.jsx'),
       read('controllers/PersonnelAchievementController.js')
     ].join('\n')
     expect(sources).not.toMatch(/claimed_points|provisional_points|suggested_points|accepted_points|ranking_points|criterion_score/)
@@ -24,7 +24,7 @@ describe('Personnel has no score before Dean evaluation', () => {
       read('pages/personnel/PersonnelPortfolioEditPage.jsx'),
       read('pages/personnel/PersonnelAchievementsPage.jsx'),
       read('pages/personnel/AchievementPopoverMenu.jsx'),
-      read('pages/personnel/modals/PersonnelSubmissionModal.jsx'),
+      read('pages/personnel/modals/NonTeachingFacultySubmissionModal.jsx'),
       read('pages/personnel/modals/SubmissionVersionHistoryModal.jsx')
     ].join('\n')
     expect(sources).not.toMatch(/Claimed Points|Provisional Points|Advisory Points|Suggested Points|Potential Points|Accepted Points|Ranking Points|Criterion Score|Maximum Points|Max Pts/i)

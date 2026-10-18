@@ -23,6 +23,7 @@ describe('global sidebar navigation metadata', () => {
   })
 
   it('keeps parent navigation active for nested routes and tab aliases', () => {
+    expect(isNavigationItemActive({ path: '/dean/faculty-evaluation' }, '/dean/faculty-evaluation', 'portfolio')).toBe(true)
     expect(isNavigationItemActive({ path: '/dean/faculty-ranking-reviews' }, '/dean/faculty-ranking-reviews/submission-1')).toBe(true)
     expect(isNavigationItemActive({ path: '/osad/dashboard?tab=academic-structure', tab: 'academic-structure' }, '/osad/dashboard', 'programs')).toBe(true)
     expect(isNavigationItemActive({ path: '/dean/college-personnel' }, '/dean/dashboard')).toBe(false)

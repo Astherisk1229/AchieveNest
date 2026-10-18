@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { formatPersonnelPlacement } from '../../utils/personnelPlacement'
 import { useNavigate } from 'react-router-dom'
 import EditBasicInfoModal from './modals/EditBasicInfoModal'
-import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import NonTeachingFacultySubmissionModal from './modals/NonTeachingFacultySubmissionModal'
 import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
 import PersonnelPortfolioBookletModal from './PersonnelPortfolioBookletModal'
 import SubmissionVersionHistoryModal from './modals/SubmissionVersionHistoryModal'
@@ -404,7 +404,7 @@ export default function PersonnelPortfolioEditPage({ currentUser: propUser }) {
 
   if (isSubmissionModalOpen && !isFacultyAcademic) {
     return (
-      <PersonnelSubmissionModal
+      <NonTeachingFacultySubmissionModal
         isOpen={isSubmissionModalOpen}
         presentation="page"
         onClose={() => { setIsSubmissionModalOpen(false); setEditingAccomplishment(null) }}

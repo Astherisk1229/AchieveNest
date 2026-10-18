@@ -5,7 +5,7 @@ namespace App\Services;
 /** Applies rules explicitly captured in an evaluation item's locked criterion snapshot. */
 final class VerifiedEvidenceScoringService
 {
-    /** Return a full-maximum score only for criteria configured for this workflow. */
+    /** Return a full-maximum score for faculty criteria with evidence-approved maximum scoring. */
     public function scoreOnVerification(array $item, string $personnelGroup): ?float
     {
         if (! $this->isApplicable($item, $personnelGroup)) return null;
@@ -21,10 +21,20 @@ final class VerifiedEvidenceScoringService
     {
         if (strtoupper(trim($personnelGroup)) !== 'FACULTY') return false;
         $snapshot = $this->snapshot($item);
-        if (empty($snapshot['award_maximum_after_evidence_verification'])) return false;
         $category = is_array($snapshot['category'] ?? null) ? $snapshot['category'] : [];
-        $code = strtoupper(trim((string) ($category['category_code'] ?? $item['criterion_code'] ?? '')));
-        return in_array($code, ['B.2', 'B.5'], true);
+        if (! empty($snapshot['award_maximum_after_evidence_verification'])) return true;
+
+        // Compatibility for already-submitted items whose frozen snapshot
+        // still marks a max-only criterion as evaluator judgment.
+        if (empty($snapshot['evaluator_judgment_required'])) return false;
+        if (! empty($category['options'])) return false;
+        if ((int) ($category['requires_manual_hr_rule'] ?? 0) === 1 && empty($category['subcategories'])) return true;
+
+        $subcategory = is_array($snapshot['subcategory'] ?? null) ? $snapshot['subcategory'] : [];
+        return $subcategory !== []
+            && empty($subcategory['levels'])
+            && is_numeric($subcategory['default_points'] ?? null)
+            && (float) $subcategory['default_points'] > 0;
     }
 
     public function hasAttachedEvidence(array $item): bool

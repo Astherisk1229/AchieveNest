@@ -57,7 +57,7 @@ class AnnualReviewImportService
         $duplicate=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personId,'evaluation_period_id'=>$row['evaluation_period_id'],'file_hash'=>$row['file_hash']])->where('confirmed_at !=',null)->where('superseded_at',null)->get()->getRowArray();if($duplicate)throw new RuntimeException('DUPLICATE_UPLOAD: This exact workbook is already authoritative.');
         $effective=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personId,'evaluation_period_id'=>$row['evaluation_period_id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();
         if($effective){if(trim((string)$reason)==='')throw new RuntimeException('CORRECTION_REASON_REQUIRED: A replacement reason is required.');$submission=$this->db->table('personnel_evaluations')->where(['personnel_profile_id'=>$personId,'evaluation_period_id'=>$row['evaluation_period_id']])->where('submitted_at !=',null)->get()->getRowArray();if($submission)throw new RuntimeException('HR_REOPENING_REQUIRED: Portfolio was already submitted; HR reopening is required.');}
-        $now=date('Y-m-d H:i:s');$this->db->transBegin();try{if($effective)$this->db->table('personnel_annual_review_imports')->where('id',$effective['id'])->update(['superseded_at'=>$now,'updated_at'=>$now]);$this->db->table('personnel_annual_review_imports')->where('id',$id)->update(['personnel_profile_id'=>$personId,'match_status'=>'matched','confirmed_at'=>$now,'supersedes_import_id'=>$effective['id']??null,'correction_reason'=>$effective?$reason:null,'updated_at'=>$now]);$this->audit($actor,$id,$personId,$row,$effective,$now);$this->notify($personId,$row['evaluation_period_id'],$id,$now);$this->db->transCommit();}catch(\Throwable $e){$this->db->transRollback();throw$e;}
+        $now=date('Y-m-d H:i:s');$this->db->transBegin();try{if($effective)$this->db->table('personnel_annual_review_imports')->where('id',$effective['id'])->update(['superseded_at'=>$now,'updated_at'=>$now]);$this->db->table('personnel_annual_review_imports')->where('id',$id)->update(['personnel_profile_id'=>$personId,'match_status'=>'matched','confirmed_at'=>$now,'supersedes_import_id'=>$effective['id']??null,'correction_reason'=>$effective?$reason:null,'updated_at'=>$now]);$this->audit($actor,$id,$personId,$row,$effective,$now);$this->notify($personId,$row['evaluation_period_id'],$id,$workspace,(string)$actor['profile']['id'],$now);$this->db->transCommit();}catch(\Throwable $e){$this->db->transRollback();throw$e;}
         return $this->format($this->db->table('personnel_annual_review_imports')->where('id',$id)->get()->getRowArray());
     }
 
@@ -75,7 +75,34 @@ class AnnualReviewImportService
     private function period(string $periodId): array { $period=$this->db->table('personnel_evaluation_periods')->where('id',$periodId)->get()->getRowArray();if(!$period)throw new InvalidArgumentException('EVALUATION_PERIOD_INVALID: Evaluation period was not found.');return$period; }
     private function format(array $r,array $matches=[],array $candidates=[]): array { foreach(['validation_issues']as$key)if(is_string($r[$key]??null))$r[$key]=json_decode($r[$key],true)?:[];$areaA=is_string($r['area_a_payload']??null)?(json_decode($r['area_a_payload'],true)?:null):($r['area_a_payload']??null);$results=$areaA?array_map(fn($p)=>$p===null?null:($p?'passed':'not_passed'),$areaA['passing']??[null,null]):[null,null];return['area_a_payload'=>$areaA,'review_1_result'=>$results[0]??null,'review_2_result'=>$results[1]??null,'id'=>$r['id'],'filename'=>$r['original_filename'],'detected_personnel_name'=>$r['detected_personnel_name'],'personnel_profile_id'=>$r['personnel_profile_id'],'expected_personnel_profile_id'=>$r['expected_personnel_profile_id']??null,'evaluation_period_id'=>$r['evaluation_period_id'],'review_1_school_year'=>$r['review_1_school_year'],'review_1_rating'=>$r['review_1_rating'],'review_2_school_year'=>$r['review_2_school_year'],'review_2_rating'=>$r['review_2_rating'],'two_review_status'=>$r['two_review_status'],'two_review_reason'=>$r['two_review_reason'],'validation_status'=>$r['validation_status'],'match_status'=>$r['match_status'],'state'=>$r['confirmed_at']?'confirmed':($r['match_status']==='matched'?'ready':$r['match_status']),'uploaded_at'=>$r['uploaded_at']??null,'confirmed_at'=>$r['confirmed_at'],'uploaded_by'=>$r['uploaded_by']??null,'uploader_name'=>$r['uploader_name']??null,'supersedes_import_id'=>$r['supersedes_import_id']??null,'superseded_at'=>$r['superseded_at']??null,'correction_reason'=>$r['correction_reason']??null,'matches'=>$matches,'candidates'=>in_array($r['match_status'],['ambiguous','unmatched'],true)?$candidates:[],'is_replacement'=>!empty($r['supersedes_import_id'])]; }
     private function audit(array $actor,string $id,string $personId,array $row,?array $old,string $now):void{try{$data=['id'=>$this->uuid(),'profile_id'=>$personId,'event_type'=>$old?'annual_review_import_replaced':'annual_review_import_confirmed','reason'=>json_encode(['import_id'=>$id,'filename'=>$row['original_filename'],'file_hash'=>$row['file_hash'],'ratings'=>[$row['review_1_rating'],$row['review_2_rating']],'two_review_status'=>$row['two_review_status']]),'occurred_at'=>$now];if($this->db->fieldExists('actor_profile_id','account_lifecycle_events'))$data['actor_profile_id']=$actor['profile']['id'];elseif($this->db->fieldExists('performed_by','account_lifecycle_events'))$data['performed_by']=$actor['profile']['id'];if($this->db->fieldExists('created_at','account_lifecycle_events'))$data['created_at']=$now;$this->db->table('account_lifecycle_events')->insert($data);}catch(\Throwable $e){} }
-    private function notify(string $personId,string $periodId,string $id,string $now):void{if(!$this->db->tableExists('notifications'))return;$eligibility=(new PersonnelEligibilityService($this->db))->evaluateEligibility($personId,$periodId);$status=$eligibility['eligibility_status']??'pending';$text=$status==='eligible'?'You are now eligible to submit your portfolio for evaluation.':($status==='pending'?'Your annual review has been processed, but your portfolio eligibility is still pending required employment/service information.':'Your annual-review requirement for this evaluation period was not satisfied. Portfolio submission for evaluation is unavailable for this cycle.');try{$this->db->table('notifications')->insert(['id'=>$this->uuid(),'recipient_profile_id'=>$personId,'notification_type'=>'annual_review_imported','title'=>'Annual review processed','message'=>$text,'reference_type'=>'personnel_annual_review_imports','reference_id'=>$id,'is_mandatory'=>1,'created_at'=>$now]);}catch(\Throwable $e){} }
+    private function notify(string $personId,string $periodId,string $id,string $workspace,string $actorId,string $now):void
+    {
+        if (!$this->db->tableExists('notifications')) {
+            throw new RuntimeException('ANNUAL_REVIEW_NOTIFICATION_UNAVAILABLE: Notifications are not configured.');
+        }
+        $period=$this->db->table('personnel_evaluation_periods')->where('id',$periodId)->get()->getRowArray();
+        $uploader=$workspace==='dean'?'Your Dean':'HR';
+        $academicYear=trim((string)($period['academic_year']??''));
+        $periodLabel=$academicYear!==''?' for AY '.$academicYear:'';
+        $text=$uploader.' uploaded and confirmed your annual review workbook'.$periodLabel.'. Check Portfolio for your current submission readiness and any remaining requirements.';
+        try {
+            $this->db->table('notifications')->insert([
+                'id'=>$this->uuid(),
+                'recipient_profile_id'=>$personId,
+                'actor_profile_id'=>$actorId,
+                'notification_type'=>'annual_review_imported',
+                'title'=>$uploader.' uploaded your annual review',
+                'message'=>$text,
+                'reference_type'=>'personnel_annual_review_imports',
+                'reference_id'=>$id,
+                'is_mandatory'=>1,
+                'created_at'=>$now,
+            ]);
+        } catch (\Throwable $e) {
+            log_message('error', 'Annual review confirmation notification failed for import '.$id.': '.$e->getMessage());
+            throw new RuntimeException('ANNUAL_REVIEW_NOTIFICATION_FAILED: The personnel member could not be notified.', 0, $e);
+        }
+    }
     private function uuid():string{return sprintf('%04x%04x-%04x-4%03x-%04x-%04x%04x%04x',random_int(0,65535),random_int(0,65535),random_int(0,65535),random_int(0,4095),random_int(32768,49151),random_int(0,65535),random_int(0,65535),random_int(0,65535));}
     private function code(string $message):string{return strtolower(strtok($message,':')?:'invalid');}
 }

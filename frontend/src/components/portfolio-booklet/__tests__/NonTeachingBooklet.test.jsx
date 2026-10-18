@@ -7,7 +7,7 @@ vi.mock('../../../services/personnelAccomplishmentService', () => ({
 }))
 
 import PersonnelPortfolioBookletModal from '../../../pages/personnel/PersonnelPortfolioBookletModal'
-import PersonnelSubmissionModal from '../../../pages/personnel/modals/PersonnelSubmissionModal'
+import NonTeachingFacultySubmissionModal from '../../../pages/personnel/modals/NonTeachingFacultySubmissionModal'
 import { resolveNtpCriterion, ntpContractCode, NTP_ENTRY_CRITERIA } from '../../../config/nonTeachingPortfolioSchema'
 import { normalizeNonTeachingBookletItems, nonTeachingAreaARows, nonTeachingServicePoints, NTP_OTHER_KEY } from '../../../utils/nonTeachingBooklet'
 import { NON_TEACHING_BOOKLET_FORMAT } from '../bookletFormats'
@@ -105,7 +105,7 @@ describe('Personnel views', () => {
   })
 
   it('offers only the Appendix N categories when adding an accomplishment', () => {
-    const html = renderToStaticMarkup(<PersonnelSubmissionModal isOpen onClose={() => {}} areaCode="B" />)
+    const html = renderToStaticMarkup(<NonTeachingFacultySubmissionModal isOpen onClose={() => {}} areaCode="B" />)
     for (const criterion of NTP_ENTRY_CRITERIA) expect(html).toContain(`${criterion.code} ${criterion.title}`)
     expect(html).not.toContain('Scholarly Publications')
     expect(html).toContain('Club / Organization')

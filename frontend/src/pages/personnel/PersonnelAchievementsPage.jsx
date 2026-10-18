@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import PersonnelSubmissionModal from './modals/PersonnelSubmissionModal'
+import NonTeachingFacultySubmissionModal from './modals/NonTeachingFacultySubmissionModal'
 import FacultyAcademicSubmissionModal from './modals/FacultyAcademicSubmissionModal'
 import RichAchievementSearchBar from './RichAchievementSearchBar'
 import AchievementPopoverMenu from './AchievementPopoverMenu'
@@ -670,7 +670,7 @@ export default function PersonnelAchievementsPage({ currentUser }) {
         currentUser={user}
         areaCode={editingItem?.category_area?.replace('area', '') || modalAreaCode}
         areaName={({ A: 'Professional Development', B: 'Productivity & Creative Work', C: 'Service & Leadership' })[editingItem?.category_area?.replace('area', '') || modalAreaCode]}
-      /> : <PersonnelSubmissionModal
+      /> : <NonTeachingFacultySubmissionModal
         isOpen={isSubmitOpen}
         onClose={() => { setIsSubmitOpen(false); setEditingItem(null) }}
         onSubmitAccomplishment={handleAddNewAchievement}

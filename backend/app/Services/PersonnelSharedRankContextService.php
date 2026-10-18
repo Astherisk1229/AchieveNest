@@ -42,9 +42,15 @@ final class PersonnelSharedRankContextService
         $label = static fn (?string $value): ?string => $value === null || $value === ''
             ? null
             : (($catalog->getRankByCode($value) ?? $catalog->getRankByLabel($value))['display_label'] ?? $value);
-        // A possible next rank is not the employee's confirmed Rank Applied For.
-        $applied = $decision['confirmed_rank_code'] ?? null;
-        $status = $decision ? 'confirmed' : (($progression['status'] ?? '') === 'OK' ? 'PENDING_CONFIRMATION' : ($progression['status'] ?? 'UNRESOLVED'));
+        // Rank Applied For is determined from the valid progression rules. A confirmed
+        // decision may choose among valid targets, but confirmation is not required to
+        // identify the system's default eligible target.
+        $validTargets = $progression['all_valid_target_ranks'] ?? [];
+        $normalTarget = current(array_filter($validTargets, static fn ($target) =>
+            ($target['transition_type'] ?? '') === 'normal_sequential')) ?: null;
+        $defaultTarget = $normalTarget ?? ($validTargets[0] ?? null);
+        $applied = $decision['confirmed_rank_code'] ?? ($defaultTarget['rank_code'] ?? null);
+        $status = $decision ? 'confirmed' : ($applied !== null ? 'eligible' : ($progression['status'] ?? 'UNRESOLVED'));
         if (! $decision && in_array($progression['current_rank_code'] ?? '',
             ['ASSISTANT_INSTRUCTOR', 'SENIOR_INSTRUCTOR'], true)
             && empty($progression['all_valid_target_ranks'])) {

@@ -573,13 +573,6 @@ class PersonnelPortfolioSubmissionController extends Controller
             }
         }
 
-        if ($actualGroup === 'FACULTY' && !\App\Services\PersonnelEligibilityService::submissionIncludesResearchOutput($accomplishments, $evidenceMap)) {
-            return $this->respond(['error' => [
-                'code' => 'RESEARCH_OUTPUT_REQUIRED',
-                'message' => 'Add a B.3 Conduct of Research record, or a B.2 Publication marked Research Output, with attached proof valid for this ranking period before submitting.',
-            ]], 422);
-        }
-
         // Guard: Verify all items have proof attachments
         $missingProof = [];
         foreach ($accomplishments as $acc) {
@@ -1064,14 +1057,6 @@ class PersonnelPortfolioSubmissionController extends Controller
             foreach ($evRows as $ev) {
                 $evidenceMap[$ev['accomplishment_id']][] = $ev;
             }
-        }
-
-        if (strtoupper((string) ($periodSnapshot['personnel_group'] ?? $latestSubmission['personnel_group_snapshot'] ?? '')) === 'FACULTY'
-            && !\App\Services\PersonnelEligibilityService::submissionIncludesResearchOutput($accomplishments, $evidenceMap)) {
-            return $this->respond(['error' => [
-                'code' => 'RESEARCH_OUTPUT_REQUIRED',
-                'message' => 'Keep at least one B.3 Conduct of Research record, or a B.2 Publication marked Research Output, with attached proof in this revised submission.',
-            ]], 422);
         }
 
         // Guard: Verify all items have proof attachments

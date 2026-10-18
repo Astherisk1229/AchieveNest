@@ -127,10 +127,11 @@ class RubricAdministrationService
         $profile = Database::connect()->table('personnel_profiles')->select('personnel_group')
             ->where('profile_id', $profileId)->get()->getRowArray();
         if (! $profile) throw new RuntimeException('PERSONNEL_PROFILE_NOT_FOUND', 404);
-        if (strtoupper((string) ($profile['personnel_group'] ?? '')) !== 'FACULTY') {
-            throw new RuntimeException('FACULTY_INTAKE_CRITERIA_ONLY', 422);
+        $group = strtoupper((string) ($profile['personnel_group'] ?? ''));
+        if (! in_array($group, ['FACULTY', 'NON_TEACHING_FACULTY'], true)) {
+            throw new RuntimeException('SUPPORTED_PERSONNEL_GROUP_REQUIRED', 422);
         }
-        return $this->getActiveIntakeCriteriaContract((string) $profile['personnel_group']);
+        return $this->getActiveIntakeCriteriaContract($group);
     }
 
     /** Return the published, HR-authored intake contract for a group. */
@@ -166,11 +167,6 @@ class RubricAdministrationService
                 if ((int) ($area['is_active'] ?? 1) !== 1 || (int) ($category['is_active'] ?? 1) !== 1) continue;
                 $criteria = [];
                 if ((int) ($category['intake_active'] ?? 0) === 1) {
-                    try {
-                        self::assertValidIntakeDefinition($category);
-                    } catch (RuntimeException $error) {
-                        throw new RuntimeException('INTAKE_CRITERIA_DEFINITION_INCOMPLETE: ' . $error->getMessage(), 409, $error);
-                    }
                     $activeLeafCount++;
                     $criteria[] = [
                         'criterion_id' => (string) $category['id'],
@@ -196,11 +192,6 @@ class RubricAdministrationService
                 }
                 foreach (($category['subcategories'] ?? []) as $leaf) {
                     if ((int) ($leaf['is_active'] ?? 1) !== 1 || (int) ($leaf['intake_active'] ?? 0) !== 1) continue;
-                    try {
-                        self::assertValidIntakeDefinition($leaf);
-                    } catch (RuntimeException $error) {
-                        throw new RuntimeException('INTAKE_CRITERIA_DEFINITION_INCOMPLETE: ' . $error->getMessage(), 409, $error);
-                    }
                     $activeLeafCount++;
                     $criteria[] = [
                         'criterion_id' => (string) $leaf['id'],
@@ -399,6 +390,154 @@ class RubricAdministrationService
         }
     }
 
+    /** Preview rolls its temporary revision back; confirmation atomically activates it. */
+    public function previewDirectChange(string $sourceVersionId, array $input, string $actorUserId): array
+    {
+        return $this->runDirectChange($sourceVersionId, $input, $actorUserId, false);
+    }
+
+    public function applyDirectChange(string $sourceVersionId, array $input, string $actorUserId): array
+    {
+        return $this->runDirectChange($sourceVersionId, $input, $actorUserId, true);
+    }
+
+    private function runDirectChange(string $sourceVersionId, array $input, string $actorUserId, bool $activate): array
+    {
+        $db = Database::connect();
+        $outerTransactionDepth = (int) $db->transDepth;
+        $previewSavepoint = ! $activate && $outerTransactionDepth > 0 ? 'criteria_preview_' . bin2hex(random_bytes(4)) : null;
+        if ($previewSavepoint !== null) $db->query('SAVEPOINT ' . $previewSavepoint);
+        $db->transBegin();
+        try {
+            $source = $this->queryForUpdate($db, 'SELECT * FROM evaluation_scale_versions WHERE id = ? FOR UPDATE', [$sourceVersionId])->getRowArray();
+            if (! $source || ($source['status'] ?? '') !== 'approved') throw new RuntimeException('The active criteria version changed. Refresh and try again.', 409);
+            $effectiveDate = trim((string) ($source['effective_start_date'] ?? ''));
+            if ($effectiveDate === '') throw new RuntimeException('Set the active criteria version effective date before applying a direct revision.', 422);
+            $expected = (string)($input['expected_source_updated_at'] ?? '');
+            if ($expected === '' || $expected !== (string)($source['updated_at'] ?? '')) throw new RuntimeException('CRITERIA_SOURCE_STALE: Refresh the active criteria before applying changes.', 409);
+            $reason = trim((string)($input['change_reason'] ?? ''));
+            $summary = trim((string)($input['change_summary'] ?? ''));
+            if (mb_strlen($reason) < 10 || $summary === '') throw new RuntimeException('Provide a change reason (at least 10 characters) and summary.', 422);
+            $versionNumber = 'sys-' . gmdate('ymdHis') . '-' . bin2hex(random_bytes(4));
+            $candidate = $this->cloneVersion($sourceVersionId, [
+                'version_number'=>$versionNumber,
+                'effective_start_date'=>$effectiveDate,
+                'change_reason'=>$reason,
+                'change_summary'=>$summary,
+            ], $actorUserId);
+            $candidateId = (string)$candidate['version_id'];
+            $criteria = $this->remapDirectChangeRows($db, $sourceVersionId, $candidateId, $input['criteria'] ?? []);
+            $this->saveDraft($candidateId, array_merge($criteria, [
+                'change_reason'=>$reason,
+                'change_summary'=>$summary,
+                'effective_start_date'=>$effectiveDate,
+            ]), $actorUserId);
+            $candidateVersion = $db->table('evaluation_scale_versions')->where('id',$candidateId)->get()->getRowArray();
+            if (! $candidateVersion) throw new RuntimeException('Internal criteria revision could not be loaded.',500);
+            $this->validateDraft($db,$candidateVersion);
+            $this->lockCriteriaImpactRows($db,$sourceVersionId);
+            $impact = $this->previewActivationImpact($candidateId);
+            $token = hash('sha256', json_encode([
+                'source_id'=>$sourceVersionId,
+                'source_updated_at'=>$source['updated_at'] ?? null,
+                'criteria'=>$input['criteria'] ?? [],
+                'change_reason'=>$reason,
+                'change_summary'=>$summary,
+                'changes'=>$impact['changes'],
+                'period_count'=>$impact['affected_ranking_period_count'],
+                'operational_period_count'=>$impact['operational_ranking_period_count'],
+                'evaluation_count'=>$impact['affected_nonfinalized_evaluation_count'],
+                'endorsed_count'=>$impact['affected_endorsed_evaluation_count'],
+                'unresolved_evaluations'=>$impact['unresolved_evaluation_count'],
+                'unresolved_periods'=>$impact['unresolved_ranking_period_count'],
+                'evaluations_by_status'=>$impact['evaluations_by_status'],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            if (! $activate) {
+                $result = array_merge($impact, ['preview_token'=>$token]);
+                if ($previewSavepoint !== null) {
+                    $db->query('ROLLBACK TO SAVEPOINT ' . $previewSavepoint);
+                    $db->query('RELEASE SAVEPOINT ' . $previewSavepoint);
+                }
+                $db->transRollback();
+                return $result;
+            }
+            $provided = (string)($input['preview_token'] ?? '');
+            if ($provided === '' || ! hash_equals($token, $provided)) throw new RuntimeException('CRITERIA_IMPACT_PREVIEW_STALE: Refresh the impact preview before applying changes.', 409);
+            if (! $impact['activation_allowed']) throw new RuntimeException('CRITERIA_ACTIVATION_BLOCKED: ' . json_encode($impact['activation_blockers'], JSON_UNESCAPED_UNICODE), 409);
+            $result = $this->approveVersion($candidateId, $actorUserId, $reason, $impact['preview_token']);
+            if ($db->transStatus() === false) throw new RuntimeException('Unable to activate the criteria revision.', 500);
+            $db->transCommit();
+            return array_merge($result, ['impact'=>$impact]);
+        } catch (Throwable $error) {
+            if (! $activate && $previewSavepoint !== null) {
+                try { $db->query('ROLLBACK TO SAVEPOINT ' . $previewSavepoint); $db->query('RELEASE SAVEPOINT ' . $previewSavepoint); } catch (Throwable) { /* Preserve the original request error. */ }
+            }
+            $db->transRollback();
+            throw $error;
+        }
+    }
+
+    private function remapDirectChangeRows(BaseConnection $db, string $sourceVersionId, string $candidateVersionId, array $criteria): array
+    {
+        $areaMap = [];
+        $sourceAreas = $db->table('evaluation_scale_areas')->where('scale_version_id',$sourceVersionId)->get()->getResultArray();
+        $candidateAreas = $db->table('evaluation_scale_areas')->where('scale_version_id',$candidateVersionId)->get()->getResultArray();
+        foreach ($sourceAreas as $row) foreach ($candidateAreas as $copy) if ($row['area_code'] === $copy['area_code']) $areaMap[$row['id']] = $copy['id'];
+        $categoryMap = []; $sourceCategories = []; $candidateCategories = [];
+        foreach ($sourceAreas as $area) foreach ($db->table('evaluation_scale_categories')->where('scale_area_id',$area['id'])->get()->getResultArray() as $row) $sourceCategories[] = $row + ['parent_code'=>$area['area_code']];
+        foreach ($candidateAreas as $area) foreach ($db->table('evaluation_scale_categories')->where('scale_area_id',$area['id'])->get()->getResultArray() as $row) $candidateCategories[] = $row + ['parent_code'=>$area['area_code']];
+        foreach ($sourceCategories as $row) foreach ($candidateCategories as $copy) if ($row['parent_code'] === $copy['parent_code'] && $row['category_code'] === $copy['category_code']) $categoryMap[$row['id']] = $copy['id'];
+        $subMap=[]; $sourceSubs=[]; $candidateSubs=[];
+        foreach ($sourceCategories as $category) foreach ($db->table('evaluation_scale_subcategories')->where('scale_category_id',$category['id'])->get()->getResultArray() as $row) $sourceSubs[]=$row+['parent_code'=>$category['parent_code'].'/'.$category['category_code']];
+        foreach ($candidateCategories as $category) foreach ($db->table('evaluation_scale_subcategories')->where('scale_category_id',$category['id'])->get()->getResultArray() as $row) $candidateSubs[]=$row+['parent_code'=>$category['parent_code'].'/'.$category['category_code']];
+        foreach ($sourceSubs as $row) foreach ($candidateSubs as $copy) if ($row['parent_code']===$copy['parent_code'] && $row['subcategory_code']===$copy['subcategory_code']) $subMap[$row['id']]=$copy['id'];
+        $criterionMap=[]; $sourceRules=[]; $candidateRules=[];
+        foreach ($sourceCategories as $category) foreach ($db->table('evaluation_scale_criteria')->where('scale_category_id',$category['id'])->get()->getResultArray() as $row) $sourceRules[]=$row+['parent_code'=>$category['parent_code'].'/'.$category['category_code']];
+        foreach ($candidateCategories as $category) foreach ($db->table('evaluation_scale_criteria')->where('scale_category_id',$category['id'])->get()->getResultArray() as $row) $candidateRules[]=$row+['parent_code'=>$category['parent_code'].'/'.$category['category_code']];
+        foreach ($sourceRules as $row) foreach ($candidateRules as $copy) if ($row['parent_code']===$copy['parent_code'] && $row['criterion_code']===$copy['criterion_code']) $criterionMap[$row['id']]=$copy['id'];
+        $optionMap=[];
+        if ($db->tableExists('evaluation_scale_criterion_options')) {
+            foreach ($sourceCategories as $category) {
+                $targetCategoryId=$categoryMap[$category['id']]??null; if (!$targetCategoryId) continue;
+                $sourceOptions=$db->table('evaluation_scale_criterion_options')->where('scale_category_id',$category['id'])->get()->getResultArray();
+                $candidateOptions=$db->table('evaluation_scale_criterion_options')->where('scale_category_id',$targetCategoryId)->get()->getResultArray();
+                foreach ($sourceOptions as $row) foreach ($candidateOptions as $copy) {
+                    $sourceSubCode=''; $candidateSubCode='';
+                    foreach($sourceSubs as $sub) if(($row['scale_subcategory_id']??'')===($sub['id']??'')) $sourceSubCode=$sub['subcategory_code'];
+                    foreach($candidateSubs as $sub) if(($copy['scale_subcategory_id']??'')===($sub['id']??'')) $candidateSubCode=$sub['subcategory_code'];
+                    if (($row['option_group_code']??'')===($copy['option_group_code']??'') && ($row['option_code']??'')===($copy['option_code']??'') && $sourceSubCode===$candidateSubCode) $optionMap[$row['id']]=$copy['id'];
+                }
+            }
+        }
+        $allMaps=['section'=>$areaMap,'category'=>$categoryMap,'subcategory'=>$subMap,'criterion'=>$criterionMap,'scoring_option'=>$optionMap,'level'=>$optionMap];
+        foreach (['areas'=>['section',$areaMap],'categories'=>['category',$categoryMap],'subcategories'=>['subcategory',$subMap],'criteria'=>['criterion',$criterionMap],'options'=>['scoring_option',$optionMap]] as $field=>[$type,$map]) {
+            $criteria[$field] ??= [];
+            foreach ($criteria[$field] as &$row) {
+            if (isset($map[$row['id']??''])) $row['id']=$map[$row['id']];
+            foreach (['scale_version_id'=>$areaMap,'scale_area_id'=>$areaMap,'scale_category_id'=>$categoryMap,'scale_subcategory_id'=>$subMap] as $foreign=>$foreignMap) if (isset($foreignMap[$row[$foreign]??''])) $row[$foreign]=$foreignMap[$row[$foreign]];
+            if ($field==='areas') $row['scale_version_id']=$candidateVersionId;
+            }
+            unset($row);
+        }
+        foreach ($criteria['deleted_nodes']??[] as &$node) if (isset($allMaps[$node['type']??''][$node['id']??''])) $node['id']=$allMaps[$node['type']][$node['id']];
+        unset($node);
+        return $criteria;
+    }
+
+    private function lockCriteriaImpactRows(BaseConnection $db, string $sourceVersionId): void
+    {
+        $periodIds=[];
+        if($db->tableExists('personnel_evaluation_periods') && $db->fieldExists('evaluation_scale_version_id','personnel_evaluation_periods')){
+            $periods=$this->queryForUpdate($db,'SELECT id FROM personnel_evaluation_periods WHERE evaluation_scale_version_id = ? FOR UPDATE',[$sourceVersionId])->getResultArray();
+            $periodIds=array_column($periods,'id');
+        }
+        if(!$db->tableExists('personnel_evaluations'))return;
+        $where=[];$binds=[];
+        if($db->fieldExists('evaluation_scale_version_id','personnel_evaluations')){$where[]='evaluation_scale_version_id = ?';$binds[]=$sourceVersionId;}
+        if($periodIds!==[] && $db->fieldExists('evaluation_period_id','personnel_evaluations')){$where[]='evaluation_period_id IN ('.implode(',',array_fill(0,count($periodIds),'?')).')';array_push($binds,...$periodIds);}
+        if($where!==[])$this->queryForUpdate($db,'SELECT id FROM personnel_evaluations WHERE '.implode(' OR ',$where).' FOR UPDATE',$binds);
+    }
+
     public function approveVersion(string $versionId, string $actorUserId, string $reason, ?string $impactPreviewToken = null): array
     {
         $db = Database::connect();
@@ -437,7 +576,8 @@ class RubricAdministrationService
                     (string) $activeVersions[0]['id'],
                     $versionId,
                     $actorUserId,
-                    (string) ($impact['personnel_group'] ?? '')
+                    (string) ($impact['personnel_group'] ?? ''),
+                    (int)($impact['scoring_change_count'] ?? 0) > 0
                 );
             }
             if ($db->transStatus() === false) throw new RuntimeException('Unable to publish the criteria version.', 500);
@@ -515,13 +655,37 @@ class RubricAdministrationService
         $left = $this->getScaleVersionHierarchy($otherVersionId); $right = $this->getScaleVersionHierarchy($versionId);
         if ($left['sheet']['id'] !== $right['sheet']['id']) throw new RuntimeException('Only versions of the same criteria sheet can be compared.', 422);
         $flatten = function (array $tree): array {
-            $values = ['version.overall_maximum'=>$tree['sheet']['overall_max_points'], 'version.passing_score'=>$tree['sheet']['passing_score']];
-            foreach ($tree['areas'] as $area) { $values["area.{$area['area_code']}.maximum"] = (float)$area['max_points']; foreach ($area['categories'] as $category) { $base = "category.{$category['category_code']}"; $values["{$base}.maximum"]=(float)$category['max_points']; $values["{$base}.scoring_mode"]=$category['scoring_mode'] ?? 'MANUAL'; foreach ($category['subcategories'] as $item) $values["{$base}.{$item['subcategory_code']}.points"]=(float)$item['default_points']; foreach ($category['criteria'] as $item) { $values["{$base}.{$item['criterion_code']}.points"]=(float)$item['max_points_per_entry']; $values["{$base}.{$item['criterion_code']}.evidence"]=$item['evidence_rules']; } foreach($category['options']??[] as $option)$values["{$base}.option.{$option['option_group_code']}.{$option['option_code']}"]=(float)$option['points']; } }
-            return $values;
+            $values=[]; $scoring=[];
+            $put=static function(string $path,mixed $value,bool $affectsScore=false) use (&$values,&$scoring): void {
+                $values[$path]=is_array($value)?json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE):$value;
+                if($affectsScore)$scoring[$path]=true;
+            };
+            $put('version.overall_maximum',(float)$tree['sheet']['overall_max_points'],true);
+            $put('version.passing_score',(float)$tree['sheet']['passing_score'],true);
+            foreach($tree['areas'] as $area){
+                $areaBase='area.'.strtoupper((string)$area['area_code']);
+                $put($areaBase.'.name',$area['name']??''); $put($areaBase.'.description',$area['description']??'');
+                $put($areaBase.'.maximum',(float)$area['max_points'],true); $put($areaBase.'.active',(int)($area['is_active']??1),true);
+                foreach($area['categories'] as $category){
+                    $base='category.'.$area['area_code'].'.'.strtoupper((string)$category['category_code']);
+                    $put($base.'.name',$category['name']??''); $put($base.'.description',$category['description']??'');
+                    foreach(['max_points','scoring_mode','requires_manual_hr_rule','is_active'] as $field) if(array_key_exists($field,$category)) $put($base.'.'.$field,in_array($field,['max_points'])?(float)$category[$field]:$category[$field],true);
+                    foreach(['intake_active','intake_mode','field_schema','evidence_rules','scoring_rule_reference'] as $field) if(array_key_exists($field,$category)) $put($base.'.'.$field,$category[$field]);
+                    foreach($category['subcategories']??[] as $sub){$subBase=$base.'.subcategory.'.strtoupper((string)$sub['subcategory_code']);$put($subBase.'.name',$sub['name']??'');$put($subBase.'.description',$sub['description']??'');$put($subBase.'.points',(float)$sub['default_points'],true);$put($subBase.'.active',(int)($sub['is_active']??1),true);foreach(['intake_active','intake_mode','field_schema','evidence_rules','scoring_rule_reference'] as $field)if(array_key_exists($field,$sub))$put($subBase.'.'.$field,$sub[$field]);foreach($sub['levels']??[] as $level){$levelBase=$subBase.'.level.'.strtoupper((string)$level['option_code']);$put($levelBase.'.label',$level['label']??'');$put($levelBase.'.points',(float)$level['points'],true);$put($levelBase.'.active',(int)($level['is_active']??1),true);}}
+                    foreach($category['criteria']??[] as $rule){$ruleBase=$base.'.criterion.'.strtoupper((string)$rule['criterion_code']);$put($ruleBase.'.name',$rule['name']??'');$put($ruleBase.'.description',$rule['description']??'');foreach(['max_points_per_entry','max_occurrences','formula_key','formula_params','evidence_rules'] as $field)if(array_key_exists($field,$rule))$put($ruleBase.'.'.$field,$rule[$field],true);}
+                    foreach($category['options']??[] as $option){$optionBase=$base.'.option.'.strtoupper((string)$option['option_group_code']).'.'.strtoupper((string)$option['option_code']);$put($optionBase.'.label',$option['label']??'');$put($optionBase.'.points',$option['points']===null?null:(float)$option['points'],true);$put($optionBase.'.active',(int)($option['is_active']??1),true);}
+                }
+            }
+            return ['values'=>$values,'scoring_paths'=>$scoring];
         };
         $before=$flatten($left); $after=$flatten($right); $changes=[];
-        foreach (array_unique(array_merge(array_keys($before), array_keys($after))) as $path) if (($before[$path] ?? null) !== ($after[$path] ?? null)) $changes[]=['path'=>$path, 'type'=>!array_key_exists($path,$before)?'ADDED':(!array_key_exists($path,$after)?'REMOVED':'CHANGED'), 'before'=>$before[$path]??null, 'after'=>$after[$path]??null];
-        return ['from'=>$left['version'], 'to'=>$right['version'], 'summary'=>['added'=>count(array_filter($changes,fn($c)=>$c['type']==='ADDED')), 'removed'=>count(array_filter($changes,fn($c)=>$c['type']==='REMOVED')), 'changed'=>count(array_filter($changes,fn($c)=>$c['type']==='CHANGED'))], 'changes'=>$changes];
+        foreach(array_unique(array_merge(array_keys($before['values']),array_keys($after['values']))) as $path){
+            if(($before['values'][$path]??null)===($after['values'][$path]??null))continue;
+            $type=!array_key_exists($path,$before['values'])?'ADDED':(!array_key_exists($path,$after['values'])?'REMOVED':'CHANGED');
+            $changes[]=['path'=>$path,'type'=>$type,'before'=>$before['values'][$path]??null,'after'=>$after['values'][$path]??null,'scoring_impact'=>isset($before['scoring_paths'][$path])||isset($after['scoring_paths'][$path])];
+        }
+        $scoringChanges=count(array_filter($changes,static fn(array $change):bool=>$change['scoring_impact']));
+        return ['from'=>$left['version'],'to'=>$right['version'],'summary'=>['added'=>count(array_filter($changes,fn($c)=>$c['type']==='ADDED')),'removed'=>count(array_filter($changes,fn($c)=>$c['type']==='REMOVED')),'changed'=>count(array_filter($changes,fn($c)=>$c['type']==='CHANGED')),'scoring_changes'=>$scoringChanges],'changes'=>$changes,'scoring_change_count'=>$scoringChanges];
     }
 
     /** Read-only, persisted-reference impact analysis for a draft criteria revision. */
@@ -967,6 +1131,7 @@ class RubricAdministrationService
         $existing = $db->table($table)->where('scale_category_id', $categoryId)->get()->getResultArray();
         $existingById = array_column($existing, null, 'id');
         $submittedIds = [];
+        $submittedRows = [];
         $category = $db->table('evaluation_scale_categories')->where('id', $categoryId)->get()->getRowArray() ?? [];
         $allowedOptionGroups = [
             'GUEST_LECTURER_MATRIX' => ['SPONSOR', 'EXTENT', 'PARTICIPANTS', 'ROLE'],
@@ -982,8 +1147,35 @@ class RubricAdministrationService
                 throw new RuntimeException('Each new scoring option must identify its owning category.', 422);
             }
             if ($id === '') continue;
-            $submittedIds[] = $id;
             $subcategoryId = trim((string) ($option['scale_subcategory_id'] ?? '')) ?: null;
+            if (! isset($existingById[$id])) {
+                // Direct revisions clone option IDs. If a client ID could not be
+                // remapped, match the already-cloned row by its stable owner/code
+                // instead of inserting the source ID into the new category.
+                foreach ($existing as $candidateOption) {
+                    if ((string) ($candidateOption['option_group_code'] ?? '') !== (string) ($option['option_group_code'] ?? '')
+                        || (string) ($candidateOption['option_code'] ?? '') !== (string) ($option['option_code'] ?? '')
+                        || (string) ($candidateOption['scale_subcategory_id'] ?? '') !== (string) ($subcategoryId ?? '')) {
+                        continue;
+                    }
+                    $id = (string) $candidateOption['id'];
+                    break;
+                }
+            }
+            $signature = json_encode([
+                $submittedCategoryId, $subcategoryId,
+                (string) ($option['option_group_code'] ?? ''), (string) ($option['option_code'] ?? ''),
+                (string) ($option['label'] ?? ''), $option['points'] ?? null,
+                (int) ($option['display_order'] ?? 1), (int) ($option['is_active'] ?? 1),
+            ]);
+            if (isset($submittedRows[$id])) {
+                if ($submittedRows[$id] !== $signature) {
+                    throw new RuntimeException('A scoring level appears more than once with conflicting values. Refresh and try again.', 422);
+                }
+                continue;
+            }
+            $submittedRows[$id] = $signature;
+            $submittedIds[] = $id;
             if ($subcategoryId !== null) {
                 $ownedSubcategory = $db->table('evaluation_scale_subcategories')->where('id', $subcategoryId)->where('scale_category_id', $categoryId)->countAllResults() > 0;
                 if (! $ownedSubcategory) throw new RuntimeException('A level must belong to a subcategory in this draft.', 422);

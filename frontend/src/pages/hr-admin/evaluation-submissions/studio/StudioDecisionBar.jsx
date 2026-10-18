@@ -6,7 +6,7 @@ export default function StudioDecisionBar({
   onOpenReturnModal,
   onOpenFinalizeModal,
   onOpenRankPreparation,
-  rankPreparationLabel = 'Prepare Faculty Rank',
+  rankPreparationLabel = 'Prepare rank recommendation',
   finalizeLabel = 'Finalize Evaluation'
 }) {
   return (

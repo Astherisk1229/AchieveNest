@@ -46,6 +46,7 @@ export function mapAccomplishmentToForm(record = {}) {
     date: record.occurrence_date || record.date_achieved || record.date || '',
     startDate: metadata.start_date || '',
     endDate: metadata.end_date || '',
+    singleDay: metadata.single_day === true,
     ongoing: metadata.ongoing === true,
     details,
     persistedEvidence: evidence,
@@ -66,7 +67,7 @@ export function validateAccomplishmentForm(form, config, today = localIsoDateTod
     else if (future(form.date)) errors.date = `${config.dateLabel} cannot be in the future.`
   } else {
     if (!isStrictIsoDate(form.startDate)) errors.startDate = 'Start date is required and must be valid.'
-    if (!form.ongoing && !isStrictIsoDate(form.endDate)) errors.endDate = 'End date is required and must be valid.'
+    if (!form.ongoing && !(config.allowSingleDay && form.singleDay && !form.endDate) && !isStrictIsoDate(form.endDate)) errors.endDate = 'End date is required and must be valid.'
     if (form.startDate && form.endDate && form.startDate > form.endDate) errors.endDate = 'End date must be on or after the start date.'
     if (!form.ongoing && future(form.endDate)) errors.endDate = 'End date cannot be in the future.'
     if (form.ongoing && !config.allowOngoing) errors.ongoing = 'Ongoing is not allowed for this subcategory.'

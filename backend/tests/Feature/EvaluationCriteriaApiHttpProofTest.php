@@ -109,8 +109,11 @@ final class EvaluationCriteriaApiHttpProofTest extends CIUnitTestCase
 
         $areas = $this->body($archived)['data']['areas'];
         $areas[0]['is_active'] = 1;
+        // Exercise score recalculation with a real scoring change; restoring
+        // the original definition alone should not queue work.
+        $areas[0]['categories'][0]['max_points'] = 90;
         $restore = $this->request('PUT', 'api/v1/admin/evaluation-scales/versions/' . $draftId, [
-            'areas' => $areas, 'change_reason' => 'Restore Area for API proof',
+            'areas' => $areas, 'categories' => [$areas[0]['categories'][0]], 'change_reason' => 'Restore Area for API proof',
         ], $hrToken);
         self::assertSame(200, $restore->response()->getStatusCode(), $restore->getBody());
         $restored = $this->request('GET', 'api/v1/admin/evaluation-scales/versions/' . $draftId, null, $hrToken);
@@ -120,8 +123,13 @@ final class EvaluationCriteriaApiHttpProofTest extends CIUnitTestCase
         self::assertSame(200, $validation->response()->getStatusCode(), $validation->getBody());
         self::assertSame('READY_TO_PUBLISH', $this->body($validation)['data']['status']);
 
+        $impactPreview = $this->request('GET', 'api/v1/admin/evaluation-scales/versions/' . $draftId . '/impact-preview', null, $hrToken);
+        self::assertSame(200, $impactPreview->response()->getStatusCode(), $impactPreview->getBody());
+        $impact = $this->body($impactPreview)['data'];
+        self::assertSame(1, $impact['scoring_change_count']);
         $publish = $this->request('POST', 'api/v1/admin/evaluation-scales/' . $draftId . '/approve', [
             'reason' => 'Authenticated API publish proof',
+            'impact_preview_token' => $impact['preview_token'],
         ], $hrToken);
         self::assertSame(200, $publish->response()->getStatusCode(), $publish->getBody());
         self::assertSame('approved', $this->body($publish)['data']['status']);

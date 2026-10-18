@@ -154,6 +154,13 @@ export function normalizeFacultyBookletItems(portfolio = {}) {
     const end = metadata.end_date || ''
     const dateOrPeriod = metadata.ongoing && start ? `${start} – Ongoing` : (start && end ? `${start} – ${end}` : (item.occurrence_date || item.date_achieved || item.date || payload.occurrence_date || ''))
     const classifications = [subcategory?.label]
+    if (['A1_PHD_UNITS', 'A1_MA_UNITS'].includes(String(subcategoryCode).toUpperCase())) {
+      classifications.push(
+        details.semester,
+        details.academic_year ? `AY ${details.academic_year}` : '',
+        details.units_completed !== undefined && details.units_completed !== '' ? `${details.units_completed} units completed` : ''
+      )
+    }
     if (details.membership_role) classifications.push(details.membership_role, details.position)
     if (details.role && !classifications.includes(details.role)) classifications.push(details.role)
     classifications.push(details.recognition_status, details.publication_type, details.material_type, details.creative_work_type, details.scope, details.extent, details.support_type)
@@ -178,7 +185,12 @@ export function normalizeFacultyBookletItems(portfolio = {}) {
     // accomplishment details and must not be mistaken for points/remarks.
     const remarks = scoreRemark
     const cellsByCriterion = {
-      'A.1': [dateOrPeriod, first(details.course_or_degree, details.degree_title, details.program, accomplishmentDisplay), first(details.school_or_university, details.institution, organizationDisplay), remarks],
+      'A.1': [
+        dateOrPeriod,
+        [first(details.course_or_degree, details.degree_title, details.program, accomplishmentDisplay), ...classifications.slice(1)].filter(Boolean).join(' · '),
+        first(details.school_or_university, details.institution, organizationDisplay),
+        remarks
+      ],
       'A.2': [dateOrPeriod, first(details.organization, accomplishmentDisplay), first(details.conducted_or_organized_by, details.organizer, details.institution, organizationDisplay), remarks],
       'A.3': [dateOrPeriod, first(details.title, details.activity_title, accomplishmentDisplay), first(details.conducted_or_organized_by, details.organizer, details.institution, organizationDisplay), remarks],
       'B.1': [dateOrPeriod, first(details.activity, details.activity_title, accomplishmentDisplay), first(details.conducted_or_organized_by, details.organizer, details.institution, organizationDisplay), remarks],

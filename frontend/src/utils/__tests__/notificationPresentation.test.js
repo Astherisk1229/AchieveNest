@@ -25,7 +25,7 @@ describe('notification presentation (Step 7)', () => {
 
   it('keeps an explicit backend route and the personnel portfolio mapping', () => {
     expect(notificationTarget({ target_path: '/x' }, 'student')).toEqual({ path: '/x', state: null })
-    expect(notificationTarget({ reference_type: 'personnel_portfolio_submission' }, 'personnel').path).toBe('/personnel/portfolio/edit')
+    expect(notificationTarget({ reference_type: 'personnel_portfolio_submission' }, 'personnel')).toEqual({ path: '/personnel/portfolio', state: null })
   })
 
   it('routes HR-opened personnel evaluation notifications to the Portfolio page', () => {

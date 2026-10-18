@@ -37,7 +37,7 @@ describe('real Dean portfolio evaluation workspace contracts', () => {
     expect(workspace).toContain('await onReload()')
     expect(workspace).toContain('Saved and reloaded')
     expect(workspace).toContain('still need a decision.')
-    expect(workspace).toContain("remaining > 0 || (reviewGroup === 'FACULTY' && !phaseOReady)")
+    expect(workspace).toContain('disabled={!editable || Boolean(busyId) || remaining > 0}')
     expect(tab).toContain("phase: current.data ? 'success' : 'loading'")
   })
 

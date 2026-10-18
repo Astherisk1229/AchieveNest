@@ -17,7 +17,7 @@ use CodeIgniter\Database\BaseConnection;
  *                 single date: coverage_start <= date <= coverage_end
  *                 date range:  start <= coverage_end AND end >= coverage_start (ongoing = no end)
  *   QUALIFICATION remains valid once obtained: date <= coverage_end
- *   COMPUTED      not an ordinary record (Years of Service; NTF Area A from the annual review);
+ *   COMPUTED      not an ordinary record (Years of Service and evaluator-entered NTF Area A ratings);
  *                 calculated elsewhere with the cycle cutoff, so portfolio entries are not copied
  *
  * Graduate units (A.1.2 / A.1.4) are PERIOD records, one per semester, each judged on its own

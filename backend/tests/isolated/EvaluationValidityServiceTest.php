@@ -136,7 +136,7 @@ final class EvaluationValidityServiceTest extends CIUnitTestCase
         self::assertSame(2, substr_count($source, "'cycle_validity'   => \$cycleValidity['decisions']"));
         self::assertStringNotContainsString("->table('personnel_achievement_usage')->ignore(true)->insert", $source, 'a submission must not consume its accomplishments');
         self::assertStringNotContainsString("->table('personnel_accomplishments')->whereIn('id', \$cycleValidity", $source, 'excluded records are never deleted');
-        self::assertStringContainsString('assertAchievementCoverage($row)', file_get_contents(ROOTPATH . 'app/Services/PersonnelEvaluationPeriodService.php'));
+        self::assertStringContainsString('coverageForPeriod($period)', file_get_contents(ROOTPATH . 'app/Services/EvaluationValidityService.php'));
         self::assertStringContainsString('serviceCutoff($period)', file_get_contents(ROOTPATH . 'app/Services/PersonnelEligibilityService.php'));
     }
 

@@ -620,7 +620,7 @@ class HREvaluationController extends Controller
         if ($item === null) {
             return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
         }
-        if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This Area A item comes from the confirmed NTF annual-review workbook and cannot be changed here.']], 409);
+        if (\App\Services\NonTeachingAreaAScoringService::isLegacyWorkbookItem($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This saved historical score is read-only.']], 409);
         $classification = trim((string) ($json['classification_code'] ?? ''));
         $classifiedItem = null;
         if ($status === 'verified' && $classification === ''
@@ -740,7 +740,7 @@ class HREvaluationController extends Controller
         if (! $this->authorityMayEvaluate($actor, $evaluation)) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator or HR Admin may edit item remarks.']], 403);
         $item = $db->table('personnel_evaluation_items')->where('id', $itemId)->where('evaluation_id', $id)->get()->getRowArray();
         if ($item === null) return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
-        if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'Remarks on locked annual-review items cannot be changed here.']], 409);
+        if (\App\Services\NonTeachingAreaAScoringService::isLegacyWorkbookItem($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This saved historical score is read-only.']], 409);
 
         $json = $this->request->getJSON(true) ?? [];
         $remarks = trim((string) ($json['evaluator_remarks'] ?? ''));
@@ -755,55 +755,34 @@ class HREvaluationController extends Controller
     }
 
     // =========================================================================
-    // PATCH /api/v1/hr/evaluations/{id}/area-a/{code}
-    // HR enters or corrects the DS of a Non-Teaching Area A criterion (A.1–A.3).
-    // Body: { "ds": 0-100, "reason": "optional note" }
+    // PATCH /api/v1/hr/evaluations/{id}/items/{itemId}/rate
+    // Score an item — must be verified first
     // =========================================================================
     public function updateAreaADs(string $id, string $code): mixed
     {
         $actor = $this->resolveActor();
-        if ($actor === null) {
-            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
-        }
-
+        if ($actor === null) return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Authentication required.']], 401);
         $db = db_connect();
         $evaluation = $db->table('personnel_evaluations')->where('id', $id)->get()->getRowArray();
-        if ($evaluation === null) {
-            return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
-        }
+        if ($evaluation === null) return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Evaluation not found.']], 404);
         if (($archived = $this->archivedPeriodResponse($evaluation)) !== null) return $archived;
-        if ($evaluation['status'] !== 'in_evaluation') {
-            return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'DS can be changed only while the evaluation is in progress.']], 409);
-        }
-        if (! $this->authorityMayEvaluate($actor, $evaluation)) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator may enter DS ratings.']], 403);
-        }
-
+        if (($evaluation['status'] ?? '') !== 'in_evaluation') return $this->respond(['error' => ['code' => 'EVALUATION_LOCKED', 'message' => 'Scores can be changed only while evaluation is in progress.']], 409);
+        if (! $this->authorityMayEvaluate($actor, $evaluation)) return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned evaluator may enter these scores.']], 403);
         $json = $this->request->getJSON(true) ?? [];
-        if (! isset($json['ds']) || ! is_numeric($json['ds'])) {
-            return $this->respond(['error' => ['code' => 'DS_REQUIRED', 'message' => 'Enter a whole-number DS from 0 to 100.']], 422);
-        }
-
+        if (! isset($json['ds']) || ! is_numeric($json['ds'])) return $this->respond(['error' => ['code' => 'DS_REQUIRED', 'message' => 'Enter a whole-number DS from 0 to 100.']], 422);
         try {
-            $item = (new \App\Services\NtfAnnualReviewAreaAService($db))
-                ->setDirectScore($evaluation, urldecode($code), (float) $json['ds'], (string) $actor['profile']['id'], (string) ($json['reason'] ?? ''));
+            $item = (new \App\Services\NonTeachingAreaAScoringService($db))->setDirectScore($evaluation, urldecode($code), (float) $json['ds'], (string) $actor['profile']['id'], (string) ($json['reason'] ?? ''));
         } catch (\InvalidArgumentException $e) {
             [$errorCode, $message] = array_pad(explode(': ', $e->getMessage(), 2), 2, null);
             return $this->respond(['error' => ['code' => $errorCode, 'message' => $message ?? $e->getMessage()]], 422);
         } catch (Throwable $e) {
             log_message('error', '[HREvaluationController::updateAreaADs] ' . $e->getMessage());
-            return $this->respond(['error' => ['code' => 'DS_SAVE_FAILED', 'message' => 'The DS could not be saved. Please try again.']], 500);
+            return $this->respond(['error' => ['code' => 'DS_SAVE_FAILED', 'message' => 'The score could not be saved. Please try again.']], 500);
         }
-
         $this->recordEvaluationEvent($db, $id, (string) $actor['profile']['id'], 'area_a_ds_updated', $evaluation['status'], $evaluation['status'], trim((string) ($json['reason'] ?? '')) ?: null, ['criterion_code' => strtoupper(urldecode($code)), 'ds' => (float) $json['ds']]);
-
         return $this->respond(['data' => ['item' => $item]], 200);
     }
 
-    // =========================================================================
-    // PATCH /api/v1/hr/evaluations/{id}/items/{itemId}/rate
-    // Score an item — must be verified first
-    // =========================================================================
     public function rateItem(string $id, string $itemId): mixed
     {
         $actor = $this->resolveActor();
@@ -839,7 +818,7 @@ class HREvaluationController extends Controller
         if ($item === null) {
             return $this->respond(['error' => ['code' => 'ITEM_NOT_FOUND', 'message' => 'Evaluation item not found.']], 404);
         }
-        if (\App\Services\NtfAnnualReviewAreaAService::isLocked($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This Area A item comes from the confirmed NTF annual-review workbook and cannot be changed here.']], 409);
+        if (\App\Services\NonTeachingAreaAScoringService::isLegacyWorkbookItem($item)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'This saved historical score is read-only.']], 409);
         if (strtoupper(trim((string) ($evaluation['personnel_group_snapshot'] ?? ''))) === 'NON_TEACHING_FACULTY'
             && strtoupper(trim((string) ($item['criterion_code'] ?? ''))) === 'B.2') {
             return $this->respond(['error' => ['code' => 'CLASSIFICATION_REQUIRED', 'message' => 'Select the applicable B.2 classification before scoring this item.']], 422);
@@ -1605,9 +1584,9 @@ class HREvaluationController extends Controller
                 $context['rank_applied_for_status'] = $applied['status'];
             }
         }
-        // The confirmed Annual Review workbook records the rank the faculty member applied for.
-        // Older imports did not persist its header, so read their retained workbook on demand.
-        if ($db->tableExists('personnel_annual_review_imports')) {
+        // Only Teaching Faculty annual reviews may provide the legacy applied-rank header.
+        $trackGroup = strtoupper((string) ($db->table('personnel_evaluation_periods')->select('personnel_group')->where('id', $trackId)->get()->getRowArray()['personnel_group'] ?? ''));
+        if ($trackGroup === 'FACULTY' && $db->tableExists('personnel_annual_review_imports')) {
             $annualReview = $db->table('personnel_annual_review_imports')
                 ->where('personnel_profile_id', $profileId)->where('evaluation_period_id', $trackId)
                 ->where('confirmed_at !=', null)->where('superseded_at', null)
@@ -1720,7 +1699,6 @@ class HREvaluationController extends Controller
         $itemId = trim((string) ($json['evaluation_item_id'] ?? ''));
         if ($itemId !== '') {
             $lockedItem = $db->table('personnel_evaluation_items')->where(['id' => $itemId, 'evaluation_id' => $id])->get()->getRowArray();
-            if ($lockedItem && \App\Services\NtfAnnualReviewAreaAService::isLocked($lockedItem)) return $this->respond(['error' => ['code' => 'ITEM_LOCKED', 'message' => 'Deficiency requests cannot target Area A items locked from the NTF annual-review workbook.']], 409);
         }
 
         if (! ValidationHelper::validateBoundedText($reason, ValidationHelper::MAX_REASON_LENGTH)) {

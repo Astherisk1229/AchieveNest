@@ -16,7 +16,7 @@ export const NTP_OTHER_KEY = 'OTHER'
 
 /**
  * Normalizes a Non-Teaching portfolio (editable records or a submitted evaluation snapshot) into
- * booklet rows that share the Faculty booklet's row shape, plus the HR-rated Area A values.
+ * booklet rows that share the Faculty booklet's row shape, plus the evaluator-entered Area A values.
  */
 export function normalizeNonTeachingBookletItems(portfolio = {}) {
   const source = Array.isArray(portfolio.items)
@@ -67,8 +67,8 @@ export function normalizeNonTeachingBookletItems(portfolio = {}) {
 }
 
 /**
- * HR-rated Area A values (DS × weight). Present only on evaluation snapshots; personnel see "Rated by HR".
- * DS is the HR value or the average of the imported school years.
+ * Evaluator-entered Area A values (DS × weight). Present only on evaluation snapshots; personnel see "Rated by HR".
+ * DS is entered during the ranking evaluation.
  */
 export function nonTeachingAreaARows(portfolio = {}) {
   const source = Array.isArray(portfolio.items) ? portfolio.items : (portfolio.area_a_items || [])

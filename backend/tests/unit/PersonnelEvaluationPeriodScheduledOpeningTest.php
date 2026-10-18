@@ -16,7 +16,7 @@ final class PersonnelEvaluationPeriodScheduledOpeningTest extends TestCase
         ]);
         $db->query('CREATE TABLE scheduled_test_personnel_evaluation_periods (
             id TEXT PRIMARY KEY, created_by TEXT, evaluation_type TEXT, personnel_group TEXT,
-            status TEXT, submission_open_at TEXT, submission_close_at TEXT
+            status TEXT, submission_open_at TEXT, submission_close_at TEXT, evaluation_start_at TEXT, evaluation_end_at TEXT
         )');
         $now = time();
         $db->table('personnel_evaluation_periods')->insertBatch([

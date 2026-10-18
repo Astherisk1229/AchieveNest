@@ -53,7 +53,6 @@ final class ClassificationAwarePersonnelFinalizationService
         if ($items === []) {
             throw new RuntimeException('EVALUATION_ITEMS_REQUIRED');
         }
-        $this->assertAreaAScoresComplete($evaluation, $items);
         $criteriaSnapshot = $evaluation['criteria_snapshot'] ?? null;
         if (is_string($criteriaSnapshot)) $criteriaSnapshot = json_decode($criteriaSnapshot, true);
         if (! is_array($criteriaSnapshot) || $criteriaSnapshot === []) {
@@ -70,9 +69,10 @@ final class ClassificationAwarePersonnelFinalizationService
             $evidence = $item['evidence_snapshot'] ?? null;
             if (is_string($criterion)) $criterion = json_decode($criterion, true);
             if (is_string($evidence)) $evidence = json_decode($evidence, true);
-            $isAreaAScore = ($item['domain'] ?? '') === NtfAnnualReviewAreaAService::DOMAIN
+            $evaluatorRating = strtoupper((string) ($evaluation['personnel_group_snapshot'] ?? '')) === 'NON_TEACHING_FACULTY'
+                && ($item['source_type'] ?? '') === 'computed'
                 && strtolower((string) ($item['category_area'] ?? '')) === 'areaa';
-            if (! is_array($criterion) || $criterion === [] || ! is_array($evidence) || (! $isAreaAScore && $evidence === [])) {
+            if (! is_array($criterion) || $criterion === [] || ! is_array($evidence) || (! $evaluatorRating && $evidence === [])) {
                 throw new RuntimeException('IMMUTABLE_ITEM_SNAPSHOT_REQUIRED');
             }
         }
@@ -350,31 +350,6 @@ final class ClassificationAwarePersonnelFinalizationService
         // eligibility_status may only reflect the retired annual-review gate.
         $current = (new PersonnelEligibilityService())->evaluateEligibility((string) $evaluation['personnel_profile_id'], (string) $evaluation['evaluation_period_id']);
         if (($current['submission_readiness_status'] ?? $current['eligibility_status'] ?? '') !== 'eligible') throw new RuntimeException('QUALIFICATION_NOT_CLEARED');
-    }
-
-    private function assertAreaAScoresComplete(array $evaluation, array $items): void
-    {
-        $period = $this->db->table('personnel_evaluation_periods')->where('id', $evaluation['evaluation_period_id'])->get()->getRowArray();
-        if (! $period) throw new RuntimeException('EVALUATION_PERIOD_NOT_FOUND');
-        $criteria = (new NtfAnnualReviewTemplateService($this->db))->criteria($period);
-        $areaAItems = [];
-        foreach ($items as $item) {
-            if (($item['domain'] ?? '') !== NtfAnnualReviewAreaAService::DOMAIN
-                || strtolower((string) ($item['category_area'] ?? '')) !== 'areaa') continue;
-            $areaAItems[strtoupper(trim((string) ($item['criterion_code'] ?? '')))] = $item;
-        }
-
-        foreach ($criteria['items'] as $criterion) {
-            $code = strtoupper(trim((string) ($criterion['code'] ?? '')));
-            $item = $areaAItems[$code] ?? null;
-            $payload = is_string($item['scoring_payload'] ?? null)
-                ? (json_decode($item['scoring_payload'], true) ?: [])
-                : ($item['scoring_payload'] ?? []);
-            $scores = array_values(array_filter((array) ($payload['ds'] ?? []), 'is_numeric'));
-            if (! $item || $scores === []) {
-                throw new RuntimeException("NTF_AREA_A_SCORE_MISSING: Enter an HR score for Area A criterion {$code} before finalizing.");
-            }
-        }
     }
 
     private function totals(array $items): array

@@ -311,15 +311,14 @@ final class PersonnelEvaluationCriteriaRecalculationService
         foreach ($items as &$item) {
             $code = trim((string)($item['criterion_code'] ?? ''));
             $scoring = $this->decode($item['scoring_payload'] ?? null);
-            if (NtfAnnualReviewAreaAService::isLocked($item)) {
+            if (($scoring['source'] ?? '') === NonTeachingAreaAScoringService::SOURCE) {
                 $category = $ntfByCode[strtoupper($code)] ?? null;
-                if (! $category) throw new RuntimeException('CRITERIA_MAPPING_INVALID: Locked Non-Teaching Area A criterion is absent from the new revision.');
-                $dsValues = array_values(array_filter((array)($scoring['ds'] ?? []), 'is_numeric'));
-                if ($dsValues === []) throw new RuntimeException('CRITERIA_RECALCULATION_MANUAL_REVIEW_REQUIRED: Locked Area A item has no preserved DS input.');
-                $ds = round(array_sum($dsValues) / count($dsValues), 2);
-                $max = (float)$category['max_points']; $weight = round($max / 100, 4); $awarded = min(round($ds * $weight, 2), $max);
-                $snapshot = ['code'=>$code,'name'=>$category['name'],'max_points'=>$max,'weight'=>$weight,'criteria_version_id'=>$versionId,'scoring_rule'=>'DS × weight'];
-                $item = array_merge($item, ['criterion_title'=>$category['name'],'criterion_version_id'=>$versionId,'criterion_snapshot'=>json_encode($snapshot, JSON_UNESCAPED_UNICODE),'configured_points_snapshot'=>$max,'max_allowed_points'=>$max,'raw_points'=>$awarded,'criterion_capped_points'=>$awarded,'awarded_points'=>$awarded,'accepted_points'=>$awarded]);
+                if (! $category) throw new RuntimeException('CRITERIA_MAPPING_INVALID: Non-Teaching Area A criterion is absent from the new revision.');
+                $ds = (float) ($scoring['ds'][0] ?? 0);
+                $max = (float) $category['max_points'];
+                $awarded = min(round($ds * $max / 100, 2), $max);
+                $snapshot = ['code' => $code, 'name' => $category['name'], 'max_points' => $max, 'weight' => round($max / 100, 4), 'criteria_version_id' => $versionId, 'scoring_rule' => 'DS × weight'];
+                $item = array_merge($item, ['criterion_title' => $category['name'], 'criterion_version_id' => $versionId, 'criterion_snapshot' => json_encode($snapshot, JSON_UNESCAPED_UNICODE), 'configured_points_snapshot' => $max, 'max_allowed_points' => $max, 'raw_points' => $awarded, 'criterion_capped_points' => $awarded, 'awarded_points' => $awarded, 'accepted_points' => $awarded]);
                 continue;
             }
             if ($code === '') throw new RuntimeException('CRITERIA_MAPPING_INVALID: Evaluation item has no persisted criterion code.');

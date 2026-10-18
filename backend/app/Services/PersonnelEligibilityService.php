@@ -116,12 +116,13 @@ class PersonnelEligibilityService
         // Part-time faculty hold part-time titles and are not ranked, so they cannot enter a ranking period.
         if(strtoupper((string)($person['personnel_group']??''))==='FACULTY'&&($person['faculty_engagement']??null)===FacultyStatusService::ENGAGEMENT_PART_TIME){$serviceStatus='not_passed';$reasons[]='Part-time faculty hold a part-time title and are not ranked; only full-time faculty can apply for a rank.';}
 
+        $annualReviewRequired = $personnelGroup === 'faculty';
         $import=null;
-        if($period&&$this->db->tableExists('personnel_annual_review_imports'))$import=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personnelProfileId,'evaluation_period_id'=>$period['id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();
-        $annualStatus=$import['two_review_status']??'pending';
-        if(!$import)$reasons[]='Two confirmed annual-review reports are required.';
-        elseif($annualStatus==='pending')$reasons[]=$import['two_review_reason']?:'Second required annual review is missing.';
-        elseif($annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
+        if($annualReviewRequired&&$period&&$this->db->tableExists('personnel_annual_review_imports'))$import=$this->db->table('personnel_annual_review_imports')->where(['personnel_profile_id'=>$personnelProfileId,'evaluation_period_id'=>$period['id']])->where('confirmed_at !=',null)->where('superseded_at',null)->orderBy('confirmed_at','DESC')->get()->getRowArray();
+        $annualStatus=$annualReviewRequired?($import['two_review_status']??'pending'):'not_applicable';
+        if($annualReviewRequired&&!$import)$reasons[]='Two confirmed annual-review reports are required.';
+        elseif($annualReviewRequired&&$annualStatus==='pending')$reasons[]=$import['two_review_reason']?:'Second required annual review is missing.';
+        elseif($annualReviewRequired&&$annualStatus==='not_passed')$reasons[]='Two annual reviews are not both passing.';
         $researchStatus = 'not_applicable';
         if ($personnelGroup === 'faculty') {
             $researchStatus = $this->researchOutputStatus($personnelProfileId, $period);
@@ -129,20 +130,22 @@ class PersonnelEligibilityService
                 ? 'At least one Research Output in the Publications category with clean supporting evidence is required before evaluation.'
                 : 'A required Research Output could not be verified.';
         }
-        $hardFailure=$serviceStatus==='not_passed'||$annualStatus==='not_passed'||$researchStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
-        $eligibility=$hardFailure?'not_eligible':(($classificationStatus==='resolved'&&$serviceStatus==='passed'&&$annualStatus==='passed'&&in_array($researchStatus,['passed','not_applicable'],true)&&$period)?'eligible':'pending');
+        $annualReviewPassed = ! $annualReviewRequired || $annualStatus === 'passed';
+        $hardFailure=$serviceStatus==='not_passed'||($annualReviewRequired&&$annualStatus==='not_passed')||$researchStatus==='not_passed'||($period&&!in_array($period['status']??'', ['OPEN_FOR_SUBMISSION','SUBMISSION_CLOSED','EVALUATION_ONGOING'],true));
+        $eligibility=$hardFailure?'not_eligible':(($classificationStatus==='resolved'&&$serviceStatus==='passed'&&$annualReviewPassed&&in_array($researchStatus,['passed','not_applicable'],true)&&$period)?'eligible':'pending');
         // Research evidence is verified after personnel submit, before evaluation starts.
         // Keep ranking eligibility strict while giving submission its own readiness state.
         $periodReady = $period && in_array($period['status'] ?? '', ['OPEN_FOR_SUBMISSION', 'SUBMISSION_CLOSED', 'EVALUATION_ONGOING'], true);
         $submissionHardFailure = $serviceStatus === 'not_passed'
-            || $annualStatus === 'not_passed'
+            || ($annualReviewRequired && $annualStatus === 'not_passed')
             || ($period && ! $periodReady);
         $submissionReadiness = $submissionHardFailure
             ? 'not_eligible'
-            : (($classificationStatus === 'resolved' && $serviceStatus === 'passed' && $annualStatus === 'passed' && $periodReady) ? 'eligible' : 'pending');
+            : (($classificationStatus === 'resolved' && $serviceStatus === 'passed' && $annualReviewPassed && $periodReady) ? 'eligible' : 'pending');
         $result=$this->result($personnelProfileId,$period,$eligibility,$reasons,$serviceYears,null,$status,null,$import,$annualStatus,$serviceStatus);$result['review_responsibility']=$reviewResponsibility;
         $result['submission_readiness_status'] = $submissionReadiness;
         $result['personnel_type_requirement'] = ['status' => $classificationStatus, 'personnel_group' => $personnelGroup ?: null];
+        $result['annual_review_requirement']['required'] = $annualReviewRequired;
         $result['research_output_requirement'] = ['status' => $researchStatus, 'required' => $personnelGroup === 'faculty'];
         $result['service_completed_years'] = $service['completed_years'] ?? null;
         $result['service_requirement'] += [
@@ -169,7 +172,10 @@ class PersonnelEligibilityService
             ->where('a.personnel_profile_id', $personnelProfileId)
             ->whereIn('a.status', ['draft', 'submitted', 'under_review', 'verified']);
         if ($this->db->fieldExists('category_metadata', 'personnel_accomplishments')) {
-            $publicationType = "LOWER(TRIM(JSON_UNQUOTE(JSON_EXTRACT(a.category_metadata, '$.details.publication_type')))) = " . $this->db->escape('research output');
+            $jsonValue = $this->db->DBDriver === 'SQLite3'
+                ? "JSON_EXTRACT(a.category_metadata, '$.details.publication_type')"
+                : "JSON_UNQUOTE(JSON_EXTRACT(a.category_metadata, '$.details.publication_type'))";
+            $publicationType = "LOWER(TRIM({$jsonValue})) = " . $this->db->escape('research output');
             $query->groupStart()
                 ->whereIn('a.category_code', ['B.3', 'B3_RESEARCH'])
                 ->orGroupStart()

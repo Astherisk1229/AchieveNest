@@ -66,11 +66,11 @@ describe('New Ranking Period validation', () => {
     expect(validateCycleDraft(form, { criteria: ready, today: '2026-10-05' }).errors.submission).toMatch(/already ended/)
   })
 
-  it('allows identical and overlapping date ranges while rejecting reversed dates', () => {
+  it('allows identical and overlapping date ranges while requiring evaluation to start after submissions open', () => {
     const draft = { ...form, submission_open_at: '2026-10-14', submission_close_at: '2026-10-30' }
     expect(validateCycleDraft({ ...draft, evaluation_start_at: '2026-10-14', evaluation_end_at: '2026-10-30' }, { criteria: ready }).ready).toBe(true)
     expect(validateCycleDraft({ ...draft, evaluation_start_at: '2026-10-20', evaluation_end_at: '2026-11-05' }, { criteria: ready }).ready).toBe(true)
-    expect(validateCycleDraft({ ...draft, evaluation_start_at: '2026-10-01', evaluation_end_at: '2026-10-14' }, { criteria: ready }).ready).toBe(true)
+    expect(validateCycleDraft({ ...draft, evaluation_start_at: '2026-10-01', evaluation_end_at: '2026-10-14' }, { criteria: ready }).errors.evaluation).toMatch(/cannot start before submissions open/i)
     expect(validateCycleDraft({ ...draft, evaluation_start_at: '2026-10-31', evaluation_end_at: '2026-10-30' }, { criteria: ready }).errors.evaluation).toBeTruthy()
   })
 
@@ -208,7 +208,7 @@ describe('Backend contract reuse', () => {
       'backend/app/Services/RankAppliedForService.php',
       'backend/app/Services/RecommendedRankService.php',
       'backend/app/Services/HrFinalRankReviewService.php',
-      'backend/app/Services/NtfAnnualReviewAreaAService.php',
+      'backend/app/Services/NonTeachingAreaAScoringService.php',
       'backend/app/Services/OfflineApprovedRankService.php',
       'backend/app/Controllers/Api/HREvaluationController.php',
       'backend/app/Controllers/Api/PersonnelPortfolioSubmissionController.php',

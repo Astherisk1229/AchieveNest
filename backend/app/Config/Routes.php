@@ -305,14 +305,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('annual-review-imports/history/(:segment)', 'Api\AnnualReviewImportController::history/$1');
     $routes->get('annual-review-imports/(:segment)/file', 'Api\AnnualReviewImportController::file/$1');
     $routes->options('annual-review-imports/(:any)', 'Api\AnnualReviewImportController::options');
-    $routes->get('hr/ntf-annual-review/settings', 'Api\NtfAnnualReviewTemplateController::showSettings');
-    $routes->put('hr/ntf-annual-review/settings/rating-scale', 'Api\NtfAnnualReviewTemplateController::saveRatingScale');
-    $routes->put('hr/ntf-annual-review/settings/signatories', 'Api\NtfAnnualReviewTemplateController::saveSignatories');
-    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template', 'Api\NtfAnnualReviewTemplateController::blank/$1');
-    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template/prefilled.zip', 'Api\NtfAnnualReviewTemplateController::prefilledZip/$1');
-    $routes->post('hr/ntf-annual-review/tracks/(:segment)/template/prefilled.zip', 'Api\NtfAnnualReviewTemplateController::selectedPrefilledZip/$1');
-    $routes->get('hr/ntf-annual-review/tracks/(:segment)/template/personnel/(:segment)', 'Api\NtfAnnualReviewTemplateController::prefilled/$1/$2');
-    $routes->options('hr/ntf-annual-review/(:any)', 'Api\NtfAnnualReviewTemplateController::options');
 
     // Personnel Eligibility Endpoints (Plan D1 Companion)
     $routes->get('personnel/eligibility/current', 'Api\PersonnelEligibilityController::current');

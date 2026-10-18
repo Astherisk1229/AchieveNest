@@ -185,9 +185,9 @@ final class GraduateUnitScoringTest extends CIUnitTestCase
         $source = file_get_contents(ROOTPATH . 'app/Controllers/Api/PersonnelPortfolioSubmissionController.php');
         self::assertStringContainsString('->partitionForPersonnel($accomplishments, $period, $personnelProfileId)', $source);
         self::assertStringContainsString('->partitionForPersonnel($accomplishments, $periodSnapshot, $personnelProfileId)', $source);
-        $hr = file_get_contents(ROOTPATH . 'app/Controllers/Api/HREvaluationController.php');
-        self::assertStringContainsString('GraduateUnitScoringService::aggregate($items)', $hr);
-        self::assertStringContainsString('GraduateUnitScoringService::isUnitItem($item)) $awardedPoints = 0.0', $hr);
+        $finalizer = file_get_contents(ROOTPATH . 'app/Services/ClassificationAwarePersonnelFinalizationService.php');
+        self::assertStringContainsString('GraduateUnitScoringService::aggregate($items)', $finalizer);
+        self::assertStringContainsString('GraduateUnitScoringService::isUnitItem($item)', $finalizer);
     }
 
     private function cycle(string $start, string $end)

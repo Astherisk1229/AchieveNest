@@ -167,6 +167,7 @@ class RubricAdministrationService
                 if ((int) ($area['is_active'] ?? 1) !== 1 || (int) ($category['is_active'] ?? 1) !== 1) continue;
                 $criteria = [];
                 if ((int) ($category['intake_active'] ?? 0) === 1) {
+                    self::assertValidIntakeDefinition($category);
                     $activeLeafCount++;
                     $criteria[] = [
                         'criterion_id' => (string) $category['id'],
@@ -192,6 +193,7 @@ class RubricAdministrationService
                 }
                 foreach (($category['subcategories'] ?? []) as $leaf) {
                     if ((int) ($leaf['is_active'] ?? 1) !== 1 || (int) ($leaf['intake_active'] ?? 0) !== 1) continue;
+                    self::assertValidIntakeDefinition($leaf);
                     $activeLeafCount++;
                     $criteria[] = [
                         'criterion_id' => (string) $leaf['id'],
@@ -781,6 +783,7 @@ class RubricAdministrationService
             'personnel_group' => $scope,
             'changes' => $diff['changes'],
             'change_summary' => $diff['summary'],
+            'scoring_change_count' => $diff['scoring_change_count'],
             'affected_ranking_period_count' => count($periodRows),
             'operational_ranking_period_count' => count($operationalPeriods),
             'unresolved_ranking_period_count' => $unresolvedPeriodCount,

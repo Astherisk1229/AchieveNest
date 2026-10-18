@@ -1382,6 +1382,38 @@ class HREvaluationController extends Controller
 
         $data = json_decode($reportResponse->getBody(), true)['data'] ?? [];
         $report = $data['report']['snapshot'] ?? null;
+        // Personnel receives a sanitized completed-result read model, while HR
+        // and Dean receive the original report payload. Adapt the owner model
+        // to the same renderer shape without changing its saved snapshot.
+        if (is_array($report) && ! isset($report['official_summary']) && is_array($report['summary'] ?? null)) {
+            $person = (array) ($report['personnel'] ?? []);
+            $position = (string) ($person['position'] ?? '');
+            $department = preg_match('/\\bdean\\b/i', $position)
+                ? ($person['college'] ?? $person['department'] ?? null)
+                : ($person['department'] ?? $person['college'] ?? null);
+            $summary = (array) $report['summary'];
+            $personnelInformation = (array) ($summary['personnel_information'] ?? []);
+            $personnelInformation['department'] = $department;
+            $summary['personnel_information'] = $personnelInformation;
+            $report = [
+                'official_summary' => $summary,
+                'criteria_snapshot' => (array) ($report['criteria_snapshot'] ?? []),
+                'items' => (array) ($report['items'] ?? []),
+                'section_totals' => (array) ($report['scores']['areas'] ?? []),
+                'grand_total' => (float) ($report['scores']['total'] ?? 0),
+                'personnel' => ['full_name' => $person['name'] ?? null],
+                'assignment' => [
+                    'position' => $position,
+                    'department' => $department,
+                    'college' => $person['college'] ?? null,
+                ],
+                'evaluation_period' => (array) ($report['evaluation_period'] ?? []),
+                'portfolio_version' => (int) ($report['evaluation']['version_number'] ?? 1),
+                'status' => $report['evaluation']['status'] ?? 'completed',
+                'completed_at' => $report['evaluation']['completed_at'] ?? null,
+                'generated_at' => $report['result_snapshot']['generated_at'] ?? null,
+            ];
+        }
         if (! is_array($report) || ($report['official_summary']['format_key'] ?? '') !== 'FACULTY_EVALUATION_SUMMARY') {
             return $this->respond(['error' => ['code' => 'FACULTY_SUMMARY_UNAVAILABLE', 'message' => 'The faculty evaluation summary is unavailable.']], 422);
         }

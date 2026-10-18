@@ -2,6 +2,7 @@ import React from 'react'
 import { Award, X } from 'lucide-react'
 import FacultyEvaluationSummary from '../../components/evaluation/FacultyEvaluationSummary'
 import CompletedEvaluationSummary from '../../components/evaluation/CompletedEvaluationSummary'
+import personnelEvaluationResultService from '../../services/PersonnelEvaluationResultService'
 
 const facultySummaryReport = result => ({
   official_summary: result.summary || {},
@@ -42,7 +43,7 @@ export default function PersonnelEvaluationResultModal({ result, loading, error,
           {loading && <p className="py-12 text-center text-sm text-slate-500">Loading your completed result…</p>}
           {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</div>}
           {result?.personnel?.group === 'FACULTY'
-            ? <FacultyEvaluationSummary report={facultySummaryReport(result)} context={result.summary_context || {}} />
+            ? <FacultyEvaluationSummary report={facultySummaryReport(result)} context={result.summary_context || {}} onDownloadPdf={() => personnelEvaluationResultService.downloadSummaryPdf(result.evaluation?.version_id)} />
             : result && <CompletedEvaluationSummary result={result} context={result.summary_context || {}} embedded showApprovalLines={false}/>}
         </div>
       </div>

@@ -13,6 +13,13 @@ const personnelEvaluationResultService = {
 
   printableUrl(evaluationId) {
     return `/api/v1/personnel/evaluations/${evaluationId}/result/print`
+  },
+
+  async downloadSummaryPdf(evaluationId) {
+    return apiClient.get(`/reviewer/evaluations/${encodeURIComponent(evaluationId)}/summary.pdf`, {
+      responseType: 'blob',
+      timeout: 60_000,
+    })
   }
 }
 

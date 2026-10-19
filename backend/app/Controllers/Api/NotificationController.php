@@ -60,6 +60,17 @@ class NotificationController extends Controller
         }
 
         try {
+            // Generate one-time notices for existing active roles assigned before
+            // role assignment notifications were introduced.
+            try {
+                (new \App\Services\PersonnelRoleAssignmentNotificationService($db))
+                    ->ensureCurrentAssignmentNotifications($profileId);
+            } catch (Throwable $e) {
+                log_message('warning', 'Could not sync personnel role assignment notifications: {message}', [
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
             $rows = $db->table($tableName)
                 ->where('recipient_profile_id', $profileId)
                 ->orderBy('created_at', 'DESC')

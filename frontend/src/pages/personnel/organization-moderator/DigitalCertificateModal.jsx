@@ -1,6 +1,6 @@
 import React from 'react'
 import { X, Award, Download, CheckCircle2, ShieldCheck, QrCode } from 'lucide-react'
-import SignatureVault, { DEFAULT_SIG_1_IMG, DEFAULT_SIG_2_IMG, parseSignatoryInfo } from '../../../utils/signatureVault'
+import SignatureVault, { cleanOrganizationSignatoryImage, cleanOrganizationSignatoryName, parseSignatoryInfo } from '../../../utils/signatureVault'
 import { alertDialog } from '../../../components/ui/DialogProvider'
 
 
@@ -47,7 +47,7 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
 
             <div className="relative z-10 space-y-3">
               <p className="text-xs uppercase font-extrabold tracking-widest text-amber-800">
-                Notre Dame of Marbel University
+                {activeEvent?.certificate_configuration?.issuer_name || 'Organization-issued certificate'}
               </p>
               <h2 className="text-xl sm:text-2xl font-serif font-bold text-slate-900">
                 CERTIFICATE OF PARTICIPATION
@@ -66,19 +66,21 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
 
               <div className="pt-6 grid grid-cols-3 items-center gap-4 border-t border-amber-200/60 mt-4">
                 {(() => {
-                  const sig1 = parseSignatoryInfo(activeEvent?.signatory_1 || 'Dr. Ana Reyes (Club Moderator)', 'Dr. Ana Reyes', 'Club Moderator')
-                  const sig2 = parseSignatoryInfo(activeEvent?.signatory_2 || 'Prof. Juan Dela Cruz (OSAD Director)', 'Prof. Juan Dela Cruz', 'OSAD Director')
+                  const sig1 = parseSignatoryInfo(cleanOrganizationSignatoryName(activeEvent?.certificate_configuration?.signatory_1 || activeEvent?.signatory_1), '', 'Organization Moderator')
+                  const sig2 = parseSignatoryInfo(cleanOrganizationSignatoryName(activeEvent?.certificate_configuration?.signatory_2 || activeEvent?.signatory_2), '', 'Authorized Signatory')
+                  const sig1Image = cleanOrganizationSignatoryImage(activeEvent?.certificate_configuration?.signatory_1_img || activeEvent?.signatory_1_img) || SignatureVault.getSignatures().signatory_1_img
+                  const sig2Image = cleanOrganizationSignatoryImage(activeEvent?.certificate_configuration?.signatory_2_img || activeEvent?.signatory_2_img) || SignatureVault.getSignatures().signatory_2_img
 
                   return (
                     <>
                       {/* Signatory 1 */}
                       <div className="flex flex-col items-center justify-end text-center relative">
                         <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
-                          <img
-                            src={activeEvent?.signatory_1_img || SignatureVault.getSignatures().signatory_1_img || DEFAULT_SIG_1_IMG}
+                          {sig1Image && <img
+                            src={sig1Image}
                             alt="Signatory 1"
                             className="h-9 max-w-[120px] object-contain"
-                          />
+                          />}
                         </div>
                         <p className="font-extrabold text-slate-900 text-xs tracking-wide uppercase z-0 truncate max-w-full">
                           {sig1.name}
@@ -101,11 +103,11 @@ export default function DigitalCertificateModal({ isOpen, onClose, activeEvent }
                       {/* Signatory 2 */}
                       <div className="flex flex-col items-center justify-end text-center relative">
                         <div className="h-9 flex items-end justify-center -mb-2 z-10 pointer-events-none">
-                          <img
-                            src={activeEvent?.signatory_2_img || SignatureVault.getSignatures().signatory_2_img || DEFAULT_SIG_2_IMG}
+                          {sig2Image && <img
+                            src={sig2Image}
                             alt="Signatory 2"
                             className="h-9 max-w-[120px] object-contain"
-                          />
+                          />}
                         </div>
                         <p className="font-extrabold text-slate-900 text-xs tracking-wide uppercase z-0 truncate max-w-full">
                           {sig2.name}

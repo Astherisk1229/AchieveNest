@@ -59,7 +59,7 @@ const TAB_ALIASES = Object.freeze({
   'academic-structure': ['colleges', 'programs'], accounts: ['students', 'student-accounts'],
   organizations: ['orgs', 'student-organizations'], 'password-resets': ['resets'],
   awards: ['criteria', 'award-categories'], 'candidate-review': ['awardees', 'candidates'],
-  'certificate-templates': ['templates'], reports: ['accreditation', 'compliance'],
+  reports: ['accreditation', 'compliance'],
   audit: ['activity-log', 'logs', 'audit-logs']
 })
 

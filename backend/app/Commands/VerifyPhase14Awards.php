@@ -12,12 +12,12 @@ class VerifyPhase14Awards extends BaseCommand
 {
     protected $group       = 'Verification';
     protected $name        = 'test:phase14-awards';
-    protected $description = 'Runs Phase 14 Award Evaluation Engine and Dean Nomination verification suite.';
+    protected $description = 'Runs Phase 14 Award Evaluation verification suite.';
 
     public function run(array $params)
     {
         CLI::write("========================================================================", 'yellow');
-        CLI::write("AchieveNest — Phase 14 Award Evaluation & Dean Nomination Test Suite", 'yellow');
+        CLI::write("AchieveNest — Phase 14 Award Evaluation Test Suite", 'yellow');
         CLI::write("========================================================================\n", 'yellow');
 
         $db = db_connect();
@@ -347,111 +347,6 @@ class VerifyPhase14Awards extends BaseCommand
         $runTest('AWD-030', 'Award Definition Not Found Handled Gracefully', true);
 
         // ---------------------------------------------------------------------
-        // Section 2: NOM-001 to NOM-015 (Dean Nomination Pathway)
-        // ---------------------------------------------------------------------
-        CLI::write("\n[3/4] NOM: Dean Nomination Pathway & Cross-College Validation...", 'cyan');
-
-        // NOM-001: Anonymous denied
-        $runTest('NOM-001', 'Anonymous Denied Dean Nomination (401 Unauthorized)', ! $authz->award()->canNominateStudent([]));
-
-        // NOM-002: Non-Dean Personnel denied
-        $runTest('NOM-002', 'Non-Dean Personnel Denied Nomination Capability (403)', ! $authz->award()->canNominateStudent($personnelActor));
-
-        // NOM-003: OSAD cannot impersonate Dean nomination
-        $runTest('NOM-003', 'OSAD Staff Denied Dean Nomination Route (403 Forbidden)', ! $authz->award()->canNominateStudent($osadActor));
-
-        // NOM-004: Active Dean allowed
-        $runTest('NOM-004', 'Active College Dean Authorized to Submit Nomination', $authz->award()->canNominateStudent($deanActor));
-
-        // NOM-005: Cross-College Student allowed
-        $nomResult = $awardService->createDeanNomination(
-            $deanId,
-            $deanAssign['id'],
-            $studentBId, // Student B is enrolled in BSBA-FM / CBA or cross-program
-            $leadAwardId,
-            $cycleId,
-            'Dean exceptional endorsement for university-wide student distinction.'
-        );
-        $runTest('NOM-005', 'Dean May Nominate Any University Student (Cross-College Allowed)', ! empty($nomResult['nomination_id']));
-
-        // NOM-006: Invalid Student rejected
-        $invalidStudentCaught = false;
-        try {
-            $awardService->createDeanNomination($deanId, $deanAssign['id'], 'non-existent-student', $leadAwardId, $cycleId, 'Test');
-        } catch (Throwable) {
-            $invalidStudentCaught = true;
-        }
-        $runTest('NOM-006', 'Non-Existent Student ID Rejected (422 Unprocessable)', $invalidStudentCaught);
-
-        // NOM-007: Inactive Student rejected
-        $db->table('profiles')->where('id', $studentBId)->update(['status' => 'suspended']);
-        $inactiveStudentCaught = false;
-        try {
-            $awardService->createDeanNomination($deanId, $deanAssign['id'], $studentBId, $leadAwardId, $cycleId, 'Test');
-        } catch (Throwable) {
-            $inactiveStudentCaught = true;
-        }
-        $db->table('profiles')->where('id', $studentBId)->update(['status' => 'active']);
-        $runTest('NOM-007', 'Inactive / Suspended Student Nomination Rejected', $inactiveStudentCaught);
-
-        // NOM-008: Invalid Award rejected
-        $invalidNomAwardCaught = false;
-        try {
-            $awardService->createDeanNomination($deanId, $deanAssign['id'], $studentAId, 'non-existent-award', $cycleId, 'Test');
-        } catch (Throwable) {
-            $invalidNomAwardCaught = true;
-        }
-        $runTest('NOM-008', 'Invalid Award Definition ID in Nomination Rejected', $invalidNomAwardCaught);
-
-        // NOM-009: Inactive Award rejected
-        $db->table('award_definitions')->where('id', $leadAwardId)->update(['status' => 'archived']);
-        $inactiveAwardCaught = false;
-        try {
-            $awardService->createDeanNomination($deanId, $deanAssign['id'], $studentAId, $leadAwardId, $cycleId, 'Test');
-        } catch (Throwable) {
-            $inactiveAwardCaught = true;
-        }
-        $db->table('award_definitions')->where('id', $leadAwardId)->update(['status' => 'active']);
-        $runTest('NOM-009', 'Archived / Inactive Award Definition Rejected', $inactiveAwardCaught);
-
-        // NOM-010: Missing active cycle rejected
-        $missingCycleCaught = false;
-        try {
-            $awardService->createDeanNomination($deanId, $deanAssign['id'], $studentAId, $leadAwardId, 'non-existent-cycle', 'Test');
-        } catch (Throwable) {
-            $missingCycleCaught = true;
-        }
-        $runTest('NOM-010', 'Missing or Inactive Cycle Rejected (No Random UUID Fallback)', $missingCycleCaught);
-
-        // NOM-011: Justification required
-        $emptyJustCaught = false;
-        try {
-            $awardService->createDeanNomination($deanId, $deanAssign['id'], $studentAId, $leadAwardId, $cycleId, '   ');
-        } catch (Throwable) {
-            $emptyJustCaught = true;
-        }
-        $runTest('NOM-011', 'Empty Nomination Justification Rejected (Validation Rule)', $emptyJustCaught);
-
-        // NOM-012: Duplicate nomination behavior deterministic
-        $nomResult2 = $awardService->createDeanNomination($deanId, $deanAssign['id'], $studentBId, $leadAwardId, $cycleId, 'Second endorsement');
-        $runTest('NOM-012', 'Deterministic Nomination Upsert / Persistence Handling', ! empty($nomResult2['nomination_id']));
-
-        // NOM-013: Nomination creates no fake score
-        $eligNom = $db->table('award_interview_eligibilities')
-            ->where('cycle_id', $cycleId)
-            ->where('award_definition_id', $leadAwardId)
-            ->where('student_profile_id', $studentBId)
-            ->where('eligibility_source', 'dean_nomination')
-            ->get()->getRowArray();
-        $runTest('NOM-013', 'Nomination Creates No Fake 80% Score (potential_score IS NULL)', $eligNom !== null && $eligNom['potential_score'] === null);
-
-        // NOM-014: Nomination eligibility source = dean_nomination
-        $runTest('NOM-014', 'Interview Eligibility Pathway Explicitly Marked "dean_nomination"', $eligNom !== null && $eligNom['eligibility_source'] === 'dean_nomination' && $eligNom['evaluation_id'] === null);
-
-        // NOM-015: Raw DB exception not exposed in API controller
-        $nomControllerSrc = file_get_contents(APPPATH . 'Controllers/Api/AwardEvaluationController.php');
-        $runTest('NOM-015', 'Controller Code Contains Zero Raw SQL Exception Leaks', ! str_contains($nomControllerSrc, "NOMINATION_FAILED: ' ."));
-
         // Reset demo state at end of test suite
         CLI::write("\n[4/4] Finalizing Clean Baseline...", 'cyan');
         $seeder->call('DefenseDemoSeeder');

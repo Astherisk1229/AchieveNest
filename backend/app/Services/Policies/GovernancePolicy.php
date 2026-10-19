@@ -15,8 +15,8 @@ class GovernancePolicy
     }
 
     /**
-     * Determines whether an actor can assign a Program Coordinator.
-     * Rule: OSAD Administrator ONLY.
+     * Determines whether an actor can assign the Program Coordinator role.
+     * Rule: OSAD Administrator ONLY. This does not grant academic-program write access.
      */
     public function canAssignCoordinator(array $actor): bool
     {
@@ -110,18 +110,40 @@ class GovernancePolicy
     }
 
     /**
-     * Determines whether an actor can manage Academic Structure (Colleges & Programs).
-     * Rule: OSAD Administrator ONLY.
+     * Determines whether an actor can create or maintain Colleges and Programs.
+     * Rule: HR Administrator ONLY.
      */
     public function canManageAcademicStructure(array $actor): bool
     {
         $accountType = $actor['profile']['account_type'] ?? ($actor['account_type'] ?? '');
-        $roles = $actor['roles'] ?? [];
+        return $accountType === 'hr_admin' && in_array('hr_staff', $actor['roles'] ?? [], true);
+    }
 
-        return ($accountType === 'osad_admin' && in_array('osad_staff', $roles, true))
-            || in_array('osad', $roles, true)
-            || in_array('osad_admin', $roles, true)
-            || ($actor['role'] ?? '') === 'osad_admin'
-            || ($actor['role'] ?? '') === 'osad';
+    /**
+     * Determines whether an actor can create or maintain academic programs.
+     * Colleges and departments remain HR-owned; HR and OSAD may manage programs.
+     */
+    public function canManageAcademicPrograms(array $actor): bool
+    {
+        if ($this->canManageAcademicStructure($actor)) {
+            return true;
+        }
+
+        $accountType = $actor['profile']['account_type'] ?? ($actor['account_type'] ?? '');
+        return $accountType === 'osad_admin' && in_array('osad_staff', $actor['roles'] ?? [], true);
+    }
+
+    /**
+     * Determines whether an actor may read academic structure records.
+     * HR maintains colleges and departments; OSAD uses existing records in its workflows.
+     */
+    public function canViewAcademicStructure(array $actor): bool
+    {
+        if ($this->canManageAcademicStructure($actor)) {
+            return true;
+        }
+
+        $accountType = $actor['profile']['account_type'] ?? ($actor['account_type'] ?? '');
+        return $accountType === 'osad_admin' && in_array('osad_staff', $actor['roles'] ?? [], true);
     }
 }

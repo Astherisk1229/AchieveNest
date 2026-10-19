@@ -38,7 +38,7 @@ class VerifyPhase15BackendRegression extends BaseCommand
             'Phase 11'  => [\App\Commands\VerifyPhase11ReferenceData::class, 'Permanent Reference Data & SHA-256 Fingerprint'],
             'Phase 12'  => [\App\Commands\VerifyPhase12Demo::class, 'Demo Personas & Scenario Fixtures'],
             'Phase 13'  => [\App\Commands\VerifyPhase13Step4Local::class, 'Step 4 Portfolio & Verification Lifecycle'],
-            'Phase 14A' => [\App\Commands\VerifyPhase14Awards::class, 'Award Evaluation Engine & Dean Nominations'],
+            'Phase 14A' => [\App\Commands\VerifyPhase14Awards::class, 'Award Evaluation Engine'],
             'Phase 14B' => [\App\Commands\VerifyPhase14Workflows::class, 'HR, Personnel, Governance & Audit Workflows'],
         ];
 

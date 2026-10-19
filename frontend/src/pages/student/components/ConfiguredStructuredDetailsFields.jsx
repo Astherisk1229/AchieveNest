@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { AlertCircle, HelpCircle } from 'lucide-react'
+import { localToday } from '../../../utils/employmentDate'
 
 export function applyConfiguredFieldDefaults(metadata = {}, contract) {
   const version = contract?.schema_version || 'student-form-schema-2'
@@ -20,6 +21,7 @@ const optionsFor = field => (field.options || []).map(option => typeof option ==
 export default function ConfiguredStructuredDetailsFields({ contract, structuredMetadata = {}, onChange, errors = {}, disabled = false }) {
   const fields = contract?.fields || []
   const version = contract?.schema_version || 'student-form-schema-2'
+  const today = localToday()
   useEffect(() => {
     const next = applyConfiguredFieldDefaults(structuredMetadata, contract)
     if (next !== structuredMetadata) onChange?.(next)
@@ -57,20 +59,61 @@ export default function ConfiguredStructuredDetailsFields({ contract, structured
         } else if (control === 'select') {
           controlUi = <select id={`meta-${field.key}`} value={structuredMetadata[field.key] ?? ''} disabled={disabled} onChange={event => set(field.key, event.target.value)} className={inputClass}><option value="">Select an option</option>{optionsFor(field).map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
         } else if (control === 'date') {
-          controlUi = <input id={`meta-${field.key}`} type="date" value={structuredMetadata[field.key] ?? ''} disabled={disabled} onChange={event => set(field.key, event.target.value)} className={inputClass} />
+          controlUi = <input id={`meta-${field.key}`} type="date" max={today} value={structuredMetadata[field.key] ?? ''} disabled={disabled} onChange={event => set(field.key, event.target.value)} className={inputClass} />
         } else if (control === 'decimal') {
           controlUi = <input id={`meta-${field.key}`} type="number" step="0.01" min={field.validation?.minimum_exclusive != null ? Number(field.validation.minimum_exclusive) + 0.01 : 0} max={field.validation?.maximum} value={structuredMetadata[field.key] ?? ''} disabled={disabled} onChange={event => set(field.key, event.target.value === '' ? '' : Number(event.target.value))} className={inputClass} />
         } else if (control === 'textarea') {
           controlUi = <textarea id={`meta-${field.key}`} rows={3} value={structuredMetadata[field.key] ?? ''} disabled={disabled} onChange={event => set(field.key, event.target.value)} className={`${inputClass} py-2`} />
         } else if (control === 'date_range') {
           const rules = field.validation || {}
-          controlUi = <div className="grid grid-cols-2 gap-2"><input aria-label={`${field.label} start date`} type="date" value={structuredMetadata[rules.start_key] || ''} disabled={disabled} onChange={event => set(rules.start_key, event.target.value)} className={inputClass}/><input aria-label={`${field.label} end date`} type="date" value={structuredMetadata[rules.end_key] || ''} disabled={disabled} onChange={event => set(rules.end_key, event.target.value)} className={inputClass}/></div>
+          const startDate = structuredMetadata[rules.start_key] || ''
+          controlUi = <div className="grid grid-cols-2 gap-2"><input aria-label={`${field.label} start date`} type="date" max={today} value={startDate} disabled={disabled} onChange={event => set(rules.start_key, event.target.value)} className={inputClass}/><input aria-label={`${field.label} end date`} type="date" min={startDate || undefined} max={today} value={structuredMetadata[rules.end_key] || ''} disabled={disabled} onChange={event => set(rules.end_key, event.target.value)} className={inputClass}/></div>
         } else if (control === 'structured_date_or_range') {
           const range = structuredMetadata.period_precision === 'RANGE'
-          controlUi = <div className="grid grid-cols-2 gap-2"><select aria-label={`${field.label} precision`} value={structuredMetadata.period_precision || ''} disabled={disabled} onChange={event => set('period_precision', event.target.value)} className={`${inputClass} col-span-2`}><option value="">Choose specific date or range</option><option value="DATE">Specific date</option><option value="RANGE">Date range</option></select><input aria-label="Start year" type="number" min="1900" max="2200" placeholder="Start year" value={structuredMetadata.period_start_year || ''} disabled={disabled} onChange={event => set('period_start_year', event.target.value)} className={inputClass}/>{!range && <><input aria-label="Start month" type="number" min="1" max="12" placeholder="Month" value={structuredMetadata.period_start_month || ''} disabled={disabled} onChange={event => set('period_start_month', event.target.value)} className={inputClass}/><input aria-label="Start day" type="number" min="1" max="31" placeholder="Day" value={structuredMetadata.period_start_day || ''} disabled={disabled} onChange={event => set('period_start_day', event.target.value)} className={inputClass}/></>}{range && <><input aria-label="End year" type="number" min="1900" max="2200" placeholder="End year" value={structuredMetadata.period_end_year || ''} disabled={disabled} onChange={event => set('period_end_year', event.target.value)} className={inputClass}/><input aria-label="End month" type="number" min="1" max="12" placeholder="End month (optional)" value={structuredMetadata.period_end_month || ''} disabled={disabled} onChange={event => set('period_end_month', event.target.value)} className={inputClass}/><input aria-label="End day" type="number" min="1" max="31" placeholder="End day (optional)" value={structuredMetadata.period_end_day || ''} disabled={disabled} onChange={event => set('period_end_day', event.target.value)} className={inputClass}/></>}</div>
+          const dateValue = prefix => {
+            const year = String(structuredMetadata[`${prefix}_year`] || '').padStart(4, '0')
+            const month = String(structuredMetadata[`${prefix}_month`] || '').padStart(2, '0')
+            const day = String(structuredMetadata[`${prefix}_day`] || '').padStart(2, '0')
+            return /^\d{4}$/.test(year) && /^\d{2}$/.test(month) && /^\d{2}$/.test(day)
+              ? `${year}-${month}-${day}`
+              : ''
+          }
+          const partialDateLabel = prefix => [
+            structuredMetadata[`${prefix}_year`],
+            structuredMetadata[`${prefix}_month`],
+            structuredMetadata[`${prefix}_day`],
+          ].filter(value => value !== undefined && value !== null && value !== '').join(' / ')
+          const setDateValue = (prefix, value) => {
+            const [year = '', month = '', day = ''] = value.split('-')
+            onChange?.({
+              ...structuredMetadata,
+              schema_version: version,
+              [`${prefix}_year`]: year,
+              [`${prefix}_month`]: month ? String(Number(month)) : '',
+              [`${prefix}_day`]: day ? String(Number(day)) : '',
+            })
+          }
+          const startDate = dateValue('period_start')
+          const endDate = dateValue('period_end')
+          controlUi = <div className="space-y-2">
+            <select aria-label={`${field.label} precision`} value={structuredMetadata.period_precision || ''} disabled={disabled} onChange={event => set('period_precision', event.target.value)} className={inputClass}>
+              <option value="">Choose specific date or range</option>
+              <option value="DATE">Specific date</option>
+              <option value="RANGE">Date range</option>
+            </select>
+            {structuredMetadata.period_precision === 'DATE' && <label className="block">
+              <span className="sr-only">Achievement date</span>
+              <input aria-label="Achievement date" type="date" min="1900-01-01" max={today} value={startDate} disabled={disabled} onChange={event => setDateValue('period_start', event.target.value)} className={inputClass}/>
+              {!startDate && partialDateLabel('period_start') && <span className="mt-1 block text-[11px] text-amber-800 dark:text-amber-300">Saved date parts: {partialDateLabel('period_start')}. Choose a complete date.</span>}
+            </label>}
+            {range && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="block"><span className="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-400">Start date</span><input aria-label="Start date" type="date" min="1900-01-01" max={today} value={startDate} disabled={disabled} onChange={event => setDateValue('period_start', event.target.value)} className={inputClass}/>{!startDate && partialDateLabel('period_start') && <span className="mt-1 block text-[11px] text-amber-800 dark:text-amber-300">Saved date parts: {partialDateLabel('period_start')}.</span>}</label>
+              <label className="block"><span className="mb-1 block text-[11px] font-semibold text-slate-600 dark:text-slate-400">End date</span><input aria-label="End date" type="date" min={startDate || '1900-01-01'} max={today} value={endDate} disabled={disabled} onChange={event => setDateValue('period_end', event.target.value)} className={inputClass}/>{!endDate && partialDateLabel('period_end') && <span className="mt-1 block text-[11px] text-amber-800 dark:text-amber-300">Saved date parts: {partialDateLabel('period_end')}.</span>}</label>
+            </div>}
+          </div>
         } else if (control === 'ongoing_academic_year_or_activity_dates') {
           const mode = structuredMetadata.record_mode || ''
-          controlUi = <div className="space-y-2"><select aria-label="Record period type" value={mode} disabled={disabled} onChange={event => set('record_mode', event.target.value)} className={inputClass}><option value="">Select period type</option><option value="ACADEMIC_YEAR">Academic year</option><option value="ACTIVITY">Activity dates</option></select>{mode === 'ACADEMIC_YEAR' && <input aria-label="Academic year" placeholder="YYYY-YYYY" value={structuredMetadata.academic_year_start || ''} disabled={disabled} onChange={event => set('academic_year_start', event.target.value)} className={inputClass} />}{mode === 'ACTIVITY' && <div className="grid grid-cols-2 gap-2"><input aria-label="Activity start date" type="date" value={structuredMetadata.activity_start_date || ''} disabled={disabled} onChange={event => set('activity_start_date', event.target.value)} className={inputClass}/><input aria-label="Activity end date" type="date" value={structuredMetadata.activity_end_date || ''} disabled={disabled} onChange={event => set('activity_end_date', event.target.value)} className={inputClass}/></div>}</div>
+          controlUi = <div className="space-y-2"><select aria-label="Record period type" value={mode} disabled={disabled} onChange={event => set('record_mode', event.target.value)} className={inputClass}><option value="">Select period type</option><option value="ACADEMIC_YEAR">Academic year</option><option value="ACTIVITY">Activity dates</option></select>{mode === 'ACADEMIC_YEAR' && <input aria-label="Academic year" placeholder="YYYY-YYYY" value={structuredMetadata.academic_year_start || ''} disabled={disabled} onChange={event => set('academic_year_start', event.target.value)} className={inputClass} />}{mode === 'ACTIVITY' && <div className="grid grid-cols-2 gap-2"><input aria-label="Activity start date" type="date" max={today} value={structuredMetadata.activity_start_date || ''} disabled={disabled} onChange={event => set('activity_start_date', event.target.value)} className={inputClass}/><input aria-label="Activity end date" type="date" min={structuredMetadata.activity_start_date || undefined} max={today} value={structuredMetadata.activity_end_date || ''} disabled={disabled} onChange={event => set('activity_end_date', event.target.value)} className={inputClass}/></div>}</div>
         } else {
           controlUi = <input id={`meta-${field.key}`} type={control === 'academic_year' ? 'text' : 'text'} placeholder={control === 'academic_year' ? 'YYYY-YYYY' : ''} value={structuredMetadata[field.key] ?? ''} disabled={disabled} onChange={event => set(field.key, event.target.value)} className={inputClass}/>
         }

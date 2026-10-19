@@ -234,6 +234,16 @@ class OrganizationService
             return null;
         }
 
+        $profileConfiguration = null;
+        if ($this->db->fieldExists('profile_configuration', 'organizations')) {
+            $profileRow = $this->db->table('organizations')->select('profile_configuration')->where('id', $id)->get()->getRowArray();
+            $profileConfiguration = $profileRow['profile_configuration'] ?? null;
+        }
+        if (is_string($profileConfiguration)) {
+            $profileConfiguration = json_decode($profileConfiguration, true);
+        }
+        $row['profile_configuration'] = is_array($profileConfiguration) ? $profileConfiguration : [];
+
         $affiliations = $this->db->table('organization_program_affiliations opa')
             ->select('opa.academic_program_id, ap.code AS program_code, ap.name AS program_name, ap.college_id, c.code AS college_code, c.name AS college_name')
             ->join('academic_programs ap', 'ap.id = opa.academic_program_id')
@@ -331,7 +341,6 @@ class OrganizationService
         if (! in_array($scope, self::ALLOWED_SCOPES, true)) {
             throw new InvalidArgumentException("Invalid organization scope '{$scope}'.");
         }
-
         $collegeId = ! empty($data['college_id']) ? trim((string) $data['college_id']) : null;
         $rawProgramIds = is_array($data['program_ids'] ?? null)
             ? array_values(array_filter(array_map('trim', $data['program_ids'])))
@@ -537,7 +546,6 @@ class OrganizationService
         if (! in_array($scope, self::ALLOWED_SCOPES, true)) {
             throw new InvalidArgumentException("Invalid organization scope '{$scope}'.");
         }
-
         $collegeId = array_key_exists('college_id', $data)
             ? (! empty($data['college_id']) ? trim((string) $data['college_id']) : null)
             : $org['college_id'];
@@ -559,11 +567,43 @@ class OrganizationService
             $status = $org['status'];
         }
 
-        // Scope integrity check: if changing scope to 'program', verify it has affiliated programs
+        $programIds = [];
         if ($scope === 'program') {
-            $affCount = $this->db->table('organization_program_affiliations')->where('organization_id', $id)->countAllResults();
-            if ($affCount === 0 && empty($data['program_ids'])) {
-                throw new InvalidArgumentException('Program-scoped organizations must have at least one academic program affiliation.');
+            if (array_key_exists('program_ids', $data)) {
+                $rawProgramIds = is_array($data['program_ids'])
+                    ? $data['program_ids']
+                    : json_decode((string) $data['program_ids'], true);
+                if (! is_array($rawProgramIds)) {
+                    throw new InvalidArgumentException('Academic program selections are invalid.');
+                }
+                $programIds = array_values(array_unique(array_filter(array_map(
+                    static fn ($programId) => trim((string) $programId),
+                    $rawProgramIds
+                ))));
+            } else {
+                $existingAffiliations = $this->db->table('organization_program_affiliations')
+                    ->where('organization_id', $id)
+                    ->get()->getResultArray();
+                $programIds = array_column($existingAffiliations, 'academic_program_id');
+            }
+
+            if ($programIds === []) {
+                throw new InvalidArgumentException('Select at least one academic program for program-scoped organizations.');
+            }
+
+            $programs = $this->db->table('academic_programs')
+                ->whereIn('id', $programIds)
+                ->get()->getResultArray();
+            if (count($programs) !== count($programIds)) {
+                throw new InvalidArgumentException('One or more selected academic programs do not exist.');
+            }
+            foreach ($programs as $program) {
+                if (isset($program['status']) && $program['status'] !== 'active') {
+                    throw new InvalidArgumentException("Academic program '{$program['name']}' is not active.");
+                }
+                if (($program['college_id'] ?? null) !== $collegeId) {
+                    throw new InvalidArgumentException('Selected programs must belong to the selected college.');
+                }
             }
         }
 
@@ -589,7 +629,36 @@ class OrganizationService
             $updateData['logo_updated_at']    = date('Y-m-d H:i:s.u');
         }
 
-        $this->db->table('organizations')->where('id', $id)->update($updateData);
+        $this->db->transBegin();
+        try {
+            $this->db->table('organizations')->where('id', $id)->update($updateData);
+
+            if ($scope === 'program') {
+                // Replace affiliations when explicitly submitted; otherwise preserve validated existing ones.
+                if (array_key_exists('program_ids', $data)) {
+                    $this->db->table('organization_program_affiliations')->where('organization_id', $id)->delete();
+                    foreach ($programIds as $programId) {
+                        $this->db->table('organization_program_affiliations')->insert([
+                            'id' => $this->genUuid(),
+                            'organization_id' => $id,
+                            'academic_program_id' => $programId,
+                            'created_at' => date('Y-m-d H:i:s.u'),
+                        ]);
+                    }
+                }
+            } else {
+                // Program affiliations only apply while the organization is program-scoped.
+                $this->db->table('organization_program_affiliations')->where('organization_id', $id)->delete();
+            }
+
+            $this->db->transCommit();
+        } catch (Throwable $e) {
+            $this->db->transRollback();
+            if ($stagedFilePath && file_exists($stagedFilePath)) {
+                @unlink($stagedFilePath);
+            }
+            throw new RuntimeException('Failed to update organization: ' . $e->getMessage(), 0, $e);
+        }
 
         return $this->getOrganization($id);
     }
@@ -602,6 +671,9 @@ class OrganizationService
         $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
         if (! $org) {
             throw new InvalidArgumentException('Organization not found.');
+        }
+        if (($org['scope'] ?? '') !== 'program') {
+            throw new InvalidArgumentException('Program affiliations can only be managed for program-scoped organizations.');
         }
 
         $rawProgramIds = array_values(array_filter(array_map('trim', $programIds)));
@@ -666,6 +738,9 @@ class OrganizationService
         $org = $this->db->table('organizations')->where('id', $organizationId)->get()->getRowArray();
         if (! $org) {
             throw new InvalidArgumentException('Organization not found.');
+        }
+        if (($org['scope'] ?? '') !== 'program') {
+            throw new InvalidArgumentException('Program affiliations can only be managed for program-scoped organizations.');
         }
 
         $currentAffs = $this->db->table('organization_program_affiliations')
@@ -759,6 +834,19 @@ class OrganizationService
                 'created_at'           => date('Y-m-d H:i:s.u'),
                 'updated_at'           => date('Y-m-d H:i:s.u'),
             ]);
+
+            (new PersonnelRoleAssignmentNotificationService($this->db))->notifyAssigned(
+                $personnelProfileId,
+                $actorProfileId,
+                'Organization Moderator',
+                ($org['code'] ?? 'Organization') . ' — ' . ($org['name'] ?? ''),
+                'organization_moderator_assignment',
+                $newAssignmentId
+            );
+
+            if ($this->db->transStatus() === false) {
+                throw new RuntimeException('Failed to save Organization Moderator assignment and notification.');
+            }
 
             $this->db->transCommit();
         } catch (Throwable $e) {

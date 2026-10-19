@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Services\AuthorizationService;
+use App\Services\PersonnelRoleAssignmentNotificationService;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\Controller;
 use Throwable;
@@ -158,6 +159,7 @@ class PersonnelRoleController extends Controller
             return $this->respond(['error' => ['code' => 'INVALID_PERSONNEL_STATE', 'message' => 'Specialized roles require an active Personnel account.']], 422);
         }
 
+        $transactionStarted = false;
         try {
             if ($roleKey === 'dean') {
                 $scopeId = ! empty($json['college_id']) ? (string) $json['college_id'] : $compatScopeId;
@@ -174,7 +176,10 @@ class PersonnelRoleController extends Controller
                     return $this->respond(['error' => ['code' => 'INELIGIBLE_DEAN_AFFILIATION', 'message' => 'Personnel must have an active affiliation to the same College.']], 422);
                 }
 
+                $college = $db->table('colleges')->select('code, name')->where('id', $scopeId)->get()->getRowArray();
                 $assignmentId = $this->genUuid();
+                $db->transBegin();
+                $transactionStarted = true;
                 $db->table('dean_assignments')->insert([
                     'id'                   => $assignmentId,
                     'personnel_profile_id' => $targetProfileId,
@@ -184,6 +189,19 @@ class PersonnelRoleController extends Controller
                     'assigned_by'          => $actor['profile']['id'],
                     'assigned_at'          => date('Y-m-d H:i:s'),
                 ]);
+                (new PersonnelRoleAssignmentNotificationService($db))->notifyAssigned(
+                    $targetProfileId,
+                    $actor['profile']['id'] ?? null,
+                    'Dean',
+                    ($college['code'] ?? 'College') . ' — ' . ($college['name'] ?? ''),
+                    'dean_assignment',
+                    $assignmentId
+                );
+                if ($db->transStatus() === false) {
+                    throw new \RuntimeException('Failed to save Dean assignment and notification.');
+                }
+                $db->transCommit();
+                $transactionStarted = false;
 
                 return $this->respondCreated(['data' => [
                     'message'       => 'Dean assignment created.',
@@ -210,7 +228,10 @@ class PersonnelRoleController extends Controller
                     return $this->respond(['error' => ['code' => 'INELIGIBLE_PROGRAM_AFFILIATION', 'message' => 'Personnel must have an active affiliation to the exact Academic Program.']], 422);
                 }
 
+                $program = $db->table('academic_programs')->select('code, name')->where('id', $scopeId)->get()->getRowArray();
                 $assignmentId = $this->genUuid();
+                $db->transBegin();
+                $transactionStarted = true;
                 $db->table('program_coordinator_assignments')->insert([
                     'id'                   => $assignmentId,
                     'personnel_profile_id' => $targetProfileId,
@@ -220,6 +241,19 @@ class PersonnelRoleController extends Controller
                     'assigned_by'          => $actor['profile']['id'],
                     'assigned_at'          => date('Y-m-d H:i:s'),
                 ]);
+                (new PersonnelRoleAssignmentNotificationService($db))->notifyAssigned(
+                    $targetProfileId,
+                    $actor['profile']['id'] ?? null,
+                    'Program Coordinator',
+                    ($program['code'] ?? 'Academic Program') . ' — ' . ($program['name'] ?? ''),
+                    'program_coordinator_assignment',
+                    $assignmentId
+                );
+                if ($db->transStatus() === false) {
+                    throw new \RuntimeException('Failed to save Program Coordinator assignment and notification.');
+                }
+                $db->transCommit();
+                $transactionStarted = false;
 
                 return $this->respondCreated(['data' => [
                     'message'       => 'Program Coordinator assignment created.',
@@ -253,6 +287,8 @@ class PersonnelRoleController extends Controller
             }
 
             $assignmentId = $this->genUuid();
+            $db->transBegin();
+            $transactionStarted = true;
             $db->table('organization_moderator_assignments')->insert([
                 'id'                   => $assignmentId,
                 'organization_id'      => $scopeId,
@@ -262,6 +298,19 @@ class PersonnelRoleController extends Controller
                 'assigned_by'          => $actor['profile']['id'],
                 'assigned_at'          => date('Y-m-d H:i:s'),
             ]);
+            (new PersonnelRoleAssignmentNotificationService($db))->notifyAssigned(
+                $targetProfileId,
+                $actor['profile']['id'] ?? null,
+                'Organization Moderator',
+                ($organization['code'] ?? 'Organization') . ' — ' . ($organization['name'] ?? ''),
+                'organization_moderator_assignment',
+                $assignmentId
+            );
+            if ($db->transStatus() === false) {
+                throw new \RuntimeException('Failed to save Organization Moderator assignment and notification.');
+            }
+            $db->transCommit();
+            $transactionStarted = false;
 
             return $this->respondCreated(['data' => [
                 'message'       => 'Organization Moderator assignment created.',
@@ -272,6 +321,9 @@ class PersonnelRoleController extends Controller
                 'scope_id'      => $scopeId,
             ]]);
         } catch (Throwable $e) {
+            if ($transactionStarted) {
+                $db->transRollback();
+            }
             return $this->respond(['error' => [
                 'code'    => 'ASSIGNMENT_FAILED',
                 'message' => 'Failed to create assignment: ' . $e->getMessage(),

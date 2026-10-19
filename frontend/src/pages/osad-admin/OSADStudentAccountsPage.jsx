@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import {
   Users,
   Search,
@@ -52,6 +53,101 @@ const SEX_OPTIONS = ['all', ...STUDENT_SEX_OPTIONS]
 const STATUS_OPTIONS = ['all', 'active', 'suspended', 'archived']
 const PAGE_SIZE = 25
 
+function StudentAccountActionsMenu({ user, onViewPortfolio, onResetPassword, onLifecycleAction }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [position, setPosition] = useState({ top: 0, left: 0, visibility: 'hidden' })
+  const triggerRef = useRef(null)
+  const menuRef = useRef(null)
+  const status = (user.status || 'active').toLowerCase()
+
+  useLayoutEffect(() => {
+    if (!isOpen || !triggerRef.current || !menuRef.current) return
+    const trigger = triggerRef.current.getBoundingClientRect()
+    const menu = menuRef.current.getBoundingClientRect()
+    const margin = 12
+    const gap = 8
+    const spaceBelow = window.innerHeight - trigger.bottom
+    const spaceAbove = trigger.top
+    const openAbove = spaceBelow < menu.height + gap && spaceAbove > spaceBelow
+    const top = openAbove ? trigger.top - menu.height - gap : trigger.bottom + gap
+    const left = Math.min(
+      Math.max(margin, trigger.right - menu.width),
+      Math.max(margin, window.innerWidth - menu.width - margin)
+    )
+    setPosition({ top: Math.max(margin, Math.min(top, window.innerHeight - menu.height - margin)), left, visibility: 'visible' })
+  }, [isOpen, status])
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    const closeIfOutside = event => {
+      if (!triggerRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setIsOpen(false)
+    }
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+    const closeOnScroll = () => setIsOpen(false)
+    document.addEventListener('pointerdown', closeIfOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    window.addEventListener('scroll', closeOnScroll, true)
+    window.addEventListener('resize', closeOnScroll)
+    return () => {
+      document.removeEventListener('pointerdown', closeIfOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+      window.removeEventListener('scroll', closeOnScroll, true)
+      window.removeEventListener('resize', closeOnScroll)
+    }
+  }, [isOpen])
+
+  const action = (label, icon, hoverClass, callback) => (
+    <button
+      key={label}
+      type="button"
+      role="menuitem"
+      onClick={() => { setIsOpen(false); callback() }}
+      className={`flex min-h-10 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-slate-700 transition-colors ${hoverClass} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:text-slate-200 dark:hover:bg-slate-800`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  )
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`More actions for ${user.full_name}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={event => { event.stopPropagation(); setIsOpen(open => !open) }}
+        className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {isOpen && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label={`Actions for ${user.full_name}`}
+          style={{ position: 'fixed', top: position.top, left: position.left, visibility: position.visibility, zIndex: 10000 }}
+          className="w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-[#131e2e]"
+          onClick={event => event.stopPropagation()}
+        >
+          {action('View Portfolio', <Eye className="h-4 w-4 shrink-0 text-emerald-700" />, 'hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-800', () => onViewPortfolio(user))}
+          {action('Reset Password', <KeyRound className="h-4 w-4 shrink-0 text-amber-600" />, 'hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-800', () => onResetPassword(user))}
+          {status === 'active' && action('Suspend Account', <PauseCircle className="h-4 w-4 shrink-0 text-amber-600" />, 'hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-800', () => onLifecycleAction('suspend', user))}
+          {status !== 'archived' && action('Archive Account', <Archive className="h-4 w-4 shrink-0 text-rose-600" />, 'hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-800', () => onLifecycleAction('archive', user))}
+          {['suspended', 'archived'].includes(status) && action('Restore Account', <RotateCcw className="h-4 w-4 shrink-0 text-emerald-700" />, 'hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-800', () => onLifecycleAction('restore', user))}
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
 export default function OSADStudentAccountsPage({
   userSearchTerm,
   setUserSearchTerm,
@@ -72,7 +168,6 @@ export default function OSADStudentAccountsPage({
   const [createdExclusionNotice, setCreatedExclusionNotice] = useState(null)
   const fetchSequenceRef = useRef(0)
 
-  const [activeRowMenu, setActiveRowMenu] = useState(null)
   const [selectedYearLevel, setSelectedYearLevel] = useState('all')
   const [selectedSex, setSelectedSex] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -206,25 +301,6 @@ export default function OSADStudentAccountsPage({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [viewingStudent])
-
-  // Action Menu Click Outside & Escape Handler
-  useEffect(() => {
-    if (!activeRowMenu) return
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setActiveRowMenu(null)
-    }
-    const handleClickOutside = (e) => {
-      if (!e.target.closest('[data-row-menu]')) {
-        setActiveRowMenu(null)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('click', handleClickOutside)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('click', handleClickOutside)
-    }
-  }, [activeRowMenu])
 
   // Reset Password Confirmation Close Hook
   const resetPasswordConfirmClose = useConfirmableClose({
@@ -855,7 +931,7 @@ export default function OSADStudentAccountsPage({
                         </td>
 
                         {/* Column 4: Actions */}
-                        <td className="p-4 pr-6 text-right" data-row-menu>
+                        <td className="p-4 pr-6 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
@@ -869,80 +945,12 @@ export default function OSADStudentAccountsPage({
                               <span>View Details</span>
                             </button>
 
-                            <div className="relative inline-block text-left">
-                              <button
-                                type="button"
-                                aria-label={`More actions for ${user.full_name}`}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setActiveRowMenu(activeRowMenu === (user.id || user.student_id || user.institutional_id) ? null : (user.id || user.student_id || user.institutional_id))}
-                                }
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </button>
-
-                              {activeRowMenu === (user.id || user.student_id || user.institutional_id) && (
-                                <div className="absolute right-0 mt-1 w-48 rounded-2xl bg-white dark:bg-[#131e2e] border border-slate-200 dark:border-slate-800 shadow-xl z-30 p-1.5 animate-in fade-in zoom-in-95 duration-100">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setViewingStudent(user)
-                                      setActiveRowMenu(null)
-                                    }}
-                                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-[#16834a] flex items-center gap-2 transition cursor-pointer"
-                                  >
-                                    <Eye className="w-4 h-4 text-[#16834a]" />
-                                    <span>View Portfolio</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openResetPassword(user)
-                                      setActiveRowMenu(null)
-                                    }}
-                                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 flex items-center gap-2 transition cursor-pointer"
-                                  >
-                                    <KeyRound className="w-4 h-4 text-amber-600" />
-                                    <span>Reset Password</span>
-                                  </button>
-
-                                  {(user.status || 'active').toLowerCase() === 'active' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); openLifecycleAction('suspend', user); setActiveRowMenu(null) }}
-                                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-700 flex items-center gap-2 transition cursor-pointer"
-                                    >
-                                      <PauseCircle className="w-4 h-4 text-amber-600" />
-                                      <span>Suspend Account</span>
-                                    </button>
-                                  )}
-                                  {(user.status || 'active').toLowerCase() !== 'archived' && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); openLifecycleAction('archive', user); setActiveRowMenu(null) }}
-                                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-700 flex items-center gap-2 transition cursor-pointer"
-                                    >
-                                      <Archive className="w-4 h-4 text-rose-600" />
-                                      <span>Archive Account</span>
-                                    </button>
-                                  )}
-                                  {['suspended', 'archived'].includes((user.status || '').toLowerCase()) && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); openLifecycleAction('restore', user); setActiveRowMenu(null) }}
-                                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-[#16834a] flex items-center gap-2 transition cursor-pointer"
-                                    >
-                                      <RotateCcw className="w-4 h-4 text-[#16834a]" />
-                                      <span>Restore Account</span>
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            <StudentAccountActionsMenu
+                              user={user}
+                              onViewPortfolio={setViewingStudent}
+                              onResetPassword={openResetPassword}
+                              onLifecycleAction={openLifecycleAction}
+                            />
                           </div>
                         </td>
                       </tr>

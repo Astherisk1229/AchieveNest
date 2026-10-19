@@ -8,38 +8,38 @@ export const ADMIN_SETUP_GUIDES = {
   osad_staff: {
     id: 'osad-get-started',
     title: 'Get Started with OSAD',
-    description: 'Set up academic structure, student placement, coordinators, and organizations.',
+    description: 'Manage student accounts and organizations, and browse HR-maintained academic records.',
     ownerRole: 'osad_staff',
     steps: [
       {
         id: 'osad_step_1_structure',
         title: 'College and Programs',
-        description: 'Create Colleges and Academic Programs.',
-        destination: '/osad/dashboard?tab=academic-programs',
-        actionLabel: 'Open Structure',
+        description: 'Browse Colleges and Programs maintained by HR.',
+        destination: '/osad/dashboard?tab=student-management&section=colleges',
+        actionLabel: 'Browse Colleges',
         evaluatorKey: 'evalOSADAcademicStructure'
       },
       {
         id: 'osad_step_2_students',
         title: 'Student Accounts',
         description: 'Onboard Students and assign to valid Degree Programs.',
-        destination: '/osad/dashboard?tab=accounts',
+        destination: '/osad/dashboard?tab=student-management&section=accounts',
         actionLabel: 'Open Students',
         evaluatorKey: 'evalOSADStudentPlacement'
       },
       {
         id: 'osad_step_3_coordinators',
         title: 'Program Coordinators',
-        description: 'Assign one Program Coordinator to each Academic Program.',
-        destination: '/osad/dashboard?tab=academic-programs',
-        actionLabel: 'Open Coordinators',
+        description: 'Review the coordinator coverage recorded for each Academic Program.',
+        destination: '/osad/dashboard?tab=student-management&section=colleges',
+        actionLabel: 'Review Coverage',
         evaluatorKey: 'evalOSADProgramCoordinators'
       },
       {
         id: 'osad_step_4_organizations',
         title: 'Student Organizations & Moderators',
         description: 'Create Student Organizations and assign Organization Moderators.',
-        destination: '/osad/dashboard?tab=organizations',
+        destination: '/osad/dashboard?tab=student-management&section=organizations',
         actionLabel: 'Open Organizations',
         evaluatorKey: 'evalOSADOrganizations'
       }

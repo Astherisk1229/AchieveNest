@@ -64,26 +64,24 @@ final class CertificateTemplateGovernanceTest extends CIUnitTestCase
         self::assertContains('INVALID_SIGNATORY_SLOT', $codes);
     }
 
-    public function testRoutesExposeGovernedLifecycleWithoutCertificateLifecycleEndpoints(): void
+    public function testOsadTemplateAdministrationRoutesHaveBeenRetired(): void
     {
         $routes = file_get_contents(APPPATH . 'Config/Routes.php');
-        self::assertStringContainsString("certificate-template-versions/(:segment)/validate", $routes);
-        self::assertStringContainsString("certificate-template-versions/(:segment)/publish", $routes);
-        self::assertStringNotContainsString("certificate-template-versions/(:segment)/revoke", $routes);
-        self::assertStringNotContainsString("certificate-template-versions/(:segment)/reissue", $routes);
+        self::assertStringNotContainsString("Api\\CertificateTemplateController", $routes);
+        self::assertStringNotContainsString("Api\\CertificateAssetController", $routes);
     }
 
-    public function testImplementationEnforcesAuthorizationImmutabilityConcurrencyAndAuditContracts(): void
+    public function testRetirementRevokesOsadPoliciesWithoutDeletingCertificateData(): void
     {
-        $controller = file_get_contents(APPPATH . 'Controllers/Api/CertificateTemplateController.php');
-        $service = file_get_contents(APPPATH . 'Services/CertificateTemplateGovernanceService.php');
-        self::assertStringContainsString("in_array('osad_staff'", $controller);
-        self::assertStringContainsString('PUBLISHED_VERSION_IMMUTABLE', $service);
-        self::assertStringContainsString('STALE_DRAFT', $service);
-        self::assertStringContainsString('DRAFT_VALIDATION_REQUIRED', $service);
-        self::assertStringContainsString('assertExpectedToken', $service);
-        self::assertStringContainsString('TEMPLATE_PUBLISHED', $service);
-        self::assertStringContainsString('TEMPLATE_VERSION_SUPERSEDED', $service);
-        self::assertStringContainsString("'status' => self::DB_SUPERSEDED", $service);
+        $migration = file_get_contents(APPPATH . 'Database/Migrations/2026-10-18-000004_RetireOsadCertificateAdministration.php');
+        foreach ([
+            'DROP POLICY IF EXISTS certificate_template_families_osad_manage',
+            'DROP POLICY IF EXISTS certificate_template_versions_osad_manage',
+            'DROP POLICY IF EXISTS certificate_batches_osad_manage',
+            'DROP POLICY IF EXISTS issued_certificates_osad_manage',
+            'DROP POLICY IF EXISTS osad_manage_certificate_assets',
+            'CREATE POLICY issued_certificates_recipient_select',
+        ] as $needle) self::assertStringContainsString($needle, $migration);
+        self::assertStringNotContainsString('DROP TABLE', $migration);
     }
 }

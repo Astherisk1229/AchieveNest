@@ -9,13 +9,18 @@ export default function useIdleSession(onLogout, idleTimeMs = 15 * 60 * 1000, wa
   const [showWarning, setShowWarning] = useState(false)
   const [secondsRemaining, setSecondsRemaining] = useState(120)
 
-  const lastActivityRef = useRef(Date.now())
+  const showWarningRef = useRef(false)
+  const onLogoutRef = useRef(onLogout)
   const warningTimerRef = useRef(null)
   const logoutTimerRef = useRef(null)
   const countdownIntervalRef = useRef(null)
 
+  useEffect(() => {
+    onLogoutRef.current = onLogout
+  }, [onLogout])
+
   const resetActivity = useCallback(() => {
-    lastActivityRef.current = Date.now()
+    showWarningRef.current = false
     setShowWarning(false)
     setSecondsRemaining(120)
 
@@ -29,6 +34,7 @@ export default function useIdleSession(onLogout, idleTimeMs = 15 * 60 * 1000, wa
 
     // Set new warning timer (at 13 minutes)
     warningTimerRef.current = setTimeout(() => {
+      showWarningRef.current = true
       setShowWarning(true)
       setSecondsRemaining(120)
 
@@ -46,30 +52,31 @@ export default function useIdleSession(onLogout, idleTimeMs = 15 * 60 * 1000, wa
 
     // Set new logout timer (at 15 minutes)
     logoutTimerRef.current = setTimeout(() => {
+      showWarningRef.current = false
       setShowWarning(false)
-      if (onLogout) onLogout()
+      onLogoutRef.current?.()
     }, idleTimeMs)
-  }, [idleTimeMs, warningTimeMs, onLogout])
+  }, [idleTimeMs, warningTimeMs])
 
   useEffect(() => {
     const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
     const handleUserInteraction = () => {
       // Only auto-reset if warning modal is not currently open
-      if (!showWarning) {
+      if (!showWarningRef.current) {
         resetActivity()
       }
     }
 
-    events.forEach(evt => window.addEventListener(evt, handleUserInteraction))
+    events.forEach(evt => window.addEventListener(evt, handleUserInteraction, evt === 'scroll'))
     resetActivity()
 
     return () => {
-      events.forEach(evt => window.removeEventListener(evt, handleUserInteraction))
+      events.forEach(evt => window.removeEventListener(evt, handleUserInteraction, evt === 'scroll'))
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current)
       if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current)
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current)
     }
-  }, [resetActivity, showWarning])
+  }, [resetActivity])
 
   const stayLoggedIn = useCallback(() => {
     resetActivity()

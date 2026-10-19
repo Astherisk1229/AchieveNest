@@ -62,7 +62,9 @@ export const buildStudentProvisioningPayload = (formData) => ({
 export default function AddStudentAccountModalV2({
   isOpen,
   onClose,
-  onSubmit
+  onSubmit,
+  initialCollegeId = '',
+  initialProgramId = ''
 }) {
   const credentialHook = useProvisioningCredential()
   const [loadedColleges, setLoadedColleges] = useState([])
@@ -99,17 +101,28 @@ export default function AddStudentAccountModalV2({
     }
   }
 
-  const resetForm = () => {
+  const resetForm = (prefill = false) => {
     availabilityRequestRef.current.controller?.abort()
     programRequestRef.current.controller?.abort()
-    setFormData(emptyForm())
+    setFormData({
+      ...emptyForm(),
+      ...(prefill ? {
+        collegeId: initialCollegeId ? String(initialCollegeId) : '',
+        academicProgramId: initialProgramId ? String(initialProgramId) : ''
+      } : {})
+    })
     setFieldErrors({})
     setServerError(null)
     setIsSubmitting(false)
     setEmailAvailability('empty')
   }
 
-  const isDirty = () => JSON.stringify(formData) !== JSON.stringify(emptyForm())
+  const initialForm = {
+    ...emptyForm(),
+    collegeId: initialCollegeId ? String(initialCollegeId) : '',
+    academicProgramId: initialProgramId ? String(initialProgramId) : ''
+  }
+  const isDirty = () => JSON.stringify(formData) !== JSON.stringify(initialForm)
   const { isConfirmOpen, requestClose, confirmDiscard, cancelDiscard } = useConfirmableClose({
     isOpen,
     isDirty,
@@ -119,10 +132,10 @@ export default function AddStudentAccountModalV2({
 
   useEffect(() => {
     if (!isOpen) return
-    resetForm()
+    resetForm(true)
     const timer = setTimeout(() => refs.institutionalId.current?.focus(), 50)
     return () => clearTimeout(timer)
-  }, [isOpen])
+  }, [isOpen, initialCollegeId, initialProgramId])
 
   useEffect(() => {
     if (!isOpen) return

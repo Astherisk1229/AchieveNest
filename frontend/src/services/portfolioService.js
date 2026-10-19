@@ -31,8 +31,19 @@ export const portfolioService = {
     return res?.data || res
   },
 
+  async createRevision(id) {
+    const res = await apiClient.post(`/portfolio/${id}/revision`)
+    return res?.data || res
+  },
+
+  async deleteDraft(id) {
+    const res = await apiClient.delete(`/portfolio/${id}`)
+    return res?.data || res
+  },
+
   async addEvidence(id, payload) {
-    const res = await apiClient.post(`/portfolio/${id}/evidence`, payload)
+    // File uploads can outlast the API client's short default timeout on slower connections.
+    const res = await apiClient.post(`/portfolio/${id}/evidence`, payload, { timeout: 60_000 })
     return res?.data || res
   },
 
@@ -150,10 +161,6 @@ export const portfolioService = {
     return res?.data || res
   },
 
-  async createDeanNomination(payload) {
-    const res = await apiClient.post('/dean/nominations', payload)
-    return res?.data || res
-  }
 }
 
 export default portfolioService

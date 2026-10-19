@@ -399,8 +399,22 @@ class TargetProvisioningController extends Controller
                 ], $collegeCounts),
             ]]]);
         }
+        $studentProfileFields = $db->getFieldNames('student_profiles');
+        $enrollmentFields = $db->getFieldNames('student_program_enrollments');
+        $profileFields = $db->getFieldNames('profiles');
+        // Prefer the active enrollment; installations upgraded from older schema
+        // versions may keep year_level on either profile table instead.
+        $yearLevelColumn = in_array('year_level', $enrollmentFields, true)
+            ? 'spe.year_level'
+            : (in_array('year_level', $studentProfileFields, true)
+                ? 'sp.year_level'
+                : (in_array('year_level', $profileFields, true) ? 'p.year_level' : null));
+        $yearLevelSelect = $yearLevelColumn ?? 'NULL';
+        $enrollmentStatusColumn = in_array('enrollment_status', $studentProfileFields, true)
+            ? 'sp.enrollment_status'
+            : (in_array('student_status', $studentProfileFields, true) ? 'sp.student_status' : "'enrolled'");
         $builder = $db->table('profiles p')
-            ->select('
+            ->select("
                 p.id,
                 p.institutional_id,
                 p.email,
@@ -412,12 +426,12 @@ class TargetProvisioningController extends Controller
                 p.status,
                 lac.must_change_password AS credential_must_change_password,
                 CASE
-                    WHEN lac.profile_id IS NULL THEN \'missing\'
-                    WHEN lac.must_change_password IS NULL THEN \'invalid\'
-                    ELSE \'valid\'
+                    WHEN lac.profile_id IS NULL THEN 'missing'
+                    WHEN lac.must_change_password IS NULL THEN 'invalid'
+                    ELSE 'valid'
                 END AS credential_integrity_status,
-                sp.year_level,
-                sp.enrollment_status,
+                {$yearLevelSelect} AS year_level,
+                {$enrollmentStatusColumn} AS enrollment_status,
                 ap.id AS academic_program_id,
                 ap.code AS program_code,
                 ap.name AS program_name,
@@ -425,7 +439,7 @@ class TargetProvisioningController extends Controller
                 c.code AS college_code,
                 c.name AS college_name,
                 c.acronym_badge_color AS college_color
-            ', false)
+            ", false)
             ->join('local_auth_credentials lac', 'lac.profile_id = p.id', 'left')
             ->join('student_profiles sp', 'sp.profile_id = p.id')
             ->join('student_program_enrollments spe', 'spe.student_profile_id = sp.profile_id AND spe.is_active = 1', 'left')
@@ -463,7 +477,13 @@ class TargetProvisioningController extends Controller
             if (! ValidationHelper::validateStudentYearLevel($yearLevel, $this->provisioningConfig->canonicalYearLevels)) {
                 return $this->validationError(['year_level' => 'Invalid year level filter. Must be 1st Year through 5th Year.']);
             }
-            $builder->where('sp.year_level', $yearLevel);
+            if ($yearLevelColumn === null) {
+                // Do not return unfiltered results when this deployment has no
+                // year-level field to apply the requested filter against.
+                $builder->where('1 = 0', null, false);
+            } else {
+                $builder->where($yearLevelColumn, $yearLevel);
+            }
         }
 
 
@@ -923,87 +943,6 @@ class TargetProvisioningController extends Controller
             'temporary_password'       => $initialPassword,
             'must_change_password'     => true,
         ]]);
-    }
-
-    /**
-     * GET /api/v1/osad/audit
-     * Provides OSAD administrators with operational visibility into Student audit trail.
-     */
-    public function audit(): mixed
-    {
-        $actor = $this->resolveActor();
-        if ($actor === null) {
-            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated active session required.']], 401);
-        }
-        $isOsad = (($actor['profile']['account_type'] ?? '') === 'osad_admin' && in_array('osad_staff', $actor['roles'], true));
-        if (! $isOsad) {
-            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'OSAD Admin access required.']], 403);
-        }
-
-        $db = db_connect();
-        $filterProfileId = trim((string) $this->request->getGet('profile_id'));
-        $fromDate        = trim((string) $this->request->getGet('from_date'));
-        $toDate          = trim((string) $this->request->getGet('to_date'));
-        $eventCode       = trim((string) $this->request->getGet('event_code'));
-        $pagination      = ValidationHelper::validatePagination(
-            $this->request->getGet('page') ?? 1,
-            $this->request->getGet('per_page') ?? 50
-        );
-
-        $bindings = [];
-        $where = "1=1";
-        if ($filterProfileId !== '') {
-            $where .= " AND (al.target_id = ? OR al.actor_profile_id = ?)";
-            $bindings[] = $filterProfileId;
-            $bindings[] = $filterProfileId;
-        }
-        if ($eventCode !== '') {
-            $where .= " AND al.event_code = ?";
-            $bindings[] = $eventCode;
-        }
-        if ($fromDate !== '' && ValidationHelper::validateDateString($fromDate)) {
-            $where .= " AND al.created_at >= ?";
-            $bindings[] = $fromDate . ' 00:00:00';
-        }
-        if ($toDate !== '' && ValidationHelper::validateDateString($toDate)) {
-            $where .= " AND al.created_at <= ?";
-            $bindings[] = $toDate . ' 23:59:59';
-        }
-
-        $auditQuery = <<<SQL
-          SELECT
-            al.id,
-            al.event_code,
-            al.category,
-            al.target_type,
-            al.target_id,
-            tp.full_name AS target_name,
-            al.actor_profile_id,
-            ap.full_name AS actor_name,
-            al.outcome,
-            al.details,
-            al.safe_context,
-            al.created_at
-          FROM audit_logs al
-          LEFT JOIN profiles tp ON tp.id = al.target_id
-          LEFT JOIN profiles ap ON ap.id = al.actor_profile_id
-          WHERE {$where}
-          ORDER BY al.created_at DESC
-          LIMIT ? OFFSET ?
-SQL;
-
-        $bindings[] = $pagination['per_page'];
-        $bindings[] = $pagination['offset'];
-
-        $events = $db->query($auditQuery, $bindings)->getResultArray();
-
-        return $this->respond([
-            'data' => [
-                'page'     => $pagination['page'],
-                'per_page' => $pagination['per_page'],
-                'events'   => $events,
-            ],
-        ], 200);
     }
 
     private function createAuthIdentity(string $email, string $password, string $fullName, string $institutionalId, string $accountType): array

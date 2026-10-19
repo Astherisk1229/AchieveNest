@@ -1,264 +1,419 @@
-import React, { useState } from 'react'
-import {
-  Building2,
-  GraduationCap,
-  Lock,
-  Plus,
-  ShieldCheck,
-  UserCheck,
-  ChevronRight,
-  ArrowUpRight
-} from 'lucide-react'
-import { getActionAvailability } from './OSADAcademicHeaderActions'
-import { getAccessibleTextColor } from '../../utils/colorContrast'
-import OSADCollegeDetailsView from './OSADCollegeDetailsView'
-import { getCollegeLogoUrl } from '../../services/collegeAdminService'
-
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowLeft, Building2, ChevronRight, GraduationCap, LoaderCircle, Pencil, Plus, Search, ShieldCheck, UserPlus, X } from 'lucide-react'
 import OSADPageHeader from '../../components/osad/OSADPageHeader'
 import { OSADEmptyState } from '../../components/osad/OSADStateBlock'
+import AddStudentAccountModal from './modals/AddStudentAccountModal'
+import CreateProgramModal from './modals/CreateProgramModal'
+import EditProgramModal from './modals/EditProgramModal'
+import OSADCoordinatorManagerView from './OSADCoordinatorManagerView'
+import { createAcademicProgram, getCollegeLogoUrl, updateAcademicProgram } from '../../services/collegeAdminService'
+import { provisioningService } from '../../services/provisioningService'
+
+export function filterStudentsByProgram(students, programId) {
+  if (!programId || programId === 'all') return students
+  return students.filter((student) => String(student.academic_program_id || '') === String(programId))
+}
 
 export default function OSADAcademicProgramsPage({
   colleges = [],
   academicPrograms = [],
-  setIsAddCollegeOpen,
-  setIsAddProgramOpen,
-  selectedCollegeId: externalSelectedCollegeId = null,
-  onSelectCollege: externalOnSelectCollege = null,
-  onCollegeStatusChange = null,
-  onCollegeChanged = null,
-  onCollegeDeleted = null,
-  onViewCollegeStudents = null
+  onProgramsChanged = null,
+  showToast = null,
+  selectedCollegeId: externalSelectedCollegeId,
+  onSelectCollege = null,
+  selectedProgramId: externalSelectedProgramId,
+  onSelectProgram = null,
+  onViewStudent = null
 }) {
   const [internalSelectedCollegeId, setInternalSelectedCollegeId] = useState(null)
+  const selectedCollegeId = externalSelectedCollegeId === undefined ? internalSelectedCollegeId : externalSelectedCollegeId
+  const updateSelectedCollege = (collegeId) => {
+    if (onSelectCollege) onSelectCollege(collegeId)
+    else setInternalSelectedCollegeId(collegeId)
+  }
+  const [search, setSearch] = useState('')
+  const [internalSelectedProgramId, setInternalSelectedProgramId] = useState('all')
+  const selectedProgramId = externalSelectedProgramId === undefined ? internalSelectedProgramId : externalSelectedProgramId
+  const previousCollegeId = useRef(selectedCollegeId)
+  const updateSelectedProgram = (programId) => {
+    if (onSelectProgram) onSelectProgram(programId)
+    else setInternalSelectedProgramId(programId)
+  }
+  const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
+  const [editingProgram, setEditingProgram] = useState(null)
+  const [savingProgramId, setSavingProgramId] = useState(null)
+  const [actionError, setActionError] = useState('')
+  const [isManagingCoordinators, setIsManagingCoordinators] = useState(false)
+  const [collegeStudents, setCollegeStudents] = useState([])
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
+  const [studentsError, setStudentsError] = useState('')
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false)
+  const [studentsReloadKey, setStudentsReloadKey] = useState(0)
+  const [viewingStudent, setViewingStudent] = useState(null)
+  const isProgramActive = (program) => !program.status || program.status === 'active'
+  const selectedCollege = colleges.find((college) => college.id === selectedCollegeId) || null
+  const collegePrograms = useMemo(() => academicPrograms
+    .filter((program) => program.collegeId === selectedCollegeId || program.college_id === selectedCollegeId)
+    .sort((a, b) => `${a.name || ''}`.localeCompare(`${b.name || ''}`)), [academicPrograms, selectedCollegeId])
+  const selectedProgram = collegePrograms.find((program) => String(program.id) === String(selectedProgramId)) || null
+  const collegeHasActivePrograms = collegePrograms.some(isProgramActive)
+  const canAddStudent = selectedProgramId === 'all' ? collegeHasActivePrograms : Boolean(selectedProgram && isProgramActive(selectedProgram))
+  const filteredColleges = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    if (!query) return colleges
+    return colleges.filter((college) => `${college.name || ''} ${college.code || ''}`.toLowerCase().includes(query))
+  }, [colleges, search])
+  const visibleStudents = useMemo(
+    () => filterStudentsByProgram(collegeStudents, selectedProgramId),
+    [collegeStudents, selectedProgramId]
+  )
 
-  const selectedCollegeId = externalSelectedCollegeId !== null
-    ? externalSelectedCollegeId
-    : internalSelectedCollegeId
+  useEffect(() => {
+    if (previousCollegeId.current !== selectedCollegeId) {
+      previousCollegeId.current = selectedCollegeId
+      if (externalSelectedProgramId === undefined) setInternalSelectedProgramId('all')
+      else onSelectProgram?.('all')
+    }
+  // Reset the program filter when navigating between colleges.
+  }, [selectedCollegeId, externalSelectedProgramId, onSelectProgram])
 
-  const handleSelectCollege = (id) => {
-    if (externalOnSelectCollege) {
-      externalOnSelectCollege(id)
-    } else {
-      setInternalSelectedCollegeId(id)
+  useEffect(() => {
+    if (!selectedCollegeId) {
+      setCollegeStudents([])
+      return undefined
+    }
+    const controller = new AbortController()
+    let active = true
+    const loadCollegeStudents = async () => {
+      setIsLoadingStudents(true)
+      setStudentsError('')
+      try {
+        const firstPage = await provisioningService.fetchStudentsPage(
+          { college_id: selectedCollegeId, page: 1, per_page: 100 },
+          { signal: controller.signal }
+        )
+        const allStudents = firstPage?.students || []
+        const total = Number(firstPage?.total || 0)
+        const pageSize = Number(firstPage?.per_page || 100)
+        for (let page = 2; allStudents.length < total && pageSize > 0; page += 1) {
+          const nextPage = await provisioningService.fetchStudentsPage(
+            { college_id: selectedCollegeId, page, per_page: pageSize },
+            { signal: controller.signal }
+          )
+          const nextStudents = nextPage?.students || []
+          if (!nextStudents.length) break
+          allStudents.push(...nextStudents)
+        }
+        if (active) setCollegeStudents(allStudents)
+      } catch (error) {
+        if (active && error?.code !== 'ERR_CANCELED' && error?.name !== 'CanceledError') {
+          setStudentsError(error?.response?.data?.error?.message || error?.message || 'Student list could not be loaded.')
+        }
+      } finally {
+        if (active) setIsLoadingStudents(false)
+      }
+    }
+    loadCollegeStudents()
+    return () => { active = false; controller.abort() }
+  }, [selectedCollegeId, studentsReloadKey])
+
+  const handleAddStudent = async (payload) => {
+    const result = await provisioningService.provisionManualStudent(payload)
+    setStudentsReloadKey((key) => key + 1)
+    showToast?.(`Student account created for ${payload.first_name} ${payload.last_name}.`)
+    return result
+  }
+
+  const handleCreateProgram = async (payload) => {
+    await createAcademicProgram(payload)
+    await onProgramsChanged?.()
+    showToast?.('Program added successfully.')
+  }
+
+  const handleToggleProgram = async (program) => {
+    setSavingProgramId(program.id)
+    setActionError('')
+    try {
+      await updateAcademicProgram(program.id, { status: isProgramActive(program) ? 'inactive' : 'active' })
+      await onProgramsChanged?.()
+      showToast?.(isProgramActive(program) ? 'Program disabled.' : 'Program enabled.')
+    } catch (error) {
+      setActionError(error?.response?.data?.error?.message || error?.message || 'Could not update this program.')
+    } finally {
+      setSavingProgramId(null)
     }
   }
 
-  const handleBackToGrid = () => {
-    if (externalOnSelectCollege) {
-      externalOnSelectCollege(null)
-    } else {
-      setInternalSelectedCollegeId(null)
-    }
+  if (selectedCollege && isManagingCoordinators) {
+    return <OSADCoordinatorManagerView
+      collegeId={selectedCollege.id}
+      fallbackCollege={selectedCollege}
+      onBack={() => setIsManagingCoordinators(false)}
+      onAssignmentsUpdated={() => onProgramsChanged?.()}
+    />
   }
-
-  // If a specific college is selected, render the dedicated College Details view
-  if (selectedCollegeId) {
-    const fallback = colleges.find((c) => c.id === selectedCollegeId) || null
-    return (
-      <OSADCollegeDetailsView
-        collegeId={selectedCollegeId}
-        fallbackCollege={fallback}
-        onBack={handleBackToGrid}
-        onAddProgram={(cId) => setIsAddProgramOpen(cId)}
-        onCollegeStatusChange={onCollegeStatusChange}
-        onCollegeChanged={onCollegeChanged}
-        onCollegeDeleted={onCollegeDeleted}
-        onViewStudents={onViewCollegeStudents}
-      />
-    )
-  }
-
-  const { canCreateAcademicProgram, academicProgramTooltip } = getActionAvailability({
-    collegeCount: colleges.length
-  })
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 font-sans">
-      {/* Standardized Page Header */}
-      <OSADPageHeader
-        title="College and Programs"
-        description="Click any College card to view its programs, dean leadership, and coordinator coverage."
-        icon={Building2}
-        primaryAction={
+    <div className="space-y-5 font-sans">
+      {selectedCollege ? (
+        <>
           <button
             type="button"
-            onClick={() => setIsAddCollegeOpen(true)}
-            className="px-3.5 py-2 rounded-lg bg-[#1B4D3E] hover:bg-[#143B30] text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+            onClick={() => { updateSelectedCollege(null); setSearch('') }}
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:text-emerald-300 dark:hover:bg-slate-800"
           >
-            <Plus className="w-4 h-4" />
-            <span>Create College</span>
+            <ArrowLeft className="h-4 w-4" />
+            Back to colleges
           </button>
-        }
-        secondaryActions={
-          <button
-            type="button"
-            disabled={!canCreateAcademicProgram}
-            title={academicProgramTooltip || undefined}
-            onClick={() => canCreateAcademicProgram && setIsAddProgramOpen(true)}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition ${
-              canCreateAcademicProgram
-                ? 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 cursor-pointer shadow-2xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-            }`}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Academic Program</span>
-          </button>
-        }
-      />
-
-      {/* College & Academic Program Interactive Grid or Empty State */}
-      {colleges.length === 0 ? (
-        <OSADEmptyState
-          icon={Building2}
-          title="No Colleges Configured"
-          description="Academic programs require a parent College. Click 'Create College' to establish your first academic unit."
-          actionLabel="Create College"
-          onAction={() => setIsAddCollegeOpen(true)}
-        />
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {colleges.map((college) => {
-            const programs = academicPrograms.filter(
-              (program) => program.collegeId === college.id || program.college_id === college.id
-            )
-            const badgeBg = college.acronym_badge_color || '#16834A'
-            const badgeColor = getAccessibleTextColor(badgeBg)
-            const logoUrl = college.has_logo || college.logo_storage_key ? getCollegeLogoUrl(college.id) : null
-            const deanName = college.dean_name || college.deanName
-            const isDeanAssigned = Boolean(deanName && deanName !== 'Unassigned')
-            const isArchived = college.status === 'inactive'
-
-            return (
-            <div
-              key={college.id}
-              role="button"
-              tabIndex={0}
-              aria-label={`View details for ${college.name}`}
-              onClick={() => handleSelectCollege(college.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  handleSelectCollege(college.id)
-                }
-              }}
-              className="bg-white dark:bg-[#131E2E] rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-2xs hover:shadow-md hover:border-emerald-500/60 dark:hover:border-emerald-500/50 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 text-left group"
-            >
-              {/* College Card Header */}
-              <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0">
-                  {/* Thumbnail Logo or Fallback Avatar */}
-                  <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
-                    {logoUrl ? (
-                      <img
-                        src={logoUrl}
-                        alt={`${college.code} Logo`}
-                        className="w-full h-full object-contain p-1"
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
-                    ) : (
-                      <span
-                        className="text-sm font-extrabold"
-                        style={{ color: badgeBg }}
-                      >
-                        {college.code?.slice(0, 3) || 'COL'}
-                      </span>
-                    )}
-                  </div>
-
+          <OSADPageHeader
+            title={`${selectedCollege.code ? `${selectedCollege.code} — ` : ''}${selectedCollege.name}`}
+            description="View students enrolled in this college by program. OSAD can add student accounts here."
+            icon={Building2}
+            secondaryActions={(
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsManagingCoordinators(true)}
+                  disabled={selectedCollege.status && selectedCollege.status !== 'active'}
+                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-300 dark:hover:bg-slate-800"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Manage Program Coordinators
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddStudentOpen(true)}
+                  disabled={!(selectedCollege.status === undefined || selectedCollege.status === null || selectedCollege.status === 'active') || !canAddStudent}
+                  title={!canAddStudent ? (selectedProgram ? 'Enable this program before adding students to it.' : 'Add or enable a program before adding students.') : undefined}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Add student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAddProgramOpen(true)}
+                  disabled={selectedCollege.status && selectedCollege.status !== 'active'}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add program
+                </button>
+              </div>
+            )}
+          />
+          {actionError && <p role="alert" className="text-sm font-medium text-rose-700 dark:text-rose-300">{actionError}</p>}
+          <section aria-label="Program selection" className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+              <label className="block min-w-0 flex-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Program
+                <select
+                  value={selectedProgramId}
+                  onChange={(event) => updateSelectedProgram(event.target.value)}
+                  aria-label="Filter students by program"
+                  className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                >
+                  <option value="all">All programs</option>
+                  {collegePrograms.map((program) => (
+                    <option key={program.id} value={program.id}>
+                      {program.code ? `${program.code} — ` : ''}{program.name}{isProgramActive(program) ? '' : ' (Disabled)'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedProgram && (
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 xl:min-w-[min(100%,38rem)] xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0 dark:border-slate-700">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="px-2 py-0.5 rounded text-[11px] font-extrabold shadow-2xs tracking-wide"
-                        style={{ backgroundColor: badgeBg, color: badgeColor }}
-                      >
-                        {college.code}
-                      </span>
-                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Dean: {isDeanAssigned ? deanName : 'Not Assigned'}
-                      </span>
-                    </div>
-
-                    <h2 className="font-bold text-sm text-slate-900 dark:text-white mt-1 group-hover:text-[#16834a] dark:group-hover:text-emerald-400 transition-colors truncate">
-                      {college.name}
-                    </h2>
+                    <p className="truncate font-semibold text-slate-900 dark:text-white">{selectedProgram.name}</p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                      {[selectedProgram.code, selectedProgram.status || 'active', `${visibleStudents.length} ${visibleStudents.length === 1 ? 'student' : 'students'}`].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingProgram(selectedProgram); setActionError('') }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Edit program
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleProgram(selectedProgram)}
+                      disabled={savingProgramId === selectedProgram.id}
+                      className="rounded-lg border border-emerald-700 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:cursor-wait disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-slate-800"
+                    >
+                      {savingProgramId === selectedProgram.id ? 'Saving…' : isProgramActive(selectedProgram) ? 'Disable program' : 'Enable program'}
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    disabled={isArchived}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setIsAddProgramOpen(college.id)
-                    }}
-                    className={`px-2.5 py-1 rounded-md text-xs font-bold border flex items-center gap-1 shadow-2xs transition-colors ${isArchived ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-[#16834a] dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40 cursor-pointer'}`}
-                    title={`Add Academic Program under ${college.code}`}
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Program</span>
-                  </button>
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-bold capitalize ${isArchived ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>{isArchived ? 'Archived' : (college.status || 'active')}</span>
-                  <span className="text-xs font-medium text-slate-500 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-md border border-slate-200/60 dark:border-slate-800">
-                    {programs.length} {programs.length === 1 ? 'Program' : 'Programs'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Programs Preview Table */}
-              <div className="space-y-2">
-                {programs.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-3 text-center italic">
-                    No Academic Programs configured yet. Click to manage.
-                  </p>
-                ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800/80 rounded-lg border border-slate-200/80 dark:border-slate-800 overflow-hidden bg-white dark:bg-[#131E2E]">
-                    {programs.slice(0, 3).map((program) => {
-                      const coordName = program.coordinatorName || program.coordinator_name
-                      const isAssigned = Boolean(coordName && coordName !== 'Unassigned')
-
-                      return (
-                        <div
-                          key={program.id}
-                          className="p-2.5 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="min-w-0 flex items-center gap-2">
-                            <span className="font-bold text-slate-900 dark:text-white shrink-0">{program.code}</span>
-                            <span className="text-slate-500 dark:text-slate-400 truncate">{program.name}</span>
-                          </div>
-
-                          <div className="shrink-0 flex items-center gap-2">
-                            {isAssigned ? (
-                              <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                                <UserCheck className="w-3 h-3" />
-                                <span>{coordName}</span>
-                              </span>
-                            ) : (
-                              <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                Needs Coordinator
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Card Footer / View Details Affordance */}
-              <div className="pt-2 flex items-center justify-between text-xs text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 font-semibold transition-colors">
-                <span>{programs.length > 3 ? `+${programs.length - 3} more programs` : 'Manage college & programs'}</span>
-                <span className="flex items-center gap-1">
-                  <span>View College Details</span>
-                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" />
-                </span>
-              </div>
+              )}
             </div>
-          )
-        })}
-        </div>
+          </section>
+          <section aria-labelledby="college-students-heading" className="space-y-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="college-students-heading" className="text-lg font-semibold text-slate-900 dark:text-white">Students</h2>
+              {!isLoadingStudents && !studentsError && <p className="text-sm text-slate-600 dark:text-slate-300">{visibleStudents.length} {visibleStudents.length === 1 ? 'student' : 'students'}</p>}
+            </div>
+            {isLoadingStudents ? (
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300" role="status">
+                <LoaderCircle className="h-4 w-4 animate-spin" /> Loading students…
+              </div>
+            ) : studentsError ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200" role="alert">
+                <span>{studentsError}</span>
+                <button type="button" onClick={() => setStudentsReloadKey((key) => key + 1)} className="rounded-lg border border-rose-300 px-3 py-1.5 font-semibold hover:bg-rose-100 dark:border-rose-800 dark:hover:bg-rose-900/40">Retry</button>
+              </div>
+            ) : visibleStudents.length ? (
+              <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
+                {visibleStudents.map((student) => {
+                  const studentProgram = collegePrograms.find((program) => String(program.id) === String(student.academic_program_id))
+                  const studentProgramName = student.program_name || student.program || studentProgram?.name || 'No active enrollment'
+                  const studentProgramCode = student.program_code || studentProgram?.code
+                  return (
+                    <li key={student.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900 dark:text-white">{student.full_name || `${student.first_name || ''} ${student.last_name || ''}`.trim()}</p>
+                        <p className="mt-0.5 truncate text-sm text-slate-600 dark:text-slate-300">{student.institutional_id || 'No student ID'} · {student.year_level || 'Year level not recorded'} · {student.status || 'active'}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="text-right text-sm text-slate-600 dark:text-slate-300">
+                          <span className="block font-medium text-slate-900 dark:text-white">{studentProgramName}</span>
+                          {studentProgramCode && <span className="block text-xs">{studentProgramCode}</span>}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onViewStudent ? onViewStudent(student) : setViewingStudent(student)}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                          View details
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <OSADEmptyState
+                icon={GraduationCap}
+                title={selectedProgram ? 'No students in this program' : 'No students in this college'}
+                description={selectedProgram ? 'Students assigned to this program will appear here.' : 'Students enrolled in this college will appear here.'}
+              />
+            )}
+          </section>
+          <CreateProgramModal
+            isOpen={isAddProgramOpen}
+            onClose={() => setIsAddProgramOpen(false)}
+            onSubmit={handleCreateProgram}
+            colleges={colleges}
+            initialCollegeId={selectedCollegeId}
+          />
+          <EditProgramModal
+            isOpen={Boolean(editingProgram)}
+            onClose={() => setEditingProgram(null)}
+            program={editingProgram}
+            college={selectedCollege}
+            onSuccess={() => { onProgramsChanged?.(); showToast?.('Program updated successfully.') }}
+          />
+          <AddStudentAccountModal
+            isOpen={isAddStudentOpen}
+            onClose={() => setIsAddStudentOpen(false)}
+            initialCollegeId={selectedCollegeId}
+            initialProgramId={selectedProgramId === 'all' ? '' : selectedProgramId}
+            onSubmit={handleAddStudent}
+          />
+          {viewingStudent && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="college-student-details-title"
+              onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingStudent(null) }}
+            >
+              <section className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                <header className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 id="college-student-details-title" className="truncate text-lg font-bold text-slate-900 dark:text-white">{viewingStudent.full_name || `${viewingStudent.first_name || ''} ${viewingStudent.last_name || ''}`.trim()}</h2>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{viewingStudent.institutional_id || 'No student ID'}</p>
+                  </div>
+                  <button type="button" onClick={() => setViewingStudent(null)} aria-label="Close student details" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button>
+                </header>
+                <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div><dt className="text-xs font-semibold text-slate-500">Email</dt><dd className="mt-1 break-all text-sm text-slate-900 dark:text-white">{viewingStudent.email || '—'}</dd></div>
+                  <div><dt className="text-xs font-semibold text-slate-500">Program</dt><dd className="mt-1 text-sm text-slate-900 dark:text-white">{viewingStudent.program_name || viewingStudent.program || collegePrograms.find((program) => String(program.id) === String(viewingStudent.academic_program_id))?.name || 'No active enrollment'}</dd></div>
+                  <div><dt className="text-xs font-semibold text-slate-500">Year level</dt><dd className="mt-1 text-sm text-slate-900 dark:text-white">{viewingStudent.year_level || 'Not recorded'}</dd></div>
+                  <div><dt className="text-xs font-semibold text-slate-500">Account status</dt><dd className="mt-1 text-sm capitalize text-slate-900 dark:text-white">{viewingStudent.status || 'active'}</dd></div>
+                </dl>
+              </section>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <OSADPageHeader
+            title="College and Programs"
+            description="Browse colleges and manage the academic programs under each one. HR maintains colleges and departments."
+            icon={Building2}
+          />
+          <label className="relative block max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search colleges"
+              aria-label="Search colleges"
+              className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+            />
+          </label>
+          {filteredColleges.length ? (
+            <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
+              {filteredColleges.map((college) => {
+                const count = academicPrograms.filter((program) => program.collegeId === college.id || program.college_id === college.id).length
+                const logoUrl = college.has_logo || college.logo_storage_key
+                  ? `${getCollegeLogoUrl(college.id)}?v=${encodeURIComponent(college.logo_updated_at || '')}`
+                  : null
+                return (
+                  <li key={college.id}>
+                    <button
+                      type="button"
+                      onClick={() => { updateSelectedCollege(college.id); setSearch('') }}
+                      className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 dark:hover:bg-slate-800"
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white text-emerald-800 dark:border-slate-700 dark:bg-slate-900 dark:text-emerald-300">
+                          {logoUrl ? (
+                            <>
+                              <Building2 aria-hidden="true" className="h-5 w-5" />
+                              <img
+                                src={logoUrl}
+                                alt={`${college.name} logo`}
+                                className="absolute inset-0 h-full w-full bg-white object-contain p-1 dark:bg-slate-900"
+                                onError={(event) => { event.currentTarget.hidden = true }}
+                              />
+                            </>
+                          ) : (
+                            <span className="text-xs font-bold" aria-label={`${college.code || 'College'} logo unavailable`}>
+                              {college.code?.slice(0, 3) || <Building2 aria-hidden="true" className="h-5 w-5" />}
+                            </span>
+                          )}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-slate-900 dark:text-white">{college.name}</span>
+                          <span className="mt-1 block text-sm text-slate-600 dark:text-slate-300">{college.code} · {count} {count === 1 ? 'program' : 'programs'} · {college.status || 'Active'}</span>
+                        </span>
+                      </span>
+                      <ChevronRight aria-hidden="true" className="h-5 w-5 shrink-0 text-slate-500" />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <OSADEmptyState icon={Building2} title={search ? 'No colleges found' : 'No colleges available'} description={search ? 'Try a different search.' : 'College records managed by HR will appear here.'} />
+          )}
+        </>
       )}
     </div>
   )

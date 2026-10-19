@@ -12,11 +12,14 @@ describe('Potential Candidates live in the Award Candidates module', () => {
     expect(route).not.toContain('<OSADPotentialCandidatesView')
   })
 
-  it('reads the award filter from the URL and offers print/export', () => {
+  it('reads the award filter from the URL and offers separate print and PDF actions', () => {
     const page = read('../OSADAwardCandidateReviewPage.jsx')
     expect(page).toContain("searchParams.get('award')")
     expect(page).toContain('title="Award Candidates"')
-    expect(page).toContain('Print / Export PDF')
+    expect(page).toContain('> Print</button>')
+    expect(page).toContain('> Save as PDF</button>')
+    expect(page).toContain('onClick={printCandidates}')
+    expect(page).toContain('onClick={downloadCandidatesPdf}')
   })
 
   it('filters potential candidates for one award', () => {

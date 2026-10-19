@@ -1,135 +1,57 @@
 import React from 'react'
-import { Clock, CheckCircle2, RotateCcw, TrendingUp, ShieldCheck } from 'lucide-react'
+import { Clock, CheckCircle2, RotateCcw } from 'lucide-react'
 
 export default function CoordinatorMetricsSidebar({
   pendingCount = 0,
   verifiedCount = 0,
-  returnedCount = 0,
-  averageReviewTime = { displayValue: '—', subtext: 'No completed review data' },
-  activeStatus = 'All',
-  onStatusSelect
+  returnedCount = 0
 }) {
-  const isPendingActive = activeStatus === 'Pending'
-  const isVerifiedActive = activeStatus === 'Verified'
-  const isReturnedActive = activeStatus === 'Returned'
+  const metrics = [
+    {
+      label: 'Pending reviews',
+      description: 'Awaiting coordinator review',
+      value: pendingCount,
+      Icon: Clock,
+      card: 'border-amber-200 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/25',
+      icon: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200',
+      valueColor: 'text-amber-950 dark:text-amber-100'
+    },
+    {
+      label: 'Verified',
+      description: 'Approved submissions',
+      value: verifiedCount,
+      Icon: CheckCircle2,
+      card: 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/70 dark:bg-emerald-950/25',
+      icon: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200',
+      valueColor: 'text-emerald-950 dark:text-emerald-100'
+    },
+    {
+      label: 'Returned',
+      description: 'Sent back for revision',
+      value: returnedCount,
+      Icon: RotateCcw,
+      card: 'border-rose-200 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/25',
+      icon: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200',
+      valueColor: 'text-rose-950 dark:text-rose-100'
+    }
+  ]
 
   return (
-    <div className="bg-white dark:bg-[#131e2e] rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 font-sans">
-      
-      {/* Sidebar Section Title */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2 text-slate-900 dark:text-white">
-          <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-[#064e2b] dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/60">
-            <ShieldCheck className="w-4 h-4" />
-          </div>
-          <h2 className="text-xs font-black tracking-tight uppercase">Verification Summary</h2>
-        </div>
-        <span className="text-[10px] font-bold text-slate-400">Queue Metrics</span>
-      </div>
-
-      {/* Grid Container for Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-        
-        {/* Metric 1: Pending Reviews */}
-        <button
-          type="button"
-          aria-pressed={isPendingActive}
-          onClick={() => onStatusSelect && onStatusSelect('Pending')}
-          className={`p-3.5 rounded-2xl border text-left transition duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-amber-500/50 flex flex-col justify-between ${
-            isPendingActive
-              ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
-              : 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/50 hover:bg-amber-100/80 dark:hover:bg-amber-900/40 text-amber-950 dark:text-amber-200'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1">
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isPendingActive ? 'text-amber-100' : 'text-amber-800 dark:text-amber-300'}`}>
-              Pending Reviews
+    <section aria-label="Verification overview" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {metrics.map(({ label, description, value, Icon, card, icon, valueColor }) => (
+        <div key={label} aria-label={`${label}: ${value}`} className={`min-w-0 rounded-xl border px-4 py-3.5 ${card}`}>
+          <div className="flex items-center gap-2.5">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${icon}`}>
+              <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
             </span>
-            <Clock className={`w-4 h-4 ${isPendingActive ? 'text-white' : 'text-amber-600 dark:text-amber-400'}`} />
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className={`text-2xl font-black ${isPendingActive ? 'text-white' : 'text-amber-950 dark:text-white'}`}>
-              {pendingCount}
-            </span>
-            <span className={`text-[10px] font-bold ${isPendingActive ? 'text-amber-100' : 'text-amber-700 dark:text-amber-400'}`}>
-              Click to queue →
-            </span>
-          </div>
-        </button>
-
-        {/* Metric 2: Verified */}
-        <button
-          type="button"
-          aria-pressed={isVerifiedActive}
-          onClick={() => onStatusSelect && onStatusSelect('Verified')}
-          className={`p-3.5 rounded-2xl border text-left transition duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-emerald-500/50 flex flex-col justify-between ${
-            isVerifiedActive
-              ? 'bg-[#176B43] text-white border-[#176B43] shadow-sm'
-              : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/50 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/40 text-emerald-950 dark:text-[#245F42]'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1">
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isVerifiedActive ? 'text-[#245F42]' : 'text-emerald-800 dark:text-[#245F42]'}`}>
-              Verified
-            </span>
-            <CheckCircle2 className={`w-4 h-4 ${isVerifiedActive ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className={`text-2xl font-black ${isVerifiedActive ? 'text-white' : 'text-emerald-950 dark:text-white'}`}>
-              {verifiedCount}
-            </span>
-            <span className={`text-[10px] font-bold ${isVerifiedActive ? 'text-[#245F42]' : 'text-emerald-700 dark:text-emerald-400'}`}>
-              Click to queue →
-            </span>
-          </div>
-        </button>
-
-        {/* Metric 3: Returned */}
-        <button
-          type="button"
-          aria-pressed={isReturnedActive}
-          onClick={() => onStatusSelect && onStatusSelect('Returned')}
-          className={`p-3.5 rounded-2xl border text-left transition duration-200 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-rose-500/50 flex flex-col justify-between ${
-            isReturnedActive
-              ? 'bg-rose-700 text-white border-rose-800 shadow-sm'
-              : 'bg-rose-50/60 dark:bg-rose-950/20 border-rose-200/80 dark:border-rose-900/50 hover:bg-rose-100/80 dark:hover:bg-rose-900/40 text-rose-950 dark:text-rose-200'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-1">
-            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${isReturnedActive ? 'text-rose-100' : 'text-rose-800 dark:text-rose-300'}`}>
-              Returned
-            </span>
-            <RotateCcw className={`w-4 h-4 ${isReturnedActive ? 'text-white' : 'text-rose-600 dark:text-rose-400'}`} />
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className={`text-2xl font-black ${isReturnedActive ? 'text-white' : 'text-rose-950 dark:text-white'}`}>
-              {returnedCount}
-            </span>
-            <span className={`text-[10px] font-bold ${isReturnedActive ? 'text-rose-100' : 'text-rose-700 dark:text-rose-400'}`}>
-              Click to queue →
-            </span>
-          </div>
-        </button>
-
-        {/* Metric 4: Avg Review Time (Non-Interactive Informational Card) */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between w-full mb-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              Avg Review Time
-            </span>
-            <TrendingUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-slate-900 dark:text-white">
-              {averageReviewTime.displayValue || '—'}
-            </span>
-            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              {averageReviewTime.subtext}
-            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">{label}</p>
+              <p className="truncate text-xs text-slate-600 dark:text-slate-300">{description}</p>
+            </div>
+            <p className={`ml-auto text-3xl font-extrabold leading-none tabular-nums ${valueColor}`}>{value}</p>
           </div>
         </div>
-
-      </div>
-    </div>
+      ))}
+    </section>
   )
 }

@@ -21,11 +21,6 @@ export const provisioningService = {
     return res?.data?.summary || res?.summary || { total: 0, active: 0, by_college: [] }
   },
 
-  async fetchAuditEvents(params = {}, { signal } = {}) {
-    const res = await apiClient.get('/osad/audit', { params, signal })
-    return res?.data?.events || []
-  },
-
   async provisionManualStudent(payload) {
     const res = await apiClient.post('/provisioning/manual-student', payload)
     return res?.data || res

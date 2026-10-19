@@ -82,6 +82,16 @@ class OrganizationController extends Controller
             return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
         }
 
+        $moderatedOrganizationIds = array_column(array_filter(
+            $actor['assignments'] ?? [],
+            static fn (array $assignment): bool => ($assignment['role_key'] ?? '') === 'organization_moderator'
+        ), 'scope_id');
+        $isAssignedModerator = in_array('organization_moderator', $actor['roles'] ?? [], true)
+            && in_array($id, array_map('strval', $moderatedOrganizationIds), true);
+        if (! $this->checkOSADAuthorization($actor) && ! $isAssignedModerator) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Organization details are available only to OSAD administrators and the organization’s assigned moderator.']], 403);
+        }
+
         try {
             $org = $this->organizationService->getOrganization($id);
             if (! $org) {
@@ -295,10 +305,19 @@ class OrganizationController extends Controller
             return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only OSAD administrators may update student organizations.']], 403);
         }
 
-        $data = $this->request->getRawInput();
-        if (empty($data)) {
-            $data = $this->request->getJSON(true) ?? $this->request->getPost() ?? [];
+        // The edit modal sends JSON for ordinary detail updates. Parse JSON
+        // before getRawInput(), which is intended for URL-encoded PATCH bodies
+        // and can return a non-empty, incorrectly parsed array for JSON.
+        $contentType = strtolower($this->request->getHeaderLine('Content-Type'));
+        if (str_contains($contentType, 'application/json')) {
+            $data = $this->request->getJSON(true);
+        } else {
+            $data = $this->request->getPost();
+            if (empty($data)) {
+                $data = $this->request->getRawInput();
+            }
         }
+        $data = is_array($data) ? $data : [];
 
         $logoFile = null;
         $file = $this->request->getFile('logo');
@@ -326,6 +345,73 @@ class OrganizationController extends Controller
             return $this->respond(['error' => ['code' => 'VALIDATION_FAILED', 'message' => $e->getMessage()]], 422);
         } catch (Throwable $e) {
             return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => $e->getMessage()]], 500);
+        }
+    }
+
+    /**
+     * PATCH /api/v1/osad/organizations/{id}/moderator-profile
+     * Updates public-facing profile fields for the moderator's assigned organization.
+     */
+    public function updateModeratorProfile(string $id)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid authenticated session required.']], 401);
+        }
+
+        $isAssignedModerator = in_array('organization_moderator', $actor['roles'] ?? [], true)
+            && in_array($id, $this->authService->getModeratedOrganizationIds($actor), true);
+        if (! $isAssignedModerator) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Only the assigned organization moderator may update this profile.']], 403);
+        }
+
+        $input = $this->request->getJSON(true);
+        $allowedFields = ['description', 'contact_email', 'facebook_url'];
+        if (! is_array($input) || array_diff(array_keys($input), $allowedFields) !== []) {
+            return $this->respond(['error' => ['code' => 'VALIDATION_FAILED', 'message' => 'Submit only description, contact email, and social page fields.']], 422);
+        }
+
+        try {
+            $db = db_connect();
+            if (! $db->fieldExists('profile_configuration', 'organizations')) {
+                return $this->respond(['error' => ['code' => 'PROFILE_SCHEMA_UNAVAILABLE', 'message' => 'Organization profile saving is temporarily unavailable until the database migration is applied.']], 503);
+            }
+            $organization = $db->table('organizations')->select('profile_configuration')->where('id', $id)->get()->getRowArray();
+            if (! $organization) {
+                return $this->respond(['error' => ['code' => 'NOT_FOUND', 'message' => 'Organization not found.']], 404);
+            }
+
+            $configuration = $organization['profile_configuration'] ?? [];
+            if (is_string($configuration)) $configuration = json_decode($configuration, true) ?: [];
+            if (! is_array($configuration)) $configuration = [];
+
+            foreach ($allowedFields as $field) {
+                if (! array_key_exists($field, $input)) continue;
+                $value = trim((string) $input[$field]);
+                $maxLength = $field === 'description' ? 2000 : ($field === 'facebook_url' ? 500 : 254);
+                if (mb_strlen($value) > $maxLength) {
+                    return $this->respond(['error' => ['code' => 'VALIDATION_FAILED', 'message' => ucfirst(str_replace('_', ' ', $field)) . " may not exceed {$maxLength} characters."]], 422);
+                }
+                if ($field === 'contact_email' && $value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
+                    return $this->respond(['error' => ['code' => 'VALIDATION_FAILED', 'message' => 'Enter a valid contact email address.']], 422);
+                }
+                if ($field === 'facebook_url' && $value !== '') {
+                    $parts = parse_url($value);
+                    if ($parts === false || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true) || empty($parts['host'])) {
+                        return $this->respond(['error' => ['code' => 'VALIDATION_FAILED', 'message' => 'Enter a valid http or https social page URL.']], 422);
+                    }
+                }
+                $configuration[$field] = $value;
+            }
+
+            $db->table('organizations')->where('id', $id)->update([
+                'profile_configuration' => json_encode($configuration, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            return $this->respond(['message' => 'Organization profile saved.', 'profile_configuration' => $configuration], 200);
+        } catch (Throwable $e) {
+            return $this->respond(['error' => ['code' => 'UPDATE_FAILED', 'message' => 'The organization profile could not be saved.']], 500);
         }
     }
 

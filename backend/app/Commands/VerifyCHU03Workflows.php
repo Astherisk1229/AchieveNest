@@ -84,8 +84,8 @@ class VerifyCHU03Workflows extends BaseCommand
             CLI::error(" -> Award candidate scoring tables missing.");
         }
 
-        // 5. Check Dean Award Nomination Capability in Award Engine
-        CLI::write("[Check 5/8] Verifying Dean Nomination Rules & Routing...", 'yellow');
+        // 5. Check active Dean assignments remain available for Dean workflows
+        CLI::write("[Check 5/8] Verifying active Dean assignments...", 'yellow');
         $hasDeanAssignment = $db->tableExists('dean_assignments');
         if ($hasDeanAssignment) {
             $deanCount = $db->table('dean_assignments')->where('is_active', 1)->countAllResults();

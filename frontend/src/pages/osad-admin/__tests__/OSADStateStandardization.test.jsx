@@ -16,8 +16,6 @@ import OSADAcademicProgramsPage from '../OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from '../OSADStudentOrganizationsPage'
 import OSADPasswordResetRequestsPage from '../OSADPasswordResetRequestsPage'
 import OSADAwardsAndCriteriaPage from '../OSADAwardsAndCriteriaPage'
-import OSADAccreditationReportsPage from '../OSADAccreditationReportsPage'
-import OSADSystemAuditLogsPage from '../OSADSystemAuditLogsPage'
 import OSADCoordinatorManagerView from '../OSADCoordinatorManagerView'
 import OSADCollegeDetailsView from '../OSADCollegeDetailsView'
 import OSADOrganizationDetailsView from '../OSADOrganizationDetailsView'
@@ -100,14 +98,6 @@ describe('Plan 06 Phase 8 — OSAD State Standardization Suite', () => {
   it('instantiates Password Reset Requests page with distinct state handling', () => {
     const page = <OSADPasswordResetRequestsPage />
     expect(page.type).toBe(OSADPasswordResetRequestsPage)
-  })
-
-  it('instantiates Accreditation Reports and System Audit Logs with empty dataset branches', () => {
-    const reports = <OSADAccreditationReportsPage accreditationReports={[]} />
-    const auditLogs = <OSADSystemAuditLogsPage auditLogs={[]} />
-
-    expect(reports.type).toBe(OSADAccreditationReportsPage)
-    expect(auditLogs.type).toBe(OSADSystemAuditLogsPage)
   })
 
   it('instantiates detail and workspace sub-views with state blocks', () => {

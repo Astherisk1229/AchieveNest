@@ -22,84 +22,50 @@ final class AwardCriteriaHierarchyLifecycleTest extends CIUnitTestCase
         $this->createSchema();
     }
 
-    public function test_draft_hierarchy_clones_saves_reloads_validates_and_publishes_without_changing_scoring_or_history(): void
+    public function test_osad_loads_and_saves_the_current_hierarchy_in_place_without_changing_scoring_rules(): void
     {
         $db = $this->sqliteDb;
         $awardId = 'award-1';
-        $sourceId = 'scoring-1';
+        $versionId = 'scoring-1';
         $db->table('award_definitions')->insert([
             'id' => $awardId, 'name' => 'Test Award', 'status' => 'active', 'active_scoring_version' => '1.0',
-            'candidate_threshold_percent' => 80, 'authority_status' => 'OFFICIAL',
+            'active_hierarchy_version_id' => $versionId, 'candidate_threshold_percent' => 80, 'authority_status' => 'OFFICIAL',
         ]);
         $db->table('award_scoring_model_versions')->insert([
-            'id' => $sourceId, 'award_definition_id' => $awardId, 'version_number' => '1.0',
+            'id' => $versionId, 'award_definition_id' => $awardId, 'version_number' => '1.0',
             'version_label' => 'Test Award v1.0', 'status' => 'published', 'candidate_threshold_percent' => 80,
             'graduating_only' => 1, 'authority_status' => 'OFFICIAL', 'created_at' => '2026-01-01 00:00:00',
             'updated_at' => '2026-01-01 00:00:00',
         ]);
         $db->table('award_criteria')->insert([
-            'id' => 'criterion-1', 'award_definition_id' => $awardId, 'scoring_model_version_id' => $sourceId, 'code' => 'CRIT_TEST', 'name' => 'Existing Category',
-            'max_points' => 40, 'sort_order' => 1, 'is_portfolio_computable' => 1,
+            'id' => 'criterion-1', 'award_definition_id' => $awardId, 'scoring_model_version_id' => $versionId,
+            'code' => 'CRIT_TEST', 'name' => 'Existing Category', 'max_points' => 40, 'sort_order' => 1,
+            'is_portfolio_computable' => 1,
         ]);
         $db->table('award_criterion_components')->insert([
-            'id' => 'component-1', 'criterion_id' => 'criterion-1', 'code' => 'SUB_TEST', 'name' => 'Existing Subcategory',
-            'max_points' => 10, 'sort_order' => 1, 'is_computable' => 1,
+            'id' => 'component-1', 'criterion_id' => 'criterion-1', 'code' => 'SUB_TEST',
+            'name' => 'Existing Subcategory', 'max_points' => 10, 'sort_order' => 1, 'is_computable' => 1,
         ]);
         $service = new AwardCriteriaHierarchyAdministrationService($db);
 
         $before = $service->get($awardId);
-        $source = $before['versions'][0] ?? null;
-        $this->assertNotNull($source, 'Test fixture needs a published scoring version.');
-        $sourceHierarchy = $source['hierarchy'];
-        $activeScoringVersion = '1.0';
-        $scoringContractBefore = AwardCandidateDiscoveryService::describeAward($db, $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray());
-        $versionNumber = 'T' . substr(bin2hex(random_bytes(5)), 0, 9);
+        $this->assertSame('award-1', $before['award']['id']);
+        $hierarchy = $before['hierarchy'];
+        $this->assertSame('Existing Category', $hierarchy['categories'][0]['name']);
+        $scoringBefore = AwardCandidateDiscoveryService::describeAward($db, $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray());
 
-        $draft = $service->createDraft($awardId, [
-                'version_number' => $versionNumber,
-                'version_label' => 'Hierarchy lifecycle test',
-                'effective_date' => date('Y-m-d'),
-                'change_reason' => 'Automated hierarchy lifecycle test; rolled back after assertions.',
-        ], 'test-actor');
-        $this->assertSame('draft', $draft['status']);
-        $this->assertEquals($sourceHierarchy['categories'], $draft['hierarchy']['categories'], 'Draft starts with a complete hierarchy clone.');
+        $hierarchy['categories'][0]['name'] = 'Updated Category';
+        $saved = $service->saveCurrent($awardId, $hierarchy);
 
-            $hierarchy = $draft['hierarchy'];
-            $hierarchy['categories'][] = [
-                'id' => 'test-category-' . bin2hex(random_bytes(4)), 'code' => 'TEST-PD', 'name' => 'Professional Development',
-                'cut_off_points' => 40, 'active' => true, 'order' => 999,
-                'subcategories' => [[
-                    'id' => 'test-subcategory-' . bin2hex(random_bytes(4)), 'name' => 'Seminars and Trainings', 'points' => 10,
-                    'active' => true, 'order' => 1,
-                    'levels' => [
-                        ['id' => 'test-level-r-' . bin2hex(random_bytes(3)), 'name' => 'Regional', 'points' => 6, 'active' => true, 'order' => 1],
-                        ['id' => 'test-level-n-' . bin2hex(random_bytes(3)), 'name' => 'National', 'points' => 8, 'active' => true, 'order' => 2],
-                        ['id' => 'test-level-i-' . bin2hex(random_bytes(3)), 'name' => 'International', 'points' => 10, 'active' => true, 'order' => 3],
-                    ],
-                ]],
-            ];
-        $service->saveDraft($awardId, $draft['id'], $hierarchy);
-        $reloaded = $service->get($awardId);
-            $savedDraft = array_values(array_filter($reloaded['versions'], static fn(array $v): bool => $v['id'] === $draft['id']))[0];
-            $this->assertSame($hierarchy, $savedDraft['hierarchy'], 'Draft hierarchy persists and reloads from JSON configuration.');
-            $this->assertTrue($service->validate($awardId, $draft['id'])['valid']);
+        $this->assertSame($hierarchy, $saved['hierarchy']);
+        $this->assertSame(1, $db->table('award_scoring_model_versions')->where('award_definition_id', $awardId)->countAllResults(), 'Saving in place must not create a criteria version.');
+        $this->assertSame('published', $db->table('award_scoring_model_versions')->where('id', $versionId)->get()->getRowArray()['status']);
+        $this->assertSame('Existing Category', $db->table('award_criteria')->where('id', 'criterion-1')->get()->getRowArray()['name'], 'Executable scoring criteria remain unchanged.');
 
-        $published = $service->publish($awardId, $draft['id'], 'test-actor');
-        $this->assertSame('published', $published['status']);
         $currentAward = $db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
-        $this->assertSame($activeScoringVersion, (string) $currentAward['active_scoring_version'], 'Hierarchy publishing must not switch the scoring model.');
-        $this->assertSame($draft['id'], $currentAward['active_hierarchy_version_id']);
-
-        $activeContract = AwardCandidateDiscoveryService::describeAward($db, $currentAward);
-        $publishedCategoryNames = array_column($activeContract['criteria_hierarchy']['categories'], 'name');
-        $this->assertContains('Professional Development', $publishedCategoryNames, 'Award API returns the newly published hierarchy for new choices.');
-        $this->assertSame($scoringContractBefore['scoring_version_id'], $activeContract['scoring_version_id'], 'Hierarchy publishing must preserve the active executable scoring version ID.');
-
-        $oldVersion = $db->table('award_scoring_model_versions')->where('id', $sourceId)->get()->getRowArray();
-        $this->assertSame('published', $oldVersion['status']);
-        $oldHierarchyAfter = $service->get($awardId)['versions'];
-        $oldHierarchyAfter = array_values(array_filter($oldHierarchyAfter, static fn(array $v): bool => $v['id'] === $sourceId))[0]['hierarchy'];
-        $this->assertSame($sourceHierarchy, $oldHierarchyAfter, 'Published source and its historical hierarchy remain unchanged.');
+        $scoringAfter = AwardCandidateDiscoveryService::describeAward($db, $currentAward);
+        $this->assertSame($scoringBefore['scoring_version_id'], $scoringAfter['scoring_version_id']);
+        $this->assertSame('Updated Category', $scoringAfter['criteria_hierarchy']['categories'][0]['name']);
     }
 
     private function createSchema(): void

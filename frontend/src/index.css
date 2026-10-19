@@ -497,6 +497,7 @@
 /* Keep the portfolio export out of the regular page, then explicitly restore it for print.
    Do not use an inline `display: none`: Chromium may retain that state in print preview. */
 .student-portfolio-print { display: none; }
+.print-only { display: none; }
 
 /* Print / Save as PDF for OSAD documents: only the element marked .print-area is printed. */
 @media print {
@@ -513,7 +514,22 @@
      flex/grid layout) so the absolutely positioned summary can paginate instead of printing blank. */
   html:has([data-evaluation-summary]),
   body:has([data-evaluation-summary]),
-  *:has([data-evaluation-summary]) {
+  *:has([data-evaluation-summary]):not(.print-area) {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    transform: none !important;
+    contain: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+  }
+  /* Award candidate lists live inside the scrolling app shell; release those ancestors for print pagination. */
+  html:has([data-award-candidates]),
+  body:has([data-award-candidates]),
+  *:has([data-award-candidates]) {
     display: block !important;
     position: static !important;
     height: auto !important;
@@ -527,6 +543,17 @@
   }
   .print-hide { display: none !important; }
   .print-show { display: block !important; }
+  .print-only { display: block !important; }
+  [data-award-candidates] .print-area { overflow: visible !important; }
+  [data-award-candidates] .truncate { overflow: visible !important; text-overflow: clip !important; white-space: normal !important; }
+  [data-award-candidates] .print-area article {
+    grid-template-columns: 1.15fr 0.85fr 1.35fr !important;
+    align-items: start !important;
+    gap: 3mm 5mm !important;
+    padding: 2.5mm 4mm !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .student-portfolio-print,
   .student-portfolio-print * { visibility: visible !important; }
   .student-portfolio-print {
@@ -546,3 +573,39 @@
 @keyframes faculty-doc-flash { 0%, 40% { box-shadow: inset 0 0 0 4px #f59e0b; } 100% { box-shadow: inset 0 0 0 0 transparent; } }
 @keyframes faculty-toast-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { .faculty-scan-line { animation: none; top: 50%; } .faculty-doc-flash { animation: none; } }
+
+/* Organization Moderator views share the portal's active dark theme. */
+.dark [data-org-moderator-surface] .bg-white,
+.dark [data-org-moderator-surface] [class~="bg-[#eaf4ed]"],
+.dark [data-org-moderator-surface] [class~="bg-[#fffefa]"],
+.dark [data-org-moderator-surface] [class~="bg-[#EFF7F0]"] {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+.dark [data-org-moderator-surface] .bg-slate-50,
+.dark [data-org-moderator-surface] .bg-slate-100,
+.dark [data-org-moderator-surface] .bg-emerald-50,
+.dark [data-org-moderator-surface] .bg-emerald-50\/50 {
+  background-color: #1e293b !important;
+}
+.dark [data-org-moderator-surface] .border-slate-100,
+.dark [data-org-moderator-surface] .border-slate-200,
+.dark [data-org-moderator-surface] .border-slate-200\/80,
+.dark [data-org-moderator-surface] [class~="border-[#d2e8d7]"],
+.dark [data-org-moderator-surface] [class~="border-[#c5e4cb]"] {
+  border-color: #334155 !important;
+}
+.dark [data-org-moderator-surface] .text-slate-900,
+.dark [data-org-moderator-surface] .text-slate-800,
+.dark [data-org-moderator-surface] .text-slate-700,
+.dark [data-org-moderator-surface] .text-slate-600,
+.dark [data-org-moderator-surface] [class~="text-[#17663B]"],
+.dark [data-org-moderator-surface] [class~="text-[#245F42]"] {
+  color: #e2e8f0 !important;
+}
+.dark [data-org-moderator-surface] input,
+.dark [data-org-moderator-surface] textarea,
+.dark [data-org-moderator-surface] select {
+  color: #e2e8f0;
+  color-scheme: dark;
+}

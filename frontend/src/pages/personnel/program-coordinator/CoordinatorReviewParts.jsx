@@ -1,19 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { formatDateTime } from '../../../utils/achievementDates'
-import { CheckCircle2, Download, Eye, FileText, RotateCcw, X, XCircle } from 'lucide-react'
+import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react'
 import portfolioService from '../../../services/portfolioService'
 import { formatApiError } from '../../../hooks/useVerification'
 
-const PREVIEWABLE = ['application/pdf', 'image/jpeg', 'image/png']
+const ACTION_LABELS = { verified: 'Verified', revision_requested: 'Returned for revision', rejected: 'Rejected', submitted: 'Submitted', resubmitted: 'Resubmitted', scoring_requested: 'Award matching requested', criteria_scored: 'Award criteria matched', scoring_failed: 'Award matching deferred (OSAD will retry)' }
 
-export function formatBytes(bytes) {
-  const size = Number(bytes) || 0
-  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`
-  if (size >= 1024) return `${Math.round(size / 1024)} KB`
-  return `${size} B`
-}
-
-/** Returns an error message, or null when the decision may be sent. Remarks are required for return and reject. */
+/** Returns an error message, or null when a decision may be sent. */
 export function validateDecision(action, remarks) {
   if (!['approve', 'return', 'reject'].includes(action)) return 'Unknown decision.'
   if ((action === 'return' || action === 'reject') && !String(remarks || '').trim()) {
@@ -23,94 +16,6 @@ export function validateDecision(action, remarks) {
   }
   return null
 }
-
-/** Blob error bodies (responseType: 'blob') are JSON; read them so backend errors are shown verbatim. */
-async function blobErrorMessage(error) {
-  try {
-    if (typeof Blob !== 'undefined' && error instanceof Blob) return formatApiError(JSON.parse(await error.text()))
-  } catch { /* fall through */ }
-  return formatApiError(error, 'The evidence file could not be opened.')
-}
-
-/**
- * Lists every evidence item with its real file name, MIME type and size, an inline preview for
- * PDF/JPEG/PNG, and View/Download actions. All bytes come from the protected download endpoint.
- */
-export function CoordinatorEvidenceList({ evidence = [] }) {
-  const [urls, setUrls] = useState({})
-  const [errors, setErrors] = useState({})
-  const [fullView, setFullView] = useState(null)
-  const latest = useRef(evidence)
-  latest.current = evidence
-  // Re-fetch only when the set of evidence ids changes, not on every parent render.
-  const evidenceKey = evidence.map(item => item.id).join(',')
-
-  useEffect(() => {
-    let cancelled = false
-    const created = []
-    setUrls({}); setErrors({}); setFullView(null)
-    latest.current.forEach(item => {
-      portfolioService.downloadEvidence(item.id)
-        .then(blob => {
-          const url = URL.createObjectURL(blob)
-          if (cancelled) { URL.revokeObjectURL(url); return }
-          created.push(url)
-          setUrls(previous => ({ ...previous, [item.id]: url }))
-        })
-        .catch(async error => {
-          const message = await blobErrorMessage(error)
-          if (!cancelled) setErrors(previous => ({ ...previous, [item.id]: message }))
-        })
-    })
-    return () => { cancelled = true; created.forEach(url => URL.revokeObjectURL(url)) }
-  }, [evidenceKey])
-
-  if (evidence.length === 0) {
-    return <p className="text-xs font-medium text-rose-700">No active supporting evidence is attached to this submission.</p>
-  }
-
-  const mimeOf = item => item.detected_mime_type || item.mime_type || 'application/octet-stream'
-
-  return <div className="space-y-3">
-    {evidence.map(item => {
-      const mime = mimeOf(item)
-      const url = urls[item.id]
-      return <div key={item.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
-        {url && PREVIEWABLE.includes(mime) && (mime === 'application/pdf'
-          ? <iframe title={`Preview of ${item.original_filename}`} src={`${url}#page=1&view=FitH`} className="h-56 w-full border-0 bg-slate-50" />
-          : <img src={url} alt={`Preview of ${item.original_filename}`} className="h-56 w-full bg-slate-50 object-contain" />)}
-        <div className="flex items-center justify-between gap-3 p-3.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-[#16834a]"><FileText className="h-4 w-4" /></div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-bold text-slate-900">{item.original_filename}</p>
-              <p className="font-mono text-[11px] text-slate-500">{mime} • {formatBytes(item.byte_size)}</p>
-              {errors[item.id] && <p role="alert" className="text-[11px] font-medium text-rose-700">{errors[item.id]}</p>}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button type="button" disabled={!url} onClick={() => setFullView(item)} className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"><Eye className="h-3.5 w-3.5" /><span>View</span></button>
-            {url
-              ? <a href={url} download={item.original_filename} className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200"><Download className="h-3.5 w-3.5" /><span>Download</span></a>
-              : <span className="px-2 text-[11px] text-slate-400">{errors[item.id] ? 'Unavailable' : 'Loading…'}</span>}
-          </div>
-        </div>
-      </div>
-    })}
-    {fullView && urls[fullView.id] && <div role="dialog" aria-modal="true" aria-label={`Full document ${fullView.original_filename}`} className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4">
-      <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white">
-        <div className="flex items-center justify-between border-b p-3"><p className="truncate text-sm font-bold">{fullView.original_filename}</p><button type="button" onClick={() => setFullView(null)} className="rounded p-2 hover:bg-slate-100" aria-label="Close full document"><X className="h-4 w-4" /></button></div>
-        {mimeOf(fullView) === 'application/pdf'
-          ? <iframe title={`Full document ${fullView.original_filename}`} src={urls[fullView.id]} className="min-h-0 flex-1 border-0" />
-          : PREVIEWABLE.includes(mimeOf(fullView))
-            ? <img src={urls[fullView.id]} alt={`Full view of ${fullView.original_filename}`} className="min-h-0 flex-1 object-contain" />
-            : <p className="p-6 text-sm text-slate-600">This file type cannot be previewed. Use Download.</p>}
-      </div>
-    </div>}
-  </div>
-}
-
-const ACTION_LABELS = { verified: 'Verified', revision_requested: 'Returned for revision', rejected: 'Rejected', submitted: 'Submitted', resubmitted: 'Resubmitted', scoring_requested: 'Award matching requested', criteria_scored: 'Award criteria matched', scoring_failed: 'Award matching deferred (OSAD will retry)' }
 
 /** Verification history from GET /portfolio/{id} (student_portfolio_verification_events). */
 export function CoordinatorEventTimeline({ events = [] }) {
@@ -185,23 +90,4 @@ export function useCoordinatorRecordDetail(recordId, loadRecordDetail) {
     return () => { active = false }
   }, [recordId, loadRecordDetail])
   return { detail, error }
-}
-
-/** Evidence (with previews) and verification history for one record, loaded from GET /portfolio/{id}. */
-export function CoordinatorRecordReview({ item, loadRecordDetail }) {
-  const { detail, error } = useCoordinatorRecordDetail(item?.id, loadRecordDetail)
-  if (!item) return null
-  // The queue already carries reviewer-safe evidence; the detail call adds the event timeline.
-  const evidence = detail?.evidence || item.evidence || []
-  return <div className="space-y-4">
-    <div className="space-y-2">
-      <p className="text-xs font-extrabold text-slate-900">Supporting Documents &amp; Evidence ({evidence.length})</p>
-      <CoordinatorEvidenceList evidence={evidence} />
-    </div>
-    {error && <p role="alert" className="text-xs font-medium text-rose-700">{error}</p>}
-    {detail?.events?.length > 0 && <div className="space-y-2">
-      <p className="text-xs font-extrabold text-slate-900">Verification History</p>
-      <CoordinatorEventTimeline events={detail.events} />
-    </div>}
-  </div>
 }

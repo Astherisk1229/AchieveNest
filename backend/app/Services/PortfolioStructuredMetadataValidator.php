@@ -378,6 +378,10 @@ class PortfolioStructuredMetadataValidator
                     $errors["structured_metadata.{$key}"] = ["{$field['label']} must be a valid date."];
                     continue;
                 }
+                if ($submitNow && $this->isFutureIsoDate((string) $value)) {
+                    $errors["structured_metadata.{$key}"] = ["{$field['label']} cannot be in the future."];
+                    continue;
+                }
             } elseif ($control === 'decimal') {
                 if (!is_numeric($value)) {
                     $errors["structured_metadata.{$key}"] = ["{$field['label']} must be a number."];
@@ -425,6 +429,7 @@ class PortfolioStructuredMetadataValidator
             if ($submitNow && !empty($field['required']) && $start === '') $errors["structured_metadata.{$startKey}"] = ["{$field['label']} start date is required."];
             foreach ([$startKey => $start, $endKey => $end] as $key => $value) {
                 if ($value !== '' && !$this->isIsoDate((string) $value)) $errors["structured_metadata.{$key}"] = ["{$field['label']} must contain valid dates."];
+                elseif ($submitNow && $value !== '' && $this->isFutureIsoDate((string) $value)) $errors["structured_metadata.{$key}"] = ["{$field['label']} dates cannot be in the future."];
                 elseif ($value !== '') $sanitized[$key] = $value;
             }
             if (!empty($rules['end_not_before_start']) && $start !== '' && $end !== '' && $end < $start) $errors["structured_metadata.{$endKey}"] = ['End date cannot be before start date.'];
@@ -442,8 +447,11 @@ class PortfolioStructuredMetadataValidator
         if ($submitNow && !empty($field['required']) && !in_array($precision, ['DATE', 'RANGE'], true)) $errors["structured_metadata.{$precisionKey}"] = ["Select a date or date range for {$field['label']}."];
         if (in_array($precision, ['DATE', 'RANGE'], true) && (!ctype_digit((string) $startYear) || (int) $startYear < 1900 || (int) $startYear > 2200)) $errors['structured_metadata.period_start_year'] = ["{$field['label']} needs a valid start year."];
         if ($precision === 'DATE' && (!ctype_digit((string) $startMonth) || (int) $startMonth < 1 || (int) $startMonth > 12 || !ctype_digit((string) $startDay) || !checkdate((int) $startMonth, (int) $startDay, (int) $startYear))) $errors['structured_metadata.period_start_day'] = ["{$field['label']} needs a valid start date."];
+        elseif ($submitNow && $precision === 'DATE' && $this->isFutureDateParts($startYear, $startMonth, $startDay)) $errors['structured_metadata.period_start_day'] = ["{$field['label']} cannot be in the future."];
         if ($precision === 'RANGE' && $submitNow && !ctype_digit((string) $endYear)) $errors['structured_metadata.period_end_year'] = ["{$field['label']} needs a valid end year."];
         if ($precision === 'RANGE' && $endYear !== '' && (!ctype_digit((string) $endYear) || (int) $endYear < (int) $startYear || ((int) $endYear === (int) $startYear && ($endMonth !== '' && (int) $endMonth < (int) $startMonth)))) $errors['structured_metadata.period_end_year'] = ["{$field['label']} end cannot be before its start."];
+        if ($submitNow && $precision === 'RANGE' && $this->isFutureDateParts($startYear, $startMonth, $startDay)) $errors['structured_metadata.period_start_year'] = ["{$field['label']} cannot start in the future."];
+        if ($submitNow && $precision === 'RANGE' && $this->isFutureDateParts($endYear, $endMonth, $endDay)) $errors['structured_metadata.period_end_year'] = ["{$field['label']} cannot end in the future."];
         foreach ($field['payload_keys'] ?? [] as $payloadKey) if (array_key_exists($payloadKey, $metadata)) $sanitized[$payloadKey] = $metadata[$payloadKey];
     }
 
@@ -464,6 +472,8 @@ class PortfolioStructuredMetadataValidator
                 $end = (string) ($metadata['activity_end_date'] ?? '');
                 if ($start !== '' && !$this->isIsoDate($start)) $errors['structured_metadata.activity_start_date'] = ['Activity start date must be valid.'];
                 if ($end !== '' && !$this->isIsoDate($end)) $errors['structured_metadata.activity_end_date'] = ['Activity end date must be valid.'];
+                if ($submitNow && $start !== '' && $this->isIsoDate($start) && $this->isFutureIsoDate($start)) $errors['structured_metadata.activity_start_date'] = ['Activity start date cannot be in the future.'];
+                if ($submitNow && $end !== '' && $this->isIsoDate($end) && $this->isFutureIsoDate($end)) $errors['structured_metadata.activity_end_date'] = ['Activity end date cannot be in the future.'];
                 if ($start !== '' && $end !== '' && $end < $start) $errors['structured_metadata.activity_end_date'] = ['Activity end date cannot be before the start date.'];
             }
         }
@@ -474,5 +484,23 @@ class PortfolioStructuredMetadataValidator
     {
         $date = \DateTime::createFromFormat('!Y-m-d', $value);
         return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    private function isFutureIsoDate(string $value): bool
+    {
+        return $value > date('Y-m-d');
+    }
+
+    private function isFutureDateParts($year, $month = '', $day = ''): bool
+    {
+        if (!ctype_digit((string) $year)) return false;
+        $today = date('Y-m-d');
+        $parts = array_map('intval', explode('-', $today));
+        $year = (int) $year;
+        if ($year !== $parts[0]) return $year > $parts[0];
+        if (!ctype_digit((string) $month) || (int) $month < 1 || (int) $month > 12) return false;
+        $month = (int) $month;
+        if ($month !== $parts[1]) return $month > $parts[1];
+        return ctype_digit((string) $day) && (int) $day > $parts[2];
     }
 }

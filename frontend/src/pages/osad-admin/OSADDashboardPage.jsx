@@ -1,24 +1,9 @@
 import React, { useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import {
-  Trophy,
-  Users,
-  Award,
-  ShieldCheck,
-  Plus,
-  Building2,
-  FileSpreadsheet,
-  Download,
-  AlertTriangle,
-  X,
-  Check
-} from 'lucide-react'
+import { Check } from 'lucide-react'
 
 import provisioningService from '../../services/provisioningService'
-import { Button } from '../../components/ui/button'
 import PersonnelSelectorModal from './modals/PersonnelSelectorModal'
-import CreateCollegeModal from './modals/CreateCollegeModal'
-import CreateProgramModal from './modals/CreateProgramModal'
 import CreateOrganizationModal from './modals/CreateOrganizationModal'
 import {
   fetchOrganizations as apiFetchOrganizations,
@@ -28,42 +13,50 @@ import {
 } from '../../services/organizationAdminService'
 import {
   fetchColleges as apiFetchColleges,
-  createCollege as apiCreateCollege,
-  updateCollegeStatus as apiUpdateCollegeStatus,
-  fetchAcademicPrograms as apiFetchAcademicPrograms,
-  createAcademicProgram as apiCreateAcademicProgram
+  fetchAcademicPrograms as apiFetchAcademicPrograms
 } from '../../services/collegeAdminService'
-import roleService from '../../services/roleService'
 import OSADCommandCenterPage from './OSADCommandCenterPage'
 import OSADStudentAccountsPage from './OSADStudentAccountsPage'
 import OSADAcademicProgramsPage from './OSADAcademicProgramsPage'
 import OSADStudentOrganizationsPage from './OSADStudentOrganizationsPage'
-import OSADCertificateTemplatesPage from './OSADCertificateTemplatesPage'
-import OSADAccreditationReportsPage from './OSADAccreditationReportsPage'
-import OSADSystemAuditLogsPage from './OSADSystemAuditLogsPage'
 import OSADPasswordResetRequestsPage from './OSADPasswordResetRequestsPage'
 
 export default function OSADDashboardPage({ currentUser }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') || 'overview'
-  const activeTab = rawTab === 'awardees'
+  const legacyStudentSection = ({
+    accounts: 'accounts',
+    'academic-structure': 'colleges',
+    'academic-programs': 'colleges',
+    organizations: 'organizations'
+  })[rawTab]
+  const activeTab = ['certificate-templates', 'accreditation-reports', 'system-logs'].includes(rawTab)
+    ? 'overview'
+    : rawTab === 'awardees'
     ? 'candidate-review'
-    : rawTab === 'academic-structure' ? 'academic-programs' : rawTab
+    : legacyStudentSection ? 'student-management' : rawTab
+  const studentSection = activeTab === 'student-management'
+    ? (legacyStudentSection || ['accounts', 'colleges', 'organizations'].includes(searchParams.get('section'))
+      ? (legacyStudentSection || searchParams.get('section'))
+      : 'accounts')
+    : 'accounts'
+
+  React.useEffect(() => {
+    if (!legacyStudentSection) return
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', 'student-management')
+    next.set('section', legacyStudentSection)
+    setSearchParams(next, { replace: true })
+  }, [legacyStudentSection, searchParams, setSearchParams])
 
 
   // Account & Portfolio Viewing States
-  const [userRoleFilter, setUserRoleFilter] = useState('student')
   const [selectedCollege, setSelectedCollege] = useState('all')
   const [selectedSort, setSelectedSort] = useState('name')
   const [userSearchTerm, setUserSearchTerm] = useState('')
   const [personnelSelectorTarget, setPersonnelSelectorTarget] = useState(null)
 
-  // Initial Form Constants
-  const INITIAL_ORG_DATA = { name: '', category: 'College Academic Organization' }
-
   // Modal States
-  const [isAddCollegeOpen, setIsAddCollegeOpen] = useState(false)
-  const [isAddProgramOpen, setIsAddProgramOpen] = useState(false)
   const [isAddOrgOpen, setIsAddOrgOpen] = useState(false)
 
   // Persistent Student Organizations & College and Programs State
@@ -182,44 +175,6 @@ export default function OSADDashboardPage({ currentUser }) {
     setTimeout(() => setToastMessage(null), 3000)
   }
 
-  // Hierarchy Creation Handlers
-  const handleCreateCollegeSubmit = async (payload) => {
-    try {
-      const created = await apiCreateCollege(payload)
-      await loadPersistentColleges()
-      await loadPersistentPrograms()
-      const code = created?.college?.code || (payload instanceof FormData ? payload.get('code') : payload.code)
-      const name = created?.college?.name || (payload instanceof FormData ? payload.get('name') : payload.name)
-      showToast(`Created Academic College: [${code}] ${name}`)
-      return created
-    } catch (err) {
-      showToast(`Failed to create Academic College: ${err?.message || 'Server error'}`)
-      throw err
-    }
-  }
-
-  const handleCreateProgramSubmit = async (progData) => {
-    try {
-      const created = await apiCreateAcademicProgram(progData)
-      await loadPersistentColleges()
-      await loadPersistentPrograms()
-      const code = created?.program?.code || progData.code
-      const name = created?.program?.name || progData.name
-      showToast(`Created Academic Program: [${code}] ${name}`)
-      return created
-    } catch (err) {
-      showToast(`Failed to create Academic Program: ${err?.message || 'Server error'}`)
-      throw err
-    }
-  }
-
-  const handleCollegeStatusChange = async (college, status) => {
-    const result = await apiUpdateCollegeStatus(college.id, status)
-    await loadPersistentColleges()
-    showToast(status === 'inactive' ? `Archived College: [${college.code}]` : `Reactivated College: [${college.code}]`)
-    return result
-  }
-
   // Handle Create Organization (Persistent API Submission)
   const handleCreateOrganizationSubmit = async (formData, rawData) => {
     const created = await apiCreateOrganization(formData)
@@ -262,7 +217,30 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'accounts' && (
+      {activeTab === 'student-management' && (
+        <div className="space-y-5">
+          <div role="tablist" aria-label="Student Management" className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 dark:border-slate-700">
+            {[
+              ['accounts', 'Student Accounts'],
+              ['colleges', 'College and Programs'],
+              ['organizations', 'Student Organizations']
+            ].map(([section, label]) => (
+              <button
+                key={section}
+                id={`student-management-tab-${section}`}
+                type="button"
+                role="tab"
+                aria-selected={studentSection === section}
+                aria-controls="student-management-panel"
+                onClick={() => setSearchParams({ tab: 'student-management', section })}
+                className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 ${studentSection === section ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div id="student-management-panel" role="tabpanel" aria-labelledby={`student-management-tab-${studentSection}`}>
+          {studentSection === 'accounts' && (
         <OSADStudentAccountsPage
           userSearchTerm={userSearchTerm}
           setUserSearchTerm={setUserSearchTerm}
@@ -276,53 +254,37 @@ export default function OSADDashboardPage({ currentUser }) {
         />
       )}
 
-      {activeTab === 'academic-programs' && (
+      {studentSection === 'colleges' && (
         <OSADAcademicProgramsPage
           colleges={persistentColleges}
           academicPrograms={persistentPrograms}
-          setIsAddCollegeOpen={setIsAddCollegeOpen}
-          setIsAddProgramOpen={setIsAddProgramOpen}
-          onCollegeStatusChange={handleCollegeStatusChange}
-          onCollegeChanged={async (college) => { await loadPersistentColleges(); showToast(`Updated College: [${college?.code}]`) }}
-          onCollegeDeleted={async (college) => { await loadPersistentColleges(); await loadPersistentPrograms(); showToast(`Deleted College: [${college?.code}]`) }}
-          onViewCollegeStudents={(college) => {
-            // OS-4: one click from a college to its students, filtered by the college.
-            setSelectedCollege(college?.code || 'all')
-            setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('tab', 'accounts'); return next })
-          }}
+          onProgramsChanged={loadPersistentPrograms}
+          showToast={showToast}
         />
       )}
 
-      {activeTab === 'organizations' && (
+      {studentSection === 'organizations' && (
         <OSADStudentOrganizationsPage
           organizations={persistentOrgs}
           colleges={persistentColleges}
           selectedOrganizationId={searchParams.get('orgId') || null}
-          onSelectOrganization={(orgId) => setSearchParams({ tab: 'organizations', orgId })}
-          onBackToOrganizations={() => setSearchParams({ tab: 'organizations' })}
+          onSelectOrganization={(orgId) => setSearchParams({ tab: 'student-management', section: 'organizations', orgId })}
+          onBackToOrganizations={() => setSearchParams({ tab: 'student-management', section: 'organizations' })}
+          onOrganizationChanged={loadPersistentOrgs}
           setIsAddOrgOpen={setIsAddOrgOpen}
           setPersonnelSelectorTarget={setPersonnelSelectorTarget}
         />
+      )}
+          </div>
+        </div>
       )}
 
       {activeTab === 'awards' && (
         <Navigate to="/osad/awards" replace />
       )}
 
-      {activeTab === 'certificate-templates' && (
-        <OSADCertificateTemplatesPage />
-      )}
-
       {(activeTab === 'candidate-review' || activeTab === 'awardees') && (
         <Navigate to="/osad/candidates" replace />
-      )}
-
-      {activeTab === 'accreditation-reports' && (
-        <OSADAccreditationReportsPage />
-      )}
-
-      {activeTab === 'system-logs' && (
-        <OSADSystemAuditLogsPage />
       )}
 
       {activeTab === 'password-resets' && (
@@ -356,21 +318,6 @@ export default function OSADDashboardPage({ currentUser }) {
           }}
         />
       )}
-
-      {/* Hierarchy Modals */}
-      <CreateCollegeModal
-        isOpen={isAddCollegeOpen}
-        onClose={() => setIsAddCollegeOpen(false)}
-        onSubmit={handleCreateCollegeSubmit}
-      />
-
-      <CreateProgramModal
-        isOpen={Boolean(isAddProgramOpen)}
-        onClose={() => setIsAddProgramOpen(false)}
-        onSubmit={handleCreateProgramSubmit}
-        colleges={persistentColleges.filter((college) => college.status === 'active')}
-        initialCollegeId={typeof isAddProgramOpen === 'string' ? isAddProgramOpen : (isAddProgramOpen?.collegeId || null)}
-      />
 
       {/* Create Organization Modal */}
       <CreateOrganizationModal

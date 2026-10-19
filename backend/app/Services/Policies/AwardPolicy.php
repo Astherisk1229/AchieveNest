@@ -16,16 +16,6 @@ class AwardPolicy
     }
 
     /**
-     * Determines whether an actor can submit a Dean Award Nomination.
-     * Rule: Active College Dean may nominate eligible students enrolled in their assigned College.
-     */
-    public function canNominateStudent(array $actor): bool
-    {
-        $deanCollegeIds = $this->getDeanCollegeIds($actor);
-        return ! empty($deanCollegeIds);
-    }
-
-    /**
      * Determines whether an actor can access sensitive OSAD award-evaluation data.
      *
      * Candidate records, evidence, scoring bases, review workspaces, and results
@@ -38,16 +28,4 @@ class AwardPolicy
         return $this->canRunAwardEvaluation($actor);
     }
 
-    protected function getDeanCollegeIds(array $actor): array
-    {
-        $collegeIds = [];
-        foreach ($actor['assignments'] ?? [] as $asgn) {
-            if (($asgn['role_key'] ?? '') === 'dean' &&
-                ($asgn['scope_type'] ?? '') === 'college' &&
-                ! empty($asgn['scope_id'])) {
-                $collegeIds[] = (string) $asgn['scope_id'];
-            }
-        }
-        return array_values(array_unique($collegeIds));
-    }
 }

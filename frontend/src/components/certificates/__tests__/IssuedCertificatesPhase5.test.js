@@ -39,6 +39,6 @@ describe('Phase 5 item 5: digital certificates', () => {
     const p = read('frontend/src/components/certificates/IssuedCertificatesPanel.jsx')
     expect(p).toContain('canManage &&')
     expect(p).toContain('idempotency_key')
-    expect(read('frontend/src/pages/osad-admin/OSADCertificateTemplatesPage.jsx')).toContain('<IssuedCertificatesPanel canManage />')
+    expect(read('frontend/src/pages/osad-admin/OSADDashboardPage.jsx')).not.toContain('IssuedCertificatesPanel')
   })
 })

@@ -2,6 +2,8 @@ import axios from 'axios'
 import { resolveStoredAuthSession } from '../utils/authStorage'
 
 const performanceLoggingEnabled = import.meta.env.DEV || import.meta.env.VITE_PERFORMANCE_LOGGING === 'true'
+let authValidationToken = null
+let authValidationPromise = null
 
 const injectedApiBaseUrl = typeof __ACHIEVENEST_API_BASE_URL__ === 'string'
   ? __ACHIEVENEST_API_BASE_URL__
@@ -34,6 +36,31 @@ function removeMultipartContentType(headers) {
 
   delete headers['Content-Type']
   delete headers['content-type']
+}
+
+async function validateStoredAuthToken(token) {
+  if (!token) return false
+  if (authValidationToken === token && authValidationPromise) {
+    return authValidationPromise
+  }
+
+  authValidationToken = token
+  authValidationPromise = axios.get(`${API_BASE_URL.replace(/\/$/, '')}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    timeout: 5000
+  }).then(() => true).catch(error => {
+    if (error.response?.status === 401) return false
+    // A failed validation due to connectivity or server trouble is inconclusive;
+    // do not turn a temporary outage into a forced sign-out.
+    return null
+  }).finally(() => {
+    if (authValidationToken === token) {
+      authValidationToken = null
+      authValidationPromise = null
+    }
+  })
+
+  return authValidationPromise
 }
 
 /**
@@ -98,7 +125,7 @@ apiClient.interceptors.response.use(
     }
     return response.data
   },
-  (error) => {
+  async (error) => {
     if (performanceLoggingEnabled && error.config?.metadata) {
       const duration = performance.now() - error.config.metadata.startedAt
       console.info('[API ERROR]', {
@@ -115,13 +142,29 @@ apiClient.interceptors.response.use(
     }
     if (error.response) {
       if (error.response.status === 401) {
-        console.warn('API Unauthenticated (401). Redirecting to login session.')
-        localStorage.removeItem('achievenest_current_user')
-        sessionStorage.removeItem('achievenest_current_user')
-        localStorage.removeItem('achievenest_access_token')
-        sessionStorage.removeItem('achievenest_access_token')
-        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-          window.dispatchEvent(new Event('storage'))
+        const requestUrl = String(error.config?.url || '')
+        const isCredentialSubmission = /\/auth\/(login|demo-login)\/?(?:\?.*)?$/.test(requestUrl)
+        let shouldClearSession = !error.config || /\/auth\/me\/?(?:\?.*)?$/.test(requestUrl)
+
+        if (!isCredentialSubmission && !shouldClearSession) {
+          const authorization = error.config?.headers?.Authorization
+            || error.config?.headers?.authorization
+          const token = typeof authorization === 'string' && authorization.startsWith('Bearer ')
+            ? authorization.slice(7)
+            : resolveStoredAuthSession().token
+          const validation = await validateStoredAuthToken(token)
+          shouldClearSession = validation === false
+        }
+
+        if (shouldClearSession) {
+          console.warn('API session validation failed (401). Redirecting to login.')
+          localStorage.removeItem('achievenest_current_user')
+          sessionStorage.removeItem('achievenest_current_user')
+          localStorage.removeItem('achievenest_access_token')
+          sessionStorage.removeItem('achievenest_access_token')
+          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new Event('storage'))
+          }
         }
       } else if (error.response.status === 403 && error.response.data?.error?.code === 'PASSWORD_CHANGE_REQUIRED') {
         console.warn('Mandatory password change required (403). Restricting session.')

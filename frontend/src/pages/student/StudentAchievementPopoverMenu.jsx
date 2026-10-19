@@ -98,8 +98,9 @@ export default function StudentAchievementPopoverMenu({
 
   if (!achievement) return null
 
-  const isEditable = achievement.status === 'Pending Review' || achievement.status === 'Pending' || achievement.status === 'Returned' || achievement.status === 'Draft'
-  const isDeletable = achievement.status !== 'Verified'
+  const isEditable = ['Returned', 'Draft', 'Verified'].includes(achievement.status)
+  const editLabel = achievement.status === 'Verified' ? 'Edit verified achievement' : 'Edit submission'
+  const isDeletable = achievement.status === 'Draft'
   const isReturned = achievement.status === 'Returned'
   const isInPortfolio = Boolean(achievement.portfolio_id)
 
@@ -171,7 +172,7 @@ export default function StudentAchievementPopoverMenu({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
                 className="p-1 rounded-full text-slate-400 hover:text-[#064e2b] hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition cursor-pointer"
-                title="Edit Submission"
+                title={editLabel}
               >
                 <Edit3 className="w-3.5 h-3.5 text-[#064e2b] dark:text-emerald-400" />
               </button>
@@ -228,7 +229,7 @@ export default function StudentAchievementPopoverMenu({
               onClick={(e) => { e.stopPropagation(); onEdit(achievement); onClose() }}
             >
               <Edit3 className="w-4 h-4 text-slate-400" />
-              <span>Edit Submission</span>
+              <span>{editLabel}</span>
             </DropdownMenuItem>
           )}
 
@@ -266,7 +267,7 @@ export default function StudentAchievementPopoverMenu({
                 onClick={(e) => { e.stopPropagation(); onDelete(achievement.id); onClose() }}
               >
                 <Trash2 className="w-4 h-4 text-rose-500" />
-                <span>Delete Submission</span>
+                <span>Delete Draft</span>
               </DropdownMenuItem>
             </>
           )}

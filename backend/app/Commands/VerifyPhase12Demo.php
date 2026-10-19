@@ -284,10 +284,9 @@ class VerifyPhase12Demo extends BaseCommand
         $canOsadAwards = $authz->hasRole($osadActor, 'osad_staff');
         $runTest('DEMO-028', 'OSAD Admin authorized for award cycles and evaluations', $canOsadAwards);
 
-        // DEMO-029: Award Cycle & Dean Nomination Scenarios Ready
+        // DEMO-029: Active Award Cycle Scenario Ready
         $cycle = $db->table('award_cycles')->where('id', 'd0000000-0000-0000-0008-000000000001')->get()->getRowArray();
-        $nom = $db->table('dean_student_nominations')->where('id', 'd0000000-0000-0000-0009-000000000001')->get()->getRowArray();
-        $runTest('DEMO-029', 'Active Award Cycle & Dean Nomination scenario records ready', $cycle !== null && $nom !== null);
+        $runTest('DEMO-029', 'Active Award Cycle scenario record ready', $cycle !== null);
 
         // DEMO-030: Personnel Accomplishment Scenario Ready
         $acc = $db->table('personnel_accomplishments')->where('id', 'd0000000-0000-0000-0004-000000000001')->get()->getRowArray();

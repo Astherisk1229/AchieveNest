@@ -12,7 +12,8 @@ import {
   Sparkles
 } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
-import { updateOrganization, getOrganizationLogoUrl, deleteOrganizationLogo } from '../../../services/organizationAdminService'
+import { updateOrganization, updateOrganizationLogo, getOrganizationLogoUrl, deleteOrganizationLogo } from '../../../services/organizationAdminService'
+import { fetchAcademicPrograms } from '../../../services/collegeAdminService'
 import { formatOrganizationNameSuggestion } from '../../../utils/nameFormatter'
 
 const CATEGORY_OPTIONS = [
@@ -49,6 +50,9 @@ export default function EditOrganizationModal({
   const [category, setCategory] = useState('academic_college')
   const [scope, setScope] = useState('university')
   const [collegeId, setCollegeId] = useState('')
+  const [programs, setPrograms] = useState([])
+  const [programIds, setProgramIds] = useState([])
+  const [programsLoading, setProgramsLoading] = useState(false)
   const [status, setStatus] = useState('active')
   const [logoFile, setLogoFile] = useState(null)
   const [logoPreview, setLogoPreview] = useState(null)
@@ -60,9 +64,11 @@ export default function EditOrganizationModal({
     if (organization && isOpen) {
       setName(organization.name || '')
       setCode(organization.code || '')
-      setCategory(organization.category || 'academic_college')
+      const initialCategory = organization.category || 'academic_college'
+      setCategory(initialCategory)
       setScope(organization.scope || 'university')
       setCollegeId(organization.college_id || '')
+      setProgramIds((organization.program_ids || organization.programs?.map((program) => program.id) || []).map(String))
       setStatus(organization.status || 'active')
       setLogoFile(null)
       setError(null)
@@ -74,6 +80,28 @@ export default function EditOrganizationModal({
       }
     }
   }, [organization, isOpen])
+
+  useEffect(() => {
+    if (!isOpen || scope !== 'program' || !collegeId) {
+      setPrograms([])
+      return
+    }
+
+    let cancelled = false
+    setProgramsLoading(true)
+    fetchAcademicPrograms({ college_id: collegeId })
+      .then((rows) => {
+        if (!cancelled) setPrograms(Array.isArray(rows) ? rows : [])
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err?.message || 'Failed to load academic programs.')
+      })
+      .finally(() => {
+        if (!cancelled) setProgramsLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [isOpen, scope, collegeId])
 
   if (!isOpen || !organization) return null
 
@@ -110,38 +138,34 @@ export default function EditOrganizationModal({
       setError('College selection is required for College- or Program-scoped organizations.')
       return
     }
+    if (scope === 'program' && programIds.length === 0) {
+      setError('Select at least one academic program for this organization.')
+      return
+    }
 
     setSubmitting(true)
     setError(null)
 
+    let detailsSaved = false
     try {
-      let payload
-      if (logoFile) {
-        const formData = new FormData()
-        formData.append('name', name.trim())
-        formData.append('code', code.trim().toUpperCase())
-        formData.append('category', category)
-        formData.append('scope', scope)
-        formData.append('college_id', (scope === 'college' || scope === 'program') ? collegeId : '')
-        formData.append('status', status)
-        formData.append('logo', logoFile)
-        payload = formData
-      } else {
-        payload = {
-          name: name.trim(),
-          code: code.trim().toUpperCase(),
-          category,
-          scope,
-          college_id: (scope === 'college' || scope === 'program') ? collegeId : null,
-          status
-        }
+      const payload = {
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        category,
+        scope,
+        college_id: (scope === 'college' || scope === 'program') ? collegeId : null,
+        status
       }
+      if (scope === 'program') payload.program_ids = programIds
 
       await updateOrganization(organization.id, payload)
+      detailsSaved = true
+      if (logoFile) await updateOrganizationLogo(organization.id, logoFile)
       onSuccess()
       onClose()
     } catch (err) {
-      setError(err?.response?.data?.error?.message || err?.message || 'Failed to update organization.')
+      const message = err?.response?.data?.error?.message || err?.message || 'Failed to update organization.'
+      setError(detailsSaved ? `Organization details were saved, but the logo upload failed: ${message}` : message)
     } finally {
       setSubmitting(false)
     }
@@ -285,7 +309,10 @@ export default function EditOrganizationModal({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  const nextCategory = e.target.value
+                  setCategory(nextCategory)
+                }}
                 className="w-full px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a]"
               >
                 {CATEGORY_OPTIONS.map((cat) => (
@@ -322,7 +349,10 @@ export default function EditOrganizationModal({
               </label>
               <select
                 value={collegeId}
-                onChange={(e) => setCollegeId(e.target.value)}
+                onChange={(e) => {
+                  setCollegeId(e.target.value)
+                  setProgramIds([])
+                }}
                 className="w-full px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#16834a]"
               >
                 <option value="">Select Parent Academic College...</option>
@@ -333,6 +363,34 @@ export default function EditOrganizationModal({
                 ))}
               </select>
             </div>
+          )}
+
+          {scope === 'program' && (
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Academic Programs <span className="text-rose-500">*</span>
+              </legend>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Select every program this organization serves within the selected college.</p>
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800">
+                {programsLoading ? (
+                  <p className="p-3 text-xs text-slate-500">Loading programs…</p>
+                ) : programs.length === 0 ? (
+                  <p className="p-3 text-xs text-slate-500">No active programs found for this college.</p>
+                ) : programs.map((program) => (
+                  <label key={program.id} className="flex items-center gap-2.5 p-2.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={programIds.includes(String(program.id))}
+                      onChange={() => setProgramIds((current) => current.includes(String(program.id))
+                        ? current.filter((id) => id !== String(program.id))
+                        : [...current, String(program.id)])}
+                      className="accent-[#16834a]"
+                    />
+                    <span><strong>{program.code}</strong> — {program.name}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           )}
 
           {/* Status */}

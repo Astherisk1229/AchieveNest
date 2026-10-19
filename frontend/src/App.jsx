@@ -21,9 +21,9 @@ import ForbiddenPage from './pages/common/ForbiddenPage'
 import { AchieveNestLogo } from './components/brand'
 
 // Lazy-loaded route pages for bundle code-splitting
-const StudentDashboardPage = lazy(() => import('./pages/student/StudentDashboardPage'))
-const StudentAchievementsPage = lazy(() => import('./pages/student/StudentAchievementsPage'))
+const StudentProfileModulePage = lazy(() => import('./pages/student/StudentAchievementsPage'))
 const StudentPortfolioPage = lazy(() => import('./pages/student/StudentPortfolioPage'))
+const StudentPortfolioSubmissionPortalPage = lazy(() => import('./pages/student/StudentPortfolioSubmissionPortalPage'))
 
 const AccountPage = lazy(() => import('./pages/common/AccountPage'))
 const SettingsPage = lazy(() => import('./pages/common/SettingsPage'))
@@ -49,7 +49,7 @@ const HRPasswordResetRequestsPage = lazy(() => import('./pages/hr-admin/HRPasswo
 const OSADDashboardPage = lazy(() => import('./pages/osad-admin/OSADDashboardPage'))
 const OSADAwardRoutePage = lazy(() => import('./pages/osad-admin/OSADAwardRoutePage'))
 const OSADAwardCandidateReviewPage = lazy(() => import('./pages/osad-admin/OSADAwardCandidateReviewPage'))
-const CertificateStudioPage = lazy(() => import('./pages/osad-admin/CertificateStudioPage'))
+const OSADPortfolioSubmissionPortalPage = lazy(() => import('./pages/osad-admin/OSADPortfolioSubmissionPortalPage'))
 const OfficerScannerPage = lazy(() => import('./pages/personnel/organization-moderator/OfficerScannerPage'))
 const PublicCertificateVerificationPage = lazy(() => import('./pages/common/PublicCertificateVerificationPage'))
 const PublicEvaluationVerificationPage = lazy(() => import('./pages/common/PublicEvaluationVerificationPage'))
@@ -172,6 +172,11 @@ function LayoutShell({ allowedAccountTypes = [], requiredRoles = [] }) {
   )
 }
 
+function StudentProfileRedirect() {
+  const location = useLocation()
+  return <Navigate to="/student/profile" replace state={location.state} />
+}
+
 function AppContent() {
   const { logout } = useAuth()
   const { showWarning, secondsRemaining, stayLoggedIn } = useIdleSession(
@@ -219,9 +224,12 @@ function AppContent() {
 
             {/* Student Portal */}
             <Route element={<LayoutShell allowedAccountTypes={['student']} requiredRoles={['student']} />}>
-              <Route path="/student/dashboard" element={<StudentDashboardPage />} />
-              <Route path="/student/achievements" element={<StudentAchievementsPage />} />
+              <Route path="/student/profile" element={<StudentProfileModulePage />} />
+              <Route path="/student/dashboard" element={<StudentProfileRedirect />} />
+              <Route path="/student/achievements" element={<StudentProfileRedirect />} />
               <Route path="/student/portfolio" element={<StudentPortfolioPage />} />
+              <Route path="/student/portfolio-submissions" element={<StudentPortfolioSubmissionPortalPage />} />
+              <Route path="/student/portfolio-submissions/:portalId" element={<StudentPortfolioSubmissionPortalPage />} />
               <Route path="/student/account" element={<AccountPage />} />
               <Route path="/student/settings" element={<SettingsPage />} />
               <Route path="/student/notifications" element={<NotificationsPage />} />
@@ -257,13 +265,14 @@ function AppContent() {
 
             {/* OSAD Admin Portal — Dedicated to osad_admin with osad_staff */}
             <Route element={<LayoutShell allowedAccountTypes={['osad_admin']} requiredRoles={['osad_staff']} />}>
+              <Route path="/osad/portfolio-submissions" element={<OSADPortfolioSubmissionPortalPage />} />
               <Route path="/osad/dashboard" element={<OSADDashboardPage />} />
               <Route path="/osad/awards" element={<OSADAwardRoutePage view="catalog" />} />
               <Route path="/osad/candidates" element={<OSADAwardCandidateReviewPage />} />
               <Route path="/osad/awards/:awardId" element={<OSADAwardRoutePage view="detail" />} />
               <Route path="/osad/awards/:awardId/candidates" element={<OSADAwardRoutePage view="candidates" />} />
               <Route path="/osad/awards/:awardId/candidates/:studentId/review" element={<OSADAwardRoutePage view="review" />} />
-              <Route path="/osad/certificate-templates/:familyId/versions/:versionId/edit" element={<CertificateStudioPage />} />
+              <Route path="/osad/certificate-templates/*" element={<Navigate to="/osad/dashboard" replace />} />
               <Route path="/osad/account" element={<AccountPage />} />
               <Route path="/osad/settings" element={<SettingsPage />} />
               <Route path="/osad/notifications" element={<NotificationsPage />} />

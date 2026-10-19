@@ -2,17 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import apiClient from '../apiClient'
 import {
   fetchAwardCriteriaHierarchy,
-  validateAwardCriteriaHierarchyDraft,
+  saveAwardCriteriaHierarchy,
 } from '../awardAdminService'
 
-vi.mock('../apiClient', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
+vi.mock('../apiClient', () => ({ default: { get: vi.fn(), put: vi.fn() } }))
 vi.mock('../authService', () => ({ getCurrentUser: () => ({ token: 'test-token' }) }))
 
 describe('Award criteria hierarchy API response contract', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('unwraps the backend data envelope when loading versions and hierarchy', async () => {
-    const payload = { award: { id: 'award-1' }, active_version_id: 'v1', versions: [{ id: 'v1', hierarchy: { categories: [] } }] }
+  it('loads the current hierarchy without exposing criteria versions', async () => {
+    const payload = { award: { id: 'award-1' }, hierarchy: { categories: [] } }
     apiClient.get.mockResolvedValue({ data: { data: payload } })
 
     await expect(fetchAwardCriteriaHierarchy('award-1')).resolves.toEqual(payload)
@@ -21,10 +21,14 @@ describe('Award criteria hierarchy API response contract', () => {
     })
   })
 
-  it('unwraps validation results so the editor can render validation errors', async () => {
-    const payload = { valid: false, errors: ['Add at least one Category.'] }
-    apiClient.post.mockResolvedValue({ data: { data: payload } })
+  it('saves the current hierarchy directly without creating a version', async () => {
+    const hierarchy = { categories: [{ id: 'cat-1', name: 'Character' }] }
+    const payload = { award: { id: 'award-1' }, hierarchy }
+    apiClient.put.mockResolvedValue({ data: { data: payload } })
 
-    await expect(validateAwardCriteriaHierarchyDraft('award-1', 'draft-1')).resolves.toEqual(payload)
+    await expect(saveAwardCriteriaHierarchy('award-1', hierarchy)).resolves.toEqual(payload)
+    expect(apiClient.put).toHaveBeenCalledWith('/osad/awards/award-1/criteria-hierarchy', { hierarchy }, {
+      headers: { Authorization: 'Bearer test-token' },
+    })
   })
 })

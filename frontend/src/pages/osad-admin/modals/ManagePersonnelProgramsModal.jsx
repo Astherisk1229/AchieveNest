@@ -70,6 +70,7 @@ export default function ManagePersonnelProgramsModal({
       onClose()
     } catch (err) {
       setError(
+        err?.error?.message ||
         err?.response?.data?.error?.message ||
         err?.message ||
         'Failed to update coordinator assignments.'

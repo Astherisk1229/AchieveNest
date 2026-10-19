@@ -416,11 +416,11 @@ final class EventToCertificateEndToEndFeatureTest extends CIUnitTestCase
         $pdfForbidden = $ctrlStuC->pdf($certId);
         self::assertSame(403, $pdfForbidden->getStatusCode());
 
-        // OSAD Staff can download
+        // OSAD staff no longer have certificate administration access.
         $ctrlOsad = new CertificateController(actors: $this->createActorService($osadActor), issuance: $issuanceService, pdfRenderer: $pdfRenderer, db: $db);
         $ctrlOsad->initController(new IncomingRequest(config('App'), new URI('http://localhost/api/v1/certificates/' . $certId . '/pdf'), null, new UserAgent()), new Response(config('App')), service('logger'));
         $pdfOsad = $ctrlOsad->pdf($certId);
-        self::assertSame(200, $pdfOsad->getStatusCode());
+        self::assertSame(403, $pdfOsad->getStatusCode());
 
         // -------------------------------------------------------------
         // Step 7: Snapshot Immutability Proof (Phase 19)

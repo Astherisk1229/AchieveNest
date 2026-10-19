@@ -38,7 +38,6 @@ class DefenseDemoSeeder extends Seeder
         $db->table('student_award_criterion_scores')->emptyTable();
         $db->table('award_interview_eligibilities')->emptyTable();
         $db->table('student_award_evaluations')->emptyTable();
-        $db->table('dean_student_nominations')->emptyTable();
         $db->table('student_portfolio_evidence')->like('id', $demoPrefix)->delete();
         $db->table('student_portfolio_records')->like('id', $demoPrefix)->delete();
         $db->table('award_cycles')->like('id', $demoPrefix)->delete();

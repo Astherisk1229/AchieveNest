@@ -42,7 +42,7 @@ export function useVerification() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const [statusFilter, setStatusFilter] = useState('Pending')
 
   const refreshQueue = useCallback(async () => {
     setLoading(true)

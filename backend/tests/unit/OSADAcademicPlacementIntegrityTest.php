@@ -27,4 +27,17 @@ final class OSADAcademicPlacementIntegrityTest extends CIUnitTestCase
         $this->assertStringContainsString('transComplete()', $source);
         $this->assertStringContainsString('transStatus()', $source);
     }
+
+    public function testStudentDirectoryOnlyReferencesYearLevelColumnsPresentInTheDatabase(): void
+    {
+        $source = file_get_contents(APPPATH . 'Controllers/Api/TargetProvisioningController.php');
+
+        $this->assertIsString($source);
+        $this->assertStringContainsString("in_array('year_level', \$enrollmentFields, true)", $source);
+        $this->assertStringContainsString("in_array('year_level', \$studentProfileFields, true)", $source);
+        $this->assertStringContainsString("in_array('year_level', \$profileFields, true)", $source);
+        $this->assertStringContainsString("\$yearLevelColumn ?? 'NULL'", $source);
+        $this->assertStringContainsString("\$builder->where('1 = 0', null, false)", $source);
+        $this->assertStringContainsString('$builder->where($yearLevelColumn, $yearLevel)', $source);
+    }
 }

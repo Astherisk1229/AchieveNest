@@ -25,7 +25,8 @@ export default function OSADStudentOrganizationsPage({
   onSelectOrganization = () => {},
   onBackToOrganizations = () => {},
   onAssignModeratorFromDetails = null,
-  onEditOrganization = null
+  onEditOrganization = null,
+  onOrganizationChanged = null
 }) {
   const [scopeFilter, setScopeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -39,6 +40,7 @@ export default function OSADStudentOrganizationsPage({
         onBack={onBackToOrganizations}
         fallbackOrganization={selectedOrg}
         colleges={colleges}
+        onOrganizationChanged={onOrganizationChanged}
         onAssignModerator={(org) => {
           if (typeof onAssignModeratorFromDetails === 'function') {
             onAssignModeratorFromDetails(org)
@@ -71,9 +73,8 @@ export default function OSADStudentOrganizationsPage({
       {/* Standardized Page Header */}
       <OSADPageHeader
         title="Student Organizations"
-        description="Manage recognized Student Organizations, logos, and assign Organization Moderators."
+        description="Add, edit, enable, or disable recognized Student Organizations and assign Organization Moderators."
         icon={Users}
-        badge="Persistent & Validated"
         primaryAction={
           <Button
             onClick={() => setIsAddOrgOpen(true)}

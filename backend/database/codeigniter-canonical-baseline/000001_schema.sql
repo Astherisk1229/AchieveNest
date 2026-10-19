@@ -318,7 +318,6 @@ CREATE TABLE `award_interview_eligibilities` (
   `eligibility_source` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
   `pathway` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'automated_threshold',
   `evaluation_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `dean_nomination_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `potential_score` decimal(5,2) DEFAULT NULL,
   `eligible_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'eligible',
@@ -329,19 +328,17 @@ CREATE TABLE `award_interview_eligibilities` (
   UNIQUE KEY `uq_cycle_award_student_source` (`cycle_id`,`award_definition_id`,`student_profile_id`,`eligibility_source`),
   KEY `fk_interview_eligibility_award` (`award_definition_id`),
   KEY `fk_interview_eligibility_evaluation` (`evaluation_id`),
-  KEY `fk_interview_eligibility_nomination` (`dean_nomination_id`),
   KEY `fk_interview_eligibility_revoker` (`revoked_by`),
   KEY `idx_interview_eligibility_student` (`student_profile_id`),
   CONSTRAINT `fk_interview_eligibility_award` FOREIGN KEY (`award_definition_id`) REFERENCES `award_definitions` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_interview_eligibility_cycle` FOREIGN KEY (`cycle_id`) REFERENCES `award_cycles` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_interview_eligibility_evaluation` FOREIGN KEY (`evaluation_id`) REFERENCES `student_award_evaluations` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_interview_eligibility_nomination` FOREIGN KEY (`dean_nomination_id`) REFERENCES `dean_student_nominations` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_interview_eligibility_revoker` FOREIGN KEY (`revoked_by`) REFERENCES `profiles` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_interview_eligibility_student` FOREIGN KEY (`student_profile_id`) REFERENCES `profiles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `ck_award_eligibility_source_reference` CHECK ((((`eligibility_source` = _utf8mb4'portfolio_based') and (`evaluation_id` is not null) and (`dean_nomination_id` is null)) or ((`eligibility_source` = _utf8mb4'dean_nomination') and (`dean_nomination_id` is not null) and (`evaluation_id` is null)))),
-  CONSTRAINT `ck_interview_eligibility_pathway` CHECK ((`pathway` in (_utf8mb4'automated_threshold',_utf8mb4'dean_nomination',_utf8mb4'both'))),
+  CONSTRAINT `ck_award_eligibility_source_reference` CHECK ((`eligibility_source` = _utf8mb4'portfolio_based') and (`evaluation_id` is not null)),
+  CONSTRAINT `ck_interview_eligibility_pathway` CHECK ((`pathway` = _utf8mb4'automated_threshold')),
   CONSTRAINT `ck_interview_eligibility_score` CHECK (((`potential_score` is null) or ((`potential_score` >= 0.00) and (`potential_score` <= 100.00)))),
-  CONSTRAINT `ck_interview_eligibility_source` CHECK ((`eligibility_source` in (_utf8mb4'portfolio_based',_utf8mb4'dean_nomination'))),
+  CONSTRAINT `ck_interview_eligibility_source` CHECK ((`eligibility_source` = _utf8mb4'portfolio_based')),
   CONSTRAINT `ck_interview_eligibility_status` CHECK ((`status` in (_utf8mb4'eligible',_utf8mb4'scheduled',_utf8mb4'completed',_utf8mb4'withdrawn',_utf8mb4'revoked')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -556,35 +553,6 @@ CREATE TABLE `dean_assignments` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `dean_student_nominations` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cycle_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `award_definition_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `student_profile_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `dean_assignment_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `dean_profile_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `college_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `justification` text COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
-  `nominated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  `withdrawn_at` datetime(6) DEFAULT NULL,
-  `withdrawal_reason` text COLLATE utf8mb4_unicode_ci,
-  PRIMARY KEY (`id`),
-  KEY `fk_dean_nominations_award` (`award_definition_id`),
-  KEY `fk_dean_nominations_dean_assignment` (`dean_assignment_id`),
-  KEY `fk_dean_nominations_dean_profile` (`dean_profile_id`),
-  KEY `fk_dean_nominations_college` (`college_id`),
-  KEY `idx_dean_nominations_cycle_award` (`cycle_id`,`award_definition_id`),
-  KEY `idx_dean_nominations_student` (`student_profile_id`),
-  CONSTRAINT `fk_dean_nominations_award` FOREIGN KEY (`award_definition_id`) REFERENCES `award_definitions` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_dean_nominations_college` FOREIGN KEY (`college_id`) REFERENCES `colleges` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_dean_nominations_cycle` FOREIGN KEY (`cycle_id`) REFERENCES `award_cycles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_dean_nominations_dean_assignment` FOREIGN KEY (`dean_assignment_id`) REFERENCES `dean_assignments` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_dean_nominations_dean_profile` FOREIGN KEY (`dean_profile_id`) REFERENCES `profiles` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `fk_dean_nominations_student` FOREIGN KEY (`student_profile_id`) REFERENCES `profiles` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `ck_dean_nominations_status` CHECK ((`status` in (_utf8mb4'active',_utf8mb4'endorsed',_utf8mb4'withdrawn',_utf8mb4'revoked')))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `events` (
@@ -596,6 +564,8 @@ CREATE TABLE `events` (
   `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `event_type` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `portfolio_category_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `portfolio_subcategory_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `start_time` datetime(6) NOT NULL,
   `end_time` datetime(6) NOT NULL,
   `venue` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -609,6 +579,8 @@ CREATE TABLE `events` (
   KEY `idx_events_organizer` (`organizer_profile_id`),
   KEY `idx_events_status` (`status`),
   KEY `idx_events_start_time` (`start_time`),
+  KEY `idx_events_portfolio_category` (`portfolio_category_id`),
+  KEY `idx_events_portfolio_subcategory` (`portfolio_subcategory_id`),
   CONSTRAINT `fk_events_admin_unit` FOREIGN KEY (`administrative_unit_id`) REFERENCES `administrative_units` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_events_college` FOREIGN KEY (`college_id`) REFERENCES `colleges` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_events_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,

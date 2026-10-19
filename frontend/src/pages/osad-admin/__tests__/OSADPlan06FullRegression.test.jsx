@@ -64,9 +64,9 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
   }
 
   // Parent Test 1: Sidebar item navigation without manual reload
-  it('Parent Test 1: verifies all 10 authorized sidebar destinations navigate via client-side routing', () => {
+  it('Parent Test 1: verifies all 5 authorized sidebar destinations navigate via client-side routing', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(10)
+    expect(nav).toHaveLength(5)
     nav.forEach(item => {
       expect(item.path).toBeDefined()
       expect(item.path.startsWith('/')).toBe(true)
@@ -80,8 +80,8 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
     expect(activeItem).toBeDefined()
     expect(activeItem.tab).toBe('overview')
 
-    const academicItem = nav.find(i => i.id === 'osad-academic-structure')
-    expect(academicItem.tab).toBe('academic-structure')
+    const studentManagementItem = nav.find(i => i.id === 'osad-student-management')
+    expect(studentManagementItem.tab).toBe('student-management')
 
     const candidateItem = nav.find(i => i.id === 'osad-award-candidate-review')
     expect(candidateItem.path).toBe('/osad/candidates')
@@ -94,7 +94,7 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
     const itemIds = nav.map(i => i.id)
     const uniqueIds = new Set(itemIds)
     expect(uniqueIds.size).toBe(itemIds.length)
-    expect(nav).toHaveLength(10)
+    expect(nav).toHaveLength(5)
   })
 
   // Parent Test 4: Primary actions execute one clear action
@@ -131,8 +131,9 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
   // Parent Test 6: Entity card destination behavior
   it('Parent Test 6: verifies entity cards have defined destination semantics and affordances', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    const orgItem = nav.find(i => i.id === 'osad-student-organizations')
-    expect(orgItem.path).toContain('tab=organizations')
+    const studentManagementItem = nav.find(i => i.id === 'osad-student-management')
+    expect(studentManagementItem.path).toContain('tab=student-management')
+    expect(studentManagementItem.path).toContain('section=accounts')
   })
 
   // Parent Test 7: Modals and page actions remain accessible
@@ -174,8 +175,8 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
     const studentNav = getAuthorizedNavigationForSession(studentSession)
     const osadNav = getAuthorizedNavigationForSession(osadSession)
 
-    expect(studentNav.map(i => i.id)).not.toContain('osad-academic-structure')
-    expect(osadNav.map(i => i.id)).toContain('osad-academic-structure')
+    expect(studentNav.map(i => i.id)).not.toContain('osad-student-management')
+    expect(osadNav.map(i => i.id)).toContain('osad-student-management')
     expect(osadNav.map(i => i.id)).not.toContain('student-achievements')
   })
 

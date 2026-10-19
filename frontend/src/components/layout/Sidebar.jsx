@@ -9,6 +9,7 @@ import { getAuthorizedNavigationForSession, isNavigationItemActive } from '../..
 import { normalizeRoleContext } from '../../utils/roleContext'
 import AdminOnboardingGuideWidget from '../common/AdminOnboardingGuideWidget'
 import { BrandLockup } from '../brand'
+import portfolioSubmissionPortalService from '../../services/portfolioSubmissionPortalService'
 
 // Only one item may be highlighted. When a parent and a child route both match
 // (e.g. /personnel/portfolio and /personnel/portfolio/edit) the longest path wins.
@@ -50,8 +51,23 @@ export default function Sidebar({ currentUser, onCloseMobile, collapsed = false,
   const isPersonnelPortal = activeContext === 'personnel'
   const isCollapsed = collapsed
   const [searchTerm, setSearchTerm] = useState('')
+  const [portfolioSubmissionAvailable, setPortfolioSubmissionAvailable] = useState(false)
+  useEffect(() => {
+    let active = true
+    if (activeContext !== 'student') {
+      setPortfolioSubmissionAvailable(false)
+      return () => { active = false }
+    }
+    portfolioSubmissionPortalService.listStudentPortals()
+      .then(portals => { if (active) setPortfolioSubmissionAvailable(portals.length > 0) })
+      .catch(() => { if (active) setPortfolioSubmissionAvailable(false) })
+    return () => { active = false }
+  }, [activeContext, user?.id, location.pathname])
   useEffect(() => { setSearchTerm('') }, [activeContext, isCollapsed])
-  const navItems = useMemo(() => user ? getAuthorizedNavigationForSession({ ...user, active_role_context: activeContext, assigned_roles: user.assigned_roles || [activeContext] }) : [], [user, activeContext])
+  const navItems = useMemo(() => {
+    const authorized = user ? getAuthorizedNavigationForSession({ ...user, active_role_context: activeContext, assigned_roles: user.assigned_roles || [activeContext] }) : []
+    return authorized.filter(item => item.id !== 'student-portfolio-submission' || portfolioSubmissionAvailable)
+  }, [user, activeContext, portfolioSubmissionAvailable])
   const filteredNavItems = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
     return query ? navItems.filter(item => item.label.toLowerCase().includes(query)) : navItems
@@ -72,7 +88,7 @@ export default function Sidebar({ currentUser, onCloseMobile, collapsed = false,
       <label className="relative block"><span className="sr-only">Search modules</span><Search className="pointer-events-none absolute left-3 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-slate-500" /><input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search modules..." className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-11 text-sm text-slate-900 outline-none placeholder:text-slate-500 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-600/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400" />{searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-0 top-0 grid h-11 w-11 place-items-center rounded-lg text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:hover:text-white" aria-label="Clear navigation search"><X className="h-4 w-4" /></button>}</label>
     </div>}
 
-    {!isPersonnelPortal && <div className="mx-3 mt-4 shrink-0">
+    {!isPersonnelPortal && activeContext !== 'organization_moderator' && <div className="mx-3 mt-4 shrink-0">
       <CollapsedTooltip label={workspace.label} enabled={isCollapsed}><div tabIndex={isCollapsed ? 0 : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl bg-slate-50 text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:bg-slate-900 dark:text-slate-100 ${isCollapsed ? 'px-3 md:justify-center md:px-0' : 'px-3'}`}>
         <WorkspaceIcon className="h-[19px] w-[19px] shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
         <div className={`min-w-0 ${isCollapsed ? 'md:hidden' : ''}`}><span className="block text-[10px] font-bold uppercase tracking-[.14em] text-slate-600 dark:text-slate-400">Workspace</span><span className="block truncate text-xs font-bold">{workspace.label}</span></div>

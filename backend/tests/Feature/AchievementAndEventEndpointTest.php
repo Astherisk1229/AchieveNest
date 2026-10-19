@@ -249,6 +249,45 @@ final class AchievementAndEventEndpointTest extends CIUnitTestCase
         $db->table('events')->where('id', $eventId)->delete();
     }
 
+    public function testModeratorCanCreateEventWithOptionalOsadCategoryAndNoSubcategory(): void
+    {
+        $db = $this->db();
+        if (! $db->fieldExists('portfolio_category_id', 'events') || ! $db->fieldExists('portfolio_subcategory_id', 'events')) {
+            $this->markTestSkipped('Apply the optional event classification migration before running this contract.');
+        }
+        $category = $db->table('portfolio_categories')->where('status', 'active')->orderBy('sort_order', 'ASC')->get()->getRowArray();
+        $venue = $db->table('event_venues')->where('is_active', 1)->orderBy('sort_order', 'ASC')->get()->getRowArray();
+        if ($category === null || $venue === null) {
+            $this->markTestSkipped('The canonical OSAD categories and event venues must be seeded.');
+        }
+
+        $actor = [
+            'profile' => ['id' => self::$modJpiaProfileId, 'status' => 'active'],
+            'roles'   => ['personnel', 'organization_moderator'],
+        ];
+        $controller = $this->makeEventController($actor, [self::$jpiaOrgId]);
+        $payload = [
+            'title' => 'Optional Classification ' . bin2hex(random_bytes(4)),
+            'event_type' => 'Workshop',
+            'start_time' => '2026-11-01 09:00:00',
+            'end_time' => '2026-11-01 12:00:00',
+            'venue_id' => $venue['id'],
+            'portfolio_category_id' => $category['id'],
+            'portfolio_subcategory_id' => null,
+        ];
+        $controller->initController($this->makeRequest('POST', '/api/v1/events', $payload), service('response'), service('logger'));
+
+        $response = $controller->create();
+        $this->assertSame(201, $response->getStatusCode());
+        $body = json_decode($response->getBody(), true);
+        $eventId = $body['data']['id'] ?? null;
+        $this->assertNotEmpty($eventId);
+        $row = $db->table('events')->where('id', $eventId)->get()->getRowArray();
+        $this->assertSame($category['id'], $row['portfolio_category_id']);
+        $this->assertNull($row['portfolio_subcategory_id']);
+        $db->table('events')->where('id', $eventId)->delete();
+    }
+
     public function testCreateEventRejectsUnknownVenueId(): void
     {
         $actor = [

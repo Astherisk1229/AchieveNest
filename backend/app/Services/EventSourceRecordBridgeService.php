@@ -185,6 +185,18 @@ final class EventSourceRecordBridgeService
         if ($reasons) return $this->blocked($fact,$reasons,$actorId);
 
         $metadata=$attributes;
+        if ($isAutomaticAttendanceCertificate) {
+            $certificateConfiguration = is_array($event['certificate_configuration'] ?? null)
+                ? $event['certificate_configuration']
+                : (json_decode((string) ($event['certificate_configuration'] ?? '{}'), true) ?: []);
+            $metadata['event_certificate'] = [
+                'issuer_name' => $certificateConfiguration['issuer_name'] ?? '',
+                'signatory_1' => $certificateConfiguration['signatory_1'] ?? '',
+                'signatory_2' => $certificateConfiguration['signatory_2'] ?? '',
+                'signatory_1_img' => $certificateConfiguration['signatory_1_img'] ?? null,
+                'signatory_2_img' => $certificateConfiguration['signatory_2_img'] ?? null,
+            ];
+        }
         $metadata=array_filter($metadata+['role'=>$fact['participation_role'],'verified_engagement_outcome'=>$fact['verified_engagement_outcome'],'placement'=>$fact['placement'],'origin_type'=>'event','origin_event_id'=>$fact['event_id'],'origin_event_participation_id'=>$fact['id'],'origin_created_by'=>$actorId,'origin_created_at'=>date('c')],fn($v)=>$v!==null&&$v!=='');
         $matches=$this->db->table('student_portfolio_records')->where('student_profile_id',$fact['student_profile_id'])->where("JSON_UNQUOTE(JSON_EXTRACT(structured_metadata, '$.origin_event_participation_id')) = ".$this->db->escape($fact['id']),null,false)->get()->getResultArray();
         if(!empty($fact['source_record_id'])) {

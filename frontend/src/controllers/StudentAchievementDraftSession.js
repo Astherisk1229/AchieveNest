@@ -156,7 +156,7 @@ export function validateEvidenceFile(file) {
 }
 
 /** Client-side completeness check mirroring resubmitRecord(); the backend remains authoritative. */
-export function validateForSubmit({ formData = {}, categoryId, subcategoryId, subcategoryRequired = true, structuredMetadata = {}, schemaFields = [], evidence = [] }) {
+export function validateForSubmit({ formData = {}, categoryId, subcategoryId, subcategoryRequired = true, structuredMetadata = {}, schemaFields = [], evidence = [], allowGeneratedCertificate = false }) {
   const errors = {}
   if (!categoryId) errors.category_id = 'Category is required.'
   if (subcategoryRequired && !subcategoryId) errors.subcategory_id = 'Subcategory is required.'
@@ -180,7 +180,7 @@ export function validateForSubmit({ formData = {}, categoryId, subcategoryId, su
     }
   })
   const clean = evidence.some(item => item.status === 'active' && item.security_status === 'clean')
-  if (!clean) errors.evidence = 'Upload at least one evidence file that passed the security check.'
+  if (!clean && !allowGeneratedCertificate) errors.evidence = 'Upload at least one evidence file that passed the security check.'
   return errors
 }
 

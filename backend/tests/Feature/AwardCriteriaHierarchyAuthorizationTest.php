@@ -12,8 +12,7 @@ final class AwardCriteriaHierarchyAuthorizationTest extends CIUnitTestCase
     public static function editorMethods(): array
     {
         return [
-            ['index', ['award-id']], ['createDraft', ['award-id']], ['saveDraft', ['award-id', 'version-id']],
-            ['validateDraft', ['award-id', 'version-id']], ['publishDraft', ['award-id', 'version-id']],
+            ['index', ['award-id']], ['saveCurrent', ['award-id']],
         ];
     }
 

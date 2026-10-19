@@ -97,8 +97,7 @@ class AwardCandidateDiscoveryService
         $award['human_only_criteria'] = array_values(array_filter($criteria, static fn(array $criterion): bool => $criterion['human_only']));
         $award['computable_max_score'] = $computableMaximum;
 
-        // Hierarchy is a versioned intake/display contract. It remains separate from award-specific
-        // executable scoring rules until an official mapping is authored and reviewed.
+        // Hierarchy is an intake/display contract separate from award-specific executable scoring rules.
         $hierarchyVersionId = (string) ($award['active_hierarchy_version_id'] ?? '');
         $hierarchyVersion = $hierarchyVersionId !== ''
             ? $db->table('award_scoring_model_versions')->where('id', $hierarchyVersionId)->where('award_definition_id', $award['id'])->where('status', 'published')->get()->getRowArray()
@@ -120,7 +119,6 @@ class AwardCandidateDiscoveryService
         }
         $hierarchy = AwardCriteriaHierarchyAdministrationService::activeForNewChoices($hierarchy);
         $award['criteria_hierarchy'] = $hierarchy;
-        $award['criteria_hierarchy_version_id'] = $hierarchyVersion['id'] ?? null;
 
         return AwardApiContractService::award($award, $version);
     }
@@ -344,25 +342,22 @@ class AwardCandidateDiscoveryService
     }
 
     /**
-     * The award-applicable portfolio: every approved achievement that the award's own evidence
-     * mapping assigns to this award, counted or not.
+     * The student's complete portfolio, with award scoring context layered onto records
+     * that the award's evidence mapping assigns to this award.
      *
      * - counted / points: the saved points of approval-time scoring (the authoritative total).
      * - not_counted_reason: taken from the scoring engine's own per-achievement trace for this
      *   student and award (AwardScoringService::scoreStudentForAward, read-only), or from the
-     *   mapping's exclusion reason. reason_code says which rule produced it.
+     *   mapping's exclusion reason. Other portfolio records stay visible with no award score.
      * - scoring_in_sync: false when today's engine allocation differs from the saved points
      *   (for example after a rule change); the saved points are still what is shown.
      */
     protected function portfolioSection(string $awardId, array $student, ?array $cycle, bool $eligible, array $items): array
     {
-        if (! $eligible) {
-            return ['portfolio' => [], 'scoring_in_sync' => true];
-        }
         $raw = $this->db->table('award_definitions')->where('id', $awardId)->get()->getRowArray();
         $mapping = new AwardEvidenceMappingService($this->db, $this->eligibility);
-        $package = $mapping->mapStudentEvidenceForAward($raw, $student);
-        $engine = (new AwardScoringService($this->db, $this->eligibility, $mapping))->scoreStudentForAward($raw, $student);
+        $package = $eligible ? $mapping->mapStudentEvidenceForAward($raw, $student) : [];
+        $engine = $eligible ? (new AwardScoringService($this->db, $this->eligibility, $mapping))->scoreStudentForAward($raw, $student) : [];
 
         $entries = [];
         foreach ($package['criteria'] ?? [] as $criterion) {
@@ -384,10 +379,6 @@ class AwardCandidateDiscoveryService
         foreach ($items as $item) {
             $entries[$item['record_id']]['criteria'][(string) $item['criterion_id']] = (string) $item['criterion_name'];
         }
-        if ($entries === []) {
-            return ['portfolio' => [], 'scoring_in_sync' => true];
-        }
-
         $saved = [];
         foreach ($items as $item) {
             $saved[$item['record_id']] = round(($saved[$item['record_id']] ?? 0.0) + (float) $item['points'], 2);
@@ -405,15 +396,20 @@ class AwardCandidateDiscoveryService
         $inSync = true;
 
         $records = $this->db->table('student_portfolio_records spr')
-            ->select('spr.id, spr.title, spr.organizer_or_body, spr.occurrence_date, spr.start_date, spr.end_date, spr.verified_at, pc.name AS category_name, ps.name AS subcategory_name')
+            ->select('spr.id, spr.title, spr.organizer_or_body, spr.occurrence_date, spr.start_date, spr.end_date, spr.status, spr.verified_at, pc.name AS category_name, ps.name AS subcategory_name')
             ->join('portfolio_categories pc', 'pc.id = spr.category_id', 'left')
             ->join('portfolio_subcategories ps', 'ps.id = spr.subcategory_id', 'left')
-            ->whereIn('spr.id', array_keys($entries))->where('spr.status', 'verified')
+            ->where('spr.student_profile_id', $student['id'])
             ->get()->getResultArray();
+
+        $recordIds = array_column($records, 'id');
+        if ($recordIds === []) {
+            return ['portfolio' => [], 'scoring_in_sync' => true];
+        }
 
         $storage = new LocalEvidenceStorageService();
         $files = [];
-        foreach ($this->db->table('student_portfolio_evidence')->whereIn('portfolio_record_id', array_keys($entries))
+        foreach ($this->db->table('student_portfolio_evidence')->whereIn('portfolio_record_id', $recordIds)
             ->where('status', 'active')->orderBy('uploaded_at', 'ASC')->get()->getResultArray() as $file) {
             $files[$file['portfolio_record_id']][] = self::evidencePayload($storage, $file);
         }
@@ -421,12 +417,20 @@ class AwardCandidateDiscoveryService
         $portfolio = [];
         foreach ($records as $record) {
             $id = (string) $record['id'];
-            $entry = $entries[$id];
+            $entry = $entries[$id] ?? [];
             $points = $saved[$id] ?? 0.0;
-            if ($engineAvailable && abs(($live[$id] ?? 0.0) - $points) > 0.001) {
+            $isAwardRelevant = ! empty($entry['criteria']) || isset($entry['excluded']);
+            if ($isAwardRelevant && $engineAvailable && abs(($live[$id] ?? 0.0) - $points) > 0.001) {
                 $inSync = false;
             }
-            $reason = $points > 0.0 ? null : $this->notCountedReason($entry, $traces[$id] ?? [], $live[$id] ?? 0.0, $engineAvailable);
+            $isVerified = strtolower((string) ($record['status'] ?? '')) === 'verified';
+            $reason = $points > 0.0 ? null : (! $isVerified
+                ? ['code' => 'NOT_VERIFIED', 'text' => 'This accomplishment has not been verified, so it is not included in award scoring.']
+                : ($isAwardRelevant
+                ? $this->notCountedReason($entry, $traces[$id] ?? [], $live[$id] ?? 0.0, $engineAvailable)
+                : ['code' => $eligible ? 'NOT_APPLICABLE_TO_AWARD' : 'AWARD_ELIGIBILITY_NOT_MET', 'text' => $eligible
+                    ? 'This achievement does not match this award\'s criteria.'
+                    : 'This student does not meet this award\'s eligibility requirements, so the portfolio was not scored.']));
             $portfolio[] = [
                 'record_id' => $id,
                 'achievement_title' => $record['title'],
@@ -436,7 +440,9 @@ class AwardCandidateDiscoveryService
                 'activity_date' => self::achievementDate($record),
                 'end_date' => $record['end_date'],
                 'approved_at' => $record['verified_at'],
+                'verification_status' => $record['status'] ?? 'unknown',
                 'criteria' => array_values(array_filter($entry['criteria'] ?? [])),
+                'award_relevant' => $isAwardRelevant,
                 'counted' => $points > 0.0,
                 'points' => $points,
                 'not_counted_reason' => $reason['text'] ?? null,

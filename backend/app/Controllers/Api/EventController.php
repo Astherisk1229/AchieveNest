@@ -204,6 +204,46 @@ class EventController extends Controller
         );
     }
 
+    /** Validate the small, self-contained signatory snapshot used by certificate renderers. */
+    private function resolveCertificateConfiguration(mixed $value): array
+    {
+        if ($value === null) $value = [];
+        if (! is_array($value)) {
+            return ['success' => false, 'code' => 'INVALID_CERTIFICATE_CONFIGURATION', 'message' => 'Certificate signatory settings must be an object.'];
+        }
+
+        $normalized = [];
+        $issuerName = trim((string) ($value['issuer_name'] ?? ''));
+        if (strlen($issuerName) > 200) {
+            return ['success' => false, 'code' => 'INVALID_CERTIFICATE_CONFIGURATION', 'message' => 'The organization name must be 200 characters or fewer.'];
+        }
+        $normalized['issuer_name'] = $issuerName;
+        foreach (['signatory_1', 'signatory_2'] as $field) {
+            $name = trim((string) ($value[$field] ?? ''));
+            if (strlen($name) > 200) {
+                return ['success' => false, 'code' => 'INVALID_CERTIFICATE_CONFIGURATION', 'message' => 'Signatory names must be 200 characters or fewer.'];
+            }
+            $normalized[$field] = $name;
+        }
+
+        foreach (['signatory_1_img', 'signatory_2_img'] as $field) {
+            $image = trim((string) ($value[$field] ?? ''));
+            if ($image === '') {
+                $normalized[$field] = null;
+                continue;
+            }
+            if (strlen($image) > 524288 || ! preg_match('/^data:image\/(?:png|jpeg|svg\+xml);(?:base64,|utf8,)/i', $image)) {
+                return ['success' => false, 'code' => 'INVALID_CERTIFICATE_SIGNATURE', 'message' => 'Signatures must be PNG, JPEG, or the built-in SVG and no larger than 512 KiB.'];
+            }
+            if (stripos($image, 'data:image/svg+xml;') === 0 && preg_match('/<script|<foreignObject|\son\w+\s*=|(?:href|src)\s*=\s*["\']https?:/i', rawurldecode($image))) {
+                return ['success' => false, 'code' => 'INVALID_CERTIFICATE_SIGNATURE', 'message' => 'The SVG signature contains unsupported active content. Upload a PNG signature instead.'];
+            }
+            $normalized[$field] = $image;
+        }
+
+        return ['success' => true, 'value' => $normalized];
+    }
+
     /**
      * GET /api/v1/events
      */
@@ -256,6 +296,44 @@ class EventController extends Controller
         ], 200);
     }
 
+    /** Limited event signer data for students viewing their own closed-session certificate. */
+    public function certificatePreview(string $eventId)
+    {
+        $actor = $this->resolveActor();
+        if ($actor === null) {
+            return $this->respond(['error' => ['code' => 'UNAUTHORIZED', 'message' => 'Valid active authenticated session required.']], 401);
+        }
+
+        $db = $this->getDb();
+        $event = $db->table('events')->where('id', $eventId)->get()->getRowArray();
+        if ($event === null) {
+            return $this->respond(['error' => ['code' => 'EVENT_NOT_FOUND', 'message' => 'Event not found.']], 404);
+        }
+
+        $roles = $actor['roles'] ?? [];
+        if (in_array('student', $roles, true)) {
+            $attended = $db->table('attendance_records ar')
+                ->join('attendance_sessions s', 's.id = ar.session_id')
+                ->where('s.event_id', $eventId)
+                ->where('s.status', 'closed')
+                ->where('ar.attendee_profile_id', $actor['profile']['id'] ?? '')
+                ->limit(1)
+                ->countAllResults() > 0;
+            if (! $attended) {
+                return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'Certificate details are available only to verified attendees.']], 403);
+            }
+        } elseif (! $this->canManageEvent($actor, $event)) {
+            return $this->respond(['error' => ['code' => 'FORBIDDEN', 'message' => 'You do not have permission to view this event certificate.']], 403);
+        }
+
+        $configuration = $event['certificate_configuration'] ?? [];
+        if (is_string($configuration)) $configuration = json_decode($configuration, true) ?: [];
+
+        return $this->respond(['data' => ['event_certificate' => [
+            'certificate_configuration' => is_array($configuration) ? $configuration : [],
+        ]]]);
+    }
+
     /**
      * POST /api/v1/events
      */
@@ -271,6 +349,10 @@ class EventController extends Controller
         }
 
         $json = $this->request->getJSON(true) ?? [];
+        $certificateConfiguration = $this->resolveCertificateConfiguration($json['certificate_configuration'] ?? []);
+        if (! $certificateConfiguration['success']) {
+            return $this->respond(['error' => ['code' => $certificateConfiguration['code'], 'message' => $certificateConfiguration['message']]], 422);
+        }
         $title = trim((string) ($json['title'] ?? ''));
         $description = trim((string) ($json['description'] ?? ''));
         $eventType = trim((string) ($json['event_type'] ?? $json['category'] ?? 'institutional'));
@@ -364,6 +446,14 @@ class EventController extends Controller
             ], 422);
         }
 
+        $classification = $this->resolvePortfolioClassification(
+            $json['portfolio_category_id'] ?? null,
+            $json['portfolio_subcategory_id'] ?? null
+        );
+        if (! $classification['success']) {
+            return $this->respond(['error' => ['code' => $classification['code'], 'message' => $classification['message']]], 422);
+        }
+
         $db = $this->getDb();
         $eventId = $this->genUuid();
         $now = date('Y-m-d H:i:s');
@@ -376,10 +466,12 @@ class EventController extends Controller
             'description'          => $description !== '' ? $description : null,
             'event_type'           => $eventType,
             'osad_template_id'     => $osadTemplateId,
+            'certificate_configuration' => json_encode($certificateConfiguration['value'], JSON_UNESCAPED_SLASHES),
             'start_time'           => $startTime,
             'end_time'             => $endTime,
             'venue'                => $venueRes['venue'],
             'venue_id'             => $venueRes['venue_id'],
+            ...$classification['fields'],
             'status'               => 'published',
             'created_at'           => $now,
             'updated_at'           => $now,
@@ -396,6 +488,7 @@ class EventController extends Controller
                 'organization_id' => $organizationId,
                 'status'          => 'published',
                 'osad_template_id' => $osadTemplateId,
+                ...$classification['fields'],
             ],
         ]);
     }
@@ -499,6 +592,36 @@ class EventController extends Controller
                     ? trim($json[$field])
                     : $json[$field];
             }
+        }
+
+        if (array_key_exists('certificate_configuration', $json)) {
+            $certificateConfiguration = $this->resolveCertificateConfiguration($json['certificate_configuration']);
+            if (! $certificateConfiguration['success']) {
+                return $this->respond(['error' => ['code' => $certificateConfiguration['code'], 'message' => $certificateConfiguration['message']]], 422);
+            }
+            $updates['certificate_configuration'] = json_encode($certificateConfiguration['value'], JSON_UNESCAPED_SLASHES);
+        }
+
+        if (array_key_exists('portfolio_category_id', $json) || array_key_exists('portfolio_subcategory_id', $json)) {
+            $categoryId = array_key_exists('portfolio_category_id', $json)
+                ? $json['portfolio_category_id']
+                : ($event['portfolio_category_id'] ?? null);
+            $subcategoryId = array_key_exists('portfolio_subcategory_id', $json)
+                ? $json['portfolio_subcategory_id']
+                : ($event['portfolio_subcategory_id'] ?? null);
+            if (array_key_exists('portfolio_category_id', $json) && (string) ($json['portfolio_category_id'] ?? '') !== (string) ($event['portfolio_category_id'] ?? '')) {
+                $subcategoryId = $json['portfolio_subcategory_id'] ?? null;
+            }
+            $classification = $this->resolvePortfolioClassification(
+                $categoryId,
+                $subcategoryId,
+                $categoryId === ($event['portfolio_category_id'] ?? null),
+                $subcategoryId === ($event['portfolio_subcategory_id'] ?? null)
+            );
+            if (! $classification['success']) {
+                return $this->respond(['error' => ['code' => $classification['code'], 'message' => $classification['message']]], 422);
+            }
+            $updates = array_merge($updates, $classification['fields']);
         }
 
         // Handle venue modification
@@ -737,6 +860,43 @@ class EventController extends Controller
         if (mb_strlen(trim($description)) > 2000) return ['code' => 'INVALID_EVENT_DESCRIPTION', 'message' => 'Event description must not exceed 2,000 characters.'];
         if (mb_strlen(trim($eventType)) > 50) return ['code' => 'INVALID_EVENT_TYPE', 'message' => 'Event type is too long.'];
         return null;
+    }
+
+    /** Validate optional OSAD portfolio classification and tolerate pre-migration databases only when no value is requested. */
+    private function resolvePortfolioClassification(mixed $categoryId, mixed $subcategoryId, bool $preserveExistingCategory = false, bool $preserveExistingSubcategory = false): array
+    {
+        if (($categoryId !== null && ! is_string($categoryId)) || ($subcategoryId !== null && ! is_string($subcategoryId))) {
+            return ['success' => false, 'code' => 'INVALID_PORTFOLIO_CLASSIFICATION', 'message' => 'Category and subcategory must be valid OSAD record IDs.'];
+        }
+        $categoryId = is_string($categoryId) && trim($categoryId) !== '' ? trim($categoryId) : null;
+        $subcategoryId = is_string($subcategoryId) && trim($subcategoryId) !== '' ? trim($subcategoryId) : null;
+        $db = $this->getDb();
+        $hasCategoryColumn = $db->fieldExists('portfolio_category_id', 'events');
+        $hasSubcategoryColumn = $db->fieldExists('portfolio_subcategory_id', 'events');
+
+        if ((! $hasCategoryColumn || ! $hasSubcategoryColumn) && ($categoryId !== null || $subcategoryId !== null)) {
+            return ['success' => false, 'code' => 'EVENT_CLASSIFICATION_SCHEMA_REQUIRED', 'message' => 'Apply the event classification database migration before saving a category.'];
+        }
+        if ($subcategoryId !== null && $categoryId === null) {
+            return ['success' => false, 'code' => 'SUBCATEGORY_REQUIRES_CATEGORY', 'message' => 'Choose a category before selecting a subcategory.'];
+        }
+        if ($categoryId !== null) {
+            $category = $db->table('portfolio_categories')->where(['id' => $categoryId, 'status' => 'active'])->get()->getRowArray();
+            if ($category === null && ! $preserveExistingCategory) {
+                return ['success' => false, 'code' => 'INVALID_PORTFOLIO_CATEGORY', 'message' => 'Choose an active OSAD category.'];
+            }
+        }
+        if ($subcategoryId !== null) {
+            $subcategory = $db->table('portfolio_subcategories')->where(['id' => $subcategoryId, 'category_id' => $categoryId, 'status' => 'active'])->get()->getRowArray();
+            if ($subcategory === null && ! $preserveExistingSubcategory) {
+                return ['success' => false, 'code' => 'INVALID_PORTFOLIO_SUBCATEGORY', 'message' => 'Choose an active subcategory under the selected category.'];
+            }
+        }
+
+        return ['success' => true, 'fields' => $hasCategoryColumn && $hasSubcategoryColumn ? [
+            'portfolio_category_id' => $categoryId,
+            'portfolio_subcategory_id' => $subcategoryId,
+        ] : []];
     }
 
     /**

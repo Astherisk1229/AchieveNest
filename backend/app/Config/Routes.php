@@ -50,8 +50,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     // Account Provisioning — target-schema manual flows.
     $routes->get('osad/students', 'Api\TargetProvisioningController::listStudents');
     $routes->options('osad/students', 'Api\TargetProvisioningController::options');
-    $routes->get('osad/audit', 'Api\TargetProvisioningController::audit');
-    $routes->options('osad/audit', 'Api\TargetProvisioningController::options');
     $routes->post('provisioning/manual-student', 'Api\TargetProvisioningController::manualStudent');
     $routes->options('provisioning/manual-student', 'Api\TargetProvisioningController::options');
     $routes->post('provisioning/manual-personnel', 'Api\TargetProvisioningController::manualPersonnel');
@@ -90,34 +88,11 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->post('certificates/issue', 'Api\CertificateController::issue');
     $routes->get('certificates/verify/(:segment)', 'Api\CertificateController::verify/$1');
     $routes->get('certificates/(:segment)/pdf', 'Api\CertificateController::pdf/$1');
-    $routes->post('certificates/(:segment)/revoke', 'Api\CertificateController::revoke/$1');
-    $routes->post('certificates/(:segment)/reissue', 'Api\CertificateController::reissue/$1');
     $routes->options('certificates/templates', 'Api\CertificateController::options');
     $routes->options('certificates/readiness', 'Api\CertificateController::options');
     $routes->options('certificates/issue', 'Api\CertificateController::options');
     $routes->options('certificates/verify/(:segment)', 'Api\CertificateController::options');
     $routes->options('certificates/(:segment)/pdf', 'Api\CertificateController::options');
-    $routes->options('certificates/(:segment)/revoke', 'Api\CertificateController::options');
-    $routes->options('certificates/(:segment)/reissue', 'Api\CertificateController::options');
-
-    // OSAD governed certificate template authoring
-    $routes->get('certificate-templates/placeholders', 'Api\CertificateTemplateController::placeholders');
-    $routes->get('certificate-templates', 'Api\CertificateTemplateController::index');
-    $routes->post('certificate-templates', 'Api\CertificateTemplateController::create');
-    $routes->get('certificate-templates/(:segment)', 'Api\CertificateTemplateController::show/$1');
-    $routes->post('certificate-templates/(:segment)/versions', 'Api\CertificateTemplateController::createDraft/$1');
-    $routes->get('certificate-template-versions/(:segment)', 'Api\CertificateTemplateController::version/$1');
-    $routes->patch('certificate-template-versions/(:segment)', 'Api\CertificateTemplateController::updateDraft/$1');
-    $routes->post('certificate-template-versions/(:segment)/validate', 'Api\CertificateTemplateController::validateDraft/$1');
-    $routes->post('certificate-template-versions/(:segment)/publish', 'Api\CertificateTemplateController::publish/$1');
-    $routes->get('certificate-assets', 'Api\CertificateAssetController::index');
-    $routes->post('certificate-assets', 'Api\CertificateAssetController::create');
-    $routes->get('certificate-assets/(:segment)/usage', 'Api\CertificateAssetController::usage/$1');
-    $routes->post('certificate-assets/(:segment)/archive', 'Api\CertificateAssetController::archive/$1');
-    $routes->get('certificate-asset-versions/(:segment)/content', 'Api\CertificateAssetController::content/$1');
-    foreach (['certificate-templates', 'certificate-templates/placeholders', 'certificate-templates/(:segment)', 'certificate-templates/(:segment)/versions', 'certificate-template-versions/(:segment)', 'certificate-template-versions/(:segment)/validate', 'certificate-template-versions/(:segment)/publish'] as $templateRoute) {
-        $routes->options($templateRoute, 'Api\CertificateTemplateController::options');
-    }
 
     // Personnel Profile & Photo Endpoints (Package B)
     $routes->get('personnel/profile', 'Api\PersonnelProfileController::show');
@@ -213,6 +188,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('event-venues', 'Api\EventVenueController::index');
     $routes->options('event-venues', 'Api\EventVenueController::options');
     $routes->get('events', 'Api\EventController::index');
+    $routes->get('events/(:segment)/certificate-preview', 'Api\EventController::certificatePreview/$1');
+    $routes->options('events/(:segment)/certificate-preview', 'Api\EventController::options');
     $routes->options('events', 'Api\EventController::options');
     $routes->post('events', 'Api\EventController::create');
     $routes->patch('events/(:segment)', 'Api\EventController::update/$1');
@@ -573,7 +550,10 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->post('portfolio', 'Api\StudentPortfolioController::create');
     $routes->options('portfolio', 'Api\StudentPortfolioController::options');
     $routes->get('portfolio/(:segment)', 'Api\StudentPortfolioController::get/$1');
+    $routes->post('portfolio/(:segment)/revision', 'Api\StudentPortfolioController::createRevision/$1');
+    $routes->options('portfolio/(:segment)/revision', 'Api\StudentPortfolioController::options');
     $routes->put('portfolio/(:segment)', 'Api\StudentPortfolioController::update/$1');
+    $routes->delete('portfolio/(:segment)', 'Api\StudentPortfolioController::deleteDraft/$1');
     $routes->options('portfolio/(:segment)', 'Api\StudentPortfolioController::options');
     $routes->post('portfolio/(:segment)/evidence', 'Api\StudentPortfolioController::addEvidence/$1');
     $routes->options('portfolio/(:segment)/evidence', 'Api\StudentPortfolioController::options');
@@ -591,6 +571,16 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('portfolio/(:segment)/reject', 'Api\StudentPortfolioController::options');
     $routes->post('portfolio/(:segment)/resubmit', 'Api\StudentPortfolioController::resubmitRecord/$1');
     $routes->options('portfolio/(:segment)/resubmit', 'Api\StudentPortfolioController::options');
+
+    // OSAD-selected portfolio submission portal. Student endpoints return a neutral, score-free projection.
+    $routes->get('student/portfolio-submissions', 'Api\PortfolioSubmissionPortalController::studentPortals');
+    $routes->options('student/portfolio-submissions', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->get('student/portfolio-submissions/(:segment)', 'Api\PortfolioSubmissionPortalController::studentPortal/$1');
+    $routes->options('student/portfolio-submissions/(:segment)', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->post('student/portfolio-submissions/(:segment)/submit', 'Api\PortfolioSubmissionPortalController::submitStudentPortfolio/$1');
+    $routes->options('student/portfolio-submissions/(:segment)/submit', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->get('student/portfolio-submissions/(:segment)/submissions/(:segment)/files/(:segment)', 'Api\PortfolioSubmissionPortalController::studentSubmissionFile/$1/$2/$3');
+    $routes->options('student/portfolio-submissions/(:segment)/submissions/(:segment)/files/(:segment)', 'Api\PortfolioSubmissionPortalController::options');
 
     // Program Coordinator Scoped Queue
     $routes->get('program-coordinator/verification-queue', 'Api\StudentPortfolioController::coordinatorQueue');
@@ -633,6 +623,8 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('osad/organizations', 'Api\OrganizationController::options');
     $routes->get('osad/organizations/(:segment)', 'Api\OrganizationController::show/$1');
     $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
+    $routes->patch('osad/organizations/(:segment)/moderator-profile', 'Api\OrganizationController::updateModeratorProfile/$1');
+    $routes->options('osad/organizations/(:segment)/moderator-profile', 'Api\OrganizationController::options');
     $routes->get('osad/organizations/(:segment)/moderator-candidates', 'Api\OrganizationController::moderatorCandidates/$1');
     $routes->options('osad/organizations/(:segment)/moderator-candidates', 'Api\OrganizationController::options');
     $routes->get('osad/organizations/(:segment)/logo', 'Api\OrganizationController::logo/$1');
@@ -648,18 +640,38 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->get('osad/scoring/records/(:segment)/contributions', 'Api\ApprovedAchievementScoringController::contributions/$1');
     $routes->options('osad/scoring/records/(:segment)/contributions', 'Api\ApprovedAchievementScoringController::options');
 
+    // OSAD-controlled Portfolio Submission Portal
+    $routes->get('osad/portfolio-submission-portals/active-award-year', 'Api\PortfolioSubmissionPortalController::activeAwardYear');
+    $routes->options('osad/portfolio-submission-portals/active-award-year', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->get('osad/portfolio-submission-portals', 'Api\PortfolioSubmissionPortalController::listPortals');
+    $routes->post('osad/portfolio-submission-portals', 'Api\PortfolioSubmissionPortalController::createPortal');
+    $routes->options('osad/portfolio-submission-portals', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->get('osad/portfolio-submission-portals/(:segment)', 'Api\PortfolioSubmissionPortalController::portalDetails/$1');
+    $routes->options('osad/portfolio-submission-portals/(:segment)', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->post('osad/portfolio-submission-portals/(:segment)/awards', 'Api\PortfolioSubmissionPortalController::addPortalAward/$1');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/awards', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->patch('osad/portfolio-submission-portals/(:segment)/status', 'Api\PortfolioSubmissionPortalController::updatePortalStatus/$1');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/status', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->post('osad/portfolio-submission-portals/(:segment)/students', 'Api\PortfolioSubmissionPortalController::selectStudents/$1');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->put('osad/portfolio-submission-portals/(:segment)/students/(:segment)/awards', 'Api\PortfolioSubmissionPortalController::assignStudentAwards/$1/$2');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students/(:segment)/awards', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->delete('osad/portfolio-submission-portals/(:segment)/students/(:segment)', 'Api\PortfolioSubmissionPortalController::revokeStudent/$1/$2');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students/(:segment)', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->post('osad/portfolio-submission-portals/(:segment)/students/(:segment)/reopen', 'Api\PortfolioSubmissionPortalController::reopen/$1/$2');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students/(:segment)/reopen', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->post('osad/portfolio-submission-portals/(:segment)/students/(:segment)/start-evaluation', 'Api\PortfolioSubmissionPortalController::startEvaluation/$1/$2');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students/(:segment)/start-evaluation', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->get('osad/portfolio-submission-portals/(:segment)/students/(:segment)/submissions', 'Api\PortfolioSubmissionPortalController::reviewSubmission/$1/$2');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students/(:segment)/submissions', 'Api\PortfolioSubmissionPortalController::options');
+    $routes->get('osad/portfolio-submission-portals/(:segment)/students/(:segment)/submissions/(:segment)/files/(:segment)', 'Api\PortfolioSubmissionPortalController::osadSubmissionFile/$1/$2/$3/$4');
+    $routes->options('osad/portfolio-submission-portals/(:segment)/students/(:segment)/submissions/(:segment)/files/(:segment)', 'Api\PortfolioSubmissionPortalController::options');
+
     // OSAD Awards & Explainable Scoring Basis
     $routes->get('osad/awards', 'Api\AwardEvaluationController::listAwards');
     $routes->get('osad/awards/(:segment)/criteria-hierarchy', 'Api\AwardCriteriaHierarchyController::index/$1');
     $routes->options('osad/awards/(:segment)/criteria-hierarchy', 'Api\AwardCriteriaHierarchyController::options');
-    $routes->post('osad/awards/(:segment)/criteria-hierarchy/drafts', 'Api\AwardCriteriaHierarchyController::createDraft/$1');
-    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts', 'Api\AwardCriteriaHierarchyController::options');
-    $routes->put('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)', 'Api\AwardCriteriaHierarchyController::saveDraft/$1/$2');
-    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)', 'Api\AwardCriteriaHierarchyController::options');
-    $routes->post('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/validate', 'Api\AwardCriteriaHierarchyController::validateDraft/$1/$2');
-    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/validate', 'Api\AwardCriteriaHierarchyController::options');
-    $routes->post('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/publish', 'Api\AwardCriteriaHierarchyController::publishDraft/$1/$2');
-    $routes->options('osad/awards/(:segment)/criteria-hierarchy/drafts/(:segment)/publish', 'Api\AwardCriteriaHierarchyController::options');
+    $routes->put('osad/awards/(:segment)/criteria-hierarchy', 'Api\AwardCriteriaHierarchyController::saveCurrent/$1');
     $routes->options('osad/awards', 'Api\AwardEvaluationController::options');
     $routes->get('osad/awards/(:segment)', 'Api\AwardEvaluationController::showAward/$1');
     $routes->options('osad/awards/(:segment)', 'Api\AwardEvaluationController::options');
@@ -717,10 +729,6 @@ $routes->group('api/v1', static function (RouteCollection $routes): void {
     $routes->options('osad/organizations/(:segment)/programs/(:segment)', 'Api\OrganizationController::options');
     $routes->patch('osad/organizations/(:segment)', 'Api\OrganizationController::update/$1');
     $routes->options('osad/organizations/(:segment)', 'Api\OrganizationController::options');
-
-    // Dean Nominations
-    $routes->post('dean/nominations', 'Api\AwardEvaluationController::createDeanNomination');
-    $routes->options('dean/nominations', 'Api\AwardEvaluationController::options');
 
     // =========================================================================
     // Protected Evidence File Metadata & Streaming Downloads (Phase 9)

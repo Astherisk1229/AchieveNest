@@ -85,7 +85,7 @@ class EvidencePolicy
                 ->getRowArray();
 
             if ($record !== null) {
-                return in_array($record['status'] ?? 'draft', ['draft', 'revision_requested'], true);
+                return $this->portfolioPolicy->canEdit($actor, $record);
             }
         }
 

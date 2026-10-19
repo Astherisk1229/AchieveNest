@@ -457,7 +457,6 @@ class CollegeService
         'events' => 'Events',
         'organizations' => 'Student organizations',
         'award_evaluation_summary_reports' => 'Award evaluation reports',
-        'dean_student_nominations' => 'Dean student nominations',
         'award_candidate_manual_decisions' => 'Award candidate decisions',
     ];
 
@@ -1122,6 +1121,7 @@ class CollegeService
         $submittedProgramIds = array_values(array_unique(array_filter($submittedProgramIds)));
 
         // Step 1: Validate every submitted program belongs to the selected College
+        $programDetails = [];
         foreach ($submittedProgramIds as $progId) {
             $prog = $this->db->table('academic_programs')->where('id', $progId)->get()->getRowArray();
             if (! $prog) {
@@ -1130,6 +1130,7 @@ class CollegeService
             if ($prog['college_id'] !== $collegeId) {
                 throw new InvalidArgumentException("The submitted Academic Program '{$prog['code']}' does not belong to the selected College.");
             }
+            $programDetails[$progId] = $prog;
 
             // Step 2: Validate HR personnel-program affiliation
             $affiliation = $this->db->table('personnel_program_affiliations')
@@ -1209,6 +1210,16 @@ class CollegeService
                 'created_at'           => date('Y-m-d H:i:s'),
                 'updated_at'           => date('Y-m-d H:i:s'),
             ]);
+
+            $program = $programDetails[$progIdToAdd];
+            (new PersonnelRoleAssignmentNotificationService($this->db))->notifyAssigned(
+                $profileId,
+                $actorProfileId,
+                'Program Coordinator',
+                ($program['code'] ?? 'Academic Program') . ' — ' . ($program['name'] ?? ''),
+                'program_coordinator_assignment',
+                $newId
+            );
         }
 
         $this->db->transComplete();

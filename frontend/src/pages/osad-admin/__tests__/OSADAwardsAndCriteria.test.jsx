@@ -73,6 +73,10 @@ describe('Awards Catalog Phase 2', () => {
     expect(html).toContain('Manage Categories')
     expect(html).toContain('Category → Subcategory → optional Levels')
     expect(html).toContain('This hierarchy controls category, subcategory and level choices.')
+    expect(html).toContain('Save Changes')
+    expect(html).not.toContain('Criteria version')
+    expect(html).not.toContain('Create New Version')
+    expect(html).not.toContain('Publish')
   })
 
   it('contains no hard-coded version, year, ranking, or Top-N copy', async () => {

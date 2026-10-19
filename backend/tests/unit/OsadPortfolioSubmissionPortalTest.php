@@ -28,6 +28,12 @@ final class OsadPortfolioSubmissionPortalTest extends CIUnitTestCase
     {
         parent::setUp();
         $this->db = Database::connect('tests');
+        // Profiles may be created by the shared test database bootstrap. Use unique IDs so
+        // this fixture can coexist with those rows and avoid dropping the shared table.
+        $this->adminId = $this->uuid();
+        $this->eligibleStudentId = $this->uuid();
+        $this->outsideNomineeId = $this->uuid();
+        $this->unselectedStudentId = $this->uuid();
         $this->createSchema();
         $this->storageRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'osad-portfolio-' . bin2hex(random_bytes(5)) . DIRECTORY_SEPARATOR;
         $this->portals = new OsadPortfolioSubmissionPortalService($this->db, new LocalEvidenceStorageService($this->storageRoot));
@@ -41,9 +47,12 @@ final class OsadPortfolioSubmissionPortalTest extends CIUnitTestCase
 
     protected function tearDown(): void
     {
-        foreach (['osad_portfolio_submission_events', 'osad_portfolio_submission_submission_awards', 'osad_portfolio_submission_portal_awards', 'osad_portfolio_submission_access_awards', 'osad_portfolio_submissions', 'osad_portfolio_submission_access', 'osad_portfolio_submission_portals', 'student_portfolio_evidence', 'student_portfolio_records', 'portfolio_subcategories', 'portfolio_categories', 'award_definitions', 'profiles'] as $table) {
+        foreach (['osad_portfolio_submission_events', 'osad_portfolio_submission_submission_awards', 'osad_portfolio_submission_portal_awards', 'osad_portfolio_submission_access_awards', 'osad_portfolio_submissions', 'osad_portfolio_submission_access', 'osad_portfolio_submission_portals', 'student_portfolio_evidence', 'student_portfolio_records', 'portfolio_subcategories', 'portfolio_categories', 'award_definitions'] as $table) {
             $this->db->query('DROP TABLE IF EXISTS db_' . $table);
         }
+        $this->db->table('profiles')->whereIn('id', [
+            $this->adminId, $this->eligibleStudentId, $this->outsideNomineeId, $this->unselectedStudentId,
+        ])->delete();
         if (is_dir($this->storageRoot)) {
             $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->storageRoot, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
             foreach ($iterator as $entry) $entry->isDir() ? @rmdir($entry->getPathname()) : @unlink($entry->getPathname());
@@ -293,13 +302,22 @@ final class OsadPortfolioSubmissionPortalTest extends CIUnitTestCase
             'CREATE TABLE db_student_portfolio_records (id TEXT PRIMARY KEY, student_profile_id TEXT, title TEXT, organizer_or_body TEXT, occurrence_date TEXT, start_date TEXT, end_date TEXT, description TEXT, structured_metadata TEXT, status TEXT, submitted_at TEXT, verified_at TEXT, created_at TEXT, category_id TEXT, subcategory_id TEXT)',
             'CREATE TABLE db_student_portfolio_evidence (id TEXT PRIMARY KEY, portfolio_record_id TEXT, status TEXT, uploaded_at TEXT)',
         ];
-        foreach ($ddl as $sql) $this->db->query($sql);
+        foreach ($ddl as $sql) {
+            $this->db->query(str_replace('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ', $sql));
+        }
+    }
+
+    private function uuid(): string
+    {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000, random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff));
     }
 
     private function seedProfiles(): void
     {
         foreach ([[$this->adminId, 'OSAD Admin', 'osad_admin'], [$this->eligibleStudentId, 'Calculated Student', 'student'], [$this->outsideNomineeId, 'Outside Nominee', 'student'], [$this->unselectedStudentId, 'Unselected Student', 'student']] as [$id, $name, $type]) {
-            $this->db->table('profiles')->insert(['id' => $id, 'full_name' => $name, 'institutional_id' => strtoupper(substr($id, -4)), 'account_type' => $type, 'status' => 'active']);
+            $profile = ['id' => $id, 'full_name' => $name, 'institutional_id' => strtoupper(substr($id, -8)), 'account_type' => $type, 'status' => 'active'];
+            if ($this->db->fieldExists('email', 'profiles')) $profile['email'] = $id . '@test.invalid';
+            $this->db->table('profiles')->insert($profile);
         }
     }
 

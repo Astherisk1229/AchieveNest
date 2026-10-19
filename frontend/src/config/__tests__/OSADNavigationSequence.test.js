@@ -14,9 +14,9 @@ describe('Plan 06 Phase 3 — OSAD Navigation Sequence Rules', () => {
     assigned_roles: [CANONICAL_ROLES.OSAD_STAFF]
   }
 
-  it('renders exactly 5 authorized items in authoritative sequence', () => {
+  it('renders exactly 6 authorized items in authoritative sequence', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(5)
+    expect(nav).toHaveLength(6)
 
     const expectedOrder = [
       // 1. Overview
@@ -27,6 +27,7 @@ describe('Plan 06 Phase 3 — OSAD Navigation Sequence Rules', () => {
       // 3. Portfolio & Evaluation
       'osad-award-categories',
       'osad-award-candidate-review',
+      'osad-portfolio-submission-portal',
     ]
 
     expect(nav.map(item => item.id)).toEqual(expectedOrder)

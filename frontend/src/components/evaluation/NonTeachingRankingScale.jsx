@@ -117,6 +117,7 @@ export default function NonTeachingRankingScale({ result, preview = false, conte
         <FormField label="Department" value={result.personnel?.department || result.personnel?.college || summary.personnel_information?.department}/>
         <FormField label="Specific Job" value={result.personnel?.position || summary.personnel_information?.position}/>
         <FormField label="Period Covered" value={summary.period_covered || result.evaluation_period?.name || result.evaluation_period?.academic_year}/>
+        <FormField label="Criteria Version" value={result.scale_version_id}/>
         <FormField label="Employee's Progress last Ranking" value={recordedRank('employee_progress_last_ranking') || 'No prior rank recorded'}/>
         <FormField label="Present Rank" value={presentRank || 'No present rank recorded'}/>
         <FormField label="Rank Applied For" value={appliedRankDisplay}/>

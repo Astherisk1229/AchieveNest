@@ -141,8 +141,8 @@ describe('AchieveNest — Personnel Portfolio Unified Remediation Test Suite', (
       expect(content).toContain('heroGreenGrad')
       expect(content).toContain('PersonnelPortfolioGallery')
       expect(content).toContain('Current HR Evaluation')
-      expect(content).toContain('Review Before Submission')
-      expect(content).toContain('Submit Portfolio')
+      expect(content).toContain('Review the eligible records and requirements here before submitting for evaluation.')
+      expect(content).toContain('Confirm and submit for evaluation')
     })
 
     it('replaces résumé-like sections below the banner with PersonnelPortfolioGallery', () => {

@@ -85,7 +85,7 @@ describe('New Ranking Period validation', () => {
     const html = renderToStaticMarkup(<MemoryRouter><NewRankingCycleDialog cycles={[]} onClose={() => {}} onCreated={() => {}}/></MemoryRouter>)
     for (const text of ['New Ranking Period', 'Academic Year', 'Personnel Coverage', 'Submission Period', 'Evaluation Period', 'Criteria', 'Period Preview', 'Not set', 'Cancel', 'Create Ranking Period']) expect(html).toContain(text)
     expect(html).not.toContain('Achievement Coverage')
-    expect(html).toContain('Submissions and evaluations automatically follow their configured schedules. Both periods may overlap.')
+    expect(html).toContain('Submissions open when you start them from Period Settings.')
     expect(html).toContain('Personnel Ranking')
     const text = html.replace(/<[^>]+>/g, ' ')
     expect(text).not.toMatch(/Cycle name|Save Draft|\btrack\b/i)
@@ -93,8 +93,8 @@ describe('New Ranking Period validation', () => {
   })
 
   it('omits achievement coverage from HR period settings and the period list', () => {
-    expect(SETTINGS_SECTIONS.map(([, label]) => label)).not.toContain('Achievement Coverage')
-    expect(read('frontend/src/pages/hr-admin/HRRankingCyclesPage.jsx')).not.toContain('achievement_coverage')
+    expect(SETTINGS_SECTIONS.map(([, label]) => label)).toContain('Achievement Coverage')
+    expect(read('frontend/src/pages/hr-admin/ranking-cycles/CycleSettingsDialog.jsx')).toContain('achievement_coverage')
   })
 })
 
@@ -151,8 +151,9 @@ describe('Ranking Periods list model', () => {
     const workspace = read('frontend/src/pages/hr-admin/EvaluationCriteriaWorkspace.jsx')
     const builder = read('frontend/src/pages/hr-admin/ranking-criteria/CriteriaHierarchyBuilder.jsx')
     expect(app).toContain('path="/hr/ranking-cycles/criteria" element={<HRRankingTabRedirect tab="evaluation-criteria" />}')
-    expect(setup).toContain('Evaluation Criteria')
-    expect(setup).not.toContain('Criteria Sheets')
+    expect(setup).toContain('Criteria Sheets')
+    expect(setup).not.toContain('Evaluation Criteria')
+    expect(read('frontend/src/utils/hrRankingNavigation.js')).toContain("label: 'Evaluation Criteria'")
     for (const text of ['Search evaluation criteria...', 'Criteria status', 'Version history', 'Edit Scoring Limits', 'Review Changes', 'Confirm Save']) expect(workspace).toContain(text)
     expect(workspace).not.toContain('Create draft')
     expect(workspace).not.toContain('Publish reviewed draft')
@@ -183,13 +184,13 @@ describe('Personnel Ranking workspace header', () => {
 
 describe('Backend contract reuse', () => {
   it('keeps operational availability separate from lifecycle and limits its toggle to ongoing periods', () => {
-    const page = read('frontend/src/pages/hr-admin/HRRankingCyclesPage.jsx')
+    const page = read('frontend/src/pages/hr-admin/ranking-cycles/CycleSettingsDialog.jsx')
     const service = read('backend/app/Services/RankingCycleService.php')
     const controller = read('backend/app/Controllers/Api/RankingCycleController.php')
-    const migration = read('backend/app/Database/Migrations/2026-10-12-000001_AddRankingCycleOperationalAvailability.php')
+    const migration = read('backend/app/Database/Migrations/2026-10-19-000036_AddRankingCycleOperationalAvailability.php')
     expect(page).toContain("cycle.lifecycle_status?.key === 'ONGOING'")
     expect(page).toContain('role="switch"')
-    expect(page).toContain("{nextState ? 'Enable' : 'Disable'} Ranking Period?")
+    expect(page).toContain("{pending ? 'Enable' : 'Disable'} Ranking Period?")
     expect(page).toContain('Existing records will be preserved.')
     expect(service).toContain('setOperationalAvailability')
     expect(service).toContain('ranking_cycle_operational_availability_changed')
@@ -225,8 +226,8 @@ describe('Backend contract reuse', () => {
     expect(service).not.toContain("$data['submission_open_at'] <= $data['evaluation_start_at']")
     expect(service).not.toContain("$data['submission_close_at'] <= $data['evaluation_start_at']")
     expect(service).toContain("$data['evaluation_start_at'] < $data['evaluation_end_at']")
-    const independentMigration = read('backend/app/Phase17Canonical/Database/Migrations/2026-10-21-000001_MakePersonnelSchedulesIndependent.php')
-    expect(independentMigration).toContain('CHECK (evaluation_start_at < evaluation_end_at)')
+    const independentMigration = read('backend/app/Phase17Canonical/Database/Migrations/2026-10-19-000037_AllowEvaluationOverlapSubmissions.php')
+    expect(independentMigration).toContain('CHECK (evaluation_start_at >= submission_open_at AND evaluation_start_at < evaluation_end_at)')
     for (const source of [appMigration, canonicalMigration]) {
       expect(source).toContain('evaluation_start_at >= submission_open_at')
       expect(source).not.toContain('evaluation_start_at >= submission_close_at')
@@ -252,8 +253,9 @@ describe('Backend contract reuse', () => {
     expect(service).toContain("'ranking_cycle_cancelled'")
     expect(service).toContain('RANKING_CYCLE_DELETE_BLOCKED')
     expect(service).toContain("'CANCELLED'")
-    expect(dialog).toContain('Delete Period Permanently')
-    expect(dialog).toContain('all records linked to it will be permanently removed')
+    expect(dialog).toContain('Permanently Delete')
+    expect(dialog).toContain('This permanently removes its setup.')
+    expect(dialog).toContain('Submitted portfolios, evaluations, decisions, reports, and archived periods cannot be deleted.')
     expect(dialog).toContain('Why is this period being cancelled?')
   })
 

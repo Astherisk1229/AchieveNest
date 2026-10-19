@@ -343,6 +343,13 @@ class PersonnelPortfolioSubmissionController extends Controller
         $json = $this->request->getJSON(true) ?? [];
         $evaluationPeriodId = trim((string) ($json['evaluation_period_id'] ?? ''));
         if ($evaluationPeriodId === '') return $this->respond(['error' => ['code' => 'EVALUATION_PERIOD_REQUIRED', 'message' => 'Select the current open personnel evaluation period before submitting.']], 422);
+        try { \App\Services\RankingCycleOperationalAvailability::assertEnabled(db_connect(), $evaluationPeriodId); }
+        catch (\RuntimeException $error) {
+            if (str_starts_with($error->getMessage(), 'RANKING_PERIOD_DISABLED:')) {
+                return $this->respond(['error' => ['code' => 'RANKING_PERIOD_DISABLED', 'message' => 'This ranking period is temporarily disabled by HR.']], 409);
+            }
+            throw $error;
+        }
         $idempotencyKey = trim($this->request->getHeaderLine('Idempotency-Key'));
         if ($idempotencyKey === '' || ! preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $idempotencyKey)) {
             return $this->respond(['error' => ['code' => 'IDEMPOTENCY_KEY_REQUIRED', 'message' => 'A valid submission request key is required. Please retry from the portfolio page.']], 422);

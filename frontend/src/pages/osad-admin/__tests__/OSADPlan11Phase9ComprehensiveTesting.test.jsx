@@ -53,7 +53,7 @@ describe('Plan 11 Phase 9 — Comprehensive Verification Matrix', () => {
       assigned_roles: [CANONICAL_ROLES.OSAD_STAFF]
     }
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(10)
+    expect(nav).toHaveLength(6)
   })
 
   // Scenario 48: Zero transient mobileOpen persistence

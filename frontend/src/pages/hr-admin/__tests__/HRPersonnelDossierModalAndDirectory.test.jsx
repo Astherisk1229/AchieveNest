@@ -57,16 +57,16 @@ describe('Package X — Personnel Directory Table & Impeccable Quality', () => {
     expect(tableContent).not.toContain('Engagement &amp; Status (Plan D2)')
   })
 
-  it('keeps role badges unified and collapses role overflow', () => {
-    expect(tableContent).toContain('.slice(0, 1)')
-    expect(tableContent).toContain('responsibility</span>')
+  it('keeps role responsibilities unified in the directory row', () => {
+    expect(tableContent).toContain("responsibilities.join(' · ')")
+    expect(tableContent).toContain("title={responsibilities.join(' · ')}")
   })
 
   it('renders backend-provided login readiness independently from profile status', () => {
     expect(tableContent).toContain('p.login_readiness')
-    expect(tableContent).toContain('Login Ready')
-    expect(tableContent).toContain('Login Not Ready')
-    expect(tableContent).toContain('Readiness Unknown')
+    expect(tableContent).toContain("READY: ['Login ready', false]")
+    expect(tableContent).toContain("NOT_READY: ['Login not ready', true]")
+    expect(tableContent).toContain("UNKNOWN: ['Readiness unknown', false]")
   })
 
   it('shows empty state without fake seed rows', () => {

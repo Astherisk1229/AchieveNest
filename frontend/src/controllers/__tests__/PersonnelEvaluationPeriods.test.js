@@ -26,8 +26,8 @@ describe('Personnel evaluation period architecture', () => {
     expect(periods).toContain("($row['status'] ?? '') === 'DRAFT'")
     expect(periods).toContain("$closeAt >= $now")
     const portfolioPage = read('frontend/src/pages/personnel/PersonnelPortfolioPage.jsx')
-    expect(portfolioPage).toContain("evaluationPeriod.can_submit ? 'Open for submission' : 'Upcoming'")
-    expect(portfolioPage).toContain('disabled={!evaluationPeriod.can_submit')
+    expect(portfolioPage).toContain("evaluationPeriod.can_submit ? 'Submission window open' : 'Upcoming'")
+    expect(portfolioPage).toContain('disabled={!submissionGate.visible}')
   })
 
   it('automatically applies scheduled opening through the normal period lifecycle on HR and Personnel reads', () => {

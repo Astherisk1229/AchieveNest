@@ -21,7 +21,7 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
 
   it('verifies the combined Student Management destination replaces three separate sidebar entries', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(5)
+    expect(nav).toHaveLength(6)
     expect(NAVIGATION_CATALOG.length).toBeGreaterThanOrEqual(9)
 
     const ids = nav.map(i => i.id)
@@ -44,7 +44,7 @@ describe('Plan 06 Phase 9 — OSAD Responsive Navigation Suite', () => {
     expect(sidebar.props.currentUser).toEqual(osadSession)
   })
 
-  it('verifies task-based workflow groups across the 5 destinations', () => {
+  it('verifies task-based workflow groups across the 6 destinations', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
     const groups = [...new Set(nav.map(i => i.workflowFamily))]
 

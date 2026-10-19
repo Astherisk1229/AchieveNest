@@ -103,7 +103,9 @@ final class AnnualReviewRankAlignmentTest extends CIUnitTestCase
         self::assertSame('system_missing', $result['present_rank_check']['status']);
         self::assertSame('workbook', $result['basis']);
         self::assertSame('misaligned', $result['status']);
-        self::assertSame('Instructor I', $result['recommended_rank']['display_label']);
+        // Assistant Instructor now requires a verified Master's before entering the
+        // Assistant Professor track; the retired Instructor I recommendation is invalid.
+        self::assertNull($result['recommended_rank']);
         self::assertStringContainsString('no system rank on record', $result['message']);
     }
 
@@ -130,7 +132,7 @@ final class AnnualReviewRankAlignmentTest extends CIUnitTestCase
         self::assertSame('workbook_missing', $this->service->evaluate('', 'Instructor 1', $person)['present_rank_check']['status']);
         $applied = $this->service->evaluate('Assistant Instructor', 'Instructor One', $person);
         self::assertSame('applied_rank_unrecognized', $applied['status']);
-        self::assertSame('Instructor I', $applied['recommended_rank']['display_label']);
+        self::assertNull($applied['recommended_rank']);
         self::assertSame('applied_rank_missing', $this->service->evaluate('Assistant Instructor', null, $person)['status']);
         self::assertSame('present_rank_unresolved', $this->service->evaluate('Lecturer', 'Instructor 1', $this->person(null))['status']);
     }

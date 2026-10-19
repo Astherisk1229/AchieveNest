@@ -25,14 +25,14 @@ describe('Phase 5 item 4: personnel basic info persists', () => {
     const s = read('frontend/src/services/personnelProfileService.js')
     expect(s).toContain("apiClient.put('/personnel/profile', { contact_number, about_me, specialization })")
   })
-  it('Profile loads saved values while Portfolio stays focused on evaluations', () => {
+  it('Profile loads saved values while Portfolio uses profile fields for service length', () => {
     expect(read('frontend/src/pages/personnel/PersonnelDashboardPage.jsx')).toContain('fetchOwnProfileFields()')
     const portfolio = read('frontend/src/pages/personnel/PersonnelPortfolioPage.jsx')
-    expect(portfolio).not.toContain('fetchOwnProfileFields()')
+    expect(portfolio).toContain('fetchOwnProfileFields()')
     expect(portfolio).not.toContain('EditBasicInfoModal')
     expect(portfolio).not.toContain('Edit Profile')
     expect(portfolio).toContain('Current HR Evaluation')
-    expect(portfolio).toContain('Review Before Submission')
-    expect(portfolio).toContain('Submit Portfolio')
+    expect(portfolio).toContain('Review the eligible records and requirements here before submitting for evaluation.')
+    expect(portfolio).toContain('Confirm and submit for evaluation')
   })
 })

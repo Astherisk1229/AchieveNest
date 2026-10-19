@@ -152,7 +152,7 @@ export default function CoordinatorSubmissionReview({ item, loadRecordDetail }) 
       </div>
       {missing.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
         <p className="flex items-center gap-1.5 font-bold"><AlertTriangle className="h-4 w-4" aria-hidden="true"/>Required details left empty</p>
-        <p className="mt-1">{missing.map(field => field.label + (field.affectsAwards ? ' (affects award evaluation)' : '')).join(', ')}</p>
+        <p className="mt-1">{missing.map(field => field.label + (field.affectsAwards ? ` (${AWARD_FLAG_TEXT})` : '')).join(', ')}</p>
       </div>}
       {details.some(row => row.affectsAwards) && <p className="border-l-2 border-indigo-300 pl-3 text-xs leading-relaxed text-slate-600">Fields marked “{AWARD_FLAG_TEXT}” are used by OSAD when matching this achievement to award criteria.</p>}
       {item.return_remarks && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">

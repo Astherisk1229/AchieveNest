@@ -31,7 +31,7 @@ describe('CoordinatorSubmissionReview', () => {
     const html = render()
     expect(html).toContain(AWARD_FLAG_TEXT)
     expect(html).toContain('Required details left empty')
-    expect(html).toContain('Leadership Officer Tier (affects award evaluation)')
+    expect(html).toContain(`Leadership Officer Tier (${AWARD_FLAG_TEXT})`)
     // Check the visible text only (icon class names such as "lucide-file-exclamation-point" are not text).
     const text = html.replace(/<[^>]*>/g, ' ')
     expect(text).not.toMatch(/\bpoints?\b(?! values are not shown)/i)

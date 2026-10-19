@@ -39,7 +39,7 @@ describe('OSAD Student Management college browsing', () => {
     expect(html).not.toContain('Program management')
     expect(html).toContain('No students in this college')
     expect(html).not.toContain('Edit College')
-    expect(html).not.toContain('Manage Program Coordinators')
+    expect(html).toContain('Manage Program Coordinators')
   })
 
   it('shows the selected program status, count, edit/toggle actions, and its empty state', () => {

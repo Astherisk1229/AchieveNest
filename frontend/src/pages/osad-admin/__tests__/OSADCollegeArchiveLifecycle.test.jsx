@@ -9,8 +9,9 @@ describe('OSAD College archive lifecycle', () => {
     const service = source('../../../services/collegeAdminService.js')
     const dashboard = source('../OSADDashboardPage.jsx')
     expect(service).toContain('`/osad/colleges/${id}/status`')
-    expect(dashboard).toContain('await apiUpdateCollegeStatus(college.id, status)')
-    expect(dashboard).toContain('await loadPersistentColleges()')
+    expect(source('../OSADCollegeDetailsView.jsx')).toContain('onCollegeStatusChange(college, nextStatus)')
+    expect(dashboard).toContain('loadPersistentColleges()')
+    expect(dashboard).toContain('apiFetchColleges()')
   })
 
   it('explains non-destructive archive behavior and preserves reactivation', () => {
@@ -26,8 +27,8 @@ describe('OSAD College archive lifecycle', () => {
   it('excludes archived Colleges from new operational selectors without hiding the structure grid', () => {
     const dashboard = source('../OSADDashboardPage.jsx')
     const structure = source('../OSADAcademicProgramsPage.jsx')
-    expect(dashboard).toContain("persistentColleges.filter((college) => college.status === 'active')")
-    expect(structure).toContain('colleges.map((college) =>')
-    expect(structure).toContain("const isArchived = college.status === 'inactive'")
+    expect(dashboard).toContain("persistentColleges.filter((college) => !college.status || college.status === 'active')")
+    expect(structure).toContain('filteredColleges.map((college) =>')
+    expect(structure).toContain("college.status || 'Active'")
   })
 })

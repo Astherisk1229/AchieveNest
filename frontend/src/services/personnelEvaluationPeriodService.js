@@ -11,6 +11,7 @@ export async function getRankingCycle(id) { return unwrap(await apiClient.get(cy
 export async function createRankingCycle(payload, requestKey) { return unwrap(await apiClient.post('/hr/ranking-cycles', payload, requestConfig(requestKey))) }
 export async function addRankingCycleCoverage(id, payload, requestKey) { return unwrap(await apiClient.post(`${cyclePath(id)}/tracks`, payload, requestConfig(requestKey))) }
 export async function updateRankingCycleSchedule(id, payload) { return unwrap(await apiClient.patch(`${cyclePath(id)}/schedule`, payload)) }
+export async function updateRankingCycleOperationalAvailability(id, expectedEnabled, enabled) { return unwrap(await apiClient.patch(`${cyclePath(id)}/operational-availability`, { expected_enabled: expectedEnabled, enabled })) }
 /** Achievement coverage: which accomplishments belong to the period (not the submission/evaluation schedule). */
 export async function updateRankingCycleAchievementCoverage(id, payload) { return unwrap(await apiClient.patch(`${cyclePath(id)}/coverage`, payload)) }
 export async function archiveRankingCycle(id, requestKey) { return unwrap(await apiClient.post(`${cyclePath(id)}/archive`, { confirm: true }, requestConfig(requestKey))) }
@@ -21,4 +22,4 @@ export async function createPersonnelEvaluationPeriod(payload, requestKey) { ret
 export async function updatePersonnelEvaluationPeriod(id, payload, requestKey) { return unwrap(await apiClient.patch(`/hr/personnel-evaluation-periods/${id}`, payload, requestConfig(requestKey))) }
 export async function transitionPersonnelEvaluationPeriod(id, action, expectedVersion, requestKey) { return unwrap(await apiClient.post(`/hr/personnel-evaluation-periods/${id}/${action}`, { expected_version: expectedVersion }, requestConfig(requestKey))) }
 
-export default { listRankingCycles, getRankingCycle, createRankingCycle, addRankingCycleCoverage, updateRankingCycleSchedule, updateRankingCycleAchievementCoverage, archiveRankingCycle, cancelRankingCycle, restoreRankingCycle, deleteRankingCycle, listPersonnelEvaluationPeriods, getCurrentPersonnelEvaluationPeriod, createPersonnelEvaluationPeriod, updatePersonnelEvaluationPeriod, transitionPersonnelEvaluationPeriod }
+export default { listRankingCycles, getRankingCycle, createRankingCycle, addRankingCycleCoverage, updateRankingCycleSchedule, updateRankingCycleOperationalAvailability, updateRankingCycleAchievementCoverage, archiveRankingCycle, cancelRankingCycle, restoreRankingCycle, deleteRankingCycle, listPersonnelEvaluationPeriods, getCurrentPersonnelEvaluationPeriod, createPersonnelEvaluationPeriod, updatePersonnelEvaluationPeriod, transitionPersonnelEvaluationPeriod }

@@ -29,11 +29,11 @@ describe('Organization Event canonical mapping', () => {
       time: '9:00 AM - 5:00 PM',
       venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e',
       venue: 'BRC Convention Hall',
-      osad_template_id: 'OSAD-TPL-04',
       status: 'Upcoming',
       participants_count: 0,
       banner_type: 'target'
     })
+    expect(event).not.toHaveProperty('osad_template_id')
   })
 
   it('maps historical legacy event (venue_id=NULL) preserving historical venue text', () => {
@@ -80,13 +80,13 @@ describe('Organization Event canonical mapping', () => {
       event_type: 'Summit',
       start_time: '2026-10-15 09:00:00',
       end_time: '2026-10-15 11:00:00',
-      venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e',
-      osad_template_id: 'OSAD-TPL-04'
+      venue_id: 'f0490559-b777-11f1-809c-b48c9d01dd3e'
     })
     // Ensure no client authority fields
     expect(result).not.toHaveProperty('organization_id')
     expect(result).not.toHaveProperty('organizer_profile_id')
     expect(result).not.toHaveProperty('status')
+    expect(result).not.toHaveProperty('osad_template_id')
   })
 
   it('omits venue fields when updating a legacy event without changing venue', () => {

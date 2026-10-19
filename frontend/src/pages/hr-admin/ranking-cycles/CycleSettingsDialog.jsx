@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText } from 'lucide-react'
 import {
-  addRankingCycleCoverage, getRankingCycle, transitionPersonnelEvaluationPeriod, updateRankingCycleAchievementCoverage, updateRankingCycleSchedule,
+  addRankingCycleCoverage, getRankingCycle, transitionPersonnelEvaluationPeriod, updateRankingCycleAchievementCoverage, updateRankingCycleOperationalAvailability, updateRankingCycleSchedule,
 } from '../../../services/personnelEvaluationPeriodService'
 import RankingCycleDialog, { LockedBadge, buttonStyles, errorMessage, inputClass } from './RankingCycleDialog'
 import CriteriaPreviewDialog from './CriteriaPreviewDialog'
@@ -40,12 +40,40 @@ const NEXT_ACTION = {
 const Notice = ({ tone = 'info', children }) => <p role={tone === 'error' ? 'alert' : undefined} className={`rounded-lg px-3 py-2.5 text-sm font-semibold ${tone === 'error' ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/30 dark:text-rose-200' : tone === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200' : 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}>{children}</p>
 const Row = ({ label, children }) => <div className="grid gap-1 py-2.5 text-sm sm:grid-cols-[11rem_1fr] sm:gap-4"><dt className="text-slate-500 dark:text-slate-400">{label}</dt><dd className="font-semibold text-slate-900 dark:text-slate-100">{children}</dd></div>
 
-function General({ cycle }) {
+function General({ cycle, onAvailabilityChanged }) {
+  const [pending, setPending] = useState(null)
+  const [availabilityState, setAvailabilityState] = useState({ saving: false, error: '' })
+  const enabled = cycle.operational_enabled !== false
+  const canToggleAvailability = cycle.lifecycle_status?.key === 'ONGOING'
+  const confirmAvailability = async () => {
+    setAvailabilityState({ saving: true, error: '' })
+    try {
+      await updateRankingCycleOperationalAvailability(cycle.id, enabled, pending)
+      setPending(null)
+      setAvailabilityState({ saving: false, error: '' })
+      await onAvailabilityChanged()
+    } catch (error) {
+      setAvailabilityState({ saving: false, error: errorMessage(error, 'The period availability could not be changed.') })
+    }
+  }
   return <dl className="divide-y divide-slate-200 dark:divide-slate-800">
     <Row label="Cycle name">{cycle.display_name}<span className="block text-xs font-normal text-slate-500">Generated from the academic year and personnel coverage.</span></Row>
     <Row label="Academic year">{cycle.academic_year.replace('-', '–')}{cycle.track_count > 0 && <span className="block text-xs font-normal text-slate-500">Locked once personnel coverage is configured.</span>}</Row>
     <Row label="Status">{cycle.lifecycle_status?.label}</Row>
     <Row label="Current stage">{cycle.current_stage?.label || 'Not started'}</Row>
+    <Row label="Operational availability">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <span>{enabled ? 'Enabled' : 'Disabled by HR'}</span>
+          {canToggleAvailability && <button type="button" role="switch" aria-checked={enabled} aria-label="Ranking period operational availability" onClick={() => setPending(!enabled)} className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${enabled ? 'bg-emerald-700' : 'bg-slate-400'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`}/></button>}
+        </div>
+        {pending !== null && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+          <p>{pending ? 'Enable' : 'Disable'} Ranking Period? Existing records will be preserved.</p>
+          <div className="mt-2 flex gap-2"><button type="button" onClick={() => setPending(null)} disabled={availabilityState.saving} className={buttonStyles.secondary}>Cancel</button><button type="button" onClick={confirmAvailability} disabled={availabilityState.saving} className={buttonStyles.primary}>{availabilityState.saving ? 'Saving…' : `Confirm ${pending ? 'Enable' : 'Disable'}`}</button></div>
+        </div>}
+        {availabilityState.error && <Notice tone="error">{availabilityState.error}</Notice>}
+      </div>
+    </Row>
     <Row label="Created">{formatDate(cycle.created_at)}{cycle.created_by_label ? ` · ${cycle.created_by_label}` : ''}</Row>
     {cycle.is_legacy && <Row label="Record origin">Migrated from an earlier ranking period</Row>}
   </dl>
@@ -210,7 +238,7 @@ export default function CycleSettingsDialog({ cycle: initial, cycles = [], secti
     onChanged?.(next)
   }
   const panels = {
-    general: <General cycle={cycle}/>,
+    general: <General cycle={cycle} onAvailabilityChanged={refresh}/>,
     schedule: <Schedule key={`schedule-${cycle.updated_at}-${cycle.tracks.map(t => t.version).join('.')}`} cycle={cycle} onSaved={refresh}/>,
     'achievement-coverage': <AchievementCoverage key={`achievement-coverage-${cycle.updated_at}`} cycle={cycle} onSaved={refresh}/>,
     coverage: <Coverage key={`coverage-${cycle.track_count}`} cycle={cycle} cycles={cycles} onSaved={refresh}/>,

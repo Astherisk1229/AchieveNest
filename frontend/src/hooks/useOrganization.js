@@ -163,6 +163,11 @@ function extract24HourClock(value) {
 }
 
 export function mapApiEventToUi(event = {}) {
+  // Older event rows may still carry the retired OSAD template field. Do not surface
+  // that field in the Organization Moderator flow; certificates are configured there.
+  const moderatorEvent = { ...event }
+  delete moderatorEvent.osad_template_id
+
   const startTimeRaw = String(
     event.start_time ?? ''
   )
@@ -205,7 +210,7 @@ export function mapApiEventToUi(event = {}) {
   }
 
   return {
-    ...event,
+    ...moderatorEvent,
     category,
     venue_id: event.venue_id ?? null,
     venue: event.venue ?? '',

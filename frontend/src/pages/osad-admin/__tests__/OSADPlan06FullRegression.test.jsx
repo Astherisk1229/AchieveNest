@@ -64,9 +64,9 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
   }
 
   // Parent Test 1: Sidebar item navigation without manual reload
-  it('Parent Test 1: verifies all 5 authorized sidebar destinations navigate via client-side routing', () => {
+  it('Parent Test 1: verifies all 6 authorized sidebar destinations navigate via client-side routing', () => {
     const nav = getAuthorizedNavigationForSession(osadSession)
-    expect(nav).toHaveLength(5)
+    expect(nav).toHaveLength(6)
     nav.forEach(item => {
       expect(item.path).toBeDefined()
       expect(item.path.startsWith('/')).toBe(true)
@@ -94,7 +94,7 @@ describe('Plan 06 Phase 11 — Full Regression Test Suite', () => {
     const itemIds = nav.map(i => i.id)
     const uniqueIds = new Set(itemIds)
     expect(uniqueIds.size).toBe(itemIds.length)
-    expect(nav).toHaveLength(5)
+    expect(nav).toHaveLength(6)
   })
 
   // Parent Test 4: Primary actions execute one clear action

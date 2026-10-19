@@ -16,6 +16,7 @@ class AnnualReviewImportService
     {
         $period=$this->db->table('personnel_evaluation_periods')->where('id',$periodId)->get()->getRowArray();
         if(!$period) throw new InvalidArgumentException('EVALUATION_PERIOD_INVALID: Evaluation period was not found.');
+        RankingCycleOperationalAvailability::assertEnabled($this->db, $periodId);
         if(in_array($period['status'],['CLOSED','ARCHIVED','CANCELLED'],true)) throw new RuntimeException('EVALUATION_PERIOD_LOCKED: This evaluation period is read-only.');
         $years=$this->requiredYears($period['academic_year']);$workspace=$this->workspace($actor);
         if (strtoupper(trim((string) ($period['personnel_group'] ?? ''))) === 'NON_TEACHING_FACULTY') {
@@ -53,7 +54,7 @@ class AnnualReviewImportService
     public function confirm(array $actor,string $id,?string $selectedPersonnelId=null,?string $reason=null): array
     {
         $row=$this->db->table('personnel_annual_review_imports')->where('id',$id)->get()->getRowArray();if(!$row||$row['uploaded_by']!==($actor['profile']['id']??''))throw new RuntimeException('FORBIDDEN: Import preview is unavailable.');
-        $period=$this->period($row['evaluation_period_id']);$this->assertTeachingFaculty($period);
+        $period=$this->period($row['evaluation_period_id']);$this->assertTeachingFaculty($period);RankingCycleOperationalAvailability::assertEnabled($this->db,(string)$period['id']);
         if($row['confirmed_at'])return $this->format($row);
         if(in_array($period['status'],['CLOSED','ARCHIVED','CANCELLED'],true))throw new RuntimeException('EVALUATION_PERIOD_LOCKED: This evaluation period is read-only.');
         $workspace=$this->workspace($actor);$allowed=array_column($this->candidates($actor,$workspace,$period),'id');$personId=$selectedPersonnelId?:$row['personnel_profile_id'];if(!$personId||!in_array($personId,$allowed,true))throw new RuntimeException('PERSONNEL_MATCH_REQUIRED: Select one personnel record assigned to your authority for this ranking track.');if(!empty($row['expected_personnel_profile_id'])&&$personId!==$row['expected_personnel_profile_id'])throw new RuntimeException('WORKBOOK_PERSONNEL_MISMATCH: The workbook does not match the personnel selected for this row.');if(($row['match_status']??'')==='wrong_person')throw new RuntimeException('WORKBOOK_PERSONNEL_MISMATCH: The workbook name does not match the personnel selected for this row.');

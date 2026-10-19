@@ -209,6 +209,29 @@ class RankingCycleService
      * Archives a completed cycle by moving each CLOSED track to ARCHIVED through the existing
      * period lifecycle. No annual review, submission, evaluation, score, result or audit row is touched.
      */
+    /** Pauses or resumes new activity without changing lifecycle or deleting records. */
+    public function setOperationalAvailability(string $id, bool $expectedEnabled, bool $enabled, string $actorId): array
+    {
+        $this->db->transBegin();
+        try {
+            $cycle = $this->db->query('SELECT * FROM ranking_cycles WHERE id = ? FOR UPDATE', [$id])->getRowArray();
+            if (! $cycle) throw new InvalidArgumentException('RANKING_CYCLE_NOT_FOUND: Ranking cycle not found.');
+            $tracks = $this->tracks($id);
+            if (self::lifecycle($tracks)['key'] !== 'ONGOING') throw new RuntimeException('RANKING_CYCLE_AVAILABILITY_LOCKED: Only ongoing ranking periods can be enabled or disabled.');
+            $current = ! array_key_exists('operational_enabled', $cycle) || (int) $cycle['operational_enabled'] === 1;
+            if ($current !== $expectedEnabled) throw new RuntimeException('RANKING_CYCLE_STATE_CONFLICT: The period availability changed. Refresh and try again.');
+            if ($current !== $enabled) {
+                $this->db->table('ranking_cycles')->where('id', $id)->update(['operational_enabled' => $enabled ? 1 : 0, 'updated_by' => $actorId, 'updated_at' => date('Y-m-d H:i:s')]);
+                $this->audit($actorId, 'ranking_cycle_operational_availability_changed', $id, ['from' => $current, 'to' => $enabled, 'action' => 'toggle_operational_availability']);
+            }
+            $this->db->transCommit();
+        } catch (Throwable $error) {
+            $this->db->transRollback();
+            throw $error;
+        }
+        return $this->find($id);
+    }
+
     public function archive(string $id, array $input, string $actorId, ?string $requestId = null): array
     {
         if (($input['confirm'] ?? false) !== true) throw new InvalidArgumentException('ARCHIVE_CONFIRMATION_REQUIRED: Confirm that archiving cannot be undone.');

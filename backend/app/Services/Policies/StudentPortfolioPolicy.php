@@ -21,7 +21,8 @@ class StudentPortfolioPolicy
         $db = $this->getDb();
         // The portal feature is optional on installations that have not applied its migration.
         // Avoid issuing a missing-table query because CI4 marks the surrounding transaction failed.
-        if (! $db->tableExists('osad_portfolio_submission_access')) return false;
+        $table = $db->prefixTable('osad_portfolio_submission_access');
+        if (! $db->tableExists($table, false)) return false;
 
         try {
             return $db->table('osad_portfolio_submission_access')
